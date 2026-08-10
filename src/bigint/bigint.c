@@ -538,3 +538,154 @@ void bigint_string_free(
     free(string);
 }
 
+int bigint_compare(
+    const BigInt *a, 
+    const BigInt *b
+)
+{
+    if (a->size < b->size)
+    {
+        return -1;
+    }
+    else if (a->size > b->size)
+    {
+        return 1;
+    }
+
+    for (size_t i = a->size; i > 0; i--)
+    {
+        size_t index = i - 1;
+
+        if (a->limbs[index] < b->limbs[index])
+        {
+            return -1;
+        }
+        else if (a->limbs[index] > b->limbs[index])
+        {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+int bigint_add(
+    BigInt *result, 
+    const BigInt *a, 
+    const BigInt *b
+)
+{
+    if (result == NULL || a == NULL || b == NULL)
+    {
+        return 0;
+    }
+
+    if(result == a || result == b)
+    {
+        BigInt *temp = bigint_create();
+
+        if (temp == NULL)
+        {
+            return 0;
+        }
+
+        if (!bigint_add(temp, a, b))
+        {
+            bigint_destroy(temp);
+            return 0;
+        }
+
+        if (!bigint_copy(result, temp))
+        {
+            bigint_destroy(temp);
+            return 0;
+        }
+
+        bigint_destroy(temp);
+
+        return 1;
+    }
+
+    size_t max_size = (a->size > b->size) ? a->size : b->size;
+
+    if (result->capacity < max_size + 1)
+    {
+        uint64_t *new_limbs = realloc(
+            result->limbs,
+            (max_size + 1) * sizeof(uint64_t)
+        );
+
+        if (new_limbs == NULL)
+        {
+            return 0;
+        }
+
+        result->limbs = new_limbs;
+        result->capacity = max_size + 1;
+    }
+
+    uint64_t carry = 0;
+
+    for (size_t i = 0; i < max_size; i++)
+    {
+        uint64_t limb_a = (i < a->size) ? a->limbs[i] : 0;
+        uint64_t limb_b = (i < b->size) ? b->limbs[i] : 0;
+
+        uint64_t sum = limb_a + limb_b + carry;
+
+        if (sum < limb_a || sum < limb_b)
+        {
+            carry = 1;
+        }
+        else
+        {
+            carry = 0;
+        }
+
+        result->limbs[i] = sum;
+    }
+
+    if (carry > 0)
+    {
+        result->limbs[max_size] = carry;
+        result->size = max_size + 1;
+    }
+    else
+    {
+        result->size = max_size;
+    }
+
+    return 1;
+}
+
+int bigint_sub(
+    BigInt *result, 
+    const BigInt *a, 
+    const BigInt *b
+)
+{
+    // Implementation of subtraction would go here
+    return 1;
+}
+
+int bigint_mul(
+    BigInt *result, 
+    const BigInt *a, 
+    const BigInt *b
+)
+{
+    // Implementation of multiplication would go here
+    return 1;
+}
+
+
+
+
+
+
+
+
+
+
+
+
