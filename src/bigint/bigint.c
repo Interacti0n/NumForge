@@ -4,6 +4,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+/*
+------------------------------------------------------------------------------------------------------------------------------
+    Internal helper functions for BigInt operations.
+------------------------------------------------------------------------------------------------------------------------------
+*/
 static uint64_t bigint_divide_128_by_u64( /*Divide a 128-bit value by a uint64_t*/
     uint64_t high, 
     uint64_t low, 
@@ -168,6 +173,60 @@ static int bigint_add_uint64( /*Add a uint64_t to a BigInt*/
 
     value->limbs[value->size] = 1;
     value->size++;
+
+    return 1;
+}
+
+static int bigint_sub_uint64( /*Subtract a uint64_t from a BigInt*/
+    BigInt *value,
+    uint64_t amount
+)
+{
+    if (value == NULL)
+    {
+        return 0;
+    }
+
+    if (amount == 0)
+    {
+        return 1;
+    }
+
+    if (value->size == 0)
+    {
+        return 1;
+    }
+
+    uint64_t old = value->limbs[0];
+
+    value->limbs[0] -= amount;
+
+    if (value->limbs[0] <= old)
+    {
+        return 1;
+    }
+
+    size_t index = 1;
+
+    while (index < value->size)
+    {
+        old = value->limbs[index];
+
+        value->limbs[index] -= 1;
+
+        if (value->limbs[index] <= old)
+        {
+            return 1;
+        }
+
+        index++;
+    }
+
+    while (value->size > 0 &&
+           value->limbs[value->size - 1] == 0)
+    {
+        value->size--;
+    }
 
     return 1;
 }
@@ -413,6 +472,12 @@ static int bigint_subtract_abs( /*Subtract the absolute values of two BigInts*/
     return 1;
 }
 
+/*
+------------------------------------------------------------------------------------------------------------------------------
+    Operation functions for BigInt.
+------------------------------------------------------------------------------------------------------------------------------
+*/
+
 BigInt *bigint_create( /*Create a new BigInt*/
     void
 )
@@ -490,6 +555,81 @@ int bigint_copy( /*Create a copy of a BigInt*/
 
     destination->size = source->size;
     destination->is_negative = source->is_negative;
+
+    return 1;
+}
+
+int bigint_set_string( /*Transform string to BigInt*/
+    BigInt *value,
+    const char *string
+)
+{
+    if (value == NULL || string == NULL)
+    {
+        return 0;
+    }
+
+    value->size = 0;
+
+    size_t len = strlen(string);
+
+    if (len == 0)
+    {
+        return 1;
+    }
+
+    // Each limb stores up to 19 decimal digits.
+    size_t required = (len + 18) / 19;
+
+    if (value->capacity < required)
+    {
+        uint64_t *new_limbs =
+            realloc(
+                value->limbs,
+                required * sizeof(uint64_t)
+            );
+
+        if (new_limbs == NULL)
+        {
+            return 0;
+        }
+
+        value->limbs = new_limbs;
+        value->capacity = required;
+    }
+
+    // Parse from right to left because limbs are little-endian.
+    for (size_t i = len; i > 0; )
+    {
+        size_t start = (i > 19) ? i - 19 : 0;
+
+        uint64_t limb = 0;
+
+        for (size_t j = start; j < i; j++)
+        {
+            char character = string[j];
+
+            if (character < '0' || character > '9')
+            {
+                return 0;
+            }
+
+            limb =
+                limb * 10 +
+                (uint64_t)(character - '0');
+        }
+
+        value->limbs[value->size++] = limb;
+
+        i = start;
+    }
+
+    // Remove leading zero limbs.
+    while (value->size > 1 &&
+           value->limbs[value->size - 1] == 0)
+    {
+        value->size--;
+    }
 
     return 1;
 }
@@ -589,80 +729,11 @@ char *bigint_to_string( /*Transform BigInt to string*/
     return string;
 }
 
-int bigint_set_string( /*Transform string to BigInt*/
-    BigInt *value,
-    const char *string
-)
-{
-    if (value == NULL || string == NULL)
-    {
-        return 0;
-    }
-
-    value->size = 0;
-
-    size_t len = strlen(string);
-
-    if (len == 0)
-    {
-        return 1;
-    }
-
-    // Each limb stores up to 19 decimal digits.
-    size_t required = (len + 18) / 19;
-
-    if (value->capacity < required)
-    {
-        uint64_t *new_limbs =
-            realloc(
-                value->limbs,
-                required * sizeof(uint64_t)
-            );
-
-        if (new_limbs == NULL)
-        {
-            return 0;
-        }
-
-        value->limbs = new_limbs;
-        value->capacity = required;
-    }
-
-    // Parse from right to left because limbs are little-endian.
-    for (size_t i = len; i > 0; )
-    {
-        size_t start = (i > 19) ? i - 19 : 0;
-
-        uint64_t limb = 0;
-
-        for (size_t j = start; j < i; j++)
-        {
-            char character = string[j];
-
-            if (character < '0' || character > '9')
-            {
-                return 0;
-            }
-
-            limb =
-                limb * 10 +
-                (uint64_t)(character - '0');
-        }
-
-        value->limbs[value->size++] = limb;
-
-        i = start;
-    }
-
-    // Remove leading zero limbs.
-    while (value->size > 1 &&
-           value->limbs[value->size - 1] == 0)
-    {
-        value->size--;
-    }
-
-    return 1;
-}
+/*
+------------------------------------------------------------------------------------------------------------------------------
+    Comparision functions for BigInt.
+------------------------------------------------------------------------------------------------------------------------------
+*/
 
 int bigint_compare_abs( /*Compare two absolute values of BigInts*/
     const BigInt *a, 
@@ -699,6 +770,79 @@ int bigint_compare_abs( /*Compare two absolute values of BigInts*/
 
     return 0;
 }
+
+int bigint_compare( /*Compare two BigInts*/
+    const BigInt *a, 
+    const BigInt *b
+)
+{
+    if (a == NULL || b == NULL)
+    {
+        return 0;
+    }
+
+    if (a->is_negative && !b->is_negative)
+    {
+        return -1;
+    }
+    else if (!a->is_negative && b->is_negative)
+    {
+        return 1;
+    }
+
+    int cmp = bigint_compare_abs(a, b);
+
+    if (a->is_negative)
+    {
+        return -cmp;
+    }
+    else
+    {
+        return cmp;
+    }
+}
+
+int bigint_is_zero( /*Check if a BigInt is zero*/
+    const BigInt *value
+)
+{
+    if (value == NULL)
+    {
+        return 0;
+    }
+
+    return value->size == 0;
+}
+
+int bigint_is_one( /*Check if a BigInt is one*/
+    const BigInt *value
+)
+{
+    if (value == NULL)
+    {
+        return 0;
+    }
+
+    return value->size == 1 && value->limbs[0] == 1 && !value->is_negative;
+}
+
+int bigint_is_negative( /*Check if a BigInt is negative*/
+    const BigInt *value
+)
+{
+    if (value == NULL)
+    {
+        return 0;
+    }
+
+    return value->is_negative;
+}
+
+/*
+------------------------------------------------------------------------------------------------------------------------------
+    Arithmetic operation functions for BigInt.
+------------------------------------------------------------------------------------------------------------------------------
+*/
 
 int bigint_add( /*Add two BigInts (a+b)*/
     BigInt *result,
@@ -928,14 +1072,431 @@ int bigint_mul( /*Multiply two BigInts (a*b)*/
     return 1;
 }
 
+int bigint_div( /*Divide two BigInts (a/b)*/
+    BigInt *quotient,
+    BigInt *remainder,
+    const BigInt *a,
+    const BigInt *b
+)
+{
+    if (quotient == NULL || remainder == NULL || a == NULL || b == NULL)
+    {
+        return 0;
+    }
 
+    if (b->size == 0)
+    {
+        return 0;
+    }
 
+    if (a->size == 0)
+    {
+        quotient->size = 0;
+        remainder->size = 0;
+        quotient->is_negative = false;
+        remainder->is_negative = false;
+        return 1;
+    }
 
+    if (bigint_compare_abs(a, b) < 0)
+    {
+        quotient->size = 0;
+        bigint_copy(remainder, a);
+        remainder->is_negative = a->is_negative;
+        return 1;
+    }
 
+    // TODO: Implement long division algorithm for BigInt division.
 
+    return 1;
+}
 
+int bigint_mod( /*Modulo operation for BigInts (a%b)*/
+    BigInt *result,
+    const BigInt *a,
+    const BigInt *b
+)
+{
+    if (result == NULL || a == NULL || b == NULL)
+    {
+        return 0;
+    }
 
+    if (b->size == 0)
+    {
+        return 0;
+    }
 
+    if (a->size == 0)
+    {
+        result->size = 0;
+        result->is_negative = false;
+        return 1;
+    }
 
+    if (bigint_compare_abs(a, b) < 0)
+    {
+        bigint_copy(result, a);
+        result->is_negative = a->is_negative;
+        return 1;
+    }
 
+    // TODO: Implement modulo operation using long division algorithm for BigInt.
 
+    return 1;
+}
+
+int bigint_div_mod( /*Divide and modulo operation for BigInts (a/b and a%b)*/
+    BigInt *quotient,
+    BigInt *remainder,
+    const BigInt *a,
+    const BigInt *b
+)
+{
+    bigint_div(quotient, remainder, a, b);
+    bigint_mod(remainder, a, b);
+
+    return 1;
+}
+
+int bigint_pow( /*Exponentiation for BigInts (base^exponent)*/
+    BigInt *result,
+    const BigInt *base,
+    const BigInt *exponent
+)
+{
+    if (result == NULL || base == NULL || exponent == NULL)
+    {
+        return 0;
+    }
+
+    if (exponent->size == 0)
+    {
+        result->size = 1;
+        result->limbs[0] = 1;
+        result->is_negative = false;
+        return 1;
+    }
+
+    if (base->size == 0)
+    {
+        result->size = 0;
+        result->is_negative = false;
+        return 1;
+    }
+
+    // TODO: Implement exponentiation algorithm for BigInt exponentiation.
+
+    return 1;
+}
+
+int bigint_gcd( /*Greatest common divisor for BigInts (gcd(a,b))*/
+    BigInt *result,
+    const BigInt *a,
+    const BigInt *b
+)
+{
+    if (result == NULL || a == NULL || b == NULL)
+    {
+        return 0;
+    }
+
+    if (a->size == 0)
+    {
+        bigint_copy(result, b);
+        result->is_negative = false;
+        return 1;
+    }
+
+    if (b->size == 0)
+    {
+        bigint_copy(result, a);
+        result->is_negative = false;
+        return 1;
+    }
+
+    // TODO: Implement Euclidean algorithm for GCD of BigInts.
+
+    return 1;
+}
+
+int bigint_lcm( /*Least common multiple for BigInts (lcm(a,b))*/
+    BigInt *result,
+    const BigInt *a,
+    const BigInt *b
+)
+{
+    if (result == NULL || a == NULL || b == NULL)
+    {
+        return 0;
+    }
+
+    if (a->size == 0 || b->size == 0)
+    {
+        result->size = 0;
+        result->is_negative = false;
+        return 1;
+    }
+
+    // TODO: Implement LCM calculation using GCD for BigInts.
+
+    return 1;
+}
+
+int bigint_factorial( /*Calculate factorial of a BigInt (n!)*/
+    BigInt *result,
+    const BigInt *value
+)
+{
+    if (result == NULL || value == NULL)
+    {
+        return 0;
+    }
+
+    if (value->size == 0 || (value->size == 1 && value->limbs[0] == 0))
+    {
+        result->size = 1;
+        result->limbs[0] = 1;
+        result->is_negative = false;
+        return 1; // 0! = 1
+    }
+
+    // TODO: Implement factorial calculation for BigInts.
+
+    return 1;
+}
+
+/*
+------------------------------------------------------------------------------------------------------------------------------
+    Bitwise operation functions for BigInt.
+------------------------------------------------------------------------------------------------------------------------------
+*/
+
+int bigint_and( /*Bitwise AND for BigInts (a&b)*/
+    BigInt *result,
+    const BigInt *a,
+    const BigInt *b
+)
+{
+    if (result == NULL || a == NULL || b == NULL)
+    {
+        return 0;
+    }
+
+    // TODO: Implement bitwise AND operation for BigInts.
+
+    return 1;
+}
+
+int bigint_or( /*Bitwise OR for BigInts (a|b)*/
+    BigInt *result,
+    const BigInt *a,
+    const BigInt *b
+)
+{
+    if (result == NULL || a == NULL || b == NULL)
+    {
+        return 0;
+    }
+
+    // TODO: Implement bitwise OR operation for BigInts.
+
+    return 1;
+}
+
+int bigint_xor( /*Bitwise XOR for BigInts (a^b)*/
+    BigInt *result,
+    const BigInt *a,
+    const BigInt *b
+)
+{
+    if (result == NULL || a == NULL || b == NULL)
+    {
+        return 0;
+    }
+
+    // TODO: Implement bitwise XOR operation for BigInts.
+
+    return 1;
+}
+
+int bigint_not( /*Bitwise NOT for BigInts (~a)*/
+    BigInt *result,
+    const BigInt *a
+)
+{
+    if (result == NULL || a == NULL)
+    {
+        return 0;
+    }
+
+    // TODO: Implement bitwise NOT operation for BigInts.
+    
+    return 1;
+}
+
+int bigint_shift_left( /*Left shift for BigInts (a<<n)*/
+    BigInt *result,
+    const BigInt *a,
+    size_t n
+)
+{
+    if (result == NULL || a == NULL)
+    {
+        return 0;
+    }
+
+    // TODO: Implement left shift operation for BigInts.
+
+    return 1;
+}
+
+int bigint_shift_right( /*Right shift for BigInts (a>>n)*/
+    BigInt *result,
+    const BigInt *a,
+    size_t n
+)
+{
+    if (result == NULL || a == NULL)
+    {
+        return 0;
+    }
+
+    // TODO: Implement right shift operation for BigInts.
+
+    return 1;
+}
+
+int bigint_increment( /*Increment a BigInt by 1 (a++)*/
+    BigInt *value
+)
+{
+    if (value == NULL)
+    {
+        return 0;
+    }
+
+    return bigint_add_uint64(value, 1);
+}
+
+int bigint_decrement( /*Decrement a BigInt by 1 (a--)*/
+    BigInt *value
+)
+{
+    if (value == NULL)
+    {
+        return 0;
+    }
+
+    return bigint_sub_uint64(value, 1);
+}
+
+int bigint_abs( /*Absolute value of a BigInt (|a|)*/
+    BigInt *result,
+    const BigInt *value
+)
+{
+    if (result == NULL || value == NULL)
+    {
+        return 0;
+    }
+
+    bigint_copy(result, value);
+    result->is_negative = false;
+
+    return 1;
+}
+
+int bigint_negate( /*Negate a BigInt (-a)*/
+    BigInt *result,
+    const BigInt *value
+)
+{
+    if (result == NULL || value == NULL)
+    {
+        return 0;
+    }
+
+    bigint_copy(result, value);
+    result->is_negative = !value->is_negative;
+
+    return 1;
+}
+
+/*
+------------------------------------------------------------------------------------------------------------------------------
+    Additional utility check functions for BigInt.
+------------------------------------------------------------------------------------------------------------------------------
+*/
+
+bool bigint_is_even( /*Check if a BigInt is even*/
+    const BigInt *value
+)
+{
+    if (value == NULL)
+    {
+        return false;
+    }
+
+    if (value->size == 0)
+    {
+        return true; // Zero is even
+    }
+
+    return (value->limbs[0] & 1) == 0;
+}
+
+bool bigint_is_odd( /*Check if a BigInt is odd*/
+    const BigInt *value
+)
+{
+    if (value == NULL)
+    {
+        return false;
+    }
+
+    if (value->size == 0)
+    {
+        return false; // Zero is not odd
+    }
+
+    return (value->limbs[0] & 1) != 0;
+}
+
+bool bigint_is_prime( /*Check if a BigInt is prime (basic check)*/
+    const BigInt *value
+)
+{
+    if (value == NULL)
+    {
+        return false;
+    }
+
+    if (value->size == 0 || (value->size == 1 && value->limbs[0] < 2))
+    {
+        return false; // Numbers less than 2 are not prime
+    }
+
+    // TODO: Implement a more efficient primality test for BigInts.
+
+    return false;
+}
+
+bool bigint_is_perfect_square( /*Check if a BigInt is a perfect square*/
+    const BigInt *value
+)
+{
+    if (value == NULL)
+    {
+        return false;
+    }
+
+    if (value->size == 0)
+    {
+        return true; // Zero is a perfect square
+    }
+
+    // TODO: Implement a method to check if a BigInt is a perfect square.
+
+    return false;
+}
