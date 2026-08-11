@@ -286,8 +286,66 @@ static int bigint_multiply_by_uint64( /*Multiply a BigInt by a uint64_t*/
     return 1;
 }
 
+static int bigint_subtract_abs( /*Subtract the absolute values of two BigInts*/
+    BigInt *result,
+    const BigInt *a,
+    const BigInt *b
+)
+{
+    if (bigint_compare_abs(a, b) < 0)
+    {
+        return bigint_subtract_abs(result,b,a);
+    }
 
-BigInt *bigint_create( /*Construct a new BigInt*/
+    if (result->capacity < a->size)
+    {
+        uint64_t *new_limbs = realloc(
+            result->limbs,
+            a->size * sizeof(uint64_t)
+        );
+
+        if (new_limbs == NULL)
+        {
+            return 0;
+        }
+
+        result->limbs = new_limbs;
+        result->capacity = a->size;
+    }
+
+    uint64_t borrow = 0;
+
+    for (size_t i = 0; i < a->size; i++)
+    {
+        uint64_t limb_a = a->limbs[i];
+        uint64_t limb_b = (i < b->size) ? b->limbs[i] : 0;
+
+        uint64_t temp = limb_a - limb_b - borrow;
+
+        if (limb_a < limb_b || (borrow && limb_a == limb_b))
+        {
+            borrow = 1;
+        }
+        else
+        {
+            borrow = 0;
+        }
+
+        result->limbs[i] = temp;
+    }
+
+    result->size = a->size;
+
+    while (result->size > 0 &&
+           result->limbs[result->size - 1] == 0)
+    {
+        result->size--;
+    }
+
+    return 1;
+}
+
+BigInt *bigint_create( /*Create a new BigInt*/
     void
 )
 {
@@ -362,6 +420,7 @@ int bigint_copy( /*Create a copy of a BigInt*/
     );
 
     destination->size = source->size;
+    destination->is_negative = source->is_negative;
 
     return 1;
 }
@@ -526,15 +585,11 @@ int bigint_set_string( /*Transform string to BigInt*/
     return 1;
 }
 
-int bigint_compare( /*Compare two BigInts*/
+int bigint_compare_abs( /*Compare two absolute values of BigInts*/
     const BigInt *a, 
     const BigInt *b
 )
 {
-    if (a->is_negative != b->is_negative)
-    {
-        return a->is_negative ? -1 : 1;
-    }
     if (a->size < b->size)
     {
         return -1;
@@ -561,43 +616,12 @@ int bigint_compare( /*Compare two BigInts*/
     return 0;
 }
 
-int bigint_add( /*Add two BigInts*/
+int bigint_add( /*Add two BigInts (a+b)*/
     BigInt *result, 
     const BigInt *a, 
     const BigInt *b
 )
 {
-    if (result == NULL || a == NULL || b == NULL)
-    {
-        return 0;
-    }
-
-    if(result == a || result == b)
-    {
-        BigInt *temp = bigint_create();
-
-        if (temp == NULL)
-        {
-            return 0;
-        }
-
-        if (!bigint_add(temp, a, b))
-        {
-            bigint_destroy(temp);
-            return 0;
-        }
-
-        if (!bigint_copy(result, temp))
-        {
-            bigint_destroy(temp);
-            return 0;
-        }
-
-        bigint_destroy(temp);
-
-        return 1;
-    }
-
     size_t max_size = (a->size > b->size) ? a->size : b->size;
 
     if (result->capacity < max_size + 1)
@@ -650,17 +674,47 @@ int bigint_add( /*Add two BigInts*/
     return 1;
 }
 
-int bigint_sub( /*Subtract two BigInts*/
+int bigint_sub( /*Subtract two BigInts (a-b)*/
     BigInt *result, 
     const BigInt *a, 
     const BigInt *b
 )
 {
-    // Implementation of subtraction would go here
+    int cmp = bigint_compare_abs(a, b);
+
+    if (cmp == 0)
+    {
+        result->size = 0;
+        result->is_negative = false;
+        return 1;
+    }
+
+    if (a->is_negative != b->is_negative)
+    {
+        result->is_negative = a->is_negative;
+        bigint_add(result, a, b);
+        return 1;
+        
+    }
+    else if (!a->is_negative)
+    {
+        // Both positive: a - b
+        result->is_negative = (cmp < 0);
+        bigint_subtract_abs(result, a, b);
+        return 1;
+    }
+    else
+    {
+        // Both negative: (-a) - (-b) = b - a
+        result->is_negative = (cmp > 0);
+        bigint_subtract_abs(result, a, b);
+        return 1;
+    }
+
     return 1;
 }
 
-int bigint_mul( /*Multiply two BigInts*/
+int bigint_mul( /*Multiply two BigInts (a*b)*/
     BigInt *result, 
     const BigInt *a, 
     const BigInt *b
