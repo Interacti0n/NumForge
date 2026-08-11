@@ -286,12 +286,80 @@ static int bigint_multiply_by_uint64( /*Multiply a BigInt by a uint64_t*/
     return 1;
 }
 
+static int bigint_add_abs( /*Add the absolute values of two BigInts*/
+    BigInt *result,
+    const BigInt *a,
+    const BigInt *b
+)
+{
+    if (result == NULL || a == NULL || b == NULL)
+    {
+        return 0;
+    }
+    size_t max_size =
+        (a->size > b->size) ? a->size : b->size;
+
+    if (result->capacity < max_size + 1)
+    {
+        uint64_t *new_limbs = realloc(
+            result->limbs,
+            (max_size + 1) * sizeof(uint64_t)
+        );
+
+        if (new_limbs == NULL)
+        {
+            return 0;
+        }
+
+        result->limbs = new_limbs;
+        result->capacity = max_size + 1;
+    }
+
+    uint64_t carry = 0;
+
+    for (size_t i = 0; i < max_size; i++)
+    {
+        uint64_t limb_a =
+            (i < a->size) ? a->limbs[i] : 0;
+
+        uint64_t limb_b =
+            (i < b->size) ? b->limbs[i] : 0;
+
+        uint64_t sum = limb_a + limb_b;
+        uint64_t new_carry = (sum < limb_a);
+
+        uint64_t final_sum = sum + carry;
+
+        if (final_sum < sum)
+        {
+            new_carry = 1;
+        }
+
+        carry = new_carry;
+        result->limbs[i] = final_sum;
+    }
+
+    result->size = max_size;
+
+    if (carry)
+    {
+        result->limbs[result->size++] = carry;
+    }
+
+    return 1;
+}
+
 static int bigint_subtract_abs( /*Subtract the absolute values of two BigInts*/
     BigInt *result,
     const BigInt *a,
     const BigInt *b
 )
 {
+    if (result == NULL || a == NULL || b == NULL)
+    {
+        return 0;
+    }
+
     if (bigint_compare_abs(a, b) < 0)
     {
         return bigint_subtract_abs(result,b,a);
@@ -359,6 +427,7 @@ BigInt *bigint_create( /*Create a new BigInt*/
     value->limbs = NULL;
     value->size = 0;
     value->capacity = 0;
+    value->is_negative = false;
 
     return value;
 }
@@ -453,6 +522,11 @@ char *bigint_to_string( /*Transform BigInt to string*/
     size_t capacity =
         value->size * 19 + 1;
 
+    if (value->is_negative)
+    {
+        capacity++;
+    }
+
     char *string = malloc(capacity);
 
     if (string == NULL)
@@ -461,6 +535,11 @@ char *bigint_to_string( /*Transform BigInt to string*/
     }
 
     size_t position = 0;
+    if (value->is_negative)
+    {
+        string[position++] = '-';
+    }
+
 
     // Highest limb first.
     uint64_t limb =
@@ -590,6 +669,11 @@ int bigint_compare_abs( /*Compare two absolute values of BigInts*/
     const BigInt *b
 )
 {
+    if (a == NULL || b == NULL)
+    {
+        return 0;
+    }
+
     if (a->size < b->size)
     {
         return -1;
@@ -617,61 +701,51 @@ int bigint_compare_abs( /*Compare two absolute values of BigInts*/
 }
 
 int bigint_add( /*Add two BigInts (a+b)*/
-    BigInt *result, 
-    const BigInt *a, 
+    BigInt *result,
+    const BigInt *a,
     const BigInt *b
 )
 {
-    size_t max_size = (a->size > b->size) ? a->size : b->size;
-
-    if (result->capacity < max_size + 1)
+    if (result == NULL || a == NULL || b == NULL)
     {
-        uint64_t *new_limbs = realloc(
-            result->limbs,
-            (max_size + 1) * sizeof(uint64_t)
-        );
+        return 0;
+    }
 
-        if (new_limbs == NULL)
+    if (a->is_negative && b->is_negative)
+    {
+        result->is_negative = true;
+        return bigint_add_abs(result, a, b);
+    }
+
+    int cmp = bigint_compare_abs(a, b);
+
+    if (a->is_negative)
+    {
+        if (cmp > 0)
         {
-            return 0;
+            result->is_negative = true;
+            return bigint_subtract_abs(result, a, b);
         }
 
-        result->limbs = new_limbs;
-        result->capacity = max_size + 1;
+        result->is_negative = false;
+        return bigint_subtract_abs(result, b, a);
     }
 
-    uint64_t carry = 0;
-
-    for (size_t i = 0; i < max_size; i++)
+    if (b->is_negative)
     {
-        uint64_t limb_a = (i < a->size) ? a->limbs[i] : 0;
-        uint64_t limb_b = (i < b->size) ? b->limbs[i] : 0;
-
-        uint64_t sum = limb_a + limb_b + carry;
-
-        if (sum < limb_a || sum < limb_b)
+        if (cmp >= 0)
         {
-            carry = 1;
-        }
-        else
-        {
-            carry = 0;
+            result->is_negative = false;
+            return bigint_subtract_abs(result, a, b);
         }
 
-        result->limbs[i] = sum;
+        result->is_negative = true;
+        return bigint_subtract_abs(result, b, a);
     }
 
-    if (carry > 0)
-    {
-        result->limbs[max_size] = carry;
-        result->size = max_size + 1;
-    }
-    else
-    {
-        result->size = max_size;
-    }
+    result->is_negative = false;
 
-    return 1;
+    return bigint_add_abs(result, a, b);
 }
 
 int bigint_sub( /*Subtract two BigInts (a-b)*/
@@ -680,6 +754,11 @@ int bigint_sub( /*Subtract two BigInts (a-b)*/
     const BigInt *b
 )
 {
+    if (result == NULL || a == NULL || b == NULL)
+    {
+        return 0;
+    }
+
     int cmp = bigint_compare_abs(a, b);
 
     if (cmp == 0)
@@ -696,7 +775,7 @@ int bigint_sub( /*Subtract two BigInts (a-b)*/
         return 1;
         
     }
-    else if (!a->is_negative)
+    else if (!(a->is_negative))
     {
         // Both positive: a - b
         result->is_negative = (cmp < 0);
@@ -715,12 +794,137 @@ int bigint_sub( /*Subtract two BigInts (a-b)*/
 }
 
 int bigint_mul( /*Multiply two BigInts (a*b)*/
-    BigInt *result, 
-    const BigInt *a, 
+    BigInt *result,
+    const BigInt *a,
     const BigInt *b
 )
 {
-    // Implementation of multiplication would go here
+    if (result == NULL || a == NULL || b == NULL)
+    {
+        return 0;
+    }
+
+    if (a->size == 0 || b->size == 0)
+    {
+        result->size = 0;
+        result->is_negative = false;
+
+        return 1;
+    }
+
+    if (a->size < b->size)
+    {
+        const BigInt *temp = a;
+        a = b;
+        b = temp;
+    }
+
+    size_t result_size = a->size + b->size;
+
+    if (result->capacity < result_size)
+    {
+        uint64_t *new_limbs = realloc(
+            result->limbs,
+            result_size * sizeof(uint64_t)
+        );
+
+        if (new_limbs == NULL)
+        {
+            return 0;
+        }
+
+        result->limbs = new_limbs;
+        result->capacity = result_size;
+    }
+
+    memset(
+        result->limbs,
+        0,
+        result_size * sizeof(uint64_t)
+    );
+
+    for (size_t i = 0; i < b->size; i++)
+    {
+        uint64_t carry = 0;
+
+        for (size_t j = 0; j < a->size; j++)
+        {
+            uint64_t a_low =
+                (uint32_t)a->limbs[j];
+
+            uint64_t a_high =
+                a->limbs[j] >> 32;
+
+            uint64_t b_low =
+                (uint32_t)b->limbs[i];
+
+            uint64_t b_high =
+                b->limbs[i] >> 32;
+
+            uint64_t p0 = a_low * b_low;
+            uint64_t p1 = a_low * b_high;
+            uint64_t p2 = a_high * b_low;
+            uint64_t p3 = a_high * b_high;
+
+            uint64_t middle =
+                (p0 >> 32) +
+                (uint32_t)p1 +
+                (uint32_t)p2;
+
+            uint64_t product_low =
+                (p0 & 0xFFFFFFFFULL) |
+                (middle << 32);
+
+            uint64_t product_high =
+                p3 +
+                (p1 >> 32) +
+                (p2 >> 32) +
+                (middle >> 32);
+
+            uint64_t old_low =
+                product_low;
+
+            product_low +=
+                result->limbs[i + j];
+
+            product_high +=
+                (product_low < old_low);
+
+            old_low = product_low;
+
+            product_low += carry;
+
+            product_high +=
+                (product_low < old_low);
+
+            carry = bigint_divide_128_by_u64(
+                    product_high,
+                    product_low,
+                    10000000000000000000ULL,
+                    &result->limbs[i + j]
+                );
+        }
+
+        result->limbs[i + a->size] = carry;
+    }
+
+    result->size = result_size;
+
+    while (
+        result->size > 0 &&
+        result->limbs[result->size - 1] == 0
+    )
+    {
+        result->size--;
+    }
+
+    result->is_negative = a->is_negative != b->is_negative;
+
+    if (result->size == 0)
+    {
+        result->is_negative = false;
+    }
+
     return 1;
 }
 

@@ -5,6 +5,7 @@
 
 typedef struct BigInt BigInt;
 
+int bigint_is_negative(const BigInt *value);
 
 BigInt *bigint_create(void);
 void bigint_destroy(BigInt *value);

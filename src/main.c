@@ -10,16 +10,19 @@ int main(void)
 
     if (number1 == NULL || number2 == NULL || result == NULL)
     {
+        printf("Failed to create BigInt instances\n");
         return 1;
     }
 
-    if (!bigint_set_string(number1, "1234567890123456789012345678901234567890"))
+    if (!bigint_set_string(number1, "1256489465419562132565613213248"))
     {
+        printf("Failed to set number1\n");
         return 1;
     }
 
-    if (!bigint_set_string(number2, "9876543210987654321098765432109876543210"))
+    if (!bigint_set_string(number2, "1584567891236549856"))
     {
+        printf("Failed to set number2\n");
         return 1;
     }
 
@@ -31,8 +34,8 @@ int main(void)
 
     QueryPerformanceCounter(&start);
     /* code to benchmark */
-    for(int i = 0; i < 100000; i++)
-        if (!bigint_add(result, number1, number2))
+    for(int i = 0; i < 1; i++)
+        if (!bigint_mul(result, number1, number2))
         {
             return 1;
         }
@@ -43,7 +46,7 @@ int main(void)
         (double)(end.QuadPart - start.QuadPart) /
         (double)frequency.QuadPart; 
 
-    /*char *string = bigint_to_string(result);
+    char *string = bigint_to_string(result);
 
     if (string == NULL)
     {
@@ -51,15 +54,15 @@ int main(void)
         bigint_destroy(number1);
         bigint_destroy(number2);
         return 1;
-    }*/
+    }
 
-    //printf("Number: %s\n", string);
+    printf("Number: %s\n", string);
     printf("Time: %.9f s\n", elapsed);
 
-   // free(string);
-   /* bigint_destroy(result);
+    free(string);
+    bigint_destroy(result);
     bigint_destroy(number1);
-    bigint_destroy(number2);  */  
+    bigint_destroy(number2);  
 
     return 0;
 }
