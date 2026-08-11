@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static uint64_t bigint_divide_128_by_u64(
+static uint64_t bigint_divide_128_by_u64( /*Divide a 128-bit value by a uint64_t*/
     uint64_t high, 
     uint64_t low, 
     uint64_t divisor, 
@@ -44,7 +44,7 @@ static uint64_t bigint_divide_128_by_u64(
     return quotient;
 }
 
-static uint64_t bigint_divide_by_uint64(
+static uint64_t bigint_divide_by_uint64( /*Divide a BigInt by a uint64_t*/
     BigInt *value, 
     uint64_t divisor
 )
@@ -78,7 +78,7 @@ static uint64_t bigint_divide_by_uint64(
     return remainder;
 }
 
-static int bigint_add_uint64(
+static int bigint_add_uint64( /*Add a uint64_t to a BigInt*/
     BigInt *value, 
     uint64_t amount
 )
@@ -172,7 +172,7 @@ static int bigint_add_uint64(
     return 1;
 }
 
-static void bigint_multiply_u64_u64(
+static void bigint_multiply_u64_u64( /*Multiply two uint64_t values and return the high and low parts of the result*/
     uint64_t a,
     uint64_t b,
     uint64_t *high,
@@ -206,7 +206,7 @@ static void bigint_multiply_u64_u64(
         (middle >> 32);
 }
 
-static int bigint_multiply_by_uint64(
+static int bigint_multiply_by_uint64( /*Multiply a BigInt by a uint64_t*/
     BigInt *value,
     uint64_t multiplier
 )
@@ -287,8 +287,7 @@ static int bigint_multiply_by_uint64(
 }
 
 
-
-BigInt *bigint_create(
+BigInt *bigint_create( /*Construct a new BigInt*/
     void
 )
 {
@@ -306,7 +305,7 @@ BigInt *bigint_create(
     return value;
 }
 
-void bigint_destroy(
+void bigint_destroy( /*Free the memory allocated for a BigInt*/
     BigInt *value
 )
 {
@@ -319,45 +318,7 @@ void bigint_destroy(
     free(value);
 }
 
-int bigint_set_uint64(
-    BigInt *value, 
-    uint64_t number
-)
-{
-    if (value == NULL)
-    {
-        return 0;
-    }
-
-    if (number == 0)
-    {
-        value->size = 0;
-        return 1;
-    }
-
-    if (value->capacity < 1)
-    {
-        uint64_t *new_limbs = realloc(
-            value->limbs,
-            sizeof(uint64_t)
-        );
-
-        if (new_limbs == NULL)
-        {
-            return 0;
-        }
-
-        value->limbs = new_limbs;
-        value->capacity = 1;
-    }
-
-    value->limbs[0] = number;
-    value->size = 1;
-
-    return 1;
-}
-
-int bigint_copy(
+int bigint_copy( /*Create a copy of a BigInt*/
     BigInt *destination, 
     const BigInt *source
 )
@@ -405,7 +366,7 @@ int bigint_copy(
     return 1;
 }
 
-char *bigint_to_string(
+char *bigint_to_string( /*Transform BigInt to string*/
     const BigInt *value
 )
 {
@@ -414,86 +375,83 @@ char *bigint_to_string(
         return NULL;
     }
 
-    BigInt *temp = bigint_create();
-
-    if (temp == NULL)
+    if (value->size == 0)
     {
-        return NULL;
+        char *string = malloc(2);
+
+        if (string == NULL)
+        {
+            return NULL;
+        }
+
+        string[0] = '0';
+        string[1] = '\0';
+
+        return string;
     }
 
-    if (!bigint_copy(temp, value))
-    {
-        bigint_destroy(temp);
-        return NULL;
-    }
-
-    size_t capacity = 32;
-    size_t length = 0;
+    // Maximum 19 decimal digits per limb.
+    size_t capacity =
+        value->size * 19 + 1;
 
     char *string = malloc(capacity);
 
     if (string == NULL)
     {
-        bigint_destroy(temp);
         return NULL;
     }
 
-    if (temp->size == 0)
+    size_t position = 0;
+
+    // Highest limb first.
+    uint64_t limb =
+        value->limbs[value->size - 1];
+
+    char buffer[19];
+    size_t digits = 0;
+
+    // Convert highest limb without leading zeros.
+    do
     {
-        string[0] = '0';
-        string[1] = '\0';
+        buffer[digits++] =
+            (char)('0' + limb % 10);
 
-        bigint_destroy(temp);
+        limb /= 10;
 
-        return string;
+    } while (limb > 0);
+
+    while (digits > 0)
+    {
+        string[position++] =
+            buffer[--digits];
     }
 
-    while (temp->size > 0)
+    // Remaining limbs must always use exactly 19 digits.
+    for (size_t i = value->size - 1; i > 0; )
     {
-        uint64_t remainder =
-            bigint_divide_by_uint64(temp, 10);
+        --i;
 
-        if (length + 1 >= capacity)
+        limb = value->limbs[i];
+
+        for (size_t j = 19; j > 0; )
         {
-            capacity *= 2;
+            --j;
 
-            char *new_string =
-                realloc(string, capacity);
+            string[position + j] =
+                (char)('0' + limb % 10);
 
-            if (new_string == NULL)
-            {
-                free(string);
-                bigint_destroy(temp);
-
-                return NULL;
-            }
-
-            string = new_string;
+            limb /= 10;
         }
 
-        string[length++] =
-            (char)('0' + remainder);
+        position += 19;
     }
 
-    string[length] = '\0';
-
-    for (size_t i = 0; i < length / 2; i++)
-    {
-        char temp_char = string[i];
-
-        string[i] =
-            string[length - 1 - i];
-
-        string[length - 1 - i] =
-            temp_char;
-    }
-
-    bigint_destroy(temp);
+    string[position] = '\0';
 
     return string;
 }
 
-int bigint_set_string(
+int bigint_set_string( /*Transform string to BigInt*/
     BigInt *value,
     const char *string
 )
@@ -505,44 +463,78 @@ int bigint_set_string(
 
     value->size = 0;
 
-    for (size_t i = 0; string[i] != '\0'; i++)
+    size_t len = strlen(string);
+
+    if (len == 0)
     {
-        char character = string[i];
+        return 1;
+    }
 
-        if (character < '0' || character > '9')
+    // Each limb stores up to 19 decimal digits.
+    size_t required = (len + 18) / 19;
+
+    if (value->capacity < required)
+    {
+        uint64_t *new_limbs =
+            realloc(
+                value->limbs,
+                required * sizeof(uint64_t)
+            );
+
+        if (new_limbs == NULL)
         {
             return 0;
         }
 
-        uint64_t digit =
-            (uint64_t)(character - '0');
+        value->limbs = new_limbs;
+        value->capacity = required;
+    }
 
-        if (!bigint_multiply_by_uint64(value, 10))
+    // Parse from right to left because limbs are little-endian.
+    for (size_t i = len; i > 0; )
+    {
+        size_t start = (i > 19) ? i - 19 : 0;
+
+        uint64_t limb = 0;
+
+        for (size_t j = start; j < i; j++)
         {
-            return 0;
+            char character = string[j];
+
+            if (character < '0' || character > '9')
+            {
+                return 0;
+            }
+
+            limb =
+                limb * 10 +
+                (uint64_t)(character - '0');
         }
 
-        if (!bigint_add_uint64(value, digit))
-        {
-            return 0;
-        }
+        value->limbs[value->size++] = limb;
+
+        i = start;
+    }
+
+    // Remove leading zero limbs.
+    while (value->size > 1 &&
+           value->limbs[value->size - 1] == 0)
+    {
+        value->size--;
     }
 
     return 1;
 }
 
-void bigint_string_free(
-    char *string
-)
-{
-    free(string);
-}
-
-int bigint_compare(
+int bigint_compare( /*Compare two BigInts*/
     const BigInt *a, 
     const BigInt *b
 )
 {
+    if (a->is_negative != b->is_negative)
+    {
+        return a->is_negative ? -1 : 1;
+    }
     if (a->size < b->size)
     {
         return -1;
@@ -569,7 +561,7 @@ int bigint_compare(
     return 0;
 }
 
-int bigint_add(
+int bigint_add( /*Add two BigInts*/
     BigInt *result, 
     const BigInt *a, 
     const BigInt *b
@@ -658,7 +650,7 @@ int bigint_add(
     return 1;
 }
 
-int bigint_sub(
+int bigint_sub( /*Subtract two BigInts*/
     BigInt *result, 
     const BigInt *a, 
     const BigInt *b
@@ -668,7 +660,7 @@ int bigint_sub(
     return 1;
 }
 
-int bigint_mul(
+int bigint_mul( /*Multiply two BigInts*/
     BigInt *result, 
     const BigInt *a, 
     const BigInt *b

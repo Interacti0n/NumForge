@@ -14,7 +14,6 @@ int bigint_set_uint64(BigInt *value, uint64_t number);
 
 char *bigint_to_string(const BigInt *value);
 int bigint_set_string(BigInt *value, const char *string);
-void bigint_string_free(char *string);
 
 int bigint_copy(BigInt *destination, const BigInt *source);
 
