@@ -2,8 +2,10 @@
 #define MYSCIENCECALC_BIGINT_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 typedef struct BigInt BigInt;
+
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
