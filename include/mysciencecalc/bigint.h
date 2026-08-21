@@ -2,10 +2,10 @@
 #define MYSCIENCECALC_BIGINT_H
 
 #include <stdint.h>
+#include <stddef.h>
 #include <stdbool.h>
 
 typedef struct BigInt BigInt;
-
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
@@ -76,7 +76,7 @@ int bigint_mul( /*Multiply two BigInts (a*b)*/
     const BigInt *a,
     const BigInt *b
 );
-int bigint_div( /*Divide two BigInts (a/b)*/
+int bigint_div( /*Divide two BigInts (a/b), truncating toward zero*/
     BigInt *quotient,
     BigInt *remainder,
     const BigInt *a,
@@ -93,7 +93,7 @@ int bigint_div_mod( /*Divide and modulo operation for BigInts (a/b and a%b)*/
     const BigInt *a,
     const BigInt *b
 );
-int bigint_pow( /*Exponentiation for BigInts (base^exponent)*/
+int bigint_pow( /*Exponentiation for BigInts (base^exponent). Negative exponents are not supported.*/
     BigInt *result,
     const BigInt *base,
     const BigInt *exponent
@@ -108,7 +108,7 @@ int bigint_lcm( /*Least common multiple for BigInts (lcm(a,b))*/
     const BigInt *a,
     const BigInt *b
 );
-int bigint_factorial( /*Calculate factorial of a BigInt (n!)*/
+int bigint_factorial( /*Calculate factorial of a BigInt (n!). Requires 0 <= n and n fitting in a single limb.*/
     BigInt *result,
     const BigInt *value
 );
@@ -119,22 +119,22 @@ int bigint_factorial( /*Calculate factorial of a BigInt (n!)*/
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
-int bigint_and( /*Bitwise AND for BigInts (a&b)*/
+int bigint_and( /*Bitwise AND for BigInts (a&b). Operands must be non-negative.*/
     BigInt *result,
     const BigInt *a,
     const BigInt *b
 );
-int bigint_or( /*Bitwise OR for BigInts (a|b)*/
+int bigint_or( /*Bitwise OR for BigInts (a|b). Operands must be non-negative.*/
     BigInt *result,
     const BigInt *a,
     const BigInt *b
 );
-int bigint_xor( /*Bitwise XOR for BigInts (a^b)*/
+int bigint_xor( /*Bitwise XOR for BigInts (a^b). Operands must be non-negative.*/
     BigInt *result,
     const BigInt *a,
     const BigInt *b
 );
-int bigint_not( /*Bitwise NOT for BigInts (~a)*/
+int bigint_not( /*Bitwise NOT for BigInts (~a), defined arbitrary-precision as -(a+1)*/
     BigInt *result,
     const BigInt *a
 );
@@ -143,7 +143,7 @@ int bigint_shift_left( /*Left shift for BigInts (a<<n)*/
     const BigInt *a,
     size_t n
 );
-int bigint_shift_right( /*Right shift for BigInts (a>>n)*/
+int bigint_shift_right( /*Right shift for BigInts (a>>n), truncating toward zero*/
     BigInt *result,
     const BigInt *a,
     size_t n
@@ -175,7 +175,7 @@ bool bigint_is_even( /*Check if a BigInt is even*/
 bool bigint_is_odd( /*Check if a BigInt is odd*/
     const BigInt *value
 );
-bool bigint_is_prime( /*Check if a BigInt is prime (basic check)*/
+bool bigint_is_prime( /*Check if a BigInt is prime (bounded trial division; see bigint.c for the practical limit)*/
     const BigInt *value
 );
 bool bigint_is_perfect_square( /*Check if a BigInt is a perfect square*/
