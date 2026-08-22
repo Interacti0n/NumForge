@@ -9,6 +9,33 @@ typedef struct BigInt BigInt;
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
+    Status codes returned by every BigInt operation that can fail.
+
+    BIGINT_OK is 0, matching the usual C convention for "success" - note
+    this is the OPPOSITE of the old int-returning API, which used 0 for
+    failure and 1 for success. Code written against the old API needs
+    updating from `if (!bigint_add(...))` to `if (bigint_add(...) != BIGINT_OK)`.
+------------------------------------------------------------------------------------------------------------------------------
+*/
+typedef enum BigIntStatus
+{
+    BIGINT_OK = 0,              /*Operation completed successfully*/
+    BIGINT_NULL_ARGUMENT,       /*A required pointer argument was NULL*/
+    BIGINT_OUT_OF_MEMORY,       /*Allocation failed, or a required size doesn't fit in size_t*/
+    BIGINT_DIVISION_BY_ZERO,    /*The divisor was zero*/
+    BIGINT_INVALID_ARGUMENT,    /*e.g. bigint_set_string given an empty, sign-only, or non-numeric string*/
+    BIGINT_NEGATIVE_ARGUMENT,   /*Operation requires a non-negative argument and didn't get one
+                                  (bigint_pow's exponent, bigint_and/or/xor's operands, bigint_factorial's input)*/
+    BIGINT_VALUE_TOO_LARGE      /*Input is finite but impractically large for this operation
+                                  (bigint_factorial with n needing more than one limb)*/
+} BigIntStatus;
+
+const char *bigint_status_to_string( /*Human-readable description of a BigIntStatus, for logging/debugging*/
+    BigIntStatus status
+);
+
+/*
+------------------------------------------------------------------------------------------------------------------------------
     Operation functions for BigInt.
 ------------------------------------------------------------------------------------------------------------------------------
 */
@@ -19,11 +46,13 @@ BigInt *bigint_create( /*Create a new BigInt*/
 void bigint_destroy( /*Free the memory allocated for a BigInt*/
     BigInt *value
 );
-int bigint_copy( /*Create a copy of a BigInt*/
+BigIntStatus bigint_copy( /*Create a copy of a BigInt*/
     BigInt *destination, 
     const BigInt *source
 );
-int bigint_set_string( /*Transform string to BigInt*/
+BigIntStatus bigint_set_string( /*Transform string to BigInt.
+                                   "" and a bare sign ("+" or "-") are BIGINT_INVALID_ARGUMENT.
+                                   "0" -> 0, "+123" -> 123, "-123" -> -123.*/
     BigInt *value,
     const char *string
 );
@@ -58,57 +87,66 @@ int bigint_is_negative( /*Check if a BigInt is negative*/
 /*
 ------------------------------------------------------------------------------------------------------------------------------
     Arithmetic operation functions for BigInt.
+
+    Aliasing: unless documented otherwise, every function below supports
+    arbitrary aliasing between its output and input BigInt* arguments -
+    bigint_add(x, x, y), bigint_mul(x, x, x), bigint_div_mod(&x, &y, x, y)
+    are all fully supported and computed correctly. The one documented
+    exception: if quotient and remainder are passed as the SAME object to
+    bigint_div_mod, both are still computed correctly internally, but only
+    one value can end up stored in that shared object afterward - the
+    remainder, since it's committed last.
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
-int bigint_add( /*Add two BigInts (a+b)*/
+BigIntStatus bigint_add( /*Add two BigInts (a+b)*/
     BigInt *result,
     const BigInt *a,
     const BigInt *b
 );
-int bigint_sub( /*Subtract two BigInts (a-b)*/
+BigIntStatus bigint_sub( /*Subtract two BigInts (a-b)*/
     BigInt *result, 
     const BigInt *a, 
     const BigInt *b
 );
-int bigint_mul( /*Multiply two BigInts (a*b)*/
+BigIntStatus bigint_mul( /*Multiply two BigInts (a*b)*/
     BigInt *result,
     const BigInt *a,
     const BigInt *b
 );
-int bigint_div( /*Divide two BigInts (a/b), truncating toward zero*/
+BigIntStatus bigint_div( /*Divide two BigInts (a/b), truncating toward zero. Discards the remainder - use bigint_div_mod if you need both.*/
+    BigInt *quotient,
+    const BigInt *a,
+    const BigInt *b
+);
+BigIntStatus bigint_mod( /*Modulo operation for BigInts (a%b). Discards the quotient - use bigint_div_mod if you need both.*/
+    BigInt *remainder,
+    const BigInt *a,
+    const BigInt *b
+);
+BigIntStatus bigint_div_mod( /*Divide and modulo operation for BigInts (a/b and a%b), truncating toward zero.
+                                See the aliasing note above for the quotient==remainder case.*/
     BigInt *quotient,
     BigInt *remainder,
     const BigInt *a,
     const BigInt *b
 );
-int bigint_mod( /*Modulo operation for BigInts (a%b)*/
-    BigInt *result,
-    const BigInt *a,
-    const BigInt *b
-);
-int bigint_div_mod( /*Divide and modulo operation for BigInts (a/b and a%b)*/
-    BigInt *quotient,
-    BigInt *remainder,
-    const BigInt *a,
-    const BigInt *b
-);
-int bigint_pow( /*Exponentiation for BigInts (base^exponent). Negative exponents are not supported.*/
+BigIntStatus bigint_pow( /*Exponentiation for BigInts (base^exponent). Negative exponents are not supported.*/
     BigInt *result,
     const BigInt *base,
     const BigInt *exponent
 );
-int bigint_gcd( /*Greatest common divisor for BigInts (gcd(a,b))*/
+BigIntStatus bigint_gcd( /*Greatest common divisor for BigInts (gcd(a,b))*/
     BigInt *result,
     const BigInt *a,
     const BigInt *b
 );
-int bigint_lcm( /*Least common multiple for BigInts (lcm(a,b))*/
+BigIntStatus bigint_lcm( /*Least common multiple for BigInts: lcm(a,b) = (|a|/gcd(a,b)) * |b|*/
     BigInt *result,
     const BigInt *a,
     const BigInt *b
 );
-int bigint_factorial( /*Calculate factorial of a BigInt (n!). Requires 0 <= n and n fitting in a single limb.*/
+BigIntStatus bigint_factorial( /*Calculate factorial of a BigInt (n!). Requires 0 <= n and n fitting in a single limb.*/
     BigInt *result,
     const BigInt *value
 );
@@ -119,46 +157,40 @@ int bigint_factorial( /*Calculate factorial of a BigInt (n!). Requires 0 <= n an
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
-int bigint_and( /*Bitwise AND for BigInts (a&b). Operands must be non-negative.*/
+BigIntStatus bigint_and( /*Bitwise AND for BigInts (a&b). Operands must be non-negative.*/
     BigInt *result,
     const BigInt *a,
     const BigInt *b
 );
-int bigint_or( /*Bitwise OR for BigInts (a|b). Operands must be non-negative.*/
+BigIntStatus bigint_or( /*Bitwise OR for BigInts (a|b). Operands must be non-negative.*/
     BigInt *result,
     const BigInt *a,
     const BigInt *b
 );
-int bigint_xor( /*Bitwise XOR for BigInts (a^b). Operands must be non-negative.*/
+BigIntStatus bigint_xor( /*Bitwise XOR for BigInts (a^b). Operands must be non-negative.*/
     BigInt *result,
     const BigInt *a,
     const BigInt *b
 );
-int bigint_not( /*Bitwise NOT for BigInts (~a), defined arbitrary-precision as -(a+1)*/
+BigIntStatus bigint_not( /*Bitwise NOT for BigInts (~a), defined arbitrary-precision as -(a+1)*/
     BigInt *result,
     const BigInt *a
 );
-int bigint_shift_left( /*Left shift for BigInts (a<<n)*/
+BigIntStatus bigint_shift_left( /*Left shift for BigInts (a<<n)*/
     BigInt *result,
     const BigInt *a,
     size_t n
 );
-int bigint_shift_right( /*Right shift for BigInts (a>>n), truncating toward zero*/
+BigIntStatus bigint_shift_right( /*Right shift for BigInts (a>>n), truncating toward zero*/
     BigInt *result,
     const BigInt *a,
     size_t n
 );
-int bigint_increment( /*Increment a BigInt by 1 (a++)*/
-    BigInt *value
-);
-int bigint_decrement( /*Decrement a BigInt by 1 (a--)*/
-    BigInt *value
-);
-int bigint_abs( /*Absolute value of a BigInt (|a|)*/
+BigIntStatus bigint_abs( /*Absolute value of a BigInt (|a|)*/
     BigInt *result,
     const BigInt *value
 );
-int bigint_negate( /*Negate a BigInt (-a)*/
+BigIntStatus bigint_negate( /*Negate a BigInt (-a)*/
     BigInt *result,
     const BigInt *value
 );

@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <windows.h>
 #include <mysciencecalc/bigint.h>
 
@@ -14,15 +15,19 @@ int main(void)
         return 1;
     }
 
-    if (!bigint_set_string(number1, "100000"))
+    BigIntStatus status = bigint_set_string(number1, "1256489465419562132565613213248");
+
+    if (status != BIGINT_OK)
     {
-        printf("Failed to set number1\n");
+        printf("Failed to set number1: %s\n", bigint_status_to_string(status));
         return 1;
     }
 
-    if (!bigint_set_string(number2, "465464856465"))
+    status = bigint_set_string(number2, "1584567891236549856");
+
+    if (status != BIGINT_OK)
     {
-        printf("Failed to set number2\n");
+        printf("Failed to set number2: %s\n", bigint_status_to_string(status));
         return 1;
     }
 
@@ -35,10 +40,15 @@ int main(void)
     QueryPerformanceCounter(&start);
     /* code to benchmark */
     for(int i = 0; i < 1; i++)
-        if (!bigint_factorial(result, number1))
+    {
+        status = bigint_mul(result, number1, number2);
+
+        if (status != BIGINT_OK)
         {
+            printf("Failed to multiply: %s\n", bigint_status_to_string(status));
             return 1;
         }
+    }
 
     QueryPerformanceCounter(&end);
 
@@ -46,7 +56,7 @@ int main(void)
         (double)(end.QuadPart - start.QuadPart) /
         (double)frequency.QuadPart; 
 
-  /*  char *string = bigint_to_string(result);
+    char *string = bigint_to_string(result);
 
     if (string == NULL)
     {
@@ -54,12 +64,12 @@ int main(void)
         bigint_destroy(number1);
         bigint_destroy(number2);
         return 1;
-    }*/
+    }
 
-   // printf("Number: %s\n", string);
+    printf("Number: %s\n", string);
     printf("Time: %.9f s\n", elapsed);
 
-    //ee(string);
+    free(string);
     bigint_destroy(result);
     bigint_destroy(number1);
     bigint_destroy(number2);  
