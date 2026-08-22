@@ -1085,40 +1085,6 @@ void test_pow_zero_base(void)
     bigint_destroy(result);
 }
 
-
-void test_pow_large_digits(void)
-{
-    BigInt *base = make_bigint("900");
-    BigInt *exponent = make_bigint("900");
-    BigInt *result = bigint_create();
-
-    TEST_ASSERT_EQUAL(
-        BIGINT_OK,
-        bigint_pow(result, base, exponent)
-    );
-
-    /*
-       We intentionally don't hardcode the 2659-digit result here.
-       The purpose is to test that bigint_pow can calculate it
-       successfully and produce a value with the expected size.
-    */
-
-    char *string = bigint_to_string(result);
-
-    TEST_ASSERT_NOT_NULL(string);
-
-    TEST_ASSERT_EQUAL(
-        2659,
-        strlen(string)
-    );
-
-    free(string);
-
-    bigint_destroy(base);
-    bigint_destroy(exponent);
-    bigint_destroy(result);
-}
-
 void test_pow_large(void)
 {
     BigInt *base = make_bigint("900");
@@ -1151,6 +1117,35 @@ void test_pow_large(void)
     );
 
     free(string);
+
+    bigint_destroy(base);
+    bigint_destroy(exponent);
+    bigint_destroy(result);
+}
+
+void test_pow_zero_zero(void)
+{
+    BigInt *base = make_bigint("0");
+    BigInt *exponent = make_bigint("0");
+    BigInt *result = bigint_create();
+
+    TEST_ASSERT_NOT_NULL(base);
+    TEST_ASSERT_NOT_NULL(exponent);
+    TEST_ASSERT_NOT_NULL(result);
+
+    TEST_ASSERT_EQUAL(
+        BIGINT_OK,
+        bigint_pow(result, base, exponent)
+    );
+
+    char *string = bigint_to_string(result);
+
+    TEST_ASSERT_NOT_NULL(string);
+
+    TEST_ASSERT_EQUAL_STRING(
+        "1", 
+        string
+    );
 
     bigint_destroy(base);
     bigint_destroy(exponent);
@@ -1401,6 +1396,13 @@ void test_factorial_negative(void)
     bigint_destroy(result);
 }
 
+void test_factorial_overflow(void)
+{
+    BigInt *n = make_bigint("18446744073709551616"); // 2^64
+    BigInt *result = bigint_create();
+
+    TEST_ASSERT_EQUAL(BIGINT_VALUE_TOO_LARGE, bigint_factorial(result, n));
+}
 
 /* ============================================================
    BITWISE AND
@@ -2223,7 +2225,7 @@ int main(void)
     RUN_TEST(test_pow_negative_base_even);
     RUN_TEST(test_pow_negative_base_odd);
     RUN_TEST(test_pow_zero_base);
-    RUN_TEST(test_pow_large_digits);
+    RUN_TEST(test_pow_zero_zero);
     RUN_TEST(test_pow_large);
     RUN_TEST(test_pow_negative_exponent);
 
@@ -2244,6 +2246,7 @@ int main(void)
     RUN_TEST(test_factorial_five);
     RUN_TEST(test_factorial_ten);
     RUN_TEST(test_factorial_negative);
+    RUN_TEST(test_factorial_overflow);
 
     /* Bitwise */
     RUN_TEST(test_and_basic);

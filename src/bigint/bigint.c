@@ -1542,14 +1542,9 @@ BigIntStatus bigint_pow( /*Exponentiation for BigInts (base^exponent) via binary
     }
 
     if (exponent->size == 0)
-{
-    if (base->size == 0)
     {
-        return BIGINT_INVALID_ARGUMENT;
-    }
-
     return bigint_set_uint64(result, 1);
-}
+    }
 
     if (base->size == 0)
     {
