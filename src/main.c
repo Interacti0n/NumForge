@@ -15,7 +15,7 @@ int main(void)
         return 1;
     }
 
-    BigIntStatus status = bigint_set_string(number1, "-156489465419562132565613213248");
+    BigIntStatus status = bigint_set_string(number1, "900");
 
     if (status != BIGINT_OK)
     {
@@ -23,7 +23,7 @@ int main(void)
         return 1;
     }
 
-    status = bigint_set_string(number2, "1584567891236549856");
+    status = bigint_set_string(number2, "900");
 
     if (status != BIGINT_OK)
     {
@@ -41,11 +41,11 @@ int main(void)
     /* code to benchmark */
     for(int i = 0; i < 1; i++)
     {
-        status = bigint_mul(result, number1, number2);
+        status = bigint_pow(result, number1, number2);
 
         if (status != BIGINT_OK)
         {
-            printf("Failed to multiply: %s\n", bigint_status_to_string(status));
+            printf("Failed to raise to power: %s\n", bigint_status_to_string(status));
             return 1;
         }
     }
