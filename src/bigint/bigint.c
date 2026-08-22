@@ -1,6 +1,8 @@
 #include "bigint_internal.h"
 #include <mysciencecalc/bigint.h>
 
+#include <assert.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -11,6 +13,12 @@
     this is what lets add/sub run as plain ripple-carry, mul run without any
     per-limb division, and the bitwise/shift operations work directly on the
     limb array.
+
+    Canonical form: every BigInt this file hands back to a caller has no
+    trailing (most significant) zero limbs, and is never "negative zero"
+    (size == 0 implies is_negative == false). bigint_normalize() below is
+    the single place that enforces this; every function that could produce
+    a non-canonical result calls it before returning.
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
@@ -19,27 +27,6 @@
     Internal helper functions for BigInt operations.
 ------------------------------------------------------------------------------------------------------------------------------
 */
-
-
-static void bigint_normalize(BigInt *value)
-{
-    if (value == NULL)
-    {
-        return;
-    }
-
-    while (value->size > 0 &&
-           value->limbs[value->size - 1] == 0)
-    {
-        value->size--;
-    }
-
-    if (value->size == 0)
-    {
-        value->is_negative = false;
-    }
-}
-
 static uint64_t bigint_divide_128_by_u64( /*Divide a 128-bit value by a uint64_t*/
     uint64_t high, 
     uint64_t low, 
@@ -47,6 +34,19 @@ static uint64_t bigint_divide_128_by_u64( /*Divide a 128-bit value by a uint64_t
     uint64_t *remainder
 )
 {
+    // Preconditions this bit-serial algorithm actually depends on:
+    //  - divisor must be non-zero.
+    //  - high must be strictly less than divisor. This function computes
+    //    floor((high*2^64+low)/divisor); that value only fits in a
+    //    uint64_t quotient when high < divisor. Violate this and the loop
+    //    below still runs and still returns *something*, but it's a
+    //    silently wrong, wrapped result rather than the real quotient.
+    // Both callers in this file (bigint_mod_uint64, bigint_divide_by_uint64)
+    // satisfy this by construction: they seed `high` with 0 and thereafter
+    // with the previous step's remainder, which is always < divisor.
+    assert(divisor != 0);
+    assert(high < divisor);
+
     uint64_t quotient = 0;
     uint64_t current_remainder = high;
 
@@ -78,6 +78,38 @@ static uint64_t bigint_divide_128_by_u64( /*Divide a 128-bit value by a uint64_t
     *remainder = current_remainder;
 
     return quotient;
+}
+
+static int bigint_size_add( /*Overflow-checked size_t addition: out = a+b, or fail*/
+    size_t a,
+    size_t b,
+    size_t *out
+)
+{
+    if (a > SIZE_MAX - b)
+    {
+        return 0;
+    }
+
+    *out = a + b;
+
+    return 1;
+}
+
+static int bigint_size_mul( /*Overflow-checked size_t multiplication: out = a*b, or fail*/
+    size_t a,
+    size_t b,
+    size_t *out
+)
+{
+    if (a != 0 && b > SIZE_MAX / a)
+    {
+        return 0;
+    }
+
+    *out = a * b;
+
+    return 1;
 }
 
 static uint64_t bigint_mod_uint64( /*Compute value % divisor without mutating value*/
@@ -129,9 +161,85 @@ static uint64_t bigint_divide_by_uint64( /*Divide a BigInt by a uint64_t in plac
         value->limbs[index] = quotient;
     }
 
-    bigint_normalize(value);
+    while (value->size > 0 &&
+           value->limbs[value->size - 1] == 0)
+    {
+        value->size--;
+    }
 
     return remainder;
+}
+
+static void bigint_normalize( /*Trim trailing zero limbs and clear the sign on zero - the single source of truth for canonical form*/
+    BigInt *value
+)
+{
+    if (value == NULL)
+    {
+        return;
+    }
+
+    while (value->size > 0 && value->limbs[value->size - 1] == 0)
+    {
+        value->size--;
+    }
+
+    if (value->size == 0)
+    {
+        value->is_negative = false;
+    }
+}
+
+static int bigint_ensure_capacity( /*Grow a BigInt's limb buffer to hold at least `needed` limbs, with overflow checks at every step*/
+    BigInt *value,
+    size_t needed
+)
+{
+    if (value == NULL)
+    {
+        return 0;
+    }
+
+    if (value->capacity >= needed)
+    {
+        return 1;
+    }
+
+    size_t new_capacity = (value->capacity == 0) ? 1 : value->capacity;
+
+    while (new_capacity < needed)
+    {
+        size_t doubled;
+
+        if (!bigint_size_mul(new_capacity, 2, &doubled))
+        {
+            // Doubling would overflow size_t; jump straight to exactly
+            // what's needed instead of looping forever.
+            new_capacity = needed;
+            break;
+        }
+
+        new_capacity = doubled;
+    }
+
+    size_t new_capacity_bytes;
+
+    if (!bigint_size_mul(new_capacity, sizeof(uint64_t), &new_capacity_bytes))
+    {
+        return 0; // the requested limb count can't be expressed as a byte size on this platform
+    }
+
+    uint64_t *new_limbs = realloc(value->limbs, new_capacity_bytes);
+
+    if (new_limbs == NULL)
+    {
+        return 0;
+    }
+
+    value->limbs = new_limbs;
+    value->capacity = new_capacity;
+
+    return 1;
 }
 
 static int bigint_add_uint64( /*Add a uint64_t to a BigInt*/
@@ -151,20 +259,9 @@ static int bigint_add_uint64( /*Add a uint64_t to a BigInt*/
 
     if (value->size == 0)
     {
-        if (value->capacity < 1)
+        if (!bigint_ensure_capacity(value, 1))
         {
-            uint64_t *new_limbs = realloc(
-                value->limbs,
-                sizeof(uint64_t)
-            );
-
-            if (new_limbs == NULL)
-            {
-                return 0;
-            }
-
-            value->limbs = new_limbs;
-            value->capacity = 1;
+            return 0;
         }
 
         value->limbs[0] = amount;
@@ -172,7 +269,6 @@ static int bigint_add_uint64( /*Add a uint64_t to a BigInt*/
 
         return 1;
     }
-
 
     uint64_t old = value->limbs[0];
 
@@ -199,27 +295,11 @@ static int bigint_add_uint64( /*Add a uint64_t to a BigInt*/
         index++;
     }
 
-    if (value->size == value->capacity)
+    size_t needed;
+
+    if (!bigint_size_add(value->size, 1, &needed) || !bigint_ensure_capacity(value, needed))
     {
-        size_t new_capacity = value->capacity * 2;
-
-        if (new_capacity == 0)
-        {
-            new_capacity = 1;
-        }
-
-        uint64_t *new_limbs = realloc(
-            value->limbs,
-            new_capacity * sizeof(uint64_t)
-        );
-
-        if (new_limbs == NULL)
-        {
-            return 0;
-        }
-
-        value->limbs = new_limbs;
-        value->capacity = new_capacity;
+        return 0;
     }
 
     value->limbs[value->size] = 1;
@@ -330,6 +410,7 @@ static int bigint_multiply_by_uint64( /*Multiply a BigInt by a uint64_t*/
     if (multiplier == 0)
     {
         value->size = 0;
+        bigint_normalize(value);
         return 1;
     }
 
@@ -362,27 +443,11 @@ static int bigint_multiply_by_uint64( /*Multiply a BigInt by a uint64_t*/
 
     if (carry != 0)
     {
-        if (value->size == value->capacity)
+        size_t needed;
+
+        if (!bigint_size_add(value->size, 1, &needed) || !bigint_ensure_capacity(value, needed))
         {
-            size_t new_capacity = value->capacity * 2;
-
-            if (new_capacity == 0)
-            {
-                new_capacity = 1;
-            }
-
-            uint64_t *new_limbs = realloc(
-                value->limbs,
-                new_capacity * sizeof(uint64_t)
-            );
-
-            if (new_limbs == NULL)
-            {
-                return 0;
-            }
-
-            value->limbs = new_limbs;
-            value->capacity = new_capacity;
+            return 0;
         }
 
         value->limbs[value->size] = carry;
@@ -402,23 +467,15 @@ static int bigint_add_abs( /*Add the absolute values of two BigInts*/
     {
         return 0;
     }
+
     size_t max_size =
         (a->size > b->size) ? a->size : b->size;
 
-    if (result->capacity < max_size + 1)
+    size_t needed;
+
+    if (!bigint_size_add(max_size, 1, &needed) || !bigint_ensure_capacity(result, needed))
     {
-        uint64_t *new_limbs = realloc(
-            result->limbs,
-            (max_size + 1) * sizeof(uint64_t)
-        );
-
-        if (new_limbs == NULL)
-        {
-            return 0;
-        }
-
-        result->limbs = new_limbs;
-        result->capacity = max_size + 1;
+        return 0;
     }
 
     uint64_t carry = 0;
@@ -452,6 +509,11 @@ static int bigint_add_abs( /*Add the absolute values of two BigInts*/
         result->limbs[result->size++] = carry;
     }
 
+    // add_abs on two already-canonical inputs can never produce a trailing
+    // zero limb (the top limb of the longer operand is nonzero by
+    // assumption, and carries only ever grow the result), so no
+    // bigint_normalize() call is needed here.
+
     return 1;
 }
 
@@ -471,20 +533,9 @@ static int bigint_subtract_abs( /*Subtract the absolute values of two BigInts*/
         return bigint_subtract_abs(result,b,a);
     }
 
-    if (result->capacity < a->size)
+    if (!bigint_ensure_capacity(result, a->size))
     {
-        uint64_t *new_limbs = realloc(
-            result->limbs,
-            a->size * sizeof(uint64_t)
-        );
-
-        if (new_limbs == NULL)
-        {
-            return 0;
-        }
-
-        result->limbs = new_limbs;
-        result->capacity = a->size;
+        return 0;
     }
 
     uint64_t borrow = 0;
@@ -510,11 +561,7 @@ static int bigint_subtract_abs( /*Subtract the absolute values of two BigInts*/
 
     result->size = a->size;
 
-    while (result->size > 0 &&
-           result->limbs[result->size - 1] == 0)
-    {
-        result->size--;
-    }
+    bigint_normalize(result);
 
     return 1;
 }
@@ -536,57 +583,14 @@ static int bigint_set_uint64( /*Set a BigInt to a small non-negative value, grow
         return 1;
     }
 
-    if (value->capacity < 1)
+    if (!bigint_ensure_capacity(value, 1))
     {
-        uint64_t *new_limbs = realloc(value->limbs, sizeof(uint64_t));
-
-        if (new_limbs == NULL)
-        {
-            return 0;
-        }
-
-        value->limbs = new_limbs;
-        value->capacity = 1;
+        return 0;
     }
 
     value->limbs[0] = amount;
     value->size = 1;
     value->is_negative = false;
-
-    return 1;
-}
-
-static int bigint_ensure_capacity( /*Grow a BigInt's limb buffer to hold at least `needed` limbs*/
-    BigInt *value,
-    size_t needed
-)
-{
-    if (value == NULL)
-    {
-        return 0;
-    }
-
-    if (value->capacity >= needed)
-    {
-        return 1;
-    }
-
-    size_t new_capacity = (value->capacity == 0) ? 1 : value->capacity;
-
-    while (new_capacity < needed)
-    {
-        new_capacity *= 2;
-    }
-
-    uint64_t *new_limbs = realloc(value->limbs, new_capacity * sizeof(uint64_t));
-
-    if (new_limbs == NULL)
-    {
-        return 0;
-    }
-
-    value->limbs = new_limbs;
-    value->capacity = new_capacity;
 
     return 1;
 }
@@ -642,7 +646,9 @@ static int bigint_set_bit( /*Set a single bit of |value|, growing the BigInt as 
     size_t limb_index = bit_index / 64;
     size_t bit_offset = bit_index % 64;
 
-    if (!bigint_ensure_capacity(value, limb_index + 1))
+    size_t needed;
+
+    if (!bigint_size_add(limb_index, 1, &needed) || !bigint_ensure_capacity(value, needed))
     {
         return 0;
     }
@@ -676,7 +682,9 @@ static int bigint_shift_left_one_bit( /*Multiply |value| by 2 in place*/
 
     if (overflow)
     {
-        if (!bigint_ensure_capacity(value, value->size + 1))
+        size_t needed;
+
+        if (!bigint_size_add(value->size, 1, &needed) || !bigint_ensure_capacity(value, needed))
         {
             return 0;
         }
@@ -749,10 +757,7 @@ static int bigint_divmod_abs( /*Long division on magnitudes only: quotient = |a|
         }
     }
 
-    while (quotient->size > 0 && quotient->limbs[quotient->size - 1] == 0)
-    {
-        quotient->size--;
-    }
+    bigint_normalize(quotient);
 
     return 1;
 }
@@ -817,20 +822,9 @@ int bigint_copy( /*Create a copy of a BigInt*/
         return 1;
     }
 
-    if (destination->capacity < source->size)
+    if (!bigint_ensure_capacity(destination, source->size))
     {
-        uint64_t *new_limbs = realloc(
-            destination->limbs,
-            source->size * sizeof(uint64_t)
-        );
-
-        if (new_limbs == NULL)
-        {
-            return 0;
-        }
-
-        destination->limbs = new_limbs;
-        destination->capacity = source->size;
+        return 0;
     }
 
     memcpy(
@@ -915,7 +909,8 @@ int bigint_set_string( /*Transform string to BigInt*/
         i += chunk_len;
     }
 
-    value->is_negative = negative && (value->size > 0);
+    value->is_negative = negative;
+    bigint_normalize(value);
 
     return 1;
 }
@@ -958,9 +953,23 @@ char *bigint_to_string( /*Transform BigInt to string*/
     }
 
     // Each division by 10^19 (> 2^63) removes at least 63 bits, so this many
-    // chunks is always enough.
-    size_t chunks_capacity = (value->size * 64 + 62) / 63 + 1;
-    uint64_t *chunks = malloc(chunks_capacity * sizeof(uint64_t));
+    // chunks is always enough. Every step below is overflow-checked since
+    // value->size is attacker/caller controlled in principle.
+    size_t bits_estimate;
+    size_t rounded;
+    size_t chunks_capacity;
+    size_t chunks_bytes;
+
+    if (!bigint_size_mul(value->size, 64, &bits_estimate) ||
+        !bigint_size_add(bits_estimate, 62, &rounded) ||
+        !bigint_size_add(rounded / 63, 1, &chunks_capacity) ||
+        !bigint_size_mul(chunks_capacity, sizeof(uint64_t), &chunks_bytes))
+    {
+        free(scratch.limbs);
+        return NULL;
+    }
+
+    uint64_t *chunks = malloc(chunks_bytes);
 
     if (chunks == NULL)
     {
@@ -978,11 +987,15 @@ char *bigint_to_string( /*Transform BigInt to string*/
 
     free(scratch.limbs);
 
-    size_t capacity = chunk_count * 19 + 2;
+    size_t chunk_digits;
+    size_t capacity;
 
-    if (value->is_negative)
+    if (!bigint_size_mul(chunk_count, 19, &chunk_digits) ||
+        !bigint_size_add(chunk_digits, 2, &capacity) ||
+        (value->is_negative && !bigint_size_add(capacity, 1, &capacity)))
     {
-        capacity++;
+        free(chunks);
+        return NULL;
     }
 
     char *string = malloc(capacity);
@@ -1255,11 +1268,17 @@ int bigint_mul( /*Multiply two BigInts (a*b)*/
         return 1;
     }
 
-    size_t result_size = a->size + b->size;
+    size_t result_size;
+
+    if (!bigint_size_add(a->size, b->size, &result_size))
+    {
+        return 0;
+    }
 
     // Accumulate into a fresh buffer rather than result->limbs directly, so
     // this is safe even when result aliases a and/or b (e.g. squaring via
-    // bigint_mul(x, x, x)).
+    // bigint_mul(x, x, x)). calloc itself checks result_size*sizeof(uint64_t)
+    // for overflow on top of the result_size computation above.
     uint64_t *product = calloc(result_size, sizeof(uint64_t));
 
     if (product == NULL)
@@ -1300,20 +1319,9 @@ int bigint_mul( /*Multiply two BigInts (a*b)*/
     result->capacity = result_size;
     result->size = result_size;
 
-    while (
-        result->size > 0 &&
-        result->limbs[result->size - 1] == 0
-    )
-    {
-        result->size--;
-    }
-
     result->is_negative = a->is_negative != b->is_negative;
 
-    if (result->size == 0)
-    {
-        result->is_negative = false;
-    }
+    bigint_normalize(result);
 
     return 1;
 }
@@ -1360,8 +1368,11 @@ int bigint_div_mod( /*Divide and modulo operation for BigInts (a/b and a%b), tru
 
         if (ok)
         {
-            quotient->is_negative = (a_negative != b_negative) && quotient->size > 0;
-            remainder->is_negative = a_negative && remainder->size > 0;
+            quotient->is_negative = (a_negative != b_negative);
+            bigint_normalize(quotient);
+
+            remainder->is_negative = a_negative;
+            bigint_normalize(remainder);
         }
     }
 
@@ -1470,7 +1481,8 @@ int bigint_pow( /*Exponentiation for BigInts (base^exponent) via binary exponent
     if (ok)
     {
         bool exponent_is_odd = bigint_get_bit(exponent, 0) != 0;
-        result->is_negative = base->is_negative && exponent_is_odd && result->size > 0;
+        result->is_negative = base->is_negative && exponent_is_odd;
+        bigint_normalize(result);
     }
 
     free(accumulator.limbs);
@@ -1541,7 +1553,7 @@ int bigint_gcd( /*Greatest common divisor for BigInts (gcd(a,b)) via the Euclide
     return ok;
 }
 
-int bigint_lcm( /*Least common multiple for BigInts (lcm(a,b)) = |a*b| / gcd(a,b)*/
+int bigint_lcm( /*Least common multiple for BigInts: lcm(a,b) = (|a| / gcd(a,b)) * |b|*/
     BigInt *result,
     const BigInt *a,
     const BigInt *b
@@ -1565,11 +1577,23 @@ int bigint_lcm( /*Least common multiple for BigInts (lcm(a,b)) = |a*b| / gcd(a,b
     g.capacity = 0;
     g.is_negative = false;
 
-    BigInt product;
-    product.limbs = NULL;
-    product.size = 0;
-    product.capacity = 0;
-    product.is_negative = false;
+    BigInt abs_a;
+    abs_a.limbs = NULL;
+    abs_a.size = 0;
+    abs_a.capacity = 0;
+    abs_a.is_negative = false;
+
+    BigInt abs_b;
+    abs_b.limbs = NULL;
+    abs_b.size = 0;
+    abs_b.capacity = 0;
+    abs_b.is_negative = false;
+
+    BigInt quotient;
+    quotient.limbs = NULL;
+    quotient.size = 0;
+    quotient.capacity = 0;
+    quotient.is_negative = false;
 
     BigInt remainder;
     remainder.limbs = NULL;
@@ -1577,13 +1601,15 @@ int bigint_lcm( /*Least common multiple for BigInts (lcm(a,b)) = |a*b| / gcd(a,b
     remainder.capacity = 0;
     remainder.is_negative = false;
 
-    int ok = bigint_gcd(&g, a, b) && bigint_mul(&product, a, b);
-
-    if (ok)
-    {
-        product.is_negative = false;
-        ok = bigint_div_mod(result, &remainder, &product, &g);
-    }
+    // (|a| / gcd) * |b| instead of |a*b| / gcd: dividing first keeps the
+    // intermediate value (and therefore the work bigint_mul has to do)
+    // roughly gcd times smaller, and it's an exact division (no remainder)
+    // since gcd(a,b) always divides a.
+    int ok = bigint_gcd(&g, a, b) &&
+             bigint_abs(&abs_a, a) &&
+             bigint_abs(&abs_b, b) &&
+             bigint_div_mod(&quotient, &remainder, &abs_a, &g) &&
+             bigint_mul(result, &quotient, &abs_b);
 
     if (ok)
     {
@@ -1591,7 +1617,9 @@ int bigint_lcm( /*Least common multiple for BigInts (lcm(a,b)) = |a*b| / gcd(a,b
     }
 
     free(g.limbs);
-    free(product.limbs);
+    free(abs_a.limbs);
+    free(abs_b.limbs);
+    free(quotient.limbs);
     free(remainder.limbs);
 
     return ok;
@@ -1631,11 +1659,29 @@ int bigint_factorial( /*Calculate factorial of a BigInt (n!)*/
         return 0;
     }
 
-    for (uint64_t i = 2; i <= n; i++)
+    if (n >= 2)
     {
-        if (!bigint_multiply_by_uint64(result, i))
+        uint64_t i = 2;
+
+        // Checking `i == n` *before* incrementing (instead of the more
+        // obvious `for (i = 2; i <= n; i++)`) matters at the boundary:
+        // if n == UINT64_MAX, "i <= n" is always true and "i++" wraps
+        // i back to 0 once it reaches UINT64_MAX, which would loop
+        // forever, repeatedly corrupting result by multiplying by 0.
+        // This form can never increment i past n, so it can't wrap.
+        for (;;)
         {
-            return 0;
+            if (!bigint_multiply_by_uint64(result, i))
+            {
+                return 0;
+            }
+
+            if (i == n)
+            {
+                break;
+            }
+
+            i++;
         }
     }
 
@@ -1672,7 +1718,14 @@ int bigint_and( /*Bitwise AND for BigInts (a&b). Operands must be non-negative.*
 
     if (min_size > 0)
     {
-        limbs = malloc(min_size * sizeof(uint64_t));
+        size_t bytes;
+
+        if (!bigint_size_mul(min_size, sizeof(uint64_t), &bytes))
+        {
+            return 0;
+        }
+
+        limbs = malloc(bytes);
 
         if (limbs == NULL)
         {
@@ -1691,10 +1744,7 @@ int bigint_and( /*Bitwise AND for BigInts (a&b). Operands must be non-negative.*
     result->size = min_size;
     result->is_negative = false;
 
-    while (result->size > 0 && result->limbs[result->size - 1] == 0)
-    {
-        result->size--;
-    }
+    bigint_normalize(result);
 
     return 1;
 }
@@ -1721,7 +1771,14 @@ int bigint_or( /*Bitwise OR for BigInts (a|b). Operands must be non-negative.*/
 
     if (max_size > 0)
     {
-        limbs = malloc(max_size * sizeof(uint64_t));
+        size_t bytes;
+
+        if (!bigint_size_mul(max_size, sizeof(uint64_t), &bytes))
+        {
+            return 0;
+        }
+
+        limbs = malloc(bytes);
 
         if (limbs == NULL)
         {
@@ -1743,10 +1800,7 @@ int bigint_or( /*Bitwise OR for BigInts (a|b). Operands must be non-negative.*/
     result->size = max_size;
     result->is_negative = false;
 
-    while (result->size > 0 && result->limbs[result->size - 1] == 0)
-    {
-        result->size--;
-    }
+    bigint_normalize(result);
 
     return 1;
 }
@@ -1773,7 +1827,14 @@ int bigint_xor( /*Bitwise XOR for BigInts (a^b). Operands must be non-negative.*
 
     if (max_size > 0)
     {
-        limbs = malloc(max_size * sizeof(uint64_t));
+        size_t bytes;
+
+        if (!bigint_size_mul(max_size, sizeof(uint64_t), &bytes))
+        {
+            return 0;
+        }
+
+        limbs = malloc(bytes);
 
         if (limbs == NULL)
         {
@@ -1795,10 +1856,7 @@ int bigint_xor( /*Bitwise XOR for BigInts (a^b). Operands must be non-negative.*
     result->size = max_size;
     result->is_negative = false;
 
-    while (result->size > 0 && result->limbs[result->size - 1] == 0)
-    {
-        result->size--;
-    }
+    bigint_normalize(result);
 
     return 1;
 }
@@ -1853,7 +1911,16 @@ int bigint_shift_left( /*Left shift for BigInts (a<<n)*/
 
     size_t limb_shift = n / 64;
     size_t bit_shift = n % 64;
-    size_t new_size = a->size + limb_shift + 1;
+
+    size_t new_size;
+    size_t new_size_bytes;
+
+    if (!bigint_size_add(a->size, limb_shift, &new_size) ||
+        !bigint_size_add(new_size, 1, &new_size) ||
+        !bigint_size_mul(new_size, sizeof(uint64_t), &new_size_bytes))
+    {
+        return 0;
+    }
 
     uint64_t *limbs = calloc(new_size, sizeof(uint64_t));
 
@@ -1883,15 +1950,7 @@ int bigint_shift_left( /*Left shift for BigInts (a<<n)*/
     result->size = new_size;
     result->is_negative = a->is_negative;
 
-    while (result->size > 0 && result->limbs[result->size - 1] == 0)
-    {
-        result->size--;
-    }
-
-    if (result->size == 0)
-    {
-        result->is_negative = false;
-    }
+    bigint_normalize(result);
 
     return 1;
 }
@@ -1922,9 +1981,16 @@ int bigint_shift_right( /*Right shift for BigInts (a>>n), truncating toward zero
     }
 
     size_t bit_shift = n % 64;
-    size_t new_size = a->size - limb_shift;
+    size_t new_size = a->size - limb_shift; // limb_shift < a->size, just checked above, so this can't underflow
 
-    uint64_t *limbs = malloc(new_size * sizeof(uint64_t));
+    size_t new_size_bytes;
+
+    if (!bigint_size_mul(new_size, sizeof(uint64_t), &new_size_bytes))
+    {
+        return 0;
+    }
+
+    uint64_t *limbs = malloc(new_size_bytes);
 
     if (limbs == NULL)
     {
@@ -1954,15 +2020,7 @@ int bigint_shift_right( /*Right shift for BigInts (a>>n), truncating toward zero
     result->size = new_size;
     result->is_negative = a->is_negative;
 
-    while (result->size > 0 && result->limbs[result->size - 1] == 0)
-    {
-        result->size--;
-    }
-
-    if (result->size == 0)
-    {
-        result->is_negative = false;
-    }
+    bigint_normalize(result);
 
     return 1;
 }
@@ -1976,20 +2034,7 @@ int bigint_increment( /*Increment a BigInt by 1 (a++)*/
         return 0;
     }
 
-    if (!value->is_negative)
-    {
-        return bigint_add_uint64(value, 1);
-    }
-
-    if (value->size == 1 &&
-        value->limbs[0] == 1)
-    {
-        value->size = 0;
-        value->is_negative = false;
-        return 1;
-    }
-
-    return bigint_sub_uint64(value, 1);
+    return bigint_add_uint64(value, 1);
 }
 
 int bigint_decrement( /*Decrement a BigInt by 1 (a--)*/
@@ -1999,22 +2044,6 @@ int bigint_decrement( /*Decrement a BigInt by 1 (a--)*/
     if (value == NULL)
     {
         return 0;
-    }
-
-    if (value->is_negative)
-    {
-        return bigint_add_uint64(value, 1);
-    }
-
-    if (value->size == 0)
-    {
-        if (!bigint_add_uint64(value, 1))
-        {
-            return 0;
-        }
-
-        value->is_negative = true;
-        return 1;
     }
 
     return bigint_sub_uint64(value, 1);
@@ -2055,9 +2084,14 @@ int bigint_negate( /*Negate a BigInt (-a)*/
         return 0;
     }
 
+    result->is_negative = !value->is_negative;
+
     // Zero has no sign - flipping it must not produce a "negative zero"
-    // that would compare unequal to a plain zero.
-    result->is_negative = (value->size > 0) ? !value->is_negative : false;
+    // that would compare unequal to a plain zero. bigint_normalize()
+    // enforces exactly that (it's a no-op here beyond the sign check,
+    // since a copy of an already-canonical value has no trailing zeros
+    // to trim).
+    bigint_normalize(result);
 
     return 1;
 }
@@ -2102,7 +2136,7 @@ bool bigint_is_odd( /*Check if a BigInt is odd*/
     return (value->limbs[0] & 1) != 0;
 }
 
-bool bigint_is_prime( /*Check if a BigInt is prime via bounded trial division*/
+bool bigint_is_most_likely_prime( /*Check if a BigInt is most likely prime via bounded trial division*/
     const BigInt *value
 )
 {
