@@ -787,6 +787,41 @@ static BigIntStatus bigint_divmod_abs( /*Long division on magnitudes only: quoti
     return BIGINT_OK;
 }
 
+static int bigint_compare_abs( /*Compare two absolute values of BigInts*/
+    const BigInt *a, 
+    const BigInt *b
+)
+{
+    if (a == NULL || b == NULL)
+    {
+        return 0;
+    }
+
+    if (a->size < b->size)
+    {
+        return -1;
+    }
+    else if (a->size > b->size)
+    {
+        return 1;
+    }
+
+    for (size_t i = a->size; i > 0; i--)
+    {
+        size_t index = i - 1;
+
+        if (a->limbs[index] < b->limbs[index])
+        {
+            return -1;
+        }
+        else if (a->limbs[index] > b->limbs[index])
+        {
+            return 1;
+        }
+    }
+
+    return 0;
+}
 /*
 ------------------------------------------------------------------------------------------------------------------------------
     Operation functions for BigInt.
@@ -804,11 +839,11 @@ const char *bigint_status_to_string( /*Human-readable description of a BigIntSta
         case BIGINT_NULL_ARGUMENT:
             return "a required argument was NULL";
         case BIGINT_OUT_OF_MEMORY:
-            return "out of memory (or the required size doesn't fit in size_t)";
+            return "out of memory";
         case BIGINT_DIVISION_BY_ZERO:
             return "division by zero";
         case BIGINT_INVALID_ARGUMENT:
-            return "invalid argument (e.g. malformed numeric string)";
+            return "invalid argument";
         case BIGINT_NEGATIVE_ARGUMENT:
             return "this operation requires a non-negative argument";
         case BIGINT_VALUE_TOO_LARGE:
@@ -1115,42 +1150,6 @@ char *bigint_to_string( /*Transform BigInt to string*/
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
-int bigint_compare_abs( /*Compare two absolute values of BigInts*/
-    const BigInt *a, 
-    const BigInt *b
-)
-{
-    if (a == NULL || b == NULL)
-    {
-        return 0;
-    }
-
-    if (a->size < b->size)
-    {
-        return -1;
-    }
-    else if (a->size > b->size)
-    {
-        return 1;
-    }
-
-    for (size_t i = a->size; i > 0; i--)
-    {
-        size_t index = i - 1;
-
-        if (a->limbs[index] < b->limbs[index])
-        {
-            return -1;
-        }
-        else if (a->limbs[index] > b->limbs[index])
-        {
-            return 1;
-        }
-    }
-
-    return 0;
-}
-
 int bigint_compare( /*Compare two BigInts*/
     const BigInt *a, 
     const BigInt *b
@@ -1182,7 +1181,7 @@ int bigint_compare( /*Compare two BigInts*/
     }
 }
 
-int bigint_is_zero( /*Check if a BigInt is zero*/
+bool bigint_is_zero( /*Check if a BigInt is zero*/
     const BigInt *value
 )
 {
@@ -1194,7 +1193,7 @@ int bigint_is_zero( /*Check if a BigInt is zero*/
     return value->size == 0;
 }
 
-int bigint_is_one( /*Check if a BigInt is one*/
+bool bigint_is_one( /*Check if a BigInt is one*/
     const BigInt *value
 )
 {
@@ -1206,7 +1205,7 @@ int bigint_is_one( /*Check if a BigInt is one*/
     return value->size == 1 && value->limbs[0] == 1 && !value->is_negative;
 }
 
-int bigint_is_negative( /*Check if a BigInt is negative*/
+bool bigint_is_negative( /*Check if a BigInt is negative*/
     const BigInt *value
 )
 {
@@ -1545,6 +1544,15 @@ BigIntStatus bigint_pow( /*Exponentiation for BigInts (base^exponent) via binary
     if (exponent->size == 0)
     {
         return bigint_set_uint64(result, 1);
+    }
+
+    if (exponent->size == 1 && exponent->limbs[0] == 0 && base->size == 1 && base->limbs[0] == 0)
+    {
+        return BIGINT_INVALID_ARGUMENT;
+    }
+
+    {
+        return bigint_copy(result, base);
     }
 
     if (base->size == 0)
@@ -2251,7 +2259,7 @@ bool bigint_is_odd( /*Check if a BigInt is odd*/
     return (value->limbs[0] & 1) != 0;
 }
 
-bool bigint_is_prime( /*Check if a BigInt is prime via bounded trial division*/
+bool bigint_is_probable_prime( /*Check if a BigInt is prime via bounded trial division*/
     const BigInt *value
 )
 {
@@ -2280,9 +2288,7 @@ bool bigint_is_prime( /*Check if a BigInt is prime via bounded trial division*/
     // any value whose true square root is <= TRIAL_DIVISION_BOUND (i.e.
     // value <= ~9 * 10^12). Beyond that it is a fast composite-detecting
     // filter only - a composite value with no factor under the bound would
-    // be (incorrectly) reported prime. Making this exact for arbitrarily
-    // large values needs a probabilistic test (e.g. Miller-Rabin), which is
-    // a reasonable next step if you need it.
+    // be (incorrectly) reported prime.
     const uint64_t trial_division_bound = 3000000ULL;
 
     for (uint64_t divisor = 3; divisor <= trial_division_bound; divisor += 2)

@@ -1,7 +1,6 @@
 #ifndef MYSCIENCECALC_BIGINT_H
 #define MYSCIENCECALC_BIGINT_H
 
-#include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
 
@@ -25,9 +24,9 @@ typedef enum BigIntStatus
     BIGINT_DIVISION_BY_ZERO,    /*The divisor was zero*/
     BIGINT_INVALID_ARGUMENT,    /*e.g. bigint_set_string given an empty, sign-only, or non-numeric string*/
     BIGINT_NEGATIVE_ARGUMENT,   /*Operation requires a non-negative argument and didn't get one
-                                  (bigint_pow's exponent, bigint_and/or/xor's operands, bigint_factorial's input)*/
-    BIGINT_VALUE_TOO_LARGE      /*Input is finite but impractically large for this operation
-                                  (bigint_factorial with n needing more than one limb)*/
+                                 *(bigint_pow's exponent, bigint_and/or/xor's operands, bigint_factorial's input)*/
+    BIGINT_VALUE_TOO_LARGE       /* Input is finite but exceeds the supported
+                                  * range or practical limits of the operation */
 } BigIntStatus;
 
 const char *bigint_status_to_string( /*Human-readable description of a BigIntStatus, for logging/debugging*/
@@ -66,21 +65,17 @@ char *bigint_to_string( /*Transform BigInt to string*/
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
-int bigint_compare_abs( /*Compare two absolute values of BigInts*/
-    const BigInt *a, 
-    const BigInt *b
-);
 int bigint_compare( /*Compare two BigInts*/
     const BigInt *a, 
     const BigInt *b
 );
-int bigint_is_zero( /*Check if a BigInt is zero*/
+bool bigint_is_zero( /*Check if a BigInt is zero*/
     const BigInt *value
 );
-int bigint_is_one( /*Check if a BigInt is one*/
+bool bigint_is_one( /*Check if a BigInt is one*/
     const BigInt *value
 );
-int bigint_is_negative( /*Check if a BigInt is negative*/
+bool bigint_is_negative( /*Check if a BigInt is negative*/
     const BigInt *value
 );
 
@@ -90,15 +85,21 @@ int bigint_is_negative( /*Check if a BigInt is negative*/
 
     Aliasing: unless documented otherwise, every function below supports
     arbitrary aliasing between its output and input BigInt* arguments -
-    bigint_add(x, x, y), bigint_mul(x, x, x), bigint_div_mod(&x, &y, x, y)
+    bigint_add(x, x, y), bigint_mul(x, x, x), bigint_div_mod(x, y, x, y)
     are all fully supported and computed correctly. The one documented
     exception: if quotient and remainder are passed as the SAME object to
-    bigint_div_mod, both are still computed correctly internally, but only
-    one value can end up stored in that shared object afterward - the
-    remainder, since it's committed last.
+    bigint_div_mod, the function will return BIGINT_INVALID_ARGUMENT and not modify either.
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
+BigIntStatus bigint_abs( /*Absolute value of a BigInt (|a|)*/
+    BigInt *result,
+    const BigInt *value
+);
+BigIntStatus bigint_negate( /*Negate a BigInt (-a)*/
+    BigInt *result,
+    const BigInt *value
+);
 BigIntStatus bigint_add( /*Add two BigInts (a+b)*/
     BigInt *result,
     const BigInt *a,
@@ -125,7 +126,7 @@ BigIntStatus bigint_mod( /*Modulo operation for BigInts (a%b). Discards the quot
     const BigInt *b
 );
 BigIntStatus bigint_div_mod( /*Divide and modulo operation for BigInts (a/b and a%b), truncating toward zero.
-                                See the aliasing note above for the quotient==remainder case.*/
+                                quotient and remainder must be distinct objects */
     BigInt *quotient,
     BigInt *remainder,
     const BigInt *a,
@@ -146,14 +147,15 @@ BigIntStatus bigint_lcm( /*Least common multiple for BigInts: lcm(a,b) = (|a|/gc
     const BigInt *a,
     const BigInt *b
 );
-BigIntStatus bigint_factorial( /*Calculate factorial of a BigInt (n!). Requires 0 <= n and n fitting in a single limb.*/
+BigIntStatus bigint_factorial( /* Calculate n!. Requires n >= 0. Returns BIGINT_VALUE_TOO_LARGE if n exceeds the supported input range.*/
     BigInt *result,
     const BigInt *value
 );
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
-    Bitwise operation functions for BigInt.
+    Bitwise operation functions for BigInt. Currently only supports non-negative BigInts for these operations.
+    TODO: implement for negative numbers (two's complement representation).
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
@@ -186,14 +188,6 @@ BigIntStatus bigint_shift_right( /*Right shift for BigInts (a>>n), truncating to
     const BigInt *a,
     size_t n
 );
-BigIntStatus bigint_abs( /*Absolute value of a BigInt (|a|)*/
-    BigInt *result,
-    const BigInt *value
-);
-BigIntStatus bigint_negate( /*Negate a BigInt (-a)*/
-    BigInt *result,
-    const BigInt *value
-);
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
@@ -207,7 +201,8 @@ bool bigint_is_even( /*Check if a BigInt is even*/
 bool bigint_is_odd( /*Check if a BigInt is odd*/
     const BigInt *value
 );
-bool bigint_is_prime( /*Check if a BigInt is prime (bounded trial division; see bigint.c for the practical limit)*/
+bool bigint_is_probable_prime( /*Check if a BigInt is prime (bounded trial division, may produce false positives for some very large numbers)*/
+                               /*TODO: Implement probabilistic primality test (Miller-Rabin)*/
     const BigInt *value
 );
 bool bigint_is_perfect_square( /*Check if a BigInt is a perfect square*/

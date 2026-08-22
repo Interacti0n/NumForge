@@ -15,7 +15,7 @@ int main(void)
         return 1;
     }
 
-    BigIntStatus status = bigint_set_string(number1, "1256489465419562132565613213248");
+    BigIntStatus status = bigint_set_string(number1, "-156489465419562132565613213248");
 
     if (status != BIGINT_OK)
     {
