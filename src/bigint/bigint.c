@@ -30,6 +30,11 @@
     Internal helper functions for BigInt operations.
 ------------------------------------------------------------------------------------------------------------------------------
 */
+static int bigint_compare_abs(
+    const BigInt *a,
+    const BigInt *b
+);
+
 static uint64_t bigint_divide_128_by_u64( /*Divide a 128-bit value by a uint64_t*/
     uint64_t high, 
     uint64_t low, 
@@ -44,8 +49,8 @@ static uint64_t bigint_divide_128_by_u64( /*Divide a 128-bit value by a uint64_t
     //    uint64_t quotient when high < divisor. Violate this and the loop
     //    below still runs and still returns *something*, but it's a
     //    silently wrong, wrapped result rather than the real quotient.
-    // Both callers in this file (bigint_mod_uint64, bigint_divide_by_uint64)
-    // satisfy this by construction: they seed `high` with 0 and thereafter
+    // bigint_divide_by_uint64 satisfies this by construction: it seeds
+    // `high` with 0 and thereafter uses
     // with the previous step's remainder, which is always < divisor.
     assert(divisor != 0);
     assert(high < divisor);
@@ -113,30 +118,6 @@ static BigIntStatus bigint_size_mul( /*Overflow-checked size_t multiplication: o
     *out = a * b;
 
     return BIGINT_OK;
-}
-
-static uint64_t bigint_mod_uint64( /*Compute value % divisor without mutating value*/
-    const BigInt *value,
-    uint64_t divisor
-)
-{
-    if (value == NULL || divisor == 0)
-    {
-        return 0;
-    }
-
-    uint64_t remainder = 0;
-
-    for (size_t i = value->size; i > 0; i--)
-    {
-        bigint_divide_128_by_u64(
-            remainder,
-            value->limbs[i - 1],
-            divisor,
-            &remainder);
-    }
-
-    return remainder;
 }
 
 static uint64_t bigint_divide_by_uint64( /*Divide a BigInt by a uint64_t in place, returning the remainder*/
@@ -792,10 +773,8 @@ static int bigint_compare_abs( /*Compare two absolute values of BigInts*/
     const BigInt *b
 )
 {
-    if (a == NULL || b == NULL)
-    {
-        return 0;
-    }
+    assert(a != NULL);
+    assert(b != NULL);
 
     if (a->size < b->size)
     {
@@ -965,8 +944,13 @@ BigIntStatus bigint_set_string( /*Transform string to BigInt*/
         }
     }
 
-    value->size = 0;
-    value->is_negative = false;
+    // Parse into a temporary value. This keeps the caller's value intact if
+    // an allocation fails part-way through a long input.
+    BigInt parsed;
+    parsed.limbs = NULL;
+    parsed.size = 0;
+    parsed.capacity = 0;
+    parsed.is_negative = false;
 
     // Parse in chunks of up to 19 decimal digits at a time: value = value * 10^chunk_len + chunk_value.
     // 10^19 fits in a uint64_t, so each chunk is one multiply + one add regardless of how many
@@ -985,23 +969,27 @@ BigIntStatus bigint_set_string( /*Transform string to BigInt*/
             chunk_multiplier *= 10;
         }
 
-        BigIntStatus status = bigint_multiply_by_uint64(value, chunk_multiplier);
+        BigIntStatus status = bigint_multiply_by_uint64(&parsed, chunk_multiplier);
 
         if (status == BIGINT_OK)
         {
-            status = bigint_add_uint64(value, chunk_value);
+            status = bigint_add_uint64(&parsed, chunk_value);
         }
 
         if (status != BIGINT_OK)
         {
+            free(parsed.limbs);
             return status;
         }
 
         i += chunk_len;
     }
 
-    value->is_negative = negative;
-    bigint_normalize(value);
+    parsed.is_negative = negative;
+    bigint_normalize(&parsed);
+
+    free(value->limbs);
+    *value = parsed;
 
     return BIGINT_OK;
 }
@@ -1407,13 +1395,9 @@ BigIntStatus bigint_div_mod( /*Divide and modulo operation for BigInts (a/b and 
         return BIGINT_INVALID_ARGUMENT;
     }
 
-    // Everything is computed into independent local temporaries first, and
-    // only committed into the caller's quotient/remainder at the very end.
-    // This is what makes every aliasing combination safe - including
-    // quotient and remainder being the SAME object: in that case both are
-    // still computed correctly here, but only the remainder's value ends
-    // up in that shared object afterward, since it's committed last (see
-    // the header for this documented edge case).
+    // Everything is computed into independent local temporaries first, then
+    // committed to the caller's quotient and remainder at the very end.
+    // This keeps every allowed output/input aliasing combination safe.
     BigInt a_copy;
     a_copy.limbs = NULL;
     a_copy.size = 0;
@@ -1780,9 +1764,9 @@ BigIntStatus bigint_factorial( /*Calculate factorial of a BigInt (n!)*/
         return bigint_set_uint64(result, 1); // 0! = 1
     }
 
-    if (value->size > 1)
+    if (value->size > 1 || value->limbs[0] > BIGINT_FACTORIAL_MAX_N)
     {
-        // n! for n this large is astronomically larger than could ever be
+        // n! for n this large is astronomically larger than could be
         // computed or stored; refuse rather than churn forever.
         return BIGINT_VALUE_TOO_LARGE;
     }
@@ -2250,7 +2234,142 @@ bool bigint_is_odd( /*Check if a BigInt is odd*/
     return (value->limbs[0] & 1) != 0;
 }
 
-bool bigint_is_probable_prime( /*Check if a BigInt is prime via bounded trial division*/
+static BigIntStatus bigint_modular_multiply(
+    BigInt *result,
+    const BigInt *a,
+    const BigInt *b,
+    const BigInt *modulus
+)
+{
+    BigInt product = { NULL, 0, 0, false };
+    BigIntStatus status = bigint_mul(&product, a, b);
+
+    if (status == BIGINT_OK)
+    {
+        status = bigint_mod(result, &product, modulus);
+    }
+
+    free(product.limbs);
+    return status;
+}
+
+static BigIntStatus bigint_modular_pow(
+    BigInt *result,
+    const BigInt *base,
+    const BigInt *exponent,
+    const BigInt *modulus
+)
+{
+    BigInt accumulator = { NULL, 0, 0, false };
+    BigInt factor = { NULL, 0, 0, false };
+    BigInt remaining = { NULL, 0, 0, false };
+
+    BigIntStatus status = bigint_set_uint64(&accumulator, 1);
+
+    if (status == BIGINT_OK)
+    {
+        status = bigint_mod(&accumulator, &accumulator, modulus);
+    }
+    if (status == BIGINT_OK)
+    {
+        status = bigint_mod(&factor, base, modulus);
+    }
+    if (status == BIGINT_OK)
+    {
+        status = bigint_copy(&remaining, exponent);
+    }
+
+    while (status == BIGINT_OK && remaining.size != 0)
+    {
+        if (bigint_is_odd(&remaining))
+        {
+            status = bigint_modular_multiply(
+                &accumulator, &accumulator, &factor, modulus);
+        }
+
+        if (status == BIGINT_OK)
+        {
+            status = bigint_shift_right(&remaining, &remaining, 1);
+        }
+
+        if (status == BIGINT_OK && remaining.size != 0)
+        {
+            status = bigint_modular_multiply(&factor, &factor, &factor, modulus);
+        }
+    }
+
+    if (status == BIGINT_OK)
+    {
+        status = bigint_copy(result, &accumulator);
+    }
+
+    free(accumulator.limbs);
+    free(factor.limbs);
+    free(remaining.limbs);
+    return status;
+}
+
+static bool bigint_is_miller_rabin_witness(
+    const BigInt *value,
+    const BigInt *odd_part,
+    size_t squarings,
+    uint64_t witness
+)
+{
+    uint64_t witness_storage;
+    uint64_t one_storage;
+    BigInt witness_value;
+    BigInt one;
+    bigint_wrap_uint64(&witness_value, &witness_storage, witness);
+    bigint_wrap_uint64(&one, &one_storage, 1);
+
+    BigInt value_minus_one = { NULL, 0, 0, false };
+    BigInt x = { NULL, 0, 0, false };
+    BigIntStatus status = bigint_sub(&value_minus_one, value, &one);
+
+    if (status == BIGINT_OK)
+    {
+        status = bigint_mod(&x, &witness_value, value);
+    }
+
+    if (status == BIGINT_OK && x.size == 0)
+    {
+        free(value_minus_one.limbs);
+        free(x.limbs);
+        return true;
+    }
+
+    if (status == BIGINT_OK)
+    {
+        status = bigint_modular_pow(&x, &x, odd_part, value);
+    }
+
+    if (status == BIGINT_OK &&
+        (bigint_compare(&x, &one) == 0 || bigint_compare(&x, &value_minus_one) == 0))
+    {
+        free(value_minus_one.limbs);
+        free(x.limbs);
+        return true;
+    }
+
+    for (size_t i = 1; status == BIGINT_OK && i < squarings; i++)
+    {
+        status = bigint_modular_multiply(&x, &x, &x, value);
+
+        if (status == BIGINT_OK && bigint_compare(&x, &value_minus_one) == 0)
+        {
+            free(value_minus_one.limbs);
+            free(x.limbs);
+            return true;
+        }
+    }
+
+    free(value_minus_one.limbs);
+    free(x.limbs);
+    return false;
+}
+
+bool bigint_is_probable_prime( /*Check primality with Miller-Rabin*/
     const BigInt *value
 )
 {
@@ -2265,32 +2384,45 @@ bool bigint_is_probable_prime( /*Check if a BigInt is prime via bounded trial di
         return false; // Numbers less than 2 are not prime
     }
 
-    if (value->size == 1 && value->limbs[0] == 2)
-    {
-        return true;
-    }
-
     if (bigint_is_even(value))
     {
-        return false;
+        return value->size == 1 && value->limbs[0] == 2;
     }
 
-    // Bounded trial division: this is a deterministic proof of primality for
-    // any value whose true square root is <= TRIAL_DIVISION_BOUND (i.e.
-    // value <= ~9 * 10^12). Beyond that it is a fast composite-detecting
-    // filter only - a composite value with no factor under the bound would
-    // be (incorrectly) reported prime.
-    const uint64_t trial_division_bound = 3000000ULL;
+    uint64_t one_storage;
+    BigInt one;
+    bigint_wrap_uint64(&one, &one_storage, 1);
 
-    for (uint64_t divisor = 3; divisor <= trial_division_bound; divisor += 2)
+    BigInt odd_part = { NULL, 0, 0, false };
+    BigIntStatus status = bigint_sub(&odd_part, value, &one);
+    size_t squarings = 0;
+
+    while (status == BIGINT_OK && bigint_is_even(&odd_part))
     {
-        if (bigint_mod_uint64(value, divisor) == 0)
+        status = bigint_shift_right(&odd_part, &odd_part, 1);
+        squarings++;
+    }
+
+    // These witnesses are deterministic for every unsigned 64-bit integer.
+    // For larger values they provide a strong probable-prime test.
+    static const uint64_t witnesses[] = {
+        2ULL, 325ULL, 9375ULL, 28178ULL,
+        450775ULL, 9780504ULL, 1795265022ULL
+    };
+
+    for (size_t i = 0;
+         status == BIGINT_OK && i < sizeof(witnesses) / sizeof(witnesses[0]);
+         i++)
+    {
+        if (!bigint_is_miller_rabin_witness(
+                value, &odd_part, squarings, witnesses[i]))
         {
-            return value->size == 1 && value->limbs[0] == divisor;
+            status = BIGINT_INVALID_ARGUMENT;
         }
     }
 
-    return true;
+    free(odd_part.limbs);
+    return status == BIGINT_OK;
 }
 
 bool bigint_is_perfect_square( /*Check if a BigInt is a perfect square*/

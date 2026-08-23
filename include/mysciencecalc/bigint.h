@@ -29,6 +29,10 @@ typedef enum BigIntStatus
                                   * range or practical limits of the operation */
 } BigIntStatus;
 
+/* Largest input accepted by bigint_factorial(). The limit prevents an
+ * unbounded calculation from exhausting the caller's CPU or memory. */
+#define BIGINT_FACTORIAL_MAX_N 100000ULL
+
 const char *bigint_status_to_string( /*Human-readable description of a BigIntStatus, for logging/debugging*/
     BigIntStatus status
 );
@@ -51,7 +55,8 @@ BigIntStatus bigint_copy( /*Create a copy of a BigInt*/
 );
 BigIntStatus bigint_set_string( /*Transform string to BigInt.
                                    "" and a bare sign ("+" or "-") are BIGINT_INVALID_ARGUMENT.
-                                   "0" -> 0, "+123" -> 123, "-123" -> -123.*/
+                                   "0" -> 0, "+123" -> 123, "-123" -> -123.
+                                   On failure, value is left unchanged.*/
     BigInt *value,
     const char *string
 );
@@ -65,7 +70,7 @@ char *bigint_to_string( /*Transform BigInt to string*/
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
-int bigint_compare( /*Compare two BigInts*/
+int bigint_compare( /*Compare two BigInts. Both arguments must be non-NULL.*/
     const BigInt *a, 
     const BigInt *b
 );
@@ -147,7 +152,8 @@ BigIntStatus bigint_lcm( /*Least common multiple for BigInts: lcm(a,b) = (|a|/gc
     const BigInt *a,
     const BigInt *b
 );
-BigIntStatus bigint_factorial( /* Calculate n!. Requires n >= 0. Returns BIGINT_VALUE_TOO_LARGE if n exceeds the supported input range.*/
+BigIntStatus bigint_factorial( /* Calculate n!. Requires 0 <= n <= BIGINT_FACTORIAL_MAX_N.
+                                  Returns BIGINT_VALUE_TOO_LARGE when n exceeds that limit. */
     BigInt *result,
     const BigInt *value
 );
@@ -201,8 +207,8 @@ bool bigint_is_even( /*Check if a BigInt is even*/
 bool bigint_is_odd( /*Check if a BigInt is odd*/
     const BigInt *value
 );
-bool bigint_is_probable_prime( /*Check if a BigInt is prime (bounded trial division, may produce false positives for some very large numbers)*/
-                               /*TODO: Implement probabilistic primality test (Miller-Rabin)*/
+bool bigint_is_probable_prime( /*Check primality with Miller-Rabin. Deterministic for values that fit in uint64_t;
+                                 probabilistic for larger values. Returns false if an internal allocation fails.*/
     const BigInt *value
 );
 bool bigint_is_perfect_square( /*Check if a BigInt is a perfect square*/

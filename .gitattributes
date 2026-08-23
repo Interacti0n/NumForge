@@ -1,0 +1,11 @@
+# Keep repository text files consistent across Windows, Linux, and macOS.
+* text=auto
+
+# Source code and build configuration use LF in the repository and checkout.
+*.c text eol=lf
+*.h text eol=lf
+*.cmake text eol=lf
+CMakeLists.txt text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf

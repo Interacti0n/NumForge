@@ -786,6 +786,18 @@ void test_mul_alias_all(void)
     bigint_destroy(a);
 }
 
+void test_mul_multi_limb(void)
+{
+    BigInt *a = make_bigint("18446744073709551616");
+    BigInt *result = bigint_create();
+
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_mul(result, a, a));
+    assert_bigint_string(result, "340282366920938463463374607431768211456");
+
+    bigint_destroy(a);
+    bigint_destroy(result);
+}
+
 
 /* ============================================================
    DIV / MOD
@@ -1402,6 +1414,34 @@ void test_factorial_overflow(void)
     BigInt *result = bigint_create();
 
     TEST_ASSERT_EQUAL(BIGINT_VALUE_TOO_LARGE, bigint_factorial(result, n));
+
+    bigint_destroy(n);
+    bigint_destroy(result);
+}
+
+void test_add_across_limb_boundary(void)
+{
+    BigInt *a = make_bigint("18446744073709551615");
+    BigInt *b = make_bigint("1");
+    BigInt *result = bigint_create();
+
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_add(result, a, b));
+    assert_bigint_string(result, "18446744073709551616");
+
+    bigint_destroy(a);
+    bigint_destroy(b);
+    bigint_destroy(result);
+}
+
+void test_factorial_above_practical_limit(void)
+{
+    BigInt *n = make_bigint("100001");
+    BigInt *result = bigint_create();
+
+    TEST_ASSERT_EQUAL(BIGINT_VALUE_TOO_LARGE, bigint_factorial(result, n));
+
+    bigint_destroy(n);
+    bigint_destroy(result);
 }
 
 /* ============================================================
@@ -1907,6 +1947,17 @@ void test_prime_composites(void)
     bigint_destroy(p100);
 }
 
+void test_prime_composite_without_small_factor(void)
+{
+    /* 3000017 and 3000029 are prime, so this composite has no factor
+       within the former 3,000,000 trial-division limit. */
+    BigInt *x = make_bigint("9000138000493");
+
+    TEST_ASSERT_FALSE(bigint_is_probable_prime(x));
+
+    bigint_destroy(x);
+}
+
 
 void test_prime_negative(void)
 {
@@ -2189,6 +2240,7 @@ int main(void)
     RUN_TEST(test_add_negative);
     RUN_TEST(test_add_mixed_signs);
     RUN_TEST(test_add_zero);
+    RUN_TEST(test_add_across_limb_boundary);
     RUN_TEST(test_add_alias_left);
     RUN_TEST(test_add_alias_right);
     RUN_TEST(test_add_alias_all);
@@ -2205,6 +2257,7 @@ int main(void)
     RUN_TEST(test_mul_negative_negative);
     RUN_TEST(test_mul_zero);
     RUN_TEST(test_mul_alias_all);
+    RUN_TEST(test_mul_multi_limb);
 
     /* Division / modulo */
     RUN_TEST(test_div_positive);
@@ -2247,6 +2300,7 @@ int main(void)
     RUN_TEST(test_factorial_ten);
     RUN_TEST(test_factorial_negative);
     RUN_TEST(test_factorial_overflow);
+    RUN_TEST(test_factorial_above_practical_limit);
 
     /* Bitwise */
     RUN_TEST(test_and_basic);
@@ -2286,6 +2340,7 @@ int main(void)
     /* Prime */
     RUN_TEST(test_prime_small_primes);
     RUN_TEST(test_prime_composites);
+    RUN_TEST(test_prime_composite_without_small_factor);
     RUN_TEST(test_prime_negative);
 
     /* Perfect square */

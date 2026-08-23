@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <windows.h>
+#include <time.h>
 #include <mysciencecalc/bigint.h>
 
 int main(void)
@@ -12,6 +12,9 @@ int main(void)
     if (number1 == NULL || number2 == NULL || result == NULL)
     {
         printf("Failed to create BigInt instances\n");
+        bigint_destroy(number1);
+        bigint_destroy(number2);
+        bigint_destroy(result);
         return 1;
     }
 
@@ -20,6 +23,9 @@ int main(void)
     if (status != BIGINT_OK)
     {
         printf("Failed to set number1: %s\n", bigint_status_to_string(status));
+        bigint_destroy(number1);
+        bigint_destroy(number2);
+        bigint_destroy(result);
         return 1;
     }
 
@@ -28,16 +34,13 @@ int main(void)
     if (status != BIGINT_OK)
     {
         printf("Failed to set number2: %s\n", bigint_status_to_string(status));
+        bigint_destroy(number1);
+        bigint_destroy(number2);
+        bigint_destroy(result);
         return 1;
     }
 
-    LARGE_INTEGER start;
-    LARGE_INTEGER end;
-    LARGE_INTEGER frequency;
-
-    QueryPerformanceFrequency(&frequency);
-
-    QueryPerformanceCounter(&start);
+    clock_t start = clock();
     /* code to benchmark */
     for(int i = 0; i < 1; i++)
     {
@@ -46,15 +49,18 @@ int main(void)
         if (status != BIGINT_OK)
         {
             printf("Failed to raise to power: %s\n", bigint_status_to_string(status));
+            bigint_destroy(number1);
+            bigint_destroy(number2);
+            bigint_destroy(result);
             return 1;
         }
     }
 
-    QueryPerformanceCounter(&end);
+    clock_t end = clock();
 
-    double elapsed =
-        (double)(end.QuadPart - start.QuadPart) /
-        (double)frequency.QuadPart; 
+    double elapsed = (start == (clock_t)-1 || end == (clock_t)-1)
+        ? -1.0
+        : (double)(end - start) / CLOCKS_PER_SEC;
 
     char *string = bigint_to_string(result);
 
@@ -67,7 +73,10 @@ int main(void)
     }
 
     printf("Number: %s\n", string);
-    printf("Time: %.9f s\n", elapsed);
+    if (elapsed >= 0.0)
+    {
+        printf("CPU time: %.9f s\n", elapsed);
+    }
 
     free(string);
     bigint_destroy(result);
