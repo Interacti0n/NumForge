@@ -34,17 +34,20 @@ static BigInt *make_bigint(const char *string)
 static BigInt *make_random_unsigned(size_t limbs)
 {
     char text[32];
-    (void)snprintf(text, sizeof(text), "%" PRIu64, next_random_u64() | 1ULL);
+    uint64_t most_significant_limb = next_random_u64() | UINT64_C(1);
+    (void)snprintf(text, sizeof(text), "%" PRIu64, most_significant_limb);
 
     BigInt *value = make_bigint(text);
 
     for (size_t i = 1; i < limbs; i++)
     {
         BigInt *part;
+        uint64_t limb;
 
         TEST_ASSERT_EQUAL(BIGINT_OK, bigint_shift_left(value, value, 64));
 
-        (void)snprintf(text, sizeof(text), "%" PRIu64, next_random_u64());
+        limb = next_random_u64();
+        (void)snprintf(text, sizeof(text), "%" PRIu64, limb);
         part = make_bigint(text);
         TEST_ASSERT_EQUAL(BIGINT_OK, bigint_add(value, value, part));
         bigint_destroy(part);
