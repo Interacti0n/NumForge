@@ -7,6 +7,23 @@
 #include <stdlib.h>
 #include <string.h>
 
+/*
+------------------------------------------------------------------------------------------------------------------------------
+    Storage note: BigDecimal stores value = coefficient * 10^(-scale).
+
+    Canonical form: non-zero coefficients are not divisible by ten, and zero
+    always has scale 0. Every mutating public operation computes into a
+    temporary object and commits only after success, preserving the destination
+    on every failure path.
+------------------------------------------------------------------------------------------------------------------------------
+*/
+
+/*
+------------------------------------------------------------------------------------------------------------------------------
+    Internal helper functions for BigDecimal operations.
+------------------------------------------------------------------------------------------------------------------------------
+*/
+
 typedef struct BigDecimalExponent
 {
     bool negative;
@@ -111,6 +128,9 @@ static void bigdecimal_commit(BigDecimal *destination, BigDecimal *temporary)
     bigdecimal_destroy(temporary);
 }
 
+// Build 10^exponent through BigInt's decimal parser. This is intentionally
+// kept behind one helper so a cached/power-by-squaring implementation can
+// replace it later without changing arithmetic code.
 static BigDecimalStatus bigdecimal_set_power_of_ten(BigInt *value, uint64_t exponent)
 {
     size_t exponent_size;
@@ -224,6 +244,7 @@ static BigDecimalStatus bigdecimal_normalize(BigDecimal *value)
     return status;
 }
 
+// Normalize a temporary result before atomically replacing destination.
 static BigDecimalStatus bigdecimal_finish(
     BigDecimal *destination,
     BigDecimal *temporary
@@ -243,6 +264,7 @@ static BigDecimalStatus bigdecimal_finish(
     return status;
 }
 
+// Parse only the exponent suffix. The caller has already consumed e/E.
 static BigDecimalStatus bigdecimal_parse_exponent(const char *text, int64_t *result)
 {
     bool negative = false;
@@ -296,6 +318,8 @@ static BigDecimalStatus bigdecimal_parse_exponent(const char *text, int64_t *res
     return BIGDECIMAL_OK;
 }
 
+// Compare the decimal position of each first significant digit without
+// constructing an aligned coefficient, even for very different scales.
 static BigDecimalExponent bigdecimal_decimal_exponent(size_t digits, int64_t scale)
 {
     BigDecimalExponent result;
@@ -350,6 +374,7 @@ static int bigdecimal_compare_exponents(BigDecimalExponent a, BigDecimalExponent
     return a.magnitude < b.magnitude ? -1 : 1;
 }
 
+// Apply one rounding decision to a truncation-toward-zero quotient.
 static BigDecimalStatus bigdecimal_round_quotient(
     BigInt *quotient,
     const BigInt *remainder,
@@ -455,6 +480,12 @@ static BigDecimalStatus bigdecimal_round_quotient(
 
     return status;
 }
+
+/*
+------------------------------------------------------------------------------------------------------------------------------
+    Lifecycle and conversion functions for BigDecimal.
+------------------------------------------------------------------------------------------------------------------------------
+*/
 
 const char *bigdecimal_status_to_string(BigDecimalStatus status)
 {
@@ -777,6 +808,12 @@ BigDecimalStatus bigdecimal_to_string(const BigDecimal *value, char **result)
     return BIGDECIMAL_OK;
 }
 
+/*
+------------------------------------------------------------------------------------------------------------------------------
+    Comparison and inspection functions for BigDecimal.
+------------------------------------------------------------------------------------------------------------------------------
+*/
+
 BigDecimalStatus bigdecimal_compare(int *comparison, const BigDecimal *a, const BigDecimal *b)
 {
     char *a_text;
@@ -871,6 +908,12 @@ BigDecimalStatus bigdecimal_is_negative(bool *result, const BigDecimal *value)
     *result = bigint_is_negative(value->coefficient);
     return BIGDECIMAL_OK;
 }
+
+/*
+------------------------------------------------------------------------------------------------------------------------------
+    Exact arithmetic operation functions for BigDecimal.
+------------------------------------------------------------------------------------------------------------------------------
+*/
 
 BigDecimalStatus bigdecimal_abs(BigDecimal *result, const BigDecimal *value)
 {
@@ -996,6 +1039,12 @@ BigDecimalStatus bigdecimal_mul(BigDecimal *result, const BigDecimal *a, const B
     bigdecimal_destroy(temporary);
     return status;
 }
+
+/*
+------------------------------------------------------------------------------------------------------------------------------
+    Rounded arithmetic operation functions for BigDecimal.
+------------------------------------------------------------------------------------------------------------------------------
+*/
 
 BigDecimalStatus bigdecimal_rescale(
     BigDecimal *result,

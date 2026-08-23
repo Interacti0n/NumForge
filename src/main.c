@@ -3,6 +3,12 @@
 #include <time.h>
 #include <numforge/bigint.h>
 
+/*
+------------------------------------------------------------------------------------------------------------------------------
+    Small benchmark/demo for the public BigInt API. It is intentionally not
+    the interactive calculator advertised by the project name.
+------------------------------------------------------------------------------------------------------------------------------
+*/
 int main(void)
 {
     BigInt *number1 = bigint_create();
@@ -41,8 +47,8 @@ int main(void)
     }
 
     clock_t start = clock();
-    /* code to benchmark */
-    for(int i = 0; i < 1; i++)
+    // clock() measures CPU time consumed by this process, not wall-clock time.
+    for (int i = 0; i < 1; i++)
     {
         status = bigint_pow(result, number1, number2);
 
@@ -78,10 +84,10 @@ int main(void)
         printf("CPU time: %.9f s\n", elapsed);
     }
 
-    //free(string);
+    free(string);
     bigint_destroy(result);
     bigint_destroy(number1);
-    bigint_destroy(number2);  
+    bigint_destroy(number2);
 
     return 0;
 }

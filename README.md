@@ -184,7 +184,9 @@ not a cryptographic primality certificate.
 | Bits | `bigint_and`, `bigint_or`, `bigint_xor`, `bigint_not`, `bigint_shift_left`, `bigint_shift_right` |
 
 See [the public header](include/numforge/bigint.h) for function
-signatures and detailed per-function constraints.
+signatures and detailed per-function constraints. See
+[the BigInt design](docs/BIGINT_DESIGN.md) for its representation,
+semantic decisions, and optimization boundaries.
 
 ## Testing
 
@@ -208,7 +210,9 @@ includes:
 1. Extend `BigDecimal` with property tests, larger generated decimal vectors,
    and performance optimizations. Its representation and implementation notes are in
    [the BigDecimal design](docs/BIGDECIMAL_DESIGN.md).
-2. Decimal parsing, formatting, arithmetic, precision, and rounding modes.
-3. An interactive calculator interface built on the library.
+2. Tokenization, parsing, and AST evaluation for calculator expressions. Its
+   module boundaries, grammar, and evaluation policy are in
+   [the calculator design](docs/CALCULATOR_DESIGN.md).
+3. An interactive calculator CLI with source-positioned diagnostics.
 
 The public API is still pre-1.0 and may evolve.

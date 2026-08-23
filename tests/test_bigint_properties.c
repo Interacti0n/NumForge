@@ -6,6 +6,10 @@
 #include "unity.h"
 #include "numforge/bigint.h"
 
+/* ============================================================
+   Test helpers
+   ============================================================ */
+
 /* A fixed seed makes every generated case reproducible in CI and locally. */
 static uint64_t random_state = UINT64_C(0xC0DEC0FFEE123456);
 
@@ -91,6 +95,10 @@ void tearDown(void)
 {
 }
 
+/* ============================================================
+   Multi-limb and aliasing regressions
+   ============================================================ */
+
 void test_multi_limb_boundaries(void)
 {
     BigInt *max_128 = make_bigint("340282366920938463463374607431768211455");
@@ -130,6 +138,10 @@ void test_div_mod_output_input_aliasing(void)
     bigint_destroy(a);
     bigint_destroy(b);
 }
+
+/* ============================================================
+   Generated algebraic properties
+   ============================================================ */
 
 void test_property_string_round_trip_and_add_sub_inverse(void)
 {
@@ -250,6 +262,10 @@ void test_property_gcd_lcm_identity(void)
         bigint_destroy(remainder);
     }
 }
+
+/* ============================================================
+   Main
+   ============================================================ */
 
 int main(void)
 {

@@ -12,6 +12,10 @@ void tearDown(void)
 {
 }
 
+/* ============================================================
+   Test helpers
+   ============================================================ */
+
 static BigDecimal *make_decimal(const char *text)
 {
     BigDecimal *value = bigdecimal_create();
@@ -43,6 +47,10 @@ void test_lifetime_and_status_strings(void)
     bigdecimal_destroy(value);
     bigdecimal_destroy(NULL);
 }
+
+/* ============================================================
+   Conversion and canonical form
+   ============================================================ */
 
 void test_parse_format_and_canonical_form(void)
 {
@@ -105,6 +113,10 @@ void test_copy_comparison_and_inspection(void)
     bigdecimal_destroy(copy);
 }
 
+/* ============================================================
+   Exact arithmetic
+   ============================================================ */
+
 void test_exact_arithmetic_and_aliasing(void)
 {
     BigDecimal *a = make_decimal("1.2");
@@ -157,6 +169,10 @@ void test_rescale_rounding(void)
     bigdecimal_destroy(result);
 }
 
+/* ============================================================
+   Rounded arithmetic
+   ============================================================ */
+
 void test_division_and_rounding(void)
 {
     BigDecimal *one = make_decimal("1");
@@ -207,6 +223,10 @@ void test_null_and_invalid_arguments(void)
 
     bigdecimal_destroy(value);
 }
+
+/* ============================================================
+   Main
+   ============================================================ */
 
 int main(void)
 {

@@ -66,7 +66,7 @@ char *bigint_to_string( /*Transform BigInt to string*/
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
-    Comparision functions for BigInt.
+    Comparison functions for BigInt.
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
@@ -160,8 +160,8 @@ BigIntStatus bigint_factorial( /* Calculate n!. Requires 0 <= n <= BIGINT_FACTOR
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
-    Bitwise operation functions for BigInt. Currently only supports non-negative BigInts for these operations.
-    TODO: implement for negative numbers (two's complement representation).
+    Bitwise operation functions for BigInt. AND, OR, and XOR currently accept
+    only non-negative operands. bigint_not is defined for every value.
 ------------------------------------------------------------------------------------------------------------------------------
 */
 

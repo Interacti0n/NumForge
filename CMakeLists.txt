@@ -45,6 +45,10 @@ endfunction()
 add_library(numforge
     src/bigint/bigint.c
     src/bigdecimal/bigdecimal.c
+    src/calculator/calculator.c
+    src/calculator/tokenizer.c
+    src/calculator/parser.c
+    src/calculator/evaluator.c
 )
 
 target_include_directories(numforge
@@ -105,7 +109,7 @@ if(BUILD_TESTING)
     )
 
     target_link_libraries(bigint_property_tests
-    PRIVATE
+        PRIVATE
         numforge
         unity
     )
@@ -130,5 +134,26 @@ if(BUILD_TESTING)
     add_test(
         NAME bigdecimal_tests
         COMMAND bigdecimal_tests
+    )
+
+    add_executable(calculator_tests
+        tests/test_calculator.c
+    )
+
+    target_include_directories(calculator_tests
+        PRIVATE
+        ${PROJECT_SOURCE_DIR}/src/calculator
+    )
+
+    target_link_libraries(calculator_tests
+        PRIVATE
+        numforge
+        unity
+    )
+    numforge_enable_diagnostics(calculator_tests)
+
+    add_test(
+        NAME calculator_tests
+        COMMAND calculator_tests
     )
 endif()
