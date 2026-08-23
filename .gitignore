@@ -19,3 +19,6 @@ Makefile
 .vs/
 *.pdb
 *.ilk
+
+tsconfig.tsbuildinfo
+web/
