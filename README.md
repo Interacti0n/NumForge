@@ -4,9 +4,10 @@ NumForge is a C17 mathematics library. Its first stable component is
 `BigInt`: a signed, arbitrary-precision integer type with decimal conversion,
 arithmetic, bit operations, number-theory helpers, and a CMake build.
 
-The `calculator` executable is currently a small benchmark/demo rather than
-an interactive calculator. `BigDecimal` provides exact base-10 parsing,
-formatting, arithmetic, rescaling, and rounded division on top of `BigInt`.
+The `calculator` executable is an initial interactive calculator supporting
+decimal expressions with `+`, `-`, `*`, `/`, unary signs, and parentheses.
+`BigDecimal` provides exact base-10 parsing, formatting, arithmetic,
+rescaling, and rounded division on top of `BigInt`.
 
 ## Features
 
@@ -18,6 +19,7 @@ formatting, arithmetic, rescaling, and rounded division on top of `BigInt`.
 - Perfect-square and Miller-Rabin probable-prime checks.
 - Exact decimal arithmetic with configurable rounding for division and
   rescaling.
+- Interactive expression calculator with source-positioned diagnostics.
 - Output/input aliasing for arithmetic operations, including
   `bigint_add(x, x, y)` and `bigint_div_mod(q, r, q, r)`.
 - Unit tests, deterministic property tests, warnings-as-errors, and Linux CI.
@@ -210,9 +212,9 @@ includes:
 1. Extend `BigDecimal` with property tests, larger generated decimal vectors,
    and performance optimizations. Its representation and implementation notes are in
    [the BigDecimal design](docs/BIGDECIMAL_DESIGN.md).
-2. Tokenization, parsing, and AST evaluation for calculator expressions. Its
-   module boundaries, grammar, and evaluation policy are in
+2. Calculator variables, functions, exponentiation, and configurable runtime
+   precision. Its module boundaries, grammar, and evaluation policy are in
    [the calculator design](docs/CALCULATOR_DESIGN.md).
-3. An interactive calculator CLI with source-positioned diagnostics.
+3. Additional BigDecimal property/reference tests and performance profiling.
 
 The public API is still pre-1.0 and may evolve.

@@ -45,7 +45,9 @@ typedef struct CalculatorTokenizer
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
-    Tokenizer operation functions.
+    Tokenizer operation functions. next skips whitespace and produces NUMBER,
+    operator, parenthesis, or END tokens. Invalid characters and malformed
+    exponents return CALCULATOR_INVALID_TOKEN with a source offset.
 ------------------------------------------------------------------------------------------------------------------------------
 */
 CalculatorStatus calculator_tokenizer_init( /*Initialize a tokenizer over a NUL-terminated input string*/

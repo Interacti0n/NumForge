@@ -66,6 +66,11 @@ add_executable(calculator
     src/main.c
 )
 
+target_include_directories(calculator
+    PRIVATE
+    ${PROJECT_SOURCE_DIR}/src/calculator
+)
+
 target_link_libraries(calculator
     PRIVATE
         numforge

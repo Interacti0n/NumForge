@@ -9,9 +9,9 @@ stable.
 | Module | Responsibility |
 | --- | --- |
 | `calculator.c` | Shared status strings, error reporting, and evaluation defaults. |
-| `tokenizer.c` | Converts source text into location-aware tokens. |
-| `parser.c` | Converts tokens into an opaque expression tree (AST). |
-| `evaluator.c` | Evaluates the AST to `BigDecimal` using `CalculatorContext`. |
+| `tokenizer.c` | Converts source text into location-aware tokens. Implemented for decimal literals, whitespace, operators, and parentheses. |
+| `parser.c` | Converts tokens into an opaque expression tree (AST). Implemented as recursive descent with unary, multiplicative, and additive precedence layers. |
+| `evaluator.c` | Evaluates the AST to `BigDecimal` using `CalculatorContext`. Implemented for unary signs and the four initial binary operators. |
 
 The dependencies run in one direction:
 
@@ -51,10 +51,11 @@ belong to a token (for example division by zero) should identify the operator.
 
 ## Implementation order
 
-1. Tokenizer: whitespace, numeric literals, operators, parentheses, and exact
-   offsets.
-2. Parser: recursive descent for the grammar above; create and destroy every
-   AST node safely.
-3. Evaluator: map AST operators to BigDecimal operations and propagate errors.
-4. CLI: read one expression, display either a result or a source-positioned
-   diagnostic.
+1. **Complete:** tokenizer for whitespace, numeric literals, operators,
+   parentheses, and exact offsets.
+2. **Complete:** recursive-descent parser for the grammar above; every AST node
+   owns its children and number text safely.
+3. **Complete:** evaluator maps AST operators to BigDecimal operations and
+   propagates arithmetic errors to the responsible operator.
+4. **Complete:** CLI reads one expression and displays either a result or a
+   source-positioned diagnostic.

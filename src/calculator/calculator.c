@@ -20,6 +20,7 @@ const char *calculator_status_to_string(CalculatorStatus status)
         case CALCULATOR_OK: return "success";
         case CALCULATOR_NULL_ARGUMENT: return "null argument";
         case CALCULATOR_OUT_OF_MEMORY: return "out of memory";
+        case CALCULATOR_INVALID_ARGUMENT: return "invalid argument";
         case CALCULATOR_INVALID_TOKEN: return "invalid token";
         case CALCULATOR_SYNTAX_ERROR: return "syntax error";
         case CALCULATOR_DIVISION_BY_ZERO: return "division by zero";

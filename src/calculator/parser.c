@@ -1,13 +1,329 @@
-#include "parser.h"
+#include "expression_internal.h"
+#include "tokenizer.h"
 
-#include <stddef.h>
+#include <stdlib.h>
+#include <string.h>
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
-    Parser implementation. It will consume CalculatorTokenizer tokens and own
-    every AST node it creates; the AST remains opaque outside this module.
+    Parser implementation. The recursive-descent layers directly mirror the
+    expression grammar: unary operators bind most tightly, multiplication and
+    division bind next, and addition and subtraction bind least tightly.
 ------------------------------------------------------------------------------------------------------------------------------
 */
+
+typedef struct CalculatorParser
+{
+    CalculatorTokenizer tokenizer;
+    CalculatorToken current;
+    CalculatorError *error;
+} CalculatorParser;
+
+/*
+------------------------------------------------------------------------------------------------------------------------------
+    Internal helper functions for parser operations.
+------------------------------------------------------------------------------------------------------------------------------
+*/
+static CalculatorStatus calculator_parser_advance(CalculatorParser *parser)
+{
+    return calculator_tokenizer_next(&parser->tokenizer, &parser->current, parser->error);
+}
+
+static CalculatorExpression *calculator_expression_create(CalculatorExpressionType type, size_t offset)
+{
+    CalculatorExpression *expression = malloc(sizeof(*expression));
+
+    if (expression != NULL)
+    {
+        expression->type = type;
+        expression->offset = offset;
+    }
+
+    return expression;
+}
+
+static CalculatorExpression *calculator_expression_create_number(const CalculatorToken *token)
+{
+    CalculatorExpression *expression;
+    char *text;
+
+    if (token->length == SIZE_MAX)
+    {
+        return NULL;
+    }
+
+    expression = calculator_expression_create(CALCULATOR_EXPRESSION_NUMBER, token->offset);
+    text = malloc(token->length + 1U);
+    if (expression == NULL || text == NULL)
+    {
+        free(expression);
+        free(text);
+        return NULL;
+    }
+
+    memcpy(text, token->text, token->length);
+    text[token->length] = '\0';
+    expression->data.number.text = text;
+    return expression;
+}
+
+static CalculatorExpression *calculator_expression_create_unary(
+    CalculatorUnaryOperator operation,
+    size_t offset,
+    CalculatorExpression *operand
+)
+{
+    CalculatorExpression *expression = calculator_expression_create(CALCULATOR_EXPRESSION_UNARY, offset);
+
+    if (expression != NULL)
+    {
+        expression->data.unary.operation = operation;
+        expression->data.unary.operand = operand;
+    }
+
+    return expression;
+}
+
+static CalculatorExpression *calculator_expression_create_binary(
+    CalculatorBinaryOperator operation,
+    size_t offset,
+    CalculatorExpression *left,
+    CalculatorExpression *right
+)
+{
+    CalculatorExpression *expression = calculator_expression_create(CALCULATOR_EXPRESSION_BINARY, offset);
+
+    if (expression != NULL)
+    {
+        expression->data.binary.operation = operation;
+        expression->data.binary.left = left;
+        expression->data.binary.right = right;
+    }
+
+    return expression;
+}
+
+static CalculatorStatus calculator_parser_syntax_error(CalculatorParser *parser)
+{
+    calculator_error_set(parser->error, CALCULATOR_SYNTAX_ERROR, parser->current.offset);
+    return CALCULATOR_SYNTAX_ERROR;
+}
+
+static CalculatorStatus calculator_parse_expression(
+    CalculatorParser *parser,
+    CalculatorExpression **result
+);
+
+static CalculatorStatus calculator_parse_primary(
+    CalculatorParser *parser,
+    CalculatorExpression **result
+)
+{
+    CalculatorStatus status;
+    CalculatorExpression *expression;
+
+    if (parser->current.type == CALCULATOR_TOKEN_NUMBER)
+    {
+        expression = calculator_expression_create_number(&parser->current);
+        if (expression == NULL)
+        {
+            calculator_error_set(parser->error, CALCULATOR_OUT_OF_MEMORY, parser->current.offset);
+            return CALCULATOR_OUT_OF_MEMORY;
+        }
+
+        status = calculator_parser_advance(parser);
+        if (status != CALCULATOR_OK)
+        {
+            calculator_expression_destroy(expression);
+            return status;
+        }
+
+        *result = expression;
+        return CALCULATOR_OK;
+    }
+
+    if (parser->current.type == CALCULATOR_TOKEN_LEFT_PAREN)
+    {
+        status = calculator_parser_advance(parser);
+        if (status != CALCULATOR_OK)
+        {
+            return status;
+        }
+
+        status = calculator_parse_expression(parser, &expression);
+        if (status != CALCULATOR_OK)
+        {
+            return status;
+        }
+
+        if (parser->current.type != CALCULATOR_TOKEN_RIGHT_PAREN)
+        {
+            calculator_expression_destroy(expression);
+            return calculator_parser_syntax_error(parser);
+        }
+
+        status = calculator_parser_advance(parser);
+        if (status != CALCULATOR_OK)
+        {
+            calculator_expression_destroy(expression);
+            return status;
+        }
+
+        *result = expression;
+        return CALCULATOR_OK;
+    }
+
+    return calculator_parser_syntax_error(parser);
+}
+
+static CalculatorStatus calculator_parse_unary(
+    CalculatorParser *parser,
+    CalculatorExpression **result
+)
+{
+    CalculatorTokenType type = parser->current.type;
+
+    if (type == CALCULATOR_TOKEN_PLUS || type == CALCULATOR_TOKEN_MINUS)
+    {
+        CalculatorUnaryOperator operation = type == CALCULATOR_TOKEN_PLUS
+            ? CALCULATOR_UNARY_PLUS
+            : CALCULATOR_UNARY_MINUS;
+        size_t offset = parser->current.offset;
+        CalculatorExpression *operand;
+        CalculatorExpression *expression;
+        CalculatorStatus status = calculator_parser_advance(parser);
+
+        if (status != CALCULATOR_OK)
+        {
+            return status;
+        }
+
+        status = calculator_parse_unary(parser, &operand);
+        if (status != CALCULATOR_OK)
+        {
+            return status;
+        }
+
+        expression = calculator_expression_create_unary(operation, offset, operand);
+        if (expression == NULL)
+        {
+            calculator_expression_destroy(operand);
+            calculator_error_set(parser->error, CALCULATOR_OUT_OF_MEMORY, offset);
+            return CALCULATOR_OUT_OF_MEMORY;
+        }
+
+        *result = expression;
+        return CALCULATOR_OK;
+    }
+
+    return calculator_parse_primary(parser, result);
+}
+
+static CalculatorStatus calculator_parse_multiplicative(
+    CalculatorParser *parser,
+    CalculatorExpression **result
+)
+{
+    CalculatorExpression *left;
+    CalculatorStatus status = calculator_parse_unary(parser, &left);
+
+    if (status != CALCULATOR_OK)
+    {
+        return status;
+    }
+
+    while (parser->current.type == CALCULATOR_TOKEN_STAR ||
+           parser->current.type == CALCULATOR_TOKEN_SLASH)
+    {
+        CalculatorBinaryOperator operation = parser->current.type == CALCULATOR_TOKEN_STAR
+            ? CALCULATOR_BINARY_MULTIPLY
+            : CALCULATOR_BINARY_DIVIDE;
+        size_t offset = parser->current.offset;
+        CalculatorExpression *right;
+        CalculatorExpression *combined;
+
+        status = calculator_parser_advance(parser);
+        if (status != CALCULATOR_OK)
+        {
+            calculator_expression_destroy(left);
+            return status;
+        }
+
+        status = calculator_parse_unary(parser, &right);
+        if (status != CALCULATOR_OK)
+        {
+            calculator_expression_destroy(left);
+            return status;
+        }
+
+        combined = calculator_expression_create_binary(operation, offset, left, right);
+        if (combined == NULL)
+        {
+            calculator_expression_destroy(left);
+            calculator_expression_destroy(right);
+            calculator_error_set(parser->error, CALCULATOR_OUT_OF_MEMORY, offset);
+            return CALCULATOR_OUT_OF_MEMORY;
+        }
+
+        left = combined;
+    }
+
+    *result = left;
+    return CALCULATOR_OK;
+}
+
+static CalculatorStatus calculator_parse_expression(
+    CalculatorParser *parser,
+    CalculatorExpression **result
+)
+{
+    CalculatorExpression *left;
+    CalculatorStatus status = calculator_parse_multiplicative(parser, &left);
+
+    if (status != CALCULATOR_OK)
+    {
+        return status;
+    }
+
+    while (parser->current.type == CALCULATOR_TOKEN_PLUS ||
+           parser->current.type == CALCULATOR_TOKEN_MINUS)
+    {
+        CalculatorBinaryOperator operation = parser->current.type == CALCULATOR_TOKEN_PLUS
+            ? CALCULATOR_BINARY_ADD
+            : CALCULATOR_BINARY_SUBTRACT;
+        size_t offset = parser->current.offset;
+        CalculatorExpression *right;
+        CalculatorExpression *combined;
+
+        status = calculator_parser_advance(parser);
+        if (status != CALCULATOR_OK)
+        {
+            calculator_expression_destroy(left);
+            return status;
+        }
+
+        status = calculator_parse_multiplicative(parser, &right);
+        if (status != CALCULATOR_OK)
+        {
+            calculator_expression_destroy(left);
+            return status;
+        }
+
+        combined = calculator_expression_create_binary(operation, offset, left, right);
+        if (combined == NULL)
+        {
+            calculator_expression_destroy(left);
+            calculator_expression_destroy(right);
+            calculator_error_set(parser->error, CALCULATOR_OUT_OF_MEMORY, offset);
+            return CALCULATOR_OUT_OF_MEMORY;
+        }
+
+        left = combined;
+    }
+
+    *result = left;
+    return CALCULATOR_OK;
+}
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
@@ -20,17 +336,69 @@ CalculatorStatus calculator_parse(
     CalculatorError *error
 )
 {
+    CalculatorParser parser;
+    CalculatorExpression *expression;
+    CalculatorStatus status;
+
     if (input == NULL || result == NULL)
     {
         calculator_error_set(error, CALCULATOR_NULL_ARGUMENT, 0);
         return CALCULATOR_NULL_ARGUMENT;
     }
 
-    calculator_error_set(error, CALCULATOR_NOT_IMPLEMENTED, 0);
-    return CALCULATOR_NOT_IMPLEMENTED;
+    status = calculator_tokenizer_init(&parser.tokenizer, input);
+    if (status != CALCULATOR_OK)
+    {
+        calculator_error_set(error, status, 0);
+        return status;
+    }
+
+    parser.error = error;
+    status = calculator_parser_advance(&parser);
+    if (status != CALCULATOR_OK)
+    {
+        return status;
+    }
+
+    status = calculator_parse_expression(&parser, &expression);
+    if (status != CALCULATOR_OK)
+    {
+        return status;
+    }
+
+    if (parser.current.type != CALCULATOR_TOKEN_END)
+    {
+        calculator_expression_destroy(expression);
+        return calculator_parser_syntax_error(&parser);
+    }
+
+    *result = expression;
+    calculator_error_clear(error);
+    return CALCULATOR_OK;
 }
 
 void calculator_expression_destroy(CalculatorExpression *expression)
 {
-    (void)expression;
+    if (expression == NULL)
+    {
+        return;
+    }
+
+    switch (expression->type)
+    {
+        case CALCULATOR_EXPRESSION_NUMBER:
+            free(expression->data.number.text);
+            break;
+        case CALCULATOR_EXPRESSION_UNARY:
+            calculator_expression_destroy(expression->data.unary.operand);
+            break;
+        case CALCULATOR_EXPRESSION_BINARY:
+            calculator_expression_destroy(expression->data.binary.left);
+            calculator_expression_destroy(expression->data.binary.right);
+            break;
+        default:
+            break;
+    }
+
+    free(expression);
 }
