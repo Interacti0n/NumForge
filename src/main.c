@@ -18,7 +18,7 @@ int main(void)
         return 1;
     }
 
-    BigIntStatus status = bigint_set_string(number1, "900");
+    BigIntStatus status = bigint_set_string(number1, "123456789");
 
     if (status != BIGINT_OK)
     {
@@ -29,7 +29,7 @@ int main(void)
         return 1;
     }
 
-    status = bigint_set_string(number2, "900");
+    status = bigint_set_string(number2, "10000");
 
     if (status != BIGINT_OK)
     {
@@ -78,7 +78,7 @@ int main(void)
         printf("CPU time: %.9f s\n", elapsed);
     }
 
-    free(string);
+    //free(string);
     bigint_destroy(result);
     bigint_destroy(number1);
     bigint_destroy(number2);  

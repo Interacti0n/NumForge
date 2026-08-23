@@ -115,4 +115,20 @@ if(BUILD_TESTING)
         NAME bigint_property_tests
         COMMAND bigint_property_tests
     )
+
+    add_executable(bigdecimal_tests
+        tests/test_bigdecimal.c
+    )
+
+    target_link_libraries(bigdecimal_tests
+        PRIVATE
+        numforge
+        unity
+    )
+    numforge_enable_diagnostics(bigdecimal_tests)
+
+    add_test(
+        NAME bigdecimal_tests
+        COMMAND bigdecimal_tests
+    )
 endif()

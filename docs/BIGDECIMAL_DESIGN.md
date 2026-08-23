@@ -1,9 +1,28 @@
 # BigDecimal design
 
 `BigDecimal` will provide exact base-10 values on top of `BigInt`, without
-using binary floating point. It is deliberately not part of the public
-function API yet: the representation and arithmetic rules below should be
-implemented and tested together before declaring a stable interface.
+using binary floating point. Its public API is available in
+`include/numforge/bigdecimal.h` and the initial implementation lives in
+`src/bigdecimal/bigdecimal.c`.
+
+## Current API
+
+The public header already reserves the stable surface of the component:
+
+- lifecycle: `bigdecimal_create`, `bigdecimal_destroy`;
+- conversion: `bigdecimal_copy`, `bigdecimal_set_string`,
+  `bigdecimal_to_string`;
+- comparison and inspection: `bigdecimal_compare`, `bigdecimal_is_zero`,
+  `bigdecimal_is_negative`;
+- exact arithmetic: absolute value, negation, addition, subtraction, and
+  multiplication;
+- controlled inexact operations: `bigdecimal_rescale` and `bigdecimal_div`,
+  each accepting a target scale and `BigDecimalRoundingMode`.
+
+All listed operations are implemented. Every mutating operation computes into
+a temporary value and commits only on success, so its destination is unchanged
+after an error. `BIGDECIMAL_NOT_IMPLEMENTED` remains reserved for future
+optional API areas and is not returned by the current operations.
 
 ## Representation
 
@@ -84,8 +103,7 @@ a context/trap option later rather than treating it as a generic error.
 
 ## Error model
 
-Introduce a dedicated `BigDecimalStatus` enum when lifecycle and parsing are
-implemented. It should mirror the useful `BigIntStatus` cases without exposing
+`BigDecimalStatus` mirrors useful `BigIntStatus` cases without exposing
 `BigInt` internals:
 
 - success;
@@ -93,7 +111,9 @@ implemented. It should mirror the useful `BigIntStatus` cases without exposing
 - out of memory;
 - invalid input;
 - division by zero;
-- value or scale too large.
+- value too large;
+- scale overflow;
+- not implemented (reserved for future optional API areas).
 
 All mutating operations should provide the same strong guarantee as
 `bigint_set_string`: on failure, their destination is unchanged.

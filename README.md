@@ -5,8 +5,8 @@ NumForge is a C17 mathematics library. Its first stable component is
 arithmetic, bit operations, number-theory helpers, and a CMake build.
 
 The `calculator` executable is currently a small benchmark/demo rather than
-an interactive calculator. `BigDecimal` is planned as a layer built on top of
-`BigInt`.
+an interactive calculator. `BigDecimal` provides exact base-10 parsing,
+formatting, arithmetic, rescaling, and rounded division on top of `BigInt`.
 
 ## Features
 
@@ -16,6 +16,8 @@ an interactive calculator. `BigDecimal` is planned as a layer built on top of
   and factorial.
 - Bitwise operations and shifts.
 - Perfect-square and Miller-Rabin probable-prime checks.
+- Exact decimal arithmetic with configurable rounding for division and
+  rescaling.
 - Output/input aliasing for arithmetic operations, including
   `bigint_add(x, x, y)` and `bigint_div_mod(q, r, q, r)`.
 - Unit tests, deterministic property tests, warnings-as-errors, and Linux CI.
@@ -191,6 +193,8 @@ The repository contains two independent test executables:
 - `bigint_tests`: focused unit and regression tests.
 - `bigint_property_tests`: deterministic generated tests of algebraic
   identities, multi-limb boundaries, and aliasing behavior.
+- `bigdecimal_tests`: covers parsing, canonical form, exact arithmetic,
+  aliasing, division, and rounding modes.
 
 Both run through CTest when `BUILD_TESTING=ON`. GitHub Actions builds and runs
 them on Linux with warnings treated as errors and sanitizers enabled.
@@ -201,8 +205,8 @@ them on Linux with warnings treated as errors and sanitizers enabled.
 optimization for very large operands and additional test vectors. Planned work
 includes:
 
-1. `BigDecimal` with a `BigInt` coefficient and decimal scale. Its planned
-   representation and implementation stages are in
+1. Extend `BigDecimal` with property tests, larger generated decimal vectors,
+   and performance optimizations. Its representation and implementation notes are in
    [the BigDecimal design](docs/BIGDECIMAL_DESIGN.md).
 2. Decimal parsing, formatting, arithmetic, precision, and rounding modes.
 3. An interactive calculator interface built on the library.
