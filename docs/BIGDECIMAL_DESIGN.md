@@ -1,8 +1,8 @@
 # BigDecimal design
 
-`BigDecimal` will provide exact base-10 values on top of `BigInt`, without
-using binary floating point. Its public API is available in
-`include/numforge/bigdecimal.h` and the initial implementation lives in
+`BigDecimal` provides exact base-10 values on top of `BigInt`, without using
+binary floating point. Its public API is declared in
+`include/numforge/bigdecimal.h` and implemented in
 `src/bigdecimal/bigdecimal.c`.
 
 ## Current API
@@ -61,34 +61,33 @@ and hashing later, and prevents scales from growing unnecessarily.
 
 ### Parsing and formatting
 
-`set_string` should accept an optional sign, decimal point, and an optional
-decimal exponent (`e` or `E`). It should reject whitespace and malformed
-numbers. Parse into a temporary object and commit only after success, matching
-the `BigInt` error-safety rule.
+`set_string` accepts an optional sign, decimal point, and optional decimal
+exponent (`e` or `E`). It rejects whitespace and malformed numbers. Parsing
+uses a temporary object and commits only after success, matching the `BigInt`
+error-safety rule.
 
-Formatting should produce ordinary decimal notation by default. Scientific
-notation can be a separate formatter later; it must not change the stored
-value.
+Formatting produces ordinary decimal notation. Scientific notation can be a
+separate formatter later; it must not change the stored value.
 
 ### Addition and subtraction
 
-Align both operands to the larger scale by multiplying the lower-scale
-coefficient by a power of ten, then add or subtract the coefficients. Reject a
-scale difference or allocation that cannot be represented with
+Addition and subtraction align both operands to the larger scale by multiplying
+the lower-scale coefficient by a power of ten, then adding or subtracting the
+coefficients. They reject a scale difference or allocation that cannot be
+represented with
 `BIGDECIMAL_VALUE_TOO_LARGE`.
 
 ### Multiplication
 
-Multiply coefficients and add scales, checking `int64_t` overflow before the
-operation. Normalize the result once.
+Multiplication multiplies coefficients and adds scales, checking `int64_t`
+overflow before the operation. It normalizes the result once.
 
 ### Division
 
-Division cannot generally be exact, so its first public API must require both
-a target scale (or precision) and a rounding mode. Do not use a global mutable
-precision setting.
+Division cannot generally be exact, so the public API requires both a target
+scale and a rounding mode. It does not use a global mutable precision setting.
 
-The initial rounding modes should be:
+The implemented rounding modes are:
 
 - toward zero;
 - away from zero;
@@ -97,9 +96,9 @@ The initial rounding modes should be:
 - half up;
 - half even.
 
-The result should return `OK` when rounding succeeds. If callers need to know
-whether information was discarded, expose that as an explicit output flag or
-a context/trap option later rather than treating it as a generic error.
+The operation returns `OK` when rounding succeeds. If callers later need to
+know whether information was discarded, expose that as an explicit output flag
+or context/trap option rather than treating it as a generic error.
 
 ## Error model
 
@@ -118,18 +117,13 @@ a context/trap option later rather than treating it as a generic error.
 All mutating operations should provide the same strong guarantee as
 `bigint_set_string`: on failure, their destination is unchanged.
 
-## Implementation phases
+## Future work
 
-1. **Foundation:** `create`, `destroy`, `copy`, normalization, parsing, and
-   plain decimal formatting. Add focused tests for signs, zero, exponent
-   notation, and canonical form.
-2. **Exact arithmetic:** comparison, negate, add, subtract, and multiply.
-   Add property tests such as `(a + b) - b == a`.
-3. **Division:** target scale/precision, all rounding modes, tie cases, and
-   sign combinations. Test against generated decimal reference vectors.
-4. **Optimization:** cache small powers of ten within an operation, avoid
-   string conversions internally, and only add narrow `BigInt` helpers after
-   profiling identifies a bottleneck.
+The implementation is complete for the current public surface. The most useful
+next work is property/reference testing for large generated decimal values,
+followed by profiling-guided optimization such as reusable small powers of ten
+inside one operation. Any narrow `BigInt` helper added for performance must
+preserve the public layering and be independently tested.
 
 ## BigInt boundary
 

@@ -83,6 +83,37 @@ static void numforge_send_response(
     }
 }
 
+static void numforge_send_page(NumForgeSocket socket, const char *const *parts)
+{
+    char header[256];
+    size_t content_length = 0U;
+    size_t index;
+    int header_length;
+
+    for (index = 0U; parts[index] != NULL; index++)
+    {
+        content_length += strlen(parts[index]);
+    }
+
+    header_length = snprintf(header, sizeof(header),
+                             "HTTP/1.1 200 OK\r\n"
+                             "Content-Type: text/html; charset=utf-8\r\n"
+                             "Content-Length: %zu\r\n"
+                             "Connection: close\r\n"
+                             "Cache-Control: no-store\r\n\r\n",
+                             content_length);
+    if (header_length <= 0 || (size_t)header_length >= sizeof(header))
+    {
+        return;
+    }
+
+    (void)numforge_send_all(socket, header, (size_t)header_length);
+    for (index = 0U; parts[index] != NULL; index++)
+    {
+        (void)numforge_send_all(socket, parts[index], strlen(parts[index]));
+    }
+}
+
 static const char *numforge_find_header_end(const char *request)
 {
     return strstr(request, "\r\n\r\n");
@@ -241,7 +272,7 @@ static void numforge_handle_connection(NumForgeSocket socket)
     }
     else if (strcmp(method, "GET") == 0 && strcmp(target, "/api") == 0)
     {
-        numforge_send_response(socket, 200, "OK", "text/html; charset=utf-8", NUMFORGE_API_PAGE);
+        numforge_send_page(socket, NUMFORGE_API_PAGE);
     }
     else if (strcmp(method, "POST") == 0 && strcmp(target, "/api/evaluate") == 0 && body != NULL)
     {

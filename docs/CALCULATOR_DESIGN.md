@@ -12,15 +12,19 @@ stable.
 | `tokenizer.c` | Converts source text into location-aware tokens. Implemented for decimal literals, whitespace, operators, and parentheses. |
 | `parser.c` | Converts tokens into an opaque expression tree (AST). Implemented as recursive descent with unary, multiplicative, and additive precedence layers. |
 | `evaluator.c` | Evaluates the AST to `BigDecimal` using `CalculatorContext`. Implemented for unary signs and the four initial binary operators. |
+| `src/main.c` | Interactive command-line shell around the calculator pipeline. |
+| `src/web/web_api.c` | Text-to-result adapter used by the local web server. |
+| `src/web/web_server.c` | Loopback-only HTTP server that serves the calculator page and `POST /api/evaluate`. |
 
 The dependencies run in one direction:
 
 ```text
-input -> tokenizer -> parser/AST -> evaluator -> BigDecimal
+input -> tokenizer -> parser/AST -> evaluator -> BigDecimal -> formatted result
 ```
 
-`main.c` will later own the interactive loop and call this pipeline. It should
-not contain tokenization, parsing, or arithmetic rules itself.
+Both `main.c` and the web adapter call this pipeline. They own only transport,
+input/output, and user-facing diagnostics; tokenization and arithmetic rules
+remain in the calculator modules.
 
 ## Initial grammar
 
@@ -45,9 +49,9 @@ The default is 34 decimal places with half-even rounding. It avoids hidden
 global precision and makes one expression deterministic for one context.
 
 `CalculatorError` reports a `CalculatorStatus` and a zero-based byte offset in
-the input. The first tokenizer/parser implementation should set the offset to
-the token or character that caused the error. Evaluation errors that do not
-belong to a token (for example division by zero) should identify the operator.
+the input. The tokenizer and parser identify the token or character that caused
+the error. Evaluation errors that belong to an operation, such as division by
+zero, identify the operator.
 
 ## Implementation order
 
@@ -59,3 +63,6 @@ belong to a token (for example division by zero) should identify the operator.
    propagates arithmetic errors to the responsible operator.
 4. **Complete:** CLI reads one expression and displays either a result or a
    source-positioned diagnostic.
+5. **Complete:** local web adapter evaluates plain expression text through the
+   same pipeline; the server returns JSON and never performs arithmetic in
+   browser JavaScript.

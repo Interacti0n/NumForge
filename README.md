@@ -1,13 +1,9 @@
 # NumForge
 
-NumForge is a C17 mathematics library. Its first stable component is
-`BigInt`: a signed, arbitrary-precision integer type with decimal conversion,
-arithmetic, bit operations, number-theory helpers, and a CMake build.
-
-The `calculator` executable is an initial interactive calculator supporting
-decimal expressions with `+`, `-`, `*`, `/`, unary signs, and parentheses.
-`BigDecimal` provides exact base-10 parsing, formatting, arithmetic,
-rescaling, and rounded division on top of `BigInt`.
+NumForge is a C17 mathematics library and exact-decimal calculator. It provides
+two public numeric types: signed arbitrary-precision `BigInt` and base-10
+`BigDecimal`. The command-line and local browser calculators share the same C
+tokenizer, parser, evaluator, and BigDecimal implementation.
 
 ## Features
 
@@ -32,6 +28,15 @@ rescaling, and rounded division on top of `BigInt`.
 - A compiler with C17 support
 - Internet access on the first test-enabled CMake configure, so CMake can
   download the Unity test framework
+
+## Documentation
+
+| Document | Purpose |
+| --- | --- |
+| [API overview](docs/API.md) | Public `BigInt` and `BigDecimal` API, ownership rules, calculator syntax, and local HTTP API. |
+| [BigInt design](docs/BIGINT_DESIGN.md) | Limb representation, semantics, and optimization boundaries. |
+| [BigDecimal design](docs/BIGDECIMAL_DESIGN.md) | Exact-decimal representation, rounding, and future work. |
+| [Calculator design](docs/CALCULATOR_DESIGN.md) | Expression grammar, evaluation policy, and CLI/web integration. |
 
 ## Build
 
@@ -193,7 +198,7 @@ objects. On that error, neither output is changed.
 `uint64_t`. For larger values it is a Miller-Rabin probable-prime test and is
 not a cryptographic primality certificate.
 
-## Public API overview
+## BigInt API overview
 
 | Area | Functions |
 | --- | --- |
@@ -207,6 +212,13 @@ See [the public header](include/numforge/bigint.h) for function
 signatures and detailed per-function constraints. See
 [the BigInt design](docs/BIGINT_DESIGN.md) for its representation,
 semantic decisions, and optimization boundaries.
+
+`BigDecimal` has its own public header at
+[include/numforge/bigdecimal.h](include/numforge/bigdecimal.h). It supports
+decimal parsing (including exponent notation), canonical formatting,
+comparison, exact add/subtract/multiply, and explicitly rounded division or
+rescaling. See [the API overview](docs/API.md) for the complete concise
+reference.
 
 ## Testing
 
