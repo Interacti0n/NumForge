@@ -1159,6 +1159,7 @@ void test_pow_zero_zero(void)
         string
     );
 
+    free(string);
     bigint_destroy(base);
     bigint_destroy(exponent);
     bigint_destroy(result);
@@ -2049,6 +2050,7 @@ void test_arithmetic_null_arguments(void)
     BigInt *a = make_bigint("10");
     BigInt *b = make_bigint("5");
     BigInt *r = bigint_create();
+    BigInt *remainder = bigint_create();
 
     TEST_ASSERT_EQUAL(
         BIGINT_NULL_ARGUMENT,
@@ -2122,7 +2124,7 @@ void test_arithmetic_null_arguments(void)
 
     TEST_ASSERT_EQUAL(
         BIGINT_NULL_ARGUMENT,
-        bigint_div_mod(r, bigint_create(), a, NULL)
+        bigint_div_mod(r, remainder, a, NULL)
     );
 
     TEST_ASSERT_EQUAL(
@@ -2178,6 +2180,7 @@ void test_arithmetic_null_arguments(void)
     bigint_destroy(a);
     bigint_destroy(b);
     bigint_destroy(r);
+    bigint_destroy(remainder);
 }
 
 
