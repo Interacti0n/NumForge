@@ -239,6 +239,10 @@ static void numforge_handle_connection(NumForgeSocket socket)
     {
         numforge_send_response(socket, 200, "OK", "text/html; charset=utf-8", NUMFORGE_WEB_PAGE);
     }
+    else if (strcmp(method, "GET") == 0 && strcmp(target, "/api") == 0)
+    {
+        numforge_send_response(socket, 200, "OK", "text/html; charset=utf-8", NUMFORGE_API_PAGE);
+    }
     else if (strcmp(method, "POST") == 0 && strcmp(target, "/api/evaluate") == 0 && body != NULL)
     {
         numforge_handle_evaluation(socket, body);
