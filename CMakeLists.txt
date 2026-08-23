@@ -49,11 +49,15 @@ add_library(numforge
     src/calculator/tokenizer.c
     src/calculator/parser.c
     src/calculator/evaluator.c
+    src/web/web_api.c
 )
 
 target_include_directories(numforge
     PUBLIC
         ${PROJECT_SOURCE_DIR}/include
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/src/calculator
+        ${PROJECT_SOURCE_DIR}/src/web
 )
 
 numforge_enable_diagnostics(numforge)
@@ -76,6 +80,31 @@ target_link_libraries(calculator
         numforge
 )
 numforge_enable_diagnostics(calculator)
+
+# ============================================================
+# Local web application
+# ============================================================
+
+add_executable(numforge_web
+    src/web/web_server.c
+)
+
+target_include_directories(numforge_web
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/src/calculator
+        ${PROJECT_SOURCE_DIR}/src/web
+)
+
+target_link_libraries(numforge_web
+    PRIVATE
+        numforge
+)
+
+if(WIN32)
+    target_link_libraries(numforge_web PRIVATE ws2_32 shell32)
+endif()
+
+numforge_enable_diagnostics(numforge_web)
 # ============================================================
 # Tests
 # ============================================================
@@ -160,5 +189,27 @@ if(BUILD_TESTING)
     add_test(
         NAME calculator_tests
         COMMAND calculator_tests
+    )
+
+    add_executable(web_api_tests
+        tests/test_web_api.c
+    )
+
+    target_include_directories(web_api_tests
+        PRIVATE
+            ${PROJECT_SOURCE_DIR}/src/calculator
+            ${PROJECT_SOURCE_DIR}/src/web
+    )
+
+    target_link_libraries(web_api_tests
+        PRIVATE
+            numforge
+            unity
+    )
+    numforge_enable_diagnostics(web_api_tests)
+
+    add_test(
+        NAME web_api_tests
+        COMMAND web_api_tests
     )
 endif()

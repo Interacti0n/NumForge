@@ -20,6 +20,8 @@ rescaling, and rounded division on top of `BigInt`.
 - Exact decimal arithmetic with configurable rounding for division and
   rescaling.
 - Interactive expression calculator with source-positioned diagnostics.
+- Local browser calculator served directly by the C executable; its requests
+  are evaluated by the same parser and `BigDecimal` core.
 - Output/input aliasing for arithmetic operations, including
   `bigint_add(x, x, y)` and `bigint_div_mod(q, r, q, r)`.
 - Unit tests, deterministic property tests, warnings-as-errors, and Linux CI.
@@ -68,6 +70,22 @@ ctest --test-dir build --output-on-failure
 
 `NUMFORGE_ENABLE_SANITIZERS` enables AddressSanitizer and
 UndefinedBehaviorSanitizer on GCC and Clang.
+
+### Run the local web calculator
+
+No Node.js, package manager, database, or external service is needed. Build
+the project and start the `numforge_web` executable:
+
+```sh
+cmake -S . -B build -DBUILD_TESTING=ON
+cmake --build build --config Debug --parallel
+./build/Debug/numforge_web
+```
+
+On Windows, the executable automatically opens `http://127.0.0.1:8765` in the
+default browser. It listens only on the local machine; press `Ctrl+C` in the
+terminal to stop it. With a single-configuration generator, the executable is
+normally at `build/numforge_web` instead.
 
 ## Using BigInt
 
@@ -192,22 +210,27 @@ semantic decisions, and optimization boundaries.
 
 ## Testing
 
-The repository contains two independent test executables:
+The repository contains focused unit, property, and integration test
+executables:
 
 - `bigint_tests`: focused unit and regression tests.
 - `bigint_property_tests`: deterministic generated tests of algebraic
   identities, multi-limb boundaries, and aliasing behavior.
 - `bigdecimal_tests`: covers parsing, canonical form, exact arithmetic,
   aliasing, division, and rounding modes.
+- `calculator_tests`: covers tokenization, parsing, evaluation, source
+  positions, and division policy.
+- `web_api_tests`: confirms that the local web adapter evaluates expressions
+  through the same exact C `BigDecimal` pipeline.
 
-Both run through CTest when `BUILD_TESTING=ON`. GitHub Actions builds and runs
+All run through CTest when `BUILD_TESTING=ON`. GitHub Actions builds and runs
 them on Linux with warnings treated as errors and sanitizers enabled.
 
 ## Project status and roadmap
 
-`BigInt` is the current foundation. Remaining work is mostly performance
-optimization for very large operands and additional test vectors. Planned work
-includes:
+`BigInt` and the initial exact-decimal calculator are complete foundations.
+Remaining work is mostly broader test coverage, performance optimization for
+very large operands, and calculator features. Planned work includes:
 
 1. Extend `BigDecimal` with property tests, larger generated decimal vectors,
    and performance optimizations. Its representation and implementation notes are in

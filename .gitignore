@@ -1,24 +1,27 @@
-# Build directory
-build/
-
-# VS Code
-.vscode/
-
-# Compiled files
-*.exe
-*.o
-*.obj
-
-# CMake
+# CMake build trees
+/build/
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
 Makefile
+CTestTestfile.cmake
+Testing/
 
-# Visual Studio
-.vs/
+# Compiler output
+*.exe
+*.o
+*.obj
 *.pdb
 *.ilk
 
-tsconfig.tsbuildinfo
-web/
+# Editor and IDE state
+/.vscode/
+/.vs/
+*.suo
+*.user
+*.VC.db
+*.opendb
+
+# Operating-system files
+.DS_Store
+Thumbs.db
