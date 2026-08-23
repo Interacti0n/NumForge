@@ -92,133 +92,19 @@ default browser. It listens only on the local machine; press `Ctrl+C` in the
 terminal to stop it. With a single-configuration generator, the executable is
 normally at `build/numforge_web` instead.
 
-## Using BigInt
+## Library API
 
-Include the public header and link the `numforge` CMake target:
+Include the public headers and link the `numforge` CMake target:
 
 ```c
 #include <numforge/bigint.h>
+#include <numforge/bigdecimal.h>
 ```
 
-Every `BigInt` is opaque and must be created with `bigint_create()` and
-destroyed with `bigint_destroy()`.
-
-```c
-#include <stdio.h>
-#include <stdlib.h>
-#include <numforge/bigint.h>
-
-int main(void)
-{
-    BigInt *a = bigint_create();
-    BigInt *b = bigint_create();
-    BigInt *quotient = bigint_create();
-    BigInt *remainder = bigint_create();
-
-    if (a == NULL || b == NULL || quotient == NULL || remainder == NULL)
-    {
-        bigint_destroy(a);
-        bigint_destroy(b);
-        bigint_destroy(quotient);
-        bigint_destroy(remainder);
-        return 1;
-    }
-
-    BigIntStatus status = bigint_set_string(a, "123456789012345678901234567890");
-    if (status == BIGINT_OK)
-    {
-        status = bigint_set_string(b, "97");
-    }
-    if (status == BIGINT_OK)
-    {
-        status = bigint_div_mod(quotient, remainder, a, b);
-    }
-
-    if (status == BIGINT_OK)
-    {
-        char *q = bigint_to_string(quotient);
-        char *r = bigint_to_string(remainder);
-
-        if (q != NULL && r != NULL)
-        {
-            printf("quotient = %s, remainder = %s\n", q, r);
-        }
-
-        free(q);
-        free(r);
-    }
-
-    bigint_destroy(a);
-    bigint_destroy(b);
-    bigint_destroy(quotient);
-    bigint_destroy(remainder);
-    return status == BIGINT_OK ? 0 : 1;
-}
-```
-
-`bigint_to_string()` returns a heap-allocated string; release it with
-`free()`. `bigint_set_string()` accepts an optional leading `+` or `-`, rejects
-empty and non-numeric strings, and leaves its destination unchanged on error.
-
-## Error handling and API rules
-
-Most mutating operations return `BigIntStatus`:
-
-| Status | Meaning |
-| --- | --- |
-| `BIGINT_OK` | The operation completed successfully. |
-| `BIGINT_NULL_ARGUMENT` | A required pointer was `NULL`. |
-| `BIGINT_OUT_OF_MEMORY` | An allocation failed or a required size overflowed `size_t`. |
-| `BIGINT_DIVISION_BY_ZERO` | The divisor was zero. |
-| `BIGINT_INVALID_ARGUMENT` | An argument is invalid, including identical quotient and remainder outputs. |
-| `BIGINT_NEGATIVE_ARGUMENT` | The operation requires a non-negative input. |
-| `BIGINT_VALUE_TOO_LARGE` | The input exceeds the supported practical range of an operation. |
-
-`bigint_compare(a, b)` requires two non-`NULL` arguments. The predicate
-functions (`bigint_is_zero`, `bigint_is_even`, and similar) return `false` for
-`NULL`, except that no result should be inferred from a `NULL` value.
-
-Unless stated otherwise, operations support output/input aliasing. The one
-exception is `bigint_div_mod`: `quotient` and `remainder` must be different
-objects. On that error, neither output is changed.
-
-## Arithmetic semantics
-
-- Division truncates toward zero.
-- The remainder has the same sign as the dividend, matching C integer `%`
-  semantics. For example, `-100 % 7 == -2`.
-- `0^0` is defined as `1`.
-- `bigint_pow` rejects negative exponents.
-- `bigint_factorial` accepts `0 <= n <= BIGINT_FACTORIAL_MAX_N`.
-- `bigint_and`, `bigint_or`, and `bigint_xor` accept only non-negative
-  operands. `bigint_not` is defined for all values as `-(a + 1)`.
-- Right shifts truncate toward zero, including for negative values.
-
-`bigint_is_probable_prime()` is deterministic for values that fit in
-`uint64_t`. For larger values it is a Miller-Rabin probable-prime test and is
-not a cryptographic primality certificate.
-
-## BigInt API overview
-
-| Area | Functions |
-| --- | --- |
-| Lifetime and conversion | `bigint_create`, `bigint_destroy`, `bigint_copy`, `bigint_set_string`, `bigint_to_string` |
-| Inspection | `bigint_compare`, `bigint_is_zero`, `bigint_is_one`, `bigint_is_negative`, `bigint_is_even`, `bigint_is_odd` |
-| Arithmetic | `bigint_abs`, `bigint_negate`, `bigint_add`, `bigint_sub`, `bigint_mul`, `bigint_div`, `bigint_mod`, `bigint_div_mod`, `bigint_pow` |
-| Number theory | `bigint_gcd`, `bigint_lcm`, `bigint_factorial`, `bigint_is_probable_prime`, `bigint_is_perfect_square` |
-| Bits | `bigint_and`, `bigint_or`, `bigint_xor`, `bigint_not`, `bigint_shift_left`, `bigint_shift_right` |
-
-See [the public header](include/numforge/bigint.h) for function
-signatures and detailed per-function constraints. See
-[the BigInt design](docs/BIGINT_DESIGN.md) for its representation,
-semantic decisions, and optimization boundaries.
-
-`BigDecimal` has its own public header at
-[include/numforge/bigdecimal.h](include/numforge/bigdecimal.h). It supports
-decimal parsing (including exponent notation), canonical formatting,
-comparison, exact add/subtract/multiply, and explicitly rounded division or
-rescaling. See [the API overview](docs/API.md) for the complete concise
-reference.
+The public API, ownership rules, arithmetic semantics, and concise function
+reference for both types are in [the API overview](docs/API.md). The design
+documents explain the internal representation and decisions that should remain
+stable while the library is still pre-1.0.
 
 ## Testing
 
