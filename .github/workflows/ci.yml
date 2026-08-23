@@ -13,8 +13,8 @@ jobs:
         run: >-
           cmake -S . -B build
           -DBUILD_TESTING=ON
-          -DMYSCIENCECALC_WARNINGS_AS_ERRORS=ON
-          -DMYSCIENCECALC_ENABLE_SANITIZERS=ON
+          -DNUMFORGE_WARNINGS_AS_ERRORS=ON
+          -DNUMFORGE_ENABLE_SANITIZERS=ON
       - name: Build
         run: cmake --build build --parallel
       - name: Test

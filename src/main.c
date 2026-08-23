@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <mysciencecalc/bigint.h>
+#include <numforge/bigint.h>
 
 int main(void)
 {

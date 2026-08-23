@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(MyScientificCalc
+project(NumForge
     VERSION 0.1.0
     DESCRIPTION "Scientific calculator and mathematics library written in C"
     LANGUAGES C
@@ -10,48 +10,49 @@ set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
-option(MYSCIENCECALC_WARNINGS_AS_ERRORS
-    "Treat warnings in MyScientificCalc sources as errors"
+option(NUMFORGE_WARNINGS_AS_ERRORS
+    "Treat warnings in NumForge sources as errors"
     OFF
 )
-option(MYSCIENCECALC_ENABLE_SANITIZERS
+option(NUMFORGE_ENABLE_SANITIZERS
     "Enable AddressSanitizer and UndefinedBehaviorSanitizer where supported"
     OFF
 )
 
-function(mysciencecalc_enable_diagnostics target)
+function(numforge_enable_diagnostics target)
     if(MSVC)
         target_compile_options(${target} PRIVATE /W4)
-        if(MYSCIENCECALC_WARNINGS_AS_ERRORS)
+        if(NUMFORGE_WARNINGS_AS_ERRORS)
             target_compile_options(${target} PRIVATE /WX)
         endif()
     else()
         target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic)
-        if(MYSCIENCECALC_WARNINGS_AS_ERRORS)
+        if(NUMFORGE_WARNINGS_AS_ERRORS)
             target_compile_options(${target} PRIVATE -Werror)
         endif()
     endif()
 
-    if(MYSCIENCECALC_ENABLE_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+    if(NUMFORGE_ENABLE_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
         target_compile_options(${target} PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
         target_link_options(${target} PRIVATE -fsanitize=address,undefined)
     endif()
 endfunction()
 
 # ============================================================
-# MyScientificCalc library
+# NumForge library
 # ============================================================
 
-add_library(mysciencecalc
+add_library(numforge
     src/bigint/bigint.c
+    src/bigdecimal/bigdecimal.c
 )
 
-target_include_directories(mysciencecalc
+target_include_directories(numforge
     PUBLIC
         ${PROJECT_SOURCE_DIR}/include
 )
 
-mysciencecalc_enable_diagnostics(mysciencecalc)
+numforge_enable_diagnostics(numforge)
 
 # ============================================================
 # Calculator application
@@ -63,9 +64,9 @@ add_executable(calculator
 
 target_link_libraries(calculator
     PRIVATE
-        mysciencecalc
+        numforge
 )
-mysciencecalc_enable_diagnostics(calculator)
+numforge_enable_diagnostics(calculator)
 # ============================================================
 # Tests
 # ============================================================
@@ -89,10 +90,10 @@ if(BUILD_TESTING)
 
     target_link_libraries(bigint_tests
         PRIVATE
-        mysciencecalc
+        numforge
         unity
     )
-    mysciencecalc_enable_diagnostics(bigint_tests)
+    numforge_enable_diagnostics(bigint_tests)
 
     add_test(
         NAME bigint_tests
@@ -104,11 +105,11 @@ if(BUILD_TESTING)
     )
 
     target_link_libraries(bigint_property_tests
-        PRIVATE
-        mysciencecalc
+    PRIVATE
+        numforge
         unity
     )
-    mysciencecalc_enable_diagnostics(bigint_property_tests)
+    numforge_enable_diagnostics(bigint_property_tests)
 
     add_test(
         NAME bigint_property_tests

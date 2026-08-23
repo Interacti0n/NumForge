@@ -4,7 +4,7 @@
 #include <stdlib.h>
 
 #include "unity.h"
-#include "mysciencecalc/bigint.h"
+#include "numforge/bigint.h"
 
 /* A fixed seed makes every generated case reproducible in CI and locally. */
 static uint64_t random_state = UINT64_C(0xC0DEC0FFEE123456);

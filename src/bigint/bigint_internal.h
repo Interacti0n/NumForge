@@ -1,5 +1,5 @@
-#ifndef MYSCIENCECALC_BIGINT_INTERNAL_H
-#define MYSCIENCECALC_BIGINT_INTERNAL_H
+#ifndef NUMFORGE_BIGINT_INTERNAL_H
+#define NUMFORGE_BIGINT_INTERNAL_H
 
 #include <stdint.h>
 #include <stddef.h>

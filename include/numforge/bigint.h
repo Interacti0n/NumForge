@@ -1,5 +1,5 @@
-#ifndef MYSCIENCECALC_BIGINT_H
-#define MYSCIENCECALC_BIGINT_H
+#ifndef NUMFORGE_BIGINT_H
+#define NUMFORGE_BIGINT_H
 
 #include <stddef.h>
 #include <stdbool.h>

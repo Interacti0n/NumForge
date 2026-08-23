@@ -1,8 +1,5 @@
 #include "bigdecimal_internal.h"
-#include <bigdecimal.h>
+#include <numforge/bigdecimal.h>
 
-#include <assert.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
+/* Public BigDecimal operations will be added with their first implementation. */
 

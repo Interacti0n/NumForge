@@ -1,5 +1,5 @@
 #include "bigint_internal.h"
-#include <mysciencecalc/bigint.h>
+#include <numforge/bigint.h>
 
 #include <assert.h>
 #include <stdint.h>
