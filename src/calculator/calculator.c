@@ -1,5 +1,7 @@
 #include "calculator_internal.h"
 
+#include <limits.h>
+
 /*
 ------------------------------------------------------------------------------------------------------------------------------
     Shared calculator utilities. The tokenizer, parser, and evaluator use this
@@ -39,7 +41,39 @@ void calculator_context_init(CalculatorContext *context)
     }
 
     context->division_scale = 34;
+    context->output_scale = CALCULATOR_DEFAULT_OUTPUT_SCALE;
     context->rounding = BIGDECIMAL_ROUND_HALF_EVEN;
+}
+
+CalculatorStatus calculator_context_set_output_scale(CalculatorContext *context, int64_t output_scale)
+{
+    if (context == NULL)
+    {
+        return CALCULATOR_NULL_ARGUMENT;
+    }
+    if (output_scale < CALCULATOR_UNLIMITED_OUTPUT_SCALE)
+    {
+        return CALCULATOR_INVALID_ARGUMENT;
+    }
+
+    if (output_scale == CALCULATOR_UNLIMITED_OUTPUT_SCALE)
+    {
+        context->division_scale = 34;
+        context->output_scale = output_scale;
+        return CALCULATOR_OK;
+    }
+    if (output_scale > INT64_MAX - 4)
+    {
+        return CALCULATOR_SCALE_OVERFLOW;
+    }
+
+    context->division_scale = output_scale + 4;
+    if (context->division_scale < 34)
+    {
+        context->division_scale = 34;
+    }
+    context->output_scale = output_scale;
+    return CALCULATOR_OK;
 }
 
 void calculator_error_clear(CalculatorError *error)

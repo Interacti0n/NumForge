@@ -16,6 +16,10 @@ tokenizer, parser, evaluator, and BigDecimal implementation.
 - Exact decimal arithmetic with configurable rounding for division and
   rescaling.
 - Interactive expression calculator with source-positioned diagnostics.
+- Built-in 200-decimal-place approximations of `π`, `e`, and `φ` in the
+  calculator syntax.
+- Configurable result precision, full output mode, and readable scientific
+  notation for very large or very small non-zero results.
 - Local browser calculator served directly by the C executable; its requests
   are evaluated by the same parser and `BigDecimal` core.
 - Output/input aliasing for arithmetic operations, including
@@ -91,6 +95,12 @@ On Windows, the executable automatically opens `http://127.0.0.1:8765` in the
 default browser. It listens only on the local machine; press `Ctrl+C` in the
 terminal to stop it. With a single-configuration generator, the executable is
 normally at `build/numforge_web` instead.
+
+The page includes a clickable keypad for the current expression grammar,
+including `π`, `e`, and `φ`. Its precision control defaults to 10 decimal
+places; full output is also available. The dimmed function buttons are
+intentionally inactive and show planned features. See the
+[API overview](docs/API.md) for exact syntax and the local HTTP API.
 
 ## Library API
 

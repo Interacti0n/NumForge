@@ -10,7 +10,7 @@
     or working-directory setup is required to use the local calculator.
 ------------------------------------------------------------------------------------------------------------------------------
 */
-static const char NUMFORGE_WEB_PAGE[] =
+static const char NUMFORGE_WEB_PAGE_START[] =
     "<!doctype html>\n"
     "<html lang=\"sk\">\n"
     "<head>\n"
@@ -26,6 +26,17 @@ static const char NUMFORGE_WEB_PAGE[] =
     "    form { display: flex; gap: 10px; margin-top: 28px; }\n"
     "    input { min-width: 0; flex: 1; padding: 13px; border: 1px solid #3b4352; border-radius: 8px; background: #1c2028; color: inherit; font: 1rem ui-monospace, monospace; }\n"
     "    button { padding: 12px 18px; border: 0; border-radius: 8px; background: #ff9d36; color: #17110a; font-weight: 700; cursor: pointer; }\n"
+    "    .precision { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 14px; color: #adb5c3; font-size: .92rem; }\n"
+    "    .precision label { display: flex; align-items: center; gap: 7px; }\n"
+    "    .precision input[type=number] { width: 6.5rem; flex: none; padding: 8px; }\n"
+    "    .precision input[type=checkbox] { width: auto; flex: none; }\n"
+    "    .keypad { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }\n"
+    "    .keypad button { padding: 12px 6px; background: #282e39; color: #edf0f5; }\n"
+    "    .keypad button.operator, .keypad button.equals { background: #ff9d36; color: #17110a; }\n"
+    "    .keypad button.action { background: #414b5c; }\n"
+    "    .keypad button.future { color: #7d8798; background: #1a1e26; cursor: not-allowed; }\n"
+    "    .keypad.constants { grid-template-columns: repeat(3, minmax(0, 1fr)); }\n"
+    "    .keypad-label { margin: 24px 0 8px; color: #adb5c3; font-size: .84rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }\n"
     "    .result-panel { margin-top: 22px; padding: 16px; border-radius: 8px; background: #1c2028; }\n"
     "    .result-label { display: block; margin-bottom: 7px; color: #adb5c3; font-size: .84rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }\n"
     "    #result { display: block; min-height: 1.5em; font: 1.2rem ui-monospace, monospace; overflow-wrap: anywhere; }\n"
@@ -40,23 +51,74 @@ static const char NUMFORGE_WEB_PAGE[] =
     "  <h1>NumForge</h1>\n"
     "  <p>Zapíš výraz a NumForge ho vyhodnotí priamo cez C parser a presný BigDecimal.</p>\n"
     "  <form id=\"calculator\">\n"
-    "    <input id=\"expression\" aria-label=\"Matematický výraz\" value=\"0.1 + 0.2\" autocomplete=\"off\" autofocus>\n"
+    "    <input id=\"expression\" aria-label=\"Matematický výraz\" autocomplete=\"off\" autofocus>\n"
     "    <button type=\"submit\">Vypočítať</button>\n"
-    "  </form>\n"
+    "  </form>\n";
+
+static const char NUMFORGE_WEB_PAGE_KEYPAD[] =
+    "  <section class=\"keypad\" aria-label=\"Kalkulačná klávesnica\">\n"
+    "    <button type=\"button\" class=\"operator\" data-insert=\"(\">(</button><button type=\"button\" class=\"operator\" data-insert=\")\">)</button><button type=\"button\" data-insert=\".\">.</button><button type=\"button\" class=\"action\" data-action=\"clear\">C</button><button type=\"button\" class=\"action\" data-action=\"backspace\" aria-label=\"Vymazať posledný znak\">⌫</button>\n"
+    "  </section>\n"
+    "  <section class=\"precision\" aria-label=\"Nastavenie výstupnej presnosti\">\n"
+    "    <label>Desatinné miesta <input id=\"precision\" type=\"number\" min=\"0\" step=\"1\" value=\"10\" inputmode=\"numeric\"></label>\n"
+    "    <label><input id=\"full-precision\" type=\"checkbox\"> Plný výstup</label>\n"
+    "  </section>\n"
+    "  <p class=\"keypad-label\">Konštanty</p>\n"
+    "  <section class=\"keypad constants\" aria-label=\"Matematické konštanty\">\n"
+    "    <button type=\"button\" data-insert=\"&#960;\" title=\"π\">π</button><button type=\"button\" data-insert=\"e\" title=\"Eulerovo číslo\">e</button><button type=\"button\" data-insert=\"&#966;\" title=\"φ\">φ</button>\n"
+    "  </section>\n"
+    "  <section class=\"keypad\" aria-label=\"Číselná klávesnica\">\n"
+    "    <button type=\"button\" data-insert=\"7\">7</button><button type=\"button\" data-insert=\"8\">8</button><button type=\"button\" data-insert=\"9\">9</button><button type=\"button\" class=\"operator\" data-insert=\"/\">÷</button><button type=\"button\" class=\"operator\" data-insert=\"*\">×</button>\n"
+    "    <button type=\"button\" data-insert=\"4\">4</button><button type=\"button\" data-insert=\"5\">5</button><button type=\"button\" data-insert=\"6\">6</button><button type=\"button\" class=\"operator\" data-insert=\"-\">−</button><button type=\"button\" class=\"operator\" data-insert=\"+\">+</button>\n"
+    "    <button type=\"button\" data-insert=\"1\">1</button><button type=\"button\" data-insert=\"2\">2</button><button type=\"button\" data-insert=\"3\">3</button><button type=\"button\" data-insert=\"0\">0</button><button type=\"button\" class=\"equals\" data-action=\"evaluate\">=</button>\n"
+    "  </section>\n";
+
+static const char NUMFORGE_WEB_PAGE_FUTURE[] =
+    "  <p class=\"keypad-label\">Pripravované funkcie</p>\n"
+    "  <section class=\"keypad\" aria-label=\"Pripravované funkcie\">\n"
+    "    <button type=\"button\" class=\"future\" disabled title=\"Pripravované\">xʸ</button><button type=\"button\" class=\"future\" disabled title=\"Pripravované\">x²</button><button type=\"button\" class=\"future\" disabled title=\"Pripravované\">x³</button><button type=\"button\" class=\"future\" disabled title=\"Pripravované\">√x</button><button type=\"button\" class=\"future\" disabled title=\"Pripravované\">|x|</button>\n"
+    "    <button type=\"button\" class=\"future\" disabled title=\"Pripravované\">n!</button><button type=\"button\" class=\"future\" disabled title=\"Pripravované\">sin</button><button type=\"button\" class=\"future\" disabled title=\"Pripravované\">cos</button><button type=\"button\" class=\"future\" disabled title=\"Pripravované\">tan</button><button type=\"button\" class=\"future\" disabled title=\"Pripravované\">ln</button>\n"
+    "    <button type=\"button\" class=\"future\" disabled title=\"Pripravované\">log</button><button type=\"button\" class=\"future\" disabled title=\"Pripravované\">eˣ</button><button type=\"button\" class=\"future\" disabled title=\"Pripravované\">round</button>\n"
+    "  </section>\n"
     "  <section class=\"result-panel\" aria-live=\"polite\">\n"
     "    <span class=\"result-label\">Výsledok</span>\n"
-    "    <output id=\"result\">Pripravené</output>\n"
+    "    <output id=\"result\"></output>\n"
     "  </section>\n"
-    "  <a class=\"guide-link\" href=\"/api\">Ako funguje výpočet a API →</a>\n"
+    "  <a class=\"guide-link\" href=\"/api\">Ako funguje výpočet a API →</a>\n";
+
+static const char NUMFORGE_WEB_PAGE_SCRIPT[] =
     "  <script>\n"
     "    const form = document.querySelector('#calculator');\n"
     "    const expression = document.querySelector('#expression');\n"
     "    const result = document.querySelector('#result');\n"
+    "    const precision = document.querySelector('#precision');\n"
+    "    const fullPrecision = document.querySelector('#full-precision');\n"
+    "    function insertText(text) {\n"
+    "      const start = expression.selectionStart ?? expression.value.length;\n"
+    "      const end = expression.selectionEnd ?? start;\n"
+    "      expression.setRangeText(text, start, end, 'end'); expression.focus();\n"
+    "    }\n"
+    "    function eraseText() {\n"
+    "      const start = expression.selectionStart ?? expression.value.length;\n"
+    "      const end = expression.selectionEnd ?? start;\n"
+    "      if (start !== end) expression.setRangeText('', start, end, 'end');\n"
+    "      else if (start > 0) expression.setRangeText('', start - 1, start, 'end');\n"
+    "      expression.focus();\n"
+    "    }\n"
+    "    document.querySelectorAll('[data-insert]').forEach((button) => button.addEventListener('click', () => insertText(button.dataset.insert)));\n"
+    "    document.querySelectorAll('[data-action]').forEach((button) => button.addEventListener('click', () => {\n"
+    "      if (button.dataset.action === 'clear') { expression.value = ''; expression.focus(); }\n"
+    "      else if (button.dataset.action === 'backspace') eraseText();\n"
+    "      else form.requestSubmit();\n"
+    "    }));\n"
+    "    fullPrecision.addEventListener('change', () => { precision.disabled = fullPrecision.checked; });\n"
     "    form.addEventListener('submit', async (event) => {\n"
     "      event.preventDefault();\n"
     "      result.className = ''; result.textContent = 'Počítam…';\n"
     "      try {\n"
-    "        const response = await fetch('/api/evaluate', { method: 'POST', headers: { 'Content-Type': 'text/plain; charset=utf-8' }, body: expression.value });\n"
+    "        const requestedPrecision = fullPrecision.checked ? 'full' : precision.value;\n"
+    "        if (!fullPrecision.checked && (!/^[0-9]+$/.test(requestedPrecision))) throw new Error('Zadaj nezáporný celý počet desatinných miest.');\n"
+    "        const response = await fetch('/api/evaluate?precision=' + encodeURIComponent(requestedPrecision), { method: 'POST', headers: { 'Content-Type': 'text/plain; charset=utf-8' }, body: expression.value });\n"
     "        const data = await response.json();\n"
     "        if (!response.ok || !data.ok) throw new Error(data.error || 'Výpočet zlyhal.');\n"
     "        result.textContent = data.result;\n"
@@ -67,6 +129,14 @@ static const char NUMFORGE_WEB_PAGE[] =
     "  </script>\n"
     "</body>\n"
     "</html>\n";
+
+static const char *const NUMFORGE_WEB_PAGE[] = {
+    NUMFORGE_WEB_PAGE_START,
+    NUMFORGE_WEB_PAGE_KEYPAD,
+    NUMFORGE_WEB_PAGE_FUTURE,
+    NUMFORGE_WEB_PAGE_SCRIPT,
+    NULL
+};
 
 static const char NUMFORGE_API_PAGE_START[] =
     "<!doctype html>\n"
@@ -97,14 +167,19 @@ static const char NUMFORGE_API_PAGE_START[] =
     "  <p class=\"notice\">Sčítanie, odčítanie a násobenie desatinných čísel sú presné. Delenie má predvolených 34 desatinných miest a zaokrúhľuje pravidlom half-even.</p>\n"
     "  <h2>Čo môžeš zadať do kalkulačky</h2>\n"
     "  <table><tr><th>Prvok</th><th>Príklady</th></tr>\n"
-    "  <tr><td>Celé a desatinné čísla</td><td><code>42</code>, <code>-1.5</code>, <code>.25</code>, <code>1.</code></td></tr>\n"
-    "  <tr><td>Vedecký zápis</td><td><code>1.25e-3</code>, <code>6E4</code></td></tr>\n"
+    "  <tr><td>Celé a desatinné čísla</td><td><code>42</code>, <code>-1.5</code>, <code>1,5</code>, <code>.25</code>, <code>1.</code></td></tr>\n"
+    "  <tr><td>Vedecký zápis</td><td><code>1.25E-3</code>, <code>6E4</code>; veľké <code>E</code> je povinné</td></tr>\n"
     "  <tr><td>Operátory</td><td><code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>; násobenie a delenie majú vyššiu prioritu</td></tr>\n"
-    "  <tr><td>Zátvorky a znamienka</td><td><code>(2 + 3) * 4</code>, <code>-(2.5e-1) * 8</code></td></tr></table>\n"
-    "  <p>Momentálne nie sú podporované <code>^</code>, <code>%</code>, premenné, funkcie, konštanty ani implicitné násobenie ako <code>2(3 + 4)</code>.</p>\n"
+    "  <tr><td>Zátvorky a znamienka</td><td><code>(2 + 3) * 4</code>, <code>-(2.5E-1) * 8</code></td></tr>\n"
+    "  <tr><td>Konštanty</td><td><code>π</code>, <code>e</code>, <code>φ</code></td></tr>\n"
+    "  <tr><td>Implicitné násobenie</td><td><code>2π</code>, <code>πe</code>, <code>2(3 + 4)</code></td></tr></table>\n"
+    "  <p>Momentálne nie sú podporované <code>^</code>, <code>%</code>, premenné ani funkcie.</p>\n"
+    "  <p>Konštanty majú uložených 200 desatinných miest. Malé <code>e</code> vždy znamená Eulerovo číslo, preto <code>5e</code> znamená <code>5 * e</code>; vedecký zápis vždy používa veľké <code>E</code>, napríklad <code>5E-1</code>. Tlačidlá budúcich funkcií sú zámerne neaktívne; zatiaľ nepridávajú žiadnu syntax ani výpočet.</p>\n"
+    "  <h2>Výstupná presnosť</h2>\n"
+    "  <p>Nastavenie <strong>Desatinné miesta</strong> určuje počet miest, na ktoré sa výsledok zaokrúhli pravidlom half-even; predvolená hodnota je 10. Voľba <strong>Plný výstup</strong> nevynucuje výstupné zaokrúhlenie. Veľmi malé a veľké nenulové výsledky sa zobrazia vo vedeckom zápise s veľkým <code>E</code>, napríklad <code>1.25E-12</code>.</p>\n"
     "  <h2>Lokálne HTTP rozhranie</h2>\n"
-    "  <p>Vlastný lokálny klient môže poslať výraz ako obyčajný UTF-8 text na <code>POST /api/evaluate</code>. Vstup má limit 4096 bajtov.</p>\n"
-    "  <pre>POST /api/evaluate\nContent-Type: text/plain; charset=utf-8\n\n0.1 + 0.2\n\nHTTP 200\n{\"ok\":true,\"result\":\"0.3\"}</pre>\n"
+    "  <p>Vlastný lokálny klient môže poslať výraz ako obyčajný UTF-8 text na <code>POST /api/evaluate?precision=10</code>. Parameter <code>precision</code> je nezáporné celé číslo alebo <code>full</code>. Vstup má limit 4096 bajtov.</p>\n"
+    "  <pre>POST /api/evaluate?precision=10\nContent-Type: text/plain; charset=utf-8\n\nπ / 2\n\nHTTP 200\n{\"ok\":true,\"result\":\"1.5707963268\"}</pre>\n"
     "  <p>Neplatný výraz alebo delenie nulou vrátia HTTP 400 a JSON s <code>ok: false</code>, opisom chyby a stĺpcom chyby.</p>\n";
 
 static const char NUMFORGE_API_PAGE_C_LIBRARY[] =

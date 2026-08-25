@@ -1,6 +1,9 @@
 #include "evaluator.h"
 #include "expression_internal.h"
 
+#include <stdlib.h>
+#include <string.h>
+
 /*
 ------------------------------------------------------------------------------------------------------------------------------
     Evaluator implementation. It recursively evaluates AST nodes into temporary
@@ -34,6 +37,34 @@ static bool calculator_valid_rounding(BigDecimalRoundingMode rounding)
            rounding <= BIGDECIMAL_ROUND_HALF_EVEN;
 }
 
+static CalculatorStatus calculator_set_number(BigDecimal *value, const char *text)
+{
+    BigDecimalStatus decimal_status;
+    const char *separator = strchr(text, ',');
+
+    if (separator == NULL)
+    {
+        return calculator_from_bigdecimal_status(bigdecimal_set_string(value, text));
+    }
+
+    {
+        size_t length = strlen(text);
+        char *normalized = malloc(length + 1U);
+
+        if (normalized == NULL)
+        {
+            return CALCULATOR_OUT_OF_MEMORY;
+        }
+
+        memcpy(normalized, text, length + 1U);
+        normalized[separator - text] = '.';
+        decimal_status = bigdecimal_set_string(value, normalized);
+        free(normalized);
+    }
+
+    return calculator_from_bigdecimal_status(decimal_status);
+}
+
 static CalculatorStatus calculator_evaluate_expression(
     BigDecimal **result,
     const CalculatorExpression *expression,
@@ -53,8 +84,28 @@ static CalculatorStatus calculator_evaluate_expression(
             return CALCULATOR_OUT_OF_MEMORY;
         }
 
-        status = calculator_from_bigdecimal_status(
-            bigdecimal_set_string(value, expression->data.number.text));
+        status = calculator_set_number(value, expression->data.number.text);
+        if (status != CALCULATOR_OK)
+        {
+            bigdecimal_destroy(value);
+            calculator_error_set(error, status, expression->offset);
+            return status;
+        }
+
+        *result = value;
+        return CALCULATOR_OK;
+    }
+
+    if (expression->type == CALCULATOR_EXPRESSION_CONSTANT)
+    {
+        value = bigdecimal_create();
+        if (value == NULL)
+        {
+            calculator_error_set(error, CALCULATOR_OUT_OF_MEMORY, expression->offset);
+            return CALCULATOR_OUT_OF_MEMORY;
+        }
+
+        status = calculator_constant_set_value(value, expression->data.constant.constant);
         if (status != CALCULATOR_OK)
         {
             bigdecimal_destroy(value);
@@ -195,6 +246,11 @@ CalculatorStatus calculator_evaluate(
         return CALCULATOR_NULL_ARGUMENT;
     }
     if (!calculator_valid_rounding(context->rounding))
+    {
+        calculator_error_set(error, CALCULATOR_INVALID_ARGUMENT, 0);
+        return CALCULATOR_INVALID_ARGUMENT;
+    }
+    if (context->output_scale < CALCULATOR_UNLIMITED_OUTPUT_SCALE)
     {
         calculator_error_set(error, CALCULATOR_INVALID_ARGUMENT, 0);
         return CALCULATOR_INVALID_ARGUMENT;

@@ -15,7 +15,8 @@
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
-    Evaluate one expression with NumForge's default calculator policy.
+    Evaluate one expression with NumForge's default calculator policy and the
+    default 10-decimal-place output format.
 
     On success, result receives an owned string released with free(). On
     failure, result receives NULL and error identifies the calculator failure.
@@ -23,6 +24,12 @@
 */
 CalculatorStatus numforge_web_evaluate(
     const char *input,
+    char **result,
+    CalculatorError *error
+);
+CalculatorStatus numforge_web_evaluate_with_output_scale(
+    const char *input,
+    int64_t output_scale,
     char **result,
     CalculatorError *error
 );

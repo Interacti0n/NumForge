@@ -32,6 +32,46 @@ void test_web_api_evaluates_with_exact_c_bigdecimal(void)
     TEST_ASSERT_EQUAL(CALCULATOR_OK, numforge_web_evaluate("(12.5 - 2.5) / 4", &result, &error));
     TEST_ASSERT_EQUAL_STRING("2.5", result);
     free(result);
+
+    result = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, numforge_web_evaluate("1,25E-1 + .25", &result, &error));
+    TEST_ASSERT_EQUAL_STRING("0.375", result);
+    free(result);
+
+    result = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, numforge_web_evaluate("\xCF\x80", &result, &error));
+    TEST_ASSERT_EQUAL_STRING("3.1415926536", result);
+    free(result);
+}
+
+void test_web_api_honors_output_precision(void)
+{
+    CalculatorError error;
+    char *result = NULL;
+
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,
+                      numforge_web_evaluate_with_output_scale("1 / 3", 3, &result, &error));
+    TEST_ASSERT_EQUAL_STRING("0.333", result);
+    free(result);
+
+    result = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,
+                      numforge_web_evaluate_with_output_scale("1.234567890123E-45", 10, &result, &error));
+    TEST_ASSERT_EQUAL_STRING("1.2345678901E-45", result);
+    free(result);
+
+    result = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,
+                      numforge_web_evaluate_with_output_scale("1E100000", 10, &result, &error));
+    TEST_ASSERT_EQUAL_STRING("1E+100000", result);
+    free(result);
+
+    result = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,
+                      numforge_web_evaluate_with_output_scale("\xCF\x86", CALCULATOR_UNLIMITED_OUTPUT_SCALE,
+                                                               &result, &error));
+    TEST_ASSERT_EQUAL_STRING_LEN("1.61803398874989484820", result, 22);
+    free(result);
 }
 
 void test_web_api_preserves_calculator_errors(void)
@@ -69,6 +109,7 @@ int main(void)
     UNITY_BEGIN();
 
     RUN_TEST(test_web_api_evaluates_with_exact_c_bigdecimal);
+    RUN_TEST(test_web_api_honors_output_precision);
     RUN_TEST(test_web_api_preserves_calculator_errors);
     RUN_TEST(test_web_api_rejects_empty_and_oversized_input);
 

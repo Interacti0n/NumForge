@@ -1,4 +1,6 @@
 #include <stdbool.h>
+#include <errno.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,6 +9,7 @@
 
 #include "calculator_internal.h"
 #include "evaluator.h"
+#include "formatter.h"
 #include "parser.h"
 
 #define CALCULATOR_INPUT_CAPACITY 4096U
@@ -50,6 +53,54 @@ static void calculator_print_error(const char *input, CalculatorError error)
     fputs("^\n", stderr);
 }
 
+static bool calculator_handle_precision_command(const char *input, CalculatorContext *context)
+{
+    const char *value;
+    char *end;
+    long long parsed;
+    CalculatorStatus status;
+
+    if (strcmp(input, "precision") == 0)
+    {
+        if (context->output_scale == CALCULATOR_UNLIMITED_OUTPUT_SCALE)
+        {
+            puts("output precision: full");
+        }
+        else
+        {
+            printf("output precision: %" PRId64 " decimal places\n", context->output_scale);
+        }
+        return true;
+    }
+    if (strncmp(input, "precision ", strlen("precision ")) != 0)
+    {
+        return false;
+    }
+
+    value = input + strlen("precision ");
+    if (strcmp(value, "full") == 0)
+    {
+        status = calculator_context_set_output_scale(context, CALCULATOR_UNLIMITED_OUTPUT_SCALE);
+    }
+    else
+    {
+        errno = 0;
+        parsed = strtoll(value, &end, 10);
+        if (errno != 0 || end == value || *end != '\0' || parsed < 0)
+        {
+            fputs("precision must be a non-negative whole number or 'full'\n", stderr);
+            return true;
+        }
+        status = calculator_context_set_output_scale(context, (int64_t)parsed);
+    }
+
+    if (status != CALCULATOR_OK)
+    {
+        fprintf(stderr, "failed to set precision: %s\n", calculator_status_to_string(status));
+    }
+    return true;
+}
+
 /*
 ------------------------------------------------------------------------------------------------------------------------------
     Main command-line calculator operation.
@@ -62,7 +113,8 @@ int main(void)
 
     calculator_context_init(&context);
     puts("NumForge calculator");
-    puts("Enter an expression using +, -, *, /, and parentheses. Type exit to quit.");
+    puts("Enter an expression using +, -, *, /, parentheses, and the constants π, e, φ. Type exit to quit.");
+    puts("Use 'precision N' or 'precision full' to set output formatting.");
 
     for (;;)
     {
@@ -105,6 +157,10 @@ int main(void)
         {
             break;
         }
+        if (calculator_handle_precision_command(input, &context))
+        {
+            continue;
+        }
 
         status = calculator_parse(input, &expression, &error);
         if (status != CALCULATOR_OK)
@@ -131,7 +187,7 @@ int main(void)
         }
 
         text = NULL;
-        if (bigdecimal_to_string(result, &text) != BIGDECIMAL_OK)
+        if (calculator_format_result(result, &context, &text) != CALCULATOR_OK)
         {
             bigdecimal_destroy(result);
             fputs("error: failed to format result\n", stderr);

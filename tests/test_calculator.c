@@ -5,6 +5,7 @@
 #include "calculator_internal.h"
 #include "evaluator.h"
 #include "expression_internal.h"
+#include "formatter.h"
 #include "parser.h"
 #include "tokenizer.h"
 
@@ -87,9 +88,29 @@ void test_context_defaults_and_status_strings(void)
     calculator_context_init(&context);
 
     TEST_ASSERT_EQUAL_INT64(34, context.division_scale);
+    TEST_ASSERT_EQUAL_INT64(CALCULATOR_DEFAULT_OUTPUT_SCALE, context.output_scale);
     TEST_ASSERT_EQUAL(BIGDECIMAL_ROUND_HALF_EVEN, context.rounding);
     TEST_ASSERT_EQUAL_STRING("syntax error", calculator_status_to_string(CALCULATOR_SYNTAX_ERROR));
     TEST_ASSERT_EQUAL_STRING("unknown status", calculator_status_to_string((CalculatorStatus)999));
+}
+
+void test_context_configures_output_precision(void)
+{
+    CalculatorContext context;
+
+    calculator_context_init(&context);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_context_set_output_scale(&context, 48));
+    TEST_ASSERT_EQUAL_INT64(48, context.output_scale);
+    TEST_ASSERT_EQUAL_INT64(52, context.division_scale);
+
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,
+                      calculator_context_set_output_scale(&context, CALCULATOR_UNLIMITED_OUTPUT_SCALE));
+    TEST_ASSERT_EQUAL_INT64(CALCULATOR_UNLIMITED_OUTPUT_SCALE, context.output_scale);
+    TEST_ASSERT_EQUAL_INT64(34, context.division_scale);
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, calculator_context_set_output_scale(&context, -2));
+    TEST_ASSERT_EQUAL(CALCULATOR_SCALE_OVERFLOW, calculator_context_set_output_scale(&context, INT64_MAX));
+    TEST_ASSERT_EQUAL_INT64(CALCULATOR_UNLIMITED_OUTPUT_SCALE, context.output_scale);
+    TEST_ASSERT_EQUAL_INT64(34, context.division_scale);
 }
 
 void test_error_helpers(void)
@@ -114,8 +135,8 @@ void test_tokenizer_produces_numbers_operators_and_offsets(void)
     CalculatorTokenizer tokenizer;
 
     TEST_ASSERT_EQUAL(CALCULATOR_OK,
-                      calculator_tokenizer_init(&tokenizer, " \t12.5e-2 + (.3 * 1.) / 4\r\n"));
-    assert_next_token(&tokenizer, CALCULATOR_TOKEN_NUMBER, "12.5e-2", 7, 2);
+                      calculator_tokenizer_init(&tokenizer, " \t12.5E-2 + (.3 * 1.) / 4\r\n"));
+    assert_next_token(&tokenizer, CALCULATOR_TOKEN_NUMBER, "12.5E-2", 7, 2);
     assert_next_token(&tokenizer, CALCULATOR_TOKEN_PLUS, "+", 1, 10);
     assert_next_token(&tokenizer, CALCULATOR_TOKEN_LEFT_PAREN, "(", 1, 12);
     assert_next_token(&tokenizer, CALCULATOR_TOKEN_NUMBER, ".3", 2, 13);
@@ -140,10 +161,48 @@ void test_tokenizer_keeps_signs_as_operators(void)
     assert_next_token(&tokenizer, CALCULATOR_TOKEN_END, "", 0, 8);
 }
 
+void test_tokenizer_accepts_comma_decimal_separator(void)
+{
+    CalculatorTokenizer tokenizer;
+
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_tokenizer_init(&tokenizer, ".5 + 1,25E-1"));
+    assert_next_token(&tokenizer, CALCULATOR_TOKEN_NUMBER, ".5", 2, 0);
+    assert_next_token(&tokenizer, CALCULATOR_TOKEN_PLUS, "+", 1, 3);
+    assert_next_token(&tokenizer, CALCULATOR_TOKEN_NUMBER, "1,25E-1", 7, 5);
+    assert_next_token(&tokenizer, CALCULATOR_TOKEN_END, "", 0, 12);
+}
+
+void test_tokenizer_produces_identifiers(void)
+{
+    CalculatorTokenizer tokenizer;
+
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_tokenizer_init(&tokenizer, "PI + e + phi"));
+    assert_next_token(&tokenizer, CALCULATOR_TOKEN_IDENTIFIER, "PI", 2, 0);
+    assert_next_token(&tokenizer, CALCULATOR_TOKEN_PLUS, "+", 1, 3);
+    assert_next_token(&tokenizer, CALCULATOR_TOKEN_IDENTIFIER, "e", 1, 5);
+    assert_next_token(&tokenizer, CALCULATOR_TOKEN_PLUS, "+", 1, 7);
+    assert_next_token(&tokenizer, CALCULATOR_TOKEN_IDENTIFIER, "phi", 3, 9);
+    assert_next_token(&tokenizer, CALCULATOR_TOKEN_END, "", 0, 12);
+}
+
+void test_tokenizer_separates_constant_e_from_scientific_notation(void)
+{
+    CalculatorTokenizer tokenizer;
+
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_tokenizer_init(&tokenizer, "5e + 1E-2 + \xCF\x80"));
+    assert_next_token(&tokenizer, CALCULATOR_TOKEN_NUMBER, "5", 1, 0);
+    assert_next_token(&tokenizer, CALCULATOR_TOKEN_IDENTIFIER, "e", 1, 1);
+    assert_next_token(&tokenizer, CALCULATOR_TOKEN_PLUS, "+", 1, 3);
+    assert_next_token(&tokenizer, CALCULATOR_TOKEN_NUMBER, "1E-2", 4, 5);
+    assert_next_token(&tokenizer, CALCULATOR_TOKEN_PLUS, "+", 1, 10);
+    assert_next_token(&tokenizer, CALCULATOR_TOKEN_IDENTIFIER, "\xCF\x80", 2, 12);
+    assert_next_token(&tokenizer, CALCULATOR_TOKEN_END, "", 0, 14);
+}
+
 void test_tokenizer_rejects_invalid_tokens(void)
 {
-    const char *input[] = { ".", "@", "1e", "1E+", "1e-" };
-    const size_t expected_offset[] = { 0, 0, 1, 1, 1 };
+    const char *input[] = { ".", "@" };
+    const size_t expected_offset[] = { 0, 0 };
 
     for (size_t index = 0; index < sizeof(input) / sizeof(input[0]); index++)
     {
@@ -167,13 +226,23 @@ void test_tokenizer_rejects_invalid_tokens(void)
 
 void test_parser_accepts_expression_grammar(void)
 {
-    const char *input[] = { "1", "-1", "+.5", "1 + 2 * 3", "(1 + 2) / 3", "1e-2 / .5" };
+    const char *input[] = { "1", "-1", "+.5", "\xCF\x80", "\xCF\x80" "e", "\xCF\x86", "1 + 2 * 3", "2(1 + 2)", "1E-2 / .5" };
 
     for (size_t index = 0; index < sizeof(input) / sizeof(input[0]); index++)
     {
         CalculatorExpression *expression = parse_expression(input[index]);
         calculator_expression_destroy(expression);
     }
+}
+
+void test_parser_rejects_unknown_identifier(void)
+{
+    CalculatorExpression *expression = NULL;
+    CalculatorError error;
+
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_TOKEN, calculator_parse("pi", &expression, &error));
+    TEST_ASSERT_NULL(expression);
+    TEST_ASSERT_EQUAL_UINT(0, error.offset);
 }
 
 void test_parser_builds_precedence_and_associativity(void)
@@ -198,9 +267,8 @@ void test_parser_builds_precedence_and_associativity(void)
 
 void test_parser_reports_syntax_and_lexical_errors(void)
 {
-    const char *input[] = { "", "()", "(1", "1 +", "1 2", "1)", "+)", "1 @ 2" };
+    const char *input[] = { "", "()", "(1", "1 +", "1)", "+)", "1 @ 2" };
     const CalculatorStatus expected_status[] = {
-        CALCULATOR_SYNTAX_ERROR,
         CALCULATOR_SYNTAX_ERROR,
         CALCULATOR_SYNTAX_ERROR,
         CALCULATOR_SYNTAX_ERROR,
@@ -209,7 +277,7 @@ void test_parser_reports_syntax_and_lexical_errors(void)
         CALCULATOR_SYNTAX_ERROR,
         CALCULATOR_INVALID_TOKEN
     };
-    const size_t expected_offset[] = { 0, 1, 2, 3, 2, 1, 1, 2 };
+    const size_t expected_offset[] = { 0, 1, 2, 3, 1, 1, 2 };
 
     for (size_t index = 0; index < sizeof(input) / sizeof(input[0]); index++)
     {
@@ -244,6 +312,55 @@ void test_evaluator_respects_precedence_and_parentheses(void)
 
     result = evaluate_expression("-1.5 + +2", &context);
     assert_decimal_equals("0.5", result);
+    bigdecimal_destroy(result);
+
+    result = evaluate_expression("0,1 + 0,2", &context);
+    assert_decimal_equals("0.3", result);
+    bigdecimal_destroy(result);
+
+    result = evaluate_expression("\xCF\x80 - \xCF\x80 + e - e + \xCF\x86 - \xCF\x86", &context);
+    assert_decimal_equals("0", result);
+    bigdecimal_destroy(result);
+
+    result = evaluate_expression("2(2 + 2)", &context);
+    assert_decimal_equals("8", result);
+    bigdecimal_destroy(result);
+
+    result = evaluate_expression("\xCF\x80" "e - \xCF\x80 * e + 10\xCF\x80 - 10 * \xCF\x80 + 5e - 5 * e", &context);
+    assert_decimal_equals("0", result);
+    bigdecimal_destroy(result);
+
+    result = evaluate_expression("1e-2 - (e - 2)", &context);
+    assert_decimal_equals("0", result);
+    bigdecimal_destroy(result);
+}
+
+void test_formatter_applies_precision_and_scientific_notation(void)
+{
+    CalculatorContext context;
+    BigDecimal *result;
+    char *text = NULL;
+
+    calculator_context_init(&context);
+    result = evaluate_expression("1 / 3", &context);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_format_result(result, &context, &text));
+    TEST_ASSERT_EQUAL_STRING("0.3333333333", text);
+    free(text);
+    bigdecimal_destroy(result);
+
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_context_set_output_scale(&context, 10));
+    result = evaluate_expression("1.234567890123E-12", &context);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_format_result(result, &context, &text));
+    TEST_ASSERT_EQUAL_STRING("1.2345678901E-12", text);
+    free(text);
+    bigdecimal_destroy(result);
+
+    result = evaluate_expression("1234567890123", &context);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_format_result(result, &context, &text));
+    TEST_ASSERT_EQUAL_STRING("1.2345678901E+12", text);
+    free(text);
     bigdecimal_destroy(result);
 }
 
@@ -299,15 +416,21 @@ int main(void)
     UNITY_BEGIN();
 
     RUN_TEST(test_context_defaults_and_status_strings);
+    RUN_TEST(test_context_configures_output_precision);
     RUN_TEST(test_error_helpers);
     RUN_TEST(test_tokenizer_produces_numbers_operators_and_offsets);
     RUN_TEST(test_tokenizer_keeps_signs_as_operators);
+    RUN_TEST(test_tokenizer_accepts_comma_decimal_separator);
+    RUN_TEST(test_tokenizer_produces_identifiers);
+    RUN_TEST(test_tokenizer_separates_constant_e_from_scientific_notation);
     RUN_TEST(test_tokenizer_rejects_invalid_tokens);
     RUN_TEST(test_parser_accepts_expression_grammar);
     RUN_TEST(test_parser_builds_precedence_and_associativity);
+    RUN_TEST(test_parser_rejects_unknown_identifier);
     RUN_TEST(test_parser_reports_syntax_and_lexical_errors);
     RUN_TEST(test_evaluator_respects_precedence_and_parentheses);
     RUN_TEST(test_evaluator_division_uses_context);
+    RUN_TEST(test_formatter_applies_precision_and_scientific_notation);
     RUN_TEST(test_evaluator_reports_arithmetic_errors_without_changing_result);
 
     return UNITY_END();

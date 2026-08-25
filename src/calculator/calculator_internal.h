@@ -36,8 +36,12 @@ typedef enum CalculatorStatus
 typedef struct CalculatorContext
 {
     int64_t division_scale;
+    int64_t output_scale;
     BigDecimalRoundingMode rounding;
 } CalculatorContext;
+
+#define CALCULATOR_DEFAULT_OUTPUT_SCALE 10
+#define CALCULATOR_UNLIMITED_OUTPUT_SCALE (-1)
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
@@ -60,6 +64,10 @@ const char *calculator_status_to_string( /*Human-readable description of a Calcu
 );
 void calculator_context_init(
     CalculatorContext *context
+);
+CalculatorStatus calculator_context_set_output_scale(
+    CalculatorContext *context,
+    int64_t output_scale
 );
 void calculator_error_clear(
     CalculatorError *error

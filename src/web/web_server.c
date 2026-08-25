@@ -200,7 +200,49 @@ static bool numforge_request_target(const char *request, char *method, size_t me
 #endif
 }
 
-static void numforge_handle_evaluation(NumForgeSocket socket, const char *body)
+static bool numforge_parse_output_scale(const char *target, int64_t *output_scale)
+{
+    const char *value;
+    char *end;
+    long long parsed;
+
+    if (target == NULL || output_scale == NULL)
+    {
+        return false;
+    }
+    if (strcmp(target, "/api/evaluate") == 0)
+    {
+        *output_scale = CALCULATOR_DEFAULT_OUTPUT_SCALE;
+        return true;
+    }
+    if (strncmp(target, "/api/evaluate?precision=", strlen("/api/evaluate?precision=")) != 0)
+    {
+        return false;
+    }
+
+    value = target + strlen("/api/evaluate?precision=");
+    if (strcmp(value, "full") == 0)
+    {
+        *output_scale = CALCULATOR_UNLIMITED_OUTPUT_SCALE;
+        return true;
+    }
+
+    errno = 0;
+    parsed = strtoll(value, &end, 10);
+    if (errno != 0 || end == value || *end != '\0' || parsed < 0)
+    {
+        return false;
+    }
+
+    *output_scale = (int64_t)parsed;
+    return true;
+}
+
+static void numforge_handle_evaluation(
+    NumForgeSocket socket,
+    const char *body,
+    int64_t output_scale
+)
 {
     CalculatorError error;
     CalculatorStatus status;
@@ -208,7 +250,7 @@ static void numforge_handle_evaluation(NumForgeSocket socket, const char *body)
     char *response;
     size_t response_capacity;
 
-    status = numforge_web_evaluate(body, &result, &error);
+    status = numforge_web_evaluate_with_output_scale(body, output_scale, &result, &error);
     if (status == CALCULATOR_OK)
     {
         response_capacity = strlen(result) + 32U;
@@ -251,6 +293,7 @@ static void numforge_handle_connection(NumForgeSocket socket)
     char target[128];
     const char *body;
     size_t length;
+    int64_t output_scale;
 
     if (!numforge_read_request(socket, request, sizeof(request), &length) ||
         !numforge_request_target(request, method, sizeof(method), target, sizeof(target)))
@@ -268,15 +311,16 @@ static void numforge_handle_connection(NumForgeSocket socket)
 
     if (strcmp(method, "GET") == 0 && strcmp(target, "/") == 0)
     {
-        numforge_send_response(socket, 200, "OK", "text/html; charset=utf-8", NUMFORGE_WEB_PAGE);
+        numforge_send_page(socket, NUMFORGE_WEB_PAGE);
     }
     else if (strcmp(method, "GET") == 0 && strcmp(target, "/api") == 0)
     {
         numforge_send_page(socket, NUMFORGE_API_PAGE);
     }
-    else if (strcmp(method, "POST") == 0 && strcmp(target, "/api/evaluate") == 0 && body != NULL)
+    else if (strcmp(method, "POST") == 0 && body != NULL &&
+             numforge_parse_output_scale(target, &output_scale))
     {
-        numforge_handle_evaluation(socket, body);
+        numforge_handle_evaluation(socket, body, output_scale);
     }
     else
     {

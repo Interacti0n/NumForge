@@ -23,6 +23,30 @@ static bool calculator_is_digit(char character)
     return character >= '0' && character <= '9';
 }
 
+static bool calculator_is_identifier_start(char character)
+{
+    return (character >= 'A' && character <= 'Z') ||
+           (character >= 'a' && character <= 'z') ||
+           character == '_';
+}
+
+static bool calculator_is_identifier_continue(char character)
+{
+    return calculator_is_identifier_start(character) || calculator_is_digit(character);
+}
+
+static bool calculator_is_greek_constant_start(const char *text)
+{
+    const unsigned char *bytes = (const unsigned char *)text;
+
+    return bytes[0] == 0xCFU && (bytes[1] == 0x80U || bytes[1] == 0x86U);
+}
+
+static bool calculator_is_decimal_separator(char character)
+{
+    return character == '.' || character == ',';
+}
+
 static void calculator_set_token(
     CalculatorToken *token,
     CalculatorTokenType type,
@@ -54,7 +78,7 @@ static CalculatorStatus calculator_read_number(
         cursor++;
     }
 
-    if (tokenizer->input[cursor] == '.')
+    if (calculator_is_decimal_separator(tokenizer->input[cursor]))
     {
         cursor++;
         while (calculator_is_digit(tokenizer->input[cursor]))
@@ -70,29 +94,58 @@ static CalculatorStatus calculator_read_number(
         return CALCULATOR_INVALID_TOKEN;
     }
 
-    if (tokenizer->input[cursor] == 'e' || tokenizer->input[cursor] == 'E')
+    if (tokenizer->input[cursor] == 'E')
     {
-        size_t exponent_offset = cursor;
+        size_t exponent_cursor = cursor + 1U;
 
-        cursor++;
-        if (tokenizer->input[cursor] == '+' || tokenizer->input[cursor] == '-')
+        if (tokenizer->input[exponent_cursor] == '+' || tokenizer->input[exponent_cursor] == '-')
         {
-            cursor++;
+            exponent_cursor++;
         }
 
-        if (!calculator_is_digit(tokenizer->input[cursor]))
+        if (calculator_is_digit(tokenizer->input[exponent_cursor]))
         {
-            calculator_error_set(error, CALCULATOR_INVALID_TOKEN, exponent_offset);
-            return CALCULATOR_INVALID_TOKEN;
-        }
+            cursor = exponent_cursor + 1U;
 
-        do
-        {
-            cursor++;
-        } while (calculator_is_digit(tokenizer->input[cursor]));
+            while (calculator_is_digit(tokenizer->input[cursor]))
+            {
+                cursor++;
+            }
+        }
     }
 
     calculator_set_token(token, CALCULATOR_TOKEN_NUMBER, tokenizer->input + start,
+                         cursor - start, start);
+    tokenizer->offset = cursor;
+    calculator_error_clear(error);
+    return CALCULATOR_OK;
+}
+
+static CalculatorStatus calculator_read_identifier(
+    CalculatorTokenizer *tokenizer,
+    CalculatorToken *token,
+    CalculatorError *error
+)
+{
+    size_t start = tokenizer->offset;
+    size_t cursor;
+
+    if (calculator_is_greek_constant_start(tokenizer->input + start))
+    {
+        calculator_set_token(token, CALCULATOR_TOKEN_IDENTIFIER, tokenizer->input + start, 2U, start);
+        tokenizer->offset = start + 2U;
+        calculator_error_clear(error);
+        return CALCULATOR_OK;
+    }
+
+    cursor = start + 1U;
+
+    while (calculator_is_identifier_continue(tokenizer->input[cursor]))
+    {
+        cursor++;
+    }
+
+    calculator_set_token(token, CALCULATOR_TOKEN_IDENTIFIER, tokenizer->input + start,
                          cursor - start, start);
     tokenizer->offset = cursor;
     calculator_error_clear(error);
@@ -139,9 +192,15 @@ CalculatorStatus calculator_tokenizer_next(
         char character = tokenizer->input[offset];
 
         if (calculator_is_digit(character) ||
-            (character == '.' && calculator_is_digit(tokenizer->input[offset + 1U])))
+            (calculator_is_decimal_separator(character) &&
+             calculator_is_digit(tokenizer->input[offset + 1U])))
         {
             return calculator_read_number(tokenizer, token, error);
+        }
+        if (calculator_is_greek_constant_start(tokenizer->input + offset) ||
+            calculator_is_identifier_start(character))
+        {
+            return calculator_read_identifier(tokenizer, token, error);
         }
 
         switch (character)

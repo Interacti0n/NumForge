@@ -4,6 +4,7 @@
 #include <numforge/bigdecimal.h>
 
 #include "evaluator.h"
+#include "formatter.h"
 #include "parser.h"
 #include "web_api.h"
 
@@ -16,6 +17,17 @@
 
 CalculatorStatus numforge_web_evaluate(
     const char *input,
+    char **result,
+    CalculatorError *error
+)
+{
+    return numforge_web_evaluate_with_output_scale(
+        input, CALCULATOR_DEFAULT_OUTPUT_SCALE, result, error);
+}
+
+CalculatorStatus numforge_web_evaluate_with_output_scale(
+    const char *input,
+    int64_t output_scale,
     char **result,
     CalculatorError *error
 )
@@ -55,12 +67,23 @@ CalculatorStatus numforge_web_evaluate(
     }
 
     calculator_context_init(&context);
+    status = calculator_context_set_output_scale(&context, output_scale);
+    if (status != CALCULATOR_OK)
+    {
+        calculator_expression_destroy(expression);
+        bigdecimal_destroy(decimal);
+        calculator_error_set(error, status, 0);
+        return status;
+    }
     status = calculator_evaluate(decimal, expression, &context, error);
     calculator_expression_destroy(expression);
-    if (status == CALCULATOR_OK && bigdecimal_to_string(decimal, result) != BIGDECIMAL_OK)
+    if (status == CALCULATOR_OK)
     {
-        status = CALCULATOR_OUT_OF_MEMORY;
-        calculator_error_set(error, status, 0);
+        status = calculator_format_result(decimal, &context, result);
+        if (status != CALCULATOR_OK)
+        {
+            calculator_error_set(error, status, 0);
+        }
     }
 
     bigdecimal_destroy(decimal);

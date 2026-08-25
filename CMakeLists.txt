@@ -46,9 +46,11 @@ add_library(numforge
     src/bigint/bigint.c
     src/bigdecimal/bigdecimal.c
     src/calculator/calculator.c
+    src/calculator/constants.c
     src/calculator/tokenizer.c
     src/calculator/parser.c
     src/calculator/evaluator.c
+    src/calculator/formatter.c
     src/web/web_api.c
 )
 

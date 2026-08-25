@@ -73,36 +73,54 @@ keeps decimal places; a negative scale rounds to tens, hundreds, and so on.
 ## Calculator expressions
 
 The calculator is currently an application layer, not a public C header. It
-accepts decimal numbers, optional scientific exponent notation, whitespace,
-parentheses, unary `+`/`-`, and binary `+`, `-`, `*`, `/`.
+accepts decimal numbers with `.` or `,` as the decimal separator, optional
+uppercase-`E` scientific exponent notation, `π`, `e`, and `φ` constants, whitespace,
+parentheses, unary `+`/`-`, explicit or implicit multiplication, and binary
+`+`, `-`, `*`, `/`.
 
 ```text
 expression  := term (('+' | '-') term)*
-term        := unary (('*' | '/') unary)*
 unary       := ('+' | '-') unary | primary
-primary     := NUMBER | '(' expression ')'
+primary     := NUMBER | CONSTANT | '(' expression ')'
+term        := unary (('*' | '/' | IMPLICIT_MULTIPLY) unary)*
+CONSTANT    := π | e | φ
 ```
 
-Examples: `0.1 + 0.2`, `-(2.5e-1) * 8`, and `(12.5 - 2.5) / 4`.
-Exponentiation, modulo, variables, functions, constants, and implicit
-multiplication are not implemented yet. The default division policy produces
-34 decimal places and uses half-even rounding.
+Examples: `0.1 + 0.2`, `π / 2`, `πe`, `10π`, `2(3 + 4)`,
+`-(2.5E-1) * 8`, and `(12.5 - 2.5) / 4`. Each constant currently has 200
+stored decimal places. Lowercase `e` always means Euler's constant, so `5e`
+means `5 * e`. Scientific notation always uses uppercase `E`: `5E-1` means
+`0.5`. Exponentiation, modulo, variables, and functions are not implemented
+yet. The default division policy produces 34 decimal places and uses half-even
+rounding.
+
+The local browser page has active keypad buttons for this grammar. Its power,
+root, trigonometric, logarithmic, rounding, absolute value, and factorial
+controls remain visibly marked as planned and disabled. The keypad inserts
+`.`, while directly typed `,` is accepted as the same decimal separator.
+
+Results default to 10 decimal places, rounded half-even. A caller can request
+any non-negative output scale that available memory permits, or `full` to skip
+output rounding. Divisions use the requested scale plus four guard digits when
+needed. Very large or small non-zero output uses scientific notation at an
+absolute exponent of 10 or greater; its mantissa is rounded to at most the
+selected number of decimal places, for example `1.2345678901E-12`.
 
 ## Local HTTP API
 
 `numforge_web` serves the calculator and exposes one local endpoint:
 
 ```text
-POST /api/evaluate
+POST /api/evaluate?precision=10
 Content-Type: text/plain; charset=utf-8
 
-0.1 + 0.2
+π / 2
 ```
 
 A successful response is HTTP 200:
 
 ```json
-{"ok":true,"result":"0.3"}
+{"ok":true,"result":"1.5707963268"}
 ```
 
 Invalid expressions and arithmetic errors return HTTP 400:
@@ -111,5 +129,6 @@ Invalid expressions and arithmetic errors return HTTP 400:
 {"ok":false,"error":"division by zero at column 3"}
 ```
 
-The local server accepts expressions up to 4096 bytes and listens only on
-`127.0.0.1:8765`.
+`precision` is optional: it accepts a non-negative whole number or `full`; if
+omitted, it defaults to `10`. The local server accepts expressions up to 4096
+bytes and listens only on `127.0.0.1:8765`.

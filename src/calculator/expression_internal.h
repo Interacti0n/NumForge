@@ -2,6 +2,7 @@
 #define NUMFORGE_CALCULATOR_EXPRESSION_INTERNAL_H
 
 #include "parser.h"
+#include "constants.h"
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
@@ -15,6 +16,7 @@
 typedef enum CalculatorExpressionType
 {
     CALCULATOR_EXPRESSION_NUMBER,
+    CALCULATOR_EXPRESSION_CONSTANT,
     CALCULATOR_EXPRESSION_UNARY,
     CALCULATOR_EXPRESSION_BINARY
 } CalculatorExpressionType;
@@ -44,6 +46,11 @@ struct CalculatorExpression
         {
             char *text;
         } number;
+
+        struct
+        {
+            CalculatorConstant constant;
+        } constant;
 
         struct
         {

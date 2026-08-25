@@ -67,6 +67,22 @@ static CalculatorExpression *calculator_expression_create_number(const Calculato
     return expression;
 }
 
+static CalculatorExpression *calculator_expression_create_constant(
+    const CalculatorToken *token,
+    CalculatorConstant constant
+)
+{
+    CalculatorExpression *expression = calculator_expression_create(
+        CALCULATOR_EXPRESSION_CONSTANT, token->offset);
+
+    if (expression != NULL)
+    {
+        expression->data.constant.constant = constant;
+    }
+
+    return expression;
+}
+
 static CalculatorExpression *calculator_expression_create_unary(
     CalculatorUnaryOperator operation,
     size_t offset,
@@ -125,6 +141,34 @@ static CalculatorStatus calculator_parse_primary(
     if (parser->current.type == CALCULATOR_TOKEN_NUMBER)
     {
         expression = calculator_expression_create_number(&parser->current);
+        if (expression == NULL)
+        {
+            calculator_error_set(parser->error, CALCULATOR_OUT_OF_MEMORY, parser->current.offset);
+            return CALCULATOR_OUT_OF_MEMORY;
+        }
+
+        status = calculator_parser_advance(parser);
+        if (status != CALCULATOR_OK)
+        {
+            calculator_expression_destroy(expression);
+            return status;
+        }
+
+        *result = expression;
+        return CALCULATOR_OK;
+    }
+
+    if (parser->current.type == CALCULATOR_TOKEN_IDENTIFIER)
+    {
+        CalculatorConstant constant;
+
+        if (!calculator_constant_from_text(parser->current.text, parser->current.length, &constant))
+        {
+            calculator_error_set(parser->error, CALCULATOR_INVALID_TOKEN, parser->current.offset);
+            return CALCULATOR_INVALID_TOKEN;
+        }
+
+        expression = calculator_expression_create_constant(&parser->current, constant);
         if (expression == NULL)
         {
             calculator_error_set(parser->error, CALCULATOR_OUT_OF_MEMORY, parser->current.offset);
@@ -219,6 +263,13 @@ static CalculatorStatus calculator_parse_unary(
     return calculator_parse_primary(parser, result);
 }
 
+static bool calculator_token_starts_primary(CalculatorTokenType type)
+{
+    return type == CALCULATOR_TOKEN_NUMBER ||
+           type == CALCULATOR_TOKEN_IDENTIFIER ||
+           type == CALCULATOR_TOKEN_LEFT_PAREN;
+}
+
 static CalculatorStatus calculator_parse_multiplicative(
     CalculatorParser *parser,
     CalculatorExpression **result
@@ -233,20 +284,26 @@ static CalculatorStatus calculator_parse_multiplicative(
     }
 
     while (parser->current.type == CALCULATOR_TOKEN_STAR ||
-           parser->current.type == CALCULATOR_TOKEN_SLASH)
+           parser->current.type == CALCULATOR_TOKEN_SLASH ||
+           calculator_token_starts_primary(parser->current.type))
     {
-        CalculatorBinaryOperator operation = parser->current.type == CALCULATOR_TOKEN_STAR
-            ? CALCULATOR_BINARY_MULTIPLY
-            : CALCULATOR_BINARY_DIVIDE;
+        bool explicit_operator = parser->current.type == CALCULATOR_TOKEN_STAR ||
+                                 parser->current.type == CALCULATOR_TOKEN_SLASH;
+        CalculatorBinaryOperator operation = parser->current.type == CALCULATOR_TOKEN_SLASH
+            ? CALCULATOR_BINARY_DIVIDE
+            : CALCULATOR_BINARY_MULTIPLY;
         size_t offset = parser->current.offset;
         CalculatorExpression *right;
         CalculatorExpression *combined;
 
-        status = calculator_parser_advance(parser);
-        if (status != CALCULATOR_OK)
+        if (explicit_operator)
         {
-            calculator_expression_destroy(left);
-            return status;
+            status = calculator_parser_advance(parser);
+            if (status != CALCULATOR_OK)
+            {
+                calculator_expression_destroy(left);
+                return status;
+            }
         }
 
         status = calculator_parse_unary(parser, &right);
@@ -388,6 +445,8 @@ void calculator_expression_destroy(CalculatorExpression *expression)
     {
         case CALCULATOR_EXPRESSION_NUMBER:
             free(expression->data.number.text);
+            break;
+        case CALCULATOR_EXPRESSION_CONSTANT:
             break;
         case CALCULATOR_EXPRESSION_UNARY:
             calculator_expression_destroy(expression->data.unary.operand);
