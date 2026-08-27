@@ -19,6 +19,13 @@
     Internal helper functions for evaluator operations.
 ------------------------------------------------------------------------------------------------------------------------------
 */
+static CalculatorStatus calculator_evaluate_expression(
+    BigDecimal **result,
+    const CalculatorExpression *expression,
+    const CalculatorContext *context,
+    CalculatorError *error
+);
+
 static CalculatorStatus calculator_from_bigdecimal_status(BigDecimalStatus status)
 {
     switch (status)
