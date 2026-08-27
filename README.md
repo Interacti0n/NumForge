@@ -97,9 +97,11 @@ terminal to stop it. With a single-configuration generator, the executable is
 normally at `build/numforge_web` instead.
 
 The page includes a clickable keypad for the current expression grammar,
-including `π`, `e`, and `φ`. Its precision control defaults to 10 decimal
-places; full output is also available. The dimmed function buttons are
-intentionally inactive and show planned features. See the
+including `π`, `e`, `φ`, `x²`, `x³`, and `n!`. Squaring and cubing accept any
+exact decimal input; factorial requires a non-negative whole number. Its
+precision control defaults to 10 decimal places; full output is also available.
+The dimmed function buttons are intentionally inactive and show planned
+features. See the
 [API overview](docs/API.md) for exact syntax and the local HTTP API.
 
 ## Library API

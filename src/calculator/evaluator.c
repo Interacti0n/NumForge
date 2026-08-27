@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <numforge/bigint.h>
+
 /*
 ------------------------------------------------------------------------------------------------------------------------------
     Evaluator implementation. It recursively evaluates AST nodes into temporary
@@ -27,6 +29,20 @@ static CalculatorStatus calculator_from_bigdecimal_status(BigDecimalStatus statu
         case BIGDECIMAL_DIVISION_BY_ZERO: return CALCULATOR_DIVISION_BY_ZERO;
         case BIGDECIMAL_VALUE_TOO_LARGE: return CALCULATOR_VALUE_TOO_LARGE;
         case BIGDECIMAL_SCALE_OVERFLOW: return CALCULATOR_SCALE_OVERFLOW;
+        default: return CALCULATOR_INVALID_ARGUMENT;
+    }
+}
+
+static CalculatorStatus calculator_from_bigint_status(BigIntStatus status)
+{
+    switch (status)
+    {
+        case BIGINT_OK: return CALCULATOR_OK;
+        case BIGINT_NULL_ARGUMENT: return CALCULATOR_NULL_ARGUMENT;
+        case BIGINT_OUT_OF_MEMORY: return CALCULATOR_OUT_OF_MEMORY;
+        case BIGINT_VALUE_TOO_LARGE: return CALCULATOR_VALUE_TOO_LARGE;
+        case BIGINT_NEGATIVE_ARGUMENT:
+        case BIGINT_INVALID_ARGUMENT:
         default: return CALCULATOR_INVALID_ARGUMENT;
     }
 }
@@ -63,6 +79,159 @@ static CalculatorStatus calculator_set_number(BigDecimal *value, const char *tex
     }
 
     return calculator_from_bigdecimal_status(decimal_status);
+}
+
+static CalculatorStatus calculator_bigdecimal_to_bigint(BigInt **result, const BigDecimal *value)
+{
+    BigDecimalStatus decimal_status;
+    BigInt *integer;
+    char *text = NULL;
+    CalculatorStatus status;
+
+    decimal_status = bigdecimal_to_string(value, &text);
+    status = calculator_from_bigdecimal_status(decimal_status);
+    if (status != CALCULATOR_OK)
+    {
+        return status;
+    }
+    if (strchr(text, '.') != NULL)
+    {
+        free(text);
+        return CALCULATOR_INVALID_ARGUMENT;
+    }
+
+    integer = bigint_create();
+    if (integer == NULL)
+    {
+        free(text);
+        return CALCULATOR_OUT_OF_MEMORY;
+    }
+
+    status = calculator_from_bigint_status(bigint_set_string(integer, text));
+    free(text);
+    if (status != CALCULATOR_OK)
+    {
+        bigint_destroy(integer);
+        return status;
+    }
+
+    *result = integer;
+    return CALCULATOR_OK;
+}
+
+static CalculatorStatus calculator_set_bigdecimal_from_bigint(BigDecimal *value, const BigInt *integer)
+{
+    char *text = bigint_to_string(integer);
+    CalculatorStatus status;
+
+    if (text == NULL)
+    {
+        return CALCULATOR_OUT_OF_MEMORY;
+    }
+
+    status = calculator_from_bigdecimal_status(bigdecimal_set_string(value, text));
+    free(text);
+    return status;
+}
+
+static CalculatorStatus calculator_evaluate_postfix(
+    BigDecimal **result,
+    const CalculatorExpression *expression,
+    const CalculatorContext *context,
+    CalculatorError *error
+)
+{
+    BigDecimal *operand;
+    BigDecimal *value;
+    BigInt *integer = NULL;
+    BigInt *integer_result = NULL;
+    CalculatorStatus status = calculator_evaluate_expression(
+        &operand, expression->data.postfix.operand, context, error);
+
+    if (status != CALCULATOR_OK)
+    {
+        return status;
+    }
+
+    if (expression->data.postfix.operation == CALCULATOR_POSTFIX_SQUARE ||
+        expression->data.postfix.operation == CALCULATOR_POSTFIX_CUBE)
+    {
+        value = bigdecimal_create();
+        if (value == NULL)
+        {
+            bigdecimal_destroy(operand);
+            calculator_error_set(error, CALCULATOR_OUT_OF_MEMORY, expression->offset);
+            return CALCULATOR_OUT_OF_MEMORY;
+        }
+
+        status = calculator_from_bigdecimal_status(bigdecimal_mul(value, operand, operand));
+        if (status == CALCULATOR_OK && expression->data.postfix.operation == CALCULATOR_POSTFIX_CUBE)
+        {
+            status = calculator_from_bigdecimal_status(bigdecimal_mul(value, value, operand));
+        }
+        bigdecimal_destroy(operand);
+        if (status != CALCULATOR_OK)
+        {
+            bigdecimal_destroy(value);
+            calculator_error_set(error, status, expression->offset);
+            return status;
+        }
+
+        *result = value;
+        return CALCULATOR_OK;
+    }
+
+    if (expression->data.postfix.operation != CALCULATOR_POSTFIX_FACTORIAL)
+    {
+        bigdecimal_destroy(operand);
+        calculator_error_set(error, CALCULATOR_INVALID_ARGUMENT, expression->offset);
+        return CALCULATOR_INVALID_ARGUMENT;
+    }
+
+    status = calculator_bigdecimal_to_bigint(&integer, operand);
+    bigdecimal_destroy(operand);
+    if (status != CALCULATOR_OK)
+    {
+        calculator_error_set(error, status, expression->offset);
+        return status;
+    }
+
+    integer_result = bigint_create();
+    if (integer_result == NULL)
+    {
+        bigint_destroy(integer);
+        calculator_error_set(error, CALCULATOR_OUT_OF_MEMORY, expression->offset);
+        return CALCULATOR_OUT_OF_MEMORY;
+    }
+
+    status = calculator_from_bigint_status(bigint_factorial(integer_result, integer));
+    bigint_destroy(integer);
+    if (status != CALCULATOR_OK)
+    {
+        bigint_destroy(integer_result);
+        calculator_error_set(error, status, expression->offset);
+        return status;
+    }
+
+    value = bigdecimal_create();
+    if (value == NULL)
+    {
+        bigint_destroy(integer_result);
+        calculator_error_set(error, CALCULATOR_OUT_OF_MEMORY, expression->offset);
+        return CALCULATOR_OUT_OF_MEMORY;
+    }
+
+    status = calculator_set_bigdecimal_from_bigint(value, integer_result);
+    bigint_destroy(integer_result);
+    if (status != CALCULATOR_OK)
+    {
+        bigdecimal_destroy(value);
+        calculator_error_set(error, status, expression->offset);
+        return status;
+    }
+
+    *result = value;
+    return CALCULATOR_OK;
 }
 
 static CalculatorStatus calculator_evaluate_expression(
@@ -159,6 +328,11 @@ static CalculatorStatus calculator_evaluate_expression(
 
         *result = value;
         return CALCULATOR_OK;
+    }
+
+    if (expression->type == CALCULATOR_EXPRESSION_POSTFIX)
+    {
+        return calculator_evaluate_postfix(result, expression, context, error);
     }
 
     if (expression->type == CALCULATOR_EXPRESSION_BINARY)

@@ -75,29 +75,34 @@ keeps decimal places; a negative scale rounds to tens, hundreds, and so on.
 The calculator is currently an application layer, not a public C header. It
 accepts decimal numbers with `.` or `,` as the decimal separator, optional
 uppercase-`E` scientific exponent notation, `π`, `e`, and `φ` constants, whitespace,
-parentheses, unary `+`/`-`, explicit or implicit multiplication, and binary
-`+`, `-`, `*`, `/`.
+parentheses, unary `+`/`-`, postfix `²`, `³`, and `!`, explicit or implicit
+multiplication, and binary `+`, `-`, `*`, `/`.
 
 ```text
 expression  := term (('+' | '-') term)*
-unary       := ('+' | '-') unary | primary
+unary       := ('+' | '-') unary | postfix
+postfix     := primary ('²' | '³' | '!')*
 primary     := NUMBER | CONSTANT | '(' expression ')'
 term        := unary (('*' | '/' | IMPLICIT_MULTIPLY) unary)*
 CONSTANT    := π | e | φ
 ```
 
 Examples: `0.1 + 0.2`, `π / 2`, `πe`, `10π`, `2(3 + 4)`,
-`-(2.5E-1) * 8`, and `(12.5 - 2.5) / 4`. Each constant currently has 200
+`-(2.5E-1) * 8`, `(12.5 - 2.5) / 4`, `12²`, `2³`, and `5!`. Each constant currently has 200
 stored decimal places. Lowercase `e` always means Euler's constant, so `5e`
-means `5 * e`. Scientific notation always uses uppercase `E`: `5E-1` means
-`0.5`. Exponentiation, modulo, variables, and functions are not implemented
-yet. The default division policy produces 34 decimal places and uses half-even
-rounding.
+means `5 * e` and `1e3` means `1 * e * 3`. Scientific notation always uses
+uppercase `E`: `5E-1` means `0.5` and `1E3` means `1000`. Exponentiation,
+modulo, variables, and general functions are not implemented yet. Squaring and
+cubing use exact BigDecimal multiplication, so decimal values are valid.
+Factorial uses `bigint_factorial` and requires a non-negative whole number no
+greater than `BIGINT_FACTORIAL_MAX_N`. The default division policy produces 34
+decimal places and uses half-even rounding.
 
-The local browser page has active keypad buttons for this grammar. Its power,
-root, trigonometric, logarithmic, rounding, absolute value, and factorial
-controls remain visibly marked as planned and disabled. The keypad inserts
-`.`, while directly typed `,` is accepted as the same decimal separator.
+The local browser page has active keypad buttons for this grammar, including
+square, cube, and factorial. Its general power, root, trigonometric,
+logarithmic, and absolute-value controls remain visibly marked as planned and
+disabled. The keypad inserts `.`, while directly typed `,` is accepted as the
+same decimal separator.
 
 Results default to 10 decimal places, rounded half-even. A caller can request
 any non-negative output scale that available memory permits, or `full` to skip

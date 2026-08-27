@@ -10,9 +10,9 @@ stable.
 | --- | --- |
 | `calculator.c` | Shared status strings, error reporting, and evaluation/output-precision defaults. |
 | `constants.c` | Maps `π`, `e`, and `φ` to fixed 200-decimal-place BigDecimal approximations. |
-| `tokenizer.c` | Converts source text into location-aware tokens. Implemented for decimal literals, identifiers, whitespace, operators, and parentheses. |
-| `parser.c` | Converts tokens into an opaque expression tree (AST). Implemented as recursive descent with unary, multiplicative, and additive precedence layers. |
-| `evaluator.c` | Evaluates the AST to `BigDecimal` using `CalculatorContext`. Implemented for unary signs and the four initial binary operators. |
+| `tokenizer.c` | Converts source text into location-aware tokens. Implemented for decimal literals, identifiers, whitespace, binary and postfix operators, and parentheses. |
+| `parser.c` | Converts tokens into an opaque expression tree (AST). Implemented as recursive descent with postfix, unary, multiplicative, and additive precedence layers. |
+| `evaluator.c` | Evaluates the AST to `BigDecimal` using `CalculatorContext`. Implemented for unary signs, square, cube, factorial, and the four initial binary operators. |
 | `formatter.c` | Rounds a completed result to the requested output scale and selects ordinary or scientific notation. |
 | `src/main.c` | Interactive command-line shell around the calculator pipeline. |
 | `src/web/web_api.c` | Text-to-result adapter used by the local web server. |
@@ -32,14 +32,14 @@ remain in the calculator modules.
 ## Local web interface
 
 `numforge_web` serves a self-contained page from the C executable. Its active
-keypad inserts digits, parentheses, `.`, `+`, `-`, `*`, `/`, `π`, `e`, and
-`φ`, then sends the complete expression to the same web adapter used by
+keypad inserts digits, parentheses, `.`, `+`, `-`, `*`, `/`, `π`, `e`, `φ`,
+`²`, `³`, and `!`, then sends the complete expression to the same web adapter used by
 `POST /api/evaluate`. Typing `,` directly is also valid because the tokenizer
 accepts both decimal separators.
 
 The page sends the selected output scale as `?precision=N`; its full-output
-checkbox sends `?precision=full`. The visible power, root, absolute-value,
-factorial, trigonometric, logarithmic, exponential, and rounding controls are
+checkbox sends `?precision=full`. The visible general-power, root,
+absolute-value, trigonometric, logarithmic, and exponential controls are
 disabled placeholders. They document the intended UI surface, but do not
 currently add tokens or affect evaluation.
 
@@ -48,7 +48,8 @@ currently add tokens or affect evaluation.
 ```text
 expression  := term (('+' | '-') term)*
 term        := unary (('*' | '/' | IMPLICIT_MULTIPLY) unary)*
-unary       := ('+' | '-') unary | primary
+unary       := ('+' | '-') unary | postfix
+postfix     := primary ('²' | '³' | '!')*
 primary     := NUMBER | CONSTANT | '(' expression ')'
 CONSTANT    := π | e | φ
 ```
@@ -60,15 +61,22 @@ sign is always a separate `PLUS` or `MINUS` token, which keeps unary and binary
 operators unambiguous. The evaluator normalizes a comma to a point before
 calling the public BigDecimal API.
 
-Exponentiation, variables, and functions are intentionally outside this first
-grammar. Add them only with explicit precedence and domain rules.
+General exponentiation, variables, and functions are intentionally outside this
+first grammar. Add them only with explicit precedence and domain rules.
+
+Postfix operators bind tighter than unary signs and multiplication, so `-2²`
+is `-(2²)` and `(2 + 3)!` is valid. Square and cube evaluate as exact
+BigDecimal multiplication: `x²` is `x * x`, and `x³` is `(x * x) * x`.
+Factorial delegates to `bigint_factorial`; it accepts only a non-negative whole
+number up to `BIGINT_FACTORIAL_MAX_N`, and reports an invalid-argument error
+for other inputs.
 
 Adjacent primaries imply multiplication at the normal multiplicative
 precedence. This covers `πe`, `10π`, `5e`, `2(2 + 2)`, and `(1 + 2)(3 + 4)`.
-The tokenizer keeps scientific notation unambiguous: `5E-1` remains one
-numeric token, but `5e` becomes `5 * e`. Only the exact UTF-8 symbols `π`,
-`e`, and `φ` are constants; ASCII `pi` and `phi` remain available for future
-variable names.
+The tokenizer keeps scientific notation unambiguous: `5E-1` and `1E3` remain
+one numeric token, while `5e` becomes `5 * e` and `1e3` becomes `1 * e * 3`.
+Only the exact UTF-8 symbols `π`, `e`, and `φ` are constants; ASCII `pi` and
+`phi` remain available for future variable names.
 
 ## Evaluation policy and errors
 

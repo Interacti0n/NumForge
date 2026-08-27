@@ -19,6 +19,9 @@ typedef enum CalculatorTokenType
     CALCULATOR_TOKEN_MINUS,
     CALCULATOR_TOKEN_STAR,
     CALCULATOR_TOKEN_SLASH,
+    CALCULATOR_TOKEN_SQUARE,
+    CALCULATOR_TOKEN_CUBE,
+    CALCULATOR_TOKEN_FACTORIAL,
     CALCULATOR_TOKEN_LEFT_PAREN,
     CALCULATOR_TOKEN_RIGHT_PAREN,
     CALCULATOR_TOKEN_END
@@ -47,10 +50,11 @@ typedef struct CalculatorTokenizer
 /*
 ------------------------------------------------------------------------------------------------------------------------------
     Tokenizer operation functions. next skips whitespace and produces NUMBER,
-    IDENTIFIER, operator, parenthesis, or END tokens. An uppercase E suffix
+    IDENTIFIER, operator, postfix operator, parenthesis, or END tokens. An uppercase E suffix
     becomes a scientific exponent only when it has exponent digits; lowercase
-    e is always tokenized as a following identifier. Invalid characters return
-    CALCULATOR_INVALID_TOKEN with a source offset.
+    e is always a one-character identifier, so adjacent digits participate in
+    implicit multiplication. Invalid characters return CALCULATOR_INVALID_TOKEN
+    with a source offset.
 ------------------------------------------------------------------------------------------------------------------------------
 */
 CalculatorStatus calculator_tokenizer_init( /*Initialize a tokenizer over a NUL-terminated input string*/

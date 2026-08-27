@@ -42,6 +42,22 @@ static bool calculator_is_greek_constant_start(const char *text)
     return bytes[0] == 0xCFU && (bytes[1] == 0x80U || bytes[1] == 0x86U);
 }
 
+static CalculatorTokenType calculator_superscript_token_type(const char *text)
+{
+    const unsigned char *bytes = (const unsigned char *)text;
+
+    if (bytes[0] == 0xC2U && bytes[1] == 0xB2U)
+    {
+        return CALCULATOR_TOKEN_SQUARE;
+    }
+    if (bytes[0] == 0xC2U && bytes[1] == 0xB3U)
+    {
+        return CALCULATOR_TOKEN_CUBE;
+    }
+
+    return CALCULATOR_TOKEN_END;
+}
+
 static bool calculator_is_decimal_separator(char character)
 {
     return character == '.' || character == ',';
@@ -138,6 +154,15 @@ static CalculatorStatus calculator_read_identifier(
         return CALCULATOR_OK;
     }
 
+    /* Keep Euler's constant separate from an adjacent number: 1e3 is 1 * e * 3. */
+    if (tokenizer->input[start] == 'e')
+    {
+        calculator_set_token(token, CALCULATOR_TOKEN_IDENTIFIER, tokenizer->input + start, 1U, start);
+        tokenizer->offset = start + 1U;
+        calculator_error_clear(error);
+        return CALCULATOR_OK;
+    }
+
     cursor = start + 1U;
 
     while (calculator_is_identifier_continue(tokenizer->input[cursor]))
@@ -197,6 +222,15 @@ CalculatorStatus calculator_tokenizer_next(
         {
             return calculator_read_number(tokenizer, token, error);
         }
+        CalculatorTokenType superscript_type = calculator_superscript_token_type(tokenizer->input + offset);
+
+        if (superscript_type != CALCULATOR_TOKEN_END)
+        {
+            calculator_set_token(token, superscript_type, tokenizer->input + offset, 2U, offset);
+            tokenizer->offset += 2U;
+            calculator_error_clear(error);
+            return CALCULATOR_OK;
+        }
         if (calculator_is_greek_constant_start(tokenizer->input + offset) ||
             calculator_is_identifier_start(character))
         {
@@ -216,6 +250,9 @@ CalculatorStatus calculator_tokenizer_next(
                 break;
             case '/':
                 calculator_set_token(token, CALCULATOR_TOKEN_SLASH, tokenizer->input + offset, 1, offset);
+                break;
+            case '!':
+                calculator_set_token(token, CALCULATOR_TOKEN_FACTORIAL, tokenizer->input + offset, 1, offset);
                 break;
             case '(':
                 calculator_set_token(token, CALCULATOR_TOKEN_LEFT_PAREN, tokenizer->input + offset, 1, offset);

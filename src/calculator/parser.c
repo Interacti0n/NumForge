@@ -100,6 +100,23 @@ static CalculatorExpression *calculator_expression_create_unary(
     return expression;
 }
 
+static CalculatorExpression *calculator_expression_create_postfix(
+    CalculatorPostfixOperator operation,
+    size_t offset,
+    CalculatorExpression *operand
+)
+{
+    CalculatorExpression *expression = calculator_expression_create(CALCULATOR_EXPRESSION_POSTFIX, offset);
+
+    if (expression != NULL)
+    {
+        expression->data.postfix.operation = operation;
+        expression->data.postfix.operand = operand;
+    }
+
+    return expression;
+}
+
 static CalculatorExpression *calculator_expression_create_binary(
     CalculatorBinaryOperator operation,
     size_t offset,
@@ -220,6 +237,60 @@ static CalculatorStatus calculator_parse_primary(
     return calculator_parser_syntax_error(parser);
 }
 
+static CalculatorStatus calculator_parse_postfix(
+    CalculatorParser *parser,
+    CalculatorExpression **result
+)
+{
+    CalculatorExpression *left;
+    CalculatorStatus status = calculator_parse_primary(parser, &left);
+
+    if (status != CALCULATOR_OK)
+    {
+        return status;
+    }
+
+    while (parser->current.type == CALCULATOR_TOKEN_SQUARE ||
+           parser->current.type == CALCULATOR_TOKEN_CUBE ||
+           parser->current.type == CALCULATOR_TOKEN_FACTORIAL)
+    {
+        CalculatorPostfixOperator operation;
+        size_t offset = parser->current.offset;
+        CalculatorExpression *combined;
+
+        switch (parser->current.type)
+        {
+            case CALCULATOR_TOKEN_SQUARE: operation = CALCULATOR_POSTFIX_SQUARE; break;
+            case CALCULATOR_TOKEN_CUBE: operation = CALCULATOR_POSTFIX_CUBE; break;
+            case CALCULATOR_TOKEN_FACTORIAL: operation = CALCULATOR_POSTFIX_FACTORIAL; break;
+            default:
+                calculator_expression_destroy(left);
+                calculator_error_set(parser->error, CALCULATOR_INVALID_ARGUMENT, offset);
+                return CALCULATOR_INVALID_ARGUMENT;
+        }
+
+        status = calculator_parser_advance(parser);
+        if (status != CALCULATOR_OK)
+        {
+            calculator_expression_destroy(left);
+            return status;
+        }
+
+        combined = calculator_expression_create_postfix(operation, offset, left);
+        if (combined == NULL)
+        {
+            calculator_expression_destroy(left);
+            calculator_error_set(parser->error, CALCULATOR_OUT_OF_MEMORY, offset);
+            return CALCULATOR_OUT_OF_MEMORY;
+        }
+
+        left = combined;
+    }
+
+    *result = left;
+    return CALCULATOR_OK;
+}
+
 static CalculatorStatus calculator_parse_unary(
     CalculatorParser *parser,
     CalculatorExpression **result
@@ -260,7 +331,7 @@ static CalculatorStatus calculator_parse_unary(
         return CALCULATOR_OK;
     }
 
-    return calculator_parse_primary(parser, result);
+    return calculator_parse_postfix(parser, result);
 }
 
 static bool calculator_token_starts_primary(CalculatorTokenType type)
@@ -450,6 +521,9 @@ void calculator_expression_destroy(CalculatorExpression *expression)
             break;
         case CALCULATOR_EXPRESSION_UNARY:
             calculator_expression_destroy(expression->data.unary.operand);
+            break;
+        case CALCULATOR_EXPRESSION_POSTFIX:
+            calculator_expression_destroy(expression->data.postfix.operand);
             break;
         case CALCULATOR_EXPRESSION_BINARY:
             calculator_expression_destroy(expression->data.binary.left);

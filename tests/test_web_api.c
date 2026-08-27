@@ -42,6 +42,16 @@ void test_web_api_evaluates_with_exact_c_bigdecimal(void)
     TEST_ASSERT_EQUAL(CALCULATOR_OK, numforge_web_evaluate("\xCF\x80", &result, &error));
     TEST_ASSERT_EQUAL_STRING("3.1415926536", result);
     free(result);
+
+    result = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, numforge_web_evaluate("1e3 - 3e + 1E3 - 1000", &result, &error));
+    TEST_ASSERT_EQUAL_STRING("0", result);
+    free(result);
+
+    result = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, numforge_web_evaluate("1.5\xC2\xB2 + 2\xC2\xB3 + 5!", &result, &error));
+    TEST_ASSERT_EQUAL_STRING("130.25", result);
+    free(result);
 }
 
 void test_web_api_honors_output_precision(void)
@@ -87,6 +97,11 @@ void test_web_api_preserves_calculator_errors(void)
     TEST_ASSERT_EQUAL(CALCULATOR_INVALID_TOKEN, numforge_web_evaluate("2 + hello", &result, &error));
     TEST_ASSERT_NULL(result);
     TEST_ASSERT_EQUAL_UINT(4, error.offset);
+
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, numforge_web_evaluate("1.5!", &result, &error));
+    TEST_ASSERT_NULL(result);
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, error.status);
+    TEST_ASSERT_EQUAL_UINT(3, error.offset);
 }
 
 void test_web_api_rejects_empty_and_oversized_input(void)

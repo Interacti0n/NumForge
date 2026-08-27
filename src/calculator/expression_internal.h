@@ -18,6 +18,7 @@ typedef enum CalculatorExpressionType
     CALCULATOR_EXPRESSION_NUMBER,
     CALCULATOR_EXPRESSION_CONSTANT,
     CALCULATOR_EXPRESSION_UNARY,
+    CALCULATOR_EXPRESSION_POSTFIX,
     CALCULATOR_EXPRESSION_BINARY
 } CalculatorExpressionType;
 
@@ -26,6 +27,13 @@ typedef enum CalculatorUnaryOperator
     CALCULATOR_UNARY_PLUS,
     CALCULATOR_UNARY_MINUS
 } CalculatorUnaryOperator;
+
+typedef enum CalculatorPostfixOperator
+{
+    CALCULATOR_POSTFIX_SQUARE,
+    CALCULATOR_POSTFIX_CUBE,
+    CALCULATOR_POSTFIX_FACTORIAL
+} CalculatorPostfixOperator;
 
 typedef enum CalculatorBinaryOperator
 {
@@ -57,6 +65,12 @@ struct CalculatorExpression
             CalculatorUnaryOperator operation;
             struct CalculatorExpression *operand;
         } unary;
+
+        struct
+        {
+            CalculatorPostfixOperator operation;
+            struct CalculatorExpression *operand;
+        } postfix;
 
         struct
         {
