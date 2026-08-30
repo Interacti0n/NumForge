@@ -172,6 +172,22 @@ if(BUILD_TESTING)
         COMMAND bigdecimal_tests
     )
 
+    add_executable(bigdecimal_property_tests
+        tests/test_bigdecimal_properties.c
+    )
+
+    target_link_libraries(bigdecimal_property_tests
+        PRIVATE
+        numforge
+        unity
+    )
+    numforge_enable_diagnostics(bigdecimal_property_tests)
+
+    add_test(
+        NAME bigdecimal_property_tests
+        COMMAND bigdecimal_property_tests
+    )
+
     add_executable(calculator_tests
         tests/test_calculator.c
     )

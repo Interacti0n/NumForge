@@ -5,6 +5,14 @@ HTTP endpoint. Function signatures and all edge-case constraints remain in
 the public headers: `include/numforge/bigint.h` and
 `include/numforge/bigdecimal.h`.
 
+## Intended 1.0 stability scope
+
+The intended stable C library API consists of exactly those two public headers.
+The calculator implementation and `src/web/web_api.h` are private application
+code, not headers for library consumers. `numforge_web` and its loopback HTTP
+endpoint are shipped local-tool features; they are not an Internet-facing or
+separately versioned remote service.
+
 ## Common rules
 
 - `BigInt` and `BigDecimal` are opaque. Create them with `*_create()` and
@@ -110,7 +118,8 @@ The local browser page has active keypad buttons for this grammar, including
 power, square, cube, and factorial. Its root, trigonometric, logarithmic, and
 absolute-value controls remain visibly marked as planned and disabled. The
 keypad inserts `.`, while directly typed `,` is accepted as the same decimal
-separator.
+separator. The page is available in Slovak and English and provides a
+one-click control to copy the displayed result.
 
 Results default to 10 decimal places, rounded half-even. A caller can request
 any non-negative output scale that available memory permits, or `full` to skip

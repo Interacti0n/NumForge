@@ -213,15 +213,66 @@ void test_division_and_rounding(void)
 void test_null_and_invalid_arguments(void)
 {
     BigDecimal *value = make_decimal("1");
+    BigDecimal *other = make_decimal("2");
+    BigDecimal *zero = bigdecimal_create();
+    BigDecimal *result = make_decimal("42");
     char *string = NULL;
+    bool predicate = false;
+    int comparison = 0;
 
     TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_set_string(NULL, "1"));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_set_string(value, NULL));
     TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_to_string(value, NULL));
     TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_to_string(NULL, &string));
+
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_copy(NULL, value));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_copy(value, NULL));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_compare(NULL, value, other));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_compare(&comparison, NULL, other));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_compare(&comparison, value, NULL));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_is_zero(NULL, value));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_is_zero(&predicate, NULL));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_is_negative(NULL, value));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_is_negative(&predicate, NULL));
+
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_abs(NULL, value));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_abs(result, NULL));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_negate(NULL, value));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_negate(result, NULL));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_add(NULL, value, other));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_add(result, NULL, other));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_add(result, value, NULL));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_sub(NULL, value, other));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_sub(result, NULL, other));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_sub(result, value, NULL));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_mul(NULL, value, other));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_mul(result, NULL, other));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_mul(result, value, NULL));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT,
+                      bigdecimal_rescale(NULL, value, 0, BIGDECIMAL_ROUND_TOWARD_ZERO));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT,
+                      bigdecimal_rescale(result, NULL, 0, BIGDECIMAL_ROUND_TOWARD_ZERO));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT,
+                      bigdecimal_div(NULL, value, other, 0, BIGDECIMAL_ROUND_TOWARD_ZERO));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT,
+                      bigdecimal_div(result, NULL, other, 0, BIGDECIMAL_ROUND_TOWARD_ZERO));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT,
+                      bigdecimal_div(result, value, NULL, 0, BIGDECIMAL_ROUND_TOWARD_ZERO));
+
     TEST_ASSERT_EQUAL(BIGDECIMAL_INVALID_ARGUMENT,
-                      bigdecimal_rescale(value, value, 0, (BigDecimalRoundingMode)99));
+                      bigdecimal_rescale(result, value, 0, (BigDecimalRoundingMode)99));
+    assert_decimal_equals("42", result);
+    TEST_ASSERT_EQUAL(BIGDECIMAL_INVALID_ARGUMENT,
+                      bigdecimal_div(result, value, other, 0, (BigDecimalRoundingMode)99));
+    assert_decimal_equals("42", result);
+    TEST_ASSERT_EQUAL(BIGDECIMAL_DIVISION_BY_ZERO,
+                      bigdecimal_div(result, value, zero, 0, BIGDECIMAL_ROUND_TOWARD_ZERO));
+    assert_decimal_equals("42", result);
 
     bigdecimal_destroy(value);
+    bigdecimal_destroy(other);
+    bigdecimal_destroy(zero);
+    bigdecimal_destroy(result);
 }
 
 /* ============================================================

@@ -117,13 +117,19 @@ or context/trap option rather than treating it as a generic error.
 All mutating operations should provide the same strong guarantee as
 `bigint_set_string`: on failure, their destination is unchanged.
 
-## Future work
+## Testing and future work
 
-The implementation is complete for the current public surface. The most useful
-next work is property/reference testing for large generated decimal values,
-followed by profiling-guided optimization such as reusable small powers of ten
-inside one operation. Any narrow `BigInt` helper added for performance must
-preserve the public layering and be independently tested.
+The implementation is complete for the current public surface. Focused unit
+tests cover explicit regressions and API errors. A separate deterministic
+property suite uses a bounded independent `int64_t` reference model to check
+conversion, canonical form, exact arithmetic, comparison, aliasing, rescaling,
+division, and every rounding mode.
+
+The most useful next work is larger generated decimal vectors and optional
+external-oracle checks, followed by profiling-guided optimization such as
+reusable small powers of ten inside one operation. Any narrow `BigInt` helper
+added for performance must preserve the public layering and be independently
+tested.
 
 ## BigInt boundary
 

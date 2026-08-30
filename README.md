@@ -104,7 +104,8 @@ factorial requires an input from 0 to 5000. Its precision control defaults to
 approximately five-second CPU limit and returns `TLE` when that limit is
 reached.
 The dimmed function buttons are intentionally inactive and show planned
-features. See the
+features. The page is available in Slovak and English, and the displayed
+result can be copied with one click. See the
 [API overview](docs/API.md) for exact syntax and the local HTTP API.
 
 ## Library API
@@ -117,9 +118,16 @@ Include the public headers and link the `numforge` CMake target:
 ```
 
 The public API, ownership rules, arithmetic semantics, and concise function
-reference for both types are in [the API overview](docs/API.md). The design
-documents explain the internal representation and decisions that should remain
-stable while the library is still pre-1.0.
+reference for both types are in [the API overview](docs/API.md).
+
+### Intended 1.0 API scope
+
+The intended stable library API for the 1.0 release consists only of the two
+public headers: `include/numforge/bigint.h` and
+`include/numforge/bigdecimal.h`. The calculator modules and `src/web/` are
+application code, not public C library headers. The loopback HTTP endpoint is
+documented for local use, but is not an Internet-facing service or a separately
+versioned remote API.
 
 ## Testing
 
@@ -131,13 +139,17 @@ executables:
   identities, multi-limb boundaries, and aliasing behavior.
 - `bigdecimal_tests`: covers parsing, canonical form, exact arithmetic,
   aliasing, division, and rounding modes.
+- `bigdecimal_property_tests`: deterministic generated reference checks for
+  conversion, exact arithmetic, comparison, rescaling, division, rounding,
+  and aliasing.
 - `calculator_tests`: covers tokenization, parsing, evaluation, source
   positions, and division policy.
 - `web_api_tests`: confirms that the local web adapter evaluates expressions
   through the same exact C `BigDecimal` pipeline.
 
 All run through CTest when `BUILD_TESTING=ON`. GitHub Actions builds and runs
-them on Linux with warnings treated as errors and sanitizers enabled.
+them on Linux with warnings treated as errors and sanitizers enabled, and on
+Windows with Visual Studio warnings treated as errors.
 
 ## Project status and roadmap
 
@@ -145,12 +157,12 @@ them on Linux with warnings treated as errors and sanitizers enabled.
 Remaining work is mostly broader test coverage, performance optimization for
 very large operands, and calculator features. Planned work includes:
 
-1. Extend `BigDecimal` with property tests, larger generated decimal vectors,
-   and performance optimizations. Its representation and implementation notes are in
-   [the BigDecimal design](docs/BIGDECIMAL_DESIGN.md).
-2. Calculator variables, functions, exponentiation, and configurable runtime
-   precision. Its module boundaries, grammar, and evaluation policy are in
-   [the calculator design](docs/CALCULATOR_DESIGN.md).
-3. Additional BigDecimal property/reference tests and performance profiling.
+1. Broaden `BigDecimal` with larger generated decimal vectors, optional
+   external-oracle checks, and performance optimizations. Its representation
+   and implementation notes are in [the BigDecimal design](docs/BIGDECIMAL_DESIGN.md).
+2. Calculator variables and general functions. Exponentiation and configurable
+   output precision are already implemented. Its module boundaries, grammar,
+   and evaluation policy are in [the calculator design](docs/CALCULATOR_DESIGN.md).
+3. Performance profiling and targeted optimization of very large operands.
 
 The public API is still pre-1.0 and may evolve.

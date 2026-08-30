@@ -38,7 +38,9 @@ keypad inserts digits, parentheses, `.`, `+`, `-`, `*`, `/`, `π`, `e`, `φ`,
 accepts both decimal separators.
 
 The page sends the selected output scale as `?precision=N`; its full-output
-checkbox sends `?precision=full`. The visible root, absolute-value,
+checkbox sends `?precision=full`. Slovak and English routes use `?lang=sk`
+and `?lang=en`; the result panel copies the currently displayed result through
+the browser clipboard API, with a local fallback. The visible root, absolute-value,
 trigonometric, logarithmic, and exponential controls are disabled placeholders.
 They document the intended UI surface, but do not currently add tokens or
 affect evaluation.
