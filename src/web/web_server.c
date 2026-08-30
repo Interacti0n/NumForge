@@ -238,6 +238,31 @@ static bool numforge_parse_output_scale(const char *target, int64_t *output_scal
     return true;
 }
 
+static bool numforge_parse_page_language(const char *target, const char *path, bool *english)
+{
+    size_t path_length;
+
+    if (target == NULL || path == NULL || english == NULL)
+    {
+        return false;
+    }
+
+    path_length = strlen(path);
+    if (strcmp(target, path) == 0 ||
+        (strncmp(target, path, path_length) == 0 && strcmp(target + path_length, "?lang=sk") == 0))
+    {
+        *english = false;
+        return true;
+    }
+    if (strncmp(target, path, path_length) == 0 && strcmp(target + path_length, "?lang=en") == 0)
+    {
+        *english = true;
+        return true;
+    }
+
+    return false;
+}
+
 static void numforge_handle_evaluation(
     NumForgeSocket socket,
     const char *body,
@@ -294,6 +319,7 @@ static void numforge_handle_connection(NumForgeSocket socket)
     const char *body;
     size_t length;
     int64_t output_scale;
+    bool english;
 
     if (!numforge_read_request(socket, request, sizeof(request), &length) ||
         !numforge_request_target(request, method, sizeof(method), target, sizeof(target)))
@@ -309,13 +335,13 @@ static void numforge_handle_connection(NumForgeSocket socket)
         body += 4;
     }
 
-    if (strcmp(method, "GET") == 0 && strcmp(target, "/") == 0)
+    if (strcmp(method, "GET") == 0 && numforge_parse_page_language(target, "/", &english))
     {
-        numforge_send_page(socket, NUMFORGE_WEB_PAGE);
+        numforge_send_page(socket, english ? NUMFORGE_WEB_PAGE_EN : NUMFORGE_WEB_PAGE);
     }
-    else if (strcmp(method, "GET") == 0 && strcmp(target, "/api") == 0)
+    else if (strcmp(method, "GET") == 0 && numforge_parse_page_language(target, "/api", &english))
     {
-        numforge_send_page(socket, NUMFORGE_API_PAGE);
+        numforge_send_page(socket, english ? NUMFORGE_API_PAGE_EN : NUMFORGE_API_PAGE);
     }
     else if (strcmp(method, "POST") == 0 && body != NULL &&
              numforge_parse_output_scale(target, &output_scale))
