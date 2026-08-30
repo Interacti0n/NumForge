@@ -256,6 +256,29 @@ CalculatorStatus calculator_format_result(
             return CALCULATOR_OK;
         }
     }
+
+    /*
+     * Decide whether a positive-scale value needs scientific notation before
+     * applying the requested decimal-place scale.  Rescaling a value such as
+     * 1.234E-12 to ten decimal places would otherwise turn it into zero and
+     * discard the significant digits needed for the scientific result.
+     */
+    status = calculator_from_bigdecimal_status(bigdecimal_to_string(value, &ordinary));
+    if (status != CALCULATOR_OK)
+    {
+        free(ordinary);
+        return status;
+    }
+    scientific = calculator_format_scientific(ordinary, context->output_scale);
+    if (scientific != NULL)
+    {
+        free(ordinary);
+        *result = scientific;
+        return CALCULATOR_OK;
+    }
+    free(ordinary);
+    ordinary = NULL;
+
     formatted_value = bigdecimal_create();
     if (formatted_value == NULL)
     {

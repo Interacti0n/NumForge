@@ -38,7 +38,7 @@ static bool calculator_time_limit_reached(const CalculatorEvaluation *evaluation
 
     now = clock();
     return now != (clock_t)-1 &&
-           (double)(now - evaluation->started_at) * 1000.0 >=
+           (double)(now - evaluation->started_at) * 1000.0 / (double)CLOCKS_PER_SEC >=
                (double)evaluation->context->time_limit_ms;
 }
 

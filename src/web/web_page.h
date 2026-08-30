@@ -185,6 +185,13 @@ static const char NUMFORGE_API_PAGE_START[] =
     "  <h2>Výstupná presnosť</h2>\n"
     "  <p>Nastavenie <strong>Desatinné miesta</strong> určuje počet miest, na ktoré sa výsledok zaokrúhli pravidlom half-even; predvolená hodnota je 10. Voľba <strong>Plný výstup</strong> nevynucuje výstupné zaokrúhlenie. Veľmi malé a veľké nenulové výsledky sa zobrazia vo vedeckom zápise s veľkým <code>E</code>, napríklad <code>1.25E-12</code>.</p>\n"
     "  <p>Výpočet má približne päťsekundový CPU limit. Po jeho prekročení sa výpočet zastaví s chybou <code>TLE</code>; jeden už začatý extrémne veľký krok BigInt sa môže dokončiť tesne po limite.</p>\n"
+;
+
+/*
+ * Keep each embedded C string below the ISO C required minimum limit of
+ * 4095 characters. GCC diagnoses longer concatenated literals under -Werror.
+ */
+static const char NUMFORGE_API_PAGE_HTTP[] =
     "  <h2>Lokálne HTTP rozhranie</h2>\n"
     "  <p>Vlastný lokálny klient môže poslať výraz ako obyčajný UTF-8 text na <code>POST /api/evaluate?precision=10</code>. Parameter <code>precision</code> je nezáporné celé číslo alebo <code>full</code>. Vstup má limit 4096 bajtov.</p>\n"
     "  <pre>POST /api/evaluate?precision=10\nContent-Type: text/plain; charset=utf-8\n\nπ / 2\n\nHTTP 200\n{\"ok\":true,\"result\":\"1.5707963268\"}</pre>\n"
@@ -213,6 +220,7 @@ static const char NUMFORGE_API_PAGE_C_LIBRARY[] =
 
 static const char *const NUMFORGE_API_PAGE[] = {
     NUMFORGE_API_PAGE_START,
+    NUMFORGE_API_PAGE_HTTP,
     NUMFORGE_API_PAGE_C_LIBRARY,
     NULL
 };

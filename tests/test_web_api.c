@@ -57,6 +57,12 @@ void test_web_api_evaluates_with_exact_c_bigdecimal(void)
     TEST_ASSERT_EQUAL(CALCULATOR_OK, numforge_web_evaluate("1.5^3 + 2^10", &result, &error));
     TEST_ASSERT_EQUAL_STRING("1027.375", result);
     free(result);
+
+    result = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, numforge_web_evaluate("4000!", &result, &error));
+    TEST_ASSERT_NOT_NULL(result);
+    TEST_ASSERT_EQUAL_STRING("1.8288019515E+12673", result);
+    free(result);
 }
 
 void test_web_api_honors_output_precision(void)
