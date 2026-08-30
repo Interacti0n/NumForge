@@ -55,37 +55,39 @@ static const char NUMFORGE_WEB_PAGE_START[] =
     "    <button type=\"submit\">Vypočítať</button>\n"
     "  </form>\n";
 
+static const char NUMFORGE_WEB_PAGE_RESULT[] =
+    "  <section class=\"result-panel\" aria-live=\"polite\">\n"
+    "    <span class=\"result-label\">Výsledok</span>\n"
+    "    <output id=\"result\"></output>\n"
+    "  </section>\n";
+
 static const char NUMFORGE_WEB_PAGE_KEYPAD[] =
-    "  <section class=\"keypad\" aria-label=\"Kalkulačná klávesnica\">\n"
-    "    <button type=\"button\" class=\"operator\" data-insert=\"(\">(</button><button type=\"button\" class=\"operator\" data-insert=\")\">)</button><button type=\"button\" data-insert=\".\">.</button><button type=\"button\" class=\"action\" data-action=\"clear\">C</button><button type=\"button\" class=\"action\" data-action=\"backspace\" aria-label=\"Vymazať posledný znak\">⌫</button>\n"
-    "  </section>\n"
     "  <section class=\"precision\" aria-label=\"Nastavenie výstupnej presnosti\">\n"
     "    <label>Desatinné miesta <input id=\"precision\" type=\"number\" min=\"0\" step=\"1\" value=\"10\" inputmode=\"numeric\"></label>\n"
     "    <label><input id=\"full-precision\" type=\"checkbox\"> Plný výstup</label>\n"
     "  </section>\n"
-    "  <p class=\"keypad-label\">Konštanty</p>\n"
-    "  <section class=\"keypad constants\" aria-label=\"Matematické konštanty\">\n"
-    "    <button type=\"button\" data-insert=\"&#960;\" title=\"π\">π</button><button type=\"button\" data-insert=\"e\" title=\"Eulerovo číslo\">e</button><button type=\"button\" data-insert=\"&#966;\" title=\"φ\">φ</button>\n"
+    "  <section class=\"keypad\" aria-label=\"Kalkulačná klávesnica\">\n"
+    "    <button type=\"button\" class=\"operator\" data-insert=\"(\">(</button><button type=\"button\" class=\"operator\" data-insert=\")\">)</button><button type=\"button\" data-insert=\".\">.</button><button type=\"button\" class=\"action\" data-action=\"clear\">C</button><button type=\"button\" class=\"action\" data-action=\"backspace\" aria-label=\"Vymazať posledný znak\">⌫</button>\n"
     "  </section>\n"
     "  <section class=\"keypad\" aria-label=\"Číselná klávesnica\">\n"
     "    <button type=\"button\" data-insert=\"7\">7</button><button type=\"button\" data-insert=\"8\">8</button><button type=\"button\" data-insert=\"9\">9</button><button type=\"button\" class=\"operator\" data-insert=\"/\">÷</button><button type=\"button\" class=\"operator\" data-insert=\"*\">×</button>\n"
     "    <button type=\"button\" data-insert=\"4\">4</button><button type=\"button\" data-insert=\"5\">5</button><button type=\"button\" data-insert=\"6\">6</button><button type=\"button\" class=\"operator\" data-insert=\"-\">−</button><button type=\"button\" class=\"operator\" data-insert=\"+\">+</button>\n"
     "    <button type=\"button\" data-insert=\"1\">1</button><button type=\"button\" data-insert=\"2\">2</button><button type=\"button\" data-insert=\"3\">3</button><button type=\"button\" data-insert=\"0\">0</button><button type=\"button\" class=\"equals\" data-action=\"evaluate\">=</button>\n"
+    "  </section>\n"
+    "  <p class=\"keypad-label\">Konštanty</p>\n"
+    "  <section class=\"keypad constants\" aria-label=\"Matematické konštanty\">\n"
+    "    <button type=\"button\" data-insert=\"&#960;\" title=\"π\">π</button><button type=\"button\" data-insert=\"e\" title=\"Eulerovo číslo\">e</button><button type=\"button\" data-insert=\"&#966;\" title=\"φ\">φ</button>\n"
     "  </section>\n";
 
 static const char NUMFORGE_WEB_PAGE_FUTURE[] =
     "  <p class=\"keypad-label\">Mocniny a faktoriál</p>\n"
     "  <section class=\"keypad\" aria-label=\"Mocniny a faktoriál\">\n"
-    "    <button type=\"button\" data-insert=\"&#178;\" title=\"Druhá mocnina\">x²</button><button type=\"button\" data-insert=\"&#179;\" title=\"Tretia mocnina\">x³</button><button type=\"button\" data-insert=\"!\" title=\"Faktoriál\">n!</button>\n"
+    "    <button type=\"button\" data-insert=\"^\" title=\"Mocnina: exponent musí byť nezáporné celé číslo\">xʸ</button><button type=\"button\" data-insert=\"&#178;\" title=\"Druhá mocnina\">x²</button><button type=\"button\" data-insert=\"&#179;\" title=\"Tretia mocnina\">x³</button><button type=\"button\" data-insert=\"!\" title=\"Faktoriál\">n!</button>\n"
     "  </section>\n"
     "  <p class=\"keypad-label\">Pripravované funkcie</p>\n"
     "  <section class=\"keypad\" aria-label=\"Pripravované funkcie\">\n"
-    "    <button type=\"button\" class=\"future\" disabled title=\"Pripravované\">xʸ</button><button type=\"button\" class=\"future\" disabled title=\"Pripravované\">√x</button><button type=\"button\" class=\"future\" disabled title=\"Pripravované\">|x|</button><button type=\"button\" class=\"future\" disabled title=\"Pripravované\">sin</button><button type=\"button\" class=\"future\" disabled title=\"Pripravované\">cos</button>\n"
-    "    <button type=\"button\" class=\"future\" disabled title=\"Pripravované\">tan</button><button type=\"button\" class=\"future\" disabled title=\"Pripravované\">ln</button><button type=\"button\" class=\"future\" disabled title=\"Pripravované\">log</button><button type=\"button\" class=\"future\" disabled title=\"Pripravované\">eˣ</button>\n"
-    "  </section>\n"
-    "  <section class=\"result-panel\" aria-live=\"polite\">\n"
-    "    <span class=\"result-label\">Výsledok</span>\n"
-    "    <output id=\"result\"></output>\n"
+    "    <button type=\"button\" class=\"future\" disabled title=\"Pripravované\">√x</button><button type=\"button\" class=\"future\" disabled title=\"Pripravované\">|x|</button><button type=\"button\" class=\"future\" disabled title=\"Pripravované\">sin</button><button type=\"button\" class=\"future\" disabled title=\"Pripravované\">cos</button><button type=\"button\" class=\"future\" disabled title=\"Pripravované\">tan</button>\n"
+    "    <button type=\"button\" class=\"future\" disabled title=\"Pripravované\">ln</button><button type=\"button\" class=\"future\" disabled title=\"Pripravované\">log</button><button type=\"button\" class=\"future\" disabled title=\"Pripravované\">eˣ</button>\n"
     "  </section>\n"
     "  <a class=\"guide-link\" href=\"/api\">Ako funguje výpočet a API →</a>\n";
 
@@ -135,6 +137,7 @@ static const char NUMFORGE_WEB_PAGE_SCRIPT[] =
 
 static const char *const NUMFORGE_WEB_PAGE[] = {
     NUMFORGE_WEB_PAGE_START,
+    NUMFORGE_WEB_PAGE_RESULT,
     NUMFORGE_WEB_PAGE_KEYPAD,
     NUMFORGE_WEB_PAGE_FUTURE,
     NUMFORGE_WEB_PAGE_SCRIPT,
@@ -172,12 +175,12 @@ static const char NUMFORGE_API_PAGE_START[] =
     "  <table><tr><th>Prvok</th><th>Príklady</th></tr>\n"
     "  <tr><td>Celé a desatinné čísla</td><td><code>42</code>, <code>-1.5</code>, <code>1,5</code>, <code>.25</code>, <code>1.</code></td></tr>\n"
     "  <tr><td>Vedecký zápis</td><td><code>1.25E-3</code>, <code>6E4</code>; veľké <code>E</code> je povinné</td></tr>\n"
-    "  <tr><td>Operátory</td><td><code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>; násobenie a delenie majú vyššiu prioritu</td></tr>\n"
+    "  <tr><td>Operátory</td><td><code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>^</code>; mocnina má najvyššiu prioritu a exponent musí byť nezáporné celé číslo</td></tr>\n"
     "  <tr><td>Zátvorky a znamienka</td><td><code>(2 + 3) * 4</code>, <code>-(2.5E-1) * 8</code></td></tr>\n"
     "  <tr><td>Postfixové operácie</td><td><code>12²</code>, <code>2³</code>, <code>5!</code>; faktorál vyžaduje nezáporné celé číslo</td></tr>\n"
     "  <tr><td>Konštanty</td><td><code>π</code>, <code>e</code>, <code>φ</code></td></tr>\n"
     "  <tr><td>Implicitné násobenie</td><td><code>2π</code>, <code>πe</code>, <code>2(3 + 4)</code></td></tr></table>\n"
-    "  <p>Momentálne nie sú podporované <code>^</code>, <code>%</code>, premenné ani ostatné funkcie.</p>\n"
+    "  <p>Momentálne nie sú podporované <code>%</code>, premenné ani ostatné funkcie.</p>\n"
     "  <p>Konštanty majú uložených 200 desatinných miest. Malé <code>e</code> vždy znamená Eulerovo číslo, preto <code>5e</code> znamená <code>5 * e</code> a <code>1e3</code> znamená <code>1 * e * 3</code>. Vedecký zápis vždy používa veľké <code>E</code>: <code>5E-1</code> je <code>0.5</code> a <code>1E3</code> je <code>1000</code>. Tlačidlá budúcich funkcií sú zámerne neaktívne; zatiaľ nepridávajú žiadnu syntax ani výpočet.</p>\n"
     "  <h2>Výstupná presnosť</h2>\n"
     "  <p>Nastavenie <strong>Desatinné miesta</strong> určuje počet miest, na ktoré sa výsledok zaokrúhli pravidlom half-even; predvolená hodnota je 10. Voľba <strong>Plný výstup</strong> nevynucuje výstupné zaokrúhlenie. Veľmi malé a veľké nenulové výsledky sa zobrazia vo vedeckom zápise s veľkým <code>E</code>, napríklad <code>1.25E-12</code>.</p>\n"

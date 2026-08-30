@@ -216,6 +216,17 @@ void test_tokenizer_produces_postfix_operators(void)
     assert_next_token(&tokenizer, CALCULATOR_TOKEN_END, "", 0, 14);
 }
 
+void test_tokenizer_produces_power_operator(void)
+{
+    CalculatorTokenizer tokenizer;
+
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_tokenizer_init(&tokenizer, "1.5^3"));
+    assert_next_token(&tokenizer, CALCULATOR_TOKEN_NUMBER, "1.5", 3, 0);
+    assert_next_token(&tokenizer, CALCULATOR_TOKEN_CARET, "^", 1, 3);
+    assert_next_token(&tokenizer, CALCULATOR_TOKEN_NUMBER, "3", 1, 4);
+    assert_next_token(&tokenizer, CALCULATOR_TOKEN_END, "", 0, 5);
+}
+
 void test_tokenizer_rejects_invalid_tokens(void)
 {
     const char *input[] = { ".", "@" };
@@ -243,7 +254,7 @@ void test_tokenizer_rejects_invalid_tokens(void)
 
 void test_parser_accepts_expression_grammar(void)
 {
-    const char *input[] = { "1", "-1", "+.5", "\xCF\x80", "\xCF\x80" "e", "\xCF\x86", "1 + 2 * 3", "2(1 + 2)", "1E-2 / .5", "2\xC2\xB2", "3\xC2\xB3", "5!", "(2 + 3)!" };
+    const char *input[] = { "1", "-1", "+.5", "\xCF\x80", "\xCF\x80" "e", "\xCF\x86", "1 + 2 * 3", "2(1 + 2)", "1E-2 / .5", "2\xC2\xB2", "3\xC2\xB3", "5!", "(2 + 3)!", "1.5^3", "2^3^2", "2^-3" };
 
     for (size_t index = 0; index < sizeof(input) / sizeof(input[0]); index++)
     {
@@ -279,6 +290,13 @@ void test_parser_builds_precedence_and_associativity(void)
     TEST_ASSERT_EQUAL(CALCULATOR_BINARY_SUBTRACT, expression->data.binary.operation);
     TEST_ASSERT_EQUAL(CALCULATOR_EXPRESSION_BINARY, expression->data.binary.left->type);
     TEST_ASSERT_EQUAL(CALCULATOR_BINARY_SUBTRACT, expression->data.binary.left->data.binary.operation);
+    calculator_expression_destroy(expression);
+
+    expression = parse_expression("2^3^2");
+    TEST_ASSERT_EQUAL(CALCULATOR_EXPRESSION_BINARY, expression->type);
+    TEST_ASSERT_EQUAL(CALCULATOR_BINARY_POWER, expression->data.binary.operation);
+    TEST_ASSERT_EQUAL(CALCULATOR_EXPRESSION_BINARY, expression->data.binary.right->type);
+    TEST_ASSERT_EQUAL(CALCULATOR_BINARY_POWER, expression->data.binary.right->data.binary.operation);
     calculator_expression_destroy(expression);
 }
 
@@ -362,6 +380,14 @@ void test_evaluator_respects_precedence_and_parentheses(void)
     result = evaluate_expression("-2\xC2\xB2 + (2 + 3)!", &context);
     assert_decimal_equals("116", result);
     bigdecimal_destroy(result);
+
+    result = evaluate_expression("1.5^3 + 2^10", &context);
+    assert_decimal_equals("1027.375", result);
+    bigdecimal_destroy(result);
+
+    result = evaluate_expression("2^3^2 - 512 - 2^2 + (-2)^2 + 0^0 - 1", &context);
+    assert_decimal_equals("0", result);
+    bigdecimal_destroy(result);
 }
 
 void test_formatter_applies_precision_and_scientific_notation(void)
@@ -389,6 +415,13 @@ void test_formatter_applies_precision_and_scientific_notation(void)
     text = NULL;
     TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_format_result(result, &context, &text));
     TEST_ASSERT_EQUAL_STRING("1.2345678901E+12", text);
+    free(text);
+    bigdecimal_destroy(result);
+
+    result = evaluate_expression("1e3 - 3e", &context);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_format_result(result, &context, &text));
+    TEST_ASSERT_EQUAL_STRING("0", text);
     free(text);
     bigdecimal_destroy(result);
 }
@@ -456,6 +489,31 @@ void test_evaluator_rejects_invalid_factorial_input(void)
     bigdecimal_destroy(result);
 }
 
+void test_evaluator_rejects_invalid_power_exponent(void)
+{
+    const char *input[] = { "2^1.5", "2^-3" };
+
+    for (size_t index = 0; index < sizeof(input) / sizeof(input[0]); index++)
+    {
+        CalculatorContext context;
+        CalculatorExpression *expression = parse_expression(input[index]);
+        CalculatorError error;
+        BigDecimal *result = bigdecimal_create();
+
+        TEST_ASSERT_NOT_NULL(result);
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(result, "42"));
+        calculator_context_init(&context);
+        TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,
+                          calculator_evaluate(result, expression, &context, &error));
+        TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, error.status);
+        TEST_ASSERT_EQUAL_UINT(1, error.offset);
+        assert_decimal_equals("42", result);
+
+        calculator_expression_destroy(expression);
+        bigdecimal_destroy(result);
+    }
+}
+
 /* ============================================================
    Main
    ============================================================ */
@@ -473,6 +531,7 @@ int main(void)
     RUN_TEST(test_tokenizer_produces_identifiers);
     RUN_TEST(test_tokenizer_separates_constant_e_from_scientific_notation);
     RUN_TEST(test_tokenizer_produces_postfix_operators);
+    RUN_TEST(test_tokenizer_produces_power_operator);
     RUN_TEST(test_tokenizer_rejects_invalid_tokens);
     RUN_TEST(test_parser_accepts_expression_grammar);
     RUN_TEST(test_parser_builds_precedence_and_associativity);
@@ -483,6 +542,7 @@ int main(void)
     RUN_TEST(test_formatter_applies_precision_and_scientific_notation);
     RUN_TEST(test_evaluator_reports_arithmetic_errors_without_changing_result);
     RUN_TEST(test_evaluator_rejects_invalid_factorial_input);
+    RUN_TEST(test_evaluator_rejects_invalid_power_exponent);
 
     return UNITY_END();
 }

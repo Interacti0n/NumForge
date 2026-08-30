@@ -11,8 +11,8 @@ stable.
 | `calculator.c` | Shared status strings, error reporting, and evaluation/output-precision defaults. |
 | `constants.c` | Maps `π`, `e`, and `φ` to fixed 200-decimal-place BigDecimal approximations. |
 | `tokenizer.c` | Converts source text into location-aware tokens. Implemented for decimal literals, identifiers, whitespace, binary and postfix operators, and parentheses. |
-| `parser.c` | Converts tokens into an opaque expression tree (AST). Implemented as recursive descent with postfix, unary, multiplicative, and additive precedence layers. |
-| `evaluator.c` | Evaluates the AST to `BigDecimal` using `CalculatorContext`. Implemented for unary signs, square, cube, factorial, and the four initial binary operators. |
+| `parser.c` | Converts tokens into an opaque expression tree (AST). Implemented as recursive descent with postfix, power, unary, multiplicative, and additive precedence layers. |
+| `evaluator.c` | Evaluates the AST to `BigDecimal` using `CalculatorContext`. Implemented for unary signs, exact binary exponentiation, square, cube, factorial, and binary operators. |
 | `formatter.c` | Rounds a completed result to the requested output scale and selects ordinary or scientific notation. |
 | `src/main.c` | Interactive command-line shell around the calculator pipeline. |
 | `src/web/web_api.c` | Text-to-result adapter used by the local web server. |
@@ -38,17 +38,18 @@ keypad inserts digits, parentheses, `.`, `+`, `-`, `*`, `/`, `π`, `e`, `φ`,
 accepts both decimal separators.
 
 The page sends the selected output scale as `?precision=N`; its full-output
-checkbox sends `?precision=full`. The visible general-power, root,
-absolute-value, trigonometric, logarithmic, and exponential controls are
-disabled placeholders. They document the intended UI surface, but do not
-currently add tokens or affect evaluation.
+checkbox sends `?precision=full`. The visible root, absolute-value,
+trigonometric, logarithmic, and exponential controls are disabled placeholders.
+They document the intended UI surface, but do not currently add tokens or
+affect evaluation.
 
 ## Initial grammar
 
 ```text
 expression  := term (('+' | '-') term)*
 term        := unary (('*' | '/' | IMPLICIT_MULTIPLY) unary)*
-unary       := ('+' | '-') unary | postfix
+unary       := ('+' | '-') unary | power
+power       := postfix ('^' unary)?
 postfix     := primary ('²' | '³' | '!')*
 primary     := NUMBER | CONSTANT | '(' expression ')'
 CONSTANT    := π | e | φ
@@ -61,8 +62,16 @@ sign is always a separate `PLUS` or `MINUS` token, which keeps unary and binary
 operators unambiguous. The evaluator normalizes a comma to a point before
 calling the public BigDecimal API.
 
-General exponentiation, variables, and functions are intentionally outside this
-first grammar. Add them only with explicit precedence and domain rules.
+Variables and general functions are intentionally outside this first grammar.
+Add them only with explicit precedence and domain rules.
+
+`^` is right-associative and binds more tightly than unary signs and
+multiplication. Thus `2^3^2` is `2^(3^2)` and `-2^2` is `-(2^2)`. Its evaluator
+uses binary exponentiation: the base is an exact `BigDecimal`, while the
+exponent must be a non-negative whole number represented as `BigInt`. This
+keeps `1.5^3` exact while using logarithmically many BigDecimal multiplications.
+`0^0` is defined as `1`; negative and fractional exponents currently return an
+invalid-argument error.
 
 Postfix operators bind tighter than unary signs and multiplication, so `-2²`
 is `-(2²)` and `(2 + 3)!` is valid. Square and cube evaluate as exact

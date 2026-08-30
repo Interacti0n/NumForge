@@ -251,6 +251,9 @@ CalculatorStatus calculator_tokenizer_next(
             case '/':
                 calculator_set_token(token, CALCULATOR_TOKEN_SLASH, tokenizer->input + offset, 1, offset);
                 break;
+            case '^':
+                calculator_set_token(token, CALCULATOR_TOKEN_CARET, tokenizer->input + offset, 1, offset);
+                break;
             case '!':
                 calculator_set_token(token, CALCULATOR_TOKEN_FACTORIAL, tokenizer->input + offset, 1, offset);
                 break;

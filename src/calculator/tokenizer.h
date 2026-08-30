@@ -8,7 +8,7 @@
     Token types produced from calculator source text.
 
     The tokenizer deliberately leaves unary plus/minus to the parser. This
-    makes -2^2 and 2*-3 unambiguous once exponentiation is introduced.
+    makes -2^2 and 2*-3 unambiguous.
 ------------------------------------------------------------------------------------------------------------------------------
 */
 typedef enum CalculatorTokenType
@@ -19,6 +19,7 @@ typedef enum CalculatorTokenType
     CALCULATOR_TOKEN_MINUS,
     CALCULATOR_TOKEN_STAR,
     CALCULATOR_TOKEN_SLASH,
+    CALCULATOR_TOKEN_CARET,
     CALCULATOR_TOKEN_SQUARE,
     CALCULATOR_TOKEN_CUBE,
     CALCULATOR_TOKEN_FACTORIAL,

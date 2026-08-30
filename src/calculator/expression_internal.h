@@ -40,7 +40,8 @@ typedef enum CalculatorBinaryOperator
     CALCULATOR_BINARY_ADD,
     CALCULATOR_BINARY_SUBTRACT,
     CALCULATOR_BINARY_MULTIPLY,
-    CALCULATOR_BINARY_DIVIDE
+    CALCULATOR_BINARY_DIVIDE,
+    CALCULATOR_BINARY_POWER
 } CalculatorBinaryOperator;
 
 struct CalculatorExpression

@@ -141,6 +141,70 @@ static CalculatorStatus calculator_set_bigdecimal_from_bigint(BigDecimal *value,
     return status;
 }
 
+static CalculatorStatus calculator_bigdecimal_pow(
+    BigDecimal *result,
+    const BigDecimal *base,
+    const BigDecimal *exponent
+)
+{
+    BigInt *integer_exponent = NULL;
+    BigDecimal *accumulator = NULL;
+    BigDecimal *factor = NULL;
+    CalculatorStatus status = calculator_bigdecimal_to_bigint(&integer_exponent, exponent);
+
+    if (status != CALCULATOR_OK)
+    {
+        return status;
+    }
+    if (bigint_is_negative(integer_exponent))
+    {
+        bigint_destroy(integer_exponent);
+        return CALCULATOR_INVALID_ARGUMENT;
+    }
+
+    accumulator = bigdecimal_create();
+    factor = bigdecimal_create();
+    if (accumulator == NULL || factor == NULL)
+    {
+        bigint_destroy(integer_exponent);
+        bigdecimal_destroy(accumulator);
+        bigdecimal_destroy(factor);
+        return CALCULATOR_OUT_OF_MEMORY;
+    }
+
+    status = calculator_from_bigdecimal_status(bigdecimal_set_string(accumulator, "1"));
+    if (status == CALCULATOR_OK)
+    {
+        status = calculator_from_bigdecimal_status(bigdecimal_copy(factor, base));
+    }
+
+    while (status == CALCULATOR_OK && !bigint_is_zero(integer_exponent))
+    {
+        if (bigint_is_odd(integer_exponent))
+        {
+            status = calculator_from_bigdecimal_status(bigdecimal_mul(accumulator, accumulator, factor));
+        }
+        if (status == CALCULATOR_OK)
+        {
+            status = calculator_from_bigint_status(bigint_shift_right(integer_exponent, integer_exponent, 1U));
+        }
+        if (status == CALCULATOR_OK && !bigint_is_zero(integer_exponent))
+        {
+            status = calculator_from_bigdecimal_status(bigdecimal_mul(factor, factor, factor));
+        }
+    }
+
+    if (status == CALCULATOR_OK)
+    {
+        status = calculator_from_bigdecimal_status(bigdecimal_copy(result, accumulator));
+    }
+
+    bigint_destroy(integer_exponent);
+    bigdecimal_destroy(accumulator);
+    bigdecimal_destroy(factor);
+    return status;
+}
+
 static CalculatorStatus calculator_evaluate_postfix(
     BigDecimal **result,
     const CalculatorExpression *expression,
@@ -383,6 +447,9 @@ static CalculatorStatus calculator_evaluate_expression(
             case CALCULATOR_BINARY_DIVIDE:
                 status = calculator_from_bigdecimal_status(
                     bigdecimal_div(value, left, right, context->division_scale, context->rounding));
+                break;
+            case CALCULATOR_BINARY_POWER:
+                status = calculator_bigdecimal_pow(value, left, right);
                 break;
             default:
                 status = CALCULATOR_INVALID_ARGUMENT;

@@ -7,8 +7,9 @@
 /*
 ------------------------------------------------------------------------------------------------------------------------------
     Parser implementation. The recursive-descent layers directly mirror the
-    expression grammar: unary operators bind most tightly, multiplication and
-    division bind next, and addition and subtraction bind least tightly.
+    expression grammar: postfix and power operators bind most tightly, unary
+    signs follow, multiplication and division bind next, and addition and
+    subtraction bind least tightly.
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
@@ -294,6 +295,63 @@ static CalculatorStatus calculator_parse_postfix(
 static CalculatorStatus calculator_parse_unary(
     CalculatorParser *parser,
     CalculatorExpression **result
+);
+
+static CalculatorStatus calculator_parse_power(
+    CalculatorParser *parser,
+    CalculatorExpression **result
+)
+{
+    CalculatorExpression *base;
+    CalculatorExpression *exponent;
+    CalculatorExpression *expression;
+    CalculatorStatus status = calculator_parse_postfix(parser, &base);
+
+    if (status != CALCULATOR_OK)
+    {
+        return status;
+    }
+    if (parser->current.type != CALCULATOR_TOKEN_CARET)
+    {
+        *result = base;
+        return CALCULATOR_OK;
+    }
+
+    {
+        size_t offset = parser->current.offset;
+
+        status = calculator_parser_advance(parser);
+        if (status != CALCULATOR_OK)
+        {
+            calculator_expression_destroy(base);
+            return status;
+        }
+
+        status = calculator_parse_unary(parser, &exponent);
+        if (status != CALCULATOR_OK)
+        {
+            calculator_expression_destroy(base);
+            return status;
+        }
+
+        expression = calculator_expression_create_binary(
+            CALCULATOR_BINARY_POWER, offset, base, exponent);
+        if (expression == NULL)
+        {
+            calculator_expression_destroy(base);
+            calculator_expression_destroy(exponent);
+            calculator_error_set(parser->error, CALCULATOR_OUT_OF_MEMORY, offset);
+            return CALCULATOR_OUT_OF_MEMORY;
+        }
+
+        *result = expression;
+        return CALCULATOR_OK;
+    }
+}
+
+static CalculatorStatus calculator_parse_unary(
+    CalculatorParser *parser,
+    CalculatorExpression **result
 )
 {
     CalculatorTokenType type = parser->current.type;
@@ -331,7 +389,7 @@ static CalculatorStatus calculator_parse_unary(
         return CALCULATOR_OK;
     }
 
-    return calculator_parse_postfix(parser, result);
+    return calculator_parse_power(parser, result);
 }
 
 static bool calculator_token_starts_primary(CalculatorTokenType type)

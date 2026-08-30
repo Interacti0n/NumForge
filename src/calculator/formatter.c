@@ -123,6 +123,11 @@ static char *calculator_format_scientific(const char *text, int64_t output_scale
         point = digits + strlen(digits);
     }
 
+    if (digits[0] == '0' && point[0] == '\0')
+    {
+        return NULL;
+    }
+
     if (point != digits && !(point == digits + 1U && digits[0] == '0'))
     {
         first = digits;
