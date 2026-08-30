@@ -24,6 +24,7 @@ typedef enum CalculatorStatus
     CALCULATOR_DIVISION_BY_ZERO,
     CALCULATOR_VALUE_TOO_LARGE,
     CALCULATOR_SCALE_OVERFLOW,
+    CALCULATOR_TIME_LIMIT,
     CALCULATOR_NOT_IMPLEMENTED
 } CalculatorStatus;
 
@@ -37,11 +38,14 @@ typedef struct CalculatorContext
 {
     int64_t division_scale;
     int64_t output_scale;
+    int64_t time_limit_ms;
     BigDecimalRoundingMode rounding;
 } CalculatorContext;
 
 #define CALCULATOR_DEFAULT_OUTPUT_SCALE 10
 #define CALCULATOR_UNLIMITED_OUTPUT_SCALE (-1)
+#define CALCULATOR_DEFAULT_TIME_LIMIT_MS 5000
+#define CALCULATOR_FACTORIAL_MAX_N 5000
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------

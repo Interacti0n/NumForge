@@ -89,8 +89,10 @@ void test_context_defaults_and_status_strings(void)
 
     TEST_ASSERT_EQUAL_INT64(34, context.division_scale);
     TEST_ASSERT_EQUAL_INT64(CALCULATOR_DEFAULT_OUTPUT_SCALE, context.output_scale);
+    TEST_ASSERT_EQUAL_INT64(CALCULATOR_DEFAULT_TIME_LIMIT_MS, context.time_limit_ms);
     TEST_ASSERT_EQUAL(BIGDECIMAL_ROUND_HALF_EVEN, context.rounding);
     TEST_ASSERT_EQUAL_STRING("syntax error", calculator_status_to_string(CALCULATOR_SYNTAX_ERROR));
+    TEST_ASSERT_EQUAL_STRING("TLE: time limit exceeded", calculator_status_to_string(CALCULATOR_TIME_LIMIT));
     TEST_ASSERT_EQUAL_STRING("unknown status", calculator_status_to_string((CalculatorStatus)999));
 }
 
@@ -514,6 +516,33 @@ void test_evaluator_rejects_invalid_power_exponent(void)
     }
 }
 
+void test_evaluator_enforces_time_and_factorial_limits(void)
+{
+    CalculatorContext context;
+    CalculatorExpression *expression;
+    CalculatorError error;
+    BigDecimal *result = bigdecimal_create();
+
+    TEST_ASSERT_NOT_NULL(result);
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(result, "42"));
+    calculator_context_init(&context);
+    context.time_limit_ms = 0;
+    expression = parse_expression("1 + 1");
+    TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT, calculator_evaluate(result, expression, &context, &error));
+    TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT, error.status);
+    assert_decimal_equals("42", result);
+    calculator_expression_destroy(expression);
+
+    calculator_context_init(&context);
+    expression = parse_expression("5001!");
+    TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE, calculator_evaluate(result, expression, &context, &error));
+    TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE, error.status);
+    TEST_ASSERT_EQUAL_UINT(4, error.offset);
+    assert_decimal_equals("42", result);
+    calculator_expression_destroy(expression);
+    bigdecimal_destroy(result);
+}
+
 /* ============================================================
    Main
    ============================================================ */
@@ -543,6 +572,7 @@ int main(void)
     RUN_TEST(test_evaluator_reports_arithmetic_errors_without_changing_result);
     RUN_TEST(test_evaluator_rejects_invalid_factorial_input);
     RUN_TEST(test_evaluator_rejects_invalid_power_exponent);
+    RUN_TEST(test_evaluator_enforces_time_and_factorial_limits);
 
     return UNITY_END();
 }

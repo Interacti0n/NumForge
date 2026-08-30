@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include <numforge/bigint.h>
 
@@ -19,10 +20,32 @@
     Internal helper functions for evaluator operations.
 ------------------------------------------------------------------------------------------------------------------------------
 */
+typedef struct CalculatorEvaluation
+{
+    const CalculatorContext *context;
+    clock_t started_at;
+    bool can_check_time;
+} CalculatorEvaluation;
+
+static bool calculator_time_limit_reached(const CalculatorEvaluation *evaluation)
+{
+    clock_t now;
+
+    if (!evaluation->can_check_time)
+    {
+        return false;
+    }
+
+    now = clock();
+    return now != (clock_t)-1 &&
+           (double)(now - evaluation->started_at) * 1000.0 >=
+               (double)evaluation->context->time_limit_ms;
+}
+
 static CalculatorStatus calculator_evaluate_expression(
     BigDecimal **result,
     const CalculatorExpression *expression,
-    const CalculatorContext *context,
+    const CalculatorEvaluation *evaluation,
     CalculatorError *error
 );
 
@@ -141,10 +164,31 @@ static CalculatorStatus calculator_set_bigdecimal_from_bigint(BigDecimal *value,
     return status;
 }
 
+static CalculatorStatus calculator_check_factorial_limit(const BigInt *value)
+{
+    BigInt *limit = bigint_create();
+    CalculatorStatus status;
+
+    if (limit == NULL)
+    {
+        return CALCULATOR_OUT_OF_MEMORY;
+    }
+
+    status = calculator_from_bigint_status(bigint_set_string(limit, "5000"));
+    if (status == CALCULATOR_OK && bigint_compare(value, limit) > 0)
+    {
+        status = CALCULATOR_VALUE_TOO_LARGE;
+    }
+
+    bigint_destroy(limit);
+    return status;
+}
+
 static CalculatorStatus calculator_bigdecimal_pow(
     BigDecimal *result,
     const BigDecimal *base,
-    const BigDecimal *exponent
+    const BigDecimal *exponent,
+    const CalculatorEvaluation *evaluation
 )
 {
     BigInt *integer_exponent = NULL;
@@ -180,6 +224,11 @@ static CalculatorStatus calculator_bigdecimal_pow(
 
     while (status == CALCULATOR_OK && !bigint_is_zero(integer_exponent))
     {
+        if (calculator_time_limit_reached(evaluation))
+        {
+            status = CALCULATOR_TIME_LIMIT;
+            break;
+        }
         if (bigint_is_odd(integer_exponent))
         {
             status = calculator_from_bigdecimal_status(bigdecimal_mul(accumulator, accumulator, factor));
@@ -196,6 +245,13 @@ static CalculatorStatus calculator_bigdecimal_pow(
 
     if (status == CALCULATOR_OK)
     {
+        if (calculator_time_limit_reached(evaluation))
+        {
+            status = CALCULATOR_TIME_LIMIT;
+        }
+    }
+    if (status == CALCULATOR_OK)
+    {
         status = calculator_from_bigdecimal_status(bigdecimal_copy(result, accumulator));
     }
 
@@ -208,7 +264,7 @@ static CalculatorStatus calculator_bigdecimal_pow(
 static CalculatorStatus calculator_evaluate_postfix(
     BigDecimal **result,
     const CalculatorExpression *expression,
-    const CalculatorContext *context,
+    const CalculatorEvaluation *evaluation,
     CalculatorError *error
 )
 {
@@ -217,7 +273,7 @@ static CalculatorStatus calculator_evaluate_postfix(
     BigInt *integer = NULL;
     BigInt *integer_result = NULL;
     CalculatorStatus status = calculator_evaluate_expression(
-        &operand, expression->data.postfix.operand, context, error);
+        &operand, expression->data.postfix.operand, evaluation, error);
 
     if (status != CALCULATOR_OK)
     {
@@ -241,6 +297,10 @@ static CalculatorStatus calculator_evaluate_postfix(
             status = calculator_from_bigdecimal_status(bigdecimal_mul(value, value, operand));
         }
         bigdecimal_destroy(operand);
+        if (status == CALCULATOR_OK && calculator_time_limit_reached(evaluation))
+        {
+            status = CALCULATOR_TIME_LIMIT;
+        }
         if (status != CALCULATOR_OK)
         {
             bigdecimal_destroy(value);
@@ -267,6 +327,14 @@ static CalculatorStatus calculator_evaluate_postfix(
         return status;
     }
 
+    status = calculator_check_factorial_limit(integer);
+    if (status != CALCULATOR_OK)
+    {
+        bigint_destroy(integer);
+        calculator_error_set(error, status, expression->offset);
+        return status;
+    }
+
     integer_result = bigint_create();
     if (integer_result == NULL)
     {
@@ -277,6 +345,10 @@ static CalculatorStatus calculator_evaluate_postfix(
 
     status = calculator_from_bigint_status(bigint_factorial(integer_result, integer));
     bigint_destroy(integer);
+    if (status == CALCULATOR_OK && calculator_time_limit_reached(evaluation))
+    {
+        status = CALCULATOR_TIME_LIMIT;
+    }
     if (status != CALCULATOR_OK)
     {
         bigint_destroy(integer_result);
@@ -308,12 +380,18 @@ static CalculatorStatus calculator_evaluate_postfix(
 static CalculatorStatus calculator_evaluate_expression(
     BigDecimal **result,
     const CalculatorExpression *expression,
-    const CalculatorContext *context,
+    const CalculatorEvaluation *evaluation,
     CalculatorError *error
 )
 {
     BigDecimal *value;
     CalculatorStatus status;
+
+    if (calculator_time_limit_reached(evaluation))
+    {
+        calculator_error_set(error, CALCULATOR_TIME_LIMIT, expression->offset);
+        return CALCULATOR_TIME_LIMIT;
+    }
 
     if (expression->type == CALCULATOR_EXPRESSION_NUMBER)
     {
@@ -361,7 +439,7 @@ static CalculatorStatus calculator_evaluate_expression(
     {
         BigDecimal *operand;
 
-        status = calculator_evaluate_expression(&operand, expression->data.unary.operand, context, error);
+        status = calculator_evaluate_expression(&operand, expression->data.unary.operand, evaluation, error);
         if (status != CALCULATOR_OK)
         {
             return status;
@@ -403,7 +481,7 @@ static CalculatorStatus calculator_evaluate_expression(
 
     if (expression->type == CALCULATOR_EXPRESSION_POSTFIX)
     {
-        return calculator_evaluate_postfix(result, expression, context, error);
+        return calculator_evaluate_postfix(result, expression, evaluation, error);
     }
 
     if (expression->type == CALCULATOR_EXPRESSION_BINARY)
@@ -411,13 +489,13 @@ static CalculatorStatus calculator_evaluate_expression(
         BigDecimal *left;
         BigDecimal *right;
 
-        status = calculator_evaluate_expression(&left, expression->data.binary.left, context, error);
+        status = calculator_evaluate_expression(&left, expression->data.binary.left, evaluation, error);
         if (status != CALCULATOR_OK)
         {
             return status;
         }
 
-        status = calculator_evaluate_expression(&right, expression->data.binary.right, context, error);
+        status = calculator_evaluate_expression(&right, expression->data.binary.right, evaluation, error);
         if (status != CALCULATOR_OK)
         {
             bigdecimal_destroy(left);
@@ -446,14 +524,20 @@ static CalculatorStatus calculator_evaluate_expression(
                 break;
             case CALCULATOR_BINARY_DIVIDE:
                 status = calculator_from_bigdecimal_status(
-                    bigdecimal_div(value, left, right, context->division_scale, context->rounding));
+                    bigdecimal_div(value, left, right, evaluation->context->division_scale,
+                                   evaluation->context->rounding));
                 break;
             case CALCULATOR_BINARY_POWER:
-                status = calculator_bigdecimal_pow(value, left, right);
+                status = calculator_bigdecimal_pow(value, left, right, evaluation);
                 break;
             default:
                 status = CALCULATOR_INVALID_ARGUMENT;
                 break;
+        }
+
+        if (status == CALCULATOR_OK && calculator_time_limit_reached(evaluation))
+        {
+            status = CALCULATOR_TIME_LIMIT;
         }
 
         bigdecimal_destroy(left);
@@ -485,6 +569,7 @@ CalculatorStatus calculator_evaluate(
     CalculatorError *error
 )
 {
+    CalculatorEvaluation evaluation;
     BigDecimal *temporary;
     CalculatorStatus status;
 
@@ -503,8 +588,16 @@ CalculatorStatus calculator_evaluate(
         calculator_error_set(error, CALCULATOR_INVALID_ARGUMENT, 0);
         return CALCULATOR_INVALID_ARGUMENT;
     }
+    if (context->time_limit_ms < 0)
+    {
+        calculator_error_set(error, CALCULATOR_INVALID_ARGUMENT, 0);
+        return CALCULATOR_INVALID_ARGUMENT;
+    }
 
-    status = calculator_evaluate_expression(&temporary, expression, context, error);
+    evaluation.context = context;
+    evaluation.started_at = clock();
+    evaluation.can_check_time = evaluation.started_at != (clock_t)-1;
+    status = calculator_evaluate_expression(&temporary, expression, &evaluation, error);
     if (status != CALCULATOR_OK)
     {
         return status;

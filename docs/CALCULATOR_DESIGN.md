@@ -77,8 +77,8 @@ Postfix operators bind tighter than unary signs and multiplication, so `-2²`
 is `-(2²)` and `(2 + 3)!` is valid. Square and cube evaluate as exact
 BigDecimal multiplication: `x²` is `x * x`, and `x³` is `(x * x) * x`.
 Factorial delegates to `bigint_factorial`; it accepts only a non-negative whole
-number up to `BIGINT_FACTORIAL_MAX_N`, and reports an invalid-argument error
-for other inputs.
+number up to 5000 in the calculator, and reports an invalid-argument error for
+other inputs or `VALUE_TOO_LARGE` above that calculator limit.
 
 Adjacent primaries imply multiplication at the normal multiplicative
 precedence. This covers `πe`, `10π`, `5e`, `2(2 + 2)`, and `(1 + 2)(3 + 4)`.
@@ -90,11 +90,17 @@ Only the exact UTF-8 symbols `π`, `e`, and `φ` are constants; ASCII `pi` and
 ## Evaluation policy and errors
 
 `CalculatorContext` holds a division scale, output scale, and a BigDecimal
-rounding mode. Division defaults to 34 decimal places with half-even rounding.
+rounding mode, plus a soft CPU-time limit. Division defaults to 34 decimal places with half-even rounding.
 Output defaults to 10 decimal places; requesting more output places increases
 division precision by four guard digits. The special output scale `-1` means
 full output and does not add a final rescale. This avoids hidden global
 precision and makes one expression deterministic for one context.
+
+The default `time_limit_ms` is 5000. The evaluator checks the elapsed CPU time
+between AST operations and during every binary-exponentiation iteration. It
+returns `CALCULATOR_TIME_LIMIT`, rendered as `TLE` by the web adapter, once the
+limit is exceeded. A BigInt primitive already in progress cannot be safely
+interrupted, so this is a soft rather than a hard real-time bound.
 
 `formatter.c` changes only presentation: it applies the requested output scale
 with the context's rounding mode, then switches to scientific notation when a

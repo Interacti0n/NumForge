@@ -99,8 +99,12 @@ when the exponent is a non-negative whole number. `2^3^2` means `2^(3^2)`;
 functions are not implemented yet. Squaring and cubing use exact BigDecimal
 multiplication too.
 Factorial uses `bigint_factorial` and requires a non-negative whole number no
-greater than `BIGINT_FACTORIAL_MAX_N`. The default division policy produces 34
-decimal places and uses half-even rounding.
+greater than 5000 in the calculator, even though the underlying BigInt API has
+a higher limit. The default division policy produces 34 decimal places and uses
+half-even rounding. Evaluation has an approximately five-second CPU limit; it
+returns `CALCULATOR_TIME_LIMIT` and the local web API reports `TLE` when the
+limit is reached. A single already-running large BigInt operation cannot be
+interrupted mid-operation, so it may finish shortly after the limit.
 
 The local browser page has active keypad buttons for this grammar, including
 power, square, cube, and factorial. Its root, trigonometric, logarithmic, and

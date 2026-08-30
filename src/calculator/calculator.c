@@ -28,6 +28,7 @@ const char *calculator_status_to_string(CalculatorStatus status)
         case CALCULATOR_DIVISION_BY_ZERO: return "division by zero";
         case CALCULATOR_VALUE_TOO_LARGE: return "value too large";
         case CALCULATOR_SCALE_OVERFLOW: return "scale overflow";
+        case CALCULATOR_TIME_LIMIT: return "TLE: time limit exceeded";
         case CALCULATOR_NOT_IMPLEMENTED: return "not implemented";
         default: return "unknown status";
     }
@@ -42,6 +43,7 @@ void calculator_context_init(CalculatorContext *context)
 
     context->division_scale = 34;
     context->output_scale = CALCULATOR_DEFAULT_OUTPUT_SCALE;
+    context->time_limit_ms = CALCULATOR_DEFAULT_TIME_LIMIT_MS;
     context->rounding = BIGDECIMAL_ROUND_HALF_EVEN;
 }
 
