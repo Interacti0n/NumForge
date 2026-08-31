@@ -26,12 +26,12 @@ jobs:
         run: ctest --test-dir build --output-on-failure
 
   windows:
-    runs-on: windows-latest
+    runs-on: windows-2022
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Configure
+      - name: Configure CMake
         run: >-
           cmake -S . -B build -G "Visual Studio 17 2022" -A x64
           -DBUILD_TESTING=ON
