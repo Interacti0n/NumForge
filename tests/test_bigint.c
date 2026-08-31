@@ -641,6 +641,21 @@ void test_add_alias_all(void)
 }
 
 
+void test_add_across_limb_boundary(void)
+{
+    BigInt *a = make_bigint("18446744073709551615");
+    BigInt *b = make_bigint("1");
+    BigInt *result = bigint_create();
+
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_add(result, a, b));
+    assert_bigint_string(result, "18446744073709551616");
+
+    bigint_destroy(a);
+    bigint_destroy(b);
+    bigint_destroy(result);
+}
+
+
 /* ============================================================
    SUB
    ============================================================ */
@@ -949,6 +964,7 @@ void test_div_mod_same_output(void)
 {
     BigInt *a = make_bigint("100");
     BigInt *b = make_bigint("7");
+    BigInt *zero = make_bigint("0");
     BigInt *x = make_bigint("999");
 
     TEST_ASSERT_EQUAL(
@@ -959,8 +975,15 @@ void test_div_mod_same_output(void)
     /* Must not modify x */
     assert_bigint_string(x, "999");
 
+    TEST_ASSERT_EQUAL(
+        BIGINT_INVALID_ARGUMENT,
+        bigint_div_mod(x, x, a, zero)
+    );
+    assert_bigint_string(x, "999");
+
     bigint_destroy(a);
     bigint_destroy(b);
+    bigint_destroy(zero);
     bigint_destroy(x);
 }
 
@@ -1155,7 +1178,7 @@ void test_pow_zero_zero(void)
     TEST_ASSERT_NOT_NULL(string);
 
     TEST_ASSERT_EQUAL_STRING(
-        "1", 
+        "1",
         string
     );
 
@@ -1179,6 +1202,28 @@ void test_pow_negative_exponent(void)
     bigint_destroy(base);
     bigint_destroy(exponent);
     bigint_destroy(result);
+}
+
+
+void test_pow_supports_all_output_input_aliases(void)
+{
+    BigInt *base = make_bigint("-2");
+    BigInt *exponent = make_bigint("3");
+    BigInt *same = make_bigint("2");
+
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_pow(base, base, exponent));
+    assert_bigint_string(base, "-8");
+
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(base, "-2"));
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_pow(exponent, base, exponent));
+    assert_bigint_string(exponent, "-8");
+
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_pow(same, same, same));
+    assert_bigint_string(same, "4");
+
+    bigint_destroy(base);
+    bigint_destroy(exponent);
+    bigint_destroy(same);
 }
 
 
@@ -1420,18 +1465,14 @@ void test_factorial_overflow(void)
     bigint_destroy(result);
 }
 
-void test_add_across_limb_boundary(void)
+void test_factorial_alias_input(void)
 {
-    BigInt *a = make_bigint("18446744073709551615");
-    BigInt *b = make_bigint("1");
-    BigInt *result = bigint_create();
+    BigInt *value = make_bigint("10");
 
-    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_add(result, a, b));
-    assert_bigint_string(result, "18446744073709551616");
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_factorial(value, value));
+    assert_bigint_string(value, "3628800");
 
-    bigint_destroy(a);
-    bigint_destroy(b);
-    bigint_destroy(result);
+    bigint_destroy(value);
 }
 
 void test_factorial_above_practical_limit(void)
@@ -1960,6 +2001,22 @@ void test_prime_composite_without_small_factor(void)
 }
 
 
+void test_prime_multi_limb_values(void)
+{
+    /* 2^127 - 1 is prime; its square exercises the multi-limb composite path. */
+    BigInt *prime = make_bigint("170141183460469231731687303715884105727");
+    BigInt *composite = make_bigint(
+        "28948022309329048855892746252171976962977213799489202546401021394546514198529"
+    );
+
+    TEST_ASSERT_TRUE(bigint_is_probable_prime(prime));
+    TEST_ASSERT_FALSE(bigint_is_probable_prime(composite));
+
+    bigint_destroy(prime);
+    bigint_destroy(composite);
+}
+
+
 void test_prime_negative(void)
 {
     BigInt *x = make_bigint("-17");
@@ -2018,6 +2075,23 @@ void test_perfect_square_large(void)
     TEST_ASSERT_TRUE(bigint_is_perfect_square(x));
 
     bigint_destroy(x);
+}
+
+
+void test_perfect_square_multi_limb_values(void)
+{
+    BigInt *square = make_bigint(
+        "28948022309329048855892746252171976962977213799489202546401021394546514198529"
+    );
+    BigInt *previous = make_bigint(
+        "28948022309329048855892746252171976962977213799489202546401021394546514198528"
+    );
+
+    TEST_ASSERT_TRUE(bigint_is_perfect_square(square));
+    TEST_ASSERT_FALSE(bigint_is_perfect_square(previous));
+
+    bigint_destroy(square);
+    bigint_destroy(previous);
 }
 
 
@@ -2284,6 +2358,7 @@ int main(void)
     RUN_TEST(test_pow_zero_zero);
     RUN_TEST(test_pow_large);
     RUN_TEST(test_pow_negative_exponent);
+    RUN_TEST(test_pow_supports_all_output_input_aliases);
 
     /* GCD */
     RUN_TEST(test_gcd_basic);
@@ -2301,6 +2376,7 @@ int main(void)
     RUN_TEST(test_factorial_one);
     RUN_TEST(test_factorial_five);
     RUN_TEST(test_factorial_ten);
+    RUN_TEST(test_factorial_alias_input);
     RUN_TEST(test_factorial_negative);
     RUN_TEST(test_factorial_overflow);
     RUN_TEST(test_factorial_above_practical_limit);
@@ -2344,6 +2420,7 @@ int main(void)
     RUN_TEST(test_prime_small_primes);
     RUN_TEST(test_prime_composites);
     RUN_TEST(test_prime_composite_without_small_factor);
+    RUN_TEST(test_prime_multi_limb_values);
     RUN_TEST(test_prime_negative);
 
     /* Perfect square */
@@ -2351,6 +2428,7 @@ int main(void)
     RUN_TEST(test_perfect_square_one);
     RUN_TEST(test_perfect_square_positive);
     RUN_TEST(test_perfect_square_large);
+    RUN_TEST(test_perfect_square_multi_limb_values);
     RUN_TEST(test_not_perfect_square);
     RUN_TEST(test_negative_not_perfect_square);
 

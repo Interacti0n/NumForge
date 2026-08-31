@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(NumForge
     VERSION 0.1.0
-    DESCRIPTION "Scientific calculator and mathematics library written in C"
+    DESCRIPTION "Arbitrary-precision mathematics library and exact-decimal calculator written in C"
     LANGUAGES C
 )
 
@@ -21,7 +21,7 @@ option(NUMFORGE_ENABLE_SANITIZERS
 
 function(numforge_enable_diagnostics target)
     if(MSVC)
-        target_compile_options(${target} PRIVATE /W4)
+        target_compile_options(${target} PRIVATE /W4 /utf-8)
         if(NUMFORGE_WARNINGS_AS_ERRORS)
             target_compile_options(${target} PRIVATE /WX)
         endif()
@@ -42,7 +42,7 @@ endfunction()
 # NumForge library
 # ============================================================
 
-add_library(numforge
+add_library(numforge STATIC
     src/bigint/bigint.c
     src/bigdecimal/bigdecimal.c
     src/calculator/calculator.c
@@ -74,7 +74,7 @@ add_executable(calculator
 
 target_include_directories(calculator
     PRIVATE
-    ${PROJECT_SOURCE_DIR}/src/calculator
+        ${PROJECT_SOURCE_DIR}/src/calculator
 )
 
 target_link_libraries(calculator
@@ -107,6 +107,7 @@ if(WIN32)
 endif()
 
 numforge_enable_diagnostics(numforge_web)
+
 # ============================================================
 # Tests
 # ============================================================
@@ -229,5 +230,15 @@ if(BUILD_TESTING)
     add_test(
         NAME web_api_tests
         COMMAND web_api_tests
+    )
+
+    set_tests_properties(
+        bigint_tests
+        bigint_property_tests
+        bigdecimal_tests
+        bigdecimal_property_tests
+        calculator_tests
+        web_api_tests
+        PROPERTIES TIMEOUT 60
     )
 endif()

@@ -7,7 +7,7 @@ binary floating point. Its public API is declared in
 
 ## Current API
 
-The public header already reserves the stable surface of the component:
+The public header defines the component's current intended 1.0 surface:
 
 - lifecycle: `bigdecimal_create`, `bigdecimal_destroy`;
 - conversion: `bigdecimal_copy`, `bigdecimal_set_string`,
@@ -66,16 +66,17 @@ exponent (`e` or `E`). It rejects whitespace and malformed numbers. Parsing
 uses a temporary object and commits only after success, matching the `BigInt`
 error-safety rule.
 
-Formatting produces ordinary decimal notation. Scientific notation can be a
-separate formatter later; it must not change the stored value.
+The public `bigdecimal_to_string` function produces ordinary decimal notation.
+The calculator's separate formatter adds scientific notation when useful
+without changing the stored value or the public BigDecimal conversion contract.
 
 ### Addition and subtraction
 
 Addition and subtraction align both operands to the larger scale by multiplying
 the lower-scale coefficient by a power of ten, then adding or subtracting the
-coefficients. They reject a scale difference or allocation that cannot be
-represented with
-`BIGDECIMAL_VALUE_TOO_LARGE`.
+coefficients. An unrepresentable scale difference returns
+`BIGDECIMAL_VALUE_TOO_LARGE`; an allocation failure returns
+`BIGDECIMAL_OUT_OF_MEMORY`.
 
 ### Multiplication
 
@@ -114,7 +115,7 @@ or context/trap option rather than treating it as a generic error.
 - scale overflow;
 - not implemented (reserved for future optional API areas).
 
-All mutating operations should provide the same strong guarantee as
+All mutating operations provide the same strong guarantee as
 `bigint_set_string`: on failure, their destination is unchanged.
 
 ## Testing and future work
@@ -133,9 +134,9 @@ tested.
 
 ## BigInt boundary
 
-Use the public `BigInt` API in the first version. This keeps the layers
-independent and prevents `BigDecimal` from relying on limb layout. Internally,
-build a reusable `BigInt` value for ten and use `bigint_div_mod` during
-normalization. If profiling later shows repeated decimal scaling is expensive,
-add a small, well-tested `BigInt` helper for multiplication or division by a
-`uint64_t`; do not expose the `BigInt` limb representation.
+The implementation uses the public `BigInt` API. This keeps the layers
+independent and prevents `BigDecimal` from relying on limb layout. Power-of-ten
+construction and normalization are centralized behind internal helpers. If
+profiling later shows repeated decimal scaling is expensive, a small,
+well-tested `BigInt` helper for multiplication or division by a `uint64_t` can
+be added without exposing the limb representation.

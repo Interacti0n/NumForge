@@ -89,9 +89,39 @@ void test_web_api_honors_output_precision(void)
 
     result = NULL;
     TEST_ASSERT_EQUAL(CALCULATOR_OK,
+                      numforge_web_evaluate_with_output_scale("1E-100000", 10, &result, &error));
+    TEST_ASSERT_EQUAL_STRING("1E-100000", result);
+    free(result);
+
+    result = NULL;
+    TEST_ASSERT_EQUAL(
+        CALCULATOR_OK,
+        numforge_web_evaluate_with_output_scale(
+            "9.5E9223372036854775807", 0, &result, &error));
+    TEST_ASSERT_EQUAL_STRING("1E+9223372036854775808", result);
+    free(result);
+
+    result = NULL;
+    TEST_ASSERT_EQUAL(
+        CALCULATOR_OK,
+        numforge_web_evaluate_with_output_scale(
+            "1E-9223372036854775807", 10, &result, &error));
+    TEST_ASSERT_EQUAL_STRING("1E-9223372036854775807", result);
+    free(result);
+
+    result = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,
                       numforge_web_evaluate_with_output_scale("\xCF\x86", CALCULATOR_UNLIMITED_OUTPUT_SCALE,
                                                                &result, &error));
     TEST_ASSERT_EQUAL_STRING_LEN("1.61803398874989484820", result, 22);
+    free(result);
+
+    result = NULL;
+    TEST_ASSERT_EQUAL(
+        CALCULATOR_OK,
+        numforge_web_evaluate_with_output_scale(
+            "1 / 3", CALCULATOR_UNLIMITED_OUTPUT_SCALE, &result, &error));
+    TEST_ASSERT_EQUAL_STRING("0.3333333333333333333333333333333333", result);
     free(result);
 }
 
@@ -121,13 +151,49 @@ void test_web_api_rejects_empty_and_oversized_input(void)
     char *result = NULL;
     char input[NUMFORGE_WEB_MAX_EXPRESSION_LENGTH + 2U];
 
-    TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE, numforge_web_evaluate("", &result, &error));
+    TEST_ASSERT_EQUAL(CALCULATOR_SYNTAX_ERROR, numforge_web_evaluate("", &result, &error));
     TEST_ASSERT_NULL(result);
+    TEST_ASSERT_EQUAL_UINT(0, error.offset);
 
     memset(input, '1', sizeof(input) - 1U);
     input[sizeof(input) - 1U] = '\0';
     TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE, numforge_web_evaluate(input, &result, &error));
     TEST_ASSERT_NULL(result);
+}
+
+void test_web_api_handles_null_arguments_without_stale_output(void)
+{
+    CalculatorError error;
+    char *result = (char *)"unchanged sentinel";
+
+    TEST_ASSERT_EQUAL(CALCULATOR_NULL_ARGUMENT,
+                      numforge_web_evaluate(NULL, &result, &error));
+    TEST_ASSERT_NULL(result);
+    TEST_ASSERT_EQUAL(CALCULATOR_NULL_ARGUMENT, error.status);
+
+    TEST_ASSERT_EQUAL(CALCULATOR_NULL_ARGUMENT,
+                      numforge_web_evaluate("1", NULL, &error));
+    TEST_ASSERT_EQUAL(CALCULATOR_NULL_ARGUMENT, error.status);
+}
+
+void test_web_api_validates_output_scale_before_expression(void)
+{
+    CalculatorError error;
+    char *result = (char *)"unchanged sentinel";
+
+    TEST_ASSERT_EQUAL(
+        CALCULATOR_SCALE_OVERFLOW,
+        numforge_web_evaluate_with_output_scale("(", INT64_MAX, &result, &error));
+    TEST_ASSERT_NULL(result);
+    TEST_ASSERT_EQUAL(CALCULATOR_SCALE_OVERFLOW, error.status);
+    TEST_ASSERT_EQUAL_UINT(0, error.offset);
+
+    result = (char *)"unchanged sentinel";
+    TEST_ASSERT_EQUAL(
+        CALCULATOR_INVALID_ARGUMENT,
+        numforge_web_evaluate_with_output_scale("1", -2, &result, &error));
+    TEST_ASSERT_NULL(result);
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, error.status);
 }
 
 int main(void)
@@ -138,6 +204,8 @@ int main(void)
     RUN_TEST(test_web_api_honors_output_precision);
     RUN_TEST(test_web_api_preserves_calculator_errors);
     RUN_TEST(test_web_api_rejects_empty_and_oversized_input);
+    RUN_TEST(test_web_api_handles_null_arguments_without_stale_output);
+    RUN_TEST(test_web_api_validates_output_scale_before_expression);
 
     return UNITY_END();
 }

@@ -965,6 +965,15 @@ static BigDecimalStatus bigdecimal_add_or_subtract(
     uint64_t difference;
     BigDecimalStatus status;
 
+    if (bigint_is_zero(a->coefficient))
+    {
+        return subtract ? bigdecimal_negate(result, b) : bigdecimal_copy(result, b);
+    }
+    if (bigint_is_zero(b->coefficient))
+    {
+        return bigdecimal_copy(result, a);
+    }
+
     temporary = bigdecimal_create();
     scaled_a = bigint_create();
     scaled_b = bigint_create();
@@ -1061,6 +1070,7 @@ BigDecimalStatus bigdecimal_rescale(
 
     if (result == NULL || value == NULL) return BIGDECIMAL_NULL_ARGUMENT;
     if (!bigdecimal_valid_rounding(rounding)) return BIGDECIMAL_INVALID_ARGUMENT;
+    if (bigint_is_zero(value->coefficient)) return bigdecimal_copy(result, value);
     if (target_scale >= value->scale) return bigdecimal_copy(result, value);
 
     status = bigdecimal_scale_difference(value->scale, target_scale, &difference);
@@ -1118,6 +1128,7 @@ BigDecimalStatus bigdecimal_div(
     if (result == NULL || a == NULL || b == NULL) return BIGDECIMAL_NULL_ARGUMENT;
     if (!bigdecimal_valid_rounding(rounding)) return BIGDECIMAL_INVALID_ARGUMENT;
     if (bigint_is_zero(b->coefficient)) return BIGDECIMAL_DIVISION_BY_ZERO;
+    if (bigint_is_zero(a->coefficient)) return bigdecimal_copy(result, a);
     if (!bigdecimal_i64_add(target_scale, b->scale, &exponent) ||
         !bigdecimal_i64_sub(exponent, a->scale, &exponent)) return BIGDECIMAL_SCALE_OVERFLOW;
 

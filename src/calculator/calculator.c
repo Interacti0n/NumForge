@@ -41,7 +41,7 @@ void calculator_context_init(CalculatorContext *context)
         return;
     }
 
-    context->division_scale = 34;
+    context->division_scale = CALCULATOR_DEFAULT_DIVISION_SCALE;
     context->output_scale = CALCULATOR_DEFAULT_OUTPUT_SCALE;
     context->time_limit_ms = CALCULATOR_DEFAULT_TIME_LIMIT_MS;
     context->rounding = BIGDECIMAL_ROUND_HALF_EVEN;
@@ -60,19 +60,19 @@ CalculatorStatus calculator_context_set_output_scale(CalculatorContext *context,
 
     if (output_scale == CALCULATOR_UNLIMITED_OUTPUT_SCALE)
     {
-        context->division_scale = 34;
+        context->division_scale = CALCULATOR_DEFAULT_DIVISION_SCALE;
         context->output_scale = output_scale;
         return CALCULATOR_OK;
     }
-    if (output_scale > INT64_MAX - 4)
+    if (output_scale > INT64_MAX - CALCULATOR_DIVISION_GUARD_DIGITS)
     {
         return CALCULATOR_SCALE_OVERFLOW;
     }
 
-    context->division_scale = output_scale + 4;
-    if (context->division_scale < 34)
+    context->division_scale = output_scale + CALCULATOR_DIVISION_GUARD_DIGITS;
+    if (context->division_scale < CALCULATOR_DEFAULT_DIVISION_SCALE)
     {
-        context->division_scale = 34;
+        context->division_scale = CALCULATOR_DEFAULT_DIVISION_SCALE;
     }
     context->output_scale = output_scale;
     return CALCULATOR_OK;
@@ -90,4 +90,31 @@ void calculator_error_set(CalculatorError *error, CalculatorStatus status, size_
         error->status = status;
         error->offset = offset;
     }
+}
+
+size_t calculator_error_column(const char *input, size_t byte_offset)
+{
+    size_t column = 1U;
+    size_t index;
+
+    if (input == NULL)
+    {
+        return column;
+    }
+
+    for (index = 0U; index < byte_offset && input[index] != '\0'; index++)
+    {
+        unsigned char byte = (unsigned char)input[index];
+
+        if (input[index] == '\n' || input[index] == '\r')
+        {
+            column = 1U;
+        }
+        else if ((byte & 0xC0U) != 0x80U)
+        {
+            column++;
+        }
+    }
+
+    return column;
 }

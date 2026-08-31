@@ -4,6 +4,10 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct BigInt BigInt;
 
 /*
@@ -43,14 +47,14 @@ const char *bigint_status_to_string( /*Human-readable description of a BigIntSta
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
-BigInt *bigint_create( /*Create a new BigInt*/
+BigInt *bigint_create( /*Create an owned zero BigInt, or return NULL when allocation fails*/
     void
 );
-void bigint_destroy( /*Free the memory allocated for a BigInt*/
+void bigint_destroy( /*Free an owned BigInt; accepts NULL*/
     BigInt *value
 );
 BigIntStatus bigint_copy( /*Create a copy of a BigInt*/
-    BigInt *destination, 
+    BigInt *destination,
     const BigInt *source
 );
 BigIntStatus bigint_set_string( /*Transform string to BigInt.
@@ -60,7 +64,7 @@ BigIntStatus bigint_set_string( /*Transform string to BigInt.
     BigInt *value,
     const char *string
 );
-char *bigint_to_string( /*Transform BigInt to string*/
+char *bigint_to_string( /*Return an owned decimal string released with free(), or NULL on failure*/
     const BigInt *value
 );
 
@@ -71,7 +75,7 @@ char *bigint_to_string( /*Transform BigInt to string*/
 */
 
 int bigint_compare( /*Compare two BigInts. Both arguments must be non-NULL.*/
-    const BigInt *a, 
+    const BigInt *a,
     const BigInt *b
 );
 bool bigint_is_zero( /*Check if a BigInt is zero*/
@@ -111,8 +115,8 @@ BigIntStatus bigint_add( /*Add two BigInts (a+b)*/
     const BigInt *b
 );
 BigIntStatus bigint_sub( /*Subtract two BigInts (a-b)*/
-    BigInt *result, 
-    const BigInt *a, 
+    BigInt *result,
+    const BigInt *a,
     const BigInt *b
 );
 BigIntStatus bigint_mul( /*Multiply two BigInts (a*b)*/
@@ -211,8 +215,12 @@ bool bigint_is_probable_prime( /*Check primality with Miller-Rabin. Deterministi
                                  probabilistic for larger values. Returns false if an internal allocation fails.*/
     const BigInt *value
 );
-bool bigint_is_perfect_square( /*Check if a BigInt is a perfect square*/
+bool bigint_is_perfect_square( /*Check if a BigInt is a perfect square. Returns false if an internal allocation fails.*/
     const BigInt *value
 );
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

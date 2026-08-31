@@ -82,9 +82,9 @@ keeps decimal places; a negative scale rounds to tens, hundreds, and so on.
 
 The calculator is currently an application layer, not a public C header. It
 accepts decimal numbers with `.` or `,` as the decimal separator, optional
-uppercase-`E` scientific exponent notation, `π`, `e`, and `φ` constants, whitespace,
-parentheses, unary `+`/`-`, postfix `²`, `³`, and `!`, explicit or implicit
-multiplication, and binary `+`, `-`, `*`, `/`, `^`.
+uppercase-`E` scientific exponent notation, `π`, `e`, and `φ` constants,
+whitespace, parentheses, unary `+`/`-`, postfix `²`, `³`, and `!`, explicit or
+implicit multiplication, and binary `+`, `-`, `*`, `/`, `^`.
 
 ```text
 expression  := term (('+' | '-') term)*
@@ -97,8 +97,9 @@ CONSTANT    := π | e | φ
 ```
 
 Examples: `0.1 + 0.2`, `π / 2`, `πe`, `10π`, `2(3 + 4)`,
-`-(2.5E-1) * 8`, `(12.5 - 2.5) / 4`, `1.5^3`, `12²`, `2³`, and `5!`. Each constant currently has 200
-stored decimal places. Lowercase `e` always means Euler's constant, so `5e`
+`-(2.5E-1) * 8`, `(12.5 - 2.5) / 4`, `1.5^3`, `12²`, `2³`, and `5!`. Each
+constant currently has 200 stored decimal places. Lowercase `e` always means
+Euler's constant, so `5e`
 means `5 * e` and `1e3` means `1 * e * 3`. Scientific notation always uses
 uppercase `E`: `5E-1` means `0.5` and `1E3` means `1000`. Powers use binary
 exponentiation with exact BigDecimal multiplication, so decimal bases are valid
@@ -114,27 +115,34 @@ returns `CALCULATOR_TIME_LIMIT` and the local web API reports `TLE` when the
 limit is reached. A single already-running large BigInt operation cannot be
 interrupted mid-operation, so it may finish shortly after the limit.
 
-The local browser page has active keypad buttons for this grammar, including
-power, square, cube, and factorial. Its root, trigonometric, logarithmic, and
-absolute-value controls remain visibly marked as planned and disabled. The
-keypad inserts `.`, while directly typed `,` is accepted as the same decimal
-separator. The page is available in Slovak and English and provides a
-one-click control to copy the displayed result.
+Parser and AST depth are limited to 256 levels. Inputs that exceed the limit
+return `CALCULATOR_VALUE_TOO_LARGE` instead of risking process stack overflow.
 
-Results default to 10 decimal places, rounded half-even. A caller can request
-any non-negative output scale that available memory permits, or `full` to skip
-output rounding. Divisions use the requested scale plus four guard digits when
-needed. Very large or small non-zero output uses scientific notation at an
-absolute exponent of 10 or greater; its mantissa is rounded to at most the
-selected number of decimal places, for example `1.2345678901E-12`.
+The local browser page has active keypad buttons for this grammar, including
+power, square, cube, and factorial. Its root, trigonometric, logarithmic,
+exponential, and absolute-value controls remain visibly marked as planned and
+disabled. The keypad inserts `.`, while directly typed `,` is accepted as the
+same decimal separator. The page is available in Slovak and English and
+provides a one-click control to copy the displayed result.
+
+Results default to 10 decimal places, rounded half-even. A caller can request a
+non-negative output scale up to `INT64_MAX - 4` (subject to available memory),
+or `full` to skip the final output rounding. For a numeric scale `N`, division
+uses `max(34, N + 4)` decimal places. With `full`, division still uses its
+34-place half-even policy; `full` cannot make a recurring decimal exact. Very
+large or small non-zero output uses scientific notation at an absolute exponent
+of 10 or greater; its mantissa is rounded to at most the selected number of
+decimal places, for example `1.2345678901E-12`.
 
 ## Local HTTP API
 
 `numforge_web` serves the calculator and exposes one local endpoint:
 
 ```text
-POST /api/evaluate?precision=10
+POST /api/evaluate?precision=10 HTTP/1.1
+Host: 127.0.0.1:8765
 Content-Type: text/plain; charset=utf-8
+Content-Length: 6
 
 π / 2
 ```
@@ -145,12 +153,24 @@ A successful response is HTTP 200:
 {"ok":true,"result":"1.5707963268"}
 ```
 
-Invalid expressions and arithmetic errors return HTTP 400:
+Invalid expressions, unsupported precision values, and arithmetic errors
+return HTTP 400. Calculator errors use this JSON shape:
 
 ```json
-{"ok":false,"error":"division by zero at column 3"}
+{"ok":false,"error":"division by zero at column 3","status":"division by zero","column":3}
 ```
 
-`precision` is optional: it accepts a non-negative whole number or `full`; if
-omitted, it defaults to `10`. The local server accepts expressions up to 4096
-bytes and listens only on `127.0.0.1:8765`.
+`Content-Length` is required for `POST` requests; omitting it returns HTTP 411.
+Browser requests that include `Origin` must come from this server's own
+`http://127.0.0.1:8765` or `http://localhost:8765` origin; other origins return
+HTTP 403. Native local clients may omit `Origin`. `precision` is optional: it
+accepts a non-negative whole number or `full`; if omitted, it defaults to `10`.
+Out-of-memory calculation failures return HTTP 500 with the same JSON fields.
+Malformed HTTP requests and unknown routes use plain-text HTTP 400 and 404
+responses respectively.
+
+The local server accepts expressions up to 4096 bytes and listens only on
+`127.0.0.1:8765`. Error columns are one-based Unicode character positions; the
+calculator internals retain zero-based UTF-8 byte offsets so source tokens
+remain lossless. The example body above is exactly six UTF-8 bytes and has no
+trailing newline.

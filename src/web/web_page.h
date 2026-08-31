@@ -158,9 +158,9 @@ static const char NUMFORGE_WEB_PAGE_FUTURE[] =
     "    <button type=\"button\" class=\"future\" disabled title=\"Pripravované\">√x</button><button type=\"button\" class=\"future\" disabled title=\"Pripravované\">|x|</button><button type=\"button\" class=\"future\" disabled title=\"Pripravované\">sin</button><button type=\"button\" class=\"future\" disabled title=\"Pripravované\">cos</button><button type=\"button\" class=\"future\" disabled title=\"Pripravované\">tan</button>\n"
     "    <button type=\"button\" class=\"future\" disabled title=\"Pripravované\">ln</button><button type=\"button\" class=\"future\" disabled title=\"Pripravované\">log</button><button type=\"button\" class=\"future\" disabled title=\"Pripravované\">eˣ</button>\n"
     "  </section>\n"
-    "  <a class=\"guide-link\" href=\"/api\">Ako funguje výpočet a API →</a>\n";
+    "  <a class=\"guide-link\" href=\"/api?lang=sk\">Ako funguje výpočet a API →</a>\n";
 
-static const char NUMFORGE_WEB_PAGE_SCRIPT[] =
+static const char NUMFORGE_WEB_PAGE_SCRIPT_START[] =
     "  <script>\n"
     "    const form = document.querySelector('#calculator');\n"
     "    const expression = document.querySelector('#expression');\n"
@@ -169,7 +169,15 @@ static const char NUMFORGE_WEB_PAGE_SCRIPT[] =
     "    const precision = document.querySelector('#precision');\n"
     "    const fullPrecision = document.querySelector('#full-precision');\n"
     "    const english = document.documentElement.lang === 'en';\n"
-    "    const text = english ? { calculating: 'Calculating…', precision: 'Enter a non-negative whole number of decimal places.', failure: 'Calculation failed.', error: 'Error: ', copy: '⧉ Copy', copied: '✓ Copied' } : { calculating: 'Počítam…', precision: 'Zadaj nezáporný celý počet desatinných miest.', failure: 'Výpočet zlyhal.', error: 'Chyba: ', copy: '⧉ Kopírovať', copied: '✓ Skopírované' };\n"
+    "    const text = english ? { calculating: 'Calculating…', precision: 'Enter a non-negative whole number of decimal places.', failure: 'Calculation failed.', error: 'Error: ', column: ' at column ', copy: '⧉ Copy', copied: '✓ Copied' } : { calculating: 'Počítam…', precision: 'Zadaj nezáporný celý počet desatinných miest.', failure: 'Výpočet zlyhal.', error: 'Chyba: ', column: ' v stĺpci ', copy: '⧉ Kopírovať', copied: '✓ Skopírované' };\n"
+    "    const slovakStatus = { 'null argument': 'chýbajúci argument', 'out of memory': 'nedostatok pamäte', 'invalid argument': 'neplatný argument', 'invalid token': 'neplatný token', 'syntax error': 'syntaktická chyba', 'division by zero': 'delenie nulou', 'value too large': 'príliš veľká hodnota', 'scale overflow': 'pretečenie mierky', 'TLE: time limit exceeded': 'TLE: prekročený časový limit', 'not implemented': 'funkcia nie je implementovaná' };\n"
+    "    function responseError(data) {\n"
+    "      if (!data.status) return data.error || text.failure;\n"
+    "      const status = english ? data.status : (slovakStatus[data.status] || data.status);\n"
+    "      return status + (Number.isInteger(data.column) ? text.column + data.column : '');\n"
+    "    }\n";
+
+static const char NUMFORGE_WEB_PAGE_SCRIPT_END[] =
     "    function insertText(text) {\n"
     "      const start = expression.selectionStart ?? expression.value.length;\n"
     "      const end = expression.selectionEnd ?? start;\n"
@@ -206,7 +214,7 @@ static const char NUMFORGE_WEB_PAGE_SCRIPT[] =
     "        if (!fullPrecision.checked && (!/^[0-9]+$/.test(requestedPrecision))) throw new Error(text.precision);\n"
     "        const response = await fetch('/api/evaluate?precision=' + encodeURIComponent(requestedPrecision), { method: 'POST', headers: { 'Content-Type': 'text/plain; charset=utf-8' }, body: expression.value });\n"
     "        const data = await response.json();\n"
-    "        if (!response.ok || !data.ok) throw new Error(data.error || text.failure);\n"
+    "        if (!response.ok || !data.ok) throw new Error(responseError(data));\n"
     "        result.textContent = data.result; copyResult.disabled = false;\n"
     "      } catch (error) {\n"
     "        result.className = 'error'; result.textContent = text.error + error.message; copyResult.disabled = true;\n"
@@ -221,7 +229,8 @@ static const char *const NUMFORGE_WEB_PAGE[] = {
     NUMFORGE_WEB_PAGE_RESULT,
     NUMFORGE_WEB_PAGE_KEYPAD,
     NUMFORGE_WEB_PAGE_FUTURE,
-    NUMFORGE_WEB_PAGE_SCRIPT,
+    NUMFORGE_WEB_PAGE_SCRIPT_START,
+    NUMFORGE_WEB_PAGE_SCRIPT_END,
     NULL
 };
 
@@ -230,7 +239,8 @@ static const char *const NUMFORGE_WEB_PAGE_EN[] = {
     NUMFORGE_WEB_PAGE_EN_RESULT,
     NUMFORGE_WEB_PAGE_EN_KEYPAD,
     NUMFORGE_WEB_PAGE_EN_FUTURE,
-    NUMFORGE_WEB_PAGE_SCRIPT,
+    NUMFORGE_WEB_PAGE_SCRIPT_START,
+    NUMFORGE_WEB_PAGE_SCRIPT_END,
     NULL
 };
 
@@ -264,22 +274,22 @@ static const char NUMFORGE_API_PAGE_SK_CONTENT[] =
     "    <nav aria-label=\"Výber jazyka\" style=\"display:flex;gap:6px\"><a href=\"/api?lang=sk\" aria-current=\"true\" title=\"Slovenčina\" style=\"padding:6px 9px;border:1px solid #ff9d36;border-radius:6px;color:#ffb35e;font-size:.9rem;text-decoration:none\">🇸🇰 SK</a><a href=\"/api?lang=en\" title=\"English\" style=\"padding:6px 9px;border:1px solid #3b4352;border-radius:6px;color:#adb5c3;font-size:.9rem;text-decoration:none\">🇬🇧 EN</a></nav>\n"
     "  </header>\n"
     "  <h1>NumForge: použitie a API</h1>\n"
-    "  <p>Kalkulačka neposiela výpočet JavaScriptu. Výraz ide priamo do C aplikácie: tokenizer → parser → BigDecimal → textový výsledok.</p>\n"
-    "  <p class=\"notice\">Sčítanie, odčítanie a násobenie desatinných čísel sú presné. Delenie má predvolených 34 desatinných miest a zaokrúhľuje pravidlom half-even.</p>\n"
+    "  <p>JavaScript iba odošle výraz lokálnemu serveru; samotný výpočet vykoná C aplikácia: tokenizer → parser → evaluator → BigDecimal → formatter.</p>\n"
+    "  <p class=\"notice\">Sčítanie, odčítanie a násobenie sú presné. Delenie interne používa najmenej 34 miest a half-even; predvolený zobrazený výsledok sa zaokrúhli na 10 miest.</p>\n"
     "  <h2>Čo môžeš zadať do kalkulačky</h2>\n"
     "  <table><tr><th>Prvok</th><th>Príklady</th></tr>\n"
     "  <tr><td>Celé a desatinné čísla</td><td><code>42</code>, <code>-1.5</code>, <code>1,5</code>, <code>.25</code>, <code>1.</code></td></tr>\n"
     "  <tr><td>Vedecký zápis</td><td><code>1.25E-3</code>, <code>6E4</code>; veľké <code>E</code> je povinné</td></tr>\n"
-    "  <tr><td>Operátory</td><td><code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>^</code>; mocnina má najvyššiu prioritu a exponent musí byť nezáporné celé číslo</td></tr>\n"
+    "  <tr><td>Operátory</td><td><code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>^</code>; mocnina má najvyššiu prioritu medzi binárnymi operátormi, postfixové operácie sa viažu ešte silnejšie a exponent musí byť nezáporné celé číslo</td></tr>\n"
     "  <tr><td>Zátvorky a znamienka</td><td><code>(2 + 3) * 4</code>, <code>-(2.5E-1) * 8</code></td></tr>\n"
-    "  <tr><td>Postfixové operácie</td><td><code>12²</code>, <code>2³</code>, <code>5!</code>; faktorál vyžaduje nezáporné celé číslo najviac 5000</td></tr>\n"
+    "  <tr><td>Postfixové operácie</td><td><code>12²</code>, <code>2³</code>, <code>5!</code>; faktoriál vyžaduje nezáporné celé číslo najviac 5000</td></tr>\n"
     "  <tr><td>Konštanty</td><td><code>π</code>, <code>e</code>, <code>φ</code></td></tr>\n"
     "  <tr><td>Implicitné násobenie</td><td><code>2π</code>, <code>πe</code>, <code>2(3 + 4)</code></td></tr></table>\n"
     "  <p>Momentálne nie sú podporované <code>%</code>, premenné ani ostatné funkcie.</p>\n"
     "  <p>Konštanty majú uložených 200 desatinných miest. Malé <code>e</code> vždy znamená Eulerovo číslo, preto <code>5e</code> znamená <code>5 * e</code> a <code>1e3</code> znamená <code>1 * e * 3</code>. Vedecký zápis vždy používa veľké <code>E</code>: <code>5E-1</code> je <code>0.5</code> a <code>1E3</code> je <code>1000</code>. Tlačidlá budúcich funkcií sú zámerne neaktívne; zatiaľ nepridávajú žiadnu syntax ani výpočet.</p>\n"
     "  <h2>Výstupná presnosť</h2>\n"
-    "  <p>Nastavenie <strong>Desatinné miesta</strong> určuje počet miest, na ktoré sa výsledok zaokrúhli pravidlom half-even; predvolená hodnota je 10. Voľba <strong>Plný výstup</strong> nevynucuje výstupné zaokrúhlenie. Veľmi malé a veľké nenulové výsledky sa zobrazia vo vedeckom zápise s veľkým <code>E</code>, napríklad <code>1.25E-12</code>.</p>\n"
-    "  <p>Výpočet má približne päťsekundový CPU limit. Po jeho prekročení sa výpočet zastaví s chybou <code>TLE</code>; jeden už začatý extrémne veľký krok BigInt sa môže dokončiť tesne po limite.</p>\n";
+    "  <p>Nastavenie <strong>Desatinné miesta</strong> určuje počet miest finálneho výsledku; predvolená hodnota je 10. <strong>Plný výstup</strong> vypne iba finálne zaokrúhlenie, delenie však zostáva 34-miestne. Veľmi malé a veľké nenulové výsledky sa zobrazia s veľkým <code>E</code>, napríklad <code>1.25E-12</code>.</p>\n"
+    "  <p>Výpočet má približne päťsekundový CPU limit. Po jeho prekročení vráti <code>TLE</code>; jeden už začatý veľký krok sa môže dokončiť tesne po limite. Parser a strom výrazu majú limit hĺbky 256, ktorého prekročenie vráti <code>value too large</code>.</p>\n";
 
 /*
  * Keep each embedded C string below the ISO C required minimum limit of
@@ -288,15 +298,16 @@ static const char NUMFORGE_API_PAGE_SK_CONTENT[] =
 static const char NUMFORGE_API_PAGE_HTTP[] =
     "  <h2>Lokálne HTTP rozhranie</h2>\n"
     "  <p>Vlastný lokálny klient môže poslať výraz ako obyčajný UTF-8 text na <code>POST /api/evaluate?precision=10</code>. Parameter <code>precision</code> je nezáporné celé číslo alebo <code>full</code>. Vstup má limit 4096 bajtov.</p>\n"
-    "  <pre>POST /api/evaluate?precision=10\nContent-Type: text/plain; charset=utf-8\n\nπ / 2\n\nHTTP 200\n{\"ok\":true,\"result\":\"1.5707963268\"}</pre>\n"
-    "  <p>Neplatný výraz alebo delenie nulou vrátia HTTP 400 a JSON s <code>ok: false</code>, opisom chyby a stĺpcom chyby.</p>\n";
+    "  <pre>POST /api/evaluate?precision=10 HTTP/1.1\nHost: 127.0.0.1:8765\nContent-Type: text/plain; charset=utf-8\nContent-Length: 6\n\nπ / 2\n\nHTTP/1.1 200 OK\n{\"ok\":true,\"result\":\"1.5707963268\"}</pre>\n"
+    "  <p><code>Content-Length</code> je povinný; bez neho server vráti HTTP 411. Cudzí browser <code>Origin</code> dostane HTTP 403. Chybný výraz alebo presnosť vráti HTTP 400 JSON s poľami <code>ok</code>, <code>error</code>, <code>status</code> a od jednotky číslovaným <code>column</code>. Nedostatok pamäte vráti HTTP 500.</p>\n";
 
 static const char NUMFORGE_API_PAGE_C_LIBRARY[] =
     "  <h2>Verejné C API</h2>\n"
     "  <p>Verejné sú zatiaľ typy <code>BigInt</code> a <code>BigDecimal</code>. Sú opaque: vytvor ich cez <code>*_create()</code>, uvoľni cez <code>*_destroy()</code>, a reťazce z <code>*_to_string()</code> uvoľni cez <code>free()</code>.</p>\n"
     "  <h3>BigInt</h3>\n"
     "  <p><code>#include &lt;numforge/bigint.h&gt;</code></p>\n"
-    "  <ul><li>Životný cyklus a text: <code>bigint_create</code>, <code>bigint_destroy</code>, <code>bigint_copy</code>, <code>bigint_set_string</code>, <code>bigint_to_string</code></li>\n"
+    "  <ul><li>Stav: <code>bigint_status_to_string</code></li>\n"
+    "  <li>Životný cyklus a text: <code>bigint_create</code>, <code>bigint_destroy</code>, <code>bigint_copy</code>, <code>bigint_set_string</code>, <code>bigint_to_string</code></li>\n"
     "  <li>Porovnanie: <code>bigint_compare</code>, <code>bigint_is_zero</code>, <code>bigint_is_one</code>, <code>bigint_is_negative</code>, <code>bigint_is_even</code>, <code>bigint_is_odd</code></li>\n"
     "  <li>Aritmetika: <code>bigint_abs</code>, <code>bigint_negate</code>, <code>bigint_add</code>, <code>bigint_sub</code>, <code>bigint_mul</code>, <code>bigint_div</code>, <code>bigint_mod</code>, <code>bigint_div_mod</code>, <code>bigint_pow</code></li>\n"
     "  <li>Teória čísel: <code>bigint_gcd</code>, <code>bigint_lcm</code>, <code>bigint_factorial</code>, <code>bigint_is_probable_prime</code>, <code>bigint_is_perfect_square</code></li>\n"
@@ -304,7 +315,8 @@ static const char NUMFORGE_API_PAGE_C_LIBRARY[] =
     "  <p>Delenie skracuje smerom k nule. <code>bigint_div_mod</code> vyžaduje rozdielne objekty pre podiel a zvyšok. Bitové AND/OR/XOR prijímajú iba nezáporné hodnoty.</p>\n"
     "  <h3>BigDecimal</h3>\n"
     "  <p><code>#include &lt;numforge/bigdecimal.h&gt;</code></p>\n"
-    "  <ul><li>Životný cyklus a text: <code>bigdecimal_create</code>, <code>bigdecimal_destroy</code>, <code>bigdecimal_copy</code>, <code>bigdecimal_set_string</code>, <code>bigdecimal_to_string</code></li>\n"
+    "  <ul><li>Stav: <code>bigdecimal_status_to_string</code></li>\n"
+    "  <li>Životný cyklus a text: <code>bigdecimal_create</code>, <code>bigdecimal_destroy</code>, <code>bigdecimal_copy</code>, <code>bigdecimal_set_string</code>, <code>bigdecimal_to_string</code></li>\n"
     "  <li>Porovnanie: <code>bigdecimal_compare</code>, <code>bigdecimal_is_zero</code>, <code>bigdecimal_is_negative</code></li>\n"
     "  <li>Presné operácie: <code>bigdecimal_abs</code>, <code>bigdecimal_negate</code>, <code>bigdecimal_add</code>, <code>bigdecimal_sub</code>, <code>bigdecimal_mul</code></li>\n"
     "  <li>Zaokrúhľované operácie: <code>bigdecimal_rescale</code>, <code>bigdecimal_div</code>; režimy <code>TOWARD_ZERO</code>, <code>AWAY_FROM_ZERO</code>, <code>FLOOR</code>, <code>CEILING</code>, <code>HALF_UP</code>, <code>HALF_EVEN</code> s prefixom <code>BIGDECIMAL_ROUND_</code></li></ul>\n"
@@ -338,13 +350,13 @@ static const char NUMFORGE_API_PAGE_EN_START[] =
     "    <nav class=\"language-switch\" aria-label=\"Language selection\"><a href=\"/api?lang=sk\" lang=\"sk\" title=\"Slovenčina\">🇸🇰 SK</a><a href=\"/api?lang=en\" lang=\"en\" aria-current=\"true\" title=\"English\">🇬🇧 EN</a></nav>\n"
     "  </header>\n"
     "  <h1>NumForge: usage and API</h1>\n"
-    "  <p>The calculator does not send calculations to JavaScript. Each expression goes directly to the C application: tokenizer → parser → BigDecimal → text result.</p>\n"
-    "  <p class=\"notice\">Addition, subtraction, and multiplication of decimal values are exact. Division uses 34 decimal places by default and rounds half-even.</p>\n"
+    "  <p>JavaScript only sends the expression to the local server; the C application performs the calculation: tokenizer → parser → evaluator → BigDecimal → formatter.</p>\n"
+    "  <p class=\"notice\">Addition, subtraction, and multiplication are exact. Division internally uses at least 34 half-even places; displayed output defaults to 10 places.</p>\n"
     "  <h2>What you can enter</h2>\n"
     "  <table><tr><th>Element</th><th>Examples</th></tr>\n"
     "  <tr><td>Integers and decimals</td><td><code>42</code>, <code>-1.5</code>, <code>1,5</code>, <code>.25</code>, <code>1.</code></td></tr>\n"
     "  <tr><td>Scientific notation</td><td><code>1.25E-3</code>, <code>6E4</code>; uppercase <code>E</code> is required</td></tr>\n"
-    "  <tr><td>Operators</td><td><code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>^</code>; power has the highest precedence and its exponent must be a non-negative integer</td></tr>\n"
+    "  <tr><td>Operators</td><td><code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>^</code>; power has the highest binary-operator precedence, postfix operations bind more tightly, and the exponent must be a non-negative integer</td></tr>\n"
     "  <tr><td>Parentheses and signs</td><td><code>(2 + 3) * 4</code>, <code>-(2.5E-1) * 8</code></td></tr>\n"
     "  <tr><td>Postfix operations</td><td><code>12²</code>, <code>2³</code>, <code>5!</code>; factorial requires a non-negative integer no greater than 5000</td></tr>\n"
     "  <tr><td>Constants</td><td><code>π</code>, <code>e</code>, <code>φ</code></td></tr>\n"
@@ -354,19 +366,20 @@ static const char NUMFORGE_API_PAGE_EN_START[] =
 
 static const char NUMFORGE_API_PAGE_EN_DETAILS[] =
     "  <h2>Output precision</h2>\n"
-    "  <p><strong>Decimal places</strong> sets the number of places to which the result is rounded half-even; the default is 10. <strong>Full output</strong> does not force output rounding. Very small and very large non-zero values use scientific notation with uppercase <code>E</code>, for example <code>1.25E-12</code>.</p>\n"
-    "  <p>Calculation has an approximate five-second CPU limit. If exceeded, it stops with a <code>TLE</code> error; one already-started, extremely large BigInt step may finish just after the limit.</p>\n"
+    "  <p><strong>Decimal places</strong> sets the final result places; the default is 10. <strong>Full output</strong> disables only final rounding, while division remains 34-place. Very small and large non-zero values use uppercase-<code>E</code> scientific notation, for example <code>1.25E-12</code>.</p>\n"
+    "  <p>Calculation has an approximate five-second CPU limit. If exceeded, it returns <code>TLE</code>; one already-started large step may finish just after the limit. Parser and expression-tree depth are capped at 256; exceeding that returns <code>value too large</code>.</p>\n"
     "  <h2>Local HTTP interface</h2>\n"
     "  <p>A local client can send an expression as plain UTF-8 text to <code>POST /api/evaluate?precision=10</code>. The <code>precision</code> parameter is a non-negative integer or <code>full</code>. Input is limited to 4096 bytes.</p>\n"
-    "  <pre>POST /api/evaluate?precision=10\nContent-Type: text/plain; charset=utf-8\n\nπ / 2\n\nHTTP 200\n{\"ok\":true,\"result\":\"1.5707963268\"}</pre>\n"
-    "  <p>An invalid expression or division by zero returns HTTP 400 and JSON with <code>ok: false</code>, an error description, and the error column.</p>\n";
+    "  <pre>POST /api/evaluate?precision=10 HTTP/1.1\nHost: 127.0.0.1:8765\nContent-Type: text/plain; charset=utf-8\nContent-Length: 6\n\nπ / 2\n\nHTTP/1.1 200 OK\n{\"ok\":true,\"result\":\"1.5707963268\"}</pre>\n"
+    "  <p><code>Content-Length</code> is required; without it the server returns HTTP 411. A foreign browser <code>Origin</code> gets HTTP 403. Invalid expressions or precision return HTTP 400 JSON with <code>ok</code>, <code>error</code>, <code>status</code>, and a one-based <code>column</code>. Out-of-memory calculation failures return HTTP 500.</p>\n";
 
 static const char NUMFORGE_API_PAGE_EN_C_LIBRARY[] =
     "  <h2>Public C API</h2>\n"
     "  <p>The public types are currently <code>BigInt</code> and <code>BigDecimal</code>. They are opaque: create them with <code>*_create()</code>, release them with <code>*_destroy()</code>, and release strings from <code>*_to_string()</code> with <code>free()</code>.</p>\n"
     "  <h3>BigInt</h3>\n"
     "  <p><code>#include &lt;numforge/bigint.h&gt;</code></p>\n"
-    "  <ul><li>Lifecycle and text: <code>bigint_create</code>, <code>bigint_destroy</code>, <code>bigint_copy</code>, <code>bigint_set_string</code>, <code>bigint_to_string</code></li>\n"
+    "  <ul><li>Status: <code>bigint_status_to_string</code></li>\n"
+    "  <li>Lifecycle and text: <code>bigint_create</code>, <code>bigint_destroy</code>, <code>bigint_copy</code>, <code>bigint_set_string</code>, <code>bigint_to_string</code></li>\n"
     "  <li>Comparison: <code>bigint_compare</code>, <code>bigint_is_zero</code>, <code>bigint_is_one</code>, <code>bigint_is_negative</code>, <code>bigint_is_even</code>, <code>bigint_is_odd</code></li>\n"
     "  <li>Arithmetic: <code>bigint_abs</code>, <code>bigint_negate</code>, <code>bigint_add</code>, <code>bigint_sub</code>, <code>bigint_mul</code>, <code>bigint_div</code>, <code>bigint_mod</code>, <code>bigint_div_mod</code>, <code>bigint_pow</code></li>\n"
     "  <li>Number theory: <code>bigint_gcd</code>, <code>bigint_lcm</code>, <code>bigint_factorial</code>, <code>bigint_is_probable_prime</code>, <code>bigint_is_perfect_square</code></li>\n"
@@ -374,7 +387,8 @@ static const char NUMFORGE_API_PAGE_EN_C_LIBRARY[] =
     "  <p>Division truncates toward zero. <code>bigint_div_mod</code> requires distinct objects for quotient and remainder. Bitwise AND/OR/XOR accept non-negative values only.</p>\n"
     "  <h3>BigDecimal</h3>\n"
     "  <p><code>#include &lt;numforge/bigdecimal.h&gt;</code></p>\n"
-    "  <ul><li>Lifecycle and text: <code>bigdecimal_create</code>, <code>bigdecimal_destroy</code>, <code>bigdecimal_copy</code>, <code>bigdecimal_set_string</code>, <code>bigdecimal_to_string</code></li>\n"
+    "  <ul><li>Status: <code>bigdecimal_status_to_string</code></li>\n"
+    "  <li>Lifecycle and text: <code>bigdecimal_create</code>, <code>bigdecimal_destroy</code>, <code>bigdecimal_copy</code>, <code>bigdecimal_set_string</code>, <code>bigdecimal_to_string</code></li>\n"
     "  <li>Comparison: <code>bigdecimal_compare</code>, <code>bigdecimal_is_zero</code>, <code>bigdecimal_is_negative</code></li>\n"
     "  <li>Exact operations: <code>bigdecimal_abs</code>, <code>bigdecimal_negate</code>, <code>bigdecimal_add</code>, <code>bigdecimal_sub</code>, <code>bigdecimal_mul</code></li>\n"
     "  <li>Rounded operations: <code>bigdecimal_rescale</code>, <code>bigdecimal_div</code>; modes <code>TOWARD_ZERO</code>, <code>AWAY_FROM_ZERO</code>, <code>FLOOR</code>, <code>CEILING</code>, <code>HALF_UP</code>, <code>HALF_EVEN</code> with the <code>BIGDECIMAL_ROUND_</code> prefix</li></ul>\n"

@@ -77,6 +77,32 @@ static BigDecimal *evaluate_expression(const char *input, const CalculatorContex
     return result;
 }
 
+static void assert_formatted_expression(
+    const char *expected,
+    const char *input,
+    const CalculatorContext *context
+)
+{
+    BigDecimal *value = evaluate_expression(input, context);
+    char *text = NULL;
+
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_format_result(value, context, &text));
+    TEST_ASSERT_EQUAL_STRING(expected, text);
+    free(text);
+    bigdecimal_destroy(value);
+}
+
+static void assert_expression_too_deep(const char *input)
+{
+    CalculatorExpression *expression = NULL;
+    CalculatorError error;
+
+    TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE,
+                      calculator_parse(input, &expression, &error));
+    TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE, error.status);
+    TEST_ASSERT_NULL(expression);
+}
+
 /* ============================================================
    Shared calculator utilities
    ============================================================ */
@@ -87,7 +113,7 @@ void test_context_defaults_and_status_strings(void)
 
     calculator_context_init(&context);
 
-    TEST_ASSERT_EQUAL_INT64(34, context.division_scale);
+    TEST_ASSERT_EQUAL_INT64(CALCULATOR_DEFAULT_DIVISION_SCALE, context.division_scale);
     TEST_ASSERT_EQUAL_INT64(CALCULATOR_DEFAULT_OUTPUT_SCALE, context.output_scale);
     TEST_ASSERT_EQUAL_INT64(CALCULATOR_DEFAULT_TIME_LIMIT_MS, context.time_limit_ms);
     TEST_ASSERT_EQUAL(BIGDECIMAL_ROUND_HALF_EVEN, context.rounding);
@@ -103,16 +129,16 @@ void test_context_configures_output_precision(void)
     calculator_context_init(&context);
     TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_context_set_output_scale(&context, 48));
     TEST_ASSERT_EQUAL_INT64(48, context.output_scale);
-    TEST_ASSERT_EQUAL_INT64(52, context.division_scale);
+    TEST_ASSERT_EQUAL_INT64(48 + CALCULATOR_DIVISION_GUARD_DIGITS, context.division_scale);
 
     TEST_ASSERT_EQUAL(CALCULATOR_OK,
                       calculator_context_set_output_scale(&context, CALCULATOR_UNLIMITED_OUTPUT_SCALE));
     TEST_ASSERT_EQUAL_INT64(CALCULATOR_UNLIMITED_OUTPUT_SCALE, context.output_scale);
-    TEST_ASSERT_EQUAL_INT64(34, context.division_scale);
+    TEST_ASSERT_EQUAL_INT64(CALCULATOR_DEFAULT_DIVISION_SCALE, context.division_scale);
     TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, calculator_context_set_output_scale(&context, -2));
     TEST_ASSERT_EQUAL(CALCULATOR_SCALE_OVERFLOW, calculator_context_set_output_scale(&context, INT64_MAX));
     TEST_ASSERT_EQUAL_INT64(CALCULATOR_UNLIMITED_OUTPUT_SCALE, context.output_scale);
-    TEST_ASSERT_EQUAL_INT64(34, context.division_scale);
+    TEST_ASSERT_EQUAL_INT64(CALCULATOR_DEFAULT_DIVISION_SCALE, context.division_scale);
 }
 
 void test_error_helpers(void)
@@ -126,6 +152,11 @@ void test_error_helpers(void)
     calculator_error_clear(&error);
     TEST_ASSERT_EQUAL(CALCULATOR_OK, error.status);
     TEST_ASSERT_EQUAL_UINT(0, error.offset);
+
+    TEST_ASSERT_EQUAL_UINT(1, calculator_error_column(NULL, 10));
+    TEST_ASSERT_EQUAL_UINT(1, calculator_error_column("", 0));
+    TEST_ASSERT_EQUAL_UINT(5, calculator_error_column("\xCF\x80 + ?", 5));
+    TEST_ASSERT_EQUAL_UINT(1, calculator_error_column("1 +\n)", 4));
 }
 
 /* ============================================================
@@ -328,6 +359,74 @@ void test_parser_reports_syntax_and_lexical_errors(void)
     }
 }
 
+void test_parser_rejects_excessive_recursion_and_ast_depth(void)
+{
+    char parentheses[2U * (CALCULATOR_MAX_EXPRESSION_DEPTH + 1U) + 2U];
+    char unary[CALCULATOR_MAX_EXPRESSION_DEPTH + 3U];
+    char power[2U * (CALCULATOR_MAX_EXPRESSION_DEPTH + 1U) + 2U];
+    char addition[2U * (CALCULATOR_MAX_EXPRESSION_DEPTH + 1U) + 2U];
+    size_t count = CALCULATOR_MAX_EXPRESSION_DEPTH + 1U;
+    size_t offset = 0U;
+    size_t index;
+    CalculatorExpression *expression;
+
+    for (index = 0U; index < CALCULATOR_MAX_EXPRESSION_DEPTH; index++)
+    {
+        parentheses[offset++] = '(';
+    }
+    parentheses[offset++] = '1';
+    for (index = 0U; index < CALCULATOR_MAX_EXPRESSION_DEPTH; index++)
+    {
+        parentheses[offset++] = ')';
+    }
+    parentheses[offset] = '\0';
+    expression = parse_expression(parentheses);
+    calculator_expression_destroy(expression);
+
+    offset = 0U;
+    for (index = 0U; index + 1U < CALCULATOR_MAX_EXPRESSION_DEPTH; index++)
+    {
+        addition[offset++] = '1';
+        addition[offset++] = '+';
+    }
+    addition[offset++] = '1';
+    addition[offset] = '\0';
+    expression = parse_expression(addition);
+    calculator_expression_destroy(expression);
+
+    offset = 0U;
+    for (index = 0U; index < count; index++) parentheses[offset++] = '(';
+    parentheses[offset++] = '1';
+    for (index = 0U; index < count; index++) parentheses[offset++] = ')';
+    parentheses[offset] = '\0';
+    assert_expression_too_deep(parentheses);
+
+    for (index = 0U; index < count; index++) unary[index] = '-';
+    unary[count] = '1';
+    unary[count + 1U] = '\0';
+    assert_expression_too_deep(unary);
+
+    offset = 0U;
+    for (index = 0U; index < count; index++)
+    {
+        power[offset++] = '1';
+        power[offset++] = '^';
+    }
+    power[offset++] = '1';
+    power[offset] = '\0';
+    assert_expression_too_deep(power);
+
+    offset = 0U;
+    for (index = 0U; index < count; index++)
+    {
+        addition[offset++] = '1';
+        addition[offset++] = '+';
+    }
+    addition[offset++] = '1';
+    addition[offset] = '\0';
+    assert_expression_too_deep(addition);
+}
+
 /* ============================================================
    Evaluator
    ============================================================ */
@@ -426,6 +525,34 @@ void test_formatter_applies_precision_and_scientific_notation(void)
     TEST_ASSERT_EQUAL_STRING("0", text);
     free(text);
     bigdecimal_destroy(result);
+}
+
+void test_formatter_respects_rounding_modes_in_scientific_notation(void)
+{
+    CalculatorContext context;
+
+    calculator_context_init(&context);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_context_set_output_scale(&context, 0));
+
+    context.rounding = BIGDECIMAL_ROUND_HALF_EVEN;
+    assert_formatted_expression("2E+10", "2.5E10", &context);
+    assert_formatted_expression("4E+10", "3.5E10", &context);
+    assert_formatted_expression("-2E+10", "-2.5E10", &context);
+    assert_formatted_expression("3E+10", "2.5001E10", &context);
+    assert_formatted_expression("1E+11", "9.5E10", &context);
+
+    context.rounding = BIGDECIMAL_ROUND_HALF_UP;
+    assert_formatted_expression("3E+10", "2.5E10", &context);
+    assert_formatted_expression("-3E+10", "-2.5E10", &context);
+
+    context.rounding = BIGDECIMAL_ROUND_TOWARD_ZERO;
+    assert_formatted_expression("2E+10", "2.9E10", &context);
+    context.rounding = BIGDECIMAL_ROUND_AWAY_FROM_ZERO;
+    assert_formatted_expression("3E+10", "2.1E10", &context);
+    context.rounding = BIGDECIMAL_ROUND_FLOOR;
+    assert_formatted_expression("-3E+10", "-2.1E10", &context);
+    context.rounding = BIGDECIMAL_ROUND_CEILING;
+    assert_formatted_expression("3E+10", "2.1E10", &context);
 }
 
 void test_evaluator_division_uses_context(void)
@@ -566,9 +693,11 @@ int main(void)
     RUN_TEST(test_parser_builds_precedence_and_associativity);
     RUN_TEST(test_parser_rejects_unknown_identifier);
     RUN_TEST(test_parser_reports_syntax_and_lexical_errors);
+    RUN_TEST(test_parser_rejects_excessive_recursion_and_ast_depth);
     RUN_TEST(test_evaluator_respects_precedence_and_parentheses);
     RUN_TEST(test_evaluator_division_uses_context);
     RUN_TEST(test_formatter_applies_precision_and_scientific_notation);
+    RUN_TEST(test_formatter_respects_rounding_modes_in_scientific_notation);
     RUN_TEST(test_evaluator_reports_arithmetic_errors_without_changing_result);
     RUN_TEST(test_evaluator_rejects_invalid_factorial_input);
     RUN_TEST(test_evaluator_rejects_invalid_power_exponent);

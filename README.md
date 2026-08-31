@@ -24,12 +24,15 @@ tokenizer, parser, evaluator, and BigDecimal implementation.
   are evaluated by the same parser and `BigDecimal` core.
 - Output/input aliasing for arithmetic operations, including
   `bigint_add(x, x, y)` and `bigint_div_mod(q, r, q, r)`.
-- Unit tests, deterministic property tests, warnings-as-errors, and Linux CI.
+- Unit tests, deterministic property tests, warnings-as-errors, and Linux and
+  Windows CI.
 
 ## Requirements
 
 - CMake 3.20 or later
 - A compiler with C17 support
+- Git when configuring tests for the first time, because CMake uses it to
+  fetch the Unity test framework
 - Internet access on the first test-enabled CMake configure, so CMake can
   download the Unity test framework
 
@@ -83,18 +86,28 @@ UndefinedBehaviorSanitizer on GCC and Clang.
 ### Run the local web calculator
 
 No Node.js, package manager, database, or external service is needed. Build
-the project and start the `numforge_web` executable:
+the project and start the `numforge_web` executable. On Windows with the
+default Visual Studio generator:
+
+```powershell
+cmake -S . -B build -DBUILD_TESTING=ON
+cmake --build build --config Debug --parallel 2
+.\build\Debug\numforge_web.exe
+```
+
+With a single-configuration generator, as normally used on Linux and macOS:
 
 ```sh
 cmake -S . -B build -DBUILD_TESTING=ON
-cmake --build build --config Debug --parallel
-./build/Debug/numforge_web
+cmake --build build --parallel
+./build/numforge_web
 ```
 
 On Windows, the executable automatically opens `http://127.0.0.1:8765` in the
 default browser. It listens only on the local machine; press `Ctrl+C` in the
-terminal to stop it. With a single-configuration generator, the executable is
-normally at `build/numforge_web` instead.
+terminal to stop it. Set the process environment variable
+`NUMFORGE_WEB_NO_BROWSER=1` when running it in a headless test or when the page
+should not open automatically.
 
 The page includes a clickable keypad for the current expression grammar,
 including `π`, `e`, `φ`, `xʸ`, `x²`, `x³`, and `n!`. Powers, squaring, and
@@ -108,9 +121,15 @@ features. The page is available in Slovak and English, and the displayed
 result can be copied with one click. See the
 [API overview](docs/API.md) for exact syntax and the local HTTP API.
 
+Both the interactive CLI and local HTTP adapter accept expressions up to 4096
+UTF-8 bytes. This is an application input limit rather than a limit of the
+numeric types themselves.
+
 ## Library API
 
-Include the public headers and link the `numforge` CMake target:
+For an in-tree build or a project that includes NumForge with
+`add_subdirectory()`, include the public headers and link the `numforge` CMake
+target:
 
 ```c
 #include <numforge/bigint.h>
@@ -118,7 +137,8 @@ Include the public headers and link the `numforge` CMake target:
 ```
 
 The public API, ownership rules, arithmetic semantics, and concise function
-reference for both types are in [the API overview](docs/API.md).
+reference for both types are in [the API overview](docs/API.md). Install and
+package-export rules are not provided yet while the project remains pre-1.0.
 
 ### Intended 1.0 API scope
 

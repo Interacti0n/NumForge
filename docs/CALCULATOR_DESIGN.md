@@ -33,14 +33,17 @@ remain in the calculator modules.
 
 `numforge_web` serves a self-contained page from the C executable. Its active
 keypad inserts digits, parentheses, `.`, `+`, `-`, `*`, `/`, `π`, `e`, `φ`,
-`²`, `³`, and `!`, then sends the complete expression to the same web adapter used by
-`POST /api/evaluate`. Typing `,` directly is also valid because the tokenizer
-accepts both decimal separators.
+`^`, `²`, `³`, and `!`, then sends the complete expression to the same web
+adapter used by `POST /api/evaluate`. Typing `,` directly is also valid because
+the tokenizer accepts both decimal separators.
 
 The page sends the selected output scale as `?precision=N`; its full-output
-checkbox sends `?precision=full`. Slovak and English routes use `?lang=sk`
-and `?lang=en`; the result panel copies the currently displayed result through
-the browser clipboard API, with a local fallback. The visible root, absolute-value,
+checkbox sends `?precision=full`. HTTP `POST` requests require an exact
+`Content-Length`. If a browser sends an `Origin`, the server accepts only its
+own loopback origins, preventing unrelated pages from triggering expensive
+local calculations. Slovak and English routes use `?lang=sk` and `?lang=en`;
+the result panel copies the currently displayed result through the browser
+clipboard API, with a local fallback. The visible root, absolute-value,
 trigonometric, logarithmic, and exponential controls are disabled placeholders.
 They document the intended UI surface, but do not currently add tokens or
 affect evaluation.
@@ -92,11 +95,14 @@ Only the exact UTF-8 symbols `π`, `e`, and `φ` are constants; ASCII `pi` and
 ## Evaluation policy and errors
 
 `CalculatorContext` holds a division scale, output scale, and a BigDecimal
-rounding mode, plus a soft CPU-time limit. Division defaults to 34 decimal places with half-even rounding.
-Output defaults to 10 decimal places; requesting more output places increases
-division precision by four guard digits. The special output scale `-1` means
-full output and does not add a final rescale. This avoids hidden global
-precision and makes one expression deterministic for one context.
+rounding mode, plus a soft CPU-time limit. Division defaults to 34 decimal
+places with half-even rounding. Output defaults to 10 decimal places. For a
+numeric output scale `N`, division uses `max(34, N + 4)` places so output has
+four guard digits; `N` must be no greater than `INT64_MAX - 4`. The special
+output scale `-1` means full output and skips the final output rescale, but
+division still uses 34 places. Thus `full` preserves exact finite results but
+does not make a recurring division infinite or exact. This avoids hidden
+global precision and makes one expression deterministic for one context.
 
 The default `time_limit_ms` is 5000. The evaluator checks the elapsed CPU time
 between AST operations and during every binary-exponentiation iteration. It
@@ -104,32 +110,38 @@ returns `CALCULATOR_TIME_LIMIT`, rendered as `TLE` by the web adapter, once the
 limit is exceeded. A BigInt primitive already in progress cannot be safely
 interrupted, so this is a soft rather than a hard real-time bound.
 
-`formatter.c` changes only presentation: it applies the requested output scale
-with the context's rounding mode, then switches to scientific notation when a
-non-zero result has exponent at least `10` or at most `-10`. Exact operations
-remain exact until that optional final formatting step.
+Parser recursion and constructed AST depth are both capped at 256. This bounds
+parser, evaluator, and destructor stack use for deeply nested parentheses,
+unary chains, right-associated powers, and long left-associated expressions.
+Exceeding the cap returns `CALCULATOR_VALUE_TOO_LARGE`.
 
-For values with a negative internal scale, such as `1E100000`, the formatter
-builds scientific notation directly from the coefficient and scale. It never
-allocates the 100001-character ordinary-decimal form just to discard its zeroes.
-An unusually large coefficient still uses the exact `BigInt` conversion; a
-bounded radix conversion for that separate case remains an optimization task.
+`formatter.c` changes only presentation. Ordinary output is rescaled to the
+requested number of decimal places with the context's rounding mode. When a
+non-zero result has exponent at least `10` or at most `-10`, the scientific
+path instead rounds the mantissa directly to at most that many places. Exact
+operations remain exact until this optional final formatting step.
 
-`CalculatorError` reports a `CalculatorStatus` and a zero-based byte offset in
-the input. The tokenizer and parser identify the token or character that caused
-the error. Evaluation errors that belong to an operation, such as division by
-zero, identify the operator.
+For extreme positive or negative internal scales, such as `1E100000` or
+`1E-100000`, the formatter builds scientific notation directly from the
+coefficient and scale. It never allocates the enormous ordinary-decimal form
+just to add or discard zeroes. An unusually large coefficient still uses the
+exact `BigInt` conversion; a bounded radix conversion for that separate case
+remains an optimization task.
 
-## Implementation order
+`CalculatorError` reports a `CalculatorStatus` and a zero-based UTF-8 byte
+offset in the input. The tokenizer and parser identify the token or character
+that caused the error. Evaluation errors that belong to an operation, such as
+division by zero, identify the operator. CLI and HTTP presentation convert that
+offset to a one-based Unicode character column, so constants before an error do
+not shift the displayed location.
 
-1. **Complete:** tokenizer for whitespace, numeric literals, constant
-   identifiers, operators, parentheses, and exact offsets.
-2. **Complete:** recursive-descent parser for the grammar above; every AST node
-   owns its children and number text safely.
-3. **Complete:** evaluator maps AST operators and constants to BigDecimal
-   values and propagates arithmetic errors to the responsible operator.
-4. **Complete:** CLI reads one expression and displays either a result or a
-   source-positioned diagnostic.
-5. **Complete:** local web adapter evaluates plain expression text and output
-   precision through the same pipeline; the server returns JSON and never
-   performs arithmetic in browser JavaScript.
+The CLI and local HTTP adapter each accept at most 4096 input bytes. This is a
+transport limit; the tokenizer and parser themselves do not impose a byte
+length limit. Parser recursion and AST depth are independently capped as
+described above.
+
+## Current implementation status
+
+The initial pipeline is complete end to end: tokenizer, owned AST, evaluator,
+formatter, CLI, local web adapter, and bilingual browser interface. The browser
+uses JavaScript only for UI and transport; arithmetic remains in the C process.

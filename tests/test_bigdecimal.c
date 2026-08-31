@@ -169,6 +169,43 @@ void test_rescale_rounding(void)
     bigdecimal_destroy(result);
 }
 
+void test_zero_identities_avoid_extreme_scale_work(void)
+{
+    BigDecimal *zero = bigdecimal_create();
+    BigDecimal *tiny = make_decimal("1e-9223372036854775807");
+    BigDecimal *negative_tiny = make_decimal("-1e-9223372036854775807");
+    BigDecimal *result = make_decimal("42");
+    int comparison = 1;
+
+    TEST_ASSERT_NOT_NULL(zero);
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_add(result, zero, tiny));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_compare(&comparison, result, tiny));
+    TEST_ASSERT_EQUAL_INT(0, comparison);
+
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_sub(result, zero, tiny));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_compare(&comparison, result, negative_tiny));
+    TEST_ASSERT_EQUAL_INT(0, comparison);
+
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_add(result, tiny, zero));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_compare(&comparison, result, tiny));
+    TEST_ASSERT_EQUAL_INT(0, comparison);
+
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK,
+                      bigdecimal_rescale(result, zero, INT64_MIN,
+                                         BIGDECIMAL_ROUND_HALF_EVEN));
+    assert_decimal_equals("0", result);
+
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK,
+                      bigdecimal_div(result, zero, tiny, INT64_MAX,
+                                     BIGDECIMAL_ROUND_HALF_EVEN));
+    assert_decimal_equals("0", result);
+
+    bigdecimal_destroy(zero);
+    bigdecimal_destroy(tiny);
+    bigdecimal_destroy(negative_tiny);
+    bigdecimal_destroy(result);
+}
+
 /* ============================================================
    Rounded arithmetic
    ============================================================ */
@@ -290,6 +327,7 @@ int main(void)
     RUN_TEST(test_copy_comparison_and_inspection);
     RUN_TEST(test_exact_arithmetic_and_aliasing);
     RUN_TEST(test_rescale_rounding);
+    RUN_TEST(test_zero_identities_avoid_extreme_scale_work);
     RUN_TEST(test_division_and_rounding);
     RUN_TEST(test_null_and_invalid_arguments);
 

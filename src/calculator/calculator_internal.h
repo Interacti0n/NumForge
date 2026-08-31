@@ -44,8 +44,11 @@ typedef struct CalculatorContext
 
 #define CALCULATOR_DEFAULT_OUTPUT_SCALE 10
 #define CALCULATOR_UNLIMITED_OUTPUT_SCALE (-1)
+#define CALCULATOR_DEFAULT_DIVISION_SCALE 34
+#define CALCULATOR_DIVISION_GUARD_DIGITS 4
 #define CALCULATOR_DEFAULT_TIME_LIMIT_MS 5000
 #define CALCULATOR_FACTORIAL_MAX_N 5000
+#define CALCULATOR_MAX_EXPRESSION_DEPTH 256U
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
@@ -80,6 +83,10 @@ void calculator_error_set(
     CalculatorError *error,
     CalculatorStatus status,
     size_t offset
+);
+size_t calculator_error_column( /*Convert a zero-based UTF-8 byte offset to a one-based character column*/
+    const char *input,
+    size_t byte_offset
 );
 
 #endif

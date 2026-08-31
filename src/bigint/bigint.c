@@ -6,6 +6,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define BIGINT_LIMB_BITS 64U
+#define BIGINT_MAX_LIMBS (SIZE_MAX / BIGINT_LIMB_BITS)
+
 /*
 ------------------------------------------------------------------------------------------------------------------------------
     Storage note: limbs are base-2^64, little-endian (limbs[0] is the least
@@ -36,9 +39,9 @@ static int bigint_compare_abs(
 );
 
 static uint64_t bigint_divide_128_by_u64( /*Divide a 128-bit value by a uint64_t*/
-    uint64_t high, 
-    uint64_t low, 
-    uint64_t divisor, 
+    uint64_t high,
+    uint64_t low,
+    uint64_t divisor,
     uint64_t *remainder
 )
 {
@@ -121,7 +124,7 @@ static BigIntStatus bigint_size_mul( /*Overflow-checked size_t multiplication: o
 }
 
 static uint64_t bigint_divide_by_uint64( /*Divide a BigInt by a uint64_t in place, returning the remainder*/
-    BigInt *value, 
+    BigInt *value,
     uint64_t divisor
 )
 {
@@ -174,6 +177,20 @@ static void bigint_normalize( /*Trim trailing zero limbs and clear the sign on z
     }
 }
 
+static void bigint_commit(BigInt *destination, BigInt *temporary)
+{
+    free(destination->limbs);
+    destination->limbs = temporary->limbs;
+    destination->size = temporary->size;
+    destination->capacity = temporary->capacity;
+    destination->is_negative = temporary->is_negative;
+
+    temporary->limbs = NULL;
+    temporary->size = 0U;
+    temporary->capacity = 0U;
+    temporary->is_negative = false;
+}
+
 static int bigint_wrap_uint64( /*Wrap a single uint64_t in a read-only, stack-backed BigInt (no allocation)*/
     BigInt *wrapped,
     uint64_t *storage,
@@ -202,6 +219,10 @@ static BigIntStatus bigint_ensure_capacity( /*Grow a BigInt's limb buffer to hol
     {
         return BIGINT_NULL_ARGUMENT;
     }
+    if (needed > BIGINT_MAX_LIMBS)
+    {
+        return BIGINT_VALUE_TOO_LARGE;
+    }
 
     if (value->capacity >= needed)
     {
@@ -214,7 +235,8 @@ static BigIntStatus bigint_ensure_capacity( /*Grow a BigInt's limb buffer to hol
     {
         size_t doubled;
 
-        if (bigint_size_mul(new_capacity, 2, &doubled) != BIGINT_OK)
+        if (bigint_size_mul(new_capacity, 2, &doubled) != BIGINT_OK ||
+            doubled > BIGINT_MAX_LIMBS)
         {
             // Doubling would overflow size_t; jump straight to exactly
             // what's needed instead of looping forever.
@@ -246,7 +268,7 @@ static BigIntStatus bigint_ensure_capacity( /*Grow a BigInt's limb buffer to hol
 }
 
 static BigIntStatus bigint_add_uint64( /*Add a uint64_t to a BigInt (magnitude only - caller manages sign)*/
-    BigInt *value, 
+    BigInt *value,
     uint64_t amount
 )
 {
@@ -588,7 +610,7 @@ static size_t bigint_bit_length( /*Number of bits needed to represent |value| (0
     }
 
     uint64_t top = value->limbs[value->size - 1];
-    size_t bits = (value->size - 1) * 64;
+    size_t bits = (value->size - 1U) * BIGINT_LIMB_BITS;
 
     while (top != 0)
     {
@@ -609,14 +631,14 @@ static int bigint_get_bit( /*Read a single bit (0 or 1) of |value|*/
         return 0;
     }
 
-    size_t limb_index = bit_index / 64;
+    size_t limb_index = bit_index / BIGINT_LIMB_BITS;
 
     if (limb_index >= value->size)
     {
         return 0;
     }
 
-    size_t bit_offset = bit_index % 64;
+    size_t bit_offset = bit_index % BIGINT_LIMB_BITS;
 
     return (int)((value->limbs[limb_index] >> bit_offset) & 1ULL);
 }
@@ -769,7 +791,7 @@ static BigIntStatus bigint_divmod_abs( /*Long division on magnitudes only: quoti
 }
 
 static int bigint_compare_abs( /*Compare two absolute values of BigInts*/
-    const BigInt *a, 
+    const BigInt *a,
     const BigInt *b
 )
 {
@@ -865,7 +887,7 @@ void bigint_destroy( /*Free the memory allocated for a BigInt*/
 }
 
 BigIntStatus bigint_copy( /*Create a copy of a BigInt*/
-    BigInt *destination, 
+    BigInt *destination,
     const BigInt *source
 )
 {
@@ -1139,7 +1161,7 @@ char *bigint_to_string( /*Transform BigInt to string*/
 */
 
 int bigint_compare( /*Compare two BigInts*/
-    const BigInt *a, 
+    const BigInt *a,
     const BigInt *b
 )
 {
@@ -1217,56 +1239,56 @@ BigIntStatus bigint_add( /*Add two BigInts (a+b)*/
     const BigInt *b
 )
 {
+    BigIntStatus status;
+    bool negative;
+
     if (result == NULL || a == NULL || b == NULL)
     {
         return BIGINT_NULL_ARGUMENT;
     }
 
-    // Aliasing note: in every branch below, every read of a->is_negative
-    // or b->is_negative happens before the first write to
-    // result->is_negative, so this is correct even if result aliases a
-    // and/or b (that write may be aliased with a future read, but there
-    // is no such future read in this function).
     if (a->is_negative && b->is_negative)
     {
-        result->is_negative = true;
-        return bigint_add_abs(result, a, b);
+        negative = true;
+        status = bigint_add_abs(result, a, b);
     }
-
-    int cmp = bigint_compare_abs(a, b);
-
-    if (a->is_negative)
+    else if (a->is_negative || b->is_negative)
     {
-        if (cmp > 0)
+        int comparison = bigint_compare_abs(a, b);
+
+        if (a->is_negative)
         {
-            result->is_negative = true;
-            return bigint_subtract_abs(result, a, b);
+            negative = comparison > 0;
+            status = comparison > 0
+                ? bigint_subtract_abs(result, a, b)
+                : bigint_subtract_abs(result, b, a);
         }
-
-        result->is_negative = false;
-        return bigint_subtract_abs(result, b, a);
+        else
+        {
+            negative = comparison < 0;
+            status = comparison >= 0
+                ? bigint_subtract_abs(result, a, b)
+                : bigint_subtract_abs(result, b, a);
+        }
     }
-
-    if (b->is_negative)
+    else
     {
-        if (cmp >= 0)
-        {
-            result->is_negative = false;
-            return bigint_subtract_abs(result, a, b);
-        }
-
-        result->is_negative = true;
-        return bigint_subtract_abs(result, b, a);
+        negative = false;
+        status = bigint_add_abs(result, a, b);
     }
 
-    result->is_negative = false;
+    if (status == BIGINT_OK)
+    {
+        result->is_negative = negative;
+        bigint_normalize(result);
+    }
 
-    return bigint_add_abs(result, a, b);
+    return status;
 }
 
 BigIntStatus bigint_sub( /*Subtract two BigInts (a-b)*/
-    BigInt *result, 
-    const BigInt *a, 
+    BigInt *result,
+    const BigInt *a,
     const BigInt *b
 )
 {
@@ -1318,9 +1340,10 @@ BigIntStatus bigint_mul( /*Multiply two BigInts (a*b)*/
 
     size_t result_size;
 
-    if (bigint_size_add(a->size, b->size, &result_size) != BIGINT_OK)
+    if (bigint_size_add(a->size, b->size, &result_size) != BIGINT_OK ||
+        result_size > BIGINT_MAX_LIMBS)
     {
-        return BIGINT_OUT_OF_MEMORY;
+        return BIGINT_VALUE_TOO_LARGE;
     }
 
     // Accumulate into a fresh buffer rather than result->limbs directly, so
@@ -1386,13 +1409,13 @@ BigIntStatus bigint_div_mod( /*Divide and modulo operation for BigInts (a/b and 
         return BIGINT_NULL_ARGUMENT;
     }
 
+    if (quotient == remainder)
+    {
+        return BIGINT_INVALID_ARGUMENT;
+    }
     if (b->size == 0)
     {
         return BIGINT_DIVISION_BY_ZERO;
-    }
-    if(quotient == remainder)
-    {
-        return BIGINT_INVALID_ARGUMENT;
     }
 
     // Everything is computed into independent local temporaries first, then
@@ -1445,12 +1468,8 @@ BigIntStatus bigint_div_mod( /*Divide and modulo operation for BigInts (a/b and 
         temp_remainder.is_negative = a_negative;
         bigint_normalize(&temp_remainder);
 
-        status = bigint_copy(quotient, &temp_quotient);
-    }
-
-    if (status == BIGINT_OK)
-    {
-        status = bigint_copy(remainder, &temp_remainder);
+        bigint_commit(quotient, &temp_quotient);
+        bigint_commit(remainder, &temp_remainder);
     }
 
     free(a_copy.limbs);
@@ -1527,7 +1546,7 @@ BigIntStatus bigint_pow( /*Exponentiation for BigInts (base^exponent) via binary
 
     if (exponent->size == 0)
     {
-    return bigint_set_uint64(result, 1);
+        return bigint_set_uint64(result, 1);
     }
 
     if (base->size == 0)
@@ -1536,6 +1555,8 @@ BigIntStatus bigint_pow( /*Exponentiation for BigInts (base^exponent) via binary
         result->is_negative = false;
         return BIGINT_OK;
     }
+
+    bool result_is_negative = base->is_negative && bigint_get_bit(exponent, 0) != 0;
 
     BigInt accumulator;
     accumulator.limbs = NULL;
@@ -1578,8 +1599,7 @@ BigIntStatus bigint_pow( /*Exponentiation for BigInts (base^exponent) via binary
 
     if (status == BIGINT_OK)
     {
-        bool exponent_is_odd = bigint_get_bit(exponent, 0) != 0;
-        result->is_negative = base->is_negative && exponent_is_odd;
+        result->is_negative = result_is_negative;
         bigint_normalize(result);
     }
 
@@ -1749,6 +1769,10 @@ BigIntStatus bigint_factorial( /*Calculate factorial of a BigInt (n!)*/
     const BigInt *value
 )
 {
+    BigInt temporary;
+    BigIntStatus status;
+    uint64_t n;
+
     if (result == NULL || value == NULL)
     {
         return BIGINT_NULL_ARGUMENT;
@@ -1759,35 +1783,26 @@ BigIntStatus bigint_factorial( /*Calculate factorial of a BigInt (n!)*/
         return BIGINT_NEGATIVE_ARGUMENT; // factorial is undefined for negative numbers
     }
 
-    if (value->size == 0)
+    if (value->size > 1 ||
+        (value->size == 1 && value->limbs[0] > BIGINT_FACTORIAL_MAX_N))
     {
-        return bigint_set_uint64(result, 1); // 0! = 1
-    }
-
-    if (value->size > 1 || value->limbs[0] > BIGINT_FACTORIAL_MAX_N)
-    {
-        // n! for n this large is astronomically larger than could be
-        // computed or stored; refuse rather than churn forever.
         return BIGINT_VALUE_TOO_LARGE;
     }
 
-    uint64_t n = value->limbs[0]; // copied out before result is touched - safe even if result aliases value
+    n = value->size == 0 ? 0U : value->limbs[0];
+    temporary.limbs = NULL;
+    temporary.size = 0U;
+    temporary.capacity = 0U;
+    temporary.is_negative = false;
+    status = bigint_set_uint64(&temporary, 1U);
 
-    BigIntStatus status = bigint_set_uint64(result, 1);
-
-    if (status == BIGINT_OK && n >= 2)
+    if (status == BIGINT_OK && n >= 2U)
     {
-        uint64_t i = 2;
+        uint64_t i = 2U;
 
-        // Checking `i == n` *before* incrementing (instead of the more
-        // obvious `for (i = 2; i <= n; i++)`) matters at the boundary:
-        // if n == UINT64_MAX, "i <= n" is always true and "i++" wraps
-        // i back to 0 once it reaches UINT64_MAX, which would loop
-        // forever, repeatedly corrupting result by multiplying by 0.
-        // This form can never increment i past n, so it can't wrap.
         for (;;)
         {
-            status = bigint_multiply_by_uint64(result, i);
+            status = bigint_multiply_by_uint64(&temporary, i);
 
             if (status != BIGINT_OK)
             {
@@ -1805,9 +1820,11 @@ BigIntStatus bigint_factorial( /*Calculate factorial of a BigInt (n!)*/
 
     if (status == BIGINT_OK)
     {
-        result->is_negative = false;
+        temporary.is_negative = false;
+        bigint_commit(result, &temporary);
     }
 
+    free(temporary.limbs);
     return status;
 }
 
@@ -2030,17 +2047,18 @@ BigIntStatus bigint_shift_left( /*Left shift for BigInts (a<<n)*/
         return bigint_copy(result, a);
     }
 
-    size_t limb_shift = n / 64;
-    size_t bit_shift = n % 64;
+    size_t limb_shift = n / BIGINT_LIMB_BITS;
+    size_t bit_shift = n % BIGINT_LIMB_BITS;
 
     size_t new_size;
     size_t new_size_bytes;
 
     if (bigint_size_add(a->size, limb_shift, &new_size) != BIGINT_OK ||
         bigint_size_add(new_size, 1, &new_size) != BIGINT_OK ||
+        new_size > BIGINT_MAX_LIMBS ||
         bigint_size_mul(new_size, sizeof(uint64_t), &new_size_bytes) != BIGINT_OK)
     {
-        return BIGINT_OUT_OF_MEMORY;
+        return BIGINT_VALUE_TOO_LARGE;
     }
 
     uint64_t *limbs = calloc(new_size, sizeof(uint64_t));
@@ -2061,7 +2079,7 @@ BigIntStatus bigint_shift_left( /*Left shift for BigInts (a<<n)*/
         else
         {
             limbs[i + limb_shift] |= (part << bit_shift);
-            limbs[i + limb_shift + 1] |= (part >> (64 - bit_shift));
+            limbs[i + limb_shift + 1] |= (part >> (BIGINT_LIMB_BITS - bit_shift));
         }
     }
 
@@ -2092,7 +2110,7 @@ BigIntStatus bigint_shift_right( /*Right shift for BigInts (a>>n), truncating to
         return bigint_copy(result, a);
     }
 
-    size_t limb_shift = n / 64;
+    size_t limb_shift = n / BIGINT_LIMB_BITS;
 
     if (limb_shift >= a->size)
     {
@@ -2101,7 +2119,7 @@ BigIntStatus bigint_shift_right( /*Right shift for BigInts (a>>n), truncating to
         return BIGINT_OK;
     }
 
-    size_t bit_shift = n % 64;
+    size_t bit_shift = n % BIGINT_LIMB_BITS;
     size_t new_size = a->size - limb_shift; // limb_shift < a->size, just checked above, so this can't underflow
 
     size_t new_size_bytes;
@@ -2128,7 +2146,7 @@ BigIntStatus bigint_shift_right( /*Right shift for BigInts (a>>n), truncating to
 
             if (i + limb_shift + 1 < a->size)
             {
-                merged |= (a->limbs[i + limb_shift + 1] << (64 - bit_shift));
+                merged |= (a->limbs[i + limb_shift + 1] << (BIGINT_LIMB_BITS - bit_shift));
             }
         }
 

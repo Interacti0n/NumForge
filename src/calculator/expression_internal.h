@@ -8,9 +8,10 @@
 ------------------------------------------------------------------------------------------------------------------------------
     Internal AST representation shared by parser and evaluator.
 
-    Every node owns its children. Number nodes also own their NUL-terminated
-    decimal text, copied from the tokenizer so an AST remains valid after the
-    caller releases or replaces the original input string.
+    Every node owns its children and records its subtree depth. Number nodes
+    also own their NUL-terminated decimal text, copied from the tokenizer so an
+    AST remains valid after the caller releases or replaces the original input
+    string.
 ------------------------------------------------------------------------------------------------------------------------------
 */
 typedef enum CalculatorExpressionType
@@ -48,6 +49,7 @@ struct CalculatorExpression
 {
     CalculatorExpressionType type;
     size_t offset;
+    size_t depth;
 
     union
     {

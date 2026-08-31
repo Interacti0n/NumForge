@@ -4,6 +4,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
 ------------------------------------------------------------------------------------------------------------------------------
     Opaque exact base-10 number. Values must be created and destroyed through
@@ -159,5 +163,9 @@ BigDecimalStatus bigdecimal_div(
     int64_t target_scale,
     BigDecimalRoundingMode rounding
 );
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

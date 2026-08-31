@@ -139,6 +139,50 @@ void test_div_mod_output_input_aliasing(void)
     bigint_destroy(b);
 }
 
+void test_number_theory_and_bitwise_output_aliasing(void)
+{
+    BigInt *a = make_bigint("48");
+    BigInt *b = make_bigint("18");
+
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_gcd(a, a, b));
+    assert_string(a, "6");
+
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(a, "48"));
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_gcd(b, a, b));
+    assert_string(b, "6");
+
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(a, "12"));
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(b, "18"));
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_lcm(a, a, b));
+    assert_string(a, "36");
+
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(a, "12"));
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(b, "18"));
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_lcm(b, a, b));
+    assert_string(b, "36");
+
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(a, "18446744073709551617"));
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(b, "18446744073709551619"));
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_and(a, a, b));
+    assert_string(a, "18446744073709551617");
+
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(a, "18446744073709551617"));
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(b, "18446744073709551619"));
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_or(b, a, b));
+    assert_string(b, "18446744073709551619");
+
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(a, "18446744073709551617"));
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(b, "18446744073709551619"));
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_xor(a, a, b));
+    assert_string(a, "2");
+
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_not(a, a));
+    assert_string(a, "-3");
+
+    bigint_destroy(a);
+    bigint_destroy(b);
+}
+
 /* ============================================================
    Generated algebraic properties
    ============================================================ */
@@ -273,6 +317,7 @@ int main(void)
 
     RUN_TEST(test_multi_limb_boundaries);
     RUN_TEST(test_div_mod_output_input_aliasing);
+    RUN_TEST(test_number_theory_and_bitwise_output_aliasing);
     RUN_TEST(test_property_string_round_trip_and_add_sub_inverse);
     RUN_TEST(test_property_division_identity_and_remainder_bound);
     RUN_TEST(test_property_product_division_and_shifts);

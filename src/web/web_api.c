@@ -38,18 +38,29 @@ CalculatorStatus numforge_web_evaluate_with_output_scale(
     CalculatorStatus status;
     size_t length;
 
+    if (result != NULL)
+    {
+        *result = NULL;
+    }
     if (input == NULL || result == NULL)
     {
         calculator_error_set(error, CALCULATOR_NULL_ARGUMENT, 0);
         return CALCULATOR_NULL_ARGUMENT;
     }
 
-    *result = NULL;
     length = strlen(input);
-    if (length == 0U || length > NUMFORGE_WEB_MAX_EXPRESSION_LENGTH)
+    if (length > NUMFORGE_WEB_MAX_EXPRESSION_LENGTH)
     {
         calculator_error_set(error, CALCULATOR_VALUE_TOO_LARGE, length);
         return CALCULATOR_VALUE_TOO_LARGE;
+    }
+
+    calculator_context_init(&context);
+    status = calculator_context_set_output_scale(&context, output_scale);
+    if (status != CALCULATOR_OK)
+    {
+        calculator_error_set(error, status, 0);
+        return status;
     }
 
     status = calculator_parse(input, &expression, error);
@@ -66,15 +77,6 @@ CalculatorStatus numforge_web_evaluate_with_output_scale(
         return CALCULATOR_OUT_OF_MEMORY;
     }
 
-    calculator_context_init(&context);
-    status = calculator_context_set_output_scale(&context, output_scale);
-    if (status != CALCULATOR_OK)
-    {
-        calculator_expression_destroy(expression);
-        bigdecimal_destroy(decimal);
-        calculator_error_set(error, status, 0);
-        return status;
-    }
     status = calculator_evaluate(decimal, expression, &context, error);
     calculator_expression_destroy(expression);
     if (status == CALCULATOR_OK)

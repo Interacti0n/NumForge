@@ -7,6 +7,9 @@
 
 #include <numforge/bigint.h>
 
+#define CALCULATOR_STRINGIFY_VALUE(value) #value
+#define CALCULATOR_STRINGIFY(value) CALCULATOR_STRINGIFY_VALUE(value)
+
 /*
 ------------------------------------------------------------------------------------------------------------------------------
     Evaluator implementation. It recursively evaluates AST nodes into temporary
@@ -174,7 +177,8 @@ static CalculatorStatus calculator_check_factorial_limit(const BigInt *value)
         return CALCULATOR_OUT_OF_MEMORY;
     }
 
-    status = calculator_from_bigint_status(bigint_set_string(limit, "5000"));
+    status = calculator_from_bigint_status(
+        bigint_set_string(limit, CALCULATOR_STRINGIFY(CALCULATOR_FACTORIAL_MAX_N)));
     if (status == CALCULATOR_OK && bigint_compare(value, limit) > 0)
     {
         status = CALCULATOR_VALUE_TOO_LARGE;
