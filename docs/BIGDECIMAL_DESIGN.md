@@ -7,7 +7,7 @@ binary floating point. Its public API is declared in
 
 ## Current API
 
-The public header defines the component's current intended 1.0 surface:
+The public header defines the component's stable 1.x surface:
 
 - lifecycle: `bigdecimal_create`, `bigdecimal_destroy`;
 - conversion: `bigdecimal_copy`, `bigdecimal_set_string`,

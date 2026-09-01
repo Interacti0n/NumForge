@@ -297,7 +297,7 @@ static const char NUMFORGE_API_PAGE_SK_CONTENT[] =
  */
 static const char NUMFORGE_API_PAGE_HTTP[] =
     "  <h2>Lokálne HTTP rozhranie</h2>\n"
-    "  <p>Vlastný lokálny klient môže poslať výraz ako obyčajný UTF-8 text na <code>POST /api/evaluate?precision=10</code>. Parameter <code>precision</code> je nezáporné celé číslo alebo <code>full</code>. Vstup má limit 4096 bajtov.</p>\n"
+    "  <p>Vlastný lokálny klient môže poslať výraz ako obyčajný UTF-8 text na <code>POST /api/evaluate?precision=10</code>. Server používa port 8765, prípadne iný port zadaný cez <code>--port</code>. Parameter <code>precision</code> je nezáporné celé číslo alebo <code>full</code>. Vstup má limit 4096 bajtov.</p>\n"
     "  <pre>POST /api/evaluate?precision=10 HTTP/1.1\nHost: 127.0.0.1:8765\nContent-Type: text/plain; charset=utf-8\nContent-Length: 6\n\nπ / 2\n\nHTTP/1.1 200 OK\n{\"ok\":true,\"result\":\"1.5707963268\"}</pre>\n"
     "  <p><code>Content-Length</code> je povinný; bez neho server vráti HTTP 411. Cudzí browser <code>Origin</code> dostane HTTP 403. Chybný výraz alebo presnosť vráti HTTP 400 JSON s poľami <code>ok</code>, <code>error</code>, <code>status</code> a od jednotky číslovaným <code>column</code>. Nedostatok pamäte vráti HTTP 500.</p>\n";
 
@@ -369,7 +369,7 @@ static const char NUMFORGE_API_PAGE_EN_DETAILS[] =
     "  <p><strong>Decimal places</strong> sets the final result places; the default is 10. <strong>Full output</strong> disables only final rounding, while division remains 34-place. Very small and large non-zero values use uppercase-<code>E</code> scientific notation, for example <code>1.25E-12</code>.</p>\n"
     "  <p>Calculation has an approximate five-second CPU limit. If exceeded, it returns <code>TLE</code>; one already-started large step may finish just after the limit. Parser and expression-tree depth are capped at 256; exceeding that returns <code>value too large</code>.</p>\n"
     "  <h2>Local HTTP interface</h2>\n"
-    "  <p>A local client can send an expression as plain UTF-8 text to <code>POST /api/evaluate?precision=10</code>. The <code>precision</code> parameter is a non-negative integer or <code>full</code>. Input is limited to 4096 bytes.</p>\n"
+    "  <p>A local client can send an expression as plain UTF-8 text to <code>POST /api/evaluate?precision=10</code>. The server uses port 8765 or another port selected through <code>--port</code>. The <code>precision</code> parameter is a non-negative integer or <code>full</code>. Input is limited to 4096 bytes.</p>\n"
     "  <pre>POST /api/evaluate?precision=10 HTTP/1.1\nHost: 127.0.0.1:8765\nContent-Type: text/plain; charset=utf-8\nContent-Length: 6\n\nπ / 2\n\nHTTP/1.1 200 OK\n{\"ok\":true,\"result\":\"1.5707963268\"}</pre>\n"
     "  <p><code>Content-Length</code> is required; without it the server returns HTTP 411. A foreign browser <code>Origin</code> gets HTTP 403. Invalid expressions or precision return HTTP 400 JSON with <code>ok</code>, <code>error</code>, <code>status</code>, and a one-based <code>column</code>. Out-of-memory calculation failures return HTTP 500.</p>\n";
 

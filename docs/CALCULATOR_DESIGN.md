@@ -37,6 +37,12 @@ keypad inserts digits, parentheses, `.`, `+`, `-`, `*`, `/`, `π`, `e`, `φ`,
 adapter used by `POST /api/evaluate`. Typing `,` directly is also valid because
 the tokenizer accepts both decimal separators.
 
+The server binds only to loopback and uses port 8765 by default. The
+`--port 1-65535` option selects another port, with the same-origin check updated
+to that port, while `--no-browser` suppresses automatic browser launching on
+Windows. The CTest smoke test starts the actual executable on a temporary port
+and exercises its HTTP transport over real sockets.
+
 The page sends the selected output scale as `?precision=N`; its full-output
 checkbox sends `?precision=full`. HTTP `POST` requests require an exact
 `Content-Length`. If a browser sends an `Origin`, the server accepts only its

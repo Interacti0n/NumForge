@@ -14,10 +14,7 @@ typedef struct BigInt BigInt;
 ------------------------------------------------------------------------------------------------------------------------------
     Status codes returned by every BigInt operation that can fail.
 
-    BIGINT_OK is 0, matching the usual C convention for "success" - note
-    this is the OPPOSITE of the old int-returning API, which used 0 for
-    failure and 1 for success. Code written against the old API needs
-    updating from `if (!bigint_add(...))` to `if (bigint_add(...) != BIGINT_OK)`.
+    BIGINT_OK is 0, matching the usual C convention for success.
 ------------------------------------------------------------------------------------------------------------------------------
 */
 typedef enum BigIntStatus

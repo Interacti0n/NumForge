@@ -105,9 +105,10 @@ cmake --build build --parallel
 
 On Windows, the executable automatically opens `http://127.0.0.1:8765` in the
 default browser. It listens only on the local machine; press `Ctrl+C` in the
-terminal to stop it. Set the process environment variable
-`NUMFORGE_WEB_NO_BROWSER=1` when running it in a headless test or when the page
-should not open automatically.
+terminal to stop it. Use `--port 9000` to select another loopback port and
+`--no-browser` when the page should not open automatically. The existing
+`NUMFORGE_WEB_NO_BROWSER=1` environment setting is also supported for headless
+runs.
 
 The page includes a clickable keypad for the current expression grammar,
 including `π`, `e`, `φ`, `xʸ`, `x²`, `x³`, and `n!`. Powers, squaring, and
@@ -156,10 +157,10 @@ find_package(NumForge CONFIG REQUIRED)
 target_link_libraries(my_target PRIVATE NumForge::numforge)
 ```
 
-### Intended 1.0 API scope
+### Stable 1.x API scope
 
-The intended stable library API for the 1.0 release consists only of the two
-public headers: `include/numforge/bigint.h` and
+The stable public C library API for the 1.x release series consists only of the
+two headers `include/numforge/bigint.h` and
 `include/numforge/bigdecimal.h`. The calculator modules and `src/web/` are
 application code, not public C library headers. The loopback HTTP endpoint is
 documented for local use, but is not an Internet-facing service or a separately
@@ -182,6 +183,9 @@ executables:
   positions, and division policy.
 - `web_api_tests`: confirms that the local web adapter evaluates expressions
   through the same exact C `BigDecimal` pipeline.
+- `web_server_smoke_tests`: starts the real server on a temporary loopback
+  port and verifies HTML, calculation, same-origin policy, and HTTP error
+  responses over sockets.
 - `allocation_failure_tests`: fails each internal allocation in turn and checks
   out-of-memory propagation, cleanup, and the strong destination-unchanged
   guarantee across BigInt, BigDecimal, and the calculator pipeline.
@@ -189,8 +193,10 @@ executables:
   installed package through `find_package(NumForge)`.
 
 All run through CTest when `BUILD_TESTING=ON`. GitHub Actions builds and runs
-them on Linux with warnings treated as errors and sanitizers enabled, and on
-Windows with Visual Studio warnings treated as errors.
+them on 64-bit Linux with warnings-as-errors and sanitizers, on 32-bit Linux,
+and on Windows with Visual Studio warnings-as-errors. CI also builds a clean
+Release package, installs it, and tests an external `find_package(NumForge)`
+consumer.
 
 Fault injection is internal test instrumentation, not public API. It is enabled
 only in test-enabled builds and remains inactive unless the dedicated test
@@ -199,9 +205,10 @@ allocation boundary maps directly to the standard C allocator.
 
 ## Project status and roadmap
 
-`BigInt` and the initial exact-decimal calculator are complete foundations.
-Remaining work is mostly broader test coverage, performance optimization for
-very large operands, and calculator features. Planned work includes:
+NumForge 1.0 provides stable `BigInt` and `BigDecimal` library APIs plus the
+initial exact-decimal CLI and local browser calculator. Future work is mostly
+additive: broader test coverage, performance optimization for very large
+operands, and calculator features. Planned work includes:
 
 1. Broaden `BigDecimal` with larger generated decimal vectors, optional
    external-oracle checks, and performance optimizations. Its representation
@@ -211,7 +218,8 @@ very large operands, and calculator features. Planned work includes:
    and evaluation policy are in [the calculator design](docs/CALCULATOR_DESIGN.md).
 3. Performance profiling and targeted optimization of very large operands.
 
-The public API is still pre-1.0 and may evolve.
+The two public C headers follow semantic versioning. Incompatible public API
+changes are reserved for a future major release.
 
 ## License
 

@@ -5,9 +5,9 @@ HTTP endpoint. Function signatures and all edge-case constraints remain in
 the public headers: `include/numforge/bigint.h` and
 `include/numforge/bigdecimal.h`.
 
-## Intended 1.0 stability scope
+## Stable 1.x scope
 
-The intended stable C library API consists of exactly those two public headers.
+The stable C library API consists of exactly those two public headers.
 The calculator implementation and `src/web/web_api.h` are private application
 code, not headers for library consumers. `numforge_web` and its loopback HTTP
 endpoint are shipped local-tool features; they are not an Internet-facing or
@@ -181,7 +181,9 @@ Malformed HTTP requests and unknown routes use plain-text HTTP 400 and 404
 responses respectively.
 
 The local server accepts expressions up to 4096 bytes and listens only on
-`127.0.0.1:8765`. Error columns are one-based Unicode character positions; the
-calculator internals retain zero-based UTF-8 byte offsets so source tokens
-remain lossless. The example body above is exactly six UTF-8 bytes and has no
-trailing newline.
+loopback, using port 8765 by default. `numforge_web --port N` selects another
+port from 1 through 65535, and `--no-browser` suppresses automatic browser
+launching on Windows. Browser origins must match the selected loopback port.
+Error columns are one-based Unicode character positions; the calculator
+internals retain zero-based UTF-8 byte offsets so source tokens remain lossless.
+The example body above is exactly six UTF-8 bytes and has no trailing newline.

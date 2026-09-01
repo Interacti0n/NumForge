@@ -1,6 +1,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -152,12 +153,28 @@ static bool numforge_ascii_equals(
     return true;
 }
 
+static bool numforge_origin_matches(
+    const char *origin,
+    size_t origin_length,
+    const char *host,
+    uint16_t port
+)
+{
+    char expected[64];
+    int length = snprintf(expected, sizeof(expected), "http://%s:%u",
+                          host, (unsigned int)port);
+
+    return length > 0 && (size_t)length < sizeof(expected) &&
+           numforge_ascii_equals(origin, origin_length, expected);
+}
+
 static bool numforge_parse_request_headers(
     const char *request,
     const char *header_end,
     unsigned long long *body_length,
     bool *content_length_present,
-    bool *origin_allowed
+    bool *origin_allowed,
+    uint16_t port
 )
 {
     const char *line = strstr(request, "\r\n");
@@ -243,8 +260,8 @@ static bool numforge_parse_request_headers(
                    (value_end[-1] == ' ' || value_end[-1] == '\t')) value_end--;
             value_length = (size_t)(value_end - value);
             *origin_allowed =
-                numforge_ascii_equals(value, value_length, "http://127.0.0.1:8765") ||
-                numforge_ascii_equals(value, value_length, "http://localhost:8765");
+                numforge_origin_matches(value, value_length, "127.0.0.1", port) ||
+                numforge_origin_matches(value, value_length, "localhost", port);
         }
         if (line_end == header_end)
         {
@@ -262,7 +279,8 @@ static bool numforge_read_request(
     size_t capacity,
     size_t *length,
     bool *has_content_length,
-    bool *origin_allowed
+    bool *origin_allowed,
+    uint16_t port
 )
 {
     size_t used = 0U;
@@ -294,7 +312,7 @@ static bool numforge_read_request(
 
     header_length = (size_t)(header_end - buffer) + 4U;
     if (!numforge_parse_request_headers(
-            buffer, header_end, &body_length, has_content_length, origin_allowed))
+            buffer, header_end, &body_length, has_content_length, origin_allowed, port))
     {
         return false;
     }
@@ -512,7 +530,7 @@ static void numforge_handle_evaluation(
     }
 }
 
-static void numforge_handle_connection(NumForgeSocket socket)
+static void numforge_handle_connection(NumForgeSocket socket, uint16_t port)
 {
     char request[NUMFORGE_WEB_REQUEST_CAPACITY];
     char method[16];
@@ -527,7 +545,7 @@ static void numforge_handle_connection(NumForgeSocket socket)
 
     if (!numforge_read_request(
             socket, request, sizeof(request), &length, &has_content_length,
-            &origin_allowed) ||
+            &origin_allowed, port) ||
         !numforge_request_target(request, method, sizeof(method), target, sizeof(target)))
     {
         numforge_send_response(socket, 400, "Bad Request", "text/plain; charset=utf-8", "Bad request.\n");
@@ -609,15 +627,20 @@ static void numforge_networking_stop(void)
 #endif
 }
 
-static void numforge_open_browser(void)
+static void numforge_open_browser(uint16_t port, bool enabled)
 {
 #ifdef _WIN32
     const char *disabled = getenv("NUMFORGE_WEB_NO_BROWSER");
+    char url[64];
 
-    if (disabled == NULL || strcmp(disabled, "1") != 0)
+    if (enabled && (disabled == NULL || strcmp(disabled, "1") != 0) &&
+        snprintf(url, sizeof(url), "http://127.0.0.1:%u", (unsigned int)port) > 0)
     {
-        (void)ShellExecuteA(NULL, "open", "http://127.0.0.1:8765", NULL, NULL, SW_SHOWNORMAL);
+        (void)ShellExecuteA(NULL, "open", url, NULL, NULL, SW_SHOWNORMAL);
     }
+#else
+    (void)port;
+    (void)enabled;
 #endif
 }
 
@@ -645,11 +668,81 @@ static void numforge_configure_client_socket(NumForgeSocket socket)
     Local web server entry point.
 ------------------------------------------------------------------------------------------------------------------------------
 */
-int main(void)
+static bool numforge_parse_port(const char *text, uint16_t *port)
+{
+    char *end;
+    unsigned long parsed;
+
+    if (text == NULL || port == NULL || *text == '\0')
+    {
+        return false;
+    }
+
+    errno = 0;
+    end = NULL;
+    parsed = strtoul(text, &end, 10);
+    if (errno != 0 || end == text || *end != '\0' || parsed == 0UL || parsed > 65535UL)
+    {
+        return false;
+    }
+
+    *port = (uint16_t)parsed;
+    return true;
+}
+
+static bool numforge_parse_options(
+    int argc,
+    char **argv,
+    uint16_t *port,
+    bool *open_browser
+)
+{
+    int index;
+
+    if (port == NULL || open_browser == NULL)
+    {
+        return false;
+    }
+
+    *port = NUMFORGE_WEB_PORT;
+    *open_browser = true;
+
+    for (index = 1; index < argc; index++)
+    {
+        if (strcmp(argv[index], "--no-browser") == 0)
+        {
+            *open_browser = false;
+        }
+        else if (strcmp(argv[index], "--port") == 0 && index + 1 < argc)
+        {
+            index++;
+            if (!numforge_parse_port(argv[index], port))
+            {
+                return false;
+            }
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+int main(int argc, char **argv)
 {
     NumForgeSocket listener;
     struct sockaddr_in address;
     int reuse_address = 1;
+    uint16_t port;
+    bool open_browser;
+
+    if (!numforge_parse_options(argc, argv, &port, &open_browser))
+    {
+        fputs("Usage: numforge_web [--port 1-65535] [--no-browser]\n", stderr);
+        return 2;
+    }
 
     if (!numforge_networking_start())
     {
@@ -669,19 +762,19 @@ int main(void)
     memset(&address, 0, sizeof(address));
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-    address.sin_port = htons(NUMFORGE_WEB_PORT);
+    address.sin_port = htons(port);
 
     if (bind(listener, (const struct sockaddr *)&address, sizeof(address)) != 0 || listen(listener, 8) != 0)
     {
-        fputs("NumForge web: port 8765 is unavailable\n", stderr);
+        fprintf(stderr, "NumForge web: port %u is unavailable\n", (unsigned int)port);
         numforge_close_socket(listener);
         numforge_networking_stop();
         return 1;
     }
 
-    puts("NumForge web is running at http://127.0.0.1:8765");
+    printf("NumForge web is running at http://127.0.0.1:%u\n", (unsigned int)port);
     puts("Press Ctrl+C to stop the local server.");
-    numforge_open_browser();
+    numforge_open_browser(port, open_browser);
 
     for (;;)
     {
@@ -690,7 +783,7 @@ int main(void)
         if (client != NUMFORGE_INVALID_SOCKET)
         {
             numforge_configure_client_socket(client);
-            numforge_handle_connection(client);
+            numforge_handle_connection(client, port);
             numforge_close_socket(client);
         }
     }

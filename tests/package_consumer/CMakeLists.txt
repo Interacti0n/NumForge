@@ -6,7 +6,7 @@ set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
-find_package(NumForge 0.1 CONFIG REQUIRED)
+find_package(NumForge 1.0 CONFIG REQUIRED)
 
 add_executable(numforge_package_consumer
     main.c

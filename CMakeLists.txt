@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(NumForge
-    VERSION 0.1.0
+    VERSION 1.0.0
     DESCRIPTION "Arbitrary-precision mathematics library and exact-decimal calculator written in C"
     LANGUAGES C
 )
@@ -155,6 +155,17 @@ install(
     DESTINATION "${CMAKE_INSTALL_DATADIR}/licenses/NumForge"
 )
 
+install(
+    FILES README.md CHANGELOG.md
+    DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/NumForge"
+)
+
+install(
+    DIRECTORY docs/
+    DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/NumForge"
+    FILES_MATCHING PATTERN "*.md"
+)
+
 configure_package_config_file(
     cmake/NumForgeConfig.cmake.in
     "${PROJECT_BINARY_DIR}/NumForgeConfig.cmake"
@@ -191,7 +202,8 @@ if(BUILD_TESTING)
     FetchContent_Declare(
         unity
         GIT_REPOSITORY https://github.com/ThrowTheSwitch/Unity.git
-        GIT_TAG v2.6.1
+        # Exact v2.6.1 commit for reproducible test dependency resolution.
+        GIT_TAG cbcd08fa7de711053a3deec6339ee89cad5d2697
     )
 
     FetchContent_MakeAvailable(unity)
@@ -311,6 +323,22 @@ if(BUILD_TESTING)
         COMMAND web_api_tests
     )
 
+    add_executable(web_server_smoke_tests
+        tests/test_web_server.c
+    )
+
+    if(WIN32)
+        target_link_libraries(web_server_smoke_tests PRIVATE ws2_32)
+    endif()
+
+    add_dependencies(web_server_smoke_tests numforge_web)
+    numforge_enable_diagnostics(web_server_smoke_tests)
+
+    add_test(
+        NAME web_server_smoke_tests
+        COMMAND web_server_smoke_tests $<TARGET_FILE:numforge_web>
+    )
+
     add_executable(allocation_failure_tests
         tests/test_allocation_failures.c
     )
@@ -345,6 +373,7 @@ if(BUILD_TESTING)
         bigdecimal_property_tests
         calculator_tests
         web_api_tests
+        web_server_smoke_tests
         allocation_failure_tests
         PROPERTIES TIMEOUT 60
     )
