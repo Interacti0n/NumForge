@@ -648,11 +648,13 @@ BigDecimalStatus bigdecimal_set_string(BigDecimal *value, const char *string)
         }
     }
 
-    if (fractional_digits > INT64_MAX)
+#if SIZE_MAX > INT64_MAX
+    if (fractional_digits > (size_t)INT64_MAX)
     {
         free(digits);
         return BIGDECIMAL_SCALE_OVERFLOW;
     }
+#endif
     if (!bigdecimal_i64_sub((int64_t)fractional_digits, exponent, &scale))
     {
         free(digits);
