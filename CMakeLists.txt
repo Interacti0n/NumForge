@@ -196,6 +196,10 @@ if(BUILD_TESTING)
 
     FetchContent_MakeAvailable(unity)
 
+    # NumForge tests exercise int64_t calculator settings and uint64_t-backed
+    # counters even when the test executable itself is built for 32 bits.
+    target_compile_definitions(unity PUBLIC UNITY_SUPPORT_64)
+
     # Unity is a test-only dependency. Excluding its source directory keeps
     # its own install rules out of NumForge installation packages.
     set_property(DIRECTORY "${unity_SOURCE_DIR}" PROPERTY EXCLUDE_FROM_ALL TRUE)
