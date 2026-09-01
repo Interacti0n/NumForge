@@ -602,14 +602,18 @@ void test_bigint_boolean_number_theory_handles_every_allocation_failure(void)
     BigInt *square = make_bigint("15241578750190521");
     size_t prime_allocations;
     size_t square_allocations;
+    bool result = false;
 
     numforge_test_allocator_begin(0U);
-    TEST_ASSERT_TRUE(bigint_is_probable_prime(prime));
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_is_probable_prime(&result, prime));
+    TEST_ASSERT_TRUE(result);
     prime_allocations = numforge_test_allocator_call_count();
     numforge_test_allocator_end();
 
+    result = false;
     numforge_test_allocator_begin(0U);
-    TEST_ASSERT_TRUE(bigint_is_perfect_square(square));
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_is_perfect_square(&result, square));
+    TEST_ASSERT_TRUE(result);
     square_allocations = numforge_test_allocator_call_count();
     numforge_test_allocator_end();
 
@@ -620,24 +624,28 @@ void test_bigint_boolean_number_theory_handles_every_allocation_failure(void)
 
     for (size_t failure_index = 1U; failure_index <= prime_allocations; failure_index++)
     {
-        bool result;
+        BigIntStatus status;
 
+        result = true;
         numforge_test_allocator_begin(failure_index);
-        result = bigint_is_probable_prime(prime);
+        status = bigint_is_probable_prime(&result, prime);
         TEST_ASSERT_TRUE(numforge_test_allocator_did_fail());
         numforge_test_allocator_end();
-        TEST_ASSERT_FALSE(result);
+        TEST_ASSERT_EQUAL(BIGINT_OUT_OF_MEMORY, status);
+        TEST_ASSERT_TRUE(result);
     }
 
     for (size_t failure_index = 1U; failure_index <= square_allocations; failure_index++)
     {
-        bool result;
+        BigIntStatus status;
 
+        result = true;
         numforge_test_allocator_begin(failure_index);
-        result = bigint_is_perfect_square(square);
+        status = bigint_is_perfect_square(&result, square);
         TEST_ASSERT_TRUE(numforge_test_allocator_did_fail());
         numforge_test_allocator_end();
-        TEST_ASSERT_FALSE(result);
+        TEST_ASSERT_EQUAL(BIGINT_OUT_OF_MEMORY, status);
+        TEST_ASSERT_TRUE(result);
     }
 
     bigint_destroy(prime);

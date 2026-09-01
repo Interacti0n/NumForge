@@ -6,6 +6,9 @@ project(NumForge
     LANGUAGES C
 )
 
+include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
+
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -56,9 +59,12 @@ add_library(numforge STATIC
     src/web/web_api.c
 )
 
+add_library(NumForge::numforge ALIAS numforge)
+
 target_include_directories(numforge
     PUBLIC
-        ${PROJECT_SOURCE_DIR}/include
+        $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
     PRIVATE
         ${PROJECT_SOURCE_DIR}/src/calculator
         ${PROJECT_SOURCE_DIR}/src/web
@@ -120,6 +126,62 @@ endif()
 numforge_enable_diagnostics(numforge_web)
 
 # ============================================================
+# Installation and CMake package
+# ============================================================
+
+set(NUMFORGE_INSTALL_CMAKEDIR
+    "${CMAKE_INSTALL_LIBDIR}/cmake/NumForge"
+)
+
+install(
+    TARGETS numforge
+    EXPORT NumForgeTargets
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+
+install(
+    TARGETS calculator numforge_web
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+install(
+    DIRECTORY include/numforge
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    FILES_MATCHING PATTERN "*.h"
+)
+
+install(
+    FILES LICENSE
+    DESTINATION "${CMAKE_INSTALL_DATADIR}/licenses/NumForge"
+)
+
+configure_package_config_file(
+    cmake/NumForgeConfig.cmake.in
+    "${PROJECT_BINARY_DIR}/NumForgeConfig.cmake"
+    INSTALL_DESTINATION "${NUMFORGE_INSTALL_CMAKEDIR}"
+)
+
+write_basic_package_version_file(
+    "${PROJECT_BINARY_DIR}/NumForgeConfigVersion.cmake"
+    VERSION "${PROJECT_VERSION}"
+    COMPATIBILITY SameMajorVersion
+)
+
+install(
+    EXPORT NumForgeTargets
+    FILE NumForgeTargets.cmake
+    NAMESPACE NumForge::
+    DESTINATION "${NUMFORGE_INSTALL_CMAKEDIR}"
+)
+
+install(
+    FILES
+        "${PROJECT_BINARY_DIR}/NumForgeConfig.cmake"
+        "${PROJECT_BINARY_DIR}/NumForgeConfigVersion.cmake"
+    DESTINATION "${NUMFORGE_INSTALL_CMAKEDIR}"
+)
+
+# ============================================================
 # Tests
 # ============================================================
 
@@ -133,6 +195,10 @@ if(BUILD_TESTING)
     )
 
     FetchContent_MakeAvailable(unity)
+
+    # Unity is a test-only dependency. Excluding its source directory keeps
+    # its own install rules out of NumForge installation packages.
+    set_property(DIRECTORY "${unity_SOURCE_DIR}" PROPERTY EXCLUDE_FROM_ALL TRUE)
 
     add_executable(bigint_tests
         tests/test_bigint.c

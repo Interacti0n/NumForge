@@ -499,7 +499,6 @@ const char *bigdecimal_status_to_string(BigDecimalStatus status)
         case BIGDECIMAL_DIVISION_BY_ZERO: return "division by zero";
         case BIGDECIMAL_VALUE_TOO_LARGE: return "value too large";
         case BIGDECIMAL_SCALE_OVERFLOW: return "scale overflow";
-        case BIGDECIMAL_NOT_IMPLEMENTED: return "not implemented";
         default: return "unknown status";
     }
 }

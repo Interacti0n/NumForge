@@ -128,8 +128,9 @@ numeric types themselves.
 ## Library API
 
 For an in-tree build or a project that includes NumForge with
-`add_subdirectory()`, include the public headers and link the `numforge` CMake
-target:
+`add_subdirectory()`, include the public headers and link the
+`NumForge::numforge` CMake target (`numforge` remains available as its local
+target name):
 
 ```c
 #include <numforge/bigint.h>
@@ -137,8 +138,23 @@ target:
 ```
 
 The public API, ownership rules, arithmetic semantics, and concise function
-reference for both types are in [the API overview](docs/API.md). Install and
-package-export rules are not provided yet while the project remains pre-1.0.
+reference for both types are in [the API overview](docs/API.md).
+
+To install the library, headers, applications, and CMake package into a chosen
+prefix:
+
+```sh
+cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
+cmake --build build-release --config Release
+cmake --install build-release --config Release --prefix path/to/prefix
+```
+
+An installed consumer can then use:
+
+```cmake
+find_package(NumForge CONFIG REQUIRED)
+target_link_libraries(my_target PRIVATE NumForge::numforge)
+```
 
 ### Intended 1.0 API scope
 
@@ -169,6 +185,8 @@ executables:
 - `allocation_failure_tests`: fails each internal allocation in turn and checks
   out-of-memory propagation, cleanup, and the strong destination-unchanged
   guarantee across BigInt, BigDecimal, and the calculator pipeline.
+- `tests/package_consumer`: a separate project built by CI against the
+  installed package through `find_package(NumForge)`.
 
 All run through CTest when `BUILD_TESTING=ON`. GitHub Actions builds and runs
 them on Linux with warnings treated as errors and sanitizers enabled, and on
@@ -194,3 +212,8 @@ very large operands, and calculator features. Planned work includes:
 3. Performance profiling and targeted optimization of very large operands.
 
 The public API is still pre-1.0 and may evolve.
+
+## License
+
+NumForge is available under the [MIT License](LICENSE). Copyright (c) 2026
+Interacti0n.

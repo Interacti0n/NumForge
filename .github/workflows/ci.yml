@@ -27,6 +27,26 @@ jobs:
           ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
           UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
         run: ctest --test-dir build --output-on-failure
+      - name: Configure installable package
+        run: >-
+          cmake -S . -B build-package
+          -DCMAKE_BUILD_TYPE=Release
+          -DBUILD_TESTING=OFF
+          -DNUMFORGE_WARNINGS_AS_ERRORS=ON
+          -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/stage
+      - name: Build and install package
+        run: |
+          cmake --build build-package --parallel
+          cmake --install build-package
+      - name: Configure installed-package consumer
+        run: >-
+          cmake -S tests/package_consumer -B build-consumer
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_PREFIX_PATH=${{ github.workspace }}/stage
+      - name: Test installed package
+        run: |
+          cmake --build build-consumer --parallel
+          ctest --test-dir build-consumer --output-on-failure
 
   linux-32:
     runs-on: ubuntu-24.04

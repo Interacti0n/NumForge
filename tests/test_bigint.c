@@ -37,6 +37,19 @@ static void assert_status(BigIntStatus actual, BigIntStatus expected)
 }
 
 
+static void assert_bigint_predicate(
+    BigIntStatus (*predicate)(bool *, const BigInt *),
+    bool expected,
+    const BigInt *value
+)
+{
+    bool actual = !expected;
+
+    TEST_ASSERT_EQUAL(BIGINT_OK, predicate(&actual, value));
+    TEST_ASSERT_EQUAL(expected, actual);
+}
+
+
 /* ============================================================
    Unity setup / teardown
    ============================================================ */
@@ -1956,10 +1969,10 @@ void test_prime_small_primes(void)
     BigInt *p17 = make_bigint("17");
     BigInt *p97 = make_bigint("97");
 
-    TEST_ASSERT_TRUE(bigint_is_probable_prime(p2));
-    TEST_ASSERT_TRUE(bigint_is_probable_prime(p3));
-    TEST_ASSERT_TRUE(bigint_is_probable_prime(p17));
-    TEST_ASSERT_TRUE(bigint_is_probable_prime(p97));
+    assert_bigint_predicate(bigint_is_probable_prime, true, p2);
+    assert_bigint_predicate(bigint_is_probable_prime, true, p3);
+    assert_bigint_predicate(bigint_is_probable_prime, true, p17);
+    assert_bigint_predicate(bigint_is_probable_prime, true, p97);
 
     bigint_destroy(p2);
     bigint_destroy(p3);
@@ -1976,11 +1989,11 @@ void test_prime_composites(void)
     BigInt *p15 = make_bigint("15");
     BigInt *p100 = make_bigint("100");
 
-    TEST_ASSERT_FALSE(bigint_is_probable_prime(p0));
-    TEST_ASSERT_FALSE(bigint_is_probable_prime(p1));
-    TEST_ASSERT_FALSE(bigint_is_probable_prime(p4));
-    TEST_ASSERT_FALSE(bigint_is_probable_prime(p15));
-    TEST_ASSERT_FALSE(bigint_is_probable_prime(p100));
+    assert_bigint_predicate(bigint_is_probable_prime, false, p0);
+    assert_bigint_predicate(bigint_is_probable_prime, false, p1);
+    assert_bigint_predicate(bigint_is_probable_prime, false, p4);
+    assert_bigint_predicate(bigint_is_probable_prime, false, p15);
+    assert_bigint_predicate(bigint_is_probable_prime, false, p100);
 
     bigint_destroy(p0);
     bigint_destroy(p1);
@@ -1995,7 +2008,7 @@ void test_prime_composite_without_small_factor(void)
        within the former 3,000,000 trial-division limit. */
     BigInt *x = make_bigint("9000138000493");
 
-    TEST_ASSERT_FALSE(bigint_is_probable_prime(x));
+    assert_bigint_predicate(bigint_is_probable_prime, false, x);
 
     bigint_destroy(x);
 }
@@ -2009,8 +2022,8 @@ void test_prime_multi_limb_values(void)
         "28948022309329048855892746252171976962977213799489202546401021394546514198529"
     );
 
-    TEST_ASSERT_TRUE(bigint_is_probable_prime(prime));
-    TEST_ASSERT_FALSE(bigint_is_probable_prime(composite));
+    assert_bigint_predicate(bigint_is_probable_prime, true, prime);
+    assert_bigint_predicate(bigint_is_probable_prime, false, composite);
 
     bigint_destroy(prime);
     bigint_destroy(composite);
@@ -2021,7 +2034,7 @@ void test_prime_negative(void)
 {
     BigInt *x = make_bigint("-17");
 
-    TEST_ASSERT_FALSE(bigint_is_probable_prime(x));
+    assert_bigint_predicate(bigint_is_probable_prime, false, x);
 
     bigint_destroy(x);
 }
@@ -2035,7 +2048,7 @@ void test_perfect_square_zero(void)
 {
     BigInt *x = make_bigint("0");
 
-    TEST_ASSERT_TRUE(bigint_is_perfect_square(x));
+    assert_bigint_predicate(bigint_is_perfect_square, true, x);
 
     bigint_destroy(x);
 }
@@ -2045,7 +2058,7 @@ void test_perfect_square_one(void)
 {
     BigInt *x = make_bigint("1");
 
-    TEST_ASSERT_TRUE(bigint_is_perfect_square(x));
+    assert_bigint_predicate(bigint_is_perfect_square, true, x);
 
     bigint_destroy(x);
 }
@@ -2055,7 +2068,7 @@ void test_perfect_square_positive(void)
 {
     BigInt *x = make_bigint("144");
 
-    TEST_ASSERT_TRUE(bigint_is_perfect_square(x));
+    assert_bigint_predicate(bigint_is_perfect_square, true, x);
 
     bigint_destroy(x);
 }
@@ -2072,7 +2085,7 @@ void test_perfect_square_large(void)
        = 15241578750190521
     */
 
-    TEST_ASSERT_TRUE(bigint_is_perfect_square(x));
+    assert_bigint_predicate(bigint_is_perfect_square, true, x);
 
     bigint_destroy(x);
 }
@@ -2087,8 +2100,8 @@ void test_perfect_square_multi_limb_values(void)
         "28948022309329048855892746252171976962977213799489202546401021394546514198528"
     );
 
-    TEST_ASSERT_TRUE(bigint_is_perfect_square(square));
-    TEST_ASSERT_FALSE(bigint_is_perfect_square(previous));
+    assert_bigint_predicate(bigint_is_perfect_square, true, square);
+    assert_bigint_predicate(bigint_is_perfect_square, false, previous);
 
     bigint_destroy(square);
     bigint_destroy(previous);
@@ -2099,7 +2112,7 @@ void test_not_perfect_square(void)
 {
     BigInt *x = make_bigint("145");
 
-    TEST_ASSERT_FALSE(bigint_is_perfect_square(x));
+    assert_bigint_predicate(bigint_is_perfect_square, false, x);
 
     bigint_destroy(x);
 }
@@ -2109,9 +2122,38 @@ void test_negative_not_perfect_square(void)
 {
     BigInt *x = make_bigint("-144");
 
-    TEST_ASSERT_FALSE(bigint_is_perfect_square(x));
+    assert_bigint_predicate(bigint_is_perfect_square, false, x);
 
     bigint_destroy(x);
+}
+
+
+void test_number_theory_predicate_null_arguments(void)
+{
+    BigInt *value = make_bigint("17");
+    bool result = true;
+
+    TEST_ASSERT_EQUAL(
+        BIGINT_NULL_ARGUMENT,
+        bigint_is_probable_prime(NULL, value)
+    );
+    TEST_ASSERT_EQUAL(
+        BIGINT_NULL_ARGUMENT,
+        bigint_is_probable_prime(&result, NULL)
+    );
+    TEST_ASSERT_TRUE(result);
+
+    TEST_ASSERT_EQUAL(
+        BIGINT_NULL_ARGUMENT,
+        bigint_is_perfect_square(NULL, value)
+    );
+    TEST_ASSERT_EQUAL(
+        BIGINT_NULL_ARGUMENT,
+        bigint_is_perfect_square(&result, NULL)
+    );
+    TEST_ASSERT_TRUE(result);
+
+    bigint_destroy(value);
 }
 
 
@@ -2431,6 +2473,7 @@ int main(void)
     RUN_TEST(test_perfect_square_multi_limb_values);
     RUN_TEST(test_not_perfect_square);
     RUN_TEST(test_negative_not_perfect_square);
+    RUN_TEST(test_number_theory_predicate_null_arguments);
 
     /* NULL arguments */
     RUN_TEST(test_arithmetic_null_arguments);

@@ -30,6 +30,10 @@ The strong failure guarantee is exercised by a deterministic test-only
 allocator that fails each internal allocation in turn. It is not part of the
 public API and is compiled out of non-test builds.
 
+Installed CMake consumers use `find_package(NumForge CONFIG REQUIRED)` and
+link `NumForge::numforge`. The installed package exposes only the two public
+headers described here; calculator and HTTP headers remain internal.
+
 ## BigInt
 
 Include:
@@ -53,7 +57,10 @@ optional leading sign and digits only.
 Division truncates toward zero and the remainder has the dividend's sign.
 `bigint_pow()` rejects negative exponents. `BIGINT_FACTORIAL_MAX_N` limits
 factorial input to 100000. AND, OR, and XOR accept only non-negative values;
-`bigint_not(x)` is defined as `-(x + 1)`.
+`bigint_not(x)` is defined as `-(x + 1)`. The probable-prime and
+perfect-square checks return `BigIntStatus` and write their boolean answer
+through an output pointer, so allocation failure cannot be confused with a
+valid `false` result.
 
 ## BigDecimal
 

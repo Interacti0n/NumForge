@@ -211,11 +211,13 @@ bool bigint_is_even( /*Check if a BigInt is even*/
 bool bigint_is_odd( /*Check if a BigInt is odd*/
     const BigInt *value
 );
-bool bigint_is_probable_prime( /*Check primality with Miller-Rabin. Deterministic for values that fit in uint64_t;
-                                 probabilistic for larger values. Returns false if an internal allocation fails.*/
+BigIntStatus bigint_is_probable_prime( /*Check primality with Miller-Rabin. Deterministic for values that fit in uint64_t;
+                                         probabilistic for larger values. On failure, result is unchanged.*/
+    bool *result,
     const BigInt *value
 );
-bool bigint_is_perfect_square( /*Check if a BigInt is a perfect square. Returns false if an internal allocation fails.*/
+BigIntStatus bigint_is_perfect_square( /*Check if a BigInt is a perfect square. On failure, result is unchanged.*/
+    bool *result,
     const BigInt *value
 );
 

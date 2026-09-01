@@ -2332,7 +2332,8 @@ static BigIntStatus bigint_modular_pow(
     return status;
 }
 
-static bool bigint_is_miller_rabin_witness(
+static BigIntStatus bigint_miller_rabin_passes(
+    bool *result,
     const BigInt *value,
     const BigInt *odd_part,
     size_t squarings,
@@ -2349,6 +2350,7 @@ static bool bigint_is_miller_rabin_witness(
     BigInt value_minus_one = { NULL, 0, 0, false };
     BigInt x = { NULL, 0, 0, false };
     BigIntStatus status = bigint_sub(&value_minus_one, value, &one);
+    bool passes = false;
 
     if (status == BIGINT_OK)
     {
@@ -2357,59 +2359,62 @@ static bool bigint_is_miller_rabin_witness(
 
     if (status == BIGINT_OK && x.size == 0)
     {
-        free(value_minus_one.limbs);
-        free(x.limbs);
-        return true;
+        passes = true;
     }
 
-    if (status == BIGINT_OK)
+    if (status == BIGINT_OK && !passes)
     {
         status = bigint_modular_pow(&x, &x, odd_part, value);
     }
 
-    if (status == BIGINT_OK &&
+    if (status == BIGINT_OK && !passes &&
         (bigint_compare(&x, &one) == 0 || bigint_compare(&x, &value_minus_one) == 0))
     {
-        free(value_minus_one.limbs);
-        free(x.limbs);
-        return true;
+        passes = true;
     }
 
-    for (size_t i = 1; status == BIGINT_OK && i < squarings; i++)
+    for (size_t i = 1; status == BIGINT_OK && !passes && i < squarings; i++)
     {
         status = bigint_modular_multiply(&x, &x, &x, value);
 
         if (status == BIGINT_OK && bigint_compare(&x, &value_minus_one) == 0)
         {
-            free(value_minus_one.limbs);
-            free(x.limbs);
-            return true;
+            passes = true;
         }
     }
 
     free(value_minus_one.limbs);
     free(x.limbs);
-    return false;
+
+    if (status == BIGINT_OK)
+    {
+        *result = passes;
+    }
+
+    return status;
 }
 
-bool bigint_is_probable_prime( /*Check primality with Miller-Rabin*/
+BigIntStatus bigint_is_probable_prime( /*Check primality with Miller-Rabin*/
+    bool *result,
     const BigInt *value
 )
 {
-    if (value == NULL)
+    if (result == NULL || value == NULL)
     {
-        return false;
+        return BIGINT_NULL_ARGUMENT;
     }
 
     if (value->is_negative || value->size == 0 ||
         (value->size == 1 && value->limbs[0] < 2))
     {
-        return false; // Numbers less than 2 are not prime
+        *result = false; // Numbers less than 2 are not prime
+        return BIGINT_OK;
     }
 
     if (bigint_is_even(value))
     {
-        return value->size == 1 && value->limbs[0] == 2;
+        *result = value->size == 1 && value->limbs[0] == 2;
+        return BIGINT_OK;
     }
 
     uint64_t one_storage;
@@ -2419,6 +2424,7 @@ bool bigint_is_probable_prime( /*Check primality with Miller-Rabin*/
     BigInt odd_part = { NULL, 0, 0, false };
     BigIntStatus status = bigint_sub(&odd_part, value, &one);
     size_t squarings = 0;
+    bool is_probable_prime = true;
 
     while (status == BIGINT_OK && bigint_is_even(&odd_part))
     {
@@ -2434,32 +2440,52 @@ bool bigint_is_probable_prime( /*Check primality with Miller-Rabin*/
     };
 
     for (size_t i = 0;
-         status == BIGINT_OK && i < sizeof(witnesses) / sizeof(witnesses[0]);
+         status == BIGINT_OK && is_probable_prime &&
+             i < sizeof(witnesses) / sizeof(witnesses[0]);
          i++)
     {
-        if (!bigint_is_miller_rabin_witness(
-                value, &odd_part, squarings, witnesses[i]))
+        bool passes;
+
+        status = bigint_miller_rabin_passes(
+            &passes, value, &odd_part, squarings, witnesses[i]
+        );
+
+        if (status == BIGINT_OK && !passes)
         {
-            status = BIGINT_INVALID_ARGUMENT;
+            is_probable_prime = false;
         }
     }
 
     free(odd_part.limbs);
-    return status == BIGINT_OK;
+
+    if (status == BIGINT_OK)
+    {
+        *result = is_probable_prime;
+    }
+
+    return status;
 }
 
-bool bigint_is_perfect_square( /*Check if a BigInt is a perfect square*/
+BigIntStatus bigint_is_perfect_square( /*Check if a BigInt is a perfect square*/
+    bool *result,
     const BigInt *value
 )
 {
-    if (value == NULL || value->is_negative)
+    if (result == NULL || value == NULL)
     {
-        return false;
+        return BIGINT_NULL_ARGUMENT;
+    }
+
+    if (value->is_negative)
+    {
+        *result = false;
+        return BIGINT_OK;
     }
 
     if (value->size == 0)
     {
-        return true; // Zero is a perfect square
+        *result = true; // Zero is a perfect square
+        return BIGINT_OK;
     }
 
     // Build the integer square root one bit at a time, most significant
@@ -2512,7 +2538,7 @@ bool bigint_is_perfect_square( /*Check if a BigInt is a perfect square*/
         }
     }
 
-    bool result = false;
+    bool is_perfect_square = false;
 
     if (status == BIGINT_OK)
     {
@@ -2522,9 +2548,11 @@ bool bigint_is_perfect_square( /*Check if a BigInt is a perfect square*/
         root_squared.capacity = 0;
         root_squared.is_negative = false;
 
-        if (bigint_mul(&root_squared, &root, &root) == BIGINT_OK)
+        status = bigint_mul(&root_squared, &root, &root);
+
+        if (status == BIGINT_OK)
         {
-            result = (bigint_compare_abs(&root_squared, value) == 0);
+            is_perfect_square = (bigint_compare_abs(&root_squared, value) == 0);
         }
 
         free(root_squared.limbs);
@@ -2534,5 +2562,10 @@ bool bigint_is_perfect_square( /*Check if a BigInt is a perfect square*/
     free(candidate.limbs);
     free(candidate_squared.limbs);
 
-    return status == BIGINT_OK && result;
+    if (status == BIGINT_OK)
+    {
+        *result = is_perfect_square;
+    }
+
+    return status;
 }

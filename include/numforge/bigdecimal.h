@@ -19,8 +19,6 @@ typedef struct BigDecimal BigDecimal;
 /*
 ------------------------------------------------------------------------------------------------------------------------------
     Status codes returned by BigDecimal operations.
-
-    BIGDECIMAL_NOT_IMPLEMENTED is reserved for future optional API areas.
 ------------------------------------------------------------------------------------------------------------------------------
 */
 typedef enum BigDecimalStatus
@@ -31,8 +29,7 @@ typedef enum BigDecimalStatus
     BIGDECIMAL_INVALID_ARGUMENT,
     BIGDECIMAL_DIVISION_BY_ZERO,
     BIGDECIMAL_VALUE_TOO_LARGE,
-    BIGDECIMAL_SCALE_OVERFLOW,
-    BIGDECIMAL_NOT_IMPLEMENTED
+    BIGDECIMAL_SCALE_OVERFLOW
 } BigDecimalStatus;
 
 /*

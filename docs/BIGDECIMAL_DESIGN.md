@@ -21,8 +21,7 @@ The public header defines the component's current intended 1.0 surface:
 
 All listed operations are implemented. Every mutating operation computes into
 a temporary value and commits only on success, so its destination is unchanged
-after an error. `BIGDECIMAL_NOT_IMPLEMENTED` remains reserved for future
-optional API areas and is not returned by the current operations.
+after an error.
 
 ## Representation
 

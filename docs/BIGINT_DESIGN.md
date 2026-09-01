@@ -84,7 +84,9 @@ as `-(a + 1)`. Shifts preserve the documented truncation-toward-zero behavior.
 Primality uses Miller-Rabin witnesses that are deterministic for values fitting
 in `uint64_t`; for larger values the result is a strong probable-prime result,
 not a certificate. Perfect-square detection builds an integer square root bit
-by bit and verifies the resulting square.
+by bit and verifies the resulting square. Both public checks return a status
+separately from their boolean output, preserving the output on allocation or
+argument failure.
 
 ## Performance boundaries
 
