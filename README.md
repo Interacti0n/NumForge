@@ -25,7 +25,7 @@ tokenizer, parser, evaluator, and BigDecimal implementation.
 - Output/input aliasing for arithmetic operations, including
   `bigint_add(x, x, y)` and `bigint_div_mod(q, r, q, r)`.
 - Unit tests, deterministic property tests, warnings-as-errors, and Linux and
-  Windows CI.
+  Windows CI, including deterministic allocation-failure injection.
 
 ## Requirements
 
@@ -166,10 +166,18 @@ executables:
   positions, and division policy.
 - `web_api_tests`: confirms that the local web adapter evaluates expressions
   through the same exact C `BigDecimal` pipeline.
+- `allocation_failure_tests`: fails each internal allocation in turn and checks
+  out-of-memory propagation, cleanup, and the strong destination-unchanged
+  guarantee across BigInt, BigDecimal, and the calculator pipeline.
 
 All run through CTest when `BUILD_TESTING=ON`. GitHub Actions builds and runs
 them on Linux with warnings treated as errors and sanitizers enabled, and on
 Windows with Visual Studio warnings treated as errors.
+
+Fault injection is internal test instrumentation, not public API. It is enabled
+only in test-enabled builds and remains inactive unless the dedicated test
+explicitly selects an allocation call to fail. With `BUILD_TESTING=OFF`, the
+allocation boundary maps directly to the standard C allocator.
 
 ## Project status and roadmap
 

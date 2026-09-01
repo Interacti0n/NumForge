@@ -1,5 +1,6 @@
 #include "evaluator.h"
 #include "expression_internal.h"
+#include "../internal/numforge_alloc.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -98,7 +99,7 @@ static CalculatorStatus calculator_set_number(BigDecimal *value, const char *tex
 
     {
         size_t length = strlen(text);
-        char *normalized = malloc(length + 1U);
+        char *normalized = numforge_malloc(length + 1U);
 
         if (normalized == NULL)
         {

@@ -124,7 +124,10 @@ The implementation is complete for the current public surface. Focused unit
 tests cover explicit regressions and API errors. A separate deterministic
 property suite uses a bounded independent `int64_t` reference model to check
 conversion, canonical form, exact arithmetic, comparison, aliasing, rescaling,
-division, and every rounding mode.
+division, and every rounding mode. The allocation-failure suite additionally
+fails each allocation in conversion, comparison, exact and rounded arithmetic,
+then verifies out-of-memory propagation and unchanged destinations. Its
+end-to-end case also covers parser, evaluator, and formatter cleanup.
 
 The most useful next work is larger generated decimal vectors and optional
 external-oracle checks, followed by profiling-guided optimization such as

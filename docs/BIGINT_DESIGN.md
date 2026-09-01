@@ -33,6 +33,11 @@ by the caller, which must release it with `free()`.
 Mutating operations provide a strong failure guarantee: when they return an
 error, their destination is unchanged. Operations that need temporary storage
 compute into fresh buffers or temporary objects and commit only after success.
+The test-enabled build routes allocations through an internal deterministic
+fault injector. `allocation_failure_tests` fails every allocation site in each
+covered operation and verifies both `BIGINT_OUT_OF_MEMORY` propagation and the
+unchanged destination. Linux CI combines this with AddressSanitizer to detect
+leaks in failure cleanup.
 
 Arithmetic supports output/input aliasing unless documented otherwise:
 

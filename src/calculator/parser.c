@@ -1,5 +1,6 @@
 #include "expression_internal.h"
 #include "tokenizer.h"
+#include "../internal/numforge_alloc.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -33,7 +34,7 @@ static CalculatorStatus calculator_parser_advance(CalculatorParser *parser)
 
 static CalculatorExpression *calculator_expression_create(CalculatorExpressionType type, size_t offset)
 {
-    CalculatorExpression *expression = malloc(sizeof(*expression));
+    CalculatorExpression *expression = numforge_malloc(sizeof(*expression));
 
     if (expression != NULL)
     {
@@ -56,7 +57,7 @@ static CalculatorExpression *calculator_expression_create_number(const Calculato
     }
 
     expression = calculator_expression_create(CALCULATOR_EXPRESSION_NUMBER, token->offset);
-    text = malloc(token->length + 1U);
+    text = numforge_malloc(token->length + 1U);
     if (expression == NULL || text == NULL)
     {
         free(expression);

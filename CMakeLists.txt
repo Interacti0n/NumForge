@@ -19,6 +19,8 @@ option(NUMFORGE_ENABLE_SANITIZERS
     OFF
 )
 
+include(CTest)
+
 function(numforge_enable_diagnostics target)
     if(MSVC)
         target_compile_options(${target} PRIVATE /W4 /utf-8)
@@ -63,6 +65,15 @@ target_include_directories(numforge
 )
 
 numforge_enable_diagnostics(numforge)
+
+if(BUILD_TESTING)
+    target_sources(numforge PRIVATE
+        src/internal/numforge_alloc.c
+    )
+    target_compile_definitions(numforge PRIVATE
+        NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING
+    )
+endif()
 
 # ============================================================
 # Calculator application
@@ -111,8 +122,6 @@ numforge_enable_diagnostics(numforge_web)
 # ============================================================
 # Tests
 # ============================================================
-
-include(CTest)
 
 if(BUILD_TESTING)
     include(FetchContent)
@@ -232,6 +241,33 @@ if(BUILD_TESTING)
         COMMAND web_api_tests
     )
 
+    add_executable(allocation_failure_tests
+        tests/test_allocation_failures.c
+    )
+
+    target_include_directories(allocation_failure_tests
+        PRIVATE
+            ${PROJECT_SOURCE_DIR}/src/calculator
+            ${PROJECT_SOURCE_DIR}/src/internal
+            ${PROJECT_SOURCE_DIR}/src/web
+    )
+
+    target_compile_definitions(allocation_failure_tests PRIVATE
+        NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING
+    )
+
+    target_link_libraries(allocation_failure_tests
+        PRIVATE
+            numforge
+            unity
+    )
+    numforge_enable_diagnostics(allocation_failure_tests)
+
+    add_test(
+        NAME allocation_failure_tests
+        COMMAND allocation_failure_tests
+    )
+
     set_tests_properties(
         bigint_tests
         bigint_property_tests
@@ -239,6 +275,7 @@ if(BUILD_TESTING)
         bigdecimal_property_tests
         calculator_tests
         web_api_tests
+        allocation_failure_tests
         PROPERTIES TIMEOUT 60
     )
 endif()

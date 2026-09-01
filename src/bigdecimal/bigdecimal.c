@@ -1,4 +1,5 @@
 #include "bigdecimal_internal.h"
+#include "../internal/numforge_alloc.h"
 
 #include <numforge/bigdecimal.h>
 
@@ -145,7 +146,7 @@ static BigDecimalStatus bigdecimal_set_power_of_ten(BigInt *value, uint64_t expo
 
     exponent_size = (size_t)exponent;
     length = exponent_size + 2U;
-    text = malloc(length);
+    text = numforge_malloc(length);
     if (text == NULL)
     {
         return BIGDECIMAL_OUT_OF_MEMORY;
@@ -505,7 +506,7 @@ const char *bigdecimal_status_to_string(BigDecimalStatus status)
 
 BigDecimal *bigdecimal_create(void)
 {
-    BigDecimal *value = malloc(sizeof(*value));
+    BigDecimal *value = numforge_malloc(sizeof(*value));
 
     if (value == NULL)
     {
@@ -591,7 +592,7 @@ BigDecimalStatus bigdecimal_set_string(BigDecimal *value, const char *string)
         return BIGDECIMAL_VALUE_TOO_LARGE;
     }
 
-    digits = malloc(input_length + 2U);
+    digits = numforge_malloc(input_length + 2U);
     if (digits == NULL)
     {
         return BIGDECIMAL_OUT_OF_MEMORY;
@@ -727,7 +728,7 @@ BigDecimalStatus bigdecimal_to_string(const BigDecimal *value, char **result)
             return BIGDECIMAL_VALUE_TOO_LARGE;
         }
 
-        formatted = malloc(total_length + 1U);
+        formatted = numforge_malloc(total_length + 1U);
         if (formatted != NULL)
         {
             size_t offset = 0;
@@ -749,7 +750,7 @@ BigDecimalStatus bigdecimal_to_string(const BigDecimal *value, char **result)
         if (scale == 0)
         {
             total_length = prefix_length + digits_length;
-            formatted = malloc(total_length + 1U);
+            formatted = numforge_malloc(total_length + 1U);
             if (formatted != NULL)
             {
                 memcpy(formatted, coefficient, total_length + 1U);
@@ -767,7 +768,7 @@ BigDecimalStatus bigdecimal_to_string(const BigDecimal *value, char **result)
                 return BIGDECIMAL_VALUE_TOO_LARGE;
             }
 
-            formatted = malloc(total_length + 1U);
+            formatted = numforge_malloc(total_length + 1U);
             if (formatted != NULL)
             {
                 size_t offset = 0;
@@ -783,7 +784,7 @@ BigDecimalStatus bigdecimal_to_string(const BigDecimal *value, char **result)
         else
         {
             total_length = prefix_length + digits_length + 1U;
-            formatted = malloc(total_length + 1U);
+            formatted = numforge_malloc(total_length + 1U);
             if (formatted != NULL)
             {
                 size_t before_point = digits_length - scale;

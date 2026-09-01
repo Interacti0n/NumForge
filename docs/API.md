@@ -26,6 +26,10 @@ separately versioned remote service.
   otherwise. `bigint_div_mod()` is the exception: quotient and remainder must
   be different objects.
 
+The strong failure guarantee is exercised by a deterministic test-only
+allocator that fails each internal allocation in turn. It is not part of the
+public API and is compiled out of non-test builds.
+
 ## BigInt
 
 Include:

@@ -1,4 +1,5 @@
 #include "bigint_internal.h"
+#include "../internal/numforge_alloc.h"
 #include <numforge/bigint.h>
 
 #include <assert.h>
@@ -254,7 +255,7 @@ static BigIntStatus bigint_ensure_capacity( /*Grow a BigInt's limb buffer to hol
         return BIGINT_OUT_OF_MEMORY; // the requested limb count can't be expressed as a byte size on this platform
     }
 
-    uint64_t *new_limbs = realloc(value->limbs, new_capacity_bytes);
+    uint64_t *new_limbs = numforge_realloc(value->limbs, new_capacity_bytes);
 
     if (new_limbs == NULL)
     {
@@ -648,8 +649,8 @@ static BigIntStatus bigint_set_bit( /*Set a single bit of |value|, growing the B
     size_t bit_index
 )
 {
-    size_t limb_index = bit_index / 64;
-    size_t bit_offset = bit_index % 64;
+    size_t limb_index = bit_index / BIGINT_LIMB_BITS;
+    size_t bit_offset = bit_index % BIGINT_LIMB_BITS;
 
     size_t needed;
     BigIntStatus status = bigint_size_add(limb_index, 1, &needed);
@@ -662,6 +663,10 @@ static BigIntStatus bigint_set_bit( /*Set a single bit of |value|, growing the B
     if (status != BIGINT_OK)
     {
         return status;
+    }
+    if (value->limbs == NULL)
+    {
+        return BIGINT_OUT_OF_MEMORY;
     }
 
     while (value->size <= limb_index)
@@ -858,7 +863,7 @@ BigInt *bigint_create( /*Create a new BigInt*/
     void
 )
 {
-    BigInt *value = malloc(sizeof(BigInt));
+    BigInt *value = numforge_malloc(sizeof(BigInt));
 
     if (value == NULL)
     {
@@ -1027,7 +1032,7 @@ char *bigint_to_string( /*Transform BigInt to string*/
 
     if (value->size == 0)
     {
-        char *string = malloc(2);
+        char *string = numforge_malloc(2);
 
         if (string == NULL)
         {
@@ -1061,7 +1066,7 @@ char *bigint_to_string( /*Transform BigInt to string*/
     size_t chunks_capacity;
     size_t chunks_bytes;
 
-    if (bigint_size_mul(value->size, 64, &bits_estimate) != BIGINT_OK ||
+    if (bigint_size_mul(value->size, BIGINT_LIMB_BITS, &bits_estimate) != BIGINT_OK ||
         bigint_size_add(bits_estimate, 62, &rounded) != BIGINT_OK ||
         bigint_size_add(rounded / 63, 1, &chunks_capacity) != BIGINT_OK ||
         bigint_size_mul(chunks_capacity, sizeof(uint64_t), &chunks_bytes) != BIGINT_OK)
@@ -1070,7 +1075,7 @@ char *bigint_to_string( /*Transform BigInt to string*/
         return NULL;
     }
 
-    uint64_t *chunks = malloc(chunks_bytes);
+    uint64_t *chunks = numforge_malloc(chunks_bytes);
 
     if (chunks == NULL)
     {
@@ -1099,7 +1104,7 @@ char *bigint_to_string( /*Transform BigInt to string*/
         return NULL;
     }
 
-    char *string = malloc(capacity);
+    char *string = numforge_malloc(capacity);
 
     if (string == NULL)
     {
@@ -1350,7 +1355,7 @@ BigIntStatus bigint_mul( /*Multiply two BigInts (a*b)*/
     // this is safe even when result aliases a and/or b (e.g. squaring via
     // bigint_mul(x, x, x)). calloc itself checks result_size*sizeof(uint64_t)
     // for overflow on top of the result_size computation above.
-    uint64_t *product = calloc(result_size, sizeof(uint64_t));
+    uint64_t *product = numforge_calloc(result_size, sizeof(uint64_t));
 
     if (product == NULL)
     {
@@ -1863,7 +1868,7 @@ BigIntStatus bigint_and( /*Bitwise AND for BigInts (a&b). Operands must be non-n
             return BIGINT_OUT_OF_MEMORY;
         }
 
-        limbs = malloc(bytes);
+        limbs = numforge_malloc(bytes);
 
         if (limbs == NULL)
         {
@@ -1916,7 +1921,7 @@ BigIntStatus bigint_or( /*Bitwise OR for BigInts (a|b). Operands must be non-neg
             return BIGINT_OUT_OF_MEMORY;
         }
 
-        limbs = malloc(bytes);
+        limbs = numforge_malloc(bytes);
 
         if (limbs == NULL)
         {
@@ -1972,7 +1977,7 @@ BigIntStatus bigint_xor( /*Bitwise XOR for BigInts (a^b). Operands must be non-n
             return BIGINT_OUT_OF_MEMORY;
         }
 
-        limbs = malloc(bytes);
+        limbs = numforge_malloc(bytes);
 
         if (limbs == NULL)
         {
@@ -2061,7 +2066,7 @@ BigIntStatus bigint_shift_left( /*Left shift for BigInts (a<<n)*/
         return BIGINT_VALUE_TOO_LARGE;
     }
 
-    uint64_t *limbs = calloc(new_size, sizeof(uint64_t));
+    uint64_t *limbs = numforge_calloc(new_size, sizeof(uint64_t));
 
     if (limbs == NULL)
     {
@@ -2129,7 +2134,7 @@ BigIntStatus bigint_shift_right( /*Right shift for BigInts (a>>n), truncating to
         return BIGINT_OUT_OF_MEMORY;
     }
 
-    uint64_t *limbs = malloc(new_size_bytes);
+    uint64_t *limbs = numforge_malloc(new_size_bytes);
 
     if (limbs == NULL)
     {

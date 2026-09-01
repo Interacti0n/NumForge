@@ -1,6 +1,7 @@
 #include "formatter.h"
 
 #include "../bigdecimal/bigdecimal_internal.h"
+#include "../internal/numforge_alloc.h"
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -239,7 +240,7 @@ static CalculatorStatus calculator_compose_scientific(
     }
     formatted_length += (size_t)exponent_length;
 
-    formatted = malloc(formatted_length + 1U);
+    formatted = numforge_malloc(formatted_length + 1U);
     if (formatted == NULL)
     {
         free(significand);
@@ -305,7 +306,7 @@ static CalculatorStatus calculator_try_format_scientific(
         return CALCULATOR_OK;
     }
 
-    significand = malloc(digit_count + 1U);
+    significand = numforge_malloc(digit_count + 1U);
     if (significand == NULL)
     {
         free(coefficient);
