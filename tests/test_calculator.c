@@ -287,7 +287,7 @@ void test_tokenizer_rejects_invalid_tokens(void)
 
 void test_parser_accepts_expression_grammar(void)
 {
-    const char *input[] = { "1", "-1", "+.5", "\xCF\x80", "\xCF\x80" "e", "\xCF\x86", "1 + 2 * 3", "2(1 + 2)", "1E-2 / .5", "2\xC2\xB2", "3\xC2\xB3", "5!", "(2 + 3)!", "1.5^3", "2^3^2", "2^-3" };
+    const char *input[] = { "1", "-1", "+.5", "\xCF\x80", "\xCF\x80\x65", "\xCF\x86", "1 + 2 * 3", "2(1 + 2)", "1E-2 / .5", "2\xC2\xB2", "3\xC2\xB3", "5!", "(2 + 3)!", "1.5^3", "2^3^2", "2^-3" };
 
     for (size_t index = 0; index < sizeof(input) / sizeof(input[0]); index++)
     {
