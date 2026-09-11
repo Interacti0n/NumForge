@@ -11,7 +11,7 @@ ctest --test-dir build -C Debug --output-on-failure
 Use the configuration you built; `-C Debug` is needed by Visual Studio and
 other multi-configuration generators. Node.js enables the UI and numerical
 oracle suites with no npm install. Add `-DNUMFORGE_REQUIRE_NODE_TESTS=ON` to
-require them instead of allowing a local skip; all current CI jobs do this.
+require them instead of allowing a local skip; CI CTest jobs do this.
 Unity is a pinned, test-only dependency. Testing tools are not installed with
 the production library.
 
@@ -51,12 +51,22 @@ worked examples are in [CALCULATOR_DESIGN.md](CALCULATOR_DESIGN.md).
 precision commands, recovery after syntax/arithmetic/oversize errors, exact
 input length boundaries, CRLF, EOF without a newline, and both exit commands.
 
-`tests/fuzz/fuzz_parser.c` and `fuzz_numbers.c` are also libFuzzer entry points.
+`tests/fuzz/fuzz_parser.c`, `fuzz_numbers.c`, `fuzz_formatter.c` and
+`fuzz_http.c` are also libFuzzer entry points.
 Their portable `fuzz_*_smoke` executables run seed cases and deterministic bytes
-on every test platform. Inputs are limited to 256 bytes, a 100 ms cooperative
+on every test platform. Numeric/parser/formatter inputs are limited to 256 bytes, a 100 ms cooperative
 budget, 1 MiB cumulative allocation requests and 64 KiB per allocation.
 The numeric harness tests public numeric parsing and decimal serialization
-round trips; it does not yet test the calculator's scientific formatter.
+round trips. The formatter harness checks deterministic, non-mutating output
+and exact full-mode round trips when the output exponent is representable by
+the numeric parser. Extreme display exponents may exceed that parser's range;
+this is not treated as a formatting failure. Resource exhaustion is allowed.
+
+The HTTP harness accepts up to 8191 bytes and exercises the bounded,
+allocation-free framing parser without opening sockets. It checks repeatable
+status, frame bounds and incomplete prefixes. `http_request_tests` adds focused
+header/body limits, partial requests, duplicate headers and origin regressions.
+Socket deadlines and routing remain covered by `web_server_smoke_tests`.
 
 For coverage-guided mutation on Unix with Clang:
 
@@ -67,12 +77,45 @@ mkdir -p build-fuzz/corpus-parser
 build-fuzz/fuzz_parser build-fuzz/corpus-parser -dict=tests/fuzz/numforge.dict -max_total_time=30 -timeout=5 -max_len=256
 ```
 
-Run `fuzz_numbers` similarly with its own corpus directory. CI runs both for
-30 seconds each, limits RSS to 512 MiB, and uploads corpora/findings as artifacts.
+Run `fuzz_numbers` and `fuzz_formatter` similarly with separate corpus
+directories. For `fuzz_http`, use `tests/fuzz/http.dict` and `-max_len=8191`.
+CI runs all four for 30 seconds each, limits RSS to 512 MiB, and uploads
+corpora/findings as artifacts.
 Replay a discovered input with the corresponding fuzzer executable and add
 a focused C regression before fixing it. See [LLVM's libFuzzer documentation](https://llvm.org/docs/LibFuzzer.html).
-Remaining gaps are HTTP framing fuzzing, the calculator formatter harness,
-and real-browser interaction/navigation tests.
+Short campaigns are regression smoke coverage, not exhaustive fuzzing.
+
+## Real-browser tests (optional locally)
+
+`tests/browser` pins Playwright and its Chromium revision through the committed
+npm lockfile. It is separate from CTest and adds no application runtime
+dependency. Build `numforge_web` first, then run from `tests/browser`:
+
+```sh
+npm ci --ignore-scripts --no-audit --no-fund
+npx playwright install chromium
+NUMFORGE_WEB_EXECUTABLE=/absolute/path/to/build/numforge_web npm test
+```
+
+In PowerShell, use the same install commands, then:
+
+```powershell
+$env:NUMFORGE_WEB_EXECUTABLE = 'C:/path/to/NumForge/build/Debug/numforge_web.exe'
+npm test
+```
+
+Adjust the executable path for your generator/configuration. Playwright starts
+and stops its own loopback server on port 18765; set `NUMFORGE_TEST_PORT` to
+another free port if necessary. It refuses to reuse an existing server.
+Eight Chromium scenarios cover both languages: real C calculations and
+precision, keypad entry, clipboard, help/navigation, arithmetic errors,
+transport failures and stale-response protection. Network-failure and delayed
+response cases use controlled interception; ordinary calculations reach C.
+
+The dedicated browser CI job installs Chromium with OS dependencies using
+`npx playwright install --with-deps chromium`. Failures upload the HTML report,
+screenshots and traces for 14 days. Local reports, dependencies and test results
+are ignored by Git. Coverage is Chromium-only, not a cross-browser guarantee.
 
 ## Coverage and package CI
 

@@ -158,6 +158,10 @@ large or small non-zero output uses scientific notation at an absolute exponent
 of 10 or greater; its mantissa is rounded to at most the selected number of
 decimal places, for example `1.2345678901E-12`.
 
+At extreme internal scales, a formatted exponent can exceed the input parser's
+signed 64-bit range. Output is a display representation, not a guaranteed
+round-trip serialization format; copying it back may return a range error.
+
 Terminating division preserves the exact intermediate result within resource
 limits, including quotients that terminate after reduction, such as `7/28`.
 Exceeding the limits returns an error rather than a rounded replacement.

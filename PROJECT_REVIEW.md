@@ -11,23 +11,15 @@ a [testovanie](docs/TESTING.md). Nové funkcie sú neskoršia etapa.
 - Rozhodnúť, kedy vydať patch release; až potom zvoliť verziu, uzavrieť
   `Unreleased` v changelogu a pripraviť release poznámky a tag.
 
-## 2. Testy a výkon: ďalší stupeň
+- Po pushnutí overiť nový browser job a rozšírené Clang fuzz kampane v CI;
+  lokálne regresné a browser testy nenahrádzajú túto kontrolu.
 
-- Doplniť fuzz harness pre kalkulačný formatter a HTTP framing. Pre formatter
-  najprv určiť očakávania pri extrémnom vedeckom výstupe; pre HTTP oddeliť
-  spracovanie bajtov od socketov, aby sa dalo efektívne fuzzovať bez servera.
-- Doplniť reálny browser test vrátane navigácie SK/EN počas chýb, ovládania
-  klávesnice a clipboardu; vybrať a uzamknúť testovaciu browser závislosť.
-- Podľa deklarovanej podpory neskôr doplniť macOS/ARM.
-
-## 3. Pred novými funkciami
+## 2. Pred novými funkciami
 
 - Zaviesť AST volania a register názvov, arity, domén a chýb. Pre viac argumentov
   plánujeme bodkočiarku: `gcd(12;18)`; zatiaľ nejde o platný vstup.
 - Navrhnúť rozpoznávanie názvov ako `exp` bez rozbitia `πe`, `1e3` a veľkého
   `E`. Zachovať existujúce pravidlá čísel a implicitného násobenia.
-- Rozhodnúť o spätnej načítateľnosti výstupu s exponentom mimo rozsahu
-  vstupného parsera pri extrémnych mierkach.
 
 Potom môžu nasledovať etapy, nie sľúbené čísla vydaní:
 
@@ -37,10 +29,12 @@ Potom môžu nasledovať etapy, nie sľúbené čísla vydaní:
 
 Každá funkcia potrebuje doménové, presnostné a limitné testy aj SK/EN pomoc.
 
-## 4. Odložené možnosti — nie podmienky najbližšieho vývoja
+## 3. Odložené možnosti — nie podmienky najbližšieho vývoja
 
 Tieto rozšírenia nie sú záväzným plánom implementácie; vrátime sa k nim podľa
 potreby projektu.
+
+- Podľa deklarovanej podpory neskôr doplniť macOS/ARM testovanie.
 
 ### Presnosť
 

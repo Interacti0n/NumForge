@@ -17,6 +17,7 @@ stable.
 | `src/main.c` | Interactive command-line shell around the calculator pipeline. |
 | `src/web/web_api.c` | Text-to-result adapter used by the local web server. |
 | `src/web/web_server.c` | Loopback-only HTTP server that serves the calculator page and `POST /api/evaluate`. |
+| `src/web/http_request.c` | Bounded, socket-independent HTTP framing and header validation; returns incomplete, ready, malformed or oversized status. |
 | `src/web/web_page.h` | Embedded calculator and API-guide pages. Active controls map to the current grammar; disabled controls indicate planned features only. |
 
 The dependencies run in one direction:
@@ -187,6 +188,12 @@ coefficient and scale. It never allocates the enormous ordinary-decimal form
 just to add or discard zeroes. An unusually large coefficient still uses the
 exact `BigInt` conversion; a bounded radix conversion for that separate case
 remains an optimization task.
+
+Display output is not a universal serialization format. At extreme scales its
+scientific exponent can lie outside the input parser's signed 64-bit range
+(including after rounding carry). Such output remains displayable but may not
+parse back. Full output round-trips exactly when the parser can represent it
+and resource limits permit; this does not restore earlier division rounding.
 
 `CalculatorError` reports a `CalculatorStatus` and a zero-based UTF-8 byte
 offset in the input. The tokenizer and parser identify the token or character

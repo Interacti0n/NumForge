@@ -7,6 +7,14 @@ All notable changes to NumForge are documented in this file. The project uses
 
 ### Changed
 
+- Separate bounded HTTP byte framing from socket I/O and add direct regression
+  tests plus formatter/HTTP fuzz harnesses and portable replay coverage.
+- Add pinned Playwright Chromium tests for SK/EN calculation, precision,
+  keypad, clipboard, navigation, stale responses and transport-error recovery,
+  with a dedicated CI job and failure artifacts.
+- Document extreme scientific output as display text, not guaranteed
+  round-trip serialization outside the input parser's exponent range.
+
 - Preserve exact terminating calculator quotients, including after fraction
   reduction, regardless of working precision. Non-terminating division keeps
   significant-digit rounding; public fixed-scale division is unchanged.

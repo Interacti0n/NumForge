@@ -2,6 +2,9 @@
 /build/
 /build-*/
 /stage/
+/tests/browser/node_modules/
+/tests/browser/test-results/
+/tests/browser/playwright-report/
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake

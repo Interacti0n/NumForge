@@ -85,6 +85,7 @@ add_library(numforge STATIC
     src/calculator/evaluator.c
     src/calculator/formatter.c
     src/web/web_api.c
+    src/web/http_request.c
     src/internal/numforge_alloc.c
 )
 
@@ -232,7 +233,7 @@ if(NUMFORGE_BUILD_BENCHMARKS)
 endif()
 
 if(NUMFORGE_BUILD_FUZZERS)
-    foreach(kind IN ITEMS parser numbers)
+    foreach(kind IN ITEMS parser numbers formatter http)
         add_executable(fuzz_${kind} tests/fuzz/fuzz_${kind}.c)
         target_include_directories(fuzz_${kind} PRIVATE ${PROJECT_SOURCE_DIR}/src/calculator)
         target_link_libraries(fuzz_${kind} PRIVATE numforge)
@@ -244,7 +245,7 @@ endif()
 if(BUILD_TESTING)
     include(FetchContent)
 
-    foreach(kind IN ITEMS parser numbers)
+    foreach(kind IN ITEMS parser numbers formatter http)
         add_executable(fuzz_${kind}_smoke tests/fuzz/fuzz_${kind}.c tests/fuzz/replay.c)
         target_include_directories(fuzz_${kind}_smoke PRIVATE ${PROJECT_SOURCE_DIR}/src/calculator)
         target_link_libraries(fuzz_${kind}_smoke PRIVATE numforge)
@@ -355,7 +356,7 @@ if(BUILD_TESTING)
         COMMAND calculator_tests
     )
 
-    foreach(suite IN ITEMS calculator_contract parser_fuzz)
+    foreach(suite IN ITEMS calculator_contract parser_fuzz http_request)
         add_executable(${suite}_tests tests/test_${suite}.c)
         target_include_directories(${suite}_tests PRIVATE ${PROJECT_SOURCE_DIR}/src/calculator)
         target_link_libraries(${suite}_tests PRIVATE numforge unity)

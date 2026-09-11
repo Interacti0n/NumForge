@@ -189,8 +189,10 @@ executables:
 - `calculator_contract_tests`: covers numeric-token boundaries, implicit
   products, and intermediate-rounding/cancellation examples.
 - `parser_fuzz_tests`: deterministic bounded random-byte parser smoke test.
-- `fuzz_parser_smoke` and `fuzz_numbers_smoke`: portable replay of the same
-  budgeted harnesses used by the optional Clang coverage-guided fuzzers.
+- `fuzz_parser_smoke`, `fuzz_numbers_smoke`, `fuzz_formatter_smoke` and
+  `fuzz_http_smoke`: portable replay of the optional Clang fuzz harnesses.
+- `http_request_tests`: socket-independent framing, partial requests, origin
+  checks and malformed/oversized headers and bodies.
 - `cli_tests`: when Node.js is available, drives the actual CLI process through
   calculation, precision changes, errors, oversized input, EOF and exit commands.
 - `numeric_oracle_tests`: optional Node.js exact-integer/rational reference
@@ -211,11 +213,15 @@ executables:
   installed package through `find_package(NumForge)`, including a C++ linkage
   test when `NUMFORGE_TEST_CPP=ON`.
 
-CI requires the Node.js suites; local builds can omit Node.js. No npm packages
-are needed. Reproduction commands, scope and opt-in phase benchmarks are in
+CI also runs eight SK/EN Chromium scenarios from `tests/browser`, using a
+pinned Playwright dependency and the real C server, separately from CTest.
+Only this browser suite requires npm packages; the application does not.
+Reproduction commands, scope and opt-in phase benchmarks are in
 [TESTING.md](docs/TESTING.md).
 
-All run through CTest when `BUILD_TESTING=ON`. GitHub Actions builds and runs
+The native and dependency-free Node.js suites run through CTest when
+`BUILD_TESTING=ON`; CI requires Node.js, while local builds can omit it.
+GitHub Actions builds and runs
 them on 64-bit Linux with warnings-as-errors and sanitizers, on 32-bit Linux,
 and on Windows with Visual Studio warnings-as-errors. CI also builds a clean
 Release package, installs it, and tests an external `find_package(NumForge)`

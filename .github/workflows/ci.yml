@@ -153,6 +153,9 @@ jobs:
           mkdir -p build-fuzz/corpus-parser build-fuzz/corpus-numbers build-fuzz/findings
           build-fuzz/fuzz_parser build-fuzz/corpus-parser -dict=tests/fuzz/numforge.dict -max_total_time=30 -timeout=5 -rss_limit_mb=512 -max_len=256 -artifact_prefix=build-fuzz/findings/
           build-fuzz/fuzz_numbers build-fuzz/corpus-numbers -dict=tests/fuzz/numforge.dict -max_total_time=30 -timeout=5 -rss_limit_mb=512 -max_len=256 -artifact_prefix=build-fuzz/findings/
+          mkdir -p build-fuzz/corpus-formatter build-fuzz/corpus-http
+          build-fuzz/fuzz_formatter build-fuzz/corpus-formatter -dict=tests/fuzz/numforge.dict -max_total_time=30 -timeout=5 -rss_limit_mb=512 -max_len=256 -artifact_prefix=build-fuzz/findings/
+          build-fuzz/fuzz_http build-fuzz/corpus-http -dict=tests/fuzz/http.dict -max_total_time=30 -timeout=5 -rss_limit_mb=512 -max_len=8191 -artifact_prefix=build-fuzz/findings/
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -161,4 +164,34 @@ jobs:
             build-fuzz/corpus-*/
             build-fuzz/findings/
           if-no-files-found: warn
+          retention-days: 14
+
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Build real server
+        run: |
+          cmake -S . -B build-browser -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DNUMFORGE_WARNINGS_AS_ERRORS=ON
+          cmake --build build-browser --target numforge_web --parallel 2
+      - name: Install locked test dependencies and Chromium
+        working-directory: tests/browser
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Test browser against C server
+        working-directory: tests/browser
+        env:
+          NUMFORGE_WEB_EXECUTABLE: ${{ github.workspace }}/build-browser/numforge_web
+        run: npm test
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: browser-failure-report
+          path: |
+            tests/browser/playwright-report/
+            tests/browser/test-results/
           retention-days: 14

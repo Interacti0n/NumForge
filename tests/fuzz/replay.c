@@ -10,7 +10,10 @@ int main(void)
     static const char *const seeds[] = {
         "", "0", "-0.00", "1e-9223372036854775807", "1E999999999999999999999",
         "123456789012345678901234567890.125", "0.0000000000000000001",
-        "(2+3)*4", "πe", "1e3", "1.2.3", "2 3", "2^3^2", "5!", "1/0"
+        "(2+3)*4", "πe", "1e3", "1.2.3", "2 3", "2^3^2", "5!", "1/0",
+        "GET / HTTP/1.1\r\n\r\n", "POST /api/evaluate HTTP/1.1\r\nContent-Length: 3\r\n\r\n2+2",
+        "POST / HTTP/1.1\r\nContent-Length: 4\r\nContent-Length: 4\r\n\r\n",
+        "GET / HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n"
     };
     for (size_t i = 0; i < sizeof(seeds) / sizeof(seeds[0]); i++)
         LLVMFuzzerTestOneInput((const uint8_t *)seeds[i], strlen(seeds[i]));
