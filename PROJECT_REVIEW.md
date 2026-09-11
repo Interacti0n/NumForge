@@ -6,12 +6,10 @@ Zoznam zostávajúcej práce, nie hotových opráv. Aktuálne správanie opisuj�
 [API](docs/API.md), [návrh kalkulačky](docs/CALCULATOR_DESIGN.md)
 a [testovanie](docs/TESTING.md). Nové funkcie sú neskoršia etapa.
 
-## 1. Uzavretie aktuálneho balíka
+## 1. Ďalšie vydanie
 
-- Po commite a pushnutí overiť GitHub Actions: Linux so sanitizérmi, Linux
-  32-bit, Windows, nainštalovaný balík a nové Clang/libFuzzer/coverage joby.
-  Lokálne testy nenahrádzajú CI; Clang/libFuzzer profil čaká na prvý vzdialený beh.
-- Až podľa výsledkov rozhodnúť o patch release a jeho poznámkach.
+- Rozhodnúť, kedy vydať patch release; až potom zvoliť verziu, uzavrieť
+  `Unreleased` v changelogu a pripraviť release poznámky a tag.
 
 ## 2. Testy a výkon: ďalší stupeň
 
