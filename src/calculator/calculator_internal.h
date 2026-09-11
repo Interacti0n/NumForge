@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 #include <numforge/bigdecimal.h>
 
@@ -40,6 +41,7 @@ typedef struct CalculatorContext
     int64_t output_scale;
     int64_t time_limit_ms;
     BigDecimalRoundingMode rounding;
+    bool significant_division;
 } CalculatorContext;
 
 #define CALCULATOR_DEFAULT_OUTPUT_SCALE 10
@@ -49,6 +51,11 @@ typedef struct CalculatorContext
 #define CALCULATOR_DEFAULT_TIME_LIMIT_MS 5000
 #define CALCULATOR_FACTORIAL_MAX_N 5000
 #define CALCULATOR_MAX_EXPRESSION_DEPTH 256U
+#define CALCULATOR_MAX_OUTPUT_SCALE 10000
+#define CALCULATOR_MAX_INPUT_BYTES 4096U
+#define CALCULATOR_MAX_OUTPUT_BYTES 65536U
+#define CALCULATOR_ALLOCATION_BUDGET (64U * 1024U * 1024U)
+#define CALCULATOR_SINGLE_ALLOCATION (128U * 1024U)
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
@@ -69,6 +76,10 @@ typedef struct CalculatorError
 const char *calculator_status_to_string( /*Human-readable description of a CalculatorStatus, for diagnostics*/
     CalculatorStatus status
 );
+/* Complete bounded pipeline shared by CLI and HTTP. */
+CalculatorStatus calculator_compute(const char *input, const CalculatorContext *context,
+                                    char **result, CalculatorError *error);
+CalculatorStatus calculator_budget_status(CalculatorStatus status);
 void calculator_context_init(
     CalculatorContext *context
 );

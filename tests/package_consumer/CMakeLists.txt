@@ -18,6 +18,14 @@ target_link_libraries(numforge_package_consumer
 )
 
 enable_testing()
+option(NUMFORGE_TEST_CPP "Also verify public headers and linkage from C++" OFF)
+if(NUMFORGE_TEST_CPP)
+    enable_language(CXX)
+    add_executable(numforge_cpp_consumer main.cpp)
+    target_compile_features(numforge_cpp_consumer PRIVATE cxx_std_11)
+    target_link_libraries(numforge_cpp_consumer PRIVATE NumForge::numforge)
+    add_test(NAME numforge_cpp_consumer COMMAND numforge_cpp_consumer)
+endif()
 add_test(
     NAME numforge_package_consumer
     COMMAND numforge_package_consumer

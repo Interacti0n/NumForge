@@ -158,6 +158,49 @@ static uint64_t bigint_divide_by_uint64( /*Divide a BigInt by a uint64_t in plac
     return remainder;
 }
 
+BigIntStatus bigint_strip_decimal_zeros(BigInt *value, uint64_t *removed)
+{
+    const uint64_t block = UINT64_C(10000000000000000000);
+    unsigned int remainder10;
+    *removed = 0U;
+    if (value->size == 0U) return BIGINT_OK;
+    /* 2^(64*i) mod 10 is 6 for every i >= 1. Reject the common
+     * already-normalized case without division or temporary allocation. */
+    remainder10 = (unsigned int)(value->limbs[0] % 10U);
+    for (size_t i = 1U; i < value->size; i++)
+        remainder10 = (remainder10 + 6U * (unsigned int)(value->limbs[i] % 10U)) % 10U;
+    if (remainder10 != 0U) return BIGINT_OK;
+
+    for (;;)
+    {
+        uint64_t remainder = 0U;
+        uint64_t divisor = 1U;
+        unsigned int count = 0U;
+        if (!numforge_budget_check()) return BIGINT_OUT_OF_MEMORY;
+        for (size_t i = value->size; i > 0U; i--)
+            (void)bigint_divide_128_by_u64(remainder, value->limbs[i - 1U], block, &remainder);
+        if (remainder == 0U)
+        {
+            count = 19U;
+            divisor = block;
+        }
+        else
+        {
+            while (remainder % 10U == 0U)
+            {
+                count++;
+                divisor *= 10U;
+                remainder /= 10U;
+            }
+            if (count == 0U) return BIGINT_OK;
+        }
+        if (*removed > UINT64_MAX - count) return BIGINT_VALUE_TOO_LARGE;
+        (void)bigint_divide_by_uint64(value, divisor);
+        *removed += count;
+        if (remainder != 0U) return BIGINT_OK;
+    }
+}
+
 static void bigint_normalize( /*Trim trailing zero limbs and clear the sign on zero - the single source of truth for canonical form*/
     BigInt *value
 )
@@ -756,6 +799,7 @@ static BigIntStatus bigint_divmod_abs( /*Long division on magnitudes only: quoti
 
     for (size_t i = bits; i > 0; i--)
     {
+        if (!numforge_budget_check()) return BIGINT_OUT_OF_MEMORY;
         size_t bit_index = i - 1;
 
         status = bigint_shift_left_one_bit(remainder);
@@ -986,6 +1030,11 @@ BigIntStatus bigint_set_string( /*Transform string to BigInt*/
 
     while (i < len)
     {
+        if (!numforge_budget_check())
+        {
+            free(parsed.limbs);
+            return BIGINT_OUT_OF_MEMORY;
+        }
         size_t chunk_len = (len - i > 19) ? 19 : (len - i);
         uint64_t chunk_value = 0;
         uint64_t chunk_multiplier = 1;
@@ -1087,6 +1136,12 @@ char *bigint_to_string( /*Transform BigInt to string*/
 
     while (scratch.size > 0)
     {
+        if (!numforge_budget_check())
+        {
+            free(scratch.limbs);
+            free(chunks);
+            return NULL;
+        }
         chunks[chunk_count++] =
             bigint_divide_by_uint64(&scratch, 10000000000000000000ULL);
     }
@@ -1364,6 +1419,11 @@ BigIntStatus bigint_mul( /*Multiply two BigInts (a*b)*/
 
     for (size_t i = 0; i < b->size; i++)
     {
+        if (!numforge_budget_check())
+        {
+            free(product);
+            return BIGINT_OUT_OF_MEMORY;
+        }
         uint64_t carry = 0;
 
         for (size_t j = 0; j < a->size; j++)
@@ -1807,6 +1867,11 @@ BigIntStatus bigint_factorial( /*Calculate factorial of a BigInt (n!)*/
 
         for (;;)
         {
+            if (!numforge_budget_check())
+            {
+                status = BIGINT_OUT_OF_MEMORY;
+                break;
+            }
             status = bigint_multiply_by_uint64(&temporary, i);
 
             if (status != BIGINT_OK)

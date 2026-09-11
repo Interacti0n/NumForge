@@ -325,7 +325,7 @@ static CalculatorStatus calculator_try_format_scientific(
     Result formatting functions.
 ------------------------------------------------------------------------------------------------------------------------------
 */
-CalculatorStatus calculator_format_result(
+static CalculatorStatus calculator_format_result_impl(
     const BigDecimal *value,
     const CalculatorContext *context,
     char **result
@@ -344,6 +344,7 @@ CalculatorStatus calculator_format_result(
     {
         return CALCULATOR_INVALID_ARGUMENT;
     }
+    if (context->output_scale > CALCULATOR_MAX_OUTPUT_SCALE) return CALCULATOR_VALUE_TOO_LARGE;
     if (!calculator_valid_rounding(context->rounding))
     {
         return CALCULATOR_INVALID_ARGUMENT;
@@ -385,5 +386,28 @@ CalculatorStatus calculator_format_result(
     }
     bigdecimal_destroy(formatted_value);
 
+    return status;
+}
+
+CalculatorStatus calculator_format_result(const BigDecimal *value, const CalculatorContext *context,
+                                          char **result)
+{
+    bool owner;
+    CalculatorStatus status;
+    if (result != NULL) *result = NULL;
+    if (context == NULL) return calculator_format_result_impl(value, context, result);
+    if (context->time_limit_ms < 0) return CALCULATOR_INVALID_ARGUMENT;
+    owner = numforge_budget_begin((uint64_t)context->time_limit_ms,
+        CALCULATOR_ALLOCATION_BUDGET, CALCULATOR_SINGLE_ALLOCATION);
+    status = calculator_format_result_impl(value, context, result);
+    status = calculator_budget_status(status);
+    if (status == CALCULATOR_OK && strlen(*result) > CALCULATOR_MAX_OUTPUT_BYTES)
+        status = CALCULATOR_VALUE_TOO_LARGE;
+    if (status != CALCULATOR_OK && result != NULL)
+    {
+        free(*result);
+        *result = NULL;
+    }
+    if (owner) numforge_budget_end();
     return status;
 }

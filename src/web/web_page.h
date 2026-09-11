@@ -72,7 +72,7 @@ static const char NUMFORGE_WEB_PAGE_RESULT[] =
 
 static const char NUMFORGE_WEB_PAGE_KEYPAD[] =
     "  <section class=\"precision\" aria-label=\"Nastavenie výstupnej presnosti\">\n"
-    "    <label>Desatinné miesta <input id=\"precision\" type=\"number\" min=\"0\" step=\"1\" value=\"10\" inputmode=\"numeric\"></label>\n"
+    "    <label>Desatinné miesta <input id=\"precision\" type=\"number\" min=\"0\" max=\"10000\" step=\"1\" value=\"10\" inputmode=\"numeric\"></label>\n"
     "    <label><input id=\"full-precision\" type=\"checkbox\"> Plný výstup</label>\n"
     "  </section>\n"
     "  <section class=\"keypad\" aria-label=\"Kalkulačná klávesnica\">\n"
@@ -126,7 +126,7 @@ static const char NUMFORGE_WEB_PAGE_EN_RESULT[] =
 
 static const char NUMFORGE_WEB_PAGE_EN_KEYPAD[] =
     "  <section class=\"precision\" aria-label=\"Output precision settings\">\n"
-    "    <label>Decimal places <input id=\"precision\" type=\"number\" min=\"0\" step=\"1\" value=\"10\" inputmode=\"numeric\"></label>\n"
+    "    <label>Decimal places <input id=\"precision\" type=\"number\" min=\"0\" max=\"10000\" step=\"1\" value=\"10\" inputmode=\"numeric\"></label>\n"
     "    <label><input id=\"full-precision\" type=\"checkbox\"> Full output</label>\n"
     "  </section>\n"
     "  <section class=\"keypad\" aria-label=\"Calculator keypad\">\n"
@@ -169,6 +169,8 @@ static const char NUMFORGE_WEB_PAGE_SCRIPT_START[] =
     "    const precision = document.querySelector('#precision');\n"
     "    const fullPrecision = document.querySelector('#full-precision');\n"
     "    const english = document.documentElement.lang === 'en';\n"
+    "    let generation = 0, controller = null, copyTimer = null;\n"
+    "    function invalidate() { generation++; controller?.abort(); clearTimeout(copyTimer); result.textContent = ''; result.className = ''; copyResult.disabled = true; copyResult.textContent = text.copy; }\n"
     "    const text = english ? { calculating: 'Calculating…', precision: 'Enter a non-negative whole number of decimal places.', failure: 'Calculation failed.', error: 'Error: ', column: ' at column ', copy: '⧉ Copy', copied: '✓ Copied' } : { calculating: 'Počítam…', precision: 'Zadaj nezáporný celý počet desatinných miest.', failure: 'Výpočet zlyhal.', error: 'Chyba: ', column: ' v stĺpci ', copy: '⧉ Kopírovať', copied: '✓ Skopírované' };\n"
     "    const slovakStatus = { 'null argument': 'chýbajúci argument', 'out of memory': 'nedostatok pamäte', 'invalid argument': 'neplatný argument', 'invalid token': 'neplatný token', 'syntax error': 'syntaktická chyba', 'division by zero': 'delenie nulou', 'value too large': 'príliš veľká hodnota', 'scale overflow': 'pretečenie mierky', 'TLE: time limit exceeded': 'TLE: prekročený časový limit', 'not implemented': 'funkcia nie je implementovaná' };\n"
     "    function responseError(data) {\n"
@@ -178,12 +180,16 @@ static const char NUMFORGE_WEB_PAGE_SCRIPT_START[] =
     "    }\n";
 
 static const char NUMFORGE_WEB_PAGE_SCRIPT_END[] =
+    "    expression.addEventListener('input', invalidate);\n"
+    "    precision.addEventListener('input', invalidate);\n"
     "    function insertText(text) {\n"
+    "      invalidate();\n"
     "      const start = expression.selectionStart ?? expression.value.length;\n"
     "      const end = expression.selectionEnd ?? start;\n"
     "      expression.setRangeText(text, start, end, 'end'); expression.focus();\n"
     "    }\n"
     "    function eraseText() {\n"
+    "      invalidate();\n"
     "      const start = expression.selectionStart ?? expression.value.length;\n"
     "      const end = expression.selectionEnd ?? start;\n"
     "      if (start !== end) expression.setRangeText('', start, end, 'end');\n"
@@ -197,27 +203,35 @@ static const char NUMFORGE_WEB_PAGE_SCRIPT_END[] =
     "    }\n"
     "    document.querySelectorAll('[data-insert]').forEach((button) => button.addEventListener('click', () => insertText(button.dataset.insert)));\n"
     "    document.querySelectorAll('[data-action]').forEach((button) => button.addEventListener('click', () => {\n"
-    "      if (button.dataset.action === 'clear') { expression.value = ''; expression.focus(); }\n"
+    "      if (button.dataset.action === 'clear') { invalidate(); expression.value = ''; expression.focus(); }\n"
     "      else if (button.dataset.action === 'backspace') eraseText();\n"
     "      else form.requestSubmit();\n"
     "    }));\n"
     "    copyResult.addEventListener('click', async () => {\n"
-    "      if (!result.textContent) return;\n"
-    "      try { await copyText(result.textContent); copyResult.textContent = text.copied; copyResult.disabled = true; setTimeout(() => { copyResult.textContent = text.copy; copyResult.disabled = !result.textContent; }, 1400); } catch (_) { copyResult.textContent = text.copy; }\n"
+    "      if (copyResult.disabled || !result.textContent) return;\n"
+    "      const id = generation, value = result.textContent;\n"
+    "      try { await copyText(value); if (id !== generation) return; copyResult.textContent = text.copied; copyResult.disabled = true; copyTimer = setTimeout(() => { if (id === generation) { copyResult.textContent = text.copy; copyResult.disabled = !result.textContent; } }, 1400); } catch (_) { if (id === generation) copyResult.textContent = text.copy; }\n"
     "    });\n"
-    "    fullPrecision.addEventListener('change', () => { precision.disabled = fullPrecision.checked; });\n"
+    "    fullPrecision.addEventListener('change', () => { invalidate(); precision.disabled = fullPrecision.checked; });\n";
+
+static const char NUMFORGE_WEB_PAGE_SCRIPT_SUBMIT[] =
     "    form.addEventListener('submit', async (event) => {\n"
     "      event.preventDefault();\n"
+    "      invalidate(); const id = generation; controller = new AbortController();\n"
     "      result.className = ''; result.textContent = text.calculating; copyResult.disabled = true; copyResult.textContent = text.copy;\n"
     "      try {\n"
     "        const requestedPrecision = fullPrecision.checked ? 'full' : precision.value;\n"
-    "        if (!fullPrecision.checked && (!/^[0-9]+$/.test(requestedPrecision))) throw new Error(text.precision);\n"
-    "        const response = await fetch('/api/evaluate?precision=' + encodeURIComponent(requestedPrecision), { method: 'POST', headers: { 'Content-Type': 'text/plain; charset=utf-8' }, body: expression.value });\n"
+    "        if (!fullPrecision.checked && (!/^[0-9]+$/.test(requestedPrecision) || Number(requestedPrecision) > 10000)) throw new Error(english ? 'Precision must be between 0 and 10000.' : 'Presnosť musí byť od 0 do 10000.');\n"
+    "        if (new TextEncoder().encode(expression.value).length > 4096) throw new Error(english ? 'Expression exceeds 4096 UTF-8 bytes.' : 'Výraz presahuje 4096 UTF-8 bajtov.');\n"
+    "        const response = await fetch('/api/evaluate?precision=' + encodeURIComponent(requestedPrecision), { method: 'POST', headers: { 'Content-Type': 'text/plain; charset=utf-8' }, body: expression.value, signal: controller.signal });\n"
+    "        if (!response.headers.get('content-type')?.includes('application/json')) throw new Error(text.failure);\n"
     "        const data = await response.json();\n"
-    "        if (!response.ok || !data.ok) throw new Error(responseError(data));\n"
+    "        if (id !== generation) return;\n"
+    "        if (!data || !response.ok || !data.ok) throw new Error(data ? responseError(data) : text.failure);\n"
     "        result.textContent = data.result; copyResult.disabled = false;\n"
     "      } catch (error) {\n"
-    "        result.className = 'error'; result.textContent = text.error + error.message; copyResult.disabled = true;\n"
+    "        if (id !== generation || error.name === 'AbortError') return;\n"
+    "        result.className = 'error'; result.textContent = text.error + ((error instanceof TypeError || error instanceof SyntaxError) ? text.failure : error.message); copyResult.disabled = true;\n"
     "      }\n"
     "    });\n"
     "  </script>\n"
@@ -231,6 +245,7 @@ static const char *const NUMFORGE_WEB_PAGE[] = {
     NUMFORGE_WEB_PAGE_FUTURE,
     NUMFORGE_WEB_PAGE_SCRIPT_START,
     NUMFORGE_WEB_PAGE_SCRIPT_END,
+    NUMFORGE_WEB_PAGE_SCRIPT_SUBMIT,
     NULL
 };
 
@@ -241,6 +256,7 @@ static const char *const NUMFORGE_WEB_PAGE_EN[] = {
     NUMFORGE_WEB_PAGE_EN_FUTURE,
     NUMFORGE_WEB_PAGE_SCRIPT_START,
     NUMFORGE_WEB_PAGE_SCRIPT_END,
+    NUMFORGE_WEB_PAGE_SCRIPT_SUBMIT,
     NULL
 };
 
@@ -275,7 +291,7 @@ static const char NUMFORGE_API_PAGE_SK_CONTENT[] =
     "  </header>\n"
     "  <h1>NumForge: použitie a API</h1>\n"
     "  <p>JavaScript iba odošle výraz lokálnemu serveru; samotný výpočet vykoná C aplikácia: tokenizer → parser → evaluator → BigDecimal → formatter.</p>\n"
-    "  <p class=\"notice\">Sčítanie, odčítanie a násobenie sú presné. Delenie interne používa najmenej 34 miest a half-even; predvolený zobrazený výsledok sa zaokrúhli na 10 miest.</p>\n"
+    "  <p class=\"notice\">Sčítanie, odčítanie a násobenie sú presné. Nekonečné delenie používa najmenej 34 významných číslic a half-even; výstup predvolene 10 desatinných miest.</p>\n"
     "  <h2>Čo môžeš zadať do kalkulačky</h2>\n"
     "  <table><tr><th>Prvok</th><th>Príklady</th></tr>\n"
     "  <tr><td>Celé a desatinné čísla</td><td><code>42</code>, <code>-1.5</code>, <code>1,5</code>, <code>.25</code>, <code>1.</code></td></tr>\n"
@@ -288,16 +304,19 @@ static const char NUMFORGE_API_PAGE_SK_CONTENT[] =
     "  <p>Momentálne nie sú podporované <code>%</code>, premenné ani ostatné funkcie.</p>\n"
     "  <p>Konštanty majú uložených 200 desatinných miest. Malé <code>e</code> vždy znamená Eulerovo číslo, preto <code>5e</code> znamená <code>5 * e</code> a <code>1e3</code> znamená <code>1 * e * 3</code>. Vedecký zápis vždy používa veľké <code>E</code>: <code>5E-1</code> je <code>0.5</code> a <code>1E3</code> je <code>1000</code>. Tlačidlá budúcich funkcií sú zámerne neaktívne; zatiaľ nepridávajú žiadnu syntax ani výpočet.</p>\n"
     "  <h2>Výstupná presnosť</h2>\n"
-    "  <p>Nastavenie <strong>Desatinné miesta</strong> určuje počet miest finálneho výsledku; predvolená hodnota je 10. <strong>Plný výstup</strong> vypne iba finálne zaokrúhlenie, delenie však zostáva 34-miestne. Veľmi malé a veľké nenulové výsledky sa zobrazia s veľkým <code>E</code>, napríklad <code>1.25E-12</code>.</p>\n"
-    "  <p>Výpočet má približne päťsekundový CPU limit. Po jeho prekročení vráti <code>TLE</code>; jeden už začatý veľký krok sa môže dokončiť tesne po limite. Parser a strom výrazu majú limit hĺbky 256, ktorého prekročenie vráti <code>value too large</code>.</p>\n";
+    "  <p><strong>Desatinné miesta</strong>: 0–10000, predvolene 10; vo vedeckom zápise platia pre mantisu. Nekonečné delenie používa max(34, N+4) významných číslic. <strong>Plný výstup</strong> vypne finálne zaokrúhlenie, nie 34-číslicové delenie. <code>1E-40 / 1</code> zostane <code>1E-40</code>. Medzivýsledky sa môžu zaokrúhliť; vyššia presnosť nepridá číslice ku konštantám.</p>\n";
 
 /*
  * Keep each embedded C string below the ISO C required minimum limit of
  * 4095 characters. GCC diagnoses longer concatenated literals under -Werror.
  */
 static const char NUMFORGE_API_PAGE_HTTP[] =
+    "  <p>Delenie s konečným desatinným výsledkom je presné v rámci limitov, napríklad <code>7/28 = 0.25</code>. Pracovná presnosť platí pre nekonečné delenia; presnosť zobrazenia zaokrúhli až výstup. <code>(1E34+1)/1-1E34 = 1</code>.</p>\n"
+    "  <p><code>1.2.3</code>, <code>1,2,3</code> a <code>2 3</code> sú chyby, nie násobenie. Platí <code>(2)3</code>, <code>3!2</code> aj <code>2²3</code>. Násobenie bez znamienka má rovnakú prioritu ako * a /: <code>6/2(1+2) = 9</code>.</p>\n"
+    "  <p>Počet miest nezaručuje presnosť celého výrazu: predvolene <code>(1/3)*3-1 = -1E-34</code>. Pri odčítaní blízkych zaokrúhlených hodnôt sa presnosť môže stratiť. Plný výstup toto zaokrúhlenie neodstráni.</p>\n"
+    "  <p>Celý výpočet má rozpočet 5 s vrátane parsovania a výstupu; kontroly sú aj v náročných numerických slučkách. Rušenie je kooperatívne, nie tvrdá real-time záruka. Limity: 64 MiB súčtu alokácií, 128 KiB jednej alokácie, 65536 bajtov výstupu, hĺbka 256. Prekročenie vráti <code>TLE</code> alebo <code>value too large</code>. Verejné číselné API tieto aplikačné limity nemá.</p>\n"
     "  <h2>Lokálne HTTP rozhranie</h2>\n"
-    "  <p>Vlastný lokálny klient môže poslať výraz ako obyčajný UTF-8 text na <code>POST /api/evaluate?precision=10</code>. Server používa port 8765, prípadne iný port zadaný cez <code>--port</code>. Parameter <code>precision</code> je nezáporné celé číslo alebo <code>full</code>. Vstup má limit 4096 bajtov.</p>\n"
+    "  <p>Vlastný lokálny klient môže poslať UTF-8 výraz na <code>POST /api/evaluate?precision=10</code>. Port je 8765 alebo zvolený cez <code>--port</code>. Presnosť je 0–10000 alebo <code>full</code>. Vstup má limit 4096 bajtov (HTTP 413 pri prekročení); celý musí prísť do 2 s (HTTP 408). Priebežné posielanie bajtov limit neobnovuje.</p>\n"
     "  <pre>POST /api/evaluate?precision=10 HTTP/1.1\nHost: 127.0.0.1:8765\nContent-Type: text/plain; charset=utf-8\nContent-Length: 6\n\nπ / 2\n\nHTTP/1.1 200 OK\n{\"ok\":true,\"result\":\"1.5707963268\"}</pre>\n"
     "  <p><code>Content-Length</code> je povinný; bez neho server vráti HTTP 411. Cudzí browser <code>Origin</code> dostane HTTP 403. Chybný výraz alebo presnosť vráti HTTP 400 JSON s poľami <code>ok</code>, <code>error</code>, <code>status</code> a od jednotky číslovaným <code>column</code>. Nedostatok pamäte vráti HTTP 500.</p>\n";
 
@@ -351,7 +370,7 @@ static const char NUMFORGE_API_PAGE_EN_START[] =
     "  </header>\n"
     "  <h1>NumForge: usage and API</h1>\n"
     "  <p>JavaScript only sends the expression to the local server; the C application performs the calculation: tokenizer → parser → evaluator → BigDecimal → formatter.</p>\n"
-    "  <p class=\"notice\">Addition, subtraction, and multiplication are exact. Division internally uses at least 34 half-even places; displayed output defaults to 10 places.</p>\n"
+    "  <p class=\"notice\">Addition, subtraction, and multiplication are exact. Non-terminating division uses at least 34 significant digits with half-even rounding; output defaults to 10 decimal places.</p>\n"
     "  <h2>What you can enter</h2>\n"
     "  <table><tr><th>Element</th><th>Examples</th></tr>\n"
     "  <tr><td>Integers and decimals</td><td><code>42</code>, <code>-1.5</code>, <code>1,5</code>, <code>.25</code>, <code>1.</code></td></tr>\n"
@@ -365,11 +384,14 @@ static const char NUMFORGE_API_PAGE_EN_START[] =
     "  <p>Constants store 200 decimal places. Lowercase <code>e</code> always means Euler's number: <code>5e</code> means <code>5 * e</code> and <code>1e3</code> means <code>1 * e * 3</code>. Scientific notation always uses uppercase <code>E</code>: <code>5E-1</code> is <code>0.5</code> and <code>1E3</code> is <code>1000</code>. Disabled buttons do not add syntax or run calculations yet.</p>\n";
 
 static const char NUMFORGE_API_PAGE_EN_DETAILS[] =
+    "  <p>Terminating decimal division is exact within resource limits, e.g. <code>7/28 = 0.25</code>. Working precision applies to recurring quotients; display precision rounds the final output. <code>(1E34+1)/1-1E34 = 1</code>.</p>\n"
+    "  <p><code>1.2.3</code>, <code>1,2,3</code> and <code>2 3</code> are errors, not products. <code>(2)3</code>, <code>3!2</code> and <code>2²3</code> remain valid. Implicit multiplication has the same precedence as * and /: <code>6/2(1+2) = 9</code>.</p>\n"
+    "  <p>Output places do not guarantee whole-expression accuracy: by default <code>(1/3)*3-1 = -1E-34</code>. Subtracting nearby rounded values can lose accuracy. Full output does not undo this rounding.</p>\n"
     "  <h2>Output precision</h2>\n"
-    "  <p><strong>Decimal places</strong> sets the final result places; the default is 10. <strong>Full output</strong> disables only final rounding, while division remains 34-place. Very small and large non-zero values use uppercase-<code>E</code> scientific notation, for example <code>1.25E-12</code>.</p>\n"
-    "  <p>Calculation has an approximate five-second CPU limit. If exceeded, it returns <code>TLE</code>; one already-started large step may finish just after the limit. Parser and expression-tree depth are capped at 256; exceeding that returns <code>value too large</code>.</p>\n"
+    "  <p><strong>Decimal places</strong>: 0–10000, default 10; applies to the mantissa in scientific notation. Non-terminating division uses max(34, N+4) significant digits. <strong>Full output</strong> skips final rounding, not 34-digit division. <code>1E-40 / 1</code> stays <code>1E-40</code>. Intermediate results can be rounded; higher precision does not add digits to constants.</p>\n"
+    "  <p>The whole calculation has a 5 s budget, including parsing and output, checked inside expensive numeric loops. Cancellation is cooperative, not a hard real-time guarantee. Limits: 64 MiB cumulative allocations, 128 KiB per allocation, 65536 output bytes, depth 256. Exceeding them returns <code>TLE</code> or <code>value too large</code>. Public numeric APIs do not have these application limits.</p>\n"
     "  <h2>Local HTTP interface</h2>\n"
-    "  <p>A local client can send an expression as plain UTF-8 text to <code>POST /api/evaluate?precision=10</code>. The server uses port 8765 or another port selected through <code>--port</code>. The <code>precision</code> parameter is a non-negative integer or <code>full</code>. Input is limited to 4096 bytes.</p>\n"
+    "  <p>A local client sends UTF-8 expressions to <code>POST /api/evaluate?precision=10</code>. Port is 8765 or selected with <code>--port</code>. Precision is 0–10000 or <code>full</code>. Input is limited to 4096 bytes (HTTP 413 if exceeded) and must arrive completely within 2 s (HTTP 408). Individual bytes do not restart the deadline.</p>\n"
     "  <pre>POST /api/evaluate?precision=10 HTTP/1.1\nHost: 127.0.0.1:8765\nContent-Type: text/plain; charset=utf-8\nContent-Length: 6\n\nπ / 2\n\nHTTP/1.1 200 OK\n{\"ok\":true,\"result\":\"1.5707963268\"}</pre>\n"
     "  <p><code>Content-Length</code> is required; without it the server returns HTTP 411. A foreign browser <code>Origin</code> gets HTTP 403. Invalid expressions or precision return HTTP 400 JSON with <code>ok</code>, <code>error</code>, <code>status</code>, and a one-based <code>column</code>. Out-of-memory calculation failures return HTTP 500.</p>\n";
 

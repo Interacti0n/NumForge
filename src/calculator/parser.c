@@ -198,6 +198,14 @@ static CalculatorStatus calculator_parse_primary(
             return status;
         }
 
+        /* Whitespace does not turn two numeric literals into a product.
+         * Constants, parentheses and postfix operators still delimit factors. */
+        if (parser->current.type == CALCULATOR_TOKEN_NUMBER)
+        {
+            calculator_expression_destroy(expression);
+            return calculator_parser_syntax_error(parser);
+        }
+
         *result = expression;
         return CALCULATOR_OK;
     }

@@ -79,8 +79,16 @@ coefficients. An unrepresentable scale difference returns
 
 ### Multiplication
 
-Multiplication multiplies coefficients and adds scales, checking `int64_t`
-overflow before the operation. It normalizes the result once.
+Multiplication first multiplies and normalizes the coefficient at scale zero,
+then adds the operand scales and the normalization adjustment using checked
+`int64_t` arithmetic. Cross-factor trailing zeroes can therefore rescue an
+otherwise overflowing intermediate sum. Zero remains canonical at scale zero;
+true final scale overflow leaves the destination unchanged.
+
+Normalization strips decimal zeroes in blocks of up to 19 using private
+single-limb division helpers. The common already-normalized case is detected
+without allocation. This avoids thousands of general BigInt divisions when
+high-precision division produces a short terminating decimal.
 
 ### Division
 
@@ -111,8 +119,7 @@ or context/trap option rather than treating it as a generic error.
 - invalid input;
 - division by zero;
 - value too large;
-- scale overflow;
-- not implemented (reserved for future optional API areas).
+- scale overflow.
 
 All mutating operations provide the same strong guarantee as
 `bigint_set_string`: on failure, their destination is unchanged.

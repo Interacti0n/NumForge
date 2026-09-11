@@ -8,7 +8,7 @@ stable.
 
 | Module | Responsibility |
 | --- | --- |
-| `calculator.c` | Shared status strings, error reporting, and evaluation/output-precision defaults. |
+| `calculator.c` | Shared status/error handling, precision defaults and the bounded complete `calculator_compute` pipeline used by CLI and HTTP. |
 | `constants.c` | Maps `π`, `e`, and `φ` to fixed 200-decimal-place BigDecimal approximations. |
 | `tokenizer.c` | Converts source text into location-aware tokens. Implemented for decimal literals, identifiers, whitespace, binary and postfix operators, and parentheses. |
 | `parser.c` | Converts tokens into an opaque expression tree (AST). Implemented as recursive descent with postfix, power, unary, multiplicative, and additive precedence layers. |
@@ -54,6 +54,15 @@ trigonometric, logarithmic, and exponential controls are disabled placeholders.
 They document the intended UI surface, but do not currently add tokens or
 affect evaluation.
 
+Nonblocking sockets use absolute monotonic deadlines: two seconds for the
+complete incoming request and two seconds for a response. Slow byte-by-byte
+input cannot reset the receive budget. Oversized bodies return JSON 413, and
+expired incoming requests return JSON 408. The server remains sequential and
+loopback-only; these limits do not turn it into a public multiuser service.
+The page invalidates pending results on input changes and uses request
+generations to ignore stale responses. Aborting browser fetch is a UI measure;
+the C pipeline independently enforces its own calculation budget.
+
 ## Initial grammar
 
 ```text
@@ -91,30 +100,75 @@ Factorial delegates to `bigint_factorial`; it accepts only a non-negative whole
 number up to 5000 in the calculator, and reports an invalid-argument error for
 other inputs or `VALUE_TOO_LARGE` above that calculator limit.
 
-Adjacent primaries imply multiplication at the normal multiplicative
+Adjacent primaries, except two numeric tokens, imply multiplication at the normal multiplicative
 precedence. This covers `πe`, `10π`, `5e`, `2(2 + 2)`, and `(1 + 2)(3 + 4)`.
 The tokenizer keeps scientific notation unambiguous: `5E-1` and `1E3` remain
 one numeric token, while `5e` becomes `5 * e` and `1e3` becomes `1 * e * 3`.
 Only the exact UTF-8 symbols `π`, `e`, and `φ` are constants; ASCII `pi` and
 `phi` remain available for future variable names.
 
+Two numeric tokens without an operator (`2 3`, `2 .3`) are syntax errors.
+A repeated decimal separator (`1.2.3`, `1,2,3`, `1E3.4`) is a lexical error.
+Whitespace does not make an operator. Delimited factors such as `(2)3`,
+`3!2` and `2²3` remain valid. Implicit products have the same left-associative
+precedence as explicit multiplication/division: `6/2(1+2)` is `9`.
+Future multi-argument functions will use semicolons, e.g. `gcd(12;18)`, to
+avoid conflict with decimal commas. This is a reserved design direction,
+not currently accepted syntax; identifier matching belongs to that later work.
+
 ## Evaluation policy and errors
 
-`CalculatorContext` holds a division scale, output scale, and a BigDecimal
-rounding mode, plus a soft CPU-time limit. Division defaults to 34 decimal
-places with half-even rounding. Output defaults to 10 decimal places. For a
-numeric output scale `N`, division uses `max(34, N + 4)` places so output has
-four guard digits; `N` must be no greater than `INT64_MAX - 4`. The special
-output scale `-1` means full output and skips the final output rescale, but
-division still uses 34 places. Thus `full` preserves exact finite results but
-does not make a recurring division infinite or exact. This avoids hidden
-global precision and makes one expression deterministic for one context.
+`CalculatorContext` holds working division precision, output scale, rounding
+and a time budget. `significant_division` defaults to true: `division_scale`
+then counts significant digits for non-terminating division, defaulting to 34
+with half-even rounding. Terminating division is exact within resource limits.
+An explicitly false mode retains the internal legacy fixed-scale behavior;
+the public BigDecimal division API always retains fixed-scale semantics.
+Output defaults to 10 decimal places and accepts 0..10000. For output `N`,
+working division precision is `max(34, N + 4)`. Full output (`-1`) skips final
+rescaling and uses 34 working significant digits. It does not imply infinite
+precision or undo intermediate rounding.
 
-The default `time_limit_ms` is 5000. The evaluator checks the elapsed CPU time
-between AST operations and during every binary-exponentiation iteration. It
-returns `CALCULATOR_TIME_LIMIT`, rendered as `TLE` by the web adapter, once the
-limit is exceeded. A BigInt primitive already in progress cannot be safely
-interrupted, so this is a soft rather than a hard real-time bound.
+This is an operation-by-operation policy, not a guaranteed error bound for
+the whole expression. Addition, subtraction and multiplication are exact on
+their stored operands. The calculator reduces the coefficient denominator by
+the GCD and removes factors of two and five. If no other factor remains,
+division uses enough decimal places for the exact quotient before restoring
+the operand scales. Thus `(1E34+1)/1-1E34` and `((1E80+1)/8)*8-1E80` give `1`.
+Failure to fit the exact result returns an error, not a rounded substitute.
+Non-terminating division still rounds: `(1/3)*3-1` is `-1E-34` by default.
+Full output resets non-terminating division to 34 working digits;
+it is not a request for the highest possible accuracy.
+
+These behaviors are regression-tested in `tests/test_calculator_contract.c`.
+No automatic retry at higher precision, certified error estimate, or
+`inexact`/`rounded` result metadata exists yet. Those require a separate
+calculator-layer design; the stable numeric API is unchanged.
+
+The private significant-division helper finds the coefficient-ratio exponent,
+divides at the corresponding scale and then applies the original operand scales
+using checked arithmetic. Thus compact huge/tiny magnitudes do not require huge
+powers of ten merely to retain relative precision. For example `1E-40 / 1`
+stays `1E-40`. Intermediate rounding and cancellation can still affect later
+operations; there is no certified whole-expression error bound. Constants have
+200 stored decimal places regardless of the selected output limit.
+
+`calculator_compute` opens one thread-local resource scope before parsing and
+closes it after formatting and cleanup. Nested evaluator/formatter calls reuse
+the existing scope; standalone calls open their own. Default limits are 5000
+monotonic milliseconds, 64 MiB cumulative allocation volume, 128 KiB per
+allocation and 65536 output bytes. `GetTickCount64`/`CLOCK_MONOTONIC` replace
+the platform-dependent `clock()`. Budget checks inside expensive BigInt loops
+cancel arithmetic and conversion safely; allocation requests are checked before
+calling the system allocator. Allocation volume counts realloc requests in full
+and is intentionally conservative rather than tracking live memory.
+
+Time expiration maps to `CALCULATOR_TIME_LIMIT`; resource exhaustion maps to
+`CALCULATOR_VALUE_TOO_LARGE`. Ordinary allocator failures remain out-of-memory.
+Public numeric calls outside a scope retain their normal unrestricted behavior.
+No thread is forcibly terminated and no OS process watchdog is used: cancellation
+is cooperative at bounded-work checkpoints, not a hard real-time guarantee.
+Test-only checkpoint expiration makes cancellation regressions deterministic.
 
 Parser recursion and constructed AST depth are both capped at 256. This bounds
 parser, evaluator, and destructor stack use for deeply nested parentheses,

@@ -114,9 +114,14 @@ The page includes a clickable keypad for the current expression grammar,
 including `π`, `e`, `φ`, `xʸ`, `x²`, `x³`, and `n!`. Powers, squaring, and
 cubing accept any exact decimal base with a non-negative whole-number exponent;
 factorial requires an input from 0 to 5000. Its precision control defaults to
-10 decimal places; full output is also available. A calculation has an
-approximately five-second CPU limit and returns `TLE` when that limit is
-reached.
+10 decimal places (configurable from 0 to 10000); full output is also available.
+Non-terminating division uses working significant digits, so `1E-40 / 1` remains `1E-40`.
+The complete calculation has a five-second monotonic budget, checked during
+parsing, arithmetic and formatting, including expensive BigInt loops. The
+calculator also bounds allocations and output size. Exceeding these limits
+returns `TLE` or `value too large`; public numeric library calls remain uncapped
+by these application policies. Cancellation is cooperative, not a hard real-time
+process-kill guarantee.
 The dimmed function buttons are intentionally inactive and show planned
 features. The page is available in Slovak and English, and the displayed
 result can be copied with one click. See the
@@ -181,6 +186,15 @@ executables:
   and aliasing.
 - `calculator_tests`: covers tokenization, parsing, evaluation, source
   positions, and division policy.
+- `calculator_contract_tests`: covers numeric-token boundaries, implicit
+  products, and intermediate-rounding/cancellation examples.
+- `parser_fuzz_tests`: deterministic bounded random-byte parser smoke test.
+- `fuzz_parser_smoke` and `fuzz_numbers_smoke`: portable replay of the same
+  budgeted harnesses used by the optional Clang coverage-guided fuzzers.
+- `cli_tests`: when Node.js is available, drives the actual CLI process through
+  calculation, precision changes, errors, oversized input, EOF and exit commands.
+- `numeric_oracle_tests`: optional Node.js exact-integer/rational reference
+  checking 5792 numeric cases through a test-only C driver.
 - `web_api_tests`: confirms that the local web adapter evaluates expressions
   through the same exact C `BigDecimal` pipeline.
 - `web_server_smoke_tests`: starts the real server on a temporary loopback
@@ -189,8 +203,17 @@ executables:
 - `allocation_failure_tests`: fails each internal allocation in turn and checks
   out-of-memory propagation, cleanup, and the strong destination-unchanged
   guarantee across BigInt, BigDecimal, and the calculator pipeline.
+- `web_ui_tests`: when Node.js is available, executes the actual embedded
+  SK/EN scripts with a controlled DOM/network to check stale responses,
+  input changes, copying, UTF-8 limits and transport errors. No npm install
+  or Node.js runtime dependency is added to the application.
 - `tests/package_consumer`: a separate project built by CI against the
-  installed package through `find_package(NumForge)`.
+  installed package through `find_package(NumForge)`, including a C++ linkage
+  test when `NUMFORGE_TEST_CPP=ON`.
+
+CI requires the Node.js suites; local builds can omit Node.js. No npm packages
+are needed. Reproduction commands, scope and opt-in phase benchmarks are in
+[TESTING.md](docs/TESTING.md).
 
 All run through CTest when `BUILD_TESTING=ON`. GitHub Actions builds and runs
 them on 64-bit Linux with warnings-as-errors and sanitizers, on 32-bit Linux,
@@ -201,7 +224,9 @@ consumer.
 Fault injection is internal test instrumentation, not public API. It is enabled
 only in test-enabled builds and remains inactive unless the dedicated test
 explicitly selects an allocation call to fail. With `BUILD_TESTING=OFF`, the
-allocation boundary maps directly to the standard C allocator.
+fault injector is absent. The internal allocation boundary still enforces a
+thread-local budget when the calculator explicitly opens one; ordinary public
+numeric calls use the standard allocator without an application budget.
 
 ## Project status and roadmap
 

@@ -20,6 +20,7 @@ jobs:
           -DBUILD_TESTING=ON
           -DNUMFORGE_WARNINGS_AS_ERRORS=ON
           -DNUMFORGE_ENABLE_SANITIZERS=ON
+          -DNUMFORGE_REQUIRE_NODE_TESTS=ON
       - name: Build
         run: cmake --build build --parallel
       - name: Test
@@ -43,6 +44,7 @@ jobs:
           cmake -S tests/package_consumer -B build-consumer
           -DCMAKE_BUILD_TYPE=Release
           -DCMAKE_PREFIX_PATH=${{ github.workspace }}/stage
+          -DNUMFORGE_TEST_CPP=ON
       - name: Test installed package
         run: |
           cmake --build build-consumer --parallel
@@ -64,6 +66,7 @@ jobs:
           -DBUILD_TESTING=ON
           -DNUMFORGE_WARNINGS_AS_ERRORS=ON
           -DCMAKE_C_FLAGS=-m32
+          -DNUMFORGE_REQUIRE_NODE_TESTS=ON
           -DCMAKE_EXE_LINKER_FLAGS=-m32
       - name: Build 32-bit targets
         run: cmake --build build-32 --parallel
@@ -79,9 +82,83 @@ jobs:
       - name: Configure CMake
         run: >-
           cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+          -DNUMFORGE_REQUIRE_NODE_TESTS=ON
           -DBUILD_TESTING=ON
           -DNUMFORGE_WARNINGS_AS_ERRORS=ON
       - name: Build
         run: cmake --build build --config Debug --parallel 2
       - name: Test
         run: ctest --test-dir build -C Debug --output-on-failure
+      - name: Configure Release package
+        run: >-
+          cmake -S . -B build-package -G "Visual Studio 17 2022" -A x64
+          -DBUILD_TESTING=OFF -DNUMFORGE_WARNINGS_AS_ERRORS=ON
+          -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/stage
+      - name: Install Release package
+        run: |
+          cmake --build build-package --config Release --parallel 2 -- /nodeReuse:false
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --install build-package --config Release
+      - name: Configure C and C++ consumers
+        run: >-
+          cmake -S tests/package_consumer -B build-consumer -G "Visual Studio 17 2022" -A x64
+          -DCMAKE_PREFIX_PATH=${{ github.workspace }}/stage -DNUMFORGE_TEST_CPP=ON
+      - name: Test Release package
+        run: |
+          cmake --build build-consumer --config Release --parallel 2 -- /nodeReuse:false
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ctest --test-dir build-consumer -C Release --output-on-failure
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Configure GCC coverage
+        run: cmake -S . -B build-coverage -DCMAKE_C_COMPILER=gcc -DCMAKE_BUILD_TYPE=Debug -DNUMFORGE_ENABLE_COVERAGE=ON -DNUMFORGE_REQUIRE_NODE_TESTS=ON -DNUMFORGE_WARNINGS_AS_ERRORS=ON
+      - name: Build
+        run: cmake --build build-coverage --parallel 2
+      - name: Test
+        run: ctest --test-dir build-coverage --output-on-failure
+      - name: Collect line and branch coverage
+        if: always()
+        run: cmake --build build-coverage --target coverage_report
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: gcc-coverage
+          path: build-coverage/coverage/
+          if-no-files-found: error
+          retention-days: 14
+
+  clang:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Configure Clang with sanitizers
+        run: cmake -S . -B build-clang -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=Debug -DNUMFORGE_ENABLE_SANITIZERS=ON -DNUMFORGE_REQUIRE_NODE_TESTS=ON -DNUMFORGE_WARNINGS_AS_ERRORS=ON
+      - name: Build and test
+        run: |
+          cmake --build build-clang --parallel 2
+          ctest --test-dir build-clang --output-on-failure
+      - name: Build coverage-guided fuzzers
+        run: |
+          cmake -S . -B build-fuzz -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=OFF -DNUMFORGE_BUILD_FUZZERS=ON -DNUMFORGE_ENABLE_SANITIZERS=ON -DNUMFORGE_WARNINGS_AS_ERRORS=ON
+          cmake --build build-fuzz --parallel 2
+      - name: Bounded fuzz campaigns
+        run: |
+          mkdir -p build-fuzz/corpus-parser build-fuzz/corpus-numbers build-fuzz/findings
+          build-fuzz/fuzz_parser build-fuzz/corpus-parser -dict=tests/fuzz/numforge.dict -max_total_time=30 -timeout=5 -rss_limit_mb=512 -max_len=256 -artifact_prefix=build-fuzz/findings/
+          build-fuzz/fuzz_numbers build-fuzz/corpus-numbers -dict=tests/fuzz/numforge.dict -max_total_time=30 -timeout=5 -rss_limit_mb=512 -max_len=256 -artifact_prefix=build-fuzz/findings/
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: fuzz-corpora-and-findings
+          path: |
+            build-fuzz/corpus-*/
+            build-fuzz/findings/
+          if-no-files-found: warn
+          retention-days: 14

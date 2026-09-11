@@ -1,6 +1,12 @@
 #include "calculator_internal.h"
 
 #include <limits.h>
+#include <stdlib.h>
+#include <string.h>
+#include "parser.h"
+#include "evaluator.h"
+#include "formatter.h"
+#include "../internal/numforge_alloc.h"
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
@@ -45,6 +51,7 @@ void calculator_context_init(CalculatorContext *context)
     context->output_scale = CALCULATOR_DEFAULT_OUTPUT_SCALE;
     context->time_limit_ms = CALCULATOR_DEFAULT_TIME_LIMIT_MS;
     context->rounding = BIGDECIMAL_ROUND_HALF_EVEN;
+    context->significant_division = true;
 }
 
 CalculatorStatus calculator_context_set_output_scale(CalculatorContext *context, int64_t output_scale)
@@ -68,6 +75,7 @@ CalculatorStatus calculator_context_set_output_scale(CalculatorContext *context,
     {
         return CALCULATOR_SCALE_OVERFLOW;
     }
+    if (output_scale > CALCULATOR_MAX_OUTPUT_SCALE) return CALCULATOR_VALUE_TOO_LARGE;
 
     context->division_scale = output_scale + CALCULATOR_DIVISION_GUARD_DIGITS;
     if (context->division_scale < CALCULATOR_DEFAULT_DIVISION_SCALE)
@@ -76,6 +84,63 @@ CalculatorStatus calculator_context_set_output_scale(CalculatorContext *context,
     }
     context->output_scale = output_scale;
     return CALCULATOR_OK;
+}
+
+CalculatorStatus calculator_budget_status(CalculatorStatus status)
+{
+    (void)numforge_budget_check();
+    if (numforge_budget_failure() == NUMFORGE_BUDGET_TIME) return CALCULATOR_TIME_LIMIT;
+    if (numforge_budget_failure() == NUMFORGE_BUDGET_MEMORY) return CALCULATOR_VALUE_TOO_LARGE;
+    return status;
+}
+
+CalculatorStatus calculator_compute(const char *input, const CalculatorContext *context,
+                                    char **result, CalculatorError *error)
+{
+    CalculatorExpression *expression = NULL;
+    BigDecimal *value = NULL;
+    CalculatorStatus status;
+    bool owner;
+    size_t length = 0U;
+    if (result != NULL) *result = NULL;
+    if (input == NULL || context == NULL || result == NULL)
+    {
+        calculator_error_set(error, CALCULATOR_NULL_ARGUMENT, 0U);
+        return CALCULATOR_NULL_ARGUMENT;
+    }
+    if (context->time_limit_ms < 0)
+    {
+        calculator_error_set(error, CALCULATOR_INVALID_ARGUMENT, 0U);
+        return CALCULATOR_INVALID_ARGUMENT;
+    }
+    owner = numforge_budget_begin((uint64_t)context->time_limit_ms,
+        CALCULATOR_ALLOCATION_BUDGET, CALCULATOR_SINGLE_ALLOCATION);
+    calculator_error_clear(error);
+    while (length <= CALCULATOR_MAX_INPUT_BYTES && input[length] != '\0') length++;
+    status = length > CALCULATOR_MAX_INPUT_BYTES ? CALCULATOR_VALUE_TOO_LARGE : CALCULATOR_OK;
+    if (status == CALCULATOR_OK) status = calculator_parse(input, &expression, error);
+    if (status == CALCULATOR_OK)
+    {
+        value = bigdecimal_create();
+        status = value == NULL ? CALCULATOR_OUT_OF_MEMORY :
+            calculator_evaluate(value, expression, context, error);
+    }
+    if (status == CALCULATOR_OK) status = calculator_format_result(value, context, result);
+    if (status == CALCULATOR_OK && strlen(*result) > CALCULATOR_MAX_OUTPUT_BYTES)
+        status = CALCULATOR_VALUE_TOO_LARGE;
+    bigdecimal_destroy(value);
+    calculator_expression_destroy(expression);
+    status = calculator_budget_status(status);
+    if (status != CALCULATOR_OK)
+    {
+        free(*result);
+        *result = NULL;
+        if (error == NULL || error->status != status)
+            calculator_error_set(error, status, error == NULL ? 0U : error->offset);
+    }
+    else calculator_error_clear(error);
+    if (owner) numforge_budget_end();
+    return status;
 }
 
 void calculator_error_clear(CalculatorError *error)

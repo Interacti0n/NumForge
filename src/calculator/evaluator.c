@@ -1,10 +1,10 @@
 #include "evaluator.h"
 #include "expression_internal.h"
+#include "../bigdecimal/bigdecimal_internal.h"
 #include "../internal/numforge_alloc.h"
 
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 
 #include <numforge/bigint.h>
 
@@ -27,23 +27,12 @@
 typedef struct CalculatorEvaluation
 {
     const CalculatorContext *context;
-    clock_t started_at;
-    bool can_check_time;
 } CalculatorEvaluation;
 
 static bool calculator_time_limit_reached(const CalculatorEvaluation *evaluation)
 {
-    clock_t now;
-
-    if (!evaluation->can_check_time)
-    {
-        return false;
-    }
-
-    now = clock();
-    return now != (clock_t)-1 &&
-           (double)(now - evaluation->started_at) * 1000.0 / (double)CLOCKS_PER_SEC >=
-               (double)evaluation->context->time_limit_ms;
+    (void)evaluation;
+    return !numforge_budget_check() && numforge_budget_failure() == NUMFORGE_BUDGET_TIME;
 }
 
 static CalculatorStatus calculator_evaluate_expression(
@@ -122,6 +111,13 @@ static CalculatorStatus calculator_bigdecimal_to_bigint(BigInt **result, const B
     char *text = NULL;
     CalculatorStatus status;
 
+    /* Both callers require non-negative integers. Canonical scale/sign
+     * checks avoid expanding compact, invalid values into enormous strings. */
+    if (value->scale > 0 || bigint_is_negative(value->coefficient))
+    {
+        return CALCULATOR_INVALID_ARGUMENT;
+    }
+
     decimal_status = bigdecimal_to_string(value, &text);
     status = calculator_from_bigdecimal_status(decimal_status);
     if (status != CALCULATOR_OK)
@@ -168,24 +164,35 @@ static CalculatorStatus calculator_set_bigdecimal_from_bigint(BigDecimal *value,
     return status;
 }
 
-static CalculatorStatus calculator_check_factorial_limit(const BigInt *value)
+static CalculatorStatus calculator_check_factorial_limit(const BigDecimal *value)
 {
-    BigInt *limit = bigint_create();
+    BigDecimal *limit;
     CalculatorStatus status;
+    int comparison = 0;
 
+    if (value->scale > 0 || bigint_is_negative(value->coefficient))
+    {
+        return CALCULATOR_INVALID_ARGUMENT;
+    }
+
+    limit = bigdecimal_create();
     if (limit == NULL)
     {
         return CALCULATOR_OUT_OF_MEMORY;
     }
 
-    status = calculator_from_bigint_status(
-        bigint_set_string(limit, CALCULATOR_STRINGIFY(CALCULATOR_FACTORIAL_MAX_N)));
-    if (status == CALCULATOR_OK && bigint_compare(value, limit) > 0)
+    status = calculator_from_bigdecimal_status(
+        bigdecimal_set_string(limit, CALCULATOR_STRINGIFY(CALCULATOR_FACTORIAL_MAX_N)));
+    if (status == CALCULATOR_OK)
+    {
+        status = calculator_from_bigdecimal_status(bigdecimal_compare(&comparison, value, limit));
+    }
+    if (status == CALCULATOR_OK && comparison > 0)
     {
         status = CALCULATOR_VALUE_TOO_LARGE;
     }
 
-    bigint_destroy(limit);
+    bigdecimal_destroy(limit);
     return status;
 }
 
@@ -324,18 +331,14 @@ static CalculatorStatus calculator_evaluate_postfix(
         return CALCULATOR_INVALID_ARGUMENT;
     }
 
-    status = calculator_bigdecimal_to_bigint(&integer, operand);
+    status = calculator_check_factorial_limit(operand);
+    if (status == CALCULATOR_OK)
+    {
+        status = calculator_bigdecimal_to_bigint(&integer, operand);
+    }
     bigdecimal_destroy(operand);
     if (status != CALCULATOR_OK)
     {
-        calculator_error_set(error, status, expression->offset);
-        return status;
-    }
-
-    status = calculator_check_factorial_limit(integer);
-    if (status != CALCULATOR_OK)
-    {
-        bigint_destroy(integer);
         calculator_error_set(error, status, expression->offset);
         return status;
     }
@@ -528,7 +531,9 @@ static CalculatorStatus calculator_evaluate_expression(
                 status = calculator_from_bigdecimal_status(bigdecimal_mul(value, left, right));
                 break;
             case CALCULATOR_BINARY_DIVIDE:
-                status = calculator_from_bigdecimal_status(
+                status = calculator_from_bigdecimal_status(evaluation->context->significant_division ?
+                    bigdecimal_div_calculator(value, left, right, evaluation->context->division_scale,
+                                               evaluation->context->rounding) :
                     bigdecimal_div(value, left, right, evaluation->context->division_scale,
                                    evaluation->context->rounding));
                 break;
@@ -567,7 +572,7 @@ static CalculatorStatus calculator_evaluate_expression(
     Evaluator operation functions.
 ------------------------------------------------------------------------------------------------------------------------------
 */
-CalculatorStatus calculator_evaluate(
+static CalculatorStatus calculator_evaluate_impl(
     BigDecimal *result,
     const CalculatorExpression *expression,
     const CalculatorContext *context,
@@ -598,17 +603,23 @@ CalculatorStatus calculator_evaluate(
         calculator_error_set(error, CALCULATOR_INVALID_ARGUMENT, 0);
         return CALCULATOR_INVALID_ARGUMENT;
     }
+    if (context->output_scale > CALCULATOR_MAX_OUTPUT_SCALE ||
+        context->division_scale > CALCULATOR_MAX_OUTPUT_SCALE + CALCULATOR_DIVISION_GUARD_DIGITS)
+    {
+        calculator_error_set(error, CALCULATOR_VALUE_TOO_LARGE, 0U);
+        return CALCULATOR_VALUE_TOO_LARGE;
+    }
 
     evaluation.context = context;
-    evaluation.started_at = clock();
-    evaluation.can_check_time = evaluation.started_at != (clock_t)-1;
     status = calculator_evaluate_expression(&temporary, expression, &evaluation, error);
     if (status != CALCULATOR_OK)
     {
         return status;
     }
 
-    status = calculator_from_bigdecimal_status(bigdecimal_copy(result, temporary));
+    status = calculator_budget_status(CALCULATOR_OK);
+    if (status == CALCULATOR_OK)
+        status = calculator_from_bigdecimal_status(bigdecimal_copy(result, temporary));
     bigdecimal_destroy(temporary);
     if (status != CALCULATOR_OK)
     {
@@ -618,4 +629,20 @@ CalculatorStatus calculator_evaluate(
 
     calculator_error_clear(error);
     return CALCULATOR_OK;
+}
+
+CalculatorStatus calculator_evaluate(BigDecimal *result, const CalculatorExpression *expression,
+                                    const CalculatorContext *context, CalculatorError *error)
+{
+    bool owner;
+    CalculatorStatus status;
+    if (context == NULL) return calculator_evaluate_impl(result, expression, context, error);
+    owner = numforge_budget_begin(context->time_limit_ms < 0 ? 0U : (uint64_t)context->time_limit_ms,
+        CALCULATOR_ALLOCATION_BUDGET, CALCULATOR_SINGLE_ALLOCATION);
+    status = calculator_evaluate_impl(result, expression, context, error);
+    if (status != CALCULATOR_OK && context->time_limit_ms >= 0) status = calculator_budget_status(status);
+    if (status != CALCULATOR_OK && (error == NULL || error->status != status))
+        calculator_error_set(error, status, error == NULL ? 0U : error->offset);
+    if (owner) numforge_budget_end();
+    return status;
 }

@@ -130,6 +130,13 @@ static CalculatorStatus calculator_read_number(
         }
     }
 
+    /* A second separator is a malformed literal, never multiplication. */
+    if (calculator_is_decimal_separator(tokenizer->input[cursor]))
+    {
+        calculator_error_set(error, CALCULATOR_INVALID_TOKEN, cursor);
+        return CALCULATOR_INVALID_TOKEN;
+    }
+
     calculator_set_token(token, CALCULATOR_TOKEN_NUMBER, tokenizer->input + start,
                          cursor - start, start);
     tokenizer->offset = cursor;

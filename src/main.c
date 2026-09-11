@@ -5,14 +5,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <numforge/bigdecimal.h>
-
 #include "calculator_internal.h"
-#include "evaluator.h"
-#include "formatter.h"
-#include "parser.h"
 
-#define CALCULATOR_MAX_INPUT_LENGTH 4096U
+#define CALCULATOR_MAX_INPUT_LENGTH CALCULATOR_MAX_INPUT_BYTES
 #define CALCULATOR_INPUT_CAPACITY (CALCULATOR_MAX_INPUT_LENGTH + 3U)
 
 /*
@@ -127,10 +122,8 @@ int main(void)
     for (;;)
     {
         size_t length;
-        CalculatorExpression *expression = NULL;
         CalculatorError error;
         CalculatorStatus status;
-        BigDecimal *result;
         char *text;
 
         fputs("> ", stdout);
@@ -174,41 +167,15 @@ int main(void)
             continue;
         }
 
-        status = calculator_parse(input, &expression, &error);
+        status = calculator_compute(input, &context, &text, &error);
         if (status != CALCULATOR_OK)
         {
             calculator_print_error(input, error);
-            continue;
-        }
-
-        result = bigdecimal_create();
-        if (result == NULL)
-        {
-            calculator_expression_destroy(expression);
-            fputs("error: out of memory\n", stderr);
-            continue;
-        }
-
-        status = calculator_evaluate(result, expression, &context, &error);
-        calculator_expression_destroy(expression);
-        if (status != CALCULATOR_OK)
-        {
-            bigdecimal_destroy(result);
-            calculator_print_error(input, error);
-            continue;
-        }
-
-        text = NULL;
-        if (calculator_format_result(result, &context, &text) != CALCULATOR_OK)
-        {
-            bigdecimal_destroy(result);
-            fputs("error: failed to format result\n", stderr);
             continue;
         }
 
         printf("= %s\n", text);
         free(text);
-        bigdecimal_destroy(result);
     }
 
     return 0;

@@ -39,6 +39,14 @@ covered operation and verifies both `BIGINT_OUT_OF_MEMORY` propagation and the
 unchanged destination. Linux CI combines this with AddressSanitizer to detect
 leaks in failure cleanup.
 
+The private allocation boundary also supports an optional thread-local
+calculator budget in production. Parsing, multiplication, division and decimal
+conversion check it inside their expensive loops. Cancellation unwinds through
+the existing allocation-failure paths, preserving destinations; the calculator
+translates its recorded reason into time-limit or resource-limit status.
+No budget is active for ordinary public numeric calls. The public API and
+standard `free()` ownership contract are unchanged.
+
 Arithmetic supports output/input aliasing unless documented otherwise:
 
 ```c

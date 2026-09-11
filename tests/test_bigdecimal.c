@@ -1,4 +1,6 @@
 #include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 
 #include <unity.h>
 
@@ -247,6 +249,128 @@ void test_division_and_rounding(void)
     bigdecimal_destroy(result);
 }
 
+void test_division_cancels_extreme_scales_before_reporting_overflow(void)
+{
+    static const char *const inputs[] = {
+        "1e-9223372036854775807", "10e9223372036854775807"
+    };
+    static const int64_t scales[] = { 1, -1 };
+    static const char *const expected[] = { "1", "0" };
+
+    for (size_t index = 0U; index < sizeof(inputs) / sizeof(inputs[0]); index++)
+    {
+        BigDecimal *value = make_decimal(inputs[index]);
+        BigDecimalStatus status = bigdecimal_div(
+            value, value, value, scales[index], BIGDECIMAL_ROUND_TOWARD_ZERO);
+
+        /* Check status after cleanup on failure, including on the old code. */
+        if (status != BIGDECIMAL_OK)
+        {
+            bigdecimal_destroy(value);
+            TEST_ASSERT_EQUAL(BIGDECIMAL_OK, status);
+        }
+        assert_decimal_equals(expected[index], value);
+        bigdecimal_destroy(value);
+    }
+}
+
+void test_division_rejects_true_scale_overflow_without_modifying_result(void)
+{
+    static const char *const divisors[] = { "0.1", "10" };
+    static const int64_t scales[] = { INT64_MAX, INT64_MIN };
+
+    for (size_t index = 0U; index < sizeof(divisors) / sizeof(divisors[0]); index++)
+    {
+        BigDecimal *value = make_decimal("1");
+        BigDecimal *divisor = make_decimal(divisors[index]);
+        BigDecimal *result = make_decimal("42");
+        BigDecimalStatus status = bigdecimal_div(
+            result, value, divisor, scales[index], BIGDECIMAL_ROUND_TOWARD_ZERO);
+
+        assert_decimal_equals("42", result);
+        assert_decimal_equals("1", value);
+        assert_decimal_equals(divisors[index], divisor);
+        bigdecimal_destroy(result);
+        bigdecimal_destroy(divisor);
+        bigdecimal_destroy(value);
+        TEST_ASSERT_EQUAL(BIGDECIMAL_SCALE_OVERFLOW, status);
+    }
+}
+
+void test_multiplication_normalizes_before_extreme_scale_checks(void)
+{
+    static const struct { const char *a; const char *b; const char *expected; } cases[] = {
+        { "2e-9223372036854775807", "0.5", "1e-9223372036854775807" },
+        { "-2e-9223372036854775807", "0.5", "-1e-9223372036854775807" },
+        { "2e9223372036854775807", "5", "10e9223372036854775807" },
+        { "10e9223372036854775807", "0", "0" }
+    };
+    for (size_t i = 0U; i < sizeof(cases) / sizeof(cases[0]); i++)
+    {
+        for (size_t alias = 0U; alias < 3U; alias++)
+        {
+            BigDecimal *a = make_decimal(cases[i].a);
+            BigDecimal *b = make_decimal(cases[i].b);
+            BigDecimal *separate = make_decimal("42");
+            BigDecimal *expected = make_decimal(cases[i].expected);
+            BigDecimal *result = alias == 1U ? a : (alias == 2U ? b : separate);
+            int comparison = 1;
+            BigDecimalStatus status = bigdecimal_mul(result, a, b);
+            BigDecimalStatus compared = bigdecimal_compare(&comparison, expected, result);
+            bigdecimal_destroy(a);
+            bigdecimal_destroy(b);
+            bigdecimal_destroy(separate);
+            bigdecimal_destroy(expected);
+            TEST_ASSERT_EQUAL(BIGDECIMAL_OK, status);
+            TEST_ASSERT_EQUAL(BIGDECIMAL_OK, compared);
+            TEST_ASSERT_EQUAL_INT(0, comparison);
+        }
+    }
+}
+
+void test_multiplication_rejects_true_extreme_scale_overflow(void)
+{
+    static const char *const values[] = { "1e-9223372036854775807", "10e9223372036854775807" };
+    static const char *const factors[] = { "0.1", "10" };
+    for (size_t i = 0U; i < 2U; i++)
+    {
+        BigDecimal *a = make_decimal(values[i]);
+        BigDecimal *b = make_decimal(factors[i]);
+        BigDecimal *result = make_decimal("42");
+        BigDecimalStatus status = bigdecimal_mul(result, a, b);
+        assert_decimal_equals("42", result);
+        bigdecimal_destroy(a);
+        bigdecimal_destroy(b);
+        bigdecimal_destroy(result);
+        TEST_ASSERT_EQUAL(BIGDECIMAL_SCALE_OVERFLOW, status);
+    }
+}
+
+void test_normalization_strips_decimal_zero_blocks(void)
+{
+    char input[160];
+    static const size_t zero_counts[] = { 0U, 1U, 18U, 19U, 20U, 37U, 38U, 39U, 100U };
+    for (size_t i = 0U; i < sizeof(zero_counts) / sizeof(zero_counts[0]); i++)
+    {
+        BigDecimal *value;
+        BigDecimal *expected;
+        char expected_text[64];
+        int comparison = 1;
+        size_t zeros = zero_counts[i];
+        memcpy(input, "-12345", 6U);
+        memset(input + 6U, '0', zeros);
+        input[6U + zeros] = '\0';
+        (void)snprintf(expected_text, sizeof(expected_text), "-12345e%zu", zeros);
+        value = make_decimal(input);
+        expected = make_decimal(expected_text);
+        BigDecimalStatus status = bigdecimal_compare(&comparison, value, expected);
+        bigdecimal_destroy(value);
+        bigdecimal_destroy(expected);
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK, status);
+        TEST_ASSERT_EQUAL_INT(0, comparison);
+    }
+}
+
 void test_null_and_invalid_arguments(void)
 {
     BigDecimal *value = make_decimal("1");
@@ -329,6 +453,11 @@ int main(void)
     RUN_TEST(test_rescale_rounding);
     RUN_TEST(test_zero_identities_avoid_extreme_scale_work);
     RUN_TEST(test_division_and_rounding);
+    RUN_TEST(test_division_cancels_extreme_scales_before_reporting_overflow);
+    RUN_TEST(test_division_rejects_true_scale_overflow_without_modifying_result);
+    RUN_TEST(test_multiplication_normalizes_before_extreme_scale_checks);
+    RUN_TEST(test_multiplication_rejects_true_extreme_scale_overflow);
+    RUN_TEST(test_normalization_strips_decimal_zero_blocks);
     RUN_TEST(test_null_and_invalid_arguments);
 
     return UNITY_END();

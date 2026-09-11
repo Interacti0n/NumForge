@@ -118,13 +118,25 @@ when the exponent is a non-negative whole number. `2^3^2` means `2^(3^2)`;
 `0^0` is `1`. Negative and decimal exponents, modulo, variables, and general
 functions are not implemented yet. Squaring and cubing use exact BigDecimal
 multiplication too.
+
+Repeated decimal separators (`1.2.3`, `1,2,3`) and adjacent numeric tokens
+(`2 3`, `2 .3`) are errors. Delimited products like `(2)3`, `3!2` and `2²3`
+remain valid. Implicit multiplication shares the left-associative precedence
+of `*` and `/`, so `6/2(1+2)` is `9`.
 Factorial uses `bigint_factorial` and requires a non-negative whole number no
 greater than 5000 in the calculator, even though the underlying BigInt API has
-a higher limit. The default division policy produces 34 decimal places and uses
-half-even rounding. Evaluation has an approximately five-second CPU limit; it
-returns `CALCULATOR_TIME_LIMIT` and the local web API reports `TLE` when the
-limit is reached. A single already-running large BigInt operation cannot be
-interrupted mid-operation, so it may finish shortly after the limit.
+a higher limit. Non-terminating division defaults to 34 significant digits with half-even
+rounding. The complete CLI/HTTP calculation has a five-second monotonic time
+budget, including parsing and output formatting. Expensive BigInt parsing,
+multiplication, division and decimal conversion loops check cancellation too.
+Exceeding the deadline returns `CALCULATOR_TIME_LIMIT` (`TLE`). This is
+cooperative cancellation, not an OS-enforced hard real-time deadline.
+
+Application limits are 64 MiB of cumulative allocation requests per calculation,
+128 KiB per allocation, 65536 output bytes, and 10000 selected output places.
+Freed allocations still count toward the cumulative work budget; it is not a
+measurement of process RSS. Resource limits return `value too large`, not TLE.
+These limits do not change unrestricted public BigInt/BigDecimal calls.
 
 Parser and AST depth are limited to 256 levels. Inputs that exceed the limit
 return `CALCULATOR_VALUE_TOO_LARGE` instead of risking process stack overflow.
@@ -137,13 +149,33 @@ same decimal separator. The page is available in Slovak and English and
 provides a one-click control to copy the displayed result.
 
 Results default to 10 decimal places, rounded half-even. A caller can request a
-non-negative output scale up to `INT64_MAX - 4` (subject to available memory),
-or `full` to skip the final output rounding. For a numeric scale `N`, division
-uses `max(34, N + 4)` decimal places. With `full`, division still uses its
-34-place half-even policy; `full` cannot make a recurring decimal exact. Very
+non-negative output scale from 0 through 10000,
+or `full` to skip the final output rounding. For a numeric scale `N`, non-terminating division
+uses `max(34, N + 4)` significant digits. With `full`, division uses its
+34-significant-digit half-even policy; `full` cannot make a recurring decimal
+exact or recover previously rounded digits. Very
 large or small non-zero output uses scientific notation at an absolute exponent
 of 10 or greater; its mantissa is rounded to at most the selected number of
 decimal places, for example `1.2345678901E-12`.
+
+Terminating division preserves the exact intermediate result within resource
+limits, including quotients that terminate after reduction, such as `7/28`.
+Exceeding the limits returns an error rather than a rounded replacement.
+Non-terminating division rounds to its working significant-digit precision,
+independently of the magnitude. `1E-40 / 1` therefore remains `1E-40` both by
+default and in `full` mode; `1E-40 / 3` displays `3.3333333333E-41` by default.
+
+Output places are not a guarantee of whole-expression accuracy. At default
+precision, `(1/3)*3-1` gives `-1E-34`. However, `(1E34+1)/1-1E34` gives exactly
+`1`, since finite decimal quotients no longer lose intermediate digits.
+`full` uses 34 working
+digits, not unlimited accuracy. There are currently no `inexact` or `rounded`
+flags. See the evaluation policy in [CALCULATOR_DESIGN.md](CALCULATOR_DESIGN.md).
+Rounding at non-terminating division is still approximate: cancellation can expose its
+error, and no rigorous whole-expression error bound or inexact flag is claimed.
+Constants contain 200 stored decimal places; selecting a higher output limit
+does not add mathematical accuracy to them. Public `bigdecimal_div` retains
+its original explicit decimal-scale policy, independent of this calculator mode.
 
 ## Local HTTP API
 
@@ -177,8 +209,13 @@ Browser requests that include `Origin` must come from this server's own
 HTTP 403. Native local clients may omit `Origin`. `precision` is optional: it
 accepts a non-negative whole number or `full`; if omitted, it defaults to `10`.
 Out-of-memory calculation failures return HTTP 500 with the same JSON fields.
-Malformed HTTP requests and unknown routes use plain-text HTTP 400 and 404
-responses respectively.
+Malformed HTTP requests return JSON HTTP 400. Oversized bodies return JSON
+HTTP 413; a request that does not finish arriving within two seconds returns
+JSON HTTP 408. The receive deadline covers the complete headers and body and
+is not restarted by each byte. Responses also have a bounded send deadline.
+Unknown routes return plain-text HTTP 404; the UI tolerates non-JSON/network
+failures and ignores responses superseded by a new calculation or input edit.
+Transfer-Encoding is unsupported and rejected; use Content-Length framing.
 
 The local server accepts expressions up to 4096 bytes and listens only on
 loopback, using port 8765 by default. `numforge_web --port N` selects another

@@ -24,7 +24,35 @@ option(NUMFORGE_ENABLE_SANITIZERS
 
 include(CTest)
 
+option(NUMFORGE_BUILD_BENCHMARKS "Build opt-in calculator phase benchmarks" OFF)
+option(NUMFORGE_REQUIRE_NODE_TESTS "Fail test configuration if Node.js is unavailable" OFF)
+option(NUMFORGE_ENABLE_COVERAGE "Instrument a GCC test build for gcov reports" OFF)
+option(NUMFORGE_BUILD_FUZZERS "Build Clang libFuzzer parser and number targets" OFF)
+
+if(NUMFORGE_ENABLE_COVERAGE)
+    if(NOT CMAKE_C_COMPILER_ID STREQUAL "GNU" OR NOT BUILD_TESTING OR NUMFORGE_ENABLE_SANITIZERS)
+        message(FATAL_ERROR "Coverage requires a separate GCC BUILD_TESTING build without sanitizers")
+    endif()
+    find_program(NUMFORGE_GCOV NAMES gcov REQUIRED)
+    add_custom_target(coverage_report
+        COMMAND ${CMAKE_COMMAND} "-DBUILD_DIR=${PROJECT_BINARY_DIR}"
+            "-DGCOV=${NUMFORGE_GCOV}" -P "${PROJECT_SOURCE_DIR}/cmake/Coverage.cmake"
+        COMMENT "Collecting gcov line and branch reports after CTest")
+endif()
+
+if(NUMFORGE_BUILD_FUZZERS AND (NOT CMAKE_C_COMPILER_ID STREQUAL "Clang" OR WIN32 OR NUMFORGE_ENABLE_COVERAGE))
+    message(FATAL_ERROR "libFuzzer profile requires a separate Unix Clang build")
+endif()
+
 function(numforge_enable_diagnostics target)
+    if(NUMFORGE_ENABLE_COVERAGE)
+        target_compile_options(${target} PRIVATE --coverage -fprofile-abs-path -O0 -g)
+        target_link_options(${target} PRIVATE --coverage)
+    endif()
+    if(NUMFORGE_BUILD_FUZZERS)
+        target_compile_options(${target} PRIVATE -fsanitize=fuzzer-no-link)
+        target_link_options(${target} PRIVATE -fsanitize=fuzzer-no-link)
+    endif()
     if(MSVC)
         target_compile_options(${target} PRIVATE /W4 /utf-8)
         if(NUMFORGE_WARNINGS_AS_ERRORS)
@@ -57,6 +85,7 @@ add_library(numforge STATIC
     src/calculator/evaluator.c
     src/calculator/formatter.c
     src/web/web_api.c
+    src/internal/numforge_alloc.c
 )
 
 add_library(NumForge::numforge ALIAS numforge)
@@ -73,9 +102,6 @@ target_include_directories(numforge
 numforge_enable_diagnostics(numforge)
 
 if(BUILD_TESTING)
-    target_sources(numforge PRIVATE
-        src/internal/numforge_alloc.c
-    )
     target_compile_definitions(numforge PRIVATE
         NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING
     )
@@ -156,13 +182,13 @@ install(
 )
 
 install(
-    FILES README.md CHANGELOG.md
+    FILES README.md CHANGELOG.md LICENSE
     DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/NumForge"
 )
 
 install(
     DIRECTORY docs/
-    DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/NumForge"
+    DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/NumForge/docs"
     FILES_MATCHING PATTERN "*.md"
 )
 
@@ -196,8 +222,36 @@ install(
 # Tests
 # ============================================================
 
+if(NUMFORGE_BUILD_BENCHMARKS)
+    target_compile_definitions(numforge PRIVATE NUMFORGE_ENABLE_ALLOC_STATS)
+    add_executable(calculator_benchmark benchmarks/calculator_benchmark.c)
+    target_compile_definitions(calculator_benchmark PRIVATE NUMFORGE_ENABLE_ALLOC_STATS)
+    target_include_directories(calculator_benchmark PRIVATE ${PROJECT_SOURCE_DIR}/src/calculator)
+    target_link_libraries(calculator_benchmark PRIVATE numforge)
+    numforge_enable_diagnostics(calculator_benchmark)
+endif()
+
+if(NUMFORGE_BUILD_FUZZERS)
+    foreach(kind IN ITEMS parser numbers)
+        add_executable(fuzz_${kind} tests/fuzz/fuzz_${kind}.c)
+        target_include_directories(fuzz_${kind} PRIVATE ${PROJECT_SOURCE_DIR}/src/calculator)
+        target_link_libraries(fuzz_${kind} PRIVATE numforge)
+        numforge_enable_diagnostics(fuzz_${kind})
+        target_link_options(fuzz_${kind} PRIVATE -fsanitize=fuzzer)
+    endforeach()
+endif()
+
 if(BUILD_TESTING)
     include(FetchContent)
+
+    foreach(kind IN ITEMS parser numbers)
+        add_executable(fuzz_${kind}_smoke tests/fuzz/fuzz_${kind}.c tests/fuzz/replay.c)
+        target_include_directories(fuzz_${kind}_smoke PRIVATE ${PROJECT_SOURCE_DIR}/src/calculator)
+        target_link_libraries(fuzz_${kind}_smoke PRIVATE numforge)
+        numforge_enable_diagnostics(fuzz_${kind}_smoke)
+        add_test(NAME fuzz_${kind}_smoke COMMAND fuzz_${kind}_smoke)
+        set_tests_properties(fuzz_${kind}_smoke PROPERTIES TIMEOUT 60)
+    endforeach()
 
     FetchContent_Declare(
         unity
@@ -301,6 +355,15 @@ if(BUILD_TESTING)
         COMMAND calculator_tests
     )
 
+    foreach(suite IN ITEMS calculator_contract parser_fuzz)
+        add_executable(${suite}_tests tests/test_${suite}.c)
+        target_include_directories(${suite}_tests PRIVATE ${PROJECT_SOURCE_DIR}/src/calculator)
+        target_link_libraries(${suite}_tests PRIVATE numforge unity)
+        numforge_enable_diagnostics(${suite}_tests)
+        add_test(NAME ${suite}_tests COMMAND ${suite}_tests)
+        set_tests_properties(${suite}_tests PROPERTIES TIMEOUT 60)
+    endforeach()
+
     add_executable(web_api_tests
         tests/test_web_api.c
     )
@@ -377,4 +440,25 @@ if(BUILD_TESTING)
         allocation_failure_tests
         PROPERTIES TIMEOUT 60
     )
+
+    find_program(NUMFORGE_NODE_EXECUTABLE NAMES node nodejs HINTS "C:/Program Files/nodejs")
+    if(NUMFORGE_NODE_EXECUTABLE)
+        add_test(NAME cli_tests COMMAND "${NUMFORGE_NODE_EXECUTABLE}"
+            "${PROJECT_SOURCE_DIR}/tests/test_cli.js" $<TARGET_FILE:calculator>)
+        set_tests_properties(cli_tests PROPERTIES TIMEOUT 60)
+        add_executable(numeric_oracle_driver tests/numeric_oracle_driver.c)
+        target_include_directories(numeric_oracle_driver PRIVATE ${PROJECT_SOURCE_DIR}/src/bigdecimal)
+        target_link_libraries(numeric_oracle_driver PRIVATE numforge)
+        numforge_enable_diagnostics(numeric_oracle_driver)
+        add_test(NAME numeric_oracle_tests COMMAND "${NUMFORGE_NODE_EXECUTABLE}"
+            "${PROJECT_SOURCE_DIR}/tests/test_numeric_oracle.js" $<TARGET_FILE:numeric_oracle_driver>)
+        set_tests_properties(numeric_oracle_tests PROPERTIES TIMEOUT 120)
+        add_test(NAME web_ui_tests COMMAND "${NUMFORGE_NODE_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tests/test_web_ui.js")
+        set_tests_properties(web_ui_tests PROPERTIES TIMEOUT 30)
+    else()
+        if(NUMFORGE_REQUIRE_NODE_TESTS)
+            message(FATAL_ERROR "Node.js is required for numeric oracle and web UI tests")
+        endif()
+        message(STATUS "Node.js not found: optional embedded web UI tests are skipped")
+    endif()
 endif()

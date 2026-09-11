@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include <numforge/bigint.h>
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
@@ -29,5 +30,9 @@ struct BigInt
     size_t capacity;
     bool is_negative;
 };
+
+/* Private normalization of a temporary magnitude, in blocks of up to 19
+ * decimal zeros. On cancellation the temporary may be partially reduced. */
+BigIntStatus bigint_strip_decimal_zeros(BigInt *value, uint64_t *removed);
 
 #endif

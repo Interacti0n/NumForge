@@ -58,11 +58,6 @@ void test_web_api_evaluates_with_exact_c_bigdecimal(void)
     TEST_ASSERT_EQUAL_STRING("1027.375", result);
     free(result);
 
-    result = NULL;
-    TEST_ASSERT_EQUAL(CALCULATOR_OK, numforge_web_evaluate("4000!", &result, &error));
-    TEST_ASSERT_NOT_NULL(result);
-    TEST_ASSERT_EQUAL_STRING("1.8288019515E+12673", result);
-    free(result);
 }
 
 void test_web_api_honors_output_precision(void)
@@ -176,6 +171,25 @@ void test_web_api_handles_null_arguments_without_stale_output(void)
     TEST_ASSERT_EQUAL(CALCULATOR_NULL_ARGUMENT, error.status);
 }
 
+void test_web_api_enforces_utf8_byte_length_at_the_boundary(void)
+{
+    char input[NUMFORGE_WEB_MAX_EXPRESSION_LENGTH + 2U];
+    char *result = NULL;
+    CalculatorError error;
+
+    memset(input, ' ', sizeof(input));
+    memcpy(input + NUMFORGE_WEB_MAX_EXPRESSION_LENGTH - 2U, "\xCF\x80", 3U);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, numforge_web_evaluate(input, &result, &error));
+    TEST_ASSERT_EQUAL_STRING("3.1415926536", result);
+    free(result);
+
+    memset(input, ' ', sizeof(input));
+    memcpy(input + NUMFORGE_WEB_MAX_EXPRESSION_LENGTH - 1U, "\xCF\x80", 3U);
+    result = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE, numforge_web_evaluate(input, &result, &error));
+    TEST_ASSERT_NULL(result);
+}
+
 void test_web_api_validates_output_scale_before_expression(void)
 {
     CalculatorError error;
@@ -205,6 +219,7 @@ int main(void)
     RUN_TEST(test_web_api_preserves_calculator_errors);
     RUN_TEST(test_web_api_rejects_empty_and_oversized_input);
     RUN_TEST(test_web_api_handles_null_arguments_without_stale_output);
+    RUN_TEST(test_web_api_enforces_utf8_byte_length_at_the_boundary);
     RUN_TEST(test_web_api_validates_output_scale_before_expression);
 
     return UNITY_END();

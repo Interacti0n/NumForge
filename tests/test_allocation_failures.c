@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 
 #include <unity.h>
 
@@ -28,11 +29,13 @@ typedef BigDecimalStatus (*BigDecimalBinaryOperation)(
 
 void setUp(void)
 {
+    numforge_budget_end();
     numforge_test_allocator_end();
 }
 
 void tearDown(void)
 {
+    numforge_budget_end();
     numforge_test_allocator_end();
 }
 
@@ -658,6 +661,56 @@ void test_bigint_boolean_number_theory_handles_every_allocation_failure(void)
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
+#if SIZE_MAX == UINT32_MAX
+void test_bigdecimal_format_size_overflow_preserves_output(void)
+{
+    static const char *const inputs[] = {
+        "1e4294967294", "1e-4294967293",
+        "-1e4294967293", "-1e-4294967292"
+    };
+
+    for (size_t index = 0U; index < sizeof(inputs) / sizeof(inputs[0]); index++)
+    {
+        BigDecimal *reference = make_bigdecimal(inputs[index][0] == '-' ? "-1" : "1");
+        BigDecimal *value = make_bigdecimal(inputs[index]);
+        char sentinel = 'x';
+        char *text = NULL;
+        BigDecimalStatus status;
+        size_t output_allocation;
+        bool injected;
+        bool unchanged;
+
+        /* The same coefficient takes the same conversion allocations. Fail
+         * the final output allocation if a regression ever reaches it, so
+         * the old malloc(0) bug reports failure instead of corrupting memory. */
+        numforge_test_allocator_begin(0U);
+        status = bigdecimal_to_string(reference, &text);
+        output_allocation = numforge_test_allocator_call_count();
+        numforge_test_allocator_end();
+        free(text);
+        bigdecimal_destroy(reference);
+        if (status != BIGDECIMAL_OK || output_allocation == 0U)
+        {
+            bigdecimal_destroy(value);
+            TEST_FAIL_MESSAGE("Failed to prepare the formatting allocation guard");
+        }
+
+        text = &sentinel;
+        numforge_test_allocator_begin(output_allocation);
+        status = bigdecimal_to_string(value, &text);
+        injected = numforge_test_allocator_did_fail();
+        numforge_test_allocator_end();
+        unchanged = text == &sentinel;
+        if (!unchanged) free(text);
+        bigdecimal_destroy(value);
+
+        TEST_ASSERT_EQUAL(BIGDECIMAL_VALUE_TOO_LARGE, status);
+        TEST_ASSERT_FALSE(injected);
+        TEST_ASSERT_TRUE(unchanged);
+    }
+}
+#endif
+
 void test_bigdecimal_conversion_and_comparison_failure_paths(void)
 {
     static const char large_value[] =
@@ -845,7 +898,7 @@ void test_evaluator_preserves_destination_on_every_allocation_failure(void)
         CalculatorStatus status;
         bool injected;
 
-        TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_parse("1.5^3 + 2", &expression, &error));
+        TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_parse("1.5^3 + 2 + 7/28 + 1/3", &expression, &error));
         result = make_bigdecimal("7.77");
         calculator_context_init(&context);
 
@@ -934,7 +987,7 @@ void test_calculator_pipeline_reports_every_injected_allocation_failure(void)
         bool injected;
 
         numforge_test_allocator_begin(failure_index);
-        status = numforge_web_evaluate("1.5^3 + 2", &result, &error);
+        status = numforge_web_evaluate("1.5^3 + 2 + 7/28 + 1/3", &result, &error);
         injected = numforge_test_allocator_did_fail();
         numforge_test_allocator_end();
 
@@ -946,7 +999,7 @@ void test_calculator_pipeline_reports_every_injected_allocation_failure(void)
         else
         {
             TEST_ASSERT_EQUAL(CALCULATOR_OK, status);
-            TEST_ASSERT_EQUAL_STRING("5.375", result);
+            TEST_ASSERT_EQUAL_STRING("5.9583333333", result);
             completed = true;
         }
         free(result);
@@ -956,9 +1009,96 @@ void test_calculator_pipeline_reports_every_injected_allocation_failure(void)
     TEST_ASSERT_TRUE(completed);
 }
 
+void test_application_budget_is_cumulative_and_scoped(void)
+{
+    void *first;
+    void *second;
+    bool owner = numforge_budget_begin(5000U, 24U, 16U);
+    first = numforge_malloc(16U);
+    free(first);
+    second = numforge_malloc(16U);
+    NumForgeBudgetFailure failure = numforge_budget_failure();
+    bool nested = numforge_budget_begin(5000U, SIZE_MAX, SIZE_MAX);
+    free(second);
+    numforge_budget_end();
+    TEST_ASSERT_TRUE(owner);
+    TEST_ASSERT_FALSE(nested);
+    TEST_ASSERT_NOT_NULL(first);
+    TEST_ASSERT_NULL(second);
+    TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_MEMORY, failure);
+    first = numforge_malloc(32U);
+    TEST_ASSERT_NOT_NULL(first);
+    free(first);
+}
+
+void test_numeric_loops_cancel_without_changing_destinations(void)
+{
+    char digits[2001];
+    BigInt *a;
+    BigInt *b;
+    BigInt *result;
+    BigIntStatus status;
+    char *text;
+    memset(digits, '9', sizeof(digits) - 1U);
+    digits[sizeof(digits) - 1U] = '\0';
+    a = make_bigint(digits);
+    b = make_bigint(digits);
+    result = make_bigint("42");
+    (void)numforge_budget_begin(5000U, SIZE_MAX, SIZE_MAX);
+    numforge_test_budget_expire_after(3U);
+    status = bigint_mul(result, a, b);
+    numforge_budget_end();
+    TEST_ASSERT_EQUAL(BIGINT_OUT_OF_MEMORY, status);
+    assert_bigint_text("42", result);
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(b, "3"));
+    (void)numforge_budget_begin(5000U, SIZE_MAX, SIZE_MAX);
+    numforge_test_budget_expire_after(20U);
+    status = bigint_div(result, a, b);
+    numforge_budget_end();
+    TEST_ASSERT_EQUAL(BIGINT_OUT_OF_MEMORY, status);
+    assert_bigint_text("42", result);
+    (void)numforge_budget_begin(5000U, SIZE_MAX, SIZE_MAX);
+    numforge_test_budget_expire_after(3U);
+    text = bigint_to_string(a);
+    numforge_budget_end();
+    free(text);
+    bigint_destroy(a);
+    bigint_destroy(b);
+    bigint_destroy(result);
+    TEST_ASSERT_NULL(text);
+}
+
+void test_pipeline_deadline_covers_all_checkpoints(void)
+{
+    CalculatorContext context;
+    bool completed = false;
+    calculator_context_init(&context);
+    for (size_t index = 1U; index <= 1024U; index++)
+    {
+        CalculatorError error;
+        char *text = NULL;
+        numforge_test_budget_expire_after(index);
+        CalculatorStatus status = calculator_compute("7/28", &context, &text, &error);
+        if (status == CALCULATOR_OK)
+        {
+            TEST_ASSERT_EQUAL_STRING("0.25", text);
+            free(text);
+            completed = true;
+            break;
+        }
+        TEST_ASSERT_NULL(text);
+        TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT, status);
+        TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT, error.status);
+    }
+    TEST_ASSERT_TRUE(completed);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_application_budget_is_cumulative_and_scoped);
+    RUN_TEST(test_numeric_loops_cancel_without_changing_destinations);
+    RUN_TEST(test_pipeline_deadline_covers_all_checkpoints);
 
     RUN_TEST(test_allocator_injects_malloc_calloc_and_realloc_failures);
     RUN_TEST(test_numeric_creation_cleans_up_every_failed_allocation);
@@ -968,6 +1108,9 @@ int main(void)
     RUN_TEST(test_bigint_bitwise_and_shift_failure_paths);
     RUN_TEST(test_bigint_aliasing_preserves_destination_on_allocation_failure);
     RUN_TEST(test_bigint_boolean_number_theory_handles_every_allocation_failure);
+#if SIZE_MAX == UINT32_MAX
+    RUN_TEST(test_bigdecimal_format_size_overflow_preserves_output);
+#endif
     RUN_TEST(test_bigdecimal_conversion_and_comparison_failure_paths);
     RUN_TEST(test_bigdecimal_arithmetic_failure_paths);
     RUN_TEST(test_bigdecimal_aliasing_preserves_destination_on_allocation_failure);

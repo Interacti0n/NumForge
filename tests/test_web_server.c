@@ -45,6 +45,7 @@ typedef struct SmokeServerProcess
     pid_t id;
 #endif
     bool started;
+    int exit_code;
 } SmokeServerProcess;
 
 static void smoke_sleep(unsigned int milliseconds)
@@ -189,8 +190,14 @@ static bool smoke_server_is_running(SmokeServerProcess *process)
     {
         DWORD exit_code;
 
-        return GetExitCodeProcess(process->information.hProcess, &exit_code) != 0 &&
-               exit_code == STILL_ACTIVE;
+        if (!GetExitCodeProcess(process->information.hProcess, &exit_code))
+        {
+            process->exit_code = -1;
+            return false;
+        }
+        if (exit_code == STILL_ACTIVE) return true;
+        process->exit_code = (int)exit_code;
+        return false;
     }
 #else
     {
@@ -201,6 +208,7 @@ static bool smoke_server_is_running(SmokeServerProcess *process)
         {
             return true;
         }
+        process->exit_code = result > 0 && WIFEXITED(status) ? WEXITSTATUS(status) : -1;
         process->started = false;
         return false;
     }
@@ -225,6 +233,31 @@ static void smoke_server_stop(SmokeServerProcess *process)
 #endif
 
     process->started = false;
+}
+
+static bool smoke_rejects_duplicate_server(const char *executable, uint16_t port)
+{
+    SmokeServerProcess duplicate;
+    bool exited = false;
+
+    memset(&duplicate, 0, sizeof(duplicate));
+    if (!smoke_server_start(&duplicate, executable, port)) return false;
+    for (size_t attempt = 0U; attempt < SMOKE_START_ATTEMPTS; attempt++)
+    {
+        if (!smoke_server_is_running(&duplicate))
+        {
+            exited = true;
+            break;
+        }
+        smoke_sleep(SMOKE_RETRY_DELAY_MS);
+    }
+    smoke_server_stop(&duplicate);
+    if (!exited || duplicate.exit_code != 1)
+    {
+        fputs("A second server must fail cleanly when the port is occupied\n", stderr);
+        return false;
+    }
+    return true;
 }
 
 static SmokeSocket smoke_connect(uint16_t port)
@@ -362,7 +395,7 @@ static bool smoke_expect_response(
         fprintf(stderr, "HTTP exchange failed for expected status %s\n", status);
         return false;
     }
-    if (strstr(response, status) == NULL)
+    if (strncmp(response, status, strlen(status)) != 0)
     {
         fprintf(stderr, "Expected HTTP status %s, received:\n%.500s\n", status, response);
         return false;
@@ -375,6 +408,43 @@ static bool smoke_expect_response(
     }
 
     return true;
+}
+
+static bool smoke_request_deadline(uint16_t port, bool body)
+{
+    SmokeSocket socket_value = smoke_connect(port);
+    char response[1024];
+    const char *start = body ?
+        "POST /api/evaluate HTTP/1.1\r\nHost: localhost\r\nContent-Length: 4096\r\n\r\n1" : "G";
+    int received;
+    if (socket_value == SMOKE_INVALID_SOCKET) return false;
+    if (!smoke_send_all(socket_value, start, strlen(start)))
+    {
+        smoke_close_socket(socket_value);
+        return false;
+    }
+    for (size_t i = 0U; i < 3U; i++)
+    {
+        smoke_sleep(600U);
+        if (!smoke_send_all(socket_value, " ", 1U)) break;
+    }
+    smoke_sleep(400U);
+    received = recv(socket_value, response, sizeof(response) - 1U, 0);
+    smoke_close_socket(socket_value);
+    if (received <= 0) return false;
+    response[received] = '\0';
+    return strncmp(response, "HTTP/1.1 408 Request Timeout", 28U) == 0;
+}
+
+static bool smoke_oversized_request(uint16_t port)
+{
+    char request[9000];
+    int length = snprintf(request, sizeof(request),
+        "POST /api/evaluate HTTP/1.1\r\nHost: localhost\r\nContent-Length: 8500\r\n\r\n");
+    if (length <= 0 || (size_t)length + 8500U >= sizeof(request)) return false;
+    memset(request + length, '1', 8500U);
+    request[(size_t)length + 8500U] = '\0';
+    return smoke_expect_response(port, request, "HTTP/1.1 413 Payload Too Large", "value too large");
 }
 
 int main(int argc, char **argv)
@@ -405,6 +475,33 @@ int main(int argc, char **argv)
         "GET /missing HTTP/1.1\r\n"
         "Host: 127.0.0.1\r\n"
         "Connection: close\r\n\r\n";
+    static const struct
+    {
+        const char *request;
+        const char *status;
+        const char *body;
+    } extra_cases[] = {
+        { "POST /api/evaluate HTTP/1.1\r\nHost: localhost\r\nContent-Length: 7\r\n\r\n1E-40/1",
+          "HTTP/1.1 200 OK", "\"result\":\"1E-40\"" },
+        { "POST /api/evaluate HTTP/1.1\r\nHost: localhost\r\nContent-Length: 13\r\n\r\n1E100000000+1",
+          "HTTP/1.1 400 Bad Request", "value too large" },
+        { "GET /api?lang=sk HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n",
+          "HTTP/1.1 200 OK", "lang=\"sk\"" },
+        { "GET /api?lang=en HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n",
+          "HTTP/1.1 200 OK", "lang=\"en\"" },
+        { "POST /api/evaluate HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: 3\r\n\r\n1/0",
+          "HTTP/1.1 400 Bad Request", "\"status\":\"division by zero\"" },
+        { "POST /api/evaluate?precision=-1 HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: 1\r\n\r\n1",
+          "HTTP/1.1 400 Bad Request", "invalid precision" },
+        { "POST /api/evaluate?precision=full HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: 3\r\n\r\n1/8",
+          "HTTP/1.1 200 OK", "\"result\":\"0.125\"" },
+        { "POST /api/evaluate HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: 1\r\nContent-Length: 1\r\n\r\n1",
+          "HTTP/1.1 400 Bad Request", "Bad request" },
+        { "POST /api/evaluate HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: 1\r\nTransfer-Encoding: chunked\r\n\r\n1",
+          "HTTP/1.1 400 Bad Request", "Bad request" },
+        { "GET / HTTP/9.9\r\nHost: 127.0.0.1\r\n\r\n",
+          "HTTP/1.1 400 Bad Request", "Bad request" }
+    };
     SmokeServerProcess process;
     char allowed_origin[256];
     uint16_t port = 0U;
@@ -432,6 +529,7 @@ int main(int argc, char **argv)
         fputs("numforge_web did not start on the selected loopback port\n", stderr);
         goto cleanup;
     }
+    if (!smoke_rejects_duplicate_server(argv[1], port)) goto cleanup;
 
     if (snprintf(
             allowed_origin, sizeof(allowed_origin),
@@ -463,6 +561,22 @@ int main(int argc, char **argv)
         goto cleanup;
     }
 
+    for (size_t index = 0U; index < sizeof(extra_cases) / sizeof(extra_cases[0]); index++)
+    {
+        if (!smoke_expect_response(port, extra_cases[index].request,
+                                   extra_cases[index].status, extra_cases[index].body))
+        {
+            goto cleanup;
+        }
+    }
+
+    if (!smoke_request_deadline(port, false) || !smoke_request_deadline(port, true) ||
+        !smoke_oversized_request(port) ||
+        !smoke_expect_response(port, get_page, "HTTP/1.1 200 OK", "NumForge"))
+    {
+        fputs("Request deadline, oversized-body response, or recovery regression\n", stderr);
+        goto cleanup;
+    }
     puts("numforge_web end-to-end smoke test passed");
     exit_code = 0;
 

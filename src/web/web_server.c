@@ -16,8 +16,10 @@ typedef SOCKET NumForgeSocket;
 #else
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <fcntl.h>
 #include <signal.h>
 #include <sys/socket.h>
+#include <sys/select.h>
 #include <sys/time.h>
 #include <unistd.h>
 
@@ -28,10 +30,11 @@ typedef int NumForgeSocket;
 
 #include "web_api.h"
 #include "web_page.h"
+#include "../internal/numforge_alloc.h"
 
 #define NUMFORGE_WEB_PORT 8765
 #define NUMFORGE_WEB_REQUEST_CAPACITY 8192U
-#define NUMFORGE_WEB_SOCKET_TIMEOUT_MS 5000
+#define NUMFORGE_WEB_SOCKET_TIMEOUT_MS 2000
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
@@ -47,11 +50,49 @@ typedef int NumForgeSocket;
     HTTP response and request parsing helpers.
 ------------------------------------------------------------------------------------------------------------------------------
 */
-static bool numforge_send_all(NumForgeSocket socket, const char *data, size_t length)
+static bool numforge_socket_retryable(void)
+{
+#ifdef _WIN32
+    int error = WSAGetLastError();
+    return error == WSAEWOULDBLOCK || error == WSAEINTR;
+#else
+    return errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR;
+#endif
+}
+
+static bool numforge_wait_socket(NumForgeSocket socket_value, bool writing, uint64_t deadline)
+{
+    for (;;)
+    {
+        fd_set ready;
+        struct timeval timeout;
+        uint64_t now = numforge_monotonic_ms();
+        uint64_t remaining;
+        int selected;
+        if (now == UINT64_MAX || now >= deadline) return false;
+        remaining = deadline - now;
+        timeout.tv_sec = (long)(remaining / 1000U);
+        timeout.tv_usec = (long)(remaining % 1000U) * 1000L;
+        FD_ZERO(&ready);
+        FD_SET(socket_value, &ready);
+#ifdef _WIN32
+        selected = select(0, writing ? NULL : &ready, writing ? &ready : NULL, NULL, &timeout);
+        if (selected < 0 && WSAGetLastError() == WSAEINTR) continue;
+#else
+        selected = select(socket_value + 1, writing ? NULL : &ready, writing ? &ready : NULL, NULL, &timeout);
+        if (selected < 0 && errno == EINTR) continue;
+#endif
+        return selected > 0;
+    }
+}
+
+static bool numforge_send_all(NumForgeSocket socket, const char *data, size_t length, uint64_t deadline)
 {
     while (length > 0U)
     {
+        if (!numforge_wait_socket(socket, true, deadline)) return false;
         int sent = send(socket, data, (int)(length > 32767U ? 32767U : length), 0);
+        if (sent < 0 && numforge_socket_retryable()) continue;
 
         if (sent <= 0)
         {
@@ -73,6 +114,7 @@ static void numforge_send_response(
 )
 {
     char header[256];
+    uint64_t deadline = numforge_monotonic_ms() + NUMFORGE_WEB_SOCKET_TIMEOUT_MS;
     int length = snprintf(header, sizeof(header),
                           "HTTP/1.1 %d %s\r\n"
                           "Content-Type: %s\r\n"
@@ -83,14 +125,15 @@ static void numforge_send_response(
 
     if (length > 0 && (size_t)length < sizeof(header))
     {
-        (void)numforge_send_all(socket, header, (size_t)length);
-        (void)numforge_send_all(socket, body, strlen(body));
+        if (numforge_send_all(socket, header, (size_t)length, deadline))
+            (void)numforge_send_all(socket, body, strlen(body), deadline);
     }
 }
 
 static void numforge_send_page(NumForgeSocket socket, const char *const *parts)
 {
     char header[256];
+    uint64_t deadline = numforge_monotonic_ms() + NUMFORGE_WEB_SOCKET_TIMEOUT_MS;
     size_t content_length = 0U;
     size_t index;
     int header_length;
@@ -112,10 +155,10 @@ static void numforge_send_page(NumForgeSocket socket, const char *const *parts)
         return;
     }
 
-    (void)numforge_send_all(socket, header, (size_t)header_length);
+    if (!numforge_send_all(socket, header, (size_t)header_length, deadline)) return;
     for (index = 0U; parts[index] != NULL; index++)
     {
-        (void)numforge_send_all(socket, parts[index], strlen(parts[index]));
+        if (!numforge_send_all(socket, parts[index], strlen(parts[index]), deadline)) return;
     }
 }
 
@@ -161,8 +204,17 @@ static bool numforge_origin_matches(
 )
 {
     char expected[64];
-    int length = snprintf(expected, sizeof(expected), "http://%s:%u",
-                          host, (unsigned int)port);
+    int length;
+
+    /* Browsers omit the default HTTP port when serializing an Origin. */
+    if (port == 80U)
+    {
+        length = snprintf(expected, sizeof(expected), "http://%s", host);
+        if (length > 0 && (size_t)length < sizeof(expected) &&
+            numforge_ascii_equals(origin, origin_length, expected)) return true;
+    }
+    length = snprintf(expected, sizeof(expected), "http://%s:%u",
+                      host, (unsigned int)port);
 
     return length > 0 && (size_t)length < sizeof(expected) &&
            numforge_ascii_equals(origin, origin_length, expected);
@@ -243,6 +295,12 @@ static bool numforge_parse_request_headers(
             *body_length = parsed;
             *content_length_present = true;
         }
+        else if (numforge_ascii_equals(line, (size_t)(colon - line), "Transfer-Encoding"))
+        {
+            /* Only Content-Length framing is supported; do not silently
+             * interpret a chunked or ambiguous request as a plain body. */
+            return false;
+        }
         else if (numforge_ascii_equals(
                      line, (size_t)(colon - line), "Origin"))
         {
@@ -280,17 +338,26 @@ static bool numforge_read_request(
     size_t *length,
     bool *has_content_length,
     bool *origin_allowed,
-    uint16_t port
+    uint16_t port,
+    int *http_error
 )
 {
     size_t used = 0U;
     const char *header_end = NULL;
     size_t header_length;
     unsigned long long body_length = 0U;
+    uint64_t deadline = numforge_monotonic_ms() + NUMFORGE_WEB_SOCKET_TIMEOUT_MS;
+    *http_error = 400;
 
     while (used + 1U < capacity)
     {
+        if (!numforge_wait_socket(socket, false, deadline))
+        {
+            *http_error = 408;
+            return false;
+        }
         int received = recv(socket, buffer + used, (int)(capacity - used - 1U), 0);
+        if (received < 0 && numforge_socket_retryable()) continue;
 
         if (received <= 0)
         {
@@ -316,8 +383,9 @@ static bool numforge_read_request(
     {
         return false;
     }
-    if (body_length > capacity - header_length - 1U)
+    if (body_length > NUMFORGE_WEB_MAX_EXPRESSION_LENGTH || body_length > capacity - header_length - 1U)
     {
+        *http_error = 413;
         return false;
     }
 
@@ -329,7 +397,13 @@ static bool numforge_read_request(
         {
             return false;
         }
+        if (!numforge_wait_socket(socket, false, deadline))
+        {
+            *http_error = 408;
+            return false;
+        }
         received = recv(socket, buffer + used, (int)(capacity - used - 1U), 0);
+        if (received < 0 && numforge_socket_retryable()) continue;
         if (received <= 0)
         {
             return false;
@@ -542,13 +616,34 @@ static void numforge_handle_connection(NumForgeSocket socket, uint16_t port)
     bool english;
     bool has_content_length;
     bool origin_allowed;
+    int http_error = 400;
 
     if (!numforge_read_request(
             socket, request, sizeof(request), &length, &has_content_length,
-            &origin_allowed, port) ||
+            &origin_allowed, port, &http_error) ||
         !numforge_request_target(request, method, sizeof(method), target, sizeof(target)))
     {
-        numforge_send_response(socket, 400, "Bad Request", "text/plain; charset=utf-8", "Bad request.\n");
+        const char *reason = http_error == 413 ? "Payload Too Large" :
+            (http_error == 408 ? "Request Timeout" : "Bad Request");
+        const char *body_text = http_error == 413 ?
+            "{\"ok\":false,\"error\":\"request exceeds 4096 bytes\",\"status\":\"value too large\",\"column\":1}" :
+            (http_error == 408 ? "{\"ok\":false,\"error\":\"request timeout\"}" :
+             "{\"ok\":false,\"error\":\"Bad request\",\"status\":\"invalid argument\",\"column\":1}");
+        numforge_send_response(socket, http_error, reason, "application/json; charset=utf-8", body_text);
+        if (http_error == 413)
+        {
+            /* Drain a bounded remainder so normal oversized requests can read
+             * the response instead of receiving a reset on close. */
+            char discarded[1024];
+            size_t drained = 0U;
+            uint64_t deadline = numforge_monotonic_ms() + 200U;
+            while (drained < NUMFORGE_WEB_REQUEST_CAPACITY && numforge_wait_socket(socket, false, deadline))
+            {
+                int received = recv(socket, discarded, sizeof(discarded), 0);
+                if (received <= 0) break;
+                drained += (size_t)received;
+            }
+        }
         return;
     }
 
@@ -644,22 +739,16 @@ static void numforge_open_browser(uint16_t port, bool enabled)
 #endif
 }
 
-static void numforge_configure_client_socket(NumForgeSocket socket)
+static bool numforge_configure_client_socket(NumForgeSocket socket)
 {
 #ifdef _WIN32
-    DWORD timeout = NUMFORGE_WEB_SOCKET_TIMEOUT_MS;
-
-    (void)setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO,
-                     (const char *)&timeout, sizeof(timeout));
-    (void)setsockopt(socket, SOL_SOCKET, SO_SNDTIMEO,
-                     (const char *)&timeout, sizeof(timeout));
+    u_long nonblocking = 1UL;
+    return ioctlsocket(socket, FIONBIO, &nonblocking) == 0;
 #else
-    struct timeval timeout;
-
-    timeout.tv_sec = NUMFORGE_WEB_SOCKET_TIMEOUT_MS / 1000;
-    timeout.tv_usec = (NUMFORGE_WEB_SOCKET_TIMEOUT_MS % 1000) * 1000;
-    (void)setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-    (void)setsockopt(socket, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+    int flags;
+    if (socket >= FD_SETSIZE) return false;
+    flags = fcntl(socket, F_GETFL, 0);
+    return flags >= 0 && fcntl(socket, F_SETFL, flags | O_NONBLOCK) == 0;
 #endif
 }
 
@@ -758,7 +847,20 @@ int main(int argc, char **argv)
         return 1;
     }
 
+#ifdef _WIN32
+    /* Winsock SO_REUSEADDR permits another process to bind this same port.
+     * Exclusive ownership keeps a second server from stealing requests. */
+    if (setsockopt(listener, SOL_SOCKET, SO_EXCLUSIVEADDRUSE,
+                   (const char *)&reuse_address, sizeof(reuse_address)) != 0)
+    {
+        fputs("NumForge web: failed to reserve exclusive socket ownership\n", stderr);
+        numforge_close_socket(listener);
+        numforge_networking_stop();
+        return 1;
+    }
+#else
     (void)setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, (const char *)&reuse_address, sizeof(reuse_address));
+#endif
     memset(&address, 0, sizeof(address));
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
@@ -782,8 +884,7 @@ int main(int argc, char **argv)
 
         if (client != NUMFORGE_INVALID_SOCKET)
         {
-            numforge_configure_client_socket(client);
-            numforge_handle_connection(client, port);
+            if (numforge_configure_client_socket(client)) numforge_handle_connection(client, port);
             numforge_close_socket(client);
         }
     }

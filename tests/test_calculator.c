@@ -562,6 +562,7 @@ void test_evaluator_division_uses_context(void)
 
     calculator_context_init(&context);
     context.division_scale = 4;
+    context.significant_division = false;
     result = evaluate_expression("1 / 3", &context);
     assert_decimal_equals("0.3333", result);
     bigdecimal_destroy(result);
@@ -670,15 +671,150 @@ void test_evaluator_enforces_time_and_factorial_limits(void)
     bigdecimal_destroy(result);
 }
 
+void test_evaluator_rejects_compact_invalid_integer_operands(void)
+{
+    static const struct
+    {
+        const char *input;
+        CalculatorStatus expected;
+    } cases[] = {
+        { "1E4294967294!", CALCULATOR_VALUE_TOO_LARGE },
+        { "1E9223372036854775807!", CALCULATOR_VALUE_TOO_LARGE },
+        { "6E3!", CALCULATOR_VALUE_TOO_LARGE },
+        { "1E-9223372036854775807!", CALCULATOR_INVALID_ARGUMENT },
+        { "(-1E9223372036854775807)!", CALCULATOR_INVALID_ARGUMENT },
+        { "2^1E-9223372036854775807", CALCULATOR_INVALID_ARGUMENT },
+        { "2^(-1E9223372036854775807)", CALCULATOR_INVALID_ARGUMENT }
+    };
+    CalculatorContext context;
+
+    calculator_context_init(&context);
+    for (size_t index = 0U; index < sizeof(cases) / sizeof(cases[0]); index++)
+    {
+        CalculatorExpression *expression = parse_expression(cases[index].input);
+        CalculatorError error;
+        BigDecimal *result = bigdecimal_create();
+        CalculatorStatus status;
+
+        TEST_ASSERT_NOT_NULL(result);
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(result, "42"));
+        status = calculator_evaluate(result, expression, &context, &error);
+        calculator_expression_destroy(expression);
+        assert_decimal_equals("42", result);
+        bigdecimal_destroy(result);
+        TEST_ASSERT_EQUAL(cases[index].expected, status);
+        TEST_ASSERT_EQUAL(status, error.status);
+    }
+
+    assert_formatted_expression("120", "5E0!", &context);
+    assert_formatted_expression("1", "0!", &context);
+}
+
+void test_formatter_handles_extreme_scientific_scales_without_expansion(void)
+{
+    CalculatorContext context;
+
+    calculator_context_init(&context);
+    assert_formatted_expression("1E+4294967294", "1E4294967294", &context);
+    assert_formatted_expression("1E-4294967293", "1E-4294967293", &context);
+    assert_formatted_expression("-1E+9223372036854775807", "-1E9223372036854775807", &context);
+    assert_formatted_expression("1E-9223372036854775807", "1E-9223372036854775807", &context);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_context_set_output_scale(&context, 0));
+    assert_formatted_expression("1E+11", "9.99E10", &context);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,
+                      calculator_context_set_output_scale(&context, CALCULATOR_UNLIMITED_OUTPUT_SCALE));
+    assert_formatted_expression("1.25E-4294967293", "1.25E-4294967293", &context);
+}
+
+void test_large_factorial_evaluation_and_formatting(void)
+{
+    CalculatorContext context;
+
+    calculator_context_init(&context);
+    /* This is a numeric regression, not a five-second performance test.
+     * CTest still bounds the entire process if calculation stops progressing. */
+    context.time_limit_ms = INT64_MAX;
+    assert_formatted_expression("1.8288019515E+12673", "4000!", &context);
+}
+
 /* ============================================================
    Main
    ============================================================ */
+
+void test_significant_division_preserves_tiny_and_huge_values(void)
+{
+    CalculatorContext context;
+    calculator_context_init(&context);
+    assert_formatted_expression("1E-40", "1E-40 / 1", &context);
+    assert_formatted_expression("-1E-40", "1E-40 / -1", &context);
+    assert_formatted_expression("3.3333333333E-41", "1E-40 / 3", &context);
+    assert_formatted_expression("3.3333333333E+39", "1E40 / 3", &context);
+    assert_formatted_expression("1E-40", "(1E-40 / 3) * 3", &context);
+    assert_formatted_expression("1E-9223372036854775807", "1E-9223372036854775807 / 1", &context);
+    assert_formatted_expression("1", "1E-9223372036854775807 / 1E-9223372036854775807", &context);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,
+        calculator_context_set_output_scale(&context, CALCULATOR_UNLIMITED_OUTPUT_SCALE));
+    assert_formatted_expression("1E-40", "1E-40 / 1", &context);
+    context.division_scale = 4;
+    assert_formatted_expression("0.01235", "1 / 81", &context);
+    assert_formatted_expression("12345", "12345 / 1", &context);
+    context.rounding = BIGDECIMAL_ROUND_HALF_UP;
+    assert_formatted_expression("12345", "12345 / 1", &context);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,
+        calculator_context_set_output_scale(&context, CALCULATOR_MAX_OUTPUT_SCALE));
+    context.time_limit_ms = INT64_MAX;
+    assert_formatted_expression("0.125", "1 / 8", &context);
+}
+
+void test_complete_pipeline_limits_and_recovers(void)
+{
+    CalculatorContext context;
+    CalculatorError error;
+    char *text = NULL;
+    calculator_context_init(&context);
+    TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE,
+        calculator_compute("1E100000000 + 1", &context, &text, &error));
+    TEST_ASSERT_NULL(text);
+    TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE,
+        calculator_compute("2^1E100000000", &context, &text, &error));
+    TEST_ASSERT_NULL(text);
+    TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE,
+        calculator_context_set_output_scale(&context, CALCULATOR_MAX_OUTPUT_SCALE + 1));
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("2+2", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("4", text);
+    free(text);
+    context.time_limit_ms = 0;
+    TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT, calculator_compute("4000!", &context, &text, &error));
+    TEST_ASSERT_NULL(text);
+    TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT, error.status);
+}
+
+void test_significant_division_rounds_both_signs_in_all_modes(void)
+{
+    static const char *const positive[] = { "0.16", "0.17", "0.16", "0.17", "0.17", "0.17" };
+    static const char *const negative[] = { "-0.16", "-0.17", "-0.17", "-0.16", "-0.17", "-0.17" };
+    CalculatorContext context;
+    calculator_context_init(&context);
+    context.output_scale = CALCULATOR_UNLIMITED_OUTPUT_SCALE;
+    context.division_scale = 2;
+    for (int mode = 0; mode < 6; mode++)
+    {
+        context.rounding = (BigDecimalRoundingMode)mode;
+        assert_formatted_expression(positive[mode], "1/6", &context);
+        assert_formatted_expression(negative[mode], "-1/6", &context);
+        assert_formatted_expression("0.125", "1/8", &context);
+        assert_formatted_expression("-0.125", "-1/8", &context);
+    }
+}
 
 int main(void)
 {
     UNITY_BEGIN();
 
     RUN_TEST(test_context_defaults_and_status_strings);
+    RUN_TEST(test_significant_division_preserves_tiny_and_huge_values);
+    RUN_TEST(test_complete_pipeline_limits_and_recovers);
+    RUN_TEST(test_significant_division_rounds_both_signs_in_all_modes);
     RUN_TEST(test_context_configures_output_precision);
     RUN_TEST(test_error_helpers);
     RUN_TEST(test_tokenizer_produces_numbers_operators_and_offsets);
@@ -702,6 +838,9 @@ int main(void)
     RUN_TEST(test_evaluator_rejects_invalid_factorial_input);
     RUN_TEST(test_evaluator_rejects_invalid_power_exponent);
     RUN_TEST(test_evaluator_enforces_time_and_factorial_limits);
+    RUN_TEST(test_evaluator_rejects_compact_invalid_integer_operands);
+    RUN_TEST(test_formatter_handles_extreme_scientific_scales_without_expansion);
+    RUN_TEST(test_large_factorial_evaluation_and_formatting);
 
     return UNITY_END();
 }
