@@ -36,6 +36,7 @@ const char *calculator_status_to_string(CalculatorStatus status)
         case CALCULATOR_SCALE_OVERFLOW: return "scale overflow";
         case CALCULATOR_TIME_LIMIT: return "TLE: time limit exceeded";
         case CALCULATOR_NOT_IMPLEMENTED: return "not implemented";
+        case CALCULATOR_ARGUMENT_COUNT: return "wrong number of arguments";
         default: return "unknown status";
     }
 }

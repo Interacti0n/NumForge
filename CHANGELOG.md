@@ -7,6 +7,17 @@ All notable changes to NumForge are documented in this file. The project uses
 
 ### Changed
 
+- Raise the calculator factorial input limit to 10000 for both `n!` and
+  `factorial(n)`. The five-second and memory budgets remain unchanged;
+  accepted inputs are not guaranteed to finish within those budgets.
+
+- Recognize 24 letter-only function names, nested calls, semicolon-separated
+  arguments and the parenthesized square-root symbol. Validate arity and cap
+  calls at 256 arguments; preserve standalone e, uppercase E and implicit products.
+- Enable pow/factorial aliases through existing operators. Other registered
+  calls report not implemented; group their disabled web controls into four
+  collapsible sections with matching SK/EN help and regression coverage.
+
 - Separate bounded HTTP byte framing from socket I/O and add direct regression
   tests plus formatter/HTTP fuzz harnesses and portable replay coverage.
 - Add pinned Playwright Chromium tests for SK/EN calculation, precision,

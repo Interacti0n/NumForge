@@ -103,20 +103,22 @@ term        := unary (('*' | '/' | IMPLICIT_MULTIPLY) unary)*
 unary       := ('+' | '-') unary | power
 power       := postfix ('^' unary)?
 postfix     := primary ('²' | '³' | '!')*
-primary     := NUMBER | CONSTANT | '(' expression ')'
+primary     := NUMBER | CONSTANT | '(' expression ')' | call
+call        := FUNCTION '(' arguments ')' | '√' '(' expression ')'
+arguments   := expression (';' expression)*
 CONSTANT    := π | e | φ
 ```
 
 Examples: `0.1 + 0.2`, `π / 2`, `πe`, `10π`, `2(3 + 4)`,
 `-(2.5E-1) * 8`, `(12.5 - 2.5) / 4`, `1.5^3`, `12²`, `2³`, and `5!`. Each
-constant currently has 200 stored decimal places. Lowercase `e` always means
+constant currently has 200 stored decimal places. Standalone lowercase `e` means
 Euler's constant, so `5e`
 means `5 * e` and `1e3` means `1 * e * 3`. Scientific notation always uses
 uppercase `E`: `5E-1` means `0.5` and `1E3` means `1000`. Powers use binary
 exponentiation with exact BigDecimal multiplication, so decimal bases are valid
 when the exponent is a non-negative whole number. `2^3^2` means `2^(3^2)`;
-`0^0` is `1`. Negative and decimal exponents, modulo, variables, and general
-functions are not implemented yet. Squaring and cubing use exact BigDecimal
+`0^0` is `1`. Negative and decimal exponents, modulo, variables, and most named
+function calculations are not implemented yet. Squaring and cubing use exact BigDecimal
 multiplication too.
 
 Repeated decimal separators (`1.2.3`, `1,2,3`) and adjacent numeric tokens
@@ -124,7 +126,7 @@ Repeated decimal separators (`1.2.3`, `1,2,3`) and adjacent numeric tokens
 remain valid. Implicit multiplication shares the left-associative precedence
 of `*` and `/`, so `6/2(1+2)` is `9`.
 Factorial uses `bigint_factorial` and requires a non-negative whole number no
-greater than 5000 in the calculator, even though the underlying BigInt API has
+greater than 10000 in the calculator, even though the underlying BigInt API has
 a higher limit. Non-terminating division defaults to 34 significant digits with half-even
 rounding. The complete CLI/HTTP calculation has a five-second monotonic time
 budget, including parsing and output formatting. Expensive BigInt parsing,
@@ -137,12 +139,43 @@ Application limits are 64 MiB of cumulative allocation requests per calculation,
 Freed allocations still count toward the cumulative work budget; it is not a
 measurement of process RSS. Resource limits return `value too large`, not TLE.
 These limits do not change unrestricted public BigInt/BigDecimal calls.
+An allowed factorial input (including 10000) may still exceed the time or
+memory budget; the input limit is not a completion guarantee.
 
-Parser and AST depth are limited to 256 levels. Inputs that exceed the limit
+Parser and AST depth are limited to 256 levels, with at most 256 arguments per call. Inputs that exceed the limit
 return `CALCULATOR_VALUE_TOO_LARGE` instead of risking process stack overflow.
 
+### Named calls
+
+Names contain lowercase ASCII letters only and require parentheses. Arguments
+use semicolons, not commas: `pow(1,5;2)` is `2.25`. The registry recognizes 24
+names; recognition is separate from numerical implementation:
+
+| Calls | Current calculation support |
+| --- | --- |
+| `pow(x;y)`, `factorial(n)` | Active aliases of `x^y` and `n!`, with identical domains and limits. |
+| `abs(x)`, `sign(x)`, `min(a;b;…)`, `max(a;b;…)` | Not implemented. Minimum/maximum require at least two arguments. |
+| `gcd(a;b)`, `lcm(a;b)`, `mod(a;b)`, `isqrt(n)` | Not implemented. |
+| `sqrt(x)`, `cbrt(x)`, `root(x;n)` | Not implemented; `√(x)` aliases `sqrt(x)`. |
+| `exp(x)`, `ln(x)`, `log(x)`, `log(x;b)` | Not implemented. Planned bases: e for ln, 10 for one-argument log, b for two-argument log. |
+| `sin(x)`, `cos(x)`, `tan(x)`, `asin(x)`, `acos(x)`, `atan(x)` | Not implemented. Planned angle unit: radians. atan takes only one argument. |
+| `radians(x)`, `degrees(x)` | Not implemented; planned degree/radian conversions. |
+
+Wrong arity returns `wrong number of arguments` at the function name; unknown
+names return `invalid token`. A well-formed pending call returns `not implemented`
+before evaluating its arguments. Nesting and implicit products work, for
+example `pow(2;factorial(3))` and `2pow(2;3)`.
+
+The tokenizer reads complete letter sequences: `exp` is one name, whereas
+`1e3` remains `1*e*3`, `πe` remains `π*e`, `e(2)` remains `e*2`, and `1E3`
+is 1000. Separate adjacent ASCII names with `*`: `ee` and `esin` are unknown
+names, not products. Numeric suffixes such as `log2` are not supported.
+
+### Browser interface
+
 The local browser page has active keypad buttons for this grammar, including
-power, square, cube, and factorial. Its root, trigonometric, logarithmic,
+power, square, cube, factorial and an argument separator. Named functions are
+organized in four collapsible groups. Its root, trigonometric, logarithmic,
 exponential, and absolute-value controls remain visibly marked as planned and
 disabled. The keypad inserts `.`, while directly typed `,` is accepted as the
 same decimal separator. The page is available in Slovak and English and

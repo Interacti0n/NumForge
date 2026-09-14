@@ -401,6 +401,33 @@ static CalculatorStatus calculator_evaluate_expression(
         return CALCULATOR_TIME_LIMIT;
     }
 
+    if (expression->type == CALCULATOR_EXPRESSION_CALL)
+    {
+        /* Borrow children for the existing operator path; this temporary node
+         * owns nothing and must never be passed to expression_destroy. */
+        CalculatorExpression operation = {0};
+        operation.offset = expression->offset;
+        operation.depth = expression->depth;
+        switch (expression->data.call.function->implementation)
+        {
+            case CALCULATOR_FUNCTION_POWER:
+                operation.type = CALCULATOR_EXPRESSION_BINARY;
+                operation.data.binary.operation = CALCULATOR_BINARY_POWER;
+                operation.data.binary.left = expression->data.call.arguments[0];
+                operation.data.binary.right = expression->data.call.arguments[1];
+                break;
+            case CALCULATOR_FUNCTION_FACTORIAL:
+                operation.type = CALCULATOR_EXPRESSION_POSTFIX;
+                operation.data.postfix.operation = CALCULATOR_POSTFIX_FACTORIAL;
+                operation.data.postfix.operand = expression->data.call.arguments[0];
+                break;
+            default:
+                calculator_error_set(error, CALCULATOR_NOT_IMPLEMENTED, expression->offset);
+                return CALCULATOR_NOT_IMPLEMENTED;
+        }
+        return calculator_evaluate_expression(result, &operation, evaluation, error);
+    }
+
     if (expression->type == CALCULATOR_EXPRESSION_NUMBER)
     {
         value = bigdecimal_create();

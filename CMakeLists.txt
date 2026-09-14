@@ -83,6 +83,7 @@ add_library(numforge STATIC
     src/calculator/tokenizer.c
     src/calculator/parser.c
     src/calculator/evaluator.c
+    src/calculator/functions.c
     src/calculator/formatter.c
     src/web/web_api.c
     src/web/http_request.c
@@ -356,7 +357,7 @@ if(BUILD_TESTING)
         COMMAND calculator_tests
     )
 
-    foreach(suite IN ITEMS calculator_contract parser_fuzz http_request)
+    foreach(suite IN ITEMS calculator_contract parser_fuzz http_request function_calls)
         add_executable(${suite}_tests tests/test_${suite}.c)
         target_include_directories(${suite}_tests PRIVATE ${PROJECT_SOURCE_DIR}/src/calculator)
         target_link_libraries(${suite}_tests PRIVATE numforge unity)

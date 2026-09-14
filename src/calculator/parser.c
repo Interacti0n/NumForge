@@ -174,6 +174,100 @@ static CalculatorStatus calculator_parse_expression(
     CalculatorExpression **result
 );
 
+/* Each call owns an expandable argument array and every successfully parsed
+ * child. Failure destroys the partial call, preserving the caller's output. */
+static CalculatorStatus calculator_parse_call(
+    CalculatorParser *parser,
+    const CalculatorFunction *function,
+    CalculatorExpression **result
+)
+{
+    size_t offset = parser->current.offset;
+    size_t capacity = 0;
+    CalculatorExpression *call;
+    CalculatorStatus status;
+
+    if (parser->recursion_depth >= CALCULATOR_MAX_EXPRESSION_DEPTH)
+        return calculator_parser_depth_error(parser, offset);
+    status = calculator_parser_advance(parser);
+    if (status != CALCULATOR_OK) return status;
+    if (parser->current.type != CALCULATOR_TOKEN_LEFT_PAREN)
+        return calculator_parser_syntax_error(parser);
+    call = calculator_expression_create(CALCULATOR_EXPRESSION_CALL, offset);
+    if (call == NULL)
+    {
+        calculator_error_set(parser->error, CALCULATOR_OUT_OF_MEMORY, offset);
+        return CALCULATOR_OUT_OF_MEMORY;
+    }
+    call->data.call.function = function;
+    call->data.call.arguments = NULL;
+    call->data.call.count = 0;
+    status = calculator_parser_advance(parser);
+    if (status != CALCULATOR_OK) goto failure;
+    while (parser->current.type != CALCULATOR_TOKEN_RIGHT_PAREN)
+    {
+        CalculatorExpression *argument = NULL;
+        if (call->data.call.count == CALCULATOR_MAX_CALL_ARGUMENTS)
+        {
+            status = calculator_parser_depth_error(parser, offset);
+            goto failure;
+        }
+        if (call->data.call.count == capacity)
+        {
+            size_t next_capacity = capacity == 0 ? 4U : capacity * 2U;
+            CalculatorExpression **arguments = numforge_realloc(call->data.call.arguments,
+                next_capacity * sizeof(*arguments));
+            if (arguments == NULL)
+            {
+                status = CALCULATOR_OUT_OF_MEMORY;
+                calculator_error_set(parser->error, status, offset);
+                goto failure;
+            }
+            call->data.call.arguments = arguments;
+            capacity = next_capacity;
+        }
+        parser->recursion_depth++;
+        status = calculator_parse_expression(parser, &argument);
+        parser->recursion_depth--;
+        if (status != CALCULATOR_OK) goto failure;
+        call->data.call.arguments[call->data.call.count++] = argument;
+        if (!calculator_expression_can_wrap(argument))
+        {
+            status = calculator_parser_depth_error(parser, offset);
+            goto failure;
+        }
+        if (argument->depth + 1U > call->depth) call->depth = argument->depth + 1U;
+        if (parser->current.type != CALCULATOR_TOKEN_SEMICOLON) break;
+        status = calculator_parser_advance(parser);
+        if (status != CALCULATOR_OK) goto failure;
+        if (parser->current.type == CALCULATOR_TOKEN_RIGHT_PAREN)
+        {
+            status = calculator_parser_syntax_error(parser);
+            goto failure;
+        }
+    }
+    if (parser->current.type != CALCULATOR_TOKEN_RIGHT_PAREN)
+    {
+        status = calculator_parser_syntax_error(parser);
+        goto failure;
+    }
+    if (call->data.call.count < function->minimum_arguments ||
+        (function->maximum_arguments != 0 && call->data.call.count > function->maximum_arguments))
+    {
+        status = CALCULATOR_ARGUMENT_COUNT;
+        calculator_error_set(parser->error, status, offset);
+        goto failure;
+    }
+    status = calculator_parser_advance(parser);
+    if (status != CALCULATOR_OK) goto failure;
+    *result = call;
+    return CALCULATOR_OK;
+
+failure:
+    calculator_expression_destroy(call);
+    return status;
+}
+
 static CalculatorStatus calculator_parse_primary(
     CalculatorParser *parser,
     CalculatorExpression **result
@@ -210,9 +304,18 @@ static CalculatorStatus calculator_parse_primary(
         return CALCULATOR_OK;
     }
 
+    if (parser->current.type == CALCULATOR_TOKEN_SQRT)
+    {
+        return calculator_parse_call(parser, calculator_function_find("sqrt", 4U), result);
+    }
+
     if (parser->current.type == CALCULATOR_TOKEN_IDENTIFIER)
     {
         CalculatorConstant constant;
+        const CalculatorFunction *function = calculator_function_find(
+            parser->current.text, parser->current.length);
+
+        if (function != NULL) return calculator_parse_call(parser, function, result);
 
         if (!calculator_constant_from_text(parser->current.text, parser->current.length, &constant))
         {
@@ -469,6 +572,7 @@ static CalculatorStatus calculator_parse_unary(
 static bool calculator_token_starts_primary(CalculatorTokenType type)
 {
     return type == CALCULATOR_TOKEN_NUMBER ||
+           type == CALCULATOR_TOKEN_SQRT ||
            type == CALCULATOR_TOKEN_IDENTIFIER ||
            type == CALCULATOR_TOKEN_LEFT_PAREN;
 }
@@ -661,6 +765,11 @@ void calculator_expression_destroy(CalculatorExpression *expression)
 
     switch (expression->type)
     {
+        case CALCULATOR_EXPRESSION_CALL:
+            for (size_t index = 0; index < expression->data.call.count; index++)
+                calculator_expression_destroy(expression->data.call.arguments[index]);
+            free(expression->data.call.arguments);
+            break;
         case CALCULATOR_EXPRESSION_NUMBER:
             free(expression->data.number.text);
             break;

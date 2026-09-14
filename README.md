@@ -113,7 +113,7 @@ runs.
 The page includes a clickable keypad for the current expression grammar,
 including `π`, `e`, `φ`, `xʸ`, `x²`, `x³`, and `n!`. Powers, squaring, and
 cubing accept any exact decimal base with a non-negative whole-number exponent;
-factorial requires an input from 0 to 5000. Its precision control defaults to
+factorial requires an input from 0 to 10000. Its precision control defaults to
 10 decimal places (configurable from 0 to 10000); full output is also available.
 Non-terminating division uses working significant digits, so `1E-40 / 1` remains `1E-40`.
 The complete calculation has a five-second monotonic budget, checked during
@@ -122,8 +122,10 @@ calculator also bounds allocations and output size. Exceeding these limits
 returns `TLE` or `value too large`; public numeric library calls remain uncapped
 by these application policies. Cancellation is cooperative, not a hard real-time
 process-kill guarantee.
-The dimmed function buttons are intentionally inactive and show planned
-features. The page is available in Slovak and English, and the displayed
+Named calls use parentheses and semicolons: `pow(2;3)` and `factorial(5)`
+already calculate through the existing operators. Four collapsible groups
+contain the function controls; dimmed buttons have recognized syntax but no
+numerical implementation yet. The page is available in Slovak and English, and the displayed
 result can be copied with one click. See the
 [API overview](docs/API.md) for exact syntax and the local HTTP API.
 
@@ -189,6 +191,8 @@ executables:
 - `calculator_contract_tests`: covers numeric-token boundaries, implicit
   products, and intermediate-rounding/cancellation examples.
 - `parser_fuzz_tests`: deterministic bounded random-byte parser smoke test.
+- `function_calls_tests`: registered names, arity, nesting, aliases, argument
+  limits and preservation of constants/implicit multiplication.
 - `fuzz_parser_smoke`, `fuzz_numbers_smoke`, `fuzz_formatter_smoke` and
   `fuzz_http_smoke`: portable replay of the optional Clang fuzz harnesses.
 - `http_request_tests`: socket-independent framing, partial requests, origin
@@ -213,7 +217,7 @@ executables:
   installed package through `find_package(NumForge)`, including a C++ linkage
   test when `NUMFORGE_TEST_CPP=ON`.
 
-CI also runs eight SK/EN Chromium scenarios from `tests/browser`, using a
+CI also runs ten SK/EN Chromium scenarios from `tests/browser`, using a
 pinned Playwright dependency and the real C server, separately from CTest.
 Only this browser suite requires npm packages; the application does not.
 Reproduction commands, scope and opt-in phase benchmarks are in

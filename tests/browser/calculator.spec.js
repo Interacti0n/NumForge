@@ -42,6 +42,39 @@ for (const lang of ['sk', 'en']) {
             await page.locator(`a[href="/?lang=${other}"]`).click();
             await calculate(page, '2(2+2)', '8');
         });
+        test('function groups, aliases and pending calls', async ({ page }, testInfo) => {
+            await expect(page.locator('details.function-group')).toHaveCount(4);
+            await expect(page.locator('[data-function]')).toHaveCount(24);
+            await expect(page.locator('[data-function]:disabled')).toHaveCount(22);
+            const powers = page.locator('details').filter({ has: page.locator('[data-function="pow"]') });
+            await powers.locator('summary').focus();
+            await page.keyboard.press('Enter');
+            await page.locator('[data-function="pow"]').click();
+            await expect(page.locator('#expression')).toHaveValue('pow(');
+            await page.locator('[data-insert="2"]').click();
+            await page.locator('[data-insert=";"]').click();
+            await page.locator('[data-insert="3"]').click();
+            await page.locator('[data-insert=")"]').click();
+            await page.locator('[data-action=evaluate]').click();
+            await expect(page.locator('#result')).toHaveText('8');
+            await calculate(page, 'factorial(5)', '120');
+            await page.locator('#expression').fill('exp(1)');
+            await page.locator('#expression').press('Enter');
+            await expect(page.locator('#result')).toContainText(lang === 'sk' ? 'funkcia nie je implementovaná' : 'not implemented');
+            await page.locator('#expression').fill('atan(1;2)');
+            await page.locator('#expression').press('Enter');
+            await expect(page.locator('#result')).toContainText(lang === 'sk' ? 'nesprávny počet argumentov' : 'wrong number of arguments');
+            await calculate(page, '1e3-1*e*3', '0');
+            await page.screenshot({ path: testInfo.outputPath('functions-desktop.png'), fullPage: true });
+            await page.setViewportSize({ width: 375, height: 812 });
+            for (const group of await page.locator('details.function-group').all()) {
+                if (await group.getAttribute('open') === null) await group.locator('summary').click();
+            }
+            await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+            await page.screenshot({ path: testInfo.outputPath('functions-mobile.png'), fullPage: true });
+            await page.locator('.guide-link').click();
+            await expect(page.locator('body')).toContainText('log(x;b)');
+        });
         test('non-JSON failures recover without stale results', async ({ page }) => {
             await page.route('**/api/evaluate*', route => route.fulfill({ status: 503,
                 contentType: 'text/plain', body: 'Unavailable' }));

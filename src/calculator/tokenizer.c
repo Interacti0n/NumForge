@@ -26,13 +26,7 @@ static bool calculator_is_digit(char character)
 static bool calculator_is_identifier_start(char character)
 {
     return (character >= 'A' && character <= 'Z') ||
-           (character >= 'a' && character <= 'z') ||
-           character == '_';
-}
-
-static bool calculator_is_identifier_continue(char character)
-{
-    return calculator_is_identifier_start(character) || calculator_is_digit(character);
+           (character >= 'a' && character <= 'z');
 }
 
 static bool calculator_is_greek_constant_start(const char *text)
@@ -161,18 +155,9 @@ static CalculatorStatus calculator_read_identifier(
         return CALCULATOR_OK;
     }
 
-    /* Keep Euler's constant separate from an adjacent number: 1e3 is 1 * e * 3. */
-    if (tokenizer->input[start] == 'e')
-    {
-        calculator_set_token(token, CALCULATOR_TOKEN_IDENTIFIER, tokenizer->input + start, 1U, start);
-        tokenizer->offset = start + 1U;
-        calculator_error_clear(error);
-        return CALCULATOR_OK;
-    }
-
     cursor = start + 1U;
 
-    while (calculator_is_identifier_continue(tokenizer->input[cursor]))
+    while (calculator_is_identifier_start(tokenizer->input[cursor]))
     {
         cursor++;
     }
@@ -223,6 +208,15 @@ CalculatorStatus calculator_tokenizer_next(
         size_t offset = tokenizer->offset;
         char character = tokenizer->input[offset];
 
+        if (tokenizer->length - offset >= 3U &&
+            memcmp(tokenizer->input + offset, "\xE2\x88\x9A", 3U) == 0)
+        {
+            calculator_set_token(token, CALCULATOR_TOKEN_SQRT, tokenizer->input + offset, 3U, offset);
+            tokenizer->offset += 3U;
+            calculator_error_clear(error);
+            return CALCULATOR_OK;
+        }
+
         if (calculator_is_digit(character) ||
             (calculator_is_decimal_separator(character) &&
              calculator_is_digit(tokenizer->input[offset + 1U])))
@@ -246,6 +240,9 @@ CalculatorStatus calculator_tokenizer_next(
 
         switch (character)
         {
+            case ';':
+                calculator_set_token(token, CALCULATOR_TOKEN_SEMICOLON, tokenizer->input + offset, 1, offset);
+                break;
             case '+':
                 calculator_set_token(token, CALCULATOR_TOKEN_PLUS, tokenizer->input + offset, 1, offset);
                 break;

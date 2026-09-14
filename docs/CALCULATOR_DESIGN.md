@@ -14,6 +14,7 @@ stable.
 | `parser.c` | Converts tokens into an opaque expression tree (AST). Implemented as recursive descent with postfix, power, unary, multiplicative, and additive precedence layers. |
 | `evaluator.c` | Evaluates the AST to `BigDecimal` using `CalculatorContext`. Implemented for unary signs, exact binary exponentiation, square, cube, factorial, and binary operators. |
 | `formatter.c` | Rounds a completed result to the requested output scale and selects ordinary or scientific notation. |
+| `functions.c` | Immutable registry of named calls, accepted arities and implementation dispatch identifiers. |
 | `src/main.c` | Interactive command-line shell around the calculator pipeline. |
 | `src/web/web_api.c` | Text-to-result adapter used by the local web server. |
 | `src/web/web_server.c` | Loopback-only HTTP server that serves the calculator page and `POST /api/evaluate`. |
@@ -64,7 +65,7 @@ The page invalidates pending results on input changes and uses request
 generations to ignore stale responses. Aborting browser fetch is a UI measure;
 the C pipeline independently enforces its own calculation budget.
 
-## Initial grammar
+## Expression grammar
 
 ```text
 expression  := term (('+' | '-') term)*
@@ -72,19 +73,34 @@ term        := unary (('*' | '/' | IMPLICIT_MULTIPLY) unary)*
 unary       := ('+' | '-') unary | power
 power       := postfix ('^' unary)?
 postfix     := primary ('²' | '³' | '!')*
-primary     := NUMBER | CONSTANT | '(' expression ')'
+primary     := NUMBER | CONSTANT | '(' expression ')' | call
+call        := FUNCTION '(' arguments ')' | '√' '(' expression ')'
+arguments   := expression (';' expression)*
 CONSTANT    := π | e | φ
 ```
 
 `NUMBER` uses the BigDecimal input grammar with a calculator-only extension:
 `.` and `,` are equivalent decimal separators. It also accepts an optional
-uppercase `E` exponent. Lowercase `e` is reserved for Euler's constant. The
+uppercase `E` exponent. Standalone lowercase `e` is Euler's constant. The
 sign is always a separate `PLUS` or `MINUS` token, which keeps unary and binary
 operators unambiguous. The evaluator normalizes a comma to a point before
 calling the public BigDecimal API.
 
-Variables and general functions are intentionally outside this first grammar.
-Add them only with explicit precedence and domain rules.
+Variables remain outside the grammar. The function registry recognizes the
+names and arities listed in [API.md](API.md#named-calls). Only `pow` and
+`factorial` currently calculate: they reuse the existing operator paths without
+new numerical algorithms. Pending calls report `NOT_IMPLEMENTED` before
+evaluating children. Numerical domains/rounding must be defined when enabling
+each remaining implementation.
+
+Call nodes own an argument-pointer array and child expressions; registry entries
+have static lifetime. Array growth uses the fault-injectable allocator. Parse
+failure frees partial children/arrays and preserves the caller's output handle.
+Calls count toward both recursive parsing and AST depth limits (256); arity is
+also capped at 256, including variadic min/max. Empty calls and wrong argument
+counts report `ARGUMENT_COUNT` at the function name; malformed separators report
+syntax errors. Function names are scanned as whole ASCII-letter sequences and
+matched case-sensitively; underscores and numeric suffixes are not names.
 
 `^` is right-associative and binds more tightly than unary signs and
 multiplication. Thus `2^3^2` is `2^(3^2)` and `-2^2` is `-(2^2)`. Its evaluator
@@ -98,7 +114,7 @@ Postfix operators bind tighter than unary signs and multiplication, so `-2²`
 is `-(2²)` and `(2 + 3)!` is valid. Square and cube evaluate as exact
 BigDecimal multiplication: `x²` is `x * x`, and `x³` is `(x * x) * x`.
 Factorial delegates to `bigint_factorial`; it accepts only a non-negative whole
-number up to 5000 in the calculator, and reports an invalid-argument error for
+number up to 10000 in the calculator, and reports an invalid-argument error for
 other inputs or `VALUE_TOO_LARGE` above that calculator limit.
 
 Adjacent primaries, except two numeric tokens, imply multiplication at the normal multiplicative
@@ -113,9 +129,10 @@ A repeated decimal separator (`1.2.3`, `1,2,3`, `1E3.4`) is a lexical error.
 Whitespace does not make an operator. Delimited factors such as `(2)3`,
 `3!2` and `2²3` remain valid. Implicit products have the same left-associative
 precedence as explicit multiplication/division: `6/2(1+2)` is `9`.
-Future multi-argument functions will use semicolons, e.g. `gcd(12;18)`, to
-avoid conflict with decimal commas. This is a reserved design direction,
-not currently accepted syntax; identifier matching belongs to that later work.
+Multi-argument calls use semicolons, e.g. `gcd(12;18)`, avoiding conflict with
+decimal commas. `exp` is one identifier, not `e*x*p`; `e(2)` is still a
+constant times a parenthesized expression. Adjacent ASCII names require `*`
+(`ee` and `esin` are unknown names). `√` requires parentheses just like `sqrt`.
 
 ## Evaluation policy and errors
 

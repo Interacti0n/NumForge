@@ -107,10 +107,14 @@ npm test
 Adjust the executable path for your generator/configuration. Playwright starts
 and stops its own loopback server on port 18765; set `NUMFORGE_TEST_PORT` to
 another free port if necessary. It refuses to reuse an existing server.
-Eight Chromium scenarios cover both languages: real C calculations and
+Ten Chromium scenarios cover both languages: real C calculations and
 precision, keypad entry, clipboard, help/navigation, arithmetic errors,
 transport failures and stale-response protection. Network-failure and delayed
 response cases use controlled interception; ordinary calculations reach C.
+Function-group tests also cover keyboard expansion, pending calls, arity
+errors, active aliases and mobile layout. `function_calls_tests` covers all
+registered names, syntax/depth/argument limits and e/E boundaries; allocation
+failure tests exercise partial nested calls and argument-array growth.
 
 The dedicated browser CI job installs Chromium with OS dependencies using
 `npx playwright install --with-deps chromium`. Failures upload the HTML report,

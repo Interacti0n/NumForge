@@ -861,7 +861,7 @@ void test_parser_preserves_output_on_every_allocation_failure(void)
         bool injected;
 
         numforge_test_allocator_begin(failure_index);
-        status = calculator_parse("1.5^3 + 2", &expression, &error);
+        status = calculator_parse("min(pow(1.5;3);factorial(2);3;4;5;6) + 2", &expression, &error);
         injected = numforge_test_allocator_did_fail();
         numforge_test_allocator_end();
 
@@ -898,7 +898,7 @@ void test_evaluator_preserves_destination_on_every_allocation_failure(void)
         CalculatorStatus status;
         bool injected;
 
-        TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_parse("1.5^3 + 2 + 7/28 + 1/3", &expression, &error));
+        TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_parse("pow(1.5;3) + factorial(2) + 7/28 + 1/3", &expression, &error));
         result = make_bigdecimal("7.77");
         calculator_context_init(&context);
 

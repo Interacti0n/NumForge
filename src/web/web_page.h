@@ -145,20 +145,101 @@ static const char NUMFORGE_WEB_PAGE_EN_KEYPAD[] =
 static const char NUMFORGE_WEB_PAGE_EN_FUTURE[] =
     "  <p class=\"keypad-label\">Functions and operations</p>\n"
     "  <section class=\"keypad\" aria-label=\"Functions and operations\">\n"
-    "    <button type=\"button\" data-insert=\"^\" title=\"Power: exponent must be a non-negative integer\">xʸ</button><button type=\"button\" data-insert=\"&#178;\" title=\"Square\">x²</button><button type=\"button\" data-insert=\"&#179;\" title=\"Cube\">x³</button><button type=\"button\" data-insert=\"!\" title=\"Factorial\">n!</button>\n"
-    "    <button type=\"button\" class=\"future\" disabled title=\"Coming soon\">√x</button><button type=\"button\" class=\"future\" disabled title=\"Coming soon\">|x|</button><button type=\"button\" class=\"future\" disabled title=\"Coming soon\">sin</button><button type=\"button\" class=\"future\" disabled title=\"Coming soon\">cos</button><button type=\"button\" class=\"future\" disabled title=\"Coming soon\">tan</button>\n"
-    "    <button type=\"button\" class=\"future\" disabled title=\"Coming soon\">ln</button><button type=\"button\" class=\"future\" disabled title=\"Coming soon\">log</button><button type=\"button\" class=\"future\" disabled title=\"Coming soon\">eˣ</button>\n"
-    "  </section>\n"
-    "  <a class=\"guide-link\" href=\"/api?lang=en\">How calculation and the API work →</a>\n";
+    "    <button type=\"button\" data-insert=\"^\" title=\"Power: exponent must be a non-negative integer\">xʸ</button><button type=\"button\" data-insert=\"&#178;\" title=\"Square\">x²</button><button type=\"button\" data-insert=\"&#179;\" title=\"Cube\">x³</button><button type=\"button\" data-insert=\"!\" title=\"Factorial\">n!</button><button type=\"button\" data-insert=\";\" title=\"Argument separator\">;</button>\n"
+    "  </section>\n";
 
 static const char NUMFORGE_WEB_PAGE_FUTURE[] =
     "  <p class=\"keypad-label\">Funkcie a operácie</p>\n"
     "  <section class=\"keypad\" aria-label=\"Funkcie a operácie\">\n"
-    "    <button type=\"button\" data-insert=\"^\" title=\"Mocnina: exponent musí byť nezáporné celé číslo\">xʸ</button><button type=\"button\" data-insert=\"&#178;\" title=\"Druhá mocnina\">x²</button><button type=\"button\" data-insert=\"&#179;\" title=\"Tretia mocnina\">x³</button><button type=\"button\" data-insert=\"!\" title=\"Faktoriál\">n!</button>\n"
-    "    <button type=\"button\" class=\"future\" disabled title=\"Pripravované\">√x</button><button type=\"button\" class=\"future\" disabled title=\"Pripravované\">|x|</button><button type=\"button\" class=\"future\" disabled title=\"Pripravované\">sin</button><button type=\"button\" class=\"future\" disabled title=\"Pripravované\">cos</button><button type=\"button\" class=\"future\" disabled title=\"Pripravované\">tan</button>\n"
-    "    <button type=\"button\" class=\"future\" disabled title=\"Pripravované\">ln</button><button type=\"button\" class=\"future\" disabled title=\"Pripravované\">log</button><button type=\"button\" class=\"future\" disabled title=\"Pripravované\">eˣ</button>\n"
-    "  </section>\n"
-    "  <a class=\"guide-link\" href=\"/api?lang=sk\">Ako funguje výpočet a API →</a>\n";
+    "    <button type=\"button\" data-insert=\"^\" title=\"Mocnina: exponent musí byť nezáporné celé číslo\">xʸ</button><button type=\"button\" data-insert=\"&#178;\" title=\"Druhá mocnina\">x²</button><button type=\"button\" data-insert=\"&#179;\" title=\"Tretia mocnina\">x³</button><button type=\"button\" data-insert=\"!\" title=\"Faktoriál\">n!</button><button type=\"button\" data-insert=\";\" title=\"Oddeľovač argumentov\">;</button>\n"
+    "  </section>\n";
+
+static const char NUMFORGE_WEB_PAGE_FUNCTIONS_0[] =
+    "<details class=\"function-group\"><summary>Základné</summary><div class=\"keypad functions\">\n"
+    "<button type=\"button\" data-function=\"abs\" class=\"future\" disabled title=\"Výpočet zatiaľ nie je implementovaný\">abs</button>\n"
+    "<button type=\"button\" data-function=\"sign\" class=\"future\" disabled title=\"Výpočet zatiaľ nie je implementovaný\">sign</button>\n"
+    "<button type=\"button\" data-function=\"min\" class=\"future\" disabled title=\"Výpočet zatiaľ nie je implementovaný\">min</button>\n"
+    "<button type=\"button\" data-function=\"max\" class=\"future\" disabled title=\"Výpočet zatiaľ nie je implementovaný\">max</button>\n"
+    "</div></details>\n";
+
+static const char NUMFORGE_WEB_PAGE_FUNCTIONS_1[] =
+    "<details class=\"function-group\"><summary>Celé čísla</summary><div class=\"keypad functions\">\n"
+    "<button type=\"button\" data-function=\"gcd\" class=\"future\" disabled title=\"Výpočet zatiaľ nie je implementovaný\">gcd</button>\n"
+    "<button type=\"button\" data-function=\"lcm\" class=\"future\" disabled title=\"Výpočet zatiaľ nie je implementovaný\">lcm</button>\n"
+    "<button type=\"button\" data-function=\"mod\" class=\"future\" disabled title=\"Výpočet zatiaľ nie je implementovaný\">mod</button>\n"
+    "<button type=\"button\" data-function=\"factorial\" data-insert=\"factorial(\" title=\"factorial(n)\">factorial</button>\n"
+    "<button type=\"button\" data-function=\"isqrt\" class=\"future\" disabled title=\"Výpočet zatiaľ nie je implementovaný\">isqrt</button>\n"
+    "</div></details>\n";
+
+static const char NUMFORGE_WEB_PAGE_FUNCTIONS_2[] =
+    "<details class=\"function-group\"><summary>Mocniny a logaritmy</summary><div class=\"keypad functions\">\n"
+    "<button type=\"button\" data-function=\"pow\" data-insert=\"pow(\" title=\"pow(x;y)\">pow</button>\n"
+    "<button type=\"button\" data-function=\"sqrt\" class=\"future\" disabled title=\"Výpočet zatiaľ nie je implementovaný\">sqrt</button>\n"
+    "<button type=\"button\" data-function=\"cbrt\" class=\"future\" disabled title=\"Výpočet zatiaľ nie je implementovaný\">cbrt</button>\n"
+    "<button type=\"button\" data-function=\"root\" class=\"future\" disabled title=\"Výpočet zatiaľ nie je implementovaný\">root</button>\n"
+    "<button type=\"button\" data-function=\"exp\" class=\"future\" disabled title=\"Výpočet zatiaľ nie je implementovaný\">exp</button>\n"
+    "<button type=\"button\" data-function=\"ln\" class=\"future\" disabled title=\"Výpočet zatiaľ nie je implementovaný\">ln</button>\n"
+    "<button type=\"button\" data-function=\"log\" class=\"future\" disabled title=\"Výpočet zatiaľ nie je implementovaný\">log</button>\n"
+    "</div></details>\n";
+
+static const char NUMFORGE_WEB_PAGE_FUNCTIONS_3[] =
+    "<details class=\"function-group\"><summary>Uhly a goniometria</summary><div class=\"keypad functions\">\n"
+    "<button type=\"button\" data-function=\"sin\" class=\"future\" disabled title=\"Výpočet zatiaľ nie je implementovaný\">sin</button>\n"
+    "<button type=\"button\" data-function=\"cos\" class=\"future\" disabled title=\"Výpočet zatiaľ nie je implementovaný\">cos</button>\n"
+    "<button type=\"button\" data-function=\"tan\" class=\"future\" disabled title=\"Výpočet zatiaľ nie je implementovaný\">tan</button>\n"
+    "<button type=\"button\" data-function=\"asin\" class=\"future\" disabled title=\"Výpočet zatiaľ nie je implementovaný\">asin</button>\n"
+    "<button type=\"button\" data-function=\"acos\" class=\"future\" disabled title=\"Výpočet zatiaľ nie je implementovaný\">acos</button>\n"
+    "<button type=\"button\" data-function=\"atan\" class=\"future\" disabled title=\"Výpočet zatiaľ nie je implementovaný\">atan</button>\n"
+    "<button type=\"button\" data-function=\"radians\" class=\"future\" disabled title=\"Výpočet zatiaľ nie je implementovaný\">radians</button>\n"
+    "<button type=\"button\" data-function=\"degrees\" class=\"future\" disabled title=\"Výpočet zatiaľ nie je implementovaný\">degrees</button>\n"
+    "</div></details>\n"
+    "<p style=\"color:#adb5c3;font-size:.9rem\">Argumenty oddeľuj ; — napr. pow(2;3). Tmavé tlačidlá ešte nepočítajú.</p>\n"
+    "<a class=\"guide-link\" href=\"/api?lang=sk\">Ako funguje výpočet a API →</a>\n";
+
+static const char NUMFORGE_WEB_PAGE_EN_FUNCTIONS_0[] =
+    "<details class=\"function-group\"><summary>Basic</summary><div class=\"keypad functions\">\n"
+    "<button type=\"button\" data-function=\"abs\" class=\"future\" disabled title=\"Calculation is not implemented yet\">abs</button>\n"
+    "<button type=\"button\" data-function=\"sign\" class=\"future\" disabled title=\"Calculation is not implemented yet\">sign</button>\n"
+    "<button type=\"button\" data-function=\"min\" class=\"future\" disabled title=\"Calculation is not implemented yet\">min</button>\n"
+    "<button type=\"button\" data-function=\"max\" class=\"future\" disabled title=\"Calculation is not implemented yet\">max</button>\n"
+    "</div></details>\n";
+
+static const char NUMFORGE_WEB_PAGE_EN_FUNCTIONS_1[] =
+    "<details class=\"function-group\"><summary>Integers</summary><div class=\"keypad functions\">\n"
+    "<button type=\"button\" data-function=\"gcd\" class=\"future\" disabled title=\"Calculation is not implemented yet\">gcd</button>\n"
+    "<button type=\"button\" data-function=\"lcm\" class=\"future\" disabled title=\"Calculation is not implemented yet\">lcm</button>\n"
+    "<button type=\"button\" data-function=\"mod\" class=\"future\" disabled title=\"Calculation is not implemented yet\">mod</button>\n"
+    "<button type=\"button\" data-function=\"factorial\" data-insert=\"factorial(\" title=\"factorial(n)\">factorial</button>\n"
+    "<button type=\"button\" data-function=\"isqrt\" class=\"future\" disabled title=\"Calculation is not implemented yet\">isqrt</button>\n"
+    "</div></details>\n";
+
+static const char NUMFORGE_WEB_PAGE_EN_FUNCTIONS_2[] =
+    "<details class=\"function-group\"><summary>Powers and logarithms</summary><div class=\"keypad functions\">\n"
+    "<button type=\"button\" data-function=\"pow\" data-insert=\"pow(\" title=\"pow(x;y)\">pow</button>\n"
+    "<button type=\"button\" data-function=\"sqrt\" class=\"future\" disabled title=\"Calculation is not implemented yet\">sqrt</button>\n"
+    "<button type=\"button\" data-function=\"cbrt\" class=\"future\" disabled title=\"Calculation is not implemented yet\">cbrt</button>\n"
+    "<button type=\"button\" data-function=\"root\" class=\"future\" disabled title=\"Calculation is not implemented yet\">root</button>\n"
+    "<button type=\"button\" data-function=\"exp\" class=\"future\" disabled title=\"Calculation is not implemented yet\">exp</button>\n"
+    "<button type=\"button\" data-function=\"ln\" class=\"future\" disabled title=\"Calculation is not implemented yet\">ln</button>\n"
+    "<button type=\"button\" data-function=\"log\" class=\"future\" disabled title=\"Calculation is not implemented yet\">log</button>\n"
+    "</div></details>\n";
+
+static const char NUMFORGE_WEB_PAGE_EN_FUNCTIONS_3[] =
+    "<details class=\"function-group\"><summary>Angles and trigonometry</summary><div class=\"keypad functions\">\n"
+    "<button type=\"button\" data-function=\"sin\" class=\"future\" disabled title=\"Calculation is not implemented yet\">sin</button>\n"
+    "<button type=\"button\" data-function=\"cos\" class=\"future\" disabled title=\"Calculation is not implemented yet\">cos</button>\n"
+    "<button type=\"button\" data-function=\"tan\" class=\"future\" disabled title=\"Calculation is not implemented yet\">tan</button>\n"
+    "<button type=\"button\" data-function=\"asin\" class=\"future\" disabled title=\"Calculation is not implemented yet\">asin</button>\n"
+    "<button type=\"button\" data-function=\"acos\" class=\"future\" disabled title=\"Calculation is not implemented yet\">acos</button>\n"
+    "<button type=\"button\" data-function=\"atan\" class=\"future\" disabled title=\"Calculation is not implemented yet\">atan</button>\n"
+    "<button type=\"button\" data-function=\"radians\" class=\"future\" disabled title=\"Calculation is not implemented yet\">radians</button>\n"
+    "<button type=\"button\" data-function=\"degrees\" class=\"future\" disabled title=\"Calculation is not implemented yet\">degrees</button>\n"
+    "</div></details>\n"
+    "<p style=\"color:#adb5c3;font-size:.9rem\">Separate arguments with ; — e.g. pow(2;3). Dimmed buttons are not implemented yet.</p>\n"
+    "<a class=\"guide-link\" href=\"/api?lang=en\">How calculation and the API work →</a>\n";
+
+static const char NUMFORGE_FUNCTION_STYLE[] =
+    "<style>.function-group{margin-top:12px;border:1px solid #414b5c;border-radius:8px;padding:12px}.function-group summary{cursor:pointer;font-weight:600}.keypad.functions{grid-template-columns:repeat(auto-fit,minmax(90px,1fr))}.keypad.functions button{font-size:.9rem}</style>\n";
 
 static const char NUMFORGE_WEB_PAGE_SCRIPT_START[] =
     "  <script>\n"
@@ -172,7 +253,7 @@ static const char NUMFORGE_WEB_PAGE_SCRIPT_START[] =
     "    let generation = 0, controller = null, copyTimer = null;\n"
     "    function invalidate() { generation++; controller?.abort(); clearTimeout(copyTimer); result.textContent = ''; result.className = ''; copyResult.disabled = true; copyResult.textContent = text.copy; }\n"
     "    const text = english ? { calculating: 'Calculating…', precision: 'Enter a non-negative whole number of decimal places.', failure: 'Calculation failed.', error: 'Error: ', column: ' at column ', copy: '⧉ Copy', copied: '✓ Copied' } : { calculating: 'Počítam…', precision: 'Zadaj nezáporný celý počet desatinných miest.', failure: 'Výpočet zlyhal.', error: 'Chyba: ', column: ' v stĺpci ', copy: '⧉ Kopírovať', copied: '✓ Skopírované' };\n"
-    "    const slovakStatus = { 'null argument': 'chýbajúci argument', 'out of memory': 'nedostatok pamäte', 'invalid argument': 'neplatný argument', 'invalid token': 'neplatný token', 'syntax error': 'syntaktická chyba', 'division by zero': 'delenie nulou', 'value too large': 'príliš veľká hodnota', 'scale overflow': 'pretečenie mierky', 'TLE: time limit exceeded': 'TLE: prekročený časový limit', 'not implemented': 'funkcia nie je implementovaná' };\n"
+    "    const slovakStatus = { 'null argument': 'chýbajúci argument', 'out of memory': 'nedostatok pamäte', 'invalid argument': 'neplatný argument', 'invalid token': 'neplatný token', 'syntax error': 'syntaktická chyba', 'division by zero': 'delenie nulou', 'value too large': 'príliš veľká hodnota', 'scale overflow': 'pretečenie mierky', 'TLE: time limit exceeded': 'TLE: prekročený časový limit', 'not implemented': 'funkcia nie je implementovaná', 'wrong number of arguments': 'nesprávny počet argumentov' };\n"
     "    function responseError(data) {\n"
     "      if (!data.status) return data.error || text.failure;\n"
     "      const status = english ? data.status : (slovakStatus[data.status] || data.status);\n"
@@ -243,6 +324,11 @@ static const char *const NUMFORGE_WEB_PAGE[] = {
     NUMFORGE_WEB_PAGE_RESULT,
     NUMFORGE_WEB_PAGE_KEYPAD,
     NUMFORGE_WEB_PAGE_FUTURE,
+    NUMFORGE_FUNCTION_STYLE,
+    NUMFORGE_WEB_PAGE_FUNCTIONS_0,
+    NUMFORGE_WEB_PAGE_FUNCTIONS_1,
+    NUMFORGE_WEB_PAGE_FUNCTIONS_2,
+    NUMFORGE_WEB_PAGE_FUNCTIONS_3,
     NUMFORGE_WEB_PAGE_SCRIPT_START,
     NUMFORGE_WEB_PAGE_SCRIPT_END,
     NUMFORGE_WEB_PAGE_SCRIPT_SUBMIT,
@@ -254,11 +340,34 @@ static const char *const NUMFORGE_WEB_PAGE_EN[] = {
     NUMFORGE_WEB_PAGE_EN_RESULT,
     NUMFORGE_WEB_PAGE_EN_KEYPAD,
     NUMFORGE_WEB_PAGE_EN_FUTURE,
+    NUMFORGE_FUNCTION_STYLE,
+    NUMFORGE_WEB_PAGE_EN_FUNCTIONS_0,
+    NUMFORGE_WEB_PAGE_EN_FUNCTIONS_1,
+    NUMFORGE_WEB_PAGE_EN_FUNCTIONS_2,
+    NUMFORGE_WEB_PAGE_EN_FUNCTIONS_3,
     NUMFORGE_WEB_PAGE_SCRIPT_START,
     NUMFORGE_WEB_PAGE_SCRIPT_END,
     NUMFORGE_WEB_PAGE_SCRIPT_SUBMIT,
     NULL
 };
+
+static const char NUMFORGE_API_FUNCTIONS_SK[] =
+    "<h2>Volania funkcií</h2>\n"
+    "<p>Názvy používajú iba malé písmená, zátvorky sú povinné a argumenty oddeľuje <code>;</code>. Čiarka zostáva desatinná: <code>pow(1,5;2)</code> = <code>2.25</code>. Najviac 256 argumentov na volanie.</p>\n"
+    "<p>Fungujú <code>pow(x;y)</code> (ako <code>x^y</code>, nezáporný celočíselný exponent) a <code>factorial(n)</code> (ako <code>n!</code>, celé n od 0 do 10000).</p>\n"
+    "<p>Parser pozná aj nasledujúce volania, no ich výpočet zatiaľ vráti chybu „funkcia nie je implementovaná“:</p>\n"
+    "<p><code>abs(x), sign(x), min(a;b;…), max(a;b;…), gcd(a;b), lcm(a;b), mod(a;b), isqrt(n), sqrt(x), cbrt(x), root(x;n), exp(x), ln(x), log(x), log(x;b), sin(x), cos(x), tan(x), asin(x), acos(x), atan(x), radians(x), degrees(x)</code></p>\n"
+    "<p><code>min</code>/<code>max</code> potrebujú aspoň dva argumenty, <code>atan</code> iba jeden. Plán: <code>log(x)</code> má základ 10, <code>ln(x)</code> základ e a <code>log(x;b)</code> základ b; uhly sú v radiánoch. <code>√(x)</code> je alias <code>sqrt(x)</code>.</p>\n"
+    "<p><code>exp</code> je celý názov, nie násobenie písmen. Samostatné <code>e</code> ostáva konštanta: <code>e(2)</code> = <code>e*2</code>, <code>1e3</code> = <code>1*e*3</code>, <code>1E3</code> = <code>1000</code>. Susedné názvy oddeľ <code>*</code>; <code>ee</code> či <code>esin</code> nie sú platné názvy.</p>\n";
+
+static const char NUMFORGE_API_FUNCTIONS_EN[] =
+    "<h2>Function calls</h2>\n"
+    "<p>Names use lowercase letters only, parentheses are mandatory, and <code>;</code> separates arguments. Comma remains a decimal separator: <code>pow(1,5;2)</code> = <code>2.25</code>. At most 256 arguments per call.</p>\n"
+    "<p><code>pow(x;y)</code> works like <code>x^y</code> (non-negative integer exponent); <code>factorial(n)</code> works like <code>n!</code> (integer n from 0 to 10000).</p>\n"
+    "<p>The parser also recognizes the following calls, but calculation currently returns “not implemented”:</p>\n"
+    "<p><code>abs(x), sign(x), min(a;b;…), max(a;b;…), gcd(a;b), lcm(a;b), mod(a;b), isqrt(n), sqrt(x), cbrt(x), root(x;n), exp(x), ln(x), log(x), log(x;b), sin(x), cos(x), tan(x), asin(x), acos(x), atan(x), radians(x), degrees(x)</code></p>\n"
+    "<p><code>min</code>/<code>max</code> need at least two arguments; <code>atan</code> only one. Planned semantics: <code>log(x)</code> is base 10, <code>ln(x)</code> base e and <code>log(x;b)</code> base b; angles are in radians. <code>√(x)</code> aliases <code>sqrt(x)</code>.</p>\n"
+    "<p><code>exp</code> is one name, not a product of letters. Standalone <code>e</code> remains a constant: <code>e(2)</code> = <code>e*2</code>, <code>1e3</code> = <code>1*e*3</code>, <code>1E3</code> = <code>1000</code>. Separate adjacent names with <code>*</code>; <code>ee</code> and <code>esin</code> are not valid names.</p>\n";
 
 static const char NUMFORGE_API_PAGE_START[] =
     "<!doctype html>\n"
@@ -298,11 +407,11 @@ static const char NUMFORGE_API_PAGE_SK_CONTENT[] =
     "  <tr><td>Vedecký zápis</td><td><code>1.25E-3</code>, <code>6E4</code>; veľké <code>E</code> je povinné</td></tr>\n"
     "  <tr><td>Operátory</td><td><code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>^</code>; mocnina má najvyššiu prioritu medzi binárnymi operátormi, postfixové operácie sa viažu ešte silnejšie a exponent musí byť nezáporné celé číslo</td></tr>\n"
     "  <tr><td>Zátvorky a znamienka</td><td><code>(2 + 3) * 4</code>, <code>-(2.5E-1) * 8</code></td></tr>\n"
-    "  <tr><td>Postfixové operácie</td><td><code>12²</code>, <code>2³</code>, <code>5!</code>; faktoriál vyžaduje nezáporné celé číslo najviac 5000</td></tr>\n"
+    "  <tr><td>Postfixové operácie</td><td><code>12²</code>, <code>2³</code>, <code>5!</code>; faktoriál vyžaduje nezáporné celé číslo najviac 10000</td></tr>\n"
     "  <tr><td>Konštanty</td><td><code>π</code>, <code>e</code>, <code>φ</code></td></tr>\n"
     "  <tr><td>Implicitné násobenie</td><td><code>2π</code>, <code>πe</code>, <code>2(3 + 4)</code></td></tr></table>\n"
-    "  <p>Momentálne nie sú podporované <code>%</code>, premenné ani ostatné funkcie.</p>\n"
-    "  <p>Konštanty majú uložených 200 desatinných miest. Malé <code>e</code> vždy znamená Eulerovo číslo, preto <code>5e</code> znamená <code>5 * e</code> a <code>1e3</code> znamená <code>1 * e * 3</code>. Vedecký zápis vždy používa veľké <code>E</code>: <code>5E-1</code> je <code>0.5</code> a <code>1E3</code> je <code>1000</code>. Tlačidlá budúcich funkcií sú zámerne neaktívne; zatiaľ nepridávajú žiadnu syntax ani výpočet.</p>\n"
+    "  <p>Operátor <code>%</code> a premenné zatiaľ nie sú podporované.</p>\n"
+    "  <p>Konštanty majú uložených 200 desatinných miest. Samostatné malé <code>e</code> znamená Eulerovo číslo, preto <code>5e</code> znamená <code>5 * e</code> a <code>1e3</code> znamená <code>1 * e * 3</code>. Vedecký zápis vždy používa veľké <code>E</code>: <code>5E-1</code> je <code>0.5</code> a <code>1E3</code> je <code>1000</code>. Tlačidlá budúcich funkcií sú zámerne neaktívne; názvy sa už rozpoznávajú, ale výpočet zatiaľ nie je implementovaný.</p>\n"
     "  <h2>Výstupná presnosť</h2>\n"
     "  <p><strong>Desatinné miesta</strong>: 0–10000, predvolene 10; vo vedeckom zápise platia pre mantisu. Nekonečné delenie používa max(34, N+4) významných číslic. <strong>Plný výstup</strong> vypne finálne zaokrúhlenie, nie 34-číslicové delenie. <code>1E-40 / 1</code> zostane <code>1E-40</code>. Medzivýsledky sa môžu zaokrúhliť; vyššia presnosť nepridá číslice ku konštantám.</p>\n";
 
@@ -346,6 +455,7 @@ static const char NUMFORGE_API_PAGE_C_LIBRARY[] =
 static const char *const NUMFORGE_API_PAGE[] = {
     NUMFORGE_API_PAGE_START,
     NUMFORGE_API_PAGE_SK_CONTENT,
+    NUMFORGE_API_FUNCTIONS_SK,
     NUMFORGE_API_PAGE_HTTP,
     NUMFORGE_API_PAGE_C_LIBRARY,
     NULL
@@ -377,11 +487,11 @@ static const char NUMFORGE_API_PAGE_EN_START[] =
     "  <tr><td>Scientific notation</td><td><code>1.25E-3</code>, <code>6E4</code>; uppercase <code>E</code> is required</td></tr>\n"
     "  <tr><td>Operators</td><td><code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>^</code>; power has the highest binary-operator precedence, postfix operations bind more tightly, and the exponent must be a non-negative integer</td></tr>\n"
     "  <tr><td>Parentheses and signs</td><td><code>(2 + 3) * 4</code>, <code>-(2.5E-1) * 8</code></td></tr>\n"
-    "  <tr><td>Postfix operations</td><td><code>12²</code>, <code>2³</code>, <code>5!</code>; factorial requires a non-negative integer no greater than 5000</td></tr>\n"
+    "  <tr><td>Postfix operations</td><td><code>12²</code>, <code>2³</code>, <code>5!</code>; factorial requires a non-negative integer no greater than 10000</td></tr>\n"
     "  <tr><td>Constants</td><td><code>π</code>, <code>e</code>, <code>φ</code></td></tr>\n"
     "  <tr><td>Implicit multiplication</td><td><code>2π</code>, <code>πe</code>, <code>2(3 + 4)</code></td></tr></table>\n"
-    "  <p><code>%</code>, variables, and other functions are not supported yet.</p>\n"
-    "  <p>Constants store 200 decimal places. Lowercase <code>e</code> always means Euler's number: <code>5e</code> means <code>5 * e</code> and <code>1e3</code> means <code>1 * e * 3</code>. Scientific notation always uses uppercase <code>E</code>: <code>5E-1</code> is <code>0.5</code> and <code>1E3</code> is <code>1000</code>. Disabled buttons do not add syntax or run calculations yet.</p>\n";
+    "  <p><code>%</code> and variables are not supported yet.</p>\n"
+    "  <p>Constants store 200 decimal places. Standalone lowercase <code>e</code> means Euler's number: <code>5e</code> means <code>5 * e</code> and <code>1e3</code> means <code>1 * e * 3</code>. Scientific notation always uses uppercase <code>E</code>: <code>5E-1</code> is <code>0.5</code> and <code>1E3</code> is <code>1000</code>. Disabled buttons represent recognized calls whose calculations are not implemented yet.</p>\n";
 
 static const char NUMFORGE_API_PAGE_EN_DETAILS[] =
     "  <p>Terminating decimal division is exact within resource limits, e.g. <code>7/28 = 0.25</code>. Working precision applies to recurring quotients; display precision rounds the final output. <code>(1E34+1)/1-1E34 = 1</code>.</p>\n"
@@ -420,6 +530,7 @@ static const char NUMFORGE_API_PAGE_EN_C_LIBRARY[] =
 
 static const char *const NUMFORGE_API_PAGE_EN[] = {
     NUMFORGE_API_PAGE_EN_START,
+    NUMFORGE_API_FUNCTIONS_EN,
     NUMFORGE_API_PAGE_EN_DETAILS,
     NUMFORGE_API_PAGE_EN_C_LIBRARY,
     NULL

@@ -662,10 +662,10 @@ void test_evaluator_enforces_time_and_factorial_limits(void)
     calculator_expression_destroy(expression);
 
     calculator_context_init(&context);
-    expression = parse_expression("5001!");
+    expression = parse_expression("10001!");
     TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE, calculator_evaluate(result, expression, &context, &error));
     TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE, error.status);
-    TEST_ASSERT_EQUAL_UINT(4, error.offset);
+    TEST_ASSERT_EQUAL_UINT(5, error.offset);
     assert_decimal_equals("42", result);
     calculator_expression_destroy(expression);
     bigdecimal_destroy(result);
@@ -680,7 +680,7 @@ void test_evaluator_rejects_compact_invalid_integer_operands(void)
     } cases[] = {
         { "1E4294967294!", CALCULATOR_VALUE_TOO_LARGE },
         { "1E9223372036854775807!", CALCULATOR_VALUE_TOO_LARGE },
-        { "6E3!", CALCULATOR_VALUE_TOO_LARGE },
+        { "2E4!", CALCULATOR_VALUE_TOO_LARGE },
         { "1E-9223372036854775807!", CALCULATOR_INVALID_ARGUMENT },
         { "(-1E9223372036854775807)!", CALCULATOR_INVALID_ARGUMENT },
         { "2^1E-9223372036854775807", CALCULATOR_INVALID_ARGUMENT },

@@ -3,6 +3,7 @@
 
 #include "parser.h"
 #include "constants.h"
+#include "functions.h"
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
@@ -20,7 +21,8 @@ typedef enum CalculatorExpressionType
     CALCULATOR_EXPRESSION_CONSTANT,
     CALCULATOR_EXPRESSION_UNARY,
     CALCULATOR_EXPRESSION_POSTFIX,
-    CALCULATOR_EXPRESSION_BINARY
+    CALCULATOR_EXPRESSION_BINARY,
+    CALCULATOR_EXPRESSION_CALL
 } CalculatorExpressionType;
 
 typedef enum CalculatorUnaryOperator
@@ -53,6 +55,13 @@ struct CalculatorExpression
 
     union
     {
+        struct
+        {
+            const CalculatorFunction *function;
+            struct CalculatorExpression **arguments;
+            size_t count;
+        } call;
+
         struct
         {
             char *text;
