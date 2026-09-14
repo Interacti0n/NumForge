@@ -1,3 +1,6 @@
+# Local working roadmap (not part of published documentation)
+/PROJECT_REVIEW.md
+
 # CMake build trees
 /build/
 /build-*/
