@@ -69,7 +69,7 @@ for (const lang of ['sk', 'en']) {
         test('function groups, aliases and pending calls', async ({ page }, testInfo) => {
             await expect(page.locator('details.function-group')).toHaveCount(4);
             await expect(page.locator('[data-function]')).toHaveCount(24);
-            await expect(page.locator('[data-function]:disabled')).toHaveCount(14);
+            await expect(page.locator('[data-function]:disabled')).toHaveCount(11);
             const powers = page.locator('details').filter({ has: page.locator('[data-function="pow"]') });
             await powers.locator('summary').focus();
             await page.keyboard.press('Enter');
@@ -118,6 +118,31 @@ for (const lang of ['sk', 'en']) {
             await page.locator('#expression').fill('isqrt(-1)');
             await page.locator('#expression').press('Enter');
             await expect(page.locator('#result')).toContainText(lang === 'sk' ? 'neplatný argument' : 'invalid argument');
+        });
+        test('real roots, precision and domain errors', async ({ page }) => {
+            const group = page.locator('details').filter({has: page.locator('[data-function="sqrt"]')});
+            await group.locator('summary').click();
+            for (const [name, args, expected] of [
+                ['sqrt', '2)', '1.4142135624'], ['cbrt', '-8)', '-2'], ['root', '-32;5)', '-2']
+            ]) {
+                await page.locator('[data-action=clear]').click();
+                await page.locator(`[data-function="${name}"]`).click();
+                await expect(page.locator('#expression')).toHaveValue(`${name}(`);
+                await page.locator('#expression').press('End');
+                await page.locator('#expression').pressSequentially(args);
+                await page.locator('#expression').press('Enter');
+                await expect(page.locator('#result')).toHaveText(expected);
+            }
+            await calculate(page, '√(0,25)', '0.5');
+            await page.locator('#precision').fill('3');
+            await calculate(page, 'sqrt(2)', '1.414');
+            await page.locator('#full-precision').check();
+            await expect(page.locator('#result')).toHaveText('1.414213562373095048801688724209698');
+            await page.locator('#expression').fill('root(-16;4)');
+            await page.locator('#expression').press('Enter');
+            await expect(page.locator('#result')).toContainText(lang === 'sk' ? 'neplatný argument' : 'invalid argument');
+            await page.locator('.guide-link').click();
+            await expect(page.locator('body')).toContainText('root(x;n)');
         });
         test('result keeps five lines and expansion resets', async ({ page }) => {
             const result = page.locator('#result');

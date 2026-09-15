@@ -178,9 +178,9 @@ static const char NUMFORGE_WEB_PAGE_FUNCTIONS_1[] =
 static const char NUMFORGE_WEB_PAGE_FUNCTIONS_2[] =
     "<details class=\"function-group\"><summary>Mocniny a logaritmy</summary><div class=\"keypad functions\">\n"
     "<button type=\"button\" data-function=\"pow\" data-insert=\"pow(\" title=\"pow(x;y)\">pow</button>\n"
-    "<button type=\"button\" data-function=\"sqrt\" class=\"future\" disabled title=\"Výpočet zatiaľ nie je implementovaný\">sqrt</button>\n"
-    "<button type=\"button\" data-function=\"cbrt\" class=\"future\" disabled title=\"Výpočet zatiaľ nie je implementovaný\">cbrt</button>\n"
-    "<button type=\"button\" data-function=\"root\" class=\"future\" disabled title=\"Výpočet zatiaľ nie je implementovaný\">root</button>\n"
+    "<button type=\"button\" data-function=\"sqrt\" data-insert=\"sqrt(\">sqrt</button>\n"
+    "<button type=\"button\" data-function=\"cbrt\" data-insert=\"cbrt(\">cbrt</button>\n"
+    "<button type=\"button\" data-function=\"root\" data-insert=\"root(\">root</button>\n"
     "<button type=\"button\" data-function=\"exp\" class=\"future\" disabled title=\"Výpočet zatiaľ nie je implementovaný\">exp</button>\n"
     "<button type=\"button\" data-function=\"ln\" class=\"future\" disabled title=\"Výpočet zatiaľ nie je implementovaný\">ln</button>\n"
     "<button type=\"button\" data-function=\"log\" class=\"future\" disabled title=\"Výpočet zatiaľ nie je implementovaný\">log</button>\n"
@@ -220,9 +220,9 @@ static const char NUMFORGE_WEB_PAGE_EN_FUNCTIONS_1[] =
 static const char NUMFORGE_WEB_PAGE_EN_FUNCTIONS_2[] =
     "<details class=\"function-group\"><summary>Powers and logarithms</summary><div class=\"keypad functions\">\n"
     "<button type=\"button\" data-function=\"pow\" data-insert=\"pow(\" title=\"pow(x;y)\">pow</button>\n"
-    "<button type=\"button\" data-function=\"sqrt\" class=\"future\" disabled title=\"Calculation is not implemented yet\">sqrt</button>\n"
-    "<button type=\"button\" data-function=\"cbrt\" class=\"future\" disabled title=\"Calculation is not implemented yet\">cbrt</button>\n"
-    "<button type=\"button\" data-function=\"root\" class=\"future\" disabled title=\"Calculation is not implemented yet\">root</button>\n"
+    "<button type=\"button\" data-function=\"sqrt\" data-insert=\"sqrt(\">sqrt</button>\n"
+    "<button type=\"button\" data-function=\"cbrt\" data-insert=\"cbrt(\">cbrt</button>\n"
+    "<button type=\"button\" data-function=\"root\" data-insert=\"root(\">root</button>\n"
     "<button type=\"button\" data-function=\"exp\" class=\"future\" disabled title=\"Calculation is not implemented yet\">exp</button>\n"
     "<button type=\"button\" data-function=\"ln\" class=\"future\" disabled title=\"Calculation is not implemented yet\">ln</button>\n"
     "<button type=\"button\" data-function=\"log\" class=\"future\" disabled title=\"Calculation is not implemented yet\">log</button>\n"
@@ -370,23 +370,25 @@ static const char *const NUMFORGE_WEB_PAGE_EN[] = {
 
 static const char NUMFORGE_API_FUNCTIONS_SK[] =
     "<h2>Volania funkcií</h2>\n"
+    "<p><code>sqrt(x)</code> alebo <code>√(x)</code> je druhá odmocnina pre x ≥ 0; <code>cbrt(x)</code> aj pre záporné x. <code>root(x;n)</code> je n-tá odmocnina, celé n od 1 do 10000; záporné x iba pri nepárnom n. Presné konečné odmocniny zostávajú presné, ostatné používajú max(34, N+4) platných číslic (plný výpis: 34), potom sa formátujú. Platia časové a pamäťové limity.</p>\n"
     "<p><code>gcd(a;b)</code> a <code>lcm(a;b)</code> vracajú nezáporný najväčší spoločný deliteľ a najmenší spoločný násobok celých čísel. <code>gcd(0;0)=0</code>; lcm s nulou je 0. <code>mod(a;b)</code> je celočíselný zvyšok so znamienkom delenca: <code>mod(-7;3)=-1</code>; deliteľ nesmie byť 0. <code>isqrt(n)</code> je dolná celá odmocnina nezáporného celého čísla: <code>isqrt(15)=3</code>. Desatinné zápisy celých hodnôt, napr. 4.00, sú povolené.</p>\n"
     "<p>Fungujú aj <code>abs(x)</code> (absolútna hodnota), <code>sign(x)</code> (−1, 0 alebo 1), <code>min(a;b;…)</code> a <code>max(a;b;…)</code> (najmenej dva argumenty). Porovnávajú vypočítané hodnoty bez ďalšieho zaokrúhlenia.</p>\n"
     "<p>Názvy používajú iba malé písmená, zátvorky sú povinné a argumenty oddeľuje <code>;</code>. Čiarka zostáva desatinná: <code>pow(1,5;2)</code> = <code>2.25</code>. Najviac 256 argumentov na volanie.</p>\n"
     "<p>Fungujú <code>pow(x;y)</code> (ako <code>x^y</code>, nezáporný celočíselný exponent) a <code>factorial(n)</code> (ako <code>n!</code>, celé n od 0 do 10000).</p>\n"
     "<p>Parser pozná aj nasledujúce volania, no ich výpočet zatiaľ vráti chybu „funkcia nie je implementovaná“:</p>\n"
-    "<p><code>sqrt(x), cbrt(x), root(x;n), exp(x), ln(x), log(x), log(x;b), sin(x), cos(x), tan(x), asin(x), acos(x), atan(x), radians(x), degrees(x)</code></p>\n"
+    "<p><code>exp(x), ln(x), log(x), log(x;b), sin(x), cos(x), tan(x), asin(x), acos(x), atan(x), radians(x), degrees(x)</code></p>\n"
     "<p><code>min</code>/<code>max</code> potrebujú aspoň dva argumenty, <code>atan</code> iba jeden. Plán: <code>log(x)</code> má základ 10, <code>ln(x)</code> základ e a <code>log(x;b)</code> základ b; uhly sú v radiánoch. <code>√(x)</code> je alias <code>sqrt(x)</code>.</p>\n"
     "<p><code>exp</code> je celý názov, nie násobenie písmen. Samostatné <code>e</code> ostáva konštanta: <code>e(2)</code> = <code>e*2</code>, <code>1e3</code> = <code>1*e*3</code>, <code>1E3</code> = <code>1000</code>. Susedné názvy oddeľ <code>*</code>; <code>ee</code> či <code>esin</code> nie sú platné názvy.</p>\n";
 
 static const char NUMFORGE_API_FUNCTIONS_EN[] =
     "<h2>Function calls</h2>\n"
+    "<p><code>sqrt(x)</code> or <code>√(x)</code> is the square root for x ≥ 0; <code>cbrt(x)</code> also accepts negative x. <code>root(x;n)</code> takes an integer degree from 1 to 10000; negative x requires odd n. Exact finite roots remain exact; other roots use max(34, N+4) significant digits (full output: 34), then output formatting. Time and memory limits still apply.</p>\n"
     "<p><code>gcd(a;b)</code> and <code>lcm(a;b)</code> return the non-negative greatest common divisor and least common multiple of integers. <code>gcd(0;0)=0</code>; lcm with zero is 0. <code>mod(a;b)</code> is the integer remainder with the dividend's sign: <code>mod(-7;3)=-1</code>; a zero divisor is an error. <code>isqrt(n)</code> is the floor square root of a non-negative integer: <code>isqrt(15)=3</code>. Decimal spellings of whole values, such as 4.00, are accepted.</p>\n"
     "<p>Also available: <code>abs(x)</code> (absolute value), <code>sign(x)</code> (−1, 0 or 1), <code>min(a;b;…)</code> and <code>max(a;b;…)</code> (at least two arguments). They compare evaluated values without additional rounding.</p>\n"
     "<p>Names use lowercase letters only, parentheses are mandatory, and <code>;</code> separates arguments. Comma remains a decimal separator: <code>pow(1,5;2)</code> = <code>2.25</code>. At most 256 arguments per call.</p>\n"
     "<p><code>pow(x;y)</code> works like <code>x^y</code> (non-negative integer exponent); <code>factorial(n)</code> works like <code>n!</code> (integer n from 0 to 10000).</p>\n"
     "<p>The parser also recognizes the following calls, but calculation currently returns “not implemented”:</p>\n"
-    "<p><code>sqrt(x), cbrt(x), root(x;n), exp(x), ln(x), log(x), log(x;b), sin(x), cos(x), tan(x), asin(x), acos(x), atan(x), radians(x), degrees(x)</code></p>\n"
+    "<p><code>exp(x), ln(x), log(x), log(x;b), sin(x), cos(x), tan(x), asin(x), acos(x), atan(x), radians(x), degrees(x)</code></p>\n"
     "<p><code>min</code>/<code>max</code> need at least two arguments; <code>atan</code> only one. Planned semantics: <code>log(x)</code> is base 10, <code>ln(x)</code> base e and <code>log(x;b)</code> base b; angles are in radians. <code>√(x)</code> aliases <code>sqrt(x)</code>.</p>\n"
     "<p><code>exp</code> is one name, not a product of letters. Standalone <code>e</code> remains a constant: <code>e(2)</code> = <code>e*2</code>, <code>1e3</code> = <code>1*e*3</code>, <code>1E3</code> = <code>1000</code>. Separate adjacent names with <code>*</code>; <code>ee</code> and <code>esin</code> are not valid names.</p>\n";
 

@@ -17,7 +17,7 @@ the production library.
 
 ## Independent numerical oracle
 
-`tests/test_numeric_oracle.js` generates 6492 reproducible cases from seed
+`tests/test_numeric_oracle.js` generates 7012 reproducible cases from seed
 `0x12345678`, sends them to `numeric_oracle_driver`, and compares all output
 lines against independent JavaScript BigInt and exact rational arithmetic.
 It tests signed integer arithmetic, division/remainder, GCD, powers, decimal
@@ -30,6 +30,13 @@ uses binary search rather than the implementation's Newton iteration.
 Unit tests additionally exhaust roots from 0 through 1024 and exercise invalid
 domains, zero, decimal integer spellings and 64-bit limb boundaries. Allocation
 and deterministic-deadline injection cover the integer-call pipeline.
+
+Another 520 cases cover real roots: 480 rounded results in all six modes and
+40 exact finite roots. The independent reference compares rational powers
+and exact midpoints using binary search. `roots_tests` covers domains, aliasing,
+extreme int64 scales, rounding boundaries, exact large coefficients and Unicode
+aliases. Allocation injection visits every allocation on representative exact
+and irrational paths; deadline injection samples early and deep checkpoints.
 
 ```sh
 ctest --test-dir build -C Debug -R numeric_oracle --output-on-failure
@@ -113,7 +120,7 @@ npm test
 Adjust the executable path for your generator/configuration. Playwright starts
 and stops its own loopback server on port 18765; set `NUMFORGE_TEST_PORT` to
 another free port if necessary. It refuses to reuse an existing server.
-Sixteen Chromium scenarios cover both languages: real C calculations and
+Eighteen Chromium scenarios cover both languages: real C calculations and
 precision, keypad entry, clipboard, help/navigation, arithmetic errors,
 transport failures and stale-response protection. Network-failure and delayed
 response cases use controlled interception; ordinary calculations reach C.

@@ -5,6 +5,14 @@ All notable changes to NumForge are documented in this file. The project uses
 
 ## Unreleased
 
+- Implement real `sqrt`/`√`, `cbrt` and `root(x;n)` without floating-point
+  conversion. Preserve exact finite roots; round irrational roots at working
+  significant precision. Allow integer degrees 1..10000, with negative values
+  only for odd degrees, subject to existing resource budgets.
+- Activate root controls and update SK/EN help. Add a dedicated root test suite,
+  520 independent root oracle cases, allocation/cancellation tests and browser
+  checks for precision, aliases and domains.
+
 - Enable calculator `gcd`, `lcm`, signed remainder `mod`, and non-negative
   integer floor root `isqrt`, including SK/EN controls and domain documentation.
 - Add integer-function boundary cases, exhaustive small roots, 700 independent

@@ -10,6 +10,7 @@
 #include "evaluator.h"
 #include "formatter.h"
 #include "parser.h"
+#include "roots.h"
 #include "web_api.h"
 
 #ifndef NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING
@@ -926,6 +927,79 @@ void test_evaluator_preserves_destination_on_every_allocation_failure(void)
     TEST_ASSERT_TRUE(completed);
 }
 
+void test_roots_preserve_aliases_on_every_allocation_failure(void)
+{
+    static const struct { const char *input; uint32_t degree; } cases[] = {
+        { "2", 2 }, { "-2", 3 }, { "0.0004", 2 }, { "81", 4 }, { "3", 1 }, { "0", 2 }
+    };
+    for (size_t c = 0; c < sizeof(cases) / sizeof(cases[0]); c++)
+    {
+        bool completed = false;
+        for (size_t index = 1; index <= ALLOCATION_TEST_MAX_FAILURE_INDEX; index++)
+        {
+            BigDecimal *value = make_bigdecimal(cases[c].input);
+            numforge_test_allocator_begin(index);
+            BigDecimalStatus status = calculator_decimal_root(value, value, cases[c].degree, 34, BIGDECIMAL_ROUND_HALF_EVEN);
+            bool injected = numforge_test_allocator_did_fail();
+            numforge_test_allocator_end();
+            if (injected)
+            {
+                TEST_ASSERT_EQUAL(BIGDECIMAL_OUT_OF_MEMORY, status);
+                assert_bigdecimal_text(cases[c].input, value);
+            }
+            else { TEST_ASSERT_EQUAL(BIGDECIMAL_OK, status); completed = true; }
+            bigdecimal_destroy(value);
+            if (completed) break;
+        }
+        TEST_ASSERT_TRUE(completed);
+    }
+}
+
+void test_root_call_allocation_and_deadline_failures(void)
+{
+    CalculatorContext context;
+    CalculatorError error;
+    CalculatorExpression *expression = NULL;
+    calculator_context_init(&context);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_parse("root(2;3)", &expression, &error));
+    bool completed = false;
+    for (size_t i = 1; i <= ALLOCATION_TEST_MAX_FAILURE_INDEX; i++)
+    {
+        BigDecimal *result = make_bigdecimal("7.77");
+        numforge_test_allocator_begin(i);
+        CalculatorStatus status = calculator_evaluate(result, expression, &context, &error);
+        bool injected = numforge_test_allocator_did_fail();
+        numforge_test_allocator_end();
+        if (injected)
+        {
+            TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY, status);
+            assert_bigdecimal_text("7.77", result);
+        }
+        else { TEST_ASSERT_EQUAL(CALCULATOR_OK, status); completed = true; }
+        bigdecimal_destroy(result);
+        if (completed) break;
+    }
+    calculator_expression_destroy(expression);
+    TEST_ASSERT_TRUE(completed);
+    completed = false;
+    /* Cover entry/allocations densely and sample deeper BigInt loop checks. */
+    for (size_t i = 1; i <= 65536U; i += i < 128U ? 1U : 97U)
+    {
+        char *text = NULL;
+        numforge_test_budget_expire_after(i);
+        CalculatorStatus status = calculator_compute("root(2;3)", &context, &text, &error);
+        if (status == CALCULATOR_OK)
+        {
+            TEST_ASSERT_EQUAL_STRING("1.2599210499", text);
+            free(text); completed = true; break;
+        }
+        TEST_ASSERT_NULL(text);
+        TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT, status);
+        TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT, error.status);
+    }
+    TEST_ASSERT_TRUE(completed);
+}
+
 void test_formatter_clears_output_on_every_allocation_failure(void)
 {
     BigDecimal *value = make_bigdecimal("123456789012345678901234567890.123456789");
@@ -1099,6 +1173,8 @@ int main(void)
     RUN_TEST(test_application_budget_is_cumulative_and_scoped);
     RUN_TEST(test_numeric_loops_cancel_without_changing_destinations);
     RUN_TEST(test_pipeline_deadline_covers_all_checkpoints);
+    RUN_TEST(test_roots_preserve_aliases_on_every_allocation_failure);
+    RUN_TEST(test_root_call_allocation_and_deadline_failures);
 
     RUN_TEST(test_allocator_injects_malloc_calloc_and_realloc_failures);
     RUN_TEST(test_numeric_creation_cleans_up_every_failed_allocation);

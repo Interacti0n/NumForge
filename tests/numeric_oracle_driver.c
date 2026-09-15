@@ -10,6 +10,7 @@
 #include <numforge/bigdecimal.h>
 #include "bigdecimal_internal.h"
 #include "../src/calculator/evaluator.h"
+#include "../src/calculator/roots.h"
 
 int main(void)
 {
@@ -68,6 +69,7 @@ int main(void)
                 else if (!strcmp(op, "dsig")) status = bigdecimal_div_significant(dr, da, db, scale, (BigDecimalRoundingMode)rounding);
                 else if (!strcmp(op, "dcalc")) status = bigdecimal_div_calculator(dr, da, db, scale, (BigDecimalRoundingMode)rounding);
                 else if (!strcmp(op, "dscale")) status = bigdecimal_rescale(dr, da, scale, (BigDecimalRoundingMode)rounding);
+                else if (!strcmp(op, "rroot")) status = calculator_decimal_root(dr, da, (uint32_t)strtoul(b, NULL, 10), scale, (BigDecimalRoundingMode)rounding);
                 else status = 99;
             }
             if (!status) status = bigdecimal_to_string(dr, &text);

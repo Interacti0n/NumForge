@@ -1,5 +1,6 @@
 #include "evaluator.h"
 #include "expression_internal.h"
+#include "roots.h"
 #include "../bigdecimal/bigdecimal_internal.h"
 #include "../bigint/bigint_internal.h"
 #include "../internal/numforge_alloc.h"
@@ -469,6 +470,66 @@ static CalculatorStatus calculator_evaluate_integer_call(
     return CALCULATOR_OK;
 }
 
+/* Root degree is an application parameter, not a rounded numeric argument. */
+static CalculatorStatus calculator_evaluate_root_call(
+    BigDecimal **result,
+    const CalculatorExpression *expression,
+    const CalculatorEvaluation *evaluation,
+    CalculatorError *error
+)
+{
+    BigDecimal *value = NULL, *degree_value = NULL, *limit = NULL;
+    CalculatorFunctionImplementation operation = expression->data.call.function->implementation;
+    uint32_t degree = operation == CALCULATOR_FUNCTION_CBRT ? 3U : 2U;
+    CalculatorStatus status = calculator_evaluate_expression(
+        &value, expression->data.call.arguments[0], evaluation, error);
+    bool child_error = status != CALCULATOR_OK;
+    if (status == CALCULATOR_OK && operation == CALCULATOR_FUNCTION_ROOT)
+    {
+        status = calculator_evaluate_expression(&degree_value, expression->data.call.arguments[1], evaluation, error);
+        child_error = status != CALCULATOR_OK;
+        if (status == CALCULATOR_OK && (degree_value->scale > 0 ||
+            bigint_is_negative(degree_value->coefficient) || bigint_is_zero(degree_value->coefficient)))
+            status = CALCULATOR_INVALID_ARGUMENT;
+        if (status == CALCULATOR_OK)
+        {
+            limit = bigdecimal_create();
+            status = limit == NULL ? CALCULATOR_OUT_OF_MEMORY : calculator_from_bigdecimal_status(
+                bigdecimal_set_string(limit, CALCULATOR_STRINGIFY(CALCULATOR_MAX_ROOT_DEGREE)));
+        }
+        if (status == CALCULATOR_OK)
+        {
+            int comparison = 0;
+            status = calculator_from_bigdecimal_status(bigdecimal_compare(&comparison, degree_value, limit));
+            if (status == CALCULATOR_OK && comparison > 0) status = CALCULATOR_VALUE_TOO_LARGE;
+        }
+        if (status == CALCULATOR_OK)
+        {
+            char *text = NULL;
+            status = calculator_from_bigdecimal_status(bigdecimal_to_string(degree_value, &text));
+            if (status == CALCULATOR_OK) degree = (uint32_t)strtoul(text, NULL, 10);
+            free(text);
+        }
+    }
+    if (status == CALCULATOR_OK)
+    {
+        int64_t digits = evaluation->context->division_scale;
+        if (digits < CALCULATOR_DEFAULT_DIVISION_SCALE) digits = CALCULATOR_DEFAULT_DIVISION_SCALE;
+        status = calculator_from_bigdecimal_status(calculator_decimal_root(
+            value, value, degree, digits, evaluation->context->rounding));
+    }
+    bigdecimal_destroy(degree_value);
+    bigdecimal_destroy(limit);
+    if (status != CALCULATOR_OK)
+    {
+        bigdecimal_destroy(value);
+        if (!child_error) calculator_error_set(error, status, expression->offset);
+        return status;
+    }
+    *result = value;
+    return CALCULATOR_OK;
+}
+
 /* Evaluate basic calls left to right, retaining at most the selected value
  * and the current argument. Even an unselected argument must be evaluated
  * so that its errors are not silently discarded. */
@@ -556,6 +617,10 @@ static CalculatorStatus calculator_evaluate_expression(
         operation.depth = expression->depth;
         switch (expression->data.call.function->implementation)
         {
+            case CALCULATOR_FUNCTION_SQRT:
+            case CALCULATOR_FUNCTION_CBRT:
+            case CALCULATOR_FUNCTION_ROOT:
+                return calculator_evaluate_root_call(result, expression, evaluation, error);
             case CALCULATOR_FUNCTION_GCD:
             case CALCULATOR_FUNCTION_LCM:
             case CALCULATOR_FUNCTION_MOD:

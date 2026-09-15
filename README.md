@@ -125,7 +125,9 @@ process-kill guarantee.
 Named calls use parentheses and semicolons: `pow(2;3)` and `factorial(5)`
 already calculate through the existing operators. `abs`, `sign`, `min` and `max`
 also calculate using decimal values without additional rounding. Integer-valued
-arguments support `gcd`, `lcm`, `mod` and floor square root `isqrt`. Four collapsible groups
+arguments support `gcd`, `lcm`, `mod` and floor square root `isqrt`. Real roots
+`sqrt`/`√`, `cbrt` and `root(x;n)` preserve exact finite roots and otherwise use
+working precision (34 significant digits by default). Four collapsible groups
 contain the function controls; dimmed buttons have recognized syntax but no
 numerical implementation yet. The page is available in Slovak and English, and the displayed
 result can be copied with one click. See the
@@ -204,7 +206,7 @@ executables:
 - `cli_tests`: when Node.js is available, drives the actual CLI process through
   calculation, precision changes, errors, oversized input, EOF and exit commands.
 - `numeric_oracle_tests`: optional Node.js exact-integer/rational reference
-  checking 6492 numeric cases through a test-only C driver.
+  checking 7012 numeric cases through a test-only C driver.
 - `web_api_tests`: confirms that the local web adapter evaluates expressions
   through the same exact C `BigDecimal` pipeline.
 - `web_server_smoke_tests`: starts the real server on a temporary loopback
@@ -221,7 +223,7 @@ executables:
   installed package through `find_package(NumForge)`, including a C++ linkage
   test when `NUMFORGE_TEST_CPP=ON`.
 
-CI also runs sixteen SK/EN Chromium scenarios from `tests/browser`, using a
+CI also runs eighteen SK/EN Chromium scenarios from `tests/browser`, using a
 pinned Playwright dependency and the real C server, separately from CTest.
 Only this browser suite requires npm packages; the application does not.
 Reproduction commands, scope and opt-in phase benchmarks are in

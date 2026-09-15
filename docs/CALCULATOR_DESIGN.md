@@ -13,6 +13,7 @@ stable.
 | `tokenizer.c` | Converts source text into location-aware tokens. Implemented for decimal literals, identifiers, whitespace, binary and postfix operators, and parentheses. |
 | `parser.c` | Converts tokens into an opaque expression tree (AST). Implemented as recursive descent with postfix, power, unary, multiplicative, and additive precedence layers. |
 | `evaluator.c` | Evaluates the AST to `BigDecimal` using `CalculatorContext`. Implemented for unary signs, exact binary exponentiation, square, cube, factorial, and binary operators. |
+| `roots.c` | Internal real roots: exact-finite detection, scaled integer Newton iteration and significant-digit rounding. |
 | `formatter.c` | Rounds a completed result to the requested output scale and selects ordinary or scientific notation. |
 | `functions.c` | Immutable registry of named calls, accepted arities and implementation dispatch identifiers. |
 | `src/main.c` | Interactive command-line shell around the calculator pipeline. |
@@ -51,10 +52,10 @@ checkbox sends `?precision=full`. HTTP `POST` requests require an exact
 own loopback origins, preventing unrelated pages from triggering expensive
 local calculations. Slovak and English routes use `?lang=sk` and `?lang=en`;
 the result panel copies the currently displayed result through the browser
-clipboard API, with a local fallback. The visible general root (sqrt/cbrt/root),
-trigonometric, logarithmic, and exponential controls are disabled placeholders.
+clipboard API, with a local fallback. The visible trigonometric, logarithmic,
+and exponential controls are disabled placeholders.
 Their calls are recognized but report not implemented. Basic abs/sign/min/max
-controls and integer gcd/lcm/mod/isqrt controls are active.
+controls, integer gcd/lcm/mod/isqrt controls and sqrt/cbrt/root controls are active.
 
 Nonblocking sockets use absolute monotonic deadlines: two seconds for the
 complete incoming request and two seconds for a response. Slow byte-by-byte
@@ -101,6 +102,19 @@ No floating-point conversions or output-precision rounding are used. Fractional
 evaluated arguments are rejected; prior arithmetic still follows the working
 precision policy. Temporaries are cleaned up on domain, allocation and budget
 failures without replacing the caller's destination.
+
+Real roots live in `roots.c`, not the stable public BigDecimal API. For canonical
+`C * 10^-s`, a finite kth root exists exactly when `s` is divisible by k and
+`abs(C)` is a perfect kth power; these results are not rounded internally.
+Otherwise, exponent division normalizes the radicand to k times the working
+precision plus one root guard digit, independent of the input's absolute scale.
+Integer Newton iteration computes its floor root. A nonzero-tail marker plus
+the guard digit lets BigDecimal rescaling implement all six rounding modes.
+This rounds the root of the already evaluated argument, not an exact symbolic
+expression. Roots use at least 34 working significant digits, or a higher
+context division precision; full output retains this finite working precision.
+Degree 1 is identity; degrees 1..10000 are accepted, with negative arguments
+only for odd degrees. Intermediate size and cooperative time limits still apply.
 
 Call nodes own an argument-pointer array and child expressions; registry entries
 have static lifetime. Array growth uses the fault-injectable allocator. Parse

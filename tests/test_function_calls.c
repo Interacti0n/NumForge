@@ -90,7 +90,7 @@ static void test_evaluation_and_implicit_products(void)
         TEST_ASSERT_EQUAL_STRING(cases[i].expected, text);
         free(text);
     }
-    static const char *const pending[] = { "exp(2)", "2sin(1)", "sqrt(abs(-4))", "log(1/0)", "√(4)" };
+    static const char *const pending[] = { "exp(2)", "2sin(1)", "log(1/0)" };
     for (size_t i = 0; i < sizeof(pending) / sizeof(pending[0]); i++)
     {
         char *text = NULL;

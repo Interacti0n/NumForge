@@ -79,6 +79,38 @@ for(let i=0;i<100;i++) {
   for(const v of [n,n*n,n*n-1n,n*n+1n])
     add('calc',`isqrt(${v})`,0,0,0,isqrt(v));
 }
+// Rational inequalities and binary search independently check root rounding,
+// including exact midpoint ties, without the C guard/sticky representation.
+function rootFloor(n,d,k) {
+  let lo=0n,hi=1n;
+  while(hi**k*d<=n)hi*=2n;
+  while(hi-lo>1n){const m=(lo+hi)/2n;if(m**k*d<=n)lo=m;else hi=m;}
+  return lo;
+}
+function rootReference(c,s,k,p,mode) {
+  const neg=c<0n;c=abs(c);const order=BigInt(k),exact=rootFloor(c,1n,order);
+  if(exact**order===c && s%k===0)return decimal(neg?-exact:exact,s/k);
+  let n=c,d=1n;
+  if(s>=0)d=pow(s);else n*=pow(-s);
+  let exponent=0;
+  if(n>=d){while(pow((exponent+1)*k)*d<=n)exponent++;}
+  else {while(n*pow(-exponent*k)<d)exponent--;}
+  const scale=p-1-exponent;
+  if(scale>=0)n*=pow(scale*k);else d*=pow(-scale*k);
+  let q=rootFloor(n,d,order);
+  const exactGrid=q**order*d===n;
+  const midpoint=(2n*q+1n)**order*d,twice=n*2n**order;
+  const up=!exactGrid&&(mode===1||(mode===2&&neg)||(mode===3&&!neg)||
+    (mode===4&&twice>=midpoint)||(mode===5&&(twice>midpoint||(twice===midpoint&&q%2n===1n))));
+  if(up)q++;
+  return decimal(neg?-q:q,scale);
+}
+for(let i=0;i<80;i++) {
+  const k=2+rnd(8),s=rnd(25)-12,p=1+rnd(20);
+  let c=abs(integer());if(k%2 && i%2)c=-c;
+  for(let mode=0;mode<6;mode++)add('rroot',`${c}e${-s}`,k,p,mode,rootReference(c,s,k,p,mode));
+  if(i<40){const r=BigInt(1+rnd(100000)),t=rnd(11)-5;add('rroot',`${r**BigInt(k)}e${-t*k}`,k,1,5,decimal(r,t));}
+}
 const result=spawnSync(process.argv[2],{input:cases.map(c=>c.input).join('\n')+'\n',encoding:'utf8',timeout:110000,windowsHide:true,maxBuffer:8*1024*1024});
 if(result.error)throw result.error;
 if(result.status!==0)throw Error(`Exit ${result.status}: ${result.stderr}`);

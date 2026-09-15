@@ -22,7 +22,10 @@ typedef enum CalculatorFunctionImplementation
     CALCULATOR_FUNCTION_GCD,
     CALCULATOR_FUNCTION_LCM,
     CALCULATOR_FUNCTION_MOD,
-    CALCULATOR_FUNCTION_ISQRT
+    CALCULATOR_FUNCTION_ISQRT,
+    CALCULATOR_FUNCTION_SQRT,
+    CALCULATOR_FUNCTION_CBRT,
+    CALCULATOR_FUNCTION_ROOT
 } CalculatorFunctionImplementation;
 
 typedef struct CalculatorFunction

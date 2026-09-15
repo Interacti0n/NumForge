@@ -158,7 +158,7 @@ names; recognition is separate from numerical implementation:
 | `gcd(a;b)`, `lcm(a;b)` | Integer arguments; non-negative GCD/LCM. `gcd(0;0) = 0`; LCM is zero if either argument is zero. |
 | `mod(a;b)` | Integer remainder after division truncating toward zero; nonzero remainder has the dividend's sign. `mod(-7;3) = -1`; zero divisor is an error. |
 | `isqrt(n)` | Floor of the square root of a non-negative integer: `isqrt(15) = 3`. |
-| `sqrt(x)`, `cbrt(x)`, `root(x;n)` | Not implemented; `√(x)` aliases `sqrt(x)`. |
+| `sqrt(x)`, `cbrt(x)`, `root(x;n)` | Active real roots; `√(x)` aliases `sqrt(x)`. Square roots require x ≥ 0; cube roots accept negative x. `root` accepts integer n from 1 to 10000, and negative x only for odd n. |
 | `exp(x)`, `ln(x)`, `log(x)`, `log(x;b)` | Not implemented. Planned bases: e for ln, 10 for one-argument log, b for two-argument log. |
 | `sin(x)`, `cos(x)`, `tan(x)`, `asin(x)`, `acos(x)`, `atan(x)` | Not implemented. Planned angle unit: radians. atan takes only one argument. |
 | `radians(x)`, `degrees(x)` | Not implemented; planned degree/radian conversions. |
@@ -172,6 +172,16 @@ Basic calls accept all finite decimal values without introducing rounding;
 their arguments follow the normal working-precision policy. Min/max evaluate
 every argument left to right and propagate all errors. Ties retain the first
 value. Negative zero has sign 0.
+
+Roots first preserve exact finite decimal results, even when they exceed working
+precision. Other roots are rounded to max(34, N+4) significant digits with the
+context rounding mode (normally half-even), then formatted at the requested
+output precision. Full output uses 34 working digits for irrational roots; it
+does not mean infinite precision. `sqrt(2)` displays `1.4142135624` by default,
+`cbrt(-8)` is exactly `-2`, and `root(32;5)` is exactly `2`. Zero/negative/fractional
+degrees are invalid; degrees above 10000 are too large. Time and memory limits
+still apply, particularly to high degree/high precision combinations. Like
+division, rounded roots can introduce small errors in subsequent arithmetic.
 
 The tokenizer reads complete letter sequences: `exp` is one name, whereas
 `1e3` remains `1*e*3`, `πe` remains `π*e`, `e(2)` remains `e*2`, and `1E3`
