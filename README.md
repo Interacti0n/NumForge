@@ -1,9 +1,11 @@
 # NumForge
 
-NumForge is a C17 mathematics library and exact-decimal calculator. It provides
+NumForge is a C17 mathematics library with CLI and web clients. It provides
 two public numeric types: signed arbitrary-precision `BigInt` and base-10
 `BigDecimal`. The command-line and local browser calculators share the same C
 tokenizer, parser, evaluator, and BigDecimal implementation.
+All implemented numeric operations are exposed by the public library; clients
+add expression syntax, presentation and application resource limits.
 
 ## Features
 
@@ -16,7 +18,7 @@ tokenizer, parser, evaluator, and BigDecimal implementation.
 - Exact decimal arithmetic with configurable rounding for division and
   rescaling.
 - Interactive expression calculator with source-positioned diagnostics.
-- Built-in 200-decimal-place approximations of `π`, `e`, and `φ` in the
+- Built-in 500-decimal-place approximations of `π`, `e`, and `φ` in the
   calculator syntax.
 - Configurable result precision, full output mode, and readable scientific
   notation for very large or very small non-zero results.
@@ -40,6 +42,7 @@ tokenizer, parser, evaluator, and BigDecimal implementation.
 
 | Document | Purpose |
 | --- | --- |
+| [Library guide](docs/LIBRARY_GUIDE.md) | Standalone core builds and public C/C++ usage. |
 | [API overview](docs/API.md) | Public `BigInt` and `BigDecimal` API, ownership rules, calculator syntax, and local HTTP API. |
 | [BigInt design](docs/BIGINT_DESIGN.md) | Limb representation, semantics, and optimization boundaries. |
 | [BigDecimal design](docs/BIGDECIMAL_DESIGN.md) | Exact-decimal representation, rounding, and future work. |
@@ -172,9 +175,9 @@ target_link_libraries(my_target PRIVATE NumForge::numforge)
 
 ### Stable 1.x API scope
 
-The stable public C library API for the 1.x release series consists only of the
-two headers `include/numforge/bigint.h` and
-`include/numforge/bigdecimal.h`. The calculator modules and `src/web/` are
+The public API consists of `include/numforge/bigint.h`,
+`include/numforge/bigdecimal.h` and optional `include/numforge/runtime.h`.
+Existing 1.x numeric signatures remain compatible. Calculator modules and `src/web/` are
 application code, not public C library headers. The loopback HTTP endpoint is
 documented for local use, but is not an Internet-facing service or a separately
 versioned remote API.
@@ -259,7 +262,7 @@ operands, and calculator features. Planned work includes:
    and evaluation policy are in [the calculator design](docs/CALCULATOR_DESIGN.md).
 3. Performance profiling and targeted optimization of very large operands.
 
-The two public C headers follow semantic versioning. Incompatible public API
+The public C headers follow semantic versioning. Incompatible public API
 changes are reserved for a future major release.
 
 ## License

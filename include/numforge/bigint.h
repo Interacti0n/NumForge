@@ -143,6 +143,10 @@ BigIntStatus bigint_pow( /*Exponentiation for BigInts (base^exponent). Negative 
     const BigInt *base,
     const BigInt *exponent
 );
+/* Floor integer square root, for non-negative values. Aliasing is supported;
+ * failure preserves result. */
+BigIntStatus bigint_isqrt(BigInt *result, const BigInt *value);
+
 BigIntStatus bigint_gcd( /*Greatest common divisor for BigInts (gcd(a,b))*/
     BigInt *result,
     const BigInt *a,

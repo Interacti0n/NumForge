@@ -10,7 +10,7 @@
     Built-in mathematical constants. The calculator recognizes only the exact
     UTF-8 symbols π, e, and φ. Their decimal expansions are stored as fixed,
     high-precision text and converted to BigDecimal only during evaluation.
-    They are calculator syntax, not part of the public C API.
+    Symbol recognition is client syntax; values come from the public library.
 ------------------------------------------------------------------------------------------------------------------------------
 */
 typedef enum CalculatorConstant

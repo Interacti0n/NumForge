@@ -26,10 +26,4 @@ struct BigDecimal
     int64_t scale;
 };
 
-/* Calculator policy; the public division API retains explicit decimal scale. */
-BigDecimalStatus bigdecimal_div_calculator(BigDecimal *result, const BigDecimal *a,
-    const BigDecimal *b, int64_t digits, BigDecimalRoundingMode rounding);
-BigDecimalStatus bigdecimal_div_significant(BigDecimal *result, const BigDecimal *a,
-    const BigDecimal *b, int64_t digits, BigDecimalRoundingMode rounding);
-
 #endif

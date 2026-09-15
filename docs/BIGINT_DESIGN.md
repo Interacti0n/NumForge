@@ -4,6 +4,9 @@
 public API is declared in `include/numforge/bigint.h`; this document records
 the internal representation, semantic decisions, and maintenance boundaries.
 
+The public API also includes `bigint_isqrt`, which computes the floor square
+root without floating-point conversion and preserves the destination on error.
+
 ## Representation and invariants
 
 The magnitude is stored as a little-endian array of base-2^64 limbs:

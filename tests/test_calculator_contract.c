@@ -116,19 +116,19 @@ static void test_exact_division_aliasing_and_scale_failure(void)
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(a, "7"));
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(b, "28"));
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK,
-        bigdecimal_div_calculator(b, a, b, 1, BIGDECIMAL_ROUND_HALF_EVEN));
+        bigdecimal_div_exact_or_significant(b, a, b, 1, BIGDECIMAL_ROUND_HALF_EVEN));
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_to_string(b, &text));
     TEST_ASSERT_EQUAL_STRING("0.25", text);
     free(text);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK,
-        bigdecimal_div_calculator(a, a, b, 1, BIGDECIMAL_ROUND_HALF_EVEN));
+        bigdecimal_div_exact_or_significant(a, a, b, 1, BIGDECIMAL_ROUND_HALF_EVEN));
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_to_string(a, &text));
     TEST_ASSERT_EQUAL_STRING("28", text);
     free(text);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(a, "1e-9223372036854775807"));
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(b, "2"));
     TEST_ASSERT_EQUAL(BIGDECIMAL_SCALE_OVERFLOW,
-        bigdecimal_div_calculator(b, a, b, 34, BIGDECIMAL_ROUND_HALF_EVEN));
+        bigdecimal_div_exact_or_significant(b, a, b, 34, BIGDECIMAL_ROUND_HALF_EVEN));
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_to_string(b, &text));
     TEST_ASSERT_EQUAL_STRING("2", text);
     free(text);

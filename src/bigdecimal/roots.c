@@ -1,5 +1,5 @@
-#include "roots.h"
-#include "../bigdecimal/bigdecimal_internal.h"
+#include <numforge/bigdecimal.h>
+#include "bigdecimal_internal.h"
 #include "../bigint/bigint_internal.h"
 #include "../internal/numforge_alloc.h"
 
@@ -12,7 +12,8 @@
 ------------------------------------------------------------------------------------------------------------------------------
     Root helpers. Only integer arithmetic is used. Newton iterates down from
     an upper bound; a non-decreasing next iterate identifies the floor root.
-    Application allocation/deadline budgets cover all temporary operations.
+    An optional caller-owned runtime budget can cover temporary operations;
+    ordinary public calls remain unrestricted.
 ------------------------------------------------------------------------------------------------------------------------------
 */
 static BigIntStatus integer_root(BigInt *root, const BigInt *number, uint32_t degree)
@@ -88,14 +89,14 @@ static BigDecimalStatus set_root(BigDecimal *result, const BigInt *root,
     rounding modes; full output does not imply an infinite irrational result.
 ------------------------------------------------------------------------------------------------------------------------------
 */
-BigDecimalStatus calculator_decimal_root(BigDecimal *result, const BigDecimal *value,
+BigDecimalStatus bigdecimal_root(BigDecimal *result, const BigDecimal *value,
     uint32_t degree, int64_t digits, BigDecimalRoundingMode rounding)
 {
     if (result == NULL || value == NULL) return BIGDECIMAL_NULL_ARGUMENT;
-    if (degree == 0 || degree > CALCULATOR_MAX_ROOT_DEGREE || digits < 1 ||
+    if (degree == 0 || digits < 1 ||
         rounding < BIGDECIMAL_ROUND_TOWARD_ZERO || rounding > BIGDECIMAL_ROUND_HALF_EVEN)
         return BIGDECIMAL_INVALID_ARGUMENT;
-    if (digits > CALCULATOR_MAX_OUTPUT_SCALE + CALCULATOR_DIVISION_GUARD_DIGITS)
+    if (digits > INT64_MAX / 2 - 1)
         return BIGDECIMAL_VALUE_TOO_LARGE;
     bool negative = bigint_is_negative(value->coefficient);
     if (negative && degree % 2U == 0U) return BIGDECIMAL_INVALID_ARGUMENT;
@@ -132,8 +133,13 @@ BigDecimalStatus calculator_decimal_root(BigDecimal *result, const BigDecimal *v
     if (adjustment % degree < 0) quotient--;
     int64_t exponent = -(value->scale / degree) + quotient;
     int64_t remainder = adjustment - quotient * degree;
+    if ((uint64_t)digits > (UINT64_MAX - (uint64_t)remainder - 1U) / degree)
+    {
+        status = BIGDECIMAL_VALUE_TOO_LARGE;
+        goto cleanup;
+    }
     uint64_t required = (uint64_t)degree * (uint64_t)digits + (uint64_t)remainder + 1U;
-    if (required >= CALCULATOR_SINGLE_ALLOCATION)
+    if (required >= SIZE_MAX)
     {
         status = BIGDECIMAL_VALUE_TOO_LARGE;
         goto cleanup;
@@ -158,4 +164,17 @@ cleanup:
     bigdecimal_destroy(temporary);
     return status;
 #undef ROOT_TRY
+}
+
+
+BigDecimalStatus bigdecimal_sqrt(BigDecimal *result, const BigDecimal *value,
+    int64_t digits, BigDecimalRoundingMode rounding)
+{
+    return bigdecimal_root(result, value, 2, digits, rounding);
+}
+
+BigDecimalStatus bigdecimal_cbrt(BigDecimal *result, const BigDecimal *value,
+    int64_t digits, BigDecimalRoundingMode rounding)
+{
+    return bigdecimal_root(result, value, 3, digits, rounding);
 }

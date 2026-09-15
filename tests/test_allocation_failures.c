@@ -10,7 +10,8 @@
 #include "evaluator.h"
 #include "formatter.h"
 #include "parser.h"
-#include "roots.h"
+#include <numforge/bigdecimal.h>
+#include "calculator_internal.h"
 #include "web_api.h"
 
 #ifndef NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING
@@ -823,6 +824,8 @@ void test_bigdecimal_arithmetic_failure_paths(void)
     assert_bigdecimal_unary_failure_safety(bigdecimal_negate, a);
     assert_bigdecimal_unary_failure_safety(bigdecimal_rescale_to_25, a);
     assert_bigdecimal_binary_failure_safety(bigdecimal_add, a, b);
+    assert_bigdecimal_binary_failure_safety(bigdecimal_min, a, b);
+    assert_bigdecimal_binary_failure_safety(bigdecimal_max, a, b);
     assert_bigdecimal_binary_failure_safety(bigdecimal_sub, a, b);
     assert_bigdecimal_binary_failure_safety(bigdecimal_mul, a, b);
     assert_bigdecimal_binary_failure_safety(bigdecimal_divide_to_25, a, b);
@@ -929,6 +932,7 @@ void test_evaluator_preserves_destination_on_every_allocation_failure(void)
 
 void test_roots_preserve_aliases_on_every_allocation_failure(void)
 {
+    assert_bigint_unary_failure_safety(bigint_isqrt, "15241578750190521");
     static const struct { const char *input; uint32_t degree; } cases[] = {
         { "2", 2 }, { "-2", 3 }, { "0.0004", 2 }, { "81", 4 }, { "3", 1 }, { "0", 2 }
     };
@@ -939,7 +943,7 @@ void test_roots_preserve_aliases_on_every_allocation_failure(void)
         {
             BigDecimal *value = make_bigdecimal(cases[c].input);
             numforge_test_allocator_begin(index);
-            BigDecimalStatus status = calculator_decimal_root(value, value, cases[c].degree, 34, BIGDECIMAL_ROUND_HALF_EVEN);
+            BigDecimalStatus status = bigdecimal_root(value, value, cases[c].degree, 34, BIGDECIMAL_ROUND_HALF_EVEN);
             bool injected = numforge_test_allocator_did_fail();
             numforge_test_allocator_end();
             if (injected)

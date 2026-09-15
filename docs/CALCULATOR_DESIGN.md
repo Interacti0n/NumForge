@@ -1,7 +1,8 @@
 # Calculator design
 
 The calculator is an application layer over `BigDecimal`. Its source stays in
-`src/calculator/` rather than the public include tree until its external API is
+`src/calculator/` rather than the public include tree; it is an application
+client over the public numeric API.
 stable.
 
 ## Modules
@@ -9,7 +10,7 @@ stable.
 | Module | Responsibility |
 | --- | --- |
 | `calculator.c` | Shared status/error handling, precision defaults and the bounded complete `calculator_compute` pipeline used by CLI and HTTP. |
-| `constants.c` | Maps `π`, `e`, and `φ` to fixed 200-decimal-place BigDecimal approximations. |
+| `constants.c` | Maps `π`, `e`, and `φ` to fixed 500-decimal-place BigDecimal approximations. |
 | `tokenizer.c` | Converts source text into location-aware tokens. Implemented for decimal literals, identifiers, whitespace, binary and postfix operators, and parentheses. |
 | `parser.c` | Converts tokens into an opaque expression tree (AST). Implemented as recursive descent with postfix, power, unary, multiplicative, and additive precedence layers. |
 | `evaluator.c` | Evaluates the AST to `BigDecimal` using `CalculatorContext`. Implemented for unary signs, exact binary exponentiation, square, cube, factorial, and binary operators. |
@@ -192,7 +193,7 @@ using checked arithmetic. Thus compact huge/tiny magnitudes do not require huge
 powers of ten merely to retain relative precision. For example `1E-40 / 1`
 stays `1E-40`. Intermediate rounding and cancellation can still affect later
 operations; there is no certified whole-expression error bound. Constants have
-200 stored decimal places regardless of the selected output limit.
+500 stored decimal places regardless of the selected output limit.
 
 `calculator_compute` opens one thread-local resource scope before parsing and
 closes it after formatting and cleanup. Nested evaluator/formatter calls reuse

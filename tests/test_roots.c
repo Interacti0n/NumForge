@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <unity.h>
-#include "roots.h"
+#include <numforge/bigdecimal.h>
+#include "calculator_internal.h"
 
 /* Real-root domains, exactness, scales and rounding (separate from grammar). */
 void setUp(void) {}
@@ -60,7 +61,7 @@ static void assert_root(const char *input, uint32_t degree, int64_t precision,
     TEST_ASSERT_NOT_NULL(value); TEST_ASSERT_NOT_NULL(reference);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(value, input));
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(reference, expected));
-    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, calculator_decimal_root(value, value, degree, precision, rounding));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_root(value, value, degree, precision, rounding));
     int comparison = 1;
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_compare(&comparison, value, reference));
     TEST_ASSERT_EQUAL_INT_MESSAGE(0, comparison, input);
@@ -91,10 +92,10 @@ static void test_root_failure_preserves_output(void)
     BigDecimal *value = bigdecimal_create();
     TEST_ASSERT_NOT_NULL(value);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(value, "-2"));
-    TEST_ASSERT_EQUAL(BIGDECIMAL_INVALID_ARGUMENT, calculator_decimal_root(value, value, 2, 34, BIGDECIMAL_ROUND_HALF_EVEN));
-    TEST_ASSERT_EQUAL(BIGDECIMAL_INVALID_ARGUMENT, calculator_decimal_root(value, value, 0, 34, BIGDECIMAL_ROUND_HALF_EVEN));
-    TEST_ASSERT_EQUAL(BIGDECIMAL_INVALID_ARGUMENT, calculator_decimal_root(value, value, 3, 0, BIGDECIMAL_ROUND_HALF_EVEN));
-    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, calculator_decimal_root(NULL, value, 3, 34, BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_INVALID_ARGUMENT, bigdecimal_root(value, value, 2, 34, BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_INVALID_ARGUMENT, bigdecimal_root(value, value, 0, 34, BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_INVALID_ARGUMENT, bigdecimal_root(value, value, 3, 0, BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_root(NULL, value, 3, 34, BIGDECIMAL_ROUND_HALF_EVEN));
     char *text = NULL;
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_to_string(value, &text));
     TEST_ASSERT_EQUAL_STRING("-2", text);

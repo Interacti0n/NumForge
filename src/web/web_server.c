@@ -31,7 +31,7 @@ typedef int NumForgeSocket;
 #include "web_api.h"
 #include "http_request.h"
 #include "web_page.h"
-#include "../internal/numforge_alloc.h"
+#include <numforge/runtime.h>
 
 #define NUMFORGE_WEB_PORT 8765
 #define NUMFORGE_WEB_SOCKET_TIMEOUT_MS 2000

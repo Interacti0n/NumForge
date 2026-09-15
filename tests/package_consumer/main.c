@@ -4,9 +4,11 @@
 
 #include <numforge/bigdecimal.h>
 #include <numforge/bigint.h>
+#include "check_api.h"
 
 int main(void)
 {
+    if (public_api_checks() != 0) return 9;
     BigInt *integer = bigint_create();
     BigDecimal *decimal = bigdecimal_create();
     char *integer_text = NULL;

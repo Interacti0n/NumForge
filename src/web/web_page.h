@@ -470,6 +470,7 @@ static const char NUMFORGE_API_PAGE_C_LIBRARY[] =
     "  <li>Životný cyklus a text: <code>bigdecimal_create</code>, <code>bigdecimal_destroy</code>, <code>bigdecimal_copy</code>, <code>bigdecimal_set_string</code>, <code>bigdecimal_to_string</code></li>\n"
     "  <li>Porovnanie: <code>bigdecimal_compare</code>, <code>bigdecimal_is_zero</code>, <code>bigdecimal_is_negative</code></li>\n"
     "  <li>Presné operácie: <code>bigdecimal_abs</code>, <code>bigdecimal_negate</code>, <code>bigdecimal_add</code>, <code>bigdecimal_sub</code>, <code>bigdecimal_mul</code></li>\n"
+    "  <li>Ďalšie: konverzie, <code>bigdecimal_pow</code>, <code>bigdecimal_sqrt</code>, <code>bigdecimal_cbrt</code>, <code>bigdecimal_root</code>, významné delenie, konštanty a formátovanie</li>\n"
     "  <li>Zaokrúhľované operácie: <code>bigdecimal_rescale</code>, <code>bigdecimal_div</code>; režimy <code>TOWARD_ZERO</code>, <code>AWAY_FROM_ZERO</code>, <code>FLOOR</code>, <code>CEILING</code>, <code>HALF_UP</code>, <code>HALF_EVEN</code> s prefixom <code>BIGDECIMAL_ROUND_</code></li></ul>\n"
     "  <p>Mutujúce operácie vracajú stavový kód a pri chybe ponechajú cieľovú hodnotu nezmenenú. Úplné signatúry sú v hlavičkách a podrobnejší prehľad v <code>docs/API.md</code> projekte.</p>\n"
     "</body>\n"
@@ -514,7 +515,7 @@ static const char NUMFORGE_API_PAGE_EN_START[] =
     "  <tr><td>Constants</td><td><code>π</code>, <code>e</code>, <code>φ</code></td></tr>\n"
     "  <tr><td>Implicit multiplication</td><td><code>2π</code>, <code>πe</code>, <code>2(3 + 4)</code></td></tr></table>\n"
     "  <p><code>%</code> and variables are not supported yet.</p>\n"
-    "  <p>Constants store 200 decimal places. Standalone lowercase <code>e</code> means Euler's number: <code>5e</code> means <code>5 * e</code> and <code>1e3</code> means <code>1 * e * 3</code>. Scientific notation always uses uppercase <code>E</code>: <code>5E-1</code> is <code>0.5</code> and <code>1E3</code> is <code>1000</code>. Disabled buttons represent recognized calls whose calculations are not implemented yet.</p>\n";
+    "  <p>Constants store 200 decimal places. Standalone lowercase <code>e</code> means Euler's number: <code>5e</code> means <code>5 * e</code> and <code>1e3</code> means <code>1 * e * 3</code>. Scientific notation always uses uppercase <code>E</code>: <code>5E-1</code> is <code>0.5</code> and <code>1E3</code> is <code>1000</code>. Dimmed buttons represent recognized calls whose calculations are not implemented yet; root controls are active.</p>\n";
 
 static const char NUMFORGE_API_PAGE_EN_DETAILS[] =
     "  <p>Terminating decimal division is exact within resource limits, e.g. <code>7/28 = 0.25</code>. Working precision applies to recurring quotients; display precision rounds the final output. <code>(1E34+1)/1-1E34 = 1</code>.</p>\n"

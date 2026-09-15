@@ -3,7 +3,8 @@
 `BigDecimal` provides exact base-10 values on top of `BigInt`, without using
 binary floating point. Its public API is declared in
 `include/numforge/bigdecimal.h` and implemented in
-`src/bigdecimal/bigdecimal.c`.
+`src/bigdecimal/` (`bigdecimal.c`, `operations.c`, `roots.c`, `format.c`,
+and `constants.c`). No numeric implementation depends on calculator headers.
 
 ## Current API
 
@@ -22,6 +23,18 @@ The public header defines the component's stable 1.x surface:
 All listed operations are implemented. Every mutating operation computes into
 a temporary value and commits only on success, so its destination is unchanged
 after an error.
+
+Additive APIs also provide exact integer conversions, sign/integer predicates,
+min/max, integer powers, real roots, significant and exact-first division,
+constants and readable formatting; see [API.md](API.md#additional-numeric-operations).
+The calculator calls public APIs without accessing the representation.
+
+Roots preserve exact finite results. For canonical `C * 10^-s`, a finite kth
+root exists iff s is divisible by k and abs(C) is a perfect kth power. Otherwise
+exponent division normalizes the radicand independently of the absolute scale.
+Integer Newton iteration computes a floor root with a guard digit; a sticky
+digit encodes the nonzero tail for the six rescaling modes. Degree and precision
+are public arguments with checked size/scale arithmetic, not application caps.
 
 ## Representation
 

@@ -6,7 +6,7 @@
 #include "parser.h"
 #include "evaluator.h"
 #include "formatter.h"
-#include "../internal/numforge_alloc.h"
+#include <numforge/runtime.h>
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------

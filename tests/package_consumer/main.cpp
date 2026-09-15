@@ -3,10 +3,12 @@
 #include <memory>
 #include <numforge/bigint.h>
 #include <numforge/bigdecimal.h>
+#include "check_api.h"
 
 // Public headers must provide C linkage without a consumer-side extern block.
 int main()
 {
+    if (public_api_checks() != 0) return 9;
     std::unique_ptr<BigInt, decltype(&bigint_destroy)> integer(bigint_create(), bigint_destroy);
     std::unique_ptr<BigDecimal, decltype(&bigdecimal_destroy)> decimal(bigdecimal_create(), bigdecimal_destroy);
     if (!integer || !decimal) return 1;

@@ -2,12 +2,13 @@
 
 This is the short reference for the public C library and the local calculator
 HTTP endpoint. Function signatures and all edge-case constraints remain in
-the public headers: `include/numforge/bigint.h` and
-`include/numforge/bigdecimal.h`.
+the public headers: `include/numforge/bigint.h`,
+`include/numforge/bigdecimal.h` and optional `include/numforge/runtime.h`.
 
 ## Stable 1.x scope
 
-The stable C library API consists of exactly those two public headers.
+The public API consists of these three headers; existing numeric signatures
+remain compatible and the new operations are additive.
 The calculator implementation and `src/web/web_api.h` are private application
 code, not headers for library consumers. `numforge_web` and its loopback HTTP
 endpoint are shipped local-tool features; they are not an Internet-facing or
@@ -31,8 +32,9 @@ allocator that fails each internal allocation in turn. It is not part of the
 public API and is compiled out of non-test builds.
 
 Installed CMake consumers use `find_package(NumForge CONFIG REQUIRED)` and
-link `NumForge::numforge`. The installed package exposes only the two public
-headers described here; calculator and HTTP headers remain internal.
+link `NumForge::numforge`. This contains numeric code and runtime support only.
+Parser/evaluator/HTTP code belongs to the non-exported `numforge_client` target.
+See [Library guide](LIBRARY_GUIDE.md) for standalone builds and C usage.
 
 ## BigInt
 
@@ -51,7 +53,7 @@ optional leading sign and digits only.
 | Status text | `bigint_status_to_string` |
 | Comparison and predicates | `bigint_compare`, `bigint_is_zero`, `bigint_is_one`, `bigint_is_negative`, `bigint_is_even`, `bigint_is_odd` |
 | Arithmetic | `bigint_abs`, `bigint_negate`, `bigint_add`, `bigint_sub`, `bigint_mul`, `bigint_div`, `bigint_mod`, `bigint_div_mod`, `bigint_pow` |
-| Number theory | `bigint_gcd`, `bigint_lcm`, `bigint_factorial`, `bigint_is_probable_prime`, `bigint_is_perfect_square` |
+| Number theory | `bigint_gcd`, `bigint_lcm`, `bigint_factorial`, `bigint_isqrt`, `bigint_is_probable_prime`, `bigint_is_perfect_square` |
 | Bit operations | `bigint_and`, `bigint_or`, `bigint_xor`, `bigint_not`, `bigint_shift_left`, `bigint_shift_right` |
 
 Division truncates toward zero and the remainder has the dividend's sign.
@@ -61,6 +63,9 @@ factorial input to 100000. AND, OR, and XOR accept only non-negative values;
 perfect-square checks return `BigIntStatus` and write their boolean answer
 through an output pointer, so allocation failure cannot be confused with a
 valid `false` result.
+
+`bigint_isqrt` computes floor(sqrt(value)), accepts zero and rejects negative
+input with `BIGINT_NEGATIVE_ARGUMENT`. Output/input aliasing is supported.
 
 ## BigDecimal
 
@@ -77,17 +82,65 @@ retain unnecessary trailing zeroes.
 
 | Area | Functions |
 | --- | --- |
-| Lifecycle and conversion | `bigdecimal_create`, `bigdecimal_destroy`, `bigdecimal_copy`, `bigdecimal_set_string`, `bigdecimal_to_string` |
+| Lifecycle and conversion | `bigdecimal_create`, `bigdecimal_destroy`, `bigdecimal_copy`, `bigdecimal_set_string`, `bigdecimal_to_string`, `bigdecimal_from_bigint`, `bigdecimal_to_bigint` |
 | Status text | `bigdecimal_status_to_string` |
-| Comparison and predicates | `bigdecimal_compare`, `bigdecimal_is_zero`, `bigdecimal_is_negative` |
-| Exact arithmetic | `bigdecimal_abs`, `bigdecimal_negate`, `bigdecimal_add`, `bigdecimal_sub`, `bigdecimal_mul` |
-| Rounded arithmetic | `bigdecimal_rescale`, `bigdecimal_div` |
+| Comparison and predicates | `bigdecimal_compare`, `bigdecimal_is_zero`, `bigdecimal_is_negative`, `bigdecimal_is_integer`, `bigdecimal_sign`, `bigdecimal_min`, `bigdecimal_max` |
+| Exact arithmetic | `bigdecimal_abs`, `bigdecimal_negate`, `bigdecimal_add`, `bigdecimal_sub`, `bigdecimal_mul`, `bigdecimal_pow` |
+| Rounded arithmetic | `bigdecimal_rescale`, `bigdecimal_div`, `bigdecimal_div_significant`, `bigdecimal_div_exact_or_significant` |
+| Real roots | `bigdecimal_sqrt`, `bigdecimal_cbrt`, `bigdecimal_root` |
+| Constants and display | `bigdecimal_set_constant`, `bigdecimal_format` |
 
 Addition, subtraction, and multiplication are exact. Division and rescaling
 take an explicit target scale and one of these rounding modes:
 `TOWARD_ZERO`, `AWAY_FROM_ZERO`, `FLOOR`, `CEILING`, `HALF_UP`, or
 `HALF_EVEN` (each prefixed with `BIGDECIMAL_ROUND_`). A positive target scale
 keeps decimal places; a negative scale rounds to tens, hundreds, and so on.
+
+### Additional numeric operations
+
+- `bigdecimal_to_bigint` requires an integer-valued decimal (e.g. `12.00`),
+  rejecting fractional values instead of truncating. `from_bigint` is exact.
+- `bigdecimal_sign` writes -1/0/1; `is_integer` writes a bool. Neither allocates.
+- `bigdecimal_min`/`max` copy a selected operand without rounding; ties select
+  the first operand. Aliasing is supported.
+- `bigdecimal_pow` takes a non-negative BigInt exponent and computes exactly;
+  `0^0 = 1`. Negative and fractional exponents are not implemented.
+- `bigdecimal_div_significant` rounds to a positive significant-digit count.
+  `bigdecimal_div_exact_or_significant` preserves terminating quotients exactly,
+  even beyond that count, and rounds only non-terminating quotients.
+- `bigdecimal_root` takes a positive uint32_t degree; sqrt/cbrt are degree 2/3
+  wrappers. Negative values require odd degree. Digits is a positive significant
+  digit count with explicit rounding. Exact finite roots stay exact; others
+  round to that count. Degree 1 is identity. Calculator caps are not embedded
+  here; size/scale overflow and exhausted resources still return errors.
+- `bigdecimal_set_constant` accepts `BIGDECIMAL_CONSTANT_PI`, `_E`, or `_PHI`:
+  stored 500-decimal-place approximations, not exact irrational values.
+- `bigdecimal_format` takes places >=0 or -1 for all stored digits. Scientific
+  notation is used for decimal exponent magnitude >=10, with places applying
+  to the mantissa; otherwise places applies to the ordinary decimal part.
+  The number is not changed. Caller frees the resulting string with `free()`;
+  unlike the client formatter, this API preserves `*result` on failure.
+
+All follow the common null-argument, aliasing and strong failure contracts.
+Pointers must refer to live initialized objects; dangling pointers and concurrent
+mutation are not validated. See the public header for complete signatures.
+
+### Optional resource scope
+
+`<numforge/runtime.h>` provides `numforge_budget_begin`, `check`, `failure`,
+and `end`. Only a caller for which begin returned true owns/ends the scope;
+nested calls reuse it. Scopes are thread-local. Zero duration expires immediately,
+UINT64_MAX is practically unbounded, and SIZE_MAX is the largest byte allowance.
+Limits count cumulative requested bytes and a single allocation, not live memory.
+Ordinary numeric calls start no scope.
+
+Cancellation returns the numeric operation's allocation-failure status. Query
+`numforge_budget_failure()` before ending the scope to distinguish TIME/MEMORY.
+Cancellation is cooperative, not a hard deadline. Budget-aware
+`numforge_malloc/calloc/realloc` include client allocations; free them normally.
+`numforge_monotonic_ms` returns monotonic milliseconds or UINT64_MAX on failure.
+Independent objects can be used by separate threads; shared mutation requires
+caller synchronization. Arithmetic is not constant-time or cryptographically audited.
 
 ## Calculator expressions
 
@@ -111,14 +164,15 @@ CONSTANT    := π | e | φ
 
 Examples: `0.1 + 0.2`, `π / 2`, `πe`, `10π`, `2(3 + 4)`,
 `-(2.5E-1) * 8`, `(12.5 - 2.5) / 4`, `1.5^3`, `12²`, `2³`, and `5!`. Each
-constant currently has 200 stored decimal places. Standalone lowercase `e` means
+constant currently has 500 stored decimal places. Standalone lowercase `e` means
 Euler's constant, so `5e`
 means `5 * e` and `1e3` means `1 * e * 3`. Scientific notation always uses
 uppercase `E`: `5E-1` means `0.5` and `1E3` means `1000`. Powers use binary
 exponentiation with exact BigDecimal multiplication, so decimal bases are valid
 when the exponent is a non-negative whole number. `2^3^2` means `2^(3^2)`;
-`0^0` is `1`. Negative and decimal exponents, modulo, variables, and most named
-function calculations are not implemented yet. Squaring and cubing use exact BigDecimal
+`0^0` is `1`. Negative and decimal exponents and variables are not implemented
+yet. Named integer and root functions use the public BigDecimal core; squaring
+and cubing use exact BigDecimal
 multiplication too.
 
 Repeated decimal separators (`1.2.3`, `1,2,3`) and adjacent numeric tokens
@@ -192,8 +246,8 @@ names, not products. Numeric suffixes such as `log2` are not supported.
 
 The local browser page has active keypad buttons for this grammar, including
 power, square, cube, factorial and an argument separator. Named functions are
-organized in four collapsible groups. Its root, trigonometric, logarithmic,
-and exponential controls remain visibly marked as planned and
+organized in four collapsible groups. Its root controls are active; trigonometric,
+logarithmic and exponential controls remain visibly marked as planned and
 disabled. The keypad inserts `.`, while directly typed `,` is accepted as the
 same decimal separator. The page is available in Slovak and English and
 provides a one-click control to copy the displayed result.
@@ -230,7 +284,7 @@ digits, not unlimited accuracy. There are currently no `inexact` or `rounded`
 flags. See the evaluation policy in [CALCULATOR_DESIGN.md](CALCULATOR_DESIGN.md).
 Rounding at non-terminating division is still approximate: cancellation can expose its
 error, and no rigorous whole-expression error bound or inexact flag is claimed.
-Constants contain 200 stored decimal places; selecting a higher output limit
+Constants contain 500 stored decimal places; selecting a higher output limit
 does not add mathematical accuracy to them. Public `bigdecimal_div` retains
 its original explicit decimal-scale policy, independent of this calculator mode.
 

@@ -10,13 +10,6 @@
     replace these strings without changing tokenizer, parser, or evaluator.
 ------------------------------------------------------------------------------------------------------------------------------
 */
-static const char CALCULATOR_PI[] =
-    "3.14159265358979323846264338327950288419716939937510582097494459230781640628620899862803482534211706798214808651328230664709384460955058223172535940812848111745028410270193852110555964462294895493038196";
-static const char CALCULATOR_E[] =
-    "2.71828182845904523536028747135266249775724709369995957496696762772407663035354759457138217852516642742746639193200305992181741359662904357290033429526059563073813232862794349076323382988075319525101901";
-static const char CALCULATOR_PHI[] =
-    "1.61803398874989484820458683436563811772030917980576286213544862270526046281890244970720720418939113748475408807538689175212663386222353693179318006076672635443338908659593958290563832266131992829026788";
-
 /*
 ------------------------------------------------------------------------------------------------------------------------------
     Internal helper functions for constant operations.
@@ -86,15 +79,15 @@ bool calculator_constant_from_text(
 
 CalculatorStatus calculator_constant_set_value(BigDecimal *value, CalculatorConstant constant)
 {
-    const char *text;
+    BigDecimalConstant numeric_constant;
 
     switch (constant)
     {
-        case CALCULATOR_CONSTANT_PI: text = CALCULATOR_PI; break;
-        case CALCULATOR_CONSTANT_E: text = CALCULATOR_E; break;
-        case CALCULATOR_CONSTANT_PHI: text = CALCULATOR_PHI; break;
+        case CALCULATOR_CONSTANT_PI: numeric_constant = BIGDECIMAL_CONSTANT_PI; break;
+        case CALCULATOR_CONSTANT_E: numeric_constant = BIGDECIMAL_CONSTANT_E; break;
+        case CALCULATOR_CONSTANT_PHI: numeric_constant = BIGDECIMAL_CONSTANT_PHI; break;
         default: return CALCULATOR_INVALID_ARGUMENT;
     }
 
-    return calculator_from_bigdecimal_status(bigdecimal_set_string(value, text));
+    return calculator_from_bigdecimal_status(bigdecimal_set_constant(value, numeric_constant));
 }

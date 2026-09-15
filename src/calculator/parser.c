@@ -1,6 +1,6 @@
 #include "expression_internal.h"
 #include "tokenizer.h"
-#include "../internal/numforge_alloc.h"
+#include <numforge/runtime.h>
 
 #include <stdlib.h>
 #include <string.h>

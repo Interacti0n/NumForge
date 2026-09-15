@@ -1044,7 +1044,7 @@ BigDecimalStatus bigdecimal_mul(BigDecimal *result, const BigDecimal *a, const B
  * only prime factors are two and five. Scales do not affect this property.
  * Detect termination before selecting a precision; never silently fall back
  * to rounding after an allocation failure or cancellation. */
-BigDecimalStatus bigdecimal_div_calculator(BigDecimal *result, const BigDecimal *a,
+BigDecimalStatus bigdecimal_div_exact_or_significant(BigDecimal *result, const BigDecimal *a,
     const BigDecimal *b, int64_t digits, BigDecimalRoundingMode rounding)
 {
     BigInt *denominator;

@@ -1,9 +1,6 @@
 #include "evaluator.h"
 #include "expression_internal.h"
-#include "roots.h"
-#include "../bigdecimal/bigdecimal_internal.h"
-#include "../bigint/bigint_internal.h"
-#include "../internal/numforge_alloc.h"
+#include <numforge/runtime.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -107,64 +104,29 @@ static CalculatorStatus calculator_set_number(BigDecimal *value, const char *tex
     return calculator_from_bigdecimal_status(decimal_status);
 }
 
+/* Domain checks use public predicates, never numeric representation fields. */
+static bool calculator_nonnegative_integer(const BigDecimal *value)
+{
+    bool integer = false;
+    int sign = 0;
+    return bigdecimal_is_integer(&integer, value) == BIGDECIMAL_OK &&
+        bigdecimal_sign(&sign, value) == BIGDECIMAL_OK && integer && sign >= 0;
+}
+
 static CalculatorStatus calculator_bigdecimal_to_bigint(BigInt **result, const BigDecimal *value, bool signed_input)
 {
-    BigDecimalStatus decimal_status;
-    BigInt *integer;
-    char *text = NULL;
-    CalculatorStatus status;
-
-    /* Canonical scale/sign checks avoid expanding compact, invalid values
-     * into enormous strings. Power, factorial and isqrt reject negatives. */
-    if (value->scale > 0 || (!signed_input && bigint_is_negative(value->coefficient)))
-    {
-        return CALCULATOR_INVALID_ARGUMENT;
-    }
-
-    decimal_status = bigdecimal_to_string(value, &text);
-    status = calculator_from_bigdecimal_status(decimal_status);
-    if (status != CALCULATOR_OK)
-    {
-        return status;
-    }
-    if (strchr(text, '.') != NULL)
-    {
-        free(text);
-        return CALCULATOR_INVALID_ARGUMENT;
-    }
-
-    integer = bigint_create();
-    if (integer == NULL)
-    {
-        free(text);
-        return CALCULATOR_OUT_OF_MEMORY;
-    }
-
-    status = calculator_from_bigint_status(bigint_set_string(integer, text));
-    free(text);
-    if (status != CALCULATOR_OK)
-    {
-        bigint_destroy(integer);
-        return status;
-    }
-
-    *result = integer;
-    return CALCULATOR_OK;
+    if (!signed_input && !calculator_nonnegative_integer(value)) return CALCULATOR_INVALID_ARGUMENT;
+    BigInt *integer = bigint_create();
+    if (integer == NULL) return CALCULATOR_OUT_OF_MEMORY;
+    CalculatorStatus status = calculator_from_bigdecimal_status(bigdecimal_to_bigint(integer, value));
+    if (status != CALCULATOR_OK) bigint_destroy(integer);
+    else *result = integer;
+    return status;
 }
 
 static CalculatorStatus calculator_set_bigdecimal_from_bigint(BigDecimal *value, const BigInt *integer)
 {
-    char *text = bigint_to_string(integer);
-    CalculatorStatus status;
-
-    if (text == NULL)
-    {
-        return CALCULATOR_OUT_OF_MEMORY;
-    }
-
-    status = calculator_from_bigdecimal_status(bigdecimal_set_string(value, text));
-    free(text);
-    return status;
+    return calculator_from_bigdecimal_status(bigdecimal_from_bigint(value, integer));
 }
 
 static CalculatorStatus calculator_check_factorial_limit(const BigDecimal *value)
@@ -173,7 +135,7 @@ static CalculatorStatus calculator_check_factorial_limit(const BigDecimal *value
     CalculatorStatus status;
     int comparison = 0;
 
-    if (value->scale > 0 || bigint_is_negative(value->coefficient))
+    if (!calculator_nonnegative_integer(value))
     {
         return CALCULATOR_INVALID_ARGUMENT;
     }
@@ -199,80 +161,15 @@ static CalculatorStatus calculator_check_factorial_limit(const BigDecimal *value
     return status;
 }
 
-static CalculatorStatus calculator_bigdecimal_pow(
-    BigDecimal *result,
-    const BigDecimal *base,
-    const BigDecimal *exponent,
-    const CalculatorEvaluation *evaluation
-)
+static CalculatorStatus calculator_bigdecimal_pow(BigDecimal *result,
+    const BigDecimal *base, const BigDecimal *exponent, const CalculatorEvaluation *evaluation)
 {
-    BigInt *integer_exponent = NULL;
-    BigDecimal *accumulator = NULL;
-    BigDecimal *factor = NULL;
-    CalculatorStatus status = calculator_bigdecimal_to_bigint(&integer_exponent, exponent, false);
-
-    if (status != CALCULATOR_OK)
-    {
-        return status;
-    }
-    if (bigint_is_negative(integer_exponent))
-    {
-        bigint_destroy(integer_exponent);
-        return CALCULATOR_INVALID_ARGUMENT;
-    }
-
-    accumulator = bigdecimal_create();
-    factor = bigdecimal_create();
-    if (accumulator == NULL || factor == NULL)
-    {
-        bigint_destroy(integer_exponent);
-        bigdecimal_destroy(accumulator);
-        bigdecimal_destroy(factor);
-        return CALCULATOR_OUT_OF_MEMORY;
-    }
-
-    status = calculator_from_bigdecimal_status(bigdecimal_set_string(accumulator, "1"));
+    (void)evaluation;
+    BigInt *integer = NULL;
+    CalculatorStatus status = calculator_bigdecimal_to_bigint(&integer, exponent, false);
     if (status == CALCULATOR_OK)
-    {
-        status = calculator_from_bigdecimal_status(bigdecimal_copy(factor, base));
-    }
-
-    while (status == CALCULATOR_OK && !bigint_is_zero(integer_exponent))
-    {
-        if (calculator_time_limit_reached(evaluation))
-        {
-            status = CALCULATOR_TIME_LIMIT;
-            break;
-        }
-        if (bigint_is_odd(integer_exponent))
-        {
-            status = calculator_from_bigdecimal_status(bigdecimal_mul(accumulator, accumulator, factor));
-        }
-        if (status == CALCULATOR_OK)
-        {
-            status = calculator_from_bigint_status(bigint_shift_right(integer_exponent, integer_exponent, 1U));
-        }
-        if (status == CALCULATOR_OK && !bigint_is_zero(integer_exponent))
-        {
-            status = calculator_from_bigdecimal_status(bigdecimal_mul(factor, factor, factor));
-        }
-    }
-
-    if (status == CALCULATOR_OK)
-    {
-        if (calculator_time_limit_reached(evaluation))
-        {
-            status = CALCULATOR_TIME_LIMIT;
-        }
-    }
-    if (status == CALCULATOR_OK)
-    {
-        status = calculator_from_bigdecimal_status(bigdecimal_copy(result, accumulator));
-    }
-
-    bigint_destroy(integer_exponent);
-    bigdecimal_destroy(accumulator);
-    bigdecimal_destroy(factor);
+        status = calculator_from_bigdecimal_status(bigdecimal_pow(result, base, integer));
+    bigint_destroy(integer);
     return status;
 }
 
@@ -388,30 +285,6 @@ static CalculatorStatus calculator_evaluate_postfix(
     return CALCULATOR_OK;
 }
 
-/* Integer Newton iteration starts above sqrt(n) and decreases to its floor.
- * Stop before the possible floor/ceiling two-cycle for non-squares. */
-static BigIntStatus calculator_integer_sqrt(BigInt *root, const BigInt *number)
-{
-    if (bigint_is_zero(number)) return bigint_set_string(root, "0");
-    size_t bits = (number->size - 1U) * 64U;
-    for (uint64_t top = number->limbs[number->size - 1U]; top != 0; top >>= 1U) bits++;
-    BigInt *next = bigint_create();
-    if (next == NULL) return BIGINT_OUT_OF_MEMORY;
-    BigIntStatus status = bigint_set_string(root, "1");
-    if (status == BIGINT_OK) status = bigint_shift_left(root, root, bits / 2U + bits % 2U);
-    while (status == BIGINT_OK)
-    {
-        if (!numforge_budget_check()) { status = BIGINT_OUT_OF_MEMORY; break; }
-        status = bigint_div(next, number, root);
-        if (status == BIGINT_OK) status = bigint_add(next, next, root);
-        if (status == BIGINT_OK) status = bigint_shift_right(next, next, 1U);
-        if (status != BIGINT_OK || bigint_compare(next, root) >= 0) break;
-        status = bigint_copy(root, next);
-    }
-    bigint_destroy(next);
-    return status;
-}
-
 static CalculatorStatus calculator_evaluate_integer_call(
     BigDecimal **result,
     const CalculatorExpression *expression,
@@ -447,7 +320,7 @@ static CalculatorStatus calculator_evaluate_integer_call(
             case CALCULATOR_FUNCTION_GCD: integer_status = bigint_gcd(integer_result, arguments[0], arguments[1]); break;
             case CALCULATOR_FUNCTION_LCM: integer_status = bigint_lcm(integer_result, arguments[0], arguments[1]); break;
             case CALCULATOR_FUNCTION_MOD: integer_status = bigint_mod(integer_result, arguments[0], arguments[1]); break;
-            default: integer_status = calculator_integer_sqrt(integer_result, arguments[0]); break;
+            default: integer_status = bigint_isqrt(integer_result, arguments[0]); break;
         }
         status = calculator_from_bigint_status(integer_status);
     }
@@ -470,6 +343,13 @@ static CalculatorStatus calculator_evaluate_integer_call(
     return CALCULATOR_OK;
 }
 
+static bool calculator_decimal_zero(const BigDecimal *value)
+{
+    bool zero = false;
+    (void)bigdecimal_is_zero(&zero, value);
+    return zero;
+}
+
 /* Root degree is an application parameter, not a rounded numeric argument. */
 static CalculatorStatus calculator_evaluate_root_call(
     BigDecimal **result,
@@ -488,8 +368,7 @@ static CalculatorStatus calculator_evaluate_root_call(
     {
         status = calculator_evaluate_expression(&degree_value, expression->data.call.arguments[1], evaluation, error);
         child_error = status != CALCULATOR_OK;
-        if (status == CALCULATOR_OK && (degree_value->scale > 0 ||
-            bigint_is_negative(degree_value->coefficient) || bigint_is_zero(degree_value->coefficient)))
+        if (status == CALCULATOR_OK && (!calculator_nonnegative_integer(degree_value) || calculator_decimal_zero(degree_value)))
             status = CALCULATOR_INVALID_ARGUMENT;
         if (status == CALCULATOR_OK)
         {
@@ -515,7 +394,7 @@ static CalculatorStatus calculator_evaluate_root_call(
     {
         int64_t digits = evaluation->context->division_scale;
         if (digits < CALCULATOR_DEFAULT_DIVISION_SCALE) digits = CALCULATOR_DEFAULT_DIVISION_SCALE;
-        status = calculator_from_bigdecimal_status(calculator_decimal_root(
+        status = calculator_from_bigdecimal_status(bigdecimal_root(
             value, value, degree, digits, evaluation->context->rounding));
     }
     bigdecimal_destroy(degree_value);
@@ -550,8 +429,9 @@ static CalculatorStatus calculator_evaluate_basic_call(
         status = calculator_from_bigdecimal_status(bigdecimal_abs(selected, selected));
     else if (operation == CALCULATOR_FUNCTION_SIGN)
     {
-        const char *sign = bigint_is_zero(selected->coefficient) ? "0" :
-            (bigint_is_negative(selected->coefficient) ? "-1" : "1");
+        int numeric_sign = 0;
+        (void)bigdecimal_sign(&numeric_sign, selected);
+        const char *sign = numeric_sign == 0 ? "0" : numeric_sign < 0 ? "-1" : "1";
         status = calculator_from_bigdecimal_status(bigdecimal_set_string(selected, sign));
     }
     else
@@ -780,7 +660,7 @@ static CalculatorStatus calculator_evaluate_expression(
                 break;
             case CALCULATOR_BINARY_DIVIDE:
                 status = calculator_from_bigdecimal_status(evaluation->context->significant_division ?
-                    bigdecimal_div_calculator(value, left, right, evaluation->context->division_scale,
+                    bigdecimal_div_exact_or_significant(value, left, right, evaluation->context->division_scale,
                                                evaluation->context->rounding) :
                     bigdecimal_div(value, left, right, evaluation->context->division_scale,
                                    evaluation->context->rounding));

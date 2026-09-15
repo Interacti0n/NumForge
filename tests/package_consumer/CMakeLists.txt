@@ -8,6 +8,10 @@ set(CMAKE_C_EXTENSIONS OFF)
 
 find_package(NumForge 1.0 CONFIG REQUIRED)
 
+if(TARGET NumForge::numforge_client)
+    message(FATAL_ERROR "Private client target must not be exported with numeric API")
+endif()
+
 add_executable(numforge_package_consumer
     main.c
 )

@@ -33,6 +33,7 @@ jobs:
           cmake -S . -B build-package
           -DCMAKE_BUILD_TYPE=Release
           -DBUILD_TESTING=OFF
+          -DNUMFORGE_BUILD_APPS=OFF
           -DNUMFORGE_WARNINGS_AS_ERRORS=ON
           -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/stage
       - name: Build and install package
@@ -93,6 +94,7 @@ jobs:
         run: >-
           cmake -S . -B build-package -G "Visual Studio 17 2022" -A x64
           -DBUILD_TESTING=OFF -DNUMFORGE_WARNINGS_AS_ERRORS=ON
+          -DNUMFORGE_BUILD_APPS=OFF
           -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/stage
       - name: Install Release package
         run: |
