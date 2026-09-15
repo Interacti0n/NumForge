@@ -51,10 +51,10 @@ checkbox sends `?precision=full`. HTTP `POST` requests require an exact
 own loopback origins, preventing unrelated pages from triggering expensive
 local calculations. Slovak and English routes use `?lang=sk` and `?lang=en`;
 the result panel copies the currently displayed result through the browser
-clipboard API, with a local fallback. The visible root, absolute-value,
+clipboard API, with a local fallback. The visible general root (sqrt/cbrt/root),
 trigonometric, logarithmic, and exponential controls are disabled placeholders.
-They document the intended UI surface, but do not currently add tokens or
-affect evaluation.
+Their calls are recognized but report not implemented. Basic abs/sign/min/max
+controls and integer gcd/lcm/mod/isqrt controls are active.
 
 Nonblocking sockets use absolute monotonic deadlines: two seconds for the
 complete incoming request and two seconds for a response. Slow byte-by-byte
@@ -87,11 +87,20 @@ operators unambiguous. The evaluator normalizes a comma to a point before
 calling the public BigDecimal API.
 
 Variables remain outside the grammar. The function registry recognizes the
-names and arities listed in [API.md](API.md#named-calls). Only `pow` and
-`factorial` currently calculate: they reuse the existing operator paths without
-new numerical algorithms. Pending calls report `NOT_IMPLEMENTED` before
+names and arities listed in [API.md](API.md#named-calls). `pow` and `factorial` reuse existing operator paths.
+`abs`, `sign`, `min` and `max` use decimal operations directly. Min/max retain
+only the selected and current values, evaluating arguments left to right. Pending calls report `NOT_IMPLEMENTED` before
 evaluating children. Numerical domains/rounding must be defined when enabling
 each remaining implementation.
+
+`gcd`, `lcm` and `mod` reuse BigInt operations, accepting signed integer-valued
+arguments (including `12.00`). `mod` is a truncating remainder, not Euclidean
+modulo. `isqrt` requires a non-negative integer and uses decreasing integer
+Newton iteration from a power-of-two upper bound; it stops at the floor root.
+No floating-point conversions or output-precision rounding are used. Fractional
+evaluated arguments are rejected; prior arithmetic still follows the working
+precision policy. Temporaries are cleaned up on domain, allocation and budget
+failures without replacing the caller's destination.
 
 Call nodes own an argument-pointer array and child expressions; registry entries
 have static lifetime. Array growth uses the fault-injectable allocator. Parse

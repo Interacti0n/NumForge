@@ -42,10 +42,34 @@ for (const lang of ['sk', 'en']) {
             await page.locator(`a[href="/?lang=${other}"]`).click();
             await calculate(page, '2(2+2)', '8');
         });
+        test('automatic calculation and precision above result', async ({ page }, testInfo) => {
+            const settings = await page.locator('.precision').boundingBox();
+            const panel = await page.locator('.result-panel').boundingBox();
+            expect(settings.y + settings.height).toBeLessThan(panel.y);
+            await page.locator('#expression').fill('1/8');
+            await expect(page.locator('#result')).toHaveText('0.125');
+            await page.locator('#precision').fill('2');
+            await expect(page.locator('#result')).toHaveText('0.12');
+            await page.locator('#full-precision').check();
+            await expect(page.locator('#result')).toHaveText('0.125');
+            await page.locator('#expression').fill('2+');
+            await page.locator('#expression').press('End');
+            await page.locator('[data-insert="3"]').click();
+            await expect(page.locator('#result')).toHaveText('5');
+            await page.locator('[data-action=backspace]').click();
+            await expect(page.locator('#result')).toContainText(lang === 'sk' ? 'Chyba' : 'Error');
+            await page.locator('[data-insert="4"]').click();
+            await expect(page.locator('#result')).toHaveText('6');
+            await page.screenshot({path: testInfo.outputPath('automatic-desktop.png'), fullPage: true});
+            await page.setViewportSize({width: 375, height: 812});
+            await page.screenshot({path: testInfo.outputPath('automatic-mobile.png'), fullPage: true});
+            await page.locator('[data-action=clear]').click();
+            await expect(page.locator('#result')).toBeEmpty();
+        });
         test('function groups, aliases and pending calls', async ({ page }, testInfo) => {
             await expect(page.locator('details.function-group')).toHaveCount(4);
             await expect(page.locator('[data-function]')).toHaveCount(24);
-            await expect(page.locator('[data-function]:disabled')).toHaveCount(22);
+            await expect(page.locator('[data-function]:disabled')).toHaveCount(14);
             const powers = page.locator('details').filter({ has: page.locator('[data-function="pow"]') });
             await powers.locator('summary').focus();
             await page.keyboard.press('Enter');
@@ -74,6 +98,38 @@ for (const lang of ['sk', 'en']) {
             await page.screenshot({ path: testInfo.outputPath('functions-mobile.png'), fullPage: true });
             await page.locator('.guide-link').click();
             await expect(page.locator('body')).toContainText('log(x;b)');
+        });
+        test('integer buttons execute through C and reject invalid domains', async ({ page }) => {
+            const group = page.locator('details').filter({has: page.locator('[data-function="gcd"]')});
+            await group.locator('summary').click();
+            for (const [name, args, expected] of [
+                ['gcd', '-48;18)', '6'], ['lcm', '-4;6)', '12'],
+                ['mod', '-7;3)', '-1'], ['isqrt', '18446744073709551616)', '4294967296']
+            ]) {
+                await page.locator('[data-action=clear]').click();
+                await page.locator(`[data-function="${name}"]`).click();
+                await expect(page.locator('#expression')).toHaveValue(`${name}(`);
+                await page.locator('#expression').press('End');
+                await page.locator('#expression').pressSequentially(args);
+                await page.locator('#expression').press('Enter');
+                await expect(page.locator('#result')).toHaveText(expected);
+            }
+            await calculate(page, 'min(abs(-3);max(1;sign(-2)))', '1');
+            await page.locator('#expression').fill('isqrt(-1)');
+            await page.locator('#expression').press('Enter');
+            await expect(page.locator('#result')).toContainText(lang === 'sk' ? 'neplatný argument' : 'invalid argument');
+        });
+        test('result keeps five lines and expansion resets', async ({ page }) => {
+            const result = page.locator('#result');
+            const lineHeight = await result.evaluate(el => parseFloat(getComputedStyle(el).lineHeight));
+            expect((await result.boundingBox()).height).toBeCloseTo(5 * lineHeight, 0);
+            await page.locator('#full-precision').check();
+            await calculate(page, '2^2000', (2n ** 2000n).toString()[0] + '.' + (2n ** 2000n).toString().slice(1) + 'E+602');
+            await expect(page.locator('#expand-result')).toBeVisible();
+            await page.locator('#expand-result').click();
+            expect((await result.boundingBox()).height).toBeGreaterThan(5 * lineHeight);
+            await calculate(page, '2^2000', (2n ** 2000n).toString()[0] + '.' + (2n ** 2000n).toString().slice(1) + 'E+602');
+            await expect(page.locator('#expand-result')).toHaveText(lang === 'sk' ? 'Zobraziť všetko' : 'Show all');
         });
         test('non-JSON failures recover without stale results', async ({ page }) => {
             await page.route('**/api/evaluate*', route => route.fulfill({ status: 503,

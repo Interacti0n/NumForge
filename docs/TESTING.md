@@ -17,13 +17,19 @@ the production library.
 
 ## Independent numerical oracle
 
-`tests/test_numeric_oracle.js` generates 5792 reproducible cases from seed
+`tests/test_numeric_oracle.js` generates 6492 reproducible cases from seed
 `0x12345678`, sends them to `numeric_oracle_driver`, and compares all output
 lines against independent JavaScript BigInt and exact rational arithmetic.
 It tests signed integer arithmetic, division/remainder, GCD, powers, decimal
 arithmetic, rescaling, calculator exact-first division, and fixed-scale/significant division in all six rounding
 modes. Cases have bounded coefficients of up to 140 digits and bounded scales.
-The reference does not call NumForge to obtain expected values.
+The reference does not call NumForge to obtain expected values. This includes
+700 calculator-level gcd/lcm/mod/isqrt cases with signed inputs and roots of
+up to 280-digit numbers, including square ±1 boundaries. The root reference
+uses binary search rather than the implementation's Newton iteration.
+Unit tests additionally exhaust roots from 0 through 1024 and exercise invalid
+domains, zero, decimal integer spellings and 64-bit limb boundaries. Allocation
+and deterministic-deadline injection cover the integer-call pipeline.
 
 ```sh
 ctest --test-dir build -C Debug -R numeric_oracle --output-on-failure
@@ -107,12 +113,13 @@ npm test
 Adjust the executable path for your generator/configuration. Playwright starts
 and stops its own loopback server on port 18765; set `NUMFORGE_TEST_PORT` to
 another free port if necessary. It refuses to reuse an existing server.
-Ten Chromium scenarios cover both languages: real C calculations and
+Sixteen Chromium scenarios cover both languages: real C calculations and
 precision, keypad entry, clipboard, help/navigation, arithmetic errors,
 transport failures and stale-response protection. Network-failure and delayed
 response cases use controlled interception; ordinary calculations reach C.
 Function-group tests also cover keyboard expansion, pending calls, arity
-errors, active aliases and mobile layout. `function_calls_tests` covers all
+errors, active integer functions, five-line result expansion and mobile layout.
+`function_calls_tests` covers all
 registered names, syntax/depth/argument limits and e/E boundaries; allocation
 failure tests exercise partial nested calls and argument-array growth.
 

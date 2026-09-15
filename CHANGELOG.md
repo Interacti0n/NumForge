@@ -5,7 +5,18 @@ All notable changes to NumForge are documented in this file. The project uses
 
 ## Unreleased
 
+- Enable calculator `gcd`, `lcm`, signed remainder `mod`, and non-negative
+  integer floor root `isqrt`, including SK/EN controls and domain documentation.
+- Add integer-function boundary cases, exhaustive small roots, 700 independent
+  oracle comparisons, allocation-failure coverage and browser checks.
+- Fix the unverified `sign` predicate calls and result-panel line height/reset;
+  split embedded JavaScript to stay within portable C string limits.
+
 ### Changed
+
+- Implement calculator `abs`, `sign`, variadic `min` and `max` using decimal
+  operations, bounded live argument storage and error propagation; activate
+  their SK/EN web controls.
 
 - Raise the calculator factorial input limit to 10000 for both `n!` and
   `factorial(n)`. The five-second and memory budgets remain unchanged;

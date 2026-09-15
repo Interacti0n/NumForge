@@ -26,8 +26,9 @@ function createUI(english) {
     function element(id) {
         if (!elements.has(id)) elements.set(id, {
             value: '', textContent: '', disabled: false, checked: false, className: '',
-            selectionStart: 0, selectionEnd: 0, listeners: {}, dataset: {},
+            selectionStart: 0, selectionEnd: 0, listeners: {}, dataset: {}, style: {}, scrollHeight: 150, clientHeight: 150,
             addEventListener(event, handler) { this.listeners[event] = handler; },
+            requestSubmit() { return this.listeners.submit({preventDefault() {}}); },
             focus() {},
             setRangeText(text, start, end) { this.value = this.value.slice(0, start) + text + this.value.slice(end); }
         });
@@ -111,8 +112,44 @@ async function test(english) {
     assert.equal(ui.element('#result').textContent, '');
 }
 
+async function testAutomaticCalculation(english) {
+    const ui = createUI(english);
+    const input = ui.element('#expression');
+    input.value = '1'; input.listeners.input();
+    input.value = '1/8'; input.listeners.input();
+    assert.equal(ui.pending.length, 0, 'typing is debounced');
+    ui.timers[0]();
+    assert.equal(ui.pending.length, 0, 'superseded timer cannot submit');
+    const calculation = ui.timers[1]();
+    assert.equal(ui.pending.length, 1);
+    ui.respond(0, '0.125'); await calculation;
+
+    ui.element('#precision').value = '2';
+    ui.element('#precision').listeners.input();
+    const rounded = ui.timers.at(-1)();
+    assert.ok(ui.pending[1].url.endsWith('precision=2'));
+    ui.respond(1, '0.12'); await rounded;
+    ui.element('#full-precision').checked = true;
+    ui.element('#full-precision').listeners.change();
+    assert.equal(ui.element('#precision').disabled, true);
+    const full = ui.timers.at(-1)();
+    assert.ok(ui.pending[2].url.endsWith('precision=full'));
+    ui.respond(2, '0.125'); await full;
+
+    input.value = '9'; input.listeners.input();
+    const cancelled = ui.timers.at(-1);
+    ui.clear.listeners.click(); cancelled();
+    assert.equal(ui.pending.length, 3, 'Clear cancels scheduled work');
+    input.value = ' '; input.listeners.input();
+    await ui.submit('');
+    assert.equal(ui.pending.length, 3, 'empty input does not calculate');
+    assert.equal(ui.element('#result').textContent, '');
+}
+
 (async () => {
     await test(false);
     await test(true);
+    await testAutomaticCalculation(false);
+    await testAutomaticCalculation(true);
     console.log('SK/EN web UI regressions passed');
 })().catch(error => { console.error(error); process.exitCode = 1; });

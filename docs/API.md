@@ -154,8 +154,10 @@ names; recognition is separate from numerical implementation:
 | Calls | Current calculation support |
 | --- | --- |
 | `pow(x;y)`, `factorial(n)` | Active aliases of `x^y` and `n!`, with identical domains and limits. |
-| `abs(x)`, `sign(x)`, `min(a;b;…)`, `max(a;b;…)` | Not implemented. Minimum/maximum require at least two arguments. |
-| `gcd(a;b)`, `lcm(a;b)`, `mod(a;b)`, `isqrt(n)` | Not implemented. |
+| `abs(x)`, `sign(x)`, `min(a;b;…)`, `max(a;b;…)` | Active: absolute value, sign −1/0/1 and minimum/maximum of at least two arguments. |
+| `gcd(a;b)`, `lcm(a;b)` | Integer arguments; non-negative GCD/LCM. `gcd(0;0) = 0`; LCM is zero if either argument is zero. |
+| `mod(a;b)` | Integer remainder after division truncating toward zero; nonzero remainder has the dividend's sign. `mod(-7;3) = -1`; zero divisor is an error. |
+| `isqrt(n)` | Floor of the square root of a non-negative integer: `isqrt(15) = 3`. |
 | `sqrt(x)`, `cbrt(x)`, `root(x;n)` | Not implemented; `√(x)` aliases `sqrt(x)`. |
 | `exp(x)`, `ln(x)`, `log(x)`, `log(x;b)` | Not implemented. Planned bases: e for ln, 10 for one-argument log, b for two-argument log. |
 | `sin(x)`, `cos(x)`, `tan(x)`, `asin(x)`, `acos(x)`, `atan(x)` | Not implemented. Planned angle unit: radians. atan takes only one argument. |
@@ -165,6 +167,11 @@ Wrong arity returns `wrong number of arguments` at the function name; unknown
 names return `invalid token`. A well-formed pending call returns `not implemented`
 before evaluating its arguments. Nesting and implicit products work, for
 example `pow(2;factorial(3))` and `2pow(2;3)`.
+
+Basic calls accept all finite decimal values without introducing rounding;
+their arguments follow the normal working-precision policy. Min/max evaluate
+every argument left to right and propagate all errors. Ties retain the first
+value. Negative zero has sign 0.
 
 The tokenizer reads complete letter sequences: `exp` is one name, whereas
 `1e3` remains `1*e*3`, `πe` remains `π*e`, `e(2)` remains `e*2`, and `1E3`
@@ -176,10 +183,13 @@ names, not products. Numeric suffixes such as `log2` are not supported.
 The local browser page has active keypad buttons for this grammar, including
 power, square, cube, factorial and an argument separator. Named functions are
 organized in four collapsible groups. Its root, trigonometric, logarithmic,
-exponential, and absolute-value controls remain visibly marked as planned and
+and exponential controls remain visibly marked as planned and
 disabled. The keypad inserts `.`, while directly typed `,` is accepted as the
 same decimal separator. The page is available in Slovak and English and
 provides a one-click control to copy the displayed result.
+The result panel is five lines high by default. Longer output shows a
+`Show all`/`Zobraziť všetko` control; clicking it or the result expands the
+panel, and the same control collapses it again.
 
 Results default to 10 decimal places, rounded half-even. A caller can request a
 non-negative output scale from 0 through 10000,

@@ -65,6 +65,20 @@ for(let i=0;i<180;i++) {
     add('dcalc',ta,tb,precision,mode,expected);
   }
 }
+// Independent binary-search oracle: no Newton iteration shared with C.
+function isqrt(n) {
+  let lo=0n,hi=n+1n;
+  while(hi-lo>1n){const mid=(lo+hi)/2n;if(mid*mid<=n)lo=mid;else hi=mid;}
+  return lo;
+}
+for(let i=0;i<100;i++) {
+  const a=integer(),b=integer(),g=gcd(a,b),n=abs(a);
+  add('calc',`gcd(${a};${b})`,0,0,0,g);
+  add('calc',`lcm(${a};${b})`,0,0,0,abs(a/g*b));
+  add('calc',`mod(${a};${b})`,0,0,0,a%b);
+  for(const v of [n,n*n,n*n-1n,n*n+1n])
+    add('calc',`isqrt(${v})`,0,0,0,isqrt(v));
+}
 const result=spawnSync(process.argv[2],{input:cases.map(c=>c.input).join('\n')+'\n',encoding:'utf8',timeout:110000,windowsHide:true,maxBuffer:8*1024*1024});
 if(result.error)throw result.error;
 if(result.status!==0)throw Error(`Exit ${result.status}: ${result.stderr}`);

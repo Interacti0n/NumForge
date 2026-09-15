@@ -1,6 +1,7 @@
 #include "evaluator.h"
 #include "expression_internal.h"
 #include "../bigdecimal/bigdecimal_internal.h"
+#include "../bigint/bigint_internal.h"
 #include "../internal/numforge_alloc.h"
 
 #include <stdlib.h>
@@ -64,6 +65,7 @@ static CalculatorStatus calculator_from_bigint_status(BigIntStatus status)
         case BIGINT_NULL_ARGUMENT: return CALCULATOR_NULL_ARGUMENT;
         case BIGINT_OUT_OF_MEMORY: return CALCULATOR_OUT_OF_MEMORY;
         case BIGINT_VALUE_TOO_LARGE: return CALCULATOR_VALUE_TOO_LARGE;
+        case BIGINT_DIVISION_BY_ZERO: return CALCULATOR_DIVISION_BY_ZERO;
         case BIGINT_NEGATIVE_ARGUMENT:
         case BIGINT_INVALID_ARGUMENT:
         default: return CALCULATOR_INVALID_ARGUMENT;
@@ -104,16 +106,16 @@ static CalculatorStatus calculator_set_number(BigDecimal *value, const char *tex
     return calculator_from_bigdecimal_status(decimal_status);
 }
 
-static CalculatorStatus calculator_bigdecimal_to_bigint(BigInt **result, const BigDecimal *value)
+static CalculatorStatus calculator_bigdecimal_to_bigint(BigInt **result, const BigDecimal *value, bool signed_input)
 {
     BigDecimalStatus decimal_status;
     BigInt *integer;
     char *text = NULL;
     CalculatorStatus status;
 
-    /* Both callers require non-negative integers. Canonical scale/sign
-     * checks avoid expanding compact, invalid values into enormous strings. */
-    if (value->scale > 0 || bigint_is_negative(value->coefficient))
+    /* Canonical scale/sign checks avoid expanding compact, invalid values
+     * into enormous strings. Power, factorial and isqrt reject negatives. */
+    if (value->scale > 0 || (!signed_input && bigint_is_negative(value->coefficient)))
     {
         return CALCULATOR_INVALID_ARGUMENT;
     }
@@ -206,7 +208,7 @@ static CalculatorStatus calculator_bigdecimal_pow(
     BigInt *integer_exponent = NULL;
     BigDecimal *accumulator = NULL;
     BigDecimal *factor = NULL;
-    CalculatorStatus status = calculator_bigdecimal_to_bigint(&integer_exponent, exponent);
+    CalculatorStatus status = calculator_bigdecimal_to_bigint(&integer_exponent, exponent, false);
 
     if (status != CALCULATOR_OK)
     {
@@ -334,7 +336,7 @@ static CalculatorStatus calculator_evaluate_postfix(
     status = calculator_check_factorial_limit(operand);
     if (status == CALCULATOR_OK)
     {
-        status = calculator_bigdecimal_to_bigint(&integer, operand);
+        status = calculator_bigdecimal_to_bigint(&integer, operand, false);
     }
     bigdecimal_destroy(operand);
     if (status != CALCULATOR_OK)
@@ -385,6 +387,150 @@ static CalculatorStatus calculator_evaluate_postfix(
     return CALCULATOR_OK;
 }
 
+/* Integer Newton iteration starts above sqrt(n) and decreases to its floor.
+ * Stop before the possible floor/ceiling two-cycle for non-squares. */
+static BigIntStatus calculator_integer_sqrt(BigInt *root, const BigInt *number)
+{
+    if (bigint_is_zero(number)) return bigint_set_string(root, "0");
+    size_t bits = (number->size - 1U) * 64U;
+    for (uint64_t top = number->limbs[number->size - 1U]; top != 0; top >>= 1U) bits++;
+    BigInt *next = bigint_create();
+    if (next == NULL) return BIGINT_OUT_OF_MEMORY;
+    BigIntStatus status = bigint_set_string(root, "1");
+    if (status == BIGINT_OK) status = bigint_shift_left(root, root, bits / 2U + bits % 2U);
+    while (status == BIGINT_OK)
+    {
+        if (!numforge_budget_check()) { status = BIGINT_OUT_OF_MEMORY; break; }
+        status = bigint_div(next, number, root);
+        if (status == BIGINT_OK) status = bigint_add(next, next, root);
+        if (status == BIGINT_OK) status = bigint_shift_right(next, next, 1U);
+        if (status != BIGINT_OK || bigint_compare(next, root) >= 0) break;
+        status = bigint_copy(root, next);
+    }
+    bigint_destroy(next);
+    return status;
+}
+
+static CalculatorStatus calculator_evaluate_integer_call(
+    BigDecimal **result,
+    const CalculatorExpression *expression,
+    const CalculatorEvaluation *evaluation,
+    CalculatorError *error
+)
+{
+    BigInt *arguments[2] = {NULL, NULL};
+    BigInt *integer_result = NULL;
+    BigDecimal *value = NULL;
+    CalculatorStatus status = CALCULATOR_OK;
+    CalculatorFunctionImplementation operation = expression->data.call.function->implementation;
+    bool child_error = false;
+    for (size_t i = 0; i < expression->data.call.count; i++)
+    {
+        status = calculator_evaluate_expression(&value, expression->data.call.arguments[i], evaluation, error);
+        if (status != CALCULATOR_OK) { child_error = true; break; }
+        status = calculator_bigdecimal_to_bigint(&arguments[i], value, operation != CALCULATOR_FUNCTION_ISQRT);
+        bigdecimal_destroy(value);
+        value = NULL;
+        if (status != CALCULATOR_OK) break;
+    }
+    if (status == CALCULATOR_OK)
+    {
+        integer_result = bigint_create();
+        if (integer_result == NULL) status = CALCULATOR_OUT_OF_MEMORY;
+    }
+    if (status == CALCULATOR_OK)
+    {
+        BigIntStatus integer_status;
+        switch (operation)
+        {
+            case CALCULATOR_FUNCTION_GCD: integer_status = bigint_gcd(integer_result, arguments[0], arguments[1]); break;
+            case CALCULATOR_FUNCTION_LCM: integer_status = bigint_lcm(integer_result, arguments[0], arguments[1]); break;
+            case CALCULATOR_FUNCTION_MOD: integer_status = bigint_mod(integer_result, arguments[0], arguments[1]); break;
+            default: integer_status = calculator_integer_sqrt(integer_result, arguments[0]); break;
+        }
+        status = calculator_from_bigint_status(integer_status);
+    }
+    if (status == CALCULATOR_OK)
+    {
+        value = bigdecimal_create();
+        status = value == NULL ? CALCULATOR_OUT_OF_MEMORY : calculator_set_bigdecimal_from_bigint(value, integer_result);
+    }
+    bigint_destroy(arguments[0]);
+    bigint_destroy(arguments[1]);
+    bigint_destroy(integer_result);
+    if (calculator_time_limit_reached(evaluation)) status = CALCULATOR_TIME_LIMIT;
+    if (status != CALCULATOR_OK)
+    {
+        bigdecimal_destroy(value);
+        if (!child_error) calculator_error_set(error, status, expression->offset);
+        return status;
+    }
+    *result = value;
+    return CALCULATOR_OK;
+}
+
+/* Evaluate basic calls left to right, retaining at most the selected value
+ * and the current argument. Even an unselected argument must be evaluated
+ * so that its errors are not silently discarded. */
+static CalculatorStatus calculator_evaluate_basic_call(
+    BigDecimal **result,
+    const CalculatorExpression *expression,
+    const CalculatorEvaluation *evaluation,
+    CalculatorError *error
+)
+{
+    BigDecimal *selected = NULL;
+    CalculatorFunctionImplementation operation = expression->data.call.function->implementation;
+    CalculatorStatus status = calculator_evaluate_expression(
+        &selected, expression->data.call.arguments[0], evaluation, error);
+    if (status != CALCULATOR_OK) return status;
+
+    if (operation == CALCULATOR_FUNCTION_ABS)
+        status = calculator_from_bigdecimal_status(bigdecimal_abs(selected, selected));
+    else if (operation == CALCULATOR_FUNCTION_SIGN)
+    {
+        const char *sign = bigint_is_zero(selected->coefficient) ? "0" :
+            (bigint_is_negative(selected->coefficient) ? "-1" : "1");
+        status = calculator_from_bigdecimal_status(bigdecimal_set_string(selected, sign));
+    }
+    else
+    {
+        for (size_t index = 1; index < expression->data.call.count; index++)
+        {
+            BigDecimal *argument = NULL;
+            int comparison = 0;
+            status = calculator_evaluate_expression(
+                &argument, expression->data.call.arguments[index], evaluation, error);
+            if (status != CALCULATOR_OK)
+            {
+                bigdecimal_destroy(selected);
+                return status;
+            }
+            status = calculator_from_bigdecimal_status(bigdecimal_compare(&comparison, argument, selected));
+            if (status == CALCULATOR_OK &&
+                ((operation == CALCULATOR_FUNCTION_MIN && comparison < 0) ||
+                 (operation == CALCULATOR_FUNCTION_MAX && comparison > 0)))
+            {
+                BigDecimal *previous = selected;
+                selected = argument;
+                argument = previous;
+            }
+            bigdecimal_destroy(argument);
+            if (status != CALCULATOR_OK) break;
+        }
+    }
+    if (status == CALCULATOR_OK && calculator_time_limit_reached(evaluation))
+        status = CALCULATOR_TIME_LIMIT;
+    if (status != CALCULATOR_OK)
+    {
+        bigdecimal_destroy(selected);
+        calculator_error_set(error, status, expression->offset);
+        return status;
+    }
+    *result = selected;
+    return CALCULATOR_OK;
+}
+
 static CalculatorStatus calculator_evaluate_expression(
     BigDecimal **result,
     const CalculatorExpression *expression,
@@ -410,6 +556,16 @@ static CalculatorStatus calculator_evaluate_expression(
         operation.depth = expression->depth;
         switch (expression->data.call.function->implementation)
         {
+            case CALCULATOR_FUNCTION_GCD:
+            case CALCULATOR_FUNCTION_LCM:
+            case CALCULATOR_FUNCTION_MOD:
+            case CALCULATOR_FUNCTION_ISQRT:
+                return calculator_evaluate_integer_call(result, expression, evaluation, error);
+            case CALCULATOR_FUNCTION_ABS:
+            case CALCULATOR_FUNCTION_SIGN:
+            case CALCULATOR_FUNCTION_MIN:
+            case CALCULATOR_FUNCTION_MAX:
+                return calculator_evaluate_basic_call(result, expression, evaluation, error);
             case CALCULATOR_FUNCTION_POWER:
                 operation.type = CALCULATOR_EXPRESSION_BINARY;
                 operation.data.binary.operation = CALCULATOR_BINARY_POWER;

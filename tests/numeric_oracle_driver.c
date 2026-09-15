@@ -9,6 +9,7 @@
 #include <numforge/bigint.h>
 #include <numforge/bigdecimal.h>
 #include "bigdecimal_internal.h"
+#include "../src/calculator/evaluator.h"
 
 int main(void)
 {
@@ -26,7 +27,18 @@ int main(void)
     {
         int status;
         char *text = NULL;
-        if (op[0] == 'i')
+        if (op[0] == 'c')
+        {
+            CalculatorExpression *expression = NULL;
+            CalculatorContext context;
+            CalculatorError error;
+            calculator_context_init(&context);
+            status = calculator_parse(a, &expression, &error);
+            if (!status) status = calculator_evaluate(dr, expression, &context, &error);
+            if (!status) status = bigdecimal_to_string(dr, &text);
+            calculator_expression_destroy(expression);
+        }
+        else if (op[0] == 'i')
         {
             status = bigint_set_string(ia, a);
             if (!status) status = bigint_set_string(ib, b);

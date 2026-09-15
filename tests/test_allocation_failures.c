@@ -898,7 +898,7 @@ void test_evaluator_preserves_destination_on_every_allocation_failure(void)
         CalculatorStatus status;
         bool injected;
 
-        TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_parse("pow(1.5;3) + factorial(2) + 7/28 + 1/3", &expression, &error));
+        TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_parse("max(abs(pow(1.5;3));sign(-2);9) + factorial(2) + 7/28 + 1/3 + gcd(-48;18) + lcm(4;-6) + mod(-7;3) + isqrt(999)", &expression, &error));
         result = make_bigdecimal("7.77");
         calculator_context_init(&context);
 
@@ -1078,10 +1078,10 @@ void test_pipeline_deadline_covers_all_checkpoints(void)
         CalculatorError error;
         char *text = NULL;
         numforge_test_budget_expire_after(index);
-        CalculatorStatus status = calculator_compute("7/28", &context, &text, &error);
+        CalculatorStatus status = calculator_compute("7/28+gcd(-48;18)+lcm(4;-6)+mod(-7;3)+isqrt(999)", &context, &text, &error);
         if (status == CALCULATOR_OK)
         {
-            TEST_ASSERT_EQUAL_STRING("0.25", text);
+            TEST_ASSERT_EQUAL_STRING("48.25", text);
             free(text);
             completed = true;
             break;

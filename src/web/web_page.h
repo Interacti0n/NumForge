@@ -43,7 +43,7 @@ static const char NUMFORGE_WEB_PAGE_START[] =
     "    .keypad-label { margin: 24px 0 8px; color: #adb5c3; font-size: .84rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }\n"
     "    .result-panel { margin-top: 22px; padding: 16px; border-radius: 8px; background: #1c2028; }\n"
     "    .result-label { display: block; margin-bottom: 7px; color: #adb5c3; font-size: .84rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }\n"
-    "    #result { display: block; min-height: 1.5em; font: 1.2rem ui-monospace, monospace; overflow-wrap: anywhere; }\n"
+    "    #result { display: block; min-height: 7.5em; max-height: 7.5em; font: 1.2rem/1.5 ui-monospace, monospace; overflow: hidden; overflow-wrap: anywhere; cursor: pointer; } #result.expanded { max-height: none; } #expand-result { display: none; margin-top: 9px; padding: 6px 9px; font-size: .82rem; }\n"
     "    #result.error { color: #ff8888; }\n"
     "    .guide-link { display: inline-block; margin-top: 22px; }\n"
     "    code, pre { border-radius: 6px; background: #1c2028; font-family: ui-monospace, monospace; }\n"
@@ -62,19 +62,21 @@ static const char NUMFORGE_WEB_PAGE_START[] =
     "    <button type=\"submit\">Vypočítať</button>\n"
     "  </form>\n";
 
+static const char NUMFORGE_WEB_PAGE_PRECISION[] =
+    "  <section class=\"precision\" aria-label=\"Nastavenie výstupnej presnosti\">\n"
+    "    <label>Desatinné miesta <input id=\"precision\" type=\"number\" min=\"0\" max=\"10000\" step=\"1\" value=\"10\" inputmode=\"numeric\"></label>\n"
+    "    <label><input id=\"full-precision\" type=\"checkbox\"> Plný výstup</label>\n"
+    "  </section>\n";
+
 static const char NUMFORGE_WEB_PAGE_RESULT[] =
     "  <section class=\"result-panel\" aria-live=\"polite\">\n"
     "    <div style=\"display:flex;align-items:center;justify-content:space-between;gap:12px\">\n"
     "      <span class=\"result-label\">Výsledok</span><button id=\"copy-result\" type=\"button\" disabled title=\"Skopírovať výsledok\" aria-label=\"Skopírovať výsledok\" style=\"padding:6px 9px;font-size:.82rem\">⧉ Kopírovať</button>\n"
     "    </div>\n"
-    "    <output id=\"result\"></output>\n"
+    "    <output id=\"result\"></output><button id=\"expand-result\" type=\"button\">Zobraziť všetko</button>\n"
     "  </section>\n";
 
 static const char NUMFORGE_WEB_PAGE_KEYPAD[] =
-    "  <section class=\"precision\" aria-label=\"Nastavenie výstupnej presnosti\">\n"
-    "    <label>Desatinné miesta <input id=\"precision\" type=\"number\" min=\"0\" max=\"10000\" step=\"1\" value=\"10\" inputmode=\"numeric\"></label>\n"
-    "    <label><input id=\"full-precision\" type=\"checkbox\"> Plný výstup</label>\n"
-    "  </section>\n"
     "  <section class=\"keypad\" aria-label=\"Kalkulačná klávesnica\">\n"
     "    <button type=\"button\" class=\"operator\" data-insert=\"(\">(</button><button type=\"button\" class=\"operator\" data-insert=\")\">)</button><button type=\"button\" data-insert=\".\">.</button><button type=\"button\" class=\"action\" data-action=\"clear\">C</button><button type=\"button\" class=\"action\" data-action=\"backspace\" aria-label=\"Vymazať posledný znak\">⌫</button>\n"
     "  </section>\n"
@@ -102,7 +104,7 @@ static const char NUMFORGE_WEB_PAGE_EN_START[] =
     "    form { display: flex; gap: 10px; margin-top: 28px; } input { min-width: 0; flex: 1; padding: 13px; border: 1px solid #3b4352; border-radius: 8px; background: #1c2028; color: inherit; font: 1rem ui-monospace, monospace; } button { padding: 12px 18px; border: 0; border-radius: 8px; background: #ff9d36; color: #17110a; font-weight: 700; cursor: pointer; }\n"
     "    .precision { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 14px; color: #adb5c3; font-size: .92rem; } .precision label { display: flex; align-items: center; gap: 7px; } .precision input[type=number] { width: 6.5rem; flex: none; padding: 8px; } .precision input[type=checkbox] { width: auto; flex: none; }\n"
     "    .keypad { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-top: 14px; } .keypad button { padding: 12px 6px; background: #282e39; color: #edf0f5; } .keypad button.operator, .keypad button.equals { background: #ff9d36; color: #17110a; } .keypad button.action { background: #414b5c; } .keypad button.future { color: #7d8798; background: #1a1e26; cursor: not-allowed; } .keypad.constants { grid-template-columns: repeat(3, minmax(0, 1fr)); }\n"
-    "    .keypad-label { margin: 24px 0 8px; color: #adb5c3; font-size: .84rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; } .result-panel { margin-top: 22px; padding: 16px; border-radius: 8px; background: #1c2028; } .result-label { display: block; margin-bottom: 7px; color: #adb5c3; font-size: .84rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; } #result { display: block; min-height: 1.5em; font: 1.2rem ui-monospace, monospace; overflow-wrap: anywhere; } #result.error { color: #ff8888; } .guide-link { display: inline-block; margin-top: 22px; }\n"
+    "    .keypad-label { margin: 24px 0 8px; color: #adb5c3; font-size: .84rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; } .result-panel { margin-top: 22px; padding: 16px; border-radius: 8px; background: #1c2028; } .result-label { display: block; margin-bottom: 7px; color: #adb5c3; font-size: .84rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; } #result { display: block; min-height: 7.5em; max-height: 7.5em; font: 1.2rem/1.5 ui-monospace, monospace; overflow: hidden; overflow-wrap: anywhere; cursor: pointer; } #result.expanded { max-height: none; } #expand-result { display: none; margin-top: 9px; padding: 6px 9px; font-size: .82rem; } #result.error { color: #ff8888; } .guide-link { display: inline-block; margin-top: 22px; }\n"
     "  </style>\n"
     "</head>\n"
     "<body>\n"
@@ -116,19 +118,21 @@ static const char NUMFORGE_WEB_PAGE_EN_START[] =
     "    <button type=\"submit\">Calculate</button>\n"
     "  </form>\n";
 
+static const char NUMFORGE_WEB_PAGE_EN_PRECISION[] =
+    "  <section class=\"precision\" aria-label=\"Output precision settings\">\n"
+    "    <label>Decimal places <input id=\"precision\" type=\"number\" min=\"0\" max=\"10000\" step=\"1\" value=\"10\" inputmode=\"numeric\"></label>\n"
+    "    <label><input id=\"full-precision\" type=\"checkbox\"> Full output</label>\n"
+    "  </section>\n";
+
 static const char NUMFORGE_WEB_PAGE_EN_RESULT[] =
     "  <section class=\"result-panel\" aria-live=\"polite\">\n"
     "    <div style=\"display:flex;align-items:center;justify-content:space-between;gap:12px\">\n"
     "      <span class=\"result-label\">Result</span><button id=\"copy-result\" type=\"button\" disabled title=\"Copy result\" aria-label=\"Copy result\" style=\"padding:6px 9px;font-size:.82rem\">⧉ Copy</button>\n"
     "    </div>\n"
-    "    <output id=\"result\"></output>\n"
+    "    <output id=\"result\"></output><button id=\"expand-result\" type=\"button\">Show all</button>\n"
     "  </section>\n";
 
 static const char NUMFORGE_WEB_PAGE_EN_KEYPAD[] =
-    "  <section class=\"precision\" aria-label=\"Output precision settings\">\n"
-    "    <label>Decimal places <input id=\"precision\" type=\"number\" min=\"0\" max=\"10000\" step=\"1\" value=\"10\" inputmode=\"numeric\"></label>\n"
-    "    <label><input id=\"full-precision\" type=\"checkbox\"> Full output</label>\n"
-    "  </section>\n"
     "  <section class=\"keypad\" aria-label=\"Calculator keypad\">\n"
     "    <button type=\"button\" class=\"operator\" data-insert=\"(\">(</button><button type=\"button\" class=\"operator\" data-insert=\")\">)</button><button type=\"button\" data-insert=\".\">.</button><button type=\"button\" class=\"action\" data-action=\"clear\">C</button><button type=\"button\" class=\"action\" data-action=\"backspace\" aria-label=\"Delete last character\">⌫</button>\n"
     "  </section>\n"
@@ -156,19 +160,19 @@ static const char NUMFORGE_WEB_PAGE_FUTURE[] =
 
 static const char NUMFORGE_WEB_PAGE_FUNCTIONS_0[] =
     "<details class=\"function-group\"><summary>Základné</summary><div class=\"keypad functions\">\n"
-    "<button type=\"button\" data-function=\"abs\" class=\"future\" disabled title=\"Výpočet zatiaľ nie je implementovaný\">abs</button>\n"
-    "<button type=\"button\" data-function=\"sign\" class=\"future\" disabled title=\"Výpočet zatiaľ nie je implementovaný\">sign</button>\n"
-    "<button type=\"button\" data-function=\"min\" class=\"future\" disabled title=\"Výpočet zatiaľ nie je implementovaný\">min</button>\n"
-    "<button type=\"button\" data-function=\"max\" class=\"future\" disabled title=\"Výpočet zatiaľ nie je implementovaný\">max</button>\n"
+    "<button type=\"button\" data-function=\"abs\" data-insert=\"abs(\" title=\"abs(x)\">abs</button>\n"
+    "<button type=\"button\" data-function=\"sign\" data-insert=\"sign(\" title=\"sign(x)\">sign</button>\n"
+    "<button type=\"button\" data-function=\"min\" data-insert=\"min(\" title=\"min(a;b;…)\">min</button>\n"
+    "<button type=\"button\" data-function=\"max\" data-insert=\"max(\" title=\"max(a;b;…)\">max</button>\n"
     "</div></details>\n";
 
 static const char NUMFORGE_WEB_PAGE_FUNCTIONS_1[] =
     "<details class=\"function-group\"><summary>Celé čísla</summary><div class=\"keypad functions\">\n"
-    "<button type=\"button\" data-function=\"gcd\" class=\"future\" disabled title=\"Výpočet zatiaľ nie je implementovaný\">gcd</button>\n"
-    "<button type=\"button\" data-function=\"lcm\" class=\"future\" disabled title=\"Výpočet zatiaľ nie je implementovaný\">lcm</button>\n"
-    "<button type=\"button\" data-function=\"mod\" class=\"future\" disabled title=\"Výpočet zatiaľ nie je implementovaný\">mod</button>\n"
+    "<button type=\"button\" data-function=\"gcd\" data-insert=\"gcd(\">gcd</button>\n"
+    "<button type=\"button\" data-function=\"lcm\" data-insert=\"lcm(\">lcm</button>\n"
+    "<button type=\"button\" data-function=\"mod\" data-insert=\"mod(\">mod</button>\n"
     "<button type=\"button\" data-function=\"factorial\" data-insert=\"factorial(\" title=\"factorial(n)\">factorial</button>\n"
-    "<button type=\"button\" data-function=\"isqrt\" class=\"future\" disabled title=\"Výpočet zatiaľ nie je implementovaný\">isqrt</button>\n"
+    "<button type=\"button\" data-function=\"isqrt\" data-insert=\"isqrt(\">isqrt</button>\n"
     "</div></details>\n";
 
 static const char NUMFORGE_WEB_PAGE_FUNCTIONS_2[] =
@@ -198,19 +202,19 @@ static const char NUMFORGE_WEB_PAGE_FUNCTIONS_3[] =
 
 static const char NUMFORGE_WEB_PAGE_EN_FUNCTIONS_0[] =
     "<details class=\"function-group\"><summary>Basic</summary><div class=\"keypad functions\">\n"
-    "<button type=\"button\" data-function=\"abs\" class=\"future\" disabled title=\"Calculation is not implemented yet\">abs</button>\n"
-    "<button type=\"button\" data-function=\"sign\" class=\"future\" disabled title=\"Calculation is not implemented yet\">sign</button>\n"
-    "<button type=\"button\" data-function=\"min\" class=\"future\" disabled title=\"Calculation is not implemented yet\">min</button>\n"
-    "<button type=\"button\" data-function=\"max\" class=\"future\" disabled title=\"Calculation is not implemented yet\">max</button>\n"
+    "<button type=\"button\" data-function=\"abs\" data-insert=\"abs(\" title=\"abs(x)\">abs</button>\n"
+    "<button type=\"button\" data-function=\"sign\" data-insert=\"sign(\" title=\"sign(x)\">sign</button>\n"
+    "<button type=\"button\" data-function=\"min\" data-insert=\"min(\" title=\"min(a;b;…)\">min</button>\n"
+    "<button type=\"button\" data-function=\"max\" data-insert=\"max(\" title=\"max(a;b;…)\">max</button>\n"
     "</div></details>\n";
 
 static const char NUMFORGE_WEB_PAGE_EN_FUNCTIONS_1[] =
     "<details class=\"function-group\"><summary>Integers</summary><div class=\"keypad functions\">\n"
-    "<button type=\"button\" data-function=\"gcd\" class=\"future\" disabled title=\"Calculation is not implemented yet\">gcd</button>\n"
-    "<button type=\"button\" data-function=\"lcm\" class=\"future\" disabled title=\"Calculation is not implemented yet\">lcm</button>\n"
-    "<button type=\"button\" data-function=\"mod\" class=\"future\" disabled title=\"Calculation is not implemented yet\">mod</button>\n"
+    "<button type=\"button\" data-function=\"gcd\" data-insert=\"gcd(\">gcd</button>\n"
+    "<button type=\"button\" data-function=\"lcm\" data-insert=\"lcm(\">lcm</button>\n"
+    "<button type=\"button\" data-function=\"mod\" data-insert=\"mod(\">mod</button>\n"
     "<button type=\"button\" data-function=\"factorial\" data-insert=\"factorial(\" title=\"factorial(n)\">factorial</button>\n"
-    "<button type=\"button\" data-function=\"isqrt\" class=\"future\" disabled title=\"Calculation is not implemented yet\">isqrt</button>\n"
+    "<button type=\"button\" data-function=\"isqrt\" data-insert=\"isqrt(\">isqrt</button>\n"
     "</div></details>\n";
 
 static const char NUMFORGE_WEB_PAGE_EN_FUNCTIONS_2[] =
@@ -246,13 +250,19 @@ static const char NUMFORGE_WEB_PAGE_SCRIPT_START[] =
     "    const form = document.querySelector('#calculator');\n"
     "    const expression = document.querySelector('#expression');\n"
     "    const result = document.querySelector('#result');\n"
+    "    const expandResult = document.querySelector('#expand-result');\n"
     "    const copyResult = document.querySelector('#copy-result');\n"
     "    const precision = document.querySelector('#precision');\n"
     "    const fullPrecision = document.querySelector('#full-precision');\n"
     "    const english = document.documentElement.lang === 'en';\n"
-    "    let generation = 0, controller = null, copyTimer = null;\n"
-    "    function invalidate() { generation++; controller?.abort(); clearTimeout(copyTimer); result.textContent = ''; result.className = ''; copyResult.disabled = true; copyResult.textContent = text.copy; }\n"
-    "    const text = english ? { calculating: 'Calculating…', precision: 'Enter a non-negative whole number of decimal places.', failure: 'Calculation failed.', error: 'Error: ', column: ' at column ', copy: '⧉ Copy', copied: '✓ Copied' } : { calculating: 'Počítam…', precision: 'Zadaj nezáporný celý počet desatinných miest.', failure: 'Výpočet zlyhal.', error: 'Chyba: ', column: ' v stĺpci ', copy: '⧉ Kopírovať', copied: '✓ Skopírované' };\n"
+    "    let generation = 0, controller = null, copyTimer = null, autoTimer = null, resultExpanded = false;\n"
+    "    function updateResultExpansion() { const overflowing = result.scrollHeight > result.clientHeight + 1; expandResult.style.display = overflowing ? 'inline-block' : 'none'; expandResult.hidden = !overflowing; if (!overflowing) { resultExpanded = false; result.className = result.className.replace(' expanded', ''); } }\n"
+    "    function toggleResultExpansion() { if (expandResult.hidden) return; resultExpanded = !resultExpanded; result.className = result.className.replace(' expanded', '') + (resultExpanded ? ' expanded' : ''); expandResult.textContent = resultExpanded ? text.showLess : text.showAll; }\n"
+    "    function invalidate() { generation++; controller?.abort(); clearTimeout(copyTimer); clearTimeout(autoTimer); resultExpanded = false; expandResult.textContent = text.showAll; result.textContent = ''; result.className = ''; expandResult.hidden = true; expandResult.style.display = 'none'; copyResult.disabled = true; copyResult.textContent = text.copy; }\n"
+    "    const text = english ? { calculating: 'Calculating…', precision: 'Enter a non-negative whole number of decimal places.', failure: 'Calculation failed.', error: 'Error: ', column: ' at column ', copy: '⧉ Copy', copied: '✓ Copied', showAll: 'Show all', showLess: 'Show less' } : { calculating: 'Počítam…', precision: 'Zadaj nezáporný celý počet desatinných miest.', failure: 'Výpočet zlyhal.', error: 'Chyba: ', column: ' v stĺpci ', copy: '⧉ Kopírovať', copied: '✓ Skopírované', showAll: 'Zobraziť všetko', showLess: 'Zobraziť menej' };\n"
+    "";
+
+static const char NUMFORGE_WEB_PAGE_SCRIPT_ERRORS[] =
     "    const slovakStatus = { 'null argument': 'chýbajúci argument', 'out of memory': 'nedostatok pamäte', 'invalid argument': 'neplatný argument', 'invalid token': 'neplatný token', 'syntax error': 'syntaktická chyba', 'division by zero': 'delenie nulou', 'value too large': 'príliš veľká hodnota', 'scale overflow': 'pretečenie mierky', 'TLE: time limit exceeded': 'TLE: prekročený časový limit', 'not implemented': 'funkcia nie je implementovaná', 'wrong number of arguments': 'nesprávny počet argumentov' };\n"
     "    function responseError(data) {\n"
     "      if (!data.status) return data.error || text.failure;\n"
@@ -261,13 +271,14 @@ static const char NUMFORGE_WEB_PAGE_SCRIPT_START[] =
     "    }\n";
 
 static const char NUMFORGE_WEB_PAGE_SCRIPT_END[] =
-    "    expression.addEventListener('input', invalidate);\n"
-    "    precision.addEventListener('input', invalidate);\n"
+    "    function scheduleCalculation(delay = 300) { invalidate(); if (!expression.value.trim()) return; const id = generation; autoTimer = setTimeout(() => { if (id === generation) form.requestSubmit(); }, delay); }\n"
+    "    expression.addEventListener('input', () => scheduleCalculation());\n"
+    "    precision.addEventListener('input', () => scheduleCalculation());\n"
     "    function insertText(text) {\n"
     "      invalidate();\n"
     "      const start = expression.selectionStart ?? expression.value.length;\n"
     "      const end = expression.selectionEnd ?? start;\n"
-    "      expression.setRangeText(text, start, end, 'end'); expression.focus();\n"
+    "      expression.setRangeText(text, start, end, 'end'); expression.focus(); scheduleCalculation();\n"
     "    }\n"
     "    function eraseText() {\n"
     "      invalidate();\n"
@@ -275,7 +286,7 @@ static const char NUMFORGE_WEB_PAGE_SCRIPT_END[] =
     "      const end = expression.selectionEnd ?? start;\n"
     "      if (start !== end) expression.setRangeText('', start, end, 'end');\n"
     "      else if (start > 0) expression.setRangeText('', start - 1, start, 'end');\n"
-    "      expression.focus();\n"
+    "      expression.focus(); scheduleCalculation();\n"
     "    }\n"
     "    async function copyText(value) {\n"
     "      if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(value); return; }\n"
@@ -293,12 +304,14 @@ static const char NUMFORGE_WEB_PAGE_SCRIPT_END[] =
     "      const id = generation, value = result.textContent;\n"
     "      try { await copyText(value); if (id !== generation) return; copyResult.textContent = text.copied; copyResult.disabled = true; copyTimer = setTimeout(() => { if (id === generation) { copyResult.textContent = text.copy; copyResult.disabled = !result.textContent; } }, 1400); } catch (_) { if (id === generation) copyResult.textContent = text.copy; }\n"
     "    });\n"
-    "    fullPrecision.addEventListener('change', () => { invalidate(); precision.disabled = fullPrecision.checked; });\n";
+    "    expandResult.addEventListener('click', toggleResultExpansion);\n"
+    "    result.addEventListener('click', toggleResultExpansion);\n"
+    "    fullPrecision.addEventListener('change', () => { precision.disabled = fullPrecision.checked; scheduleCalculation(0); });\n";
 
 static const char NUMFORGE_WEB_PAGE_SCRIPT_SUBMIT[] =
     "    form.addEventListener('submit', async (event) => {\n"
     "      event.preventDefault();\n"
-    "      invalidate(); const id = generation; controller = new AbortController();\n"
+    "      invalidate(); if (!expression.value.trim()) return; const id = generation; controller = new AbortController();\n"
     "      result.className = ''; result.textContent = text.calculating; copyResult.disabled = true; copyResult.textContent = text.copy;\n"
     "      try {\n"
     "        const requestedPrecision = fullPrecision.checked ? 'full' : precision.value;\n"
@@ -309,10 +322,10 @@ static const char NUMFORGE_WEB_PAGE_SCRIPT_SUBMIT[] =
     "        const data = await response.json();\n"
     "        if (id !== generation) return;\n"
     "        if (!data || !response.ok || !data.ok) throw new Error(data ? responseError(data) : text.failure);\n"
-    "        result.textContent = data.result; copyResult.disabled = false;\n"
+    "        result.textContent = data.result; copyResult.disabled = false; updateResultExpansion();\n"
     "      } catch (error) {\n"
     "        if (id !== generation || error.name === 'AbortError') return;\n"
-    "        result.className = 'error'; result.textContent = text.error + ((error instanceof TypeError || error instanceof SyntaxError) ? text.failure : error.message); copyResult.disabled = true;\n"
+    "        result.className = 'error'; result.textContent = text.error + ((error instanceof TypeError || error instanceof SyntaxError) ? text.failure : error.message); copyResult.disabled = true; updateResultExpansion();\n"
     "      }\n"
     "    });\n"
     "  </script>\n"
@@ -321,6 +334,7 @@ static const char NUMFORGE_WEB_PAGE_SCRIPT_SUBMIT[] =
 
 static const char *const NUMFORGE_WEB_PAGE[] = {
     NUMFORGE_WEB_PAGE_START,
+    NUMFORGE_WEB_PAGE_PRECISION,
     NUMFORGE_WEB_PAGE_RESULT,
     NUMFORGE_WEB_PAGE_KEYPAD,
     NUMFORGE_WEB_PAGE_FUTURE,
@@ -330,6 +344,7 @@ static const char *const NUMFORGE_WEB_PAGE[] = {
     NUMFORGE_WEB_PAGE_FUNCTIONS_2,
     NUMFORGE_WEB_PAGE_FUNCTIONS_3,
     NUMFORGE_WEB_PAGE_SCRIPT_START,
+    NUMFORGE_WEB_PAGE_SCRIPT_ERRORS,
     NUMFORGE_WEB_PAGE_SCRIPT_END,
     NUMFORGE_WEB_PAGE_SCRIPT_SUBMIT,
     NULL
@@ -337,6 +352,7 @@ static const char *const NUMFORGE_WEB_PAGE[] = {
 
 static const char *const NUMFORGE_WEB_PAGE_EN[] = {
     NUMFORGE_WEB_PAGE_EN_START,
+    NUMFORGE_WEB_PAGE_EN_PRECISION,
     NUMFORGE_WEB_PAGE_EN_RESULT,
     NUMFORGE_WEB_PAGE_EN_KEYPAD,
     NUMFORGE_WEB_PAGE_EN_FUTURE,
@@ -346,6 +362,7 @@ static const char *const NUMFORGE_WEB_PAGE_EN[] = {
     NUMFORGE_WEB_PAGE_EN_FUNCTIONS_2,
     NUMFORGE_WEB_PAGE_EN_FUNCTIONS_3,
     NUMFORGE_WEB_PAGE_SCRIPT_START,
+    NUMFORGE_WEB_PAGE_SCRIPT_ERRORS,
     NUMFORGE_WEB_PAGE_SCRIPT_END,
     NUMFORGE_WEB_PAGE_SCRIPT_SUBMIT,
     NULL
@@ -353,19 +370,23 @@ static const char *const NUMFORGE_WEB_PAGE_EN[] = {
 
 static const char NUMFORGE_API_FUNCTIONS_SK[] =
     "<h2>Volania funkcií</h2>\n"
+    "<p><code>gcd(a;b)</code> a <code>lcm(a;b)</code> vracajú nezáporný najväčší spoločný deliteľ a najmenší spoločný násobok celých čísel. <code>gcd(0;0)=0</code>; lcm s nulou je 0. <code>mod(a;b)</code> je celočíselný zvyšok so znamienkom delenca: <code>mod(-7;3)=-1</code>; deliteľ nesmie byť 0. <code>isqrt(n)</code> je dolná celá odmocnina nezáporného celého čísla: <code>isqrt(15)=3</code>. Desatinné zápisy celých hodnôt, napr. 4.00, sú povolené.</p>\n"
+    "<p>Fungujú aj <code>abs(x)</code> (absolútna hodnota), <code>sign(x)</code> (−1, 0 alebo 1), <code>min(a;b;…)</code> a <code>max(a;b;…)</code> (najmenej dva argumenty). Porovnávajú vypočítané hodnoty bez ďalšieho zaokrúhlenia.</p>\n"
     "<p>Názvy používajú iba malé písmená, zátvorky sú povinné a argumenty oddeľuje <code>;</code>. Čiarka zostáva desatinná: <code>pow(1,5;2)</code> = <code>2.25</code>. Najviac 256 argumentov na volanie.</p>\n"
     "<p>Fungujú <code>pow(x;y)</code> (ako <code>x^y</code>, nezáporný celočíselný exponent) a <code>factorial(n)</code> (ako <code>n!</code>, celé n od 0 do 10000).</p>\n"
     "<p>Parser pozná aj nasledujúce volania, no ich výpočet zatiaľ vráti chybu „funkcia nie je implementovaná“:</p>\n"
-    "<p><code>abs(x), sign(x), min(a;b;…), max(a;b;…), gcd(a;b), lcm(a;b), mod(a;b), isqrt(n), sqrt(x), cbrt(x), root(x;n), exp(x), ln(x), log(x), log(x;b), sin(x), cos(x), tan(x), asin(x), acos(x), atan(x), radians(x), degrees(x)</code></p>\n"
+    "<p><code>sqrt(x), cbrt(x), root(x;n), exp(x), ln(x), log(x), log(x;b), sin(x), cos(x), tan(x), asin(x), acos(x), atan(x), radians(x), degrees(x)</code></p>\n"
     "<p><code>min</code>/<code>max</code> potrebujú aspoň dva argumenty, <code>atan</code> iba jeden. Plán: <code>log(x)</code> má základ 10, <code>ln(x)</code> základ e a <code>log(x;b)</code> základ b; uhly sú v radiánoch. <code>√(x)</code> je alias <code>sqrt(x)</code>.</p>\n"
     "<p><code>exp</code> je celý názov, nie násobenie písmen. Samostatné <code>e</code> ostáva konštanta: <code>e(2)</code> = <code>e*2</code>, <code>1e3</code> = <code>1*e*3</code>, <code>1E3</code> = <code>1000</code>. Susedné názvy oddeľ <code>*</code>; <code>ee</code> či <code>esin</code> nie sú platné názvy.</p>\n";
 
 static const char NUMFORGE_API_FUNCTIONS_EN[] =
     "<h2>Function calls</h2>\n"
+    "<p><code>gcd(a;b)</code> and <code>lcm(a;b)</code> return the non-negative greatest common divisor and least common multiple of integers. <code>gcd(0;0)=0</code>; lcm with zero is 0. <code>mod(a;b)</code> is the integer remainder with the dividend's sign: <code>mod(-7;3)=-1</code>; a zero divisor is an error. <code>isqrt(n)</code> is the floor square root of a non-negative integer: <code>isqrt(15)=3</code>. Decimal spellings of whole values, such as 4.00, are accepted.</p>\n"
+    "<p>Also available: <code>abs(x)</code> (absolute value), <code>sign(x)</code> (−1, 0 or 1), <code>min(a;b;…)</code> and <code>max(a;b;…)</code> (at least two arguments). They compare evaluated values without additional rounding.</p>\n"
     "<p>Names use lowercase letters only, parentheses are mandatory, and <code>;</code> separates arguments. Comma remains a decimal separator: <code>pow(1,5;2)</code> = <code>2.25</code>. At most 256 arguments per call.</p>\n"
     "<p><code>pow(x;y)</code> works like <code>x^y</code> (non-negative integer exponent); <code>factorial(n)</code> works like <code>n!</code> (integer n from 0 to 10000).</p>\n"
     "<p>The parser also recognizes the following calls, but calculation currently returns “not implemented”:</p>\n"
-    "<p><code>abs(x), sign(x), min(a;b;…), max(a;b;…), gcd(a;b), lcm(a;b), mod(a;b), isqrt(n), sqrt(x), cbrt(x), root(x;n), exp(x), ln(x), log(x), log(x;b), sin(x), cos(x), tan(x), asin(x), acos(x), atan(x), radians(x), degrees(x)</code></p>\n"
+    "<p><code>sqrt(x), cbrt(x), root(x;n), exp(x), ln(x), log(x), log(x;b), sin(x), cos(x), tan(x), asin(x), acos(x), atan(x), radians(x), degrees(x)</code></p>\n"
     "<p><code>min</code>/<code>max</code> need at least two arguments; <code>atan</code> only one. Planned semantics: <code>log(x)</code> is base 10, <code>ln(x)</code> base e and <code>log(x;b)</code> base b; angles are in radians. <code>√(x)</code> aliases <code>sqrt(x)</code>.</p>\n"
     "<p><code>exp</code> is one name, not a product of letters. Standalone <code>e</code> remains a constant: <code>e(2)</code> = <code>e*2</code>, <code>1e3</code> = <code>1*e*3</code>, <code>1E3</code> = <code>1000</code>. Separate adjacent names with <code>*</code>; <code>ee</code> and <code>esin</code> are not valid names.</p>\n";
 

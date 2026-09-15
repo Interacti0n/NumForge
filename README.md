@@ -123,11 +123,15 @@ returns `TLE` or `value too large`; public numeric library calls remain uncapped
 by these application policies. Cancellation is cooperative, not a hard real-time
 process-kill guarantee.
 Named calls use parentheses and semicolons: `pow(2;3)` and `factorial(5)`
-already calculate through the existing operators. Four collapsible groups
+already calculate through the existing operators. `abs`, `sign`, `min` and `max`
+also calculate using decimal values without additional rounding. Integer-valued
+arguments support `gcd`, `lcm`, `mod` and floor square root `isqrt`. Four collapsible groups
 contain the function controls; dimmed buttons have recognized syntax but no
 numerical implementation yet. The page is available in Slovak and English, and the displayed
 result can be copied with one click. See the
 [API overview](docs/API.md) for exact syntax and the local HTTP API.
+Long results stay in a compact five-line panel and can be expanded with
+`Show all` when needed.
 
 Both the interactive CLI and local HTTP adapter accept expressions up to 4096
 UTF-8 bytes. This is an application input limit rather than a limit of the
@@ -200,7 +204,7 @@ executables:
 - `cli_tests`: when Node.js is available, drives the actual CLI process through
   calculation, precision changes, errors, oversized input, EOF and exit commands.
 - `numeric_oracle_tests`: optional Node.js exact-integer/rational reference
-  checking 5792 numeric cases through a test-only C driver.
+  checking 6492 numeric cases through a test-only C driver.
 - `web_api_tests`: confirms that the local web adapter evaluates expressions
   through the same exact C `BigDecimal` pipeline.
 - `web_server_smoke_tests`: starts the real server on a temporary loopback
@@ -217,7 +221,7 @@ executables:
   installed package through `find_package(NumForge)`, including a C++ linkage
   test when `NUMFORGE_TEST_CPP=ON`.
 
-CI also runs ten SK/EN Chromium scenarios from `tests/browser`, using a
+CI also runs sixteen SK/EN Chromium scenarios from `tests/browser`, using a
 pinned Playwright dependency and the real C server, separately from CTest.
 Only this browser suite requires npm packages; the application does not.
 Reproduction commands, scope and opt-in phase benchmarks are in

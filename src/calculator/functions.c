@@ -11,15 +11,15 @@
 */
 static const CalculatorFunction calculator_functions[] =
 {
-    { "abs", 1, 1, CALCULATOR_FUNCTION_PENDING },
-    { "sign", 1, 1, CALCULATOR_FUNCTION_PENDING },
-    { "min", 2, 0, CALCULATOR_FUNCTION_PENDING },
-    { "max", 2, 0, CALCULATOR_FUNCTION_PENDING },
-    { "gcd", 2, 2, CALCULATOR_FUNCTION_PENDING },
-    { "lcm", 2, 2, CALCULATOR_FUNCTION_PENDING },
-    { "mod", 2, 2, CALCULATOR_FUNCTION_PENDING },
+    { "abs", 1, 1, CALCULATOR_FUNCTION_ABS },
+    { "sign", 1, 1, CALCULATOR_FUNCTION_SIGN },
+    { "min", 2, 0, CALCULATOR_FUNCTION_MIN },
+    { "max", 2, 0, CALCULATOR_FUNCTION_MAX },
+    { "gcd", 2, 2, CALCULATOR_FUNCTION_GCD },
+    { "lcm", 2, 2, CALCULATOR_FUNCTION_LCM },
+    { "mod", 2, 2, CALCULATOR_FUNCTION_MOD },
     { "factorial", 1, 1, CALCULATOR_FUNCTION_FACTORIAL },
-    { "isqrt", 1, 1, CALCULATOR_FUNCTION_PENDING },
+    { "isqrt", 1, 1, CALCULATOR_FUNCTION_ISQRT },
     { "pow", 2, 2, CALCULATOR_FUNCTION_POWER },
     { "sqrt", 1, 1, CALCULATOR_FUNCTION_PENDING },
     { "cbrt", 1, 1, CALCULATOR_FUNCTION_PENDING },
