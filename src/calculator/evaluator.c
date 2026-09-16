@@ -944,7 +944,7 @@ static CalculatorStatus calculator_refine_angle_argument(
     CalculatorEvaluation refined_evaluation;
     BigDecimal *refined_value = NULL;
     CalculatorStatus status;
-    int64_t integer_digits;
+    int64_t integer_digits = 0;
     int64_t required_digits;
     int64_t guard_digits = CALCULATOR_ANGLE_GUARD_DIGITS +
                            CALCULATOR_ANGLE_REDUCTION_GUARD_DIGITS;
