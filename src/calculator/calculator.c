@@ -71,7 +71,28 @@ void calculator_context_init(
     context->output_scale = CALCULATOR_DEFAULT_OUTPUT_SCALE;
     context->time_limit_ms = CALCULATOR_DEFAULT_TIME_LIMIT_MS;
     context->rounding = BIGDECIMAL_ROUND_HALF_EVEN;
+    context->angle_unit = CALCULATOR_ANGLE_RADIANS;
     context->significant_division = true;
+}
+
+CalculatorStatus calculator_context_set_angle_unit(
+    CalculatorContext *context,
+    CalculatorAngleUnit angle_unit
+)
+{
+    if (context == NULL)
+    {
+        return CALCULATOR_NULL_ARGUMENT;
+    }
+
+    if (angle_unit != CALCULATOR_ANGLE_RADIANS &&
+        angle_unit != CALCULATOR_ANGLE_DEGREES)
+    {
+        return CALCULATOR_INVALID_ARGUMENT;
+    }
+
+    context->angle_unit = angle_unit;
+    return CALCULATOR_OK;
 }
 
 CalculatorStatus calculator_context_set_output_scale(

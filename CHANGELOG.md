@@ -5,6 +5,16 @@ All notable changes to NumForge are documented in this file. The project uses
 
 ## Unreleased
 
+- Add arbitrary-precision radian sine, cosine, tangent, asin, acos, and atan,
+  magnitude-aware π argument reduction, calculator RAD/DEG mode, explicit angle
+  conversions, HTTP selection, and active bilingual web controls.
+  Preserve large degree rotations and inverse values near domain endpoints;
+  keep constant precision independent of earlier calls in the same expression.
+
+- Add precision-aware `π`, `e`, and `φ`: retain the stored 500-place values for
+  ordinary requests, calculate larger requests dynamically, and reuse each
+  constant within a calculator evaluation.
+
 - Add public arbitrary-precision `exp`, `ln`, base-10 `log10`, and
   arbitrary-base `log` BigDecimal operations without binary floating point.
   Enable `exp(x)`, `ln(x)`, `log(x)` and `log(x;b)` in the calculator and

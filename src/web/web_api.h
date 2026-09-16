@@ -36,5 +36,12 @@ CalculatorStatus numforge_web_evaluate_with_output_scale(
     char **result,
     CalculatorError *error
 );
+CalculatorStatus numforge_web_evaluate_with_options(
+    const char *input,
+    int64_t output_scale,
+    CalculatorAngleUnit angle_unit,
+    char **result,
+    CalculatorError *error
+);
 
 #endif

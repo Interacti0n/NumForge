@@ -32,6 +32,12 @@ typedef enum CalculatorStatus
     CALCULATOR_ARGUMENT_COUNT
 } CalculatorStatus;
 
+typedef enum CalculatorAngleUnit
+{
+    CALCULATOR_ANGLE_RADIANS = 0,
+    CALCULATOR_ANGLE_DEGREES
+} CalculatorAngleUnit;
+
 /*
 ------------------------------------------------------------------------------------------------------------------------------
     Evaluation policy. Division always receives explicit settings rather than
@@ -45,6 +51,7 @@ typedef struct CalculatorContext
     int64_t output_scale;
     int64_t time_limit_ms;
     BigDecimalRoundingMode rounding;
+    CalculatorAngleUnit angle_unit;
     bool significant_division;
 } CalculatorContext;
 
@@ -52,6 +59,8 @@ typedef struct CalculatorContext
 #define CALCULATOR_UNLIMITED_OUTPUT_SCALE (-1)
 #define CALCULATOR_DEFAULT_DIVISION_SCALE 34
 #define CALCULATOR_DIVISION_GUARD_DIGITS 4
+#define CALCULATOR_ANGLE_GUARD_DIGITS 24
+#define CALCULATOR_ANGLE_REDUCTION_GUARD_DIGITS 8
 #define CALCULATOR_DEFAULT_TIME_LIMIT_MS 5000
 #define CALCULATOR_FACTORIAL_MAX_N 10000
 #define CALCULATOR_MAX_ROOT_DEGREE 10000
@@ -101,6 +110,10 @@ void calculator_context_init(
 CalculatorStatus calculator_context_set_output_scale(
     CalculatorContext *context,
     int64_t output_scale
+);
+CalculatorStatus calculator_context_set_angle_unit(
+    CalculatorContext *context,
+    CalculatorAngleUnit angle_unit
 );
 void calculator_error_clear(
     CalculatorError *error

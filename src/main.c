@@ -102,6 +102,40 @@ static bool calculator_handle_precision_command(const char *input, CalculatorCon
     return true;
 }
 
+static bool calculator_handle_angle_command(
+    const char *input,
+    CalculatorContext *context
+)
+{
+    if (strcmp(input, "angle") == 0)
+    {
+        puts(context->angle_unit == CALCULATOR_ANGLE_DEGREES
+                 ? "angle unit: DEG"
+                 : "angle unit: RAD");
+        return true;
+    }
+
+    if (strcmp(input, "angle rad") == 0)
+    {
+        (void)calculator_context_set_angle_unit(context, CALCULATOR_ANGLE_RADIANS);
+        return true;
+    }
+
+    if (strcmp(input, "angle deg") == 0)
+    {
+        (void)calculator_context_set_angle_unit(context, CALCULATOR_ANGLE_DEGREES);
+        return true;
+    }
+
+    if (strncmp(input, "angle ", strlen("angle ")) == 0)
+    {
+        fputs("angle unit must be 'rad' or 'deg'\n", stderr);
+        return true;
+    }
+
+    return false;
+}
+
 /*
 ------------------------------------------------------------------------------------------------------------------------------
     Main command-line calculator operation.
@@ -118,6 +152,7 @@ int main(void)
     puts("Implicit multiplication, decimal comma or point, and uppercase-E scientific notation are supported.");
     puts("Type exit or quit to stop.");
     puts("Use 'precision N' or 'precision full' to set output formatting.");
+    puts("Use 'angle rad' or 'angle deg' to select the trigonometric angle unit.");
 
     for (;;)
     {
@@ -163,6 +198,10 @@ int main(void)
             break;
         }
         if (calculator_handle_precision_command(input, &context))
+        {
+            continue;
+        }
+        if (calculator_handle_angle_command(input, &context))
         {
             continue;
         }

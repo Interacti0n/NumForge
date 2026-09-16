@@ -6,8 +6,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
@@ -31,52 +29,6 @@
         }                                    \
     } while (0)
 
-static BigDecimalStatus round_significant(
-    BigDecimal *result,
-    const BigDecimal *value,
-    int64_t digits,
-    BigDecimalRoundingMode rounding
-)
-{
-    char *coefficient;
-    const char *number;
-    size_t length;
-    size_t discarded;
-    int64_t target_scale;
-
-    if (bigint_is_zero(value->coefficient))
-    {
-        return bigdecimal_copy(result, value);
-    }
-
-    coefficient = bigint_to_string(value->coefficient);
-
-    if (coefficient == NULL)
-    {
-        return BIGDECIMAL_OUT_OF_MEMORY;
-    }
-
-    number = coefficient[0] == '-' ? coefficient + 1 : coefficient;
-    length = strlen(number);
-
-    if ((uint64_t)length <= (uint64_t)digits)
-    {
-        free(coefficient);
-        return bigdecimal_copy(result, value);
-    }
-
-    discarded = length - (size_t)digits;
-    free(coefficient);
-
-    if (discarded > (size_t)INT64_MAX ||
-        !bigdecimal_i64_sub(value->scale, (int64_t)discarded, &target_scale))
-    {
-        return BIGDECIMAL_SCALE_OVERFLOW;
-    }
-
-    return bigdecimal_rescale(result, value, target_scale, rounding);
-}
-
 static BigDecimalStatus multiply_significant(
     BigDecimal *result,
     const BigDecimal *a,
@@ -97,7 +49,7 @@ static BigDecimalStatus multiply_significant(
 
     if (status == BIGDECIMAL_OK)
     {
-        status = round_significant(result, temporary, digits, rounding);
+        status = bigdecimal_round_significant(result, temporary, digits, rounding);
     }
 
     bigdecimal_destroy(temporary);
@@ -124,7 +76,7 @@ static BigDecimalStatus add_significant(
 
     if (status == BIGDECIMAL_OK)
     {
-        status = round_significant(result, temporary, digits, rounding);
+        status = bigdecimal_round_significant(result, temporary, digits, rounding);
     }
 
     bigdecimal_destroy(temporary);
@@ -460,7 +412,7 @@ BigDecimalStatus bigdecimal_exp(
 
     if (status == BIGDECIMAL_OK)
     {
-        status = round_significant(temporary, temporary, digits, rounding);
+        status = bigdecimal_round_significant(temporary, temporary, digits, rounding);
     }
 
     if (status == BIGDECIMAL_OK)
@@ -521,7 +473,7 @@ BigDecimalStatus bigdecimal_ln(
 
     if (status == BIGDECIMAL_OK)
     {
-        status = round_significant(temporary, temporary, digits, rounding);
+        status = bigdecimal_round_significant(temporary, temporary, digits, rounding);
     }
 
     if (status == BIGDECIMAL_OK)

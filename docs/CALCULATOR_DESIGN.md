@@ -9,17 +9,17 @@ client over the public numeric API.
 | Module | Responsibility |
 | --- | --- |
 | `calculator.c` | Shared status/error handling, precision defaults and the bounded complete `calculator_compute` pipeline used by CLI and HTTP. |
-| `constants.c` | Maps `π`, `e`, and `φ` to fixed 500-decimal-place BigDecimal approximations. |
+| `constants.c` | Maps `π`, `e`, and `φ` to the precision-aware public BigDecimal constant API. |
 | `tokenizer.c` | Converts source text into location-aware tokens. Implemented for decimal literals, identifiers, whitespace, binary and postfix operators, and parentheses. |
 | `parser.c` | Converts tokens into an opaque expression tree (AST). Implemented as recursive descent with postfix, power, unary, multiplicative, and additive precedence layers. |
-| `evaluator.c` | Evaluates the AST to `BigDecimal` using `CalculatorContext`. Implements arithmetic, roots, integer calls, exponential and logarithmic calls, and selection functions. |
+| `evaluator.c` | Evaluates the AST to `BigDecimal` using `CalculatorContext`. Implements arithmetic, roots, integer, exponential, logarithmic, trigonometric, conversion, and selection calls. |
 | `formatter.c` | Rounds a completed result to the requested output scale and selects ordinary or scientific notation. |
 | `functions.c` | Immutable registry of named calls, accepted arities and implementation dispatch identifiers. |
 | `src/main.c` | Interactive command-line shell around the calculator pipeline. |
 | `src/web/web_api.c` | Text-to-result adapter used by the local web server. |
 | `src/web/web_server.c` | Loopback-only HTTP server that serves the calculator page and `POST /api/evaluate`. |
 | `src/web/http_request.c` | Bounded, socket-independent HTTP framing and header validation; returns incomplete, ready, malformed or oversized status. |
-| `src/web/web_page.h` | Embedded calculator and API-guide pages. Active controls map to the current grammar; disabled controls indicate planned features only. |
+| `src/web/web_page.h` | Embedded calculator and API-guide pages with active controls for the current grammar. |
 
 The dependencies run in one direction:
 
@@ -46,14 +46,14 @@ Windows. The CTest smoke test starts the actual executable on a temporary port
 and exercises its HTTP transport over real sockets.
 
 The page sends the selected output scale as `?precision=N`; its full-output
-checkbox sends `?precision=full`. HTTP `POST` requests require an exact
+checkbox sends `?precision=full`. The RAD/DEG selector adds `&angle=rad` or
+`&angle=deg` and is remembered in browser local storage. HTTP `POST` requests require an exact
 `Content-Length`. If a browser sends an `Origin`, the server accepts only its
 own loopback origins, preventing unrelated pages from triggering expensive
 local calculations. Slovak and English routes use `?lang=sk` and `?lang=en`;
 the result panel copies the currently displayed result through the browser
-clipboard API, with a local fallback. Exponential and logarithmic controls are
-active; the visible trigonometric and angle-conversion controls remain disabled
-placeholders. Basic abs/sign/min/max controls, integer gcd/lcm/mod/isqrt controls
+clipboard API, with a local fallback. Exponential, logarithmic, trigonometric,
+and angle-conversion controls are active. Basic abs/sign/min/max controls, integer gcd/lcm/mod/isqrt controls
 and sqrt/cbrt/root controls are active.
 
 Nonblocking sockets use absolute monotonic deadlines: two seconds for the
@@ -89,9 +89,7 @@ calling the public BigDecimal API.
 Variables remain outside the grammar. The function registry recognizes the
 names and arities listed in [API.md](API.md#named-calls). `pow` and `factorial` reuse existing operator paths.
 `abs`, `sign`, `min` and `max` use decimal operations directly. Min/max retain
-only the selected and current values, evaluating arguments left to right. Pending calls report `NOT_IMPLEMENTED` before
-evaluating children. Numerical domains/rounding must be defined when enabling
-each remaining implementation.
+only the selected and current values, evaluating arguments left to right.
 
 `gcd`, `lcm` and `mod` reuse BigInt operations, accepting signed integer-valued
 arguments (including `12.00`). `mod` is a truncating remainder, not Euclidean
@@ -126,6 +124,20 @@ evaluating guarded decimal series. The result is then reconstructed at the
 requested significant precision. No binary floating-point conversion is used.
 The evaluator uses at least 34 significant digits, or the higher context
 precision, and all loops participate in the normal cooperative resource budget.
+
+Public BigDecimal trigonometry always uses radians. `CalculatorContext` adds an
+angle unit, defaulting to RAD. In DEG mode complete turns are removed exactly
+before forward arguments are converted with
+guarded π before the library call, and inverse results are converted back to
+degrees; exact tangent poles at `90 + 180k` degrees are rejected before the
+conversion. `radians(x)` and `degrees(x)` always perform the named conversion,
+independent of context. The CLI commands `angle rad` and `angle deg`, HTTP
+`angle=rad|deg`, and the browser selector all configure the same policy.
+Before a forward trigonometric call, the calculator estimates the argument's
+integer-digit magnitude and reevaluates its argument subtree with the guard
+precision required by π-based reduction. This keeps symbolic values such as
+`sin(π)` and `sin(1E50*π)` aligned with the reduction constant instead of
+discarding the decisive low digits before the library call.
 
 Call nodes own an argument-pointer array and child expressions; registry entries
 have static lifetime. Array growth uses the fault-injectable allocator. Parse
@@ -170,8 +182,8 @@ constant times a parenthesized expression. Adjacent ASCII names require `*`
 
 ## Evaluation policy and errors
 
-`CalculatorContext` holds working division precision, output scale, rounding
-and a time budget. `significant_division` defaults to true: `division_scale`
+`CalculatorContext` holds working division precision, output scale, rounding,
+angle unit, and a time budget. `significant_division` defaults to true: `division_scale`
 then counts significant digits for non-terminating division, defaulting to 34
 with half-even rounding. Terminating division is exact within resource limits.
 An explicitly false mode retains the internal legacy fixed-scale behavior;
@@ -202,8 +214,14 @@ divides at the corresponding scale and then applies the original operand scales
 using checked arithmetic. Thus compact huge/tiny magnitudes do not require huge
 powers of ten merely to retain relative precision. For example `1E-40 / 1`
 stays `1E-40`. Intermediate rounding and cancellation can still affect later
-operations; there is no certified whole-expression error bound. Constants have
-500 stored decimal places regardless of the selected output limit.
+operations; there is no certified whole-expression error bound. Constants use
+the same max(34, N+4) significant working precision as non-terminating division
+for an N-place output request. A 500-place stored value serves ordinary
+precision; higher requests calculate more digits dynamically. Each distinct
+constant is copied from a small evaluation-local cache. If an operation requests
+a different precision, that cache entry is recalculated at the requested
+precision, so earlier calls cannot change the precision of later operands. Full output
+retains the existing 34-significant-digit working policy.
 
 `calculator_compute` opens one thread-local resource scope before parsing and
 closes it after formatting and cleanup. Nested evaluator/formatter calls reuse

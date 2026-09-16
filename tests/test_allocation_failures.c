@@ -109,6 +109,23 @@ static BigDecimalStatus bigdecimal_ln_to_25(BigDecimal *result, const BigDecimal
     return bigdecimal_ln(result, value, 25, BIGDECIMAL_ROUND_HALF_EVEN);
 }
 
+static BigDecimalStatus bigdecimal_pi_to_520(BigDecimal *result, const BigDecimal *value)
+{
+    (void)value;
+    return bigdecimal_set_constant_significant(
+        result, BIGDECIMAL_CONSTANT_PI, 520, BIGDECIMAL_ROUND_HALF_EVEN);
+}
+
+static BigDecimalStatus bigdecimal_sin_to_25(BigDecimal *result, const BigDecimal *value)
+{
+    return bigdecimal_sin(result, value, 25, BIGDECIMAL_ROUND_HALF_EVEN);
+}
+
+static BigDecimalStatus bigdecimal_atan_to_25(BigDecimal *result, const BigDecimal *value)
+{
+    return bigdecimal_atan(result, value, 25, BIGDECIMAL_ROUND_HALF_EVEN);
+}
+
 static BigDecimalStatus bigdecimal_divide_to_25(
     BigDecimal *result,
     const BigDecimal *a,
@@ -852,6 +869,103 @@ void test_bigdecimal_arithmetic_failure_paths(void)
     assert_bigdecimal_binary_failure_safety(bigdecimal_divide_to_25, a, b);
 }
 
+void test_dynamic_constant_sampled_allocation_failures(void)
+{
+    size_t allocation_count;
+    size_t failure_indices[7];
+    BigDecimal *result = make_bigdecimal("7.77");
+    BigDecimal *input = make_bigdecimal("0");
+
+    numforge_test_allocator_begin(0U);
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_pi_to_520(result, input));
+    allocation_count = numforge_test_allocator_call_count();
+    numforge_test_allocator_end();
+    TEST_ASSERT_GREATER_THAN_UINT64(0U, allocation_count);
+    bigdecimal_destroy(result);
+    bigdecimal_destroy(input);
+
+    failure_indices[0] = 1U;
+    failure_indices[1] = 2U;
+    failure_indices[2] = 8U;
+    failure_indices[3] = allocation_count / 4U;
+    failure_indices[4] = allocation_count / 2U;
+    failure_indices[5] = allocation_count - allocation_count / 4U;
+    failure_indices[6] = allocation_count;
+
+    for (size_t index = 0U; index < sizeof(failure_indices) / sizeof(failure_indices[0]); index++)
+    {
+        size_t failure_index = failure_indices[index] == 0U ? 1U : failure_indices[index];
+        BigDecimalStatus status;
+        bool injected;
+
+        result = make_bigdecimal("7.77");
+        input = make_bigdecimal("0");
+        numforge_test_allocator_begin(failure_index);
+        status = bigdecimal_pi_to_520(result, input);
+        injected = numforge_test_allocator_did_fail();
+        numforge_test_allocator_end();
+
+        TEST_ASSERT_TRUE(injected);
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OUT_OF_MEMORY, status);
+        assert_bigdecimal_text("7.77", result);
+        bigdecimal_destroy(result);
+        bigdecimal_destroy(input);
+    }
+}
+
+static void assert_sampled_unary_allocation_failures(
+    BigDecimalUnaryOperation operation,
+    const char *input_text
+)
+{
+    size_t allocation_count;
+    size_t failure_indices[7];
+    BigDecimal *result = make_bigdecimal("7.77");
+    BigDecimal *input = make_bigdecimal(input_text);
+
+    numforge_test_allocator_begin(0U);
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, operation(result, input));
+    allocation_count = numforge_test_allocator_call_count();
+    numforge_test_allocator_end();
+    TEST_ASSERT_GREATER_THAN_UINT64(0U, allocation_count);
+    bigdecimal_destroy(result);
+    bigdecimal_destroy(input);
+
+    failure_indices[0] = 1U;
+    failure_indices[1] = 2U;
+    failure_indices[2] = 8U;
+    failure_indices[3] = allocation_count / 4U;
+    failure_indices[4] = allocation_count / 2U;
+    failure_indices[5] = allocation_count - allocation_count / 4U;
+    failure_indices[6] = allocation_count;
+
+    for (size_t index = 0U; index < sizeof(failure_indices) / sizeof(failure_indices[0]); index++)
+    {
+        size_t failure_index = failure_indices[index] == 0U ? 1U : failure_indices[index];
+        BigDecimalStatus status;
+        bool injected;
+
+        result = make_bigdecimal("7.77");
+        input = make_bigdecimal(input_text);
+        numforge_test_allocator_begin(failure_index);
+        status = operation(result, input);
+        injected = numforge_test_allocator_did_fail();
+        numforge_test_allocator_end();
+
+        TEST_ASSERT_TRUE(injected);
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OUT_OF_MEMORY, status);
+        assert_bigdecimal_text("7.77", result);
+        bigdecimal_destroy(result);
+        bigdecimal_destroy(input);
+    }
+}
+
+void test_trigonometric_sampled_allocation_failures(void)
+{
+    assert_sampled_unary_allocation_failures(bigdecimal_sin_to_25, "0.5");
+    assert_sampled_unary_allocation_failures(bigdecimal_atan_to_25, "1");
+}
+
 void test_bigdecimal_aliasing_preserves_destination_on_allocation_failure(void)
 {
     static const char a[] = "123456789012345678901234567890.123456789";
@@ -1247,6 +1361,8 @@ int main(void)
     RUN_TEST(test_bigdecimal_conversion_and_comparison_failure_paths);
     RUN_TEST(test_bigdecimal_arithmetic_failure_paths);
     RUN_TEST(test_bigdecimal_aliasing_preserves_destination_on_allocation_failure);
+    RUN_TEST(test_dynamic_constant_sampled_allocation_failures);
+    RUN_TEST(test_trigonometric_sampled_allocation_failures);
     RUN_TEST(test_logarithm_sampled_allocation_failures_and_aliasing);
     RUN_TEST(test_parser_preserves_output_on_every_allocation_failure);
     RUN_TEST(test_evaluator_preserves_destination_on_every_allocation_failure);

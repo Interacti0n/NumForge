@@ -27,7 +27,9 @@ function createUI(english) {
         if (!elements.has(id)) elements.set(id, {
             value: '', textContent: '', disabled: false, checked: false, className: '',
             selectionStart: 0, selectionEnd: 0, listeners: {}, dataset: {}, style: {}, scrollHeight: 150, clientHeight: 150,
+            classList: {toggle() {}},
             addEventListener(event, handler) { this.listeners[event] = handler; },
+            setAttribute() {},
             requestSubmit() { return this.listeners.submit({preventDefault() {}}); },
             focus() {},
             setRangeText(text, start, end) { this.value = this.value.slice(0, start) + text + this.value.slice(end); }
@@ -37,12 +39,15 @@ function createUI(english) {
     const pending = [], timers = [], copied = [];
     const clear = element('clear'); clear.dataset.action = 'clear';
     const insert = element('insert'); insert.dataset.insert = '1';
+    const angleRad = element('angle-rad'); angleRad.dataset.angle = 'rad';
+    const angleDeg = element('angle-deg'); angleDeg.dataset.angle = 'deg';
     element('#precision').value = '10';
     vm.runInNewContext(scriptFor(english), {
         document: {
             documentElement: {lang: english ? 'en' : 'sk'},
             querySelector: element,
-            querySelectorAll: selector => selector === '[data-action]' ? [clear] : [insert]
+            querySelectorAll: selector => selector === '[data-action]' ? [clear]
+                : selector === '[data-angle]' ? [angleRad, angleDeg] : [insert]
         },
         navigator: {clipboard: {writeText: async text => copied.push(text)}},
         window: {isSecureContext: true}, TextEncoder, AbortController,
@@ -127,13 +132,13 @@ async function testAutomaticCalculation(english) {
     ui.element('#precision').value = '2';
     ui.element('#precision').listeners.input();
     const rounded = ui.timers.at(-1)();
-    assert.ok(ui.pending[1].url.endsWith('precision=2'));
+    assert.ok(ui.pending[1].url.endsWith('precision=2&angle=rad'));
     ui.respond(1, '0.12'); await rounded;
     ui.element('#full-precision').checked = true;
     ui.element('#full-precision').listeners.change();
     assert.equal(ui.element('#precision').disabled, true);
     const full = ui.timers.at(-1)();
-    assert.ok(ui.pending[2].url.endsWith('precision=full'));
+    assert.ok(ui.pending[2].url.endsWith('precision=full&angle=rad'));
     ui.respond(2, '0.125'); await full;
 
     input.value = '9'; input.listeners.input();

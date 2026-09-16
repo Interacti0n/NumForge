@@ -17,8 +17,9 @@ binary floating point. Its public API is declared in
 | `operations.c` | BigInt conversions, integer/sign helpers, min/max, and integer powers. |
 | `roots.c` | General real roots plus square-root and cube-root wrappers. |
 | `transcendental.c` | Guarded exponential and logarithmic functions with decimal argument reduction. |
+| `trigonometric.c` | Guarded radian trigonometric functions and magnitude-aware π reduction. |
 | `format.c` | Precision-aware readable and scientific result formatting. |
-| `constants.c` | Built-in high-precision mathematical constants. |
+| `constants.c` | Stored and dynamically calculated high-precision mathematical constants. |
 | `bigdecimal_internal.h` | Private representation and declarations shared only by these modules. |
 
 The installed public API remains entirely in `include/numforge/bigdecimal.h`;
@@ -36,7 +37,7 @@ The public header defines the component's stable 1.x surface:
 - exact arithmetic: absolute value, negation, addition, subtraction, and
   multiplication;
 - controlled inexact operations: division, rescaling, real roots, exponential,
-  and logarithmic functions with explicit precision and rounding.
+  logarithmic, and trigonometric functions with explicit precision and rounding.
 
 All listed operations are implemented. Every mutating operation computes into
 a temporary value and commits only on success, so its destination is unchanged
@@ -64,6 +65,28 @@ use half-even rounding so directed output modes cannot prevent convergence;
 the requested rounding mode is applied to the final significant result. A
 bounded number of reduction steps rejects magnitudes that cannot fit the
 representation, and every loop checks an active cooperative resource budget.
+
+Forward trigonometric functions are radian-only at the public library boundary.
+Argument reduction rounds `x/(π/2)` to the nearest integer, evaluates sine and
+cosine together on `[-π/4, π/4]`, and maps the pair by quadrant. The π request
+includes the requested precision, 24 working guard digits, and the input's
+integer-digit magnitude, preventing a large angle from discarding the reduced
+fraction. `tan` divides the shared pair. `atan` uses reciprocal and repeated
+half-angle reduction before its alternating series; `asin` and `acos` build on
+`atan` and `sqrt((1-x)*(1+x))`, preserving the exact distance from the domain
+endpoints. `acos` uses a complementary arctangent formula to avoid subtracting
+nearly equal angles near 1. Intermediate rounding is half-even and only the final
+step applies the caller's requested mode.
+
+Constants use a hybrid policy. `bigdecimal_set_constant` preserves the original
+full 500-decimal-place values. The precision-aware factory rounds those stored
+values through 500 significant digits and, above that threshold, calculates π
+with the quadratically convergent Gauss-Legendre iteration, e as `exp(1)`, and φ
+as `(1 + sqrt(5)) / 2`. Dynamic calculations use 24 decimal guard digits and
+half-even intermediate rounding before applying the caller's final rounding
+mode. The library keeps no mutable global constant cache, so independent calls
+and threads do not share hidden state; clients may retain or cache returned
+objects when repeated use matters.
 
 ## Representation
 
@@ -172,7 +195,9 @@ The implementation is complete for the current public surface. Focused unit
 tests cover explicit regressions and API errors. A separate deterministic
 property suite uses a bounded independent `int64_t` reference model to check
 conversion, canonical form, exact arithmetic, comparison, aliasing, rescaling,
-division, and every rounding mode. The allocation-failure suite additionally
+division, and every rounding mode. Focused transcendental and trigonometric
+suites cover guarded series, domains, large-argument reduction, and known
+high-precision values. The allocation-failure suite additionally
 fails each allocation in conversion, comparison, exact and rounded arithmetic,
 then verifies out-of-memory propagation and unchanged destinations. Its
 end-to-end case also covers parser, evaluator, and formatter cleanup.

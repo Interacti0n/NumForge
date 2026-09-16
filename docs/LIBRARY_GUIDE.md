@@ -76,3 +76,13 @@ Real roots and the `bigdecimal_exp`, `bigdecimal_ln`, `bigdecimal_log10` and
 `bigdecimal_log` functions accept an explicit significant-digit count and
 rounding mode. Logarithm arguments must be positive; an explicit logarithm
 base must also be positive and different from one.
+
+`bigdecimal_sin`, `bigdecimal_cos`, `bigdecimal_tan`, `bigdecimal_asin`,
+`bigdecimal_acos`, and `bigdecimal_atan` use radians, explicit significant
+digits, and an explicit rounding mode. Degree conversion belongs to clients,
+not the numeric library.
+
+`bigdecimal_set_constant` returns the complete stored 500-decimal-place π, e,
+or φ approximation. Use `bigdecimal_set_constant_significant` when the caller
+controls significant digits and rounding; requests above 500 digits are
+calculated dynamically without binary floating point.

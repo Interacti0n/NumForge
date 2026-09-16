@@ -66,10 +66,10 @@ for (const lang of ['sk', 'en']) {
             await page.locator('[data-action=clear]').click();
             await expect(page.locator('#result')).toBeEmpty();
         });
-        test('function groups, aliases and pending calls', async ({ page }, testInfo) => {
+        test('function groups, aliases and trigonometry', async ({ page }, testInfo) => {
             await expect(page.locator('details.function-group')).toHaveCount(4);
             await expect(page.locator('[data-function]')).toHaveCount(24);
-            await expect(page.locator('[data-function]:disabled')).toHaveCount(8);
+            await expect(page.locator('[data-function]:disabled')).toHaveCount(0);
             const powers = page.locator('details').filter({ has: page.locator('[data-function="pow"]') });
             await powers.locator('summary').focus();
             await page.keyboard.press('Enter');
@@ -91,6 +91,17 @@ for (const lang of ['sk', 'en']) {
             await calculate(page, 'ln(1)', '0');
             await calculate(page, 'log(100)', '2');
             await calculate(page, 'log(8;2)', '3');
+            const angles = page.locator('details').filter({ has: page.locator('[data-function="sin"]') });
+            await angles.locator('summary').click();
+            await expect(page.locator('[data-angle="rad"]')).toHaveClass(/active/);
+            await calculate(page, 'sin(π/2)', '1');
+            await page.locator('[data-angle="deg"]').click();
+            await expect(page.locator('[data-angle="deg"]')).toHaveClass(/active/);
+            await calculate(page, 'sin(90)', '1');
+            await calculate(page, 'cos(180)', '-1');
+            await calculate(page, 'tan(45)', '1');
+            await calculate(page, 'asin(1)', '90');
+            await calculate(page, 'degrees(π)', '180');
             await page.locator('#expression').fill('atan(1;2)');
             await page.locator('#expression').press('Enter');
             await expect(page.locator('#result')).toContainText(lang === 'sk' ? 'nesprávny počet argumentov' : 'wrong number of arguments');

@@ -120,6 +120,46 @@ void test_web_api_honors_output_precision(void)
     free(result);
 }
 
+void test_web_api_honors_angle_units(void)
+{
+    CalculatorError error;
+    char *result = NULL;
+
+    TEST_ASSERT_EQUAL(
+        CALCULATOR_OK,
+        numforge_web_evaluate_with_options(
+            "sin(90)",
+            10,
+            CALCULATOR_ANGLE_DEGREES,
+            &result,
+            &error));
+    TEST_ASSERT_EQUAL_STRING("1", result);
+    free(result);
+    result = NULL;
+
+    TEST_ASSERT_EQUAL(
+        CALCULATOR_OK,
+        numforge_web_evaluate_with_options(
+            "sin(π/2)",
+            10,
+            CALCULATOR_ANGLE_RADIANS,
+            &result,
+            &error));
+    TEST_ASSERT_EQUAL_STRING("1", result);
+    free(result);
+    result = NULL;
+
+    TEST_ASSERT_EQUAL(
+        CALCULATOR_INVALID_ARGUMENT,
+        numforge_web_evaluate_with_options(
+            "1",
+            10,
+            (CalculatorAngleUnit)99,
+            &result,
+            &error));
+    TEST_ASSERT_NULL(result);
+}
+
 void test_web_api_preserves_calculator_errors(void)
 {
     CalculatorError error;
@@ -216,6 +256,7 @@ int main(void)
 
     RUN_TEST(test_web_api_evaluates_with_exact_c_bigdecimal);
     RUN_TEST(test_web_api_honors_output_precision);
+    RUN_TEST(test_web_api_honors_angle_units);
     RUN_TEST(test_web_api_preserves_calculator_errors);
     RUN_TEST(test_web_api_rejects_empty_and_oversized_input);
     RUN_TEST(test_web_api_handles_null_arguments_without_stale_output);

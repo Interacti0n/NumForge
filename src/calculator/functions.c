@@ -28,14 +28,14 @@ static const CalculatorFunction calculator_functions[] =
     { "exp", 1, 1, CALCULATOR_FUNCTION_EXP },
     { "ln", 1, 1, CALCULATOR_FUNCTION_LN },
     { "log", 1, 2, CALCULATOR_FUNCTION_LOG },
-    { "sin", 1, 1, CALCULATOR_FUNCTION_PENDING },
-    { "cos", 1, 1, CALCULATOR_FUNCTION_PENDING },
-    { "tan", 1, 1, CALCULATOR_FUNCTION_PENDING },
-    { "asin", 1, 1, CALCULATOR_FUNCTION_PENDING },
-    { "acos", 1, 1, CALCULATOR_FUNCTION_PENDING },
-    { "atan", 1, 1, CALCULATOR_FUNCTION_PENDING },
-    { "radians", 1, 1, CALCULATOR_FUNCTION_PENDING },
-    { "degrees", 1, 1, CALCULATOR_FUNCTION_PENDING }
+    { "sin", 1, 1, CALCULATOR_FUNCTION_SIN },
+    { "cos", 1, 1, CALCULATOR_FUNCTION_COS },
+    { "tan", 1, 1, CALCULATOR_FUNCTION_TAN },
+    { "asin", 1, 1, CALCULATOR_FUNCTION_ASIN },
+    { "acos", 1, 1, CALCULATOR_FUNCTION_ACOS },
+    { "atan", 1, 1, CALCULATOR_FUNCTION_ATAN },
+    { "radians", 1, 1, CALCULATOR_FUNCTION_RADIANS },
+    { "degrees", 1, 1, CALCULATOR_FUNCTION_DEGREES }
 };
 
 const CalculatorFunction *calculator_function_find(

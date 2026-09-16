@@ -292,6 +292,54 @@ BigDecimalStatus bigdecimal_log(
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
+    Trigonometric functions with radian arguments and significant digits.
+
+    sin, cos, and tan accept any finite BigDecimal. asin and acos require a
+    value in [-1, 1]; atan accepts any value. Inverse results are radians.
+    Failure preserves result and output/input aliasing is supported.
+
+    Implementation: src/bigdecimal/trigonometric.c
+------------------------------------------------------------------------------------------------------------------------------
+*/
+BigDecimalStatus bigdecimal_sin(
+    BigDecimal *result,
+    const BigDecimal *value,
+    int64_t digits,
+    BigDecimalRoundingMode rounding
+);
+BigDecimalStatus bigdecimal_cos(
+    BigDecimal *result,
+    const BigDecimal *value,
+    int64_t digits,
+    BigDecimalRoundingMode rounding
+);
+BigDecimalStatus bigdecimal_tan(
+    BigDecimal *result,
+    const BigDecimal *value,
+    int64_t digits,
+    BigDecimalRoundingMode rounding
+);
+BigDecimalStatus bigdecimal_asin(
+    BigDecimal *result,
+    const BigDecimal *value,
+    int64_t digits,
+    BigDecimalRoundingMode rounding
+);
+BigDecimalStatus bigdecimal_acos(
+    BigDecimal *result,
+    const BigDecimal *value,
+    int64_t digits,
+    BigDecimalRoundingMode rounding
+);
+BigDecimalStatus bigdecimal_atan(
+    BigDecimal *result,
+    const BigDecimal *value,
+    int64_t digits,
+    BigDecimalRoundingMode rounding
+);
+
+/*
+------------------------------------------------------------------------------------------------------------------------------
     Significant-digit division functions.
 
     The exact-first variant preserves finite quotients and rounds only
@@ -326,9 +374,14 @@ typedef enum BigDecimalConstant
 ------------------------------------------------------------------------------------------------------------------------------
     Built-in constants and readable formatting.
 
-    Constants are stored approximations with 500 decimal places, not exact
-    irrational values. Formatting uses ordinary notation for exponent
-    magnitude below 10 and scientific notation otherwise. places applies
+    bigdecimal_set_constant returns the stored 500-decimal-place approximation.
+    bigdecimal_set_constant_significant rounds that stored value through 500
+    significant digits and calculates larger requests dynamically; digits must
+    be positive. Constants remain approximations, not exact irrational values.
+    Both factories preserve result on failure.
+
+    Formatting uses ordinary notation for exponent magnitude below 10 and
+    scientific notation otherwise. places applies
     after the decimal point, or after the scientific mantissa; -1 keeps all
     stored digits. The caller releases the returned string with free().
 
@@ -339,6 +392,12 @@ typedef enum BigDecimalConstant
 BigDecimalStatus bigdecimal_set_constant(
     BigDecimal *result,
     BigDecimalConstant constant
+);
+BigDecimalStatus bigdecimal_set_constant_significant(
+    BigDecimal *result,
+    BigDecimalConstant constant,
+    int64_t digits,
+    BigDecimalRoundingMode rounding
 );
 BigDecimalStatus bigdecimal_format(
     const BigDecimal *value,

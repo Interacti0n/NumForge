@@ -15,6 +15,68 @@
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
+BigDecimalStatus bigdecimal_round_significant(
+    BigDecimal *result,
+    const BigDecimal *value,
+    int64_t digits,
+    BigDecimalRoundingMode rounding
+)
+{
+    char *coefficient;
+    const char *number;
+    size_t length;
+    size_t discarded;
+    int64_t target_scale;
+
+    if (result == NULL || value == NULL)
+    {
+        return BIGDECIMAL_NULL_ARGUMENT;
+    }
+
+    if (digits < 1 || !bigdecimal_valid_rounding(rounding))
+    {
+        return BIGDECIMAL_INVALID_ARGUMENT;
+    }
+
+    if (bigint_is_zero(value->coefficient))
+    {
+        return bigdecimal_copy(result, value);
+    }
+
+    coefficient = bigint_to_string(value->coefficient);
+
+    if (coefficient == NULL)
+    {
+        return BIGDECIMAL_OUT_OF_MEMORY;
+    }
+
+    number = coefficient[0] == '-' ? coefficient + 1 : coefficient;
+    length = strlen(number);
+
+    if ((uint64_t)length <= (uint64_t)digits)
+    {
+        free(coefficient);
+        return bigdecimal_copy(result, value);
+    }
+
+    discarded = length - (size_t)digits;
+    free(coefficient);
+
+#if SIZE_MAX > INT64_MAX
+    if (discarded > (size_t)INT64_MAX)
+    {
+        return BIGDECIMAL_SCALE_OVERFLOW;
+    }
+#endif
+
+    if (!bigdecimal_i64_sub(value->scale, (int64_t)discarded, &target_scale))
+    {
+        return BIGDECIMAL_SCALE_OVERFLOW;
+    }
+
+    return bigdecimal_rescale(result, value, target_scale, rounding);
+}
+
 // A reduced denominator has a finite decimal expansion exactly when its only
 // prime factors are two and five. Scales do not affect this property. Detect
 // termination before selecting a precision; never silently fall back to

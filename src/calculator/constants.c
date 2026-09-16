@@ -5,7 +5,7 @@
 /*
 ------------------------------------------------------------------------------------------------------------------------------
     Calculator constant adapter. This module recognizes the symbols and maps
-    them to the public BigDecimal constants stored with 500 decimal places.
+    them to the precision-aware public BigDecimal constant API.
     The numeric values and their ownership remain in the library.
 ------------------------------------------------------------------------------------------------------------------------------
 */
@@ -93,7 +93,9 @@ bool calculator_constant_from_text(
 
 CalculatorStatus calculator_constant_set_value(
     BigDecimal *value,
-    CalculatorConstant constant
+    CalculatorConstant constant,
+    int64_t digits,
+    BigDecimalRoundingMode rounding
 )
 {
     BigDecimalConstant numeric_constant;
@@ -113,5 +115,6 @@ CalculatorStatus calculator_constant_set_value(
             return CALCULATOR_INVALID_ARGUMENT;
     }
 
-    return calculator_from_bigdecimal_status(bigdecimal_set_constant(value, numeric_constant));
+    return calculator_from_bigdecimal_status(
+        bigdecimal_set_constant_significant(value, numeric_constant, digits, rounding));
 }

@@ -77,5 +77,11 @@ BigDecimalStatus bigdecimal_round_quotient(
     bool negative,
     BigDecimalRoundingMode rounding
 );
+BigDecimalStatus bigdecimal_round_significant(
+    BigDecimal *result,
+    const BigDecimal *value,
+    int64_t digits,
+    BigDecimalRoundingMode rounding
+);
 
 #endif

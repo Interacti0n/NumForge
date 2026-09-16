@@ -291,16 +291,20 @@ static bool numforge_is_evaluation_target(
     return strcmp(target, "/api/evaluate") == 0 || strncmp(target, prefix, sizeof(prefix) - 1U) == 0;
 }
 
-static bool numforge_parse_output_scale(
+static bool numforge_parse_evaluation_options(
     const char *target,
-    int64_t *output_scale
+    int64_t *output_scale,
+    CalculatorAngleUnit *angle_unit
 )
 {
     const char *value;
+    const char *angle;
     char *end;
     long long parsed;
+    char precision[32];
+    size_t precision_length;
 
-    if (target == NULL || output_scale == NULL)
+    if (target == NULL || output_scale == NULL || angle_unit == NULL)
     {
         return false;
     }
@@ -308,6 +312,7 @@ static bool numforge_parse_output_scale(
     if (strcmp(target, "/api/evaluate") == 0)
     {
         *output_scale = CALCULATOR_DEFAULT_OUTPUT_SCALE;
+        *angle_unit = CALCULATOR_ANGLE_RADIANS;
 
         return true;
     }
@@ -318,8 +323,35 @@ static bool numforge_parse_output_scale(
     }
 
     value = target + strlen("/api/evaluate?precision=");
+    angle = strstr(value, "&angle=");
+    precision_length = angle == NULL ? strlen(value) : (size_t)(angle - value);
 
-    if (strcmp(value, "full") == 0)
+    if (precision_length == 0U || precision_length >= sizeof(precision))
+    {
+        return false;
+    }
+
+    memcpy(precision, value, precision_length);
+    precision[precision_length] = '\0';
+
+    if (angle == NULL)
+    {
+        *angle_unit = CALCULATOR_ANGLE_RADIANS;
+    }
+    else if (strcmp(angle + strlen("&angle="), "rad") == 0)
+    {
+        *angle_unit = CALCULATOR_ANGLE_RADIANS;
+    }
+    else if (strcmp(angle + strlen("&angle="), "deg") == 0)
+    {
+        *angle_unit = CALCULATOR_ANGLE_DEGREES;
+    }
+    else
+    {
+        return false;
+    }
+
+    if (strcmp(precision, "full") == 0)
     {
         *output_scale = CALCULATOR_UNLIMITED_OUTPUT_SCALE;
 
@@ -327,9 +359,9 @@ static bool numforge_parse_output_scale(
     }
 
     errno = 0;
-    parsed = strtoll(value, &end, 10);
+    parsed = strtoll(precision, &end, 10);
 
-    if (errno != 0 || end == value || *end != '\0' || parsed < 0)
+    if (errno != 0 || end == precision || *end != '\0' || parsed < 0)
     {
         return false;
     }
@@ -375,7 +407,8 @@ static bool numforge_parse_page_language(
 static void numforge_handle_evaluation(
     NumForgeSocket socket,
     const char *body,
-    int64_t output_scale
+    int64_t output_scale,
+    CalculatorAngleUnit angle_unit
 )
 {
     CalculatorError error;
@@ -384,7 +417,8 @@ static void numforge_handle_evaluation(
     char *response;
     size_t response_capacity;
 
-    status = numforge_web_evaluate_with_output_scale(body, output_scale, &result, &error);
+    status = numforge_web_evaluate_with_options(
+        body, output_scale, angle_unit, &result, &error);
 
     if (status == CALCULATOR_OK)
     {
@@ -457,6 +491,7 @@ static void numforge_handle_connection(
     size_t length;
     size_t body_length = 0U;
     int64_t output_scale;
+    CalculatorAngleUnit angle_unit;
     bool english;
     bool has_content_length;
     bool origin_allowed;
@@ -547,9 +582,9 @@ static void numforge_handle_connection(
                 "application/json; charset=utf-8",
                 "{\"ok\":false,\"error\":\"request body contains a NUL byte\",\"status\":\"invalid argument\",\"column\":1}");
         }
-        else if (numforge_parse_output_scale(target, &output_scale))
+        else if (numforge_parse_evaluation_options(target, &output_scale, &angle_unit))
         {
-            numforge_handle_evaluation(socket, body, output_scale);
+            numforge_handle_evaluation(socket, body, output_scale, angle_unit);
         }
         else
         {
@@ -558,7 +593,7 @@ static void numforge_handle_connection(
                 400,
                 "Bad Request",
                 "application/json; charset=utf-8",
-                "{\"ok\":false,\"error\":\"invalid precision\",\"status\":\"invalid argument\",\"column\":1}");
+                "{\"ok\":false,\"error\":\"invalid precision or angle unit\",\"status\":\"invalid argument\",\"column\":1}");
         }
     }
     else

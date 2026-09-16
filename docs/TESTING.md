@@ -43,6 +43,20 @@ directed rounding, compact magnitudes, arbitrary bases, aliases, invalid
 domains and the strong destination-preservation contract. Allocation injection
 exhausts representative `exp`/`ln` paths and samples the composed logarithm.
 
+`constants_tests` checks stored-value rounding, directed rounding, invalid
+arguments, destination preservation, and dynamically calculated 520-digit π,
+e, and φ against the complete stored prefixes. Calculator contract tests also
+exercise dynamic precision and repeated use of a constant in one evaluation;
+allocation injection samples early, middle, and late failures on the dynamic π
+path without making the CI suite repeat every expensive high-precision step.
+
+`trigonometric_tests` checks known forward and inverse radian values, directed
+rounding, domains, aliasing, large-angle reduction using dynamically extended
+π, and destination preservation. Calculator and browser tests cover RAD/DEG,
+explicit conversions, exact degree tangent poles, symbolic `sin(π)`, and
+retaining a small angle beside a `1E50*π` multiple. Allocation injection
+samples early, middle, and late sine/atan failures.
+
 ```sh
 ctest --test-dir build -C Debug -R numeric_oracle --output-on-failure
 ```
@@ -129,8 +143,8 @@ Eighteen Chromium scenarios cover both languages: real C calculations and
 precision, keypad entry, clipboard, help/navigation, arithmetic errors,
 transport failures and stale-response protection. Network-failure and delayed
 response cases use controlled interception; ordinary calculations reach C.
-Function-group tests also cover keyboard expansion, pending calls, arity
-errors, active integer/root/exponential/logarithmic functions, five-line result
+Function-group tests also cover keyboard expansion, arity errors, the RAD/DEG
+selector, active integer/root/exponential/logarithmic/trigonometric functions, five-line result
 expansion and mobile layout.
 `function_calls_tests` covers all
 registered names, syntax/depth/argument limits and e/E boundaries; allocation

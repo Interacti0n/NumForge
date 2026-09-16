@@ -30,6 +30,12 @@ assert.equal((result.stdout.match(/output precision: full/g) || []).length, 2);
 assert.match(result.stderr, /precision must be/);
 assert.match(result.stderr, /failed to set precision/);
 
+result = run('angle\nangle deg\nsin(90)\natan(1)\nangle\nangle rad\nsin(π\/2)\nangle nope\n');
+assert.deepEqual(result.results, ['1', '45', '1']);
+assert.match(result.stdout, /angle unit: RAD/);
+assert.match(result.stdout, /angle unit: DEG/);
+assert.match(result.stderr, /angle unit must be/);
+
 result = run('1.2.3\nπ/0\n2+2\n');
 assert.deepEqual(result.results, ['4']);
 assert.match(result.stderr, /error at column 4:/);

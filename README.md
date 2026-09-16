@@ -19,9 +19,12 @@ add expression syntax, presentation and application resource limits.
   rescaling.
 - Arbitrary-precision real roots, exponential, natural logarithm, common
   logarithm, and logarithms with a caller-selected base.
+- Arbitrary-precision radian sine, cosine, tangent, and inverse trigonometric
+  functions with guarded large-argument reduction.
 - Interactive expression calculator with source-positioned diagnostics.
-- Built-in 500-decimal-place approximations of `π`, `e`, and `φ` in the
-  calculator syntax.
+- Precision-aware approximations of `π`, `e`, and `φ`: stored values make
+  ordinary requests cheap, while requests beyond 500 digits are calculated
+  dynamically without binary floating point.
 - Configurable result precision, full output mode, and readable scientific
   notation for very large or very small non-zero results.
 - Local browser calculator served directly by the C executable; its requests
@@ -165,9 +168,10 @@ already calculate through the existing operators. `abs`, `sign`, `min` and `max`
 also calculate using decimal values without additional rounding. Integer-valued
 arguments support `gcd`, `lcm`, `mod` and floor square root `isqrt`. Real roots
 `sqrt`/`√`, `cbrt` and `root(x;n)` preserve exact finite roots and otherwise use
-working precision (34 significant digits by default). Four collapsible groups
-contain the function controls; dimmed buttons have recognized syntax but no
-numerical implementation yet. The page is available in Slovak and English, and the displayed
+working precision (34 significant digits by default). Trigonometric and inverse
+trigonometric calls use the shared RAD/DEG selector; explicit `radians(x)` and
+`degrees(x)` conversions remain available. Four collapsible groups contain the
+function controls. The page is available in Slovak and English, and the displayed
 result can be copied with one click. See the
 [API overview](docs/API.md) for exact syntax and the local HTTP API.
 Long results stay in a compact five-line panel and can be expanded with
@@ -230,6 +234,10 @@ executables:
 - `bigdecimal_property_tests`: deterministic generated reference checks for
   conversion, exact arithmetic, comparison, rescaling, division, rounding,
   and aliasing.
+- `constants_tests`: stored and dynamic π/e/φ precision, rounding, validation,
+  and destination-preservation checks.
+- `trigonometric_tests`: forward/inverse radian values, large-argument
+  reduction, domains, rounding, aliasing, and destination preservation.
 - `calculator_tests`: covers tokenization, parsing, evaluation, source
   positions, and division policy.
 - `calculator_contract_tests`: covers numeric-token boundaries, implicit
@@ -292,8 +300,8 @@ operands, and calculator features. Planned work includes:
 1. Broaden `BigDecimal` with larger generated decimal vectors, optional
    external-oracle checks, and performance optimizations. Its representation
    and implementation notes are in [the BigDecimal design](docs/BIGDECIMAL_DESIGN.md).
-2. Calculator variables and general functions. Exponentiation and configurable
-   output precision are already implemented. Its module boundaries, grammar,
+2. Calculator variables and additional scientific functions. Exponentiation,
+   trigonometry and configurable output precision are already implemented. Its module boundaries, grammar,
    and evaluation policy are in [the calculator design](docs/CALCULATOR_DESIGN.md).
 3. Performance profiling and targeted optimization of very large operands.
 

@@ -115,11 +115,30 @@ void test_context_defaults_and_status_strings(void)
 
     TEST_ASSERT_EQUAL_INT64(CALCULATOR_DEFAULT_DIVISION_SCALE, context.division_scale);
     TEST_ASSERT_EQUAL_INT64(CALCULATOR_DEFAULT_OUTPUT_SCALE, context.output_scale);
+    TEST_ASSERT_EQUAL(CALCULATOR_ANGLE_RADIANS, context.angle_unit);
     TEST_ASSERT_EQUAL_INT64(CALCULATOR_DEFAULT_TIME_LIMIT_MS, context.time_limit_ms);
     TEST_ASSERT_EQUAL(BIGDECIMAL_ROUND_HALF_EVEN, context.rounding);
     TEST_ASSERT_EQUAL_STRING("syntax error", calculator_status_to_string(CALCULATOR_SYNTAX_ERROR));
     TEST_ASSERT_EQUAL_STRING("TLE: time limit exceeded", calculator_status_to_string(CALCULATOR_TIME_LIMIT));
     TEST_ASSERT_EQUAL_STRING("unknown status", calculator_status_to_string((CalculatorStatus)999));
+}
+
+void test_context_configures_angle_units(void)
+{
+    CalculatorContext context;
+
+    calculator_context_init(&context);
+    TEST_ASSERT_EQUAL(
+        CALCULATOR_OK,
+        calculator_context_set_angle_unit(&context, CALCULATOR_ANGLE_DEGREES));
+    TEST_ASSERT_EQUAL(CALCULATOR_ANGLE_DEGREES, context.angle_unit);
+    TEST_ASSERT_EQUAL(
+        CALCULATOR_INVALID_ARGUMENT,
+        calculator_context_set_angle_unit(&context, (CalculatorAngleUnit)99));
+    TEST_ASSERT_EQUAL(CALCULATOR_ANGLE_DEGREES, context.angle_unit);
+    TEST_ASSERT_EQUAL(
+        CALCULATOR_NULL_ARGUMENT,
+        calculator_context_set_angle_unit(NULL, CALCULATOR_ANGLE_RADIANS));
 }
 
 void test_context_configures_output_precision(void)
@@ -816,6 +835,7 @@ int main(void)
     RUN_TEST(test_complete_pipeline_limits_and_recovers);
     RUN_TEST(test_significant_division_rounds_both_signs_in_all_modes);
     RUN_TEST(test_context_configures_output_precision);
+    RUN_TEST(test_context_configures_angle_units);
     RUN_TEST(test_error_helpers);
     RUN_TEST(test_tokenizer_produces_numbers_operators_and_offsets);
     RUN_TEST(test_tokenizer_keeps_signs_as_operators);

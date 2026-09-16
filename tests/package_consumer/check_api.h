@@ -23,6 +23,10 @@ static int public_api_checks(void)
         strcmp(text, "1.5") != 0) goto cleanup;
     free(text); text = NULL;
     if (bigdecimal_set_constant(a, BIGDECIMAL_CONSTANT_PI) != BIGDECIMAL_OK ||
+        bigdecimal_set_constant_significant(
+            b, BIGDECIMAL_CONSTANT_PI, 20, BIGDECIMAL_ROUND_HALF_EVEN) != BIGDECIMAL_OK ||
+        bigdecimal_sin(b, b, 20, BIGDECIMAL_ROUND_HALF_EVEN) != BIGDECIMAL_OK ||
+        bigdecimal_atan(b, b, 20, BIGDECIMAL_ROUND_HALF_EVEN) != BIGDECIMAL_OK ||
         bigdecimal_sign(&sign, a) != BIGDECIMAL_OK || sign != 1 ||
         bigdecimal_is_integer(&integer, a) != BIGDECIMAL_OK || integer ||
         bigdecimal_set_string(a, "0") != BIGDECIMAL_OK ||

@@ -72,6 +72,7 @@ static void test_evaluation_and_implicit_products(void)
         { "1e3-1*e*3", "0" }, { "1E3", "1000" },
         { "πe-π*e", "0" }, { "e(2+2)-4*e", "0" }, { "2(2+2)", "8" },
         { "pow(0;0)", "1" },
+        { "sin(1E50*π)+sin(π)", "0" },
         { "abs(-1,25)", "1.25" }, { "abs(-0)", "0" },
         { "sign(-1E-100000)", "-1" }, { "sign(0)", "0" },
         { "sign(1E100000)", "1" }, { "min(3;-2;0;abs(-1))", "-2" },
@@ -89,13 +90,6 @@ static void test_evaluation_and_implicit_products(void)
         TEST_ASSERT_EQUAL_MESSAGE(CALCULATOR_OK, calculator_compute(cases[i].input, &context, &text, &error), cases[i].input);
         TEST_ASSERT_EQUAL_STRING(cases[i].expected, text);
         free(text);
-    }
-    static const char *const pending[] = { "2sin(1)" };
-    for (size_t i = 0; i < sizeof(pending) / sizeof(pending[0]); i++)
-    {
-        char *text = NULL;
-        TEST_ASSERT_EQUAL(CALCULATOR_NOT_IMPLEMENTED, calculator_compute(pending[i], &context, &text, &error));
-        TEST_ASSERT_NULL(text);
     }
     char *text = NULL;
     TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, calculator_compute("pow(2;-1)", &context, &text, &error));
@@ -123,6 +117,79 @@ static void test_evaluation_and_implicit_products(void)
     TEST_ASSERT_EQUAL_STRING("-3", text);
     free(text);
     text = NULL;
+
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("sin(π/6)", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("0.5", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("sin(π)", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("0", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("sin(1E50*π)", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("0", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(
+        CALCULATOR_OK,
+        calculator_compute("sin(1E50*π+π/6)", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("0.5", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("cos(π)", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("-1", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("tan(π/4)", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("1", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("radians(180)", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("3.1415926536", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("degrees(π)", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("180", text);
+    free(text);
+    text = NULL;
+
+    TEST_ASSERT_EQUAL(
+        CALCULATOR_OK,
+        calculator_context_set_angle_unit(&context, CALCULATOR_ANGLE_DEGREES));
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("sin(90)", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("1", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("sin(360E50+30)", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("0.5", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("sin(180)", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("0", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("cos(180)", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("-1", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("tan(45)", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("1", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("asin(1)", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("90", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("acos(-1)", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("180", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("atan(1)", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("45", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, calculator_compute("tan(90)", &context, &text, &error));
+    TEST_ASSERT_NULL(text);
     TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, calculator_compute("ln(0)", &context, &text, &error));
     TEST_ASSERT_NULL(text);
     TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, calculator_compute("log(8;1)", &context, &text, &error));

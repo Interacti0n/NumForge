@@ -83,6 +83,15 @@ static void test_intermediate_rounding_is_not_final_rounding(void)
     assert_result("1/8", "0.125", &context);
 }
 
+static void test_constants_follow_working_precision_and_reuse(void)
+{
+    CalculatorContext context;
+
+    calculator_context_init(&context);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_context_set_output_scale(&context, 500));
+    assert_result("π-π", "0", &context);
+}
+
 static void test_finite_division_preserves_exact_intermediates(void)
 {
     CalculatorContext context;
@@ -142,6 +151,7 @@ int main(void)
     RUN_TEST(test_malformed_adjacent_numbers);
     RUN_TEST(test_implicit_products_and_decimal_separators);
     RUN_TEST(test_intermediate_rounding_is_not_final_rounding);
+    RUN_TEST(test_constants_follow_working_precision_and_reuse);
     RUN_TEST(test_finite_division_preserves_exact_intermediates);
     RUN_TEST(test_exact_division_aliasing_and_scale_failure);
     return UNITY_END();

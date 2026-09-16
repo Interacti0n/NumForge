@@ -89,7 +89,8 @@ retain unnecessary trailing zeroes.
 | Rounded arithmetic | `bigdecimal_rescale`, `bigdecimal_div`, `bigdecimal_div_significant`, `bigdecimal_div_exact_or_significant` |
 | Real roots | `bigdecimal_sqrt`, `bigdecimal_cbrt`, `bigdecimal_root` |
 | Exponential and logarithmic | `bigdecimal_exp`, `bigdecimal_ln`, `bigdecimal_log10`, `bigdecimal_log` |
-| Constants and display | `bigdecimal_set_constant`, `bigdecimal_format` |
+| Trigonometric | `bigdecimal_sin`, `bigdecimal_cos`, `bigdecimal_tan`, `bigdecimal_asin`, `bigdecimal_acos`, `bigdecimal_atan` |
+| Constants and display | `bigdecimal_set_constant`, `bigdecimal_set_constant_significant`, `bigdecimal_format` |
 
 Addition, subtraction, and multiplication are exact. Division and rescaling
 take an explicit target scale and one of these rounding modes:
@@ -119,8 +120,19 @@ keeps decimal places; a negative scale rounds to tens, hundreds, and so on.
   greater than zero and different from one. Each takes a positive significant
   digit count and an explicit rounding mode. Results use guarded decimal
   series and argument reduction without binary floating-point conversion.
-- `bigdecimal_set_constant` accepts `BIGDECIMAL_CONSTANT_PI`, `_E`, or `_PHI`:
-  stored 500-decimal-place approximations, not exact irrational values.
+- Trigonometric library calls always use radians. `sin`, `cos`, `tan`, and
+  `atan` accept any finite value; `asin` and `acos` require an argument in
+  `[-1, 1]`. Inverse results are radians. Forward reduction calculates enough
+  digits of π for both the requested precision and the argument magnitude,
+  then evaluates sine and cosine together on `[-π/4, π/4]`. Each call takes a
+  positive significant-digit count and an explicit rounding mode.
+- `bigdecimal_set_constant` accepts `BIGDECIMAL_CONSTANT_PI`, `_E`, or `_PHI`
+  and returns the complete stored 500-decimal-place approximation for backward
+  compatibility. `bigdecimal_set_constant_significant` takes a positive
+  significant-digit count and an explicit rounding mode. It rounds the stored
+  value through 500 digits and calculates larger requests dynamically without
+  binary floating point. Both APIs return approximations, not exact irrational
+  values, and preserve the destination on failure.
 - `bigdecimal_format` takes places >=0 or -1 for all stored digits. Scientific
   notation is used for decimal exponent magnitude >=10, with places applying
   to the mantissa; otherwise places applies to the ordinary decimal part.
@@ -170,7 +182,9 @@ CONSTANT    := π | e | φ
 
 Examples: `0.1 + 0.2`, `π / 2`, `πe`, `10π`, `2(3 + 4)`,
 `-(2.5E-1) * 8`, `(12.5 - 2.5) / 4`, `1.5^3`, `12²`, `2³`, and `5!`. Each
-constant currently has 500 stored decimal places. Standalone lowercase `e` means
+constant is prepared at the calculator's working precision, using the stored
+500-place value for ordinary requests and dynamic calculation above it.
+Standalone lowercase `e` means
 Euler's constant, so `5e`
 means `5 * e` and `1e3` means `1 * e * 3`. Scientific notation always uses
 uppercase `E`: `5E-1` means `0.5` and `1E3` means `1000`. Powers use binary
@@ -220,12 +234,11 @@ names; recognition is separate from numerical implementation:
 | `isqrt(n)` | Floor of the square root of a non-negative integer: `isqrt(15) = 3`. |
 | `sqrt(x)`, `cbrt(x)`, `root(x;n)` | Active real roots; `√(x)` aliases `sqrt(x)`. Square roots require x ≥ 0; cube roots accept negative x. `root` accepts integer n from 1 to 10000, and negative x only for odd n. |
 | `exp(x)`, `ln(x)`, `log(x)`, `log(x;b)` | Active. `ln` uses base e, one-argument `log` uses base 10, and the second argument selects an arbitrary base. Logarithm inputs must be positive; a custom base must be positive and not 1. |
-| `sin(x)`, `cos(x)`, `tan(x)`, `asin(x)`, `acos(x)`, `atan(x)` | Not implemented. Planned angle unit: radians. atan takes only one argument. |
-| `radians(x)`, `degrees(x)` | Not implemented; planned degree/radian conversions. |
+| `sin(x)`, `cos(x)`, `tan(x)`, `asin(x)`, `acos(x)`, `atan(x)` | Active. They use the selected RAD/DEG calculator mode; inverse results follow the same mode. `asin`/`acos` require x in `[-1,1]`. Exact degree poles such as `tan(90)` are rejected in DEG mode. |
+| `radians(x)`, `degrees(x)` | Active explicit conversions, independent of the selected angle mode. |
 
 Wrong arity returns `wrong number of arguments` at the function name; unknown
-names return `invalid token`. A well-formed pending call returns `not implemented`
-before evaluating its arguments. Nesting and implicit products work, for
+names return `invalid token`. Nesting and implicit products work, for
 example `pow(2;factorial(3))` and `2pow(2;3)`.
 
 Basic calls accept all finite decimal values without introducing rounding;
@@ -253,8 +266,9 @@ names, not products. Numeric suffixes such as `log2` are not supported.
 The local browser page has active keypad buttons for this grammar, including
 power, square, cube, factorial and an argument separator. Named functions are
 organized in four collapsible groups. Root, logarithmic and exponential
-controls are active; trigonometric and angle-conversion controls remain visibly
-marked as planned and disabled. The keypad inserts `.`, while directly typed `,` is accepted as the
+and trigonometric controls are active. A RAD/DEG selector beside the
+trigonometric controls applies to the complete expression and is remembered by
+the browser. The keypad inserts `.`, while directly typed `,` is accepted as the
 same decimal separator. The page is available in Slovak and English and
 provides a one-click control to copy the displayed result.
 The result panel is five lines high by default. Longer output shows a
@@ -290,8 +304,12 @@ digits, not unlimited accuracy. There are currently no `inexact` or `rounded`
 flags. See the evaluation policy in [CALCULATOR_DESIGN.md](CALCULATOR_DESIGN.md).
 Rounding at non-terminating division is still approximate: cancellation can expose its
 error, and no rigorous whole-expression error bound or inexact flag is claimed.
-Constants contain 500 stored decimal places; selecting a higher output limit
-does not add mathematical accuracy to them. Public `bigdecimal_div` retains
+Constants are prepared at max(34, N+4) significant working digits for an N-place
+output request. Stored 500-place values cover ordinary requests; larger requests
+calculate additional digits dynamically. A forward trigonometric call may
+temporarily reevaluate its argument and constants with additional guard digits
+based on the argument magnitude, so symbolic π multiples survive angle
+reduction. Public `bigdecimal_div` retains
 its original explicit decimal-scale policy, independent of this calculator mode.
 
 ## Local HTTP API
@@ -299,7 +317,7 @@ its original explicit decimal-scale policy, independent of this calculator mode.
 `numforge_web` serves the calculator and exposes one local endpoint:
 
 ```text
-POST /api/evaluate?precision=10 HTTP/1.1
+POST /api/evaluate?precision=10&angle=rad HTTP/1.1
 Host: 127.0.0.1:8765
 Content-Type: text/plain; charset=utf-8
 Content-Length: 6
@@ -325,6 +343,8 @@ Browser requests that include `Origin` must come from this server's own
 `http://127.0.0.1:8765` or `http://localhost:8765` origin; other origins return
 HTTP 403. Native local clients may omit `Origin`. `precision` is optional: it
 accepts a non-negative whole number or `full`; if omitted, it defaults to `10`.
+`angle` accepts `rad` or `deg` and defaults to `rad`; when supplied it follows
+`precision` in the query string.
 Out-of-memory calculation failures return HTTP 500 with the same JSON fields.
 Malformed HTTP requests return JSON HTTP 400. Oversized bodies return JSON
 HTTP 413; a request that does not finish arriving within two seconds returns
