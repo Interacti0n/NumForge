@@ -15,16 +15,23 @@
     Internal helper functions for result formatting.
 ------------------------------------------------------------------------------------------------------------------------------
 */
+
 static BigDecimalStatus decimal_from_bigdecimal_status(BigDecimalStatus status)
 {
     switch (status)
     {
-        case BIGDECIMAL_OK: return BIGDECIMAL_OK;
-        case BIGDECIMAL_NULL_ARGUMENT: return BIGDECIMAL_NULL_ARGUMENT;
-        case BIGDECIMAL_OUT_OF_MEMORY: return BIGDECIMAL_OUT_OF_MEMORY;
-        case BIGDECIMAL_VALUE_TOO_LARGE: return BIGDECIMAL_VALUE_TOO_LARGE;
-        case BIGDECIMAL_SCALE_OVERFLOW: return BIGDECIMAL_SCALE_OVERFLOW;
-        default: return BIGDECIMAL_INVALID_ARGUMENT;
+        case BIGDECIMAL_OK:
+            return BIGDECIMAL_OK;
+        case BIGDECIMAL_NULL_ARGUMENT:
+            return BIGDECIMAL_NULL_ARGUMENT;
+        case BIGDECIMAL_OUT_OF_MEMORY:
+            return BIGDECIMAL_OUT_OF_MEMORY;
+        case BIGDECIMAL_VALUE_TOO_LARGE:
+            return BIGDECIMAL_VALUE_TOO_LARGE;
+        case BIGDECIMAL_SCALE_OVERFLOW:
+            return BIGDECIMAL_SCALE_OVERFLOW;
+        default:
+            return BIGDECIMAL_INVALID_ARGUMENT;
     }
 }
 
@@ -53,6 +60,7 @@ static bool decimal_should_round_scientific(
             break;
         }
     }
+
     if (!discarded_non_zero)
     {
         return false;
@@ -77,6 +85,7 @@ static bool decimal_should_round_scientific(
             {
                 return first_discarded > '5';
             }
+
             for (index = kept_digits + 1U; index < digit_count; index++)
             {
                 if (significand[index] != '0')
@@ -84,6 +93,7 @@ static bool decimal_should_round_scientific(
                     return true;
                 }
             }
+
             return rounding == BIGDECIMAL_ROUND_HALF_UP ||
                    ((significand[kept_digits - 1U] - '0') % 2 != 0);
         }
@@ -114,6 +124,7 @@ static bool decimal_scientific_exponent(
         exponent->magnitude = exponent->negative
             ? scale_magnitude - decimal_position
             : decimal_position - scale_magnitude;
+
         return true;
     }
 
@@ -126,6 +137,7 @@ static bool decimal_scientific_exponent(
         {
             return false;
         }
+
         exponent->negative = false;
         exponent->magnitude = decimal_position + scale_magnitude;
         return true;
@@ -140,10 +152,12 @@ static bool decimal_increment_scientific_exponent(DecimalScientificExponent *exp
         {
             exponent->magnitude--;
         }
+
         if (exponent->magnitude == 0U)
         {
             exponent->negative = false;
         }
+
         return true;
     }
 
@@ -151,6 +165,7 @@ static bool decimal_increment_scientific_exponent(DecimalScientificExponent *exp
     {
         return false;
     }
+
     exponent->magnitude++;
     return true;
 }
@@ -204,12 +219,20 @@ static BigDecimalStatus decimal_compose_scientific(
         }
         digit_count = wanted;
     }
-    while (digit_count > 1U && significand[digit_count - 1U] == '0') digit_count--;
+
+    while (digit_count > 1U && significand[digit_count - 1U] == '0')
+    {
+        digit_count--;
+    }
+
     significand[digit_count] = '\0';
 
-    exponent_length = snprintf(NULL, 0, "E%c%llu",
-                               exponent.negative ? '-' : '+',
-                               (unsigned long long)exponent.magnitude);
+    exponent_length = snprintf(
+        NULL,
+        0,
+        "E%c%llu",
+        exponent.negative ? '-' : '+',
+        (unsigned long long)exponent.magnitude);
     if (exponent_length < 0)
     {
         free(significand);
@@ -232,6 +255,7 @@ static BigDecimalStatus decimal_compose_scientific(
         }
         formatted_length++;
     }
+
     if (formatted_length == SIZE_MAX ||
         (size_t)exponent_length > SIZE_MAX - formatted_length - 1U)
     {
@@ -247,7 +271,11 @@ static BigDecimalStatus decimal_compose_scientific(
         return BIGDECIMAL_OUT_OF_MEMORY;
     }
 
-    if (negative) formatted[offset++] = '-';
+    if (negative)
+    {
+        formatted[offset++] = '-';
+    }
+
     formatted[offset++] = significand[0];
     if (digit_count > 1U)
     {
@@ -255,11 +283,17 @@ static BigDecimalStatus decimal_compose_scientific(
         memcpy(formatted + offset, significand + 1U, digit_count - 1U);
         offset += digit_count - 1U;
     }
-    (void)snprintf(formatted + offset, (size_t)exponent_length + 1U, "E%c%llu",
-                   exponent.negative ? '-' : '+',
-                   (unsigned long long)exponent.magnitude);
+
+    (void)snprintf(
+        formatted + offset,
+        (size_t)exponent_length + 1U,
+        "E%c%llu",
+        exponent.negative ? '-' : '+',
+        (unsigned long long)exponent.magnitude);
+
     free(significand);
     *result = formatted;
+
     return BIGDECIMAL_OK;
 }
 
@@ -280,6 +314,7 @@ static BigDecimalStatus decimal_try_format_scientific(
 
     *result = NULL;
     *formatted = false;
+
     if (bigint_is_zero(value->coefficient))
     {
         return BIGDECIMAL_OK;
@@ -312,6 +347,7 @@ static BigDecimalStatus decimal_try_format_scientific(
         free(coefficient);
         return BIGDECIMAL_OUT_OF_MEMORY;
     }
+
     memcpy(significand, digits, digit_count + 1U);
     free(coefficient);
 
@@ -325,6 +361,7 @@ static BigDecimalStatus decimal_try_format_scientific(
     Result formatting functions.
 ------------------------------------------------------------------------------------------------------------------------------
 */
+
 static BigDecimalStatus decimal_format_result_impl(
     const BigDecimal *value,
     int64_t places,
@@ -345,7 +382,12 @@ static BigDecimalStatus decimal_format_result_impl(
     {
         return BIGDECIMAL_INVALID_ARGUMENT;
     }
-    if (places > INT64_MAX - 4) return BIGDECIMAL_VALUE_TOO_LARGE;
+
+    if (places > INT64_MAX - 4)
+    {
+        return BIGDECIMAL_VALUE_TOO_LARGE;
+    }
+
     if (!decimal_valid_rounding(rounding))
     {
         return BIGDECIMAL_INVALID_ARGUMENT;
@@ -373,6 +415,7 @@ static BigDecimalStatus decimal_format_result_impl(
     {
         decimal_status = bigdecimal_rescale(formatted_value, value, places, rounding);
     }
+
     status = decimal_from_bigdecimal_status(decimal_status);
     if (status == BIGDECIMAL_OK)
     {
@@ -380,6 +423,7 @@ static BigDecimalStatus decimal_format_result_impl(
             formatted_value, places, rounding,
             result, &used_scientific);
     }
+
     if (status == BIGDECIMAL_OK && !used_scientific)
     {
         status = decimal_from_bigdecimal_status(
@@ -390,14 +434,31 @@ static BigDecimalStatus decimal_format_result_impl(
     return status;
 }
 
-
-BigDecimalStatus bigdecimal_format(const BigDecimal *value, int64_t places,
-    BigDecimalRoundingMode rounding, char **result)
+BigDecimalStatus bigdecimal_format(
+    const BigDecimal *value,
+    int64_t places,
+    BigDecimalRoundingMode rounding,
+    char **result
+)
 {
-    if (result == NULL) return BIGDECIMAL_NULL_ARGUMENT;
     char *temporary = NULL;
-    BigDecimalStatus status = decimal_format_result_impl(value, places, rounding, &temporary);
-    if (status == BIGDECIMAL_OK) *result = temporary;
-    else free(temporary);
+    BigDecimalStatus status;
+
+    if (result == NULL)
+    {
+        return BIGDECIMAL_NULL_ARGUMENT;
+    }
+
+    status = decimal_format_result_impl(value, places, rounding, &temporary);
+
+    if (status == BIGDECIMAL_OK)
+    {
+        *result = temporary;
+    }
+    else
+    {
+        free(temporary);
+    }
+
     return status;
 }

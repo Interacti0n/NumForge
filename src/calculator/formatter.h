@@ -9,8 +9,11 @@
     output scale and uses scientific notation for very large or very small
     non-zero values, keeping ordinary results easy to read. On success, result
     receives an owned string released with free(); on failure, it receives NULL.
+
+    Implementation: src/calculator/formatter.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
+
 CalculatorStatus calculator_format_result(
     const BigDecimal *value,
     const CalculatorContext *context,

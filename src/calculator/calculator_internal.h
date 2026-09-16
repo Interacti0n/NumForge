@@ -9,11 +9,13 @@
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
-    Shared status model for the calculator pipeline. These types stay internal
-    until the calculator API itself is ready to become part of NumForge's public
-    library interface.
+    Shared status model for the calculator application pipeline. These types
+    belong to the private client layer over the public numeric library.
+
+    Implementation: src/calculator/calculator.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
+
 typedef enum CalculatorStatus
 {
     CALCULATOR_OK = 0,
@@ -36,6 +38,7 @@ typedef enum CalculatorStatus
     relying on mutable global state.
 ------------------------------------------------------------------------------------------------------------------------------
 */
+
 typedef struct CalculatorContext
 {
     int64_t division_scale;
@@ -65,6 +68,7 @@ typedef struct CalculatorContext
     offset is a zero-based byte position in the original UTF-8 input.
 ------------------------------------------------------------------------------------------------------------------------------
 */
+
 typedef struct CalculatorError
 {
     CalculatorStatus status;
@@ -76,13 +80,21 @@ typedef struct CalculatorError
     Shared calculator utility functions.
 ------------------------------------------------------------------------------------------------------------------------------
 */
+
 const char *calculator_status_to_string( /*Human-readable description of a CalculatorStatus, for diagnostics*/
     CalculatorStatus status
 );
 /* Complete bounded pipeline shared by CLI and HTTP. */
-CalculatorStatus calculator_compute(const char *input, const CalculatorContext *context,
-                                    char **result, CalculatorError *error);
-CalculatorStatus calculator_budget_status(CalculatorStatus status);
+
+CalculatorStatus calculator_compute(
+    const char *input,
+    const CalculatorContext *context,
+    char **result,
+    CalculatorError *error
+);
+CalculatorStatus calculator_budget_status(
+    CalculatorStatus status
+);
 void calculator_context_init(
     CalculatorContext *context
 );

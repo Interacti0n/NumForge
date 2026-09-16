@@ -15,6 +15,8 @@ typedef struct BigInt BigInt;
     Status codes returned by every BigInt operation that can fail.
 
     BIGINT_OK is 0, matching the usual C convention for success.
+
+    Implementation: src/bigint/bigint.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 typedef enum BigIntStatus
@@ -40,7 +42,9 @@ const char *bigint_status_to_string( /*Human-readable description of a BigIntSta
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
-    Operation functions for BigInt.
+    Lifetime and copy functions for BigInt.
+
+    Implementation: src/bigint/bigint.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
@@ -54,6 +58,15 @@ BigIntStatus bigint_copy( /*Create a copy of a BigInt*/
     BigInt *destination,
     const BigInt *source
 );
+
+/*
+------------------------------------------------------------------------------------------------------------------------------
+    Decimal text conversion functions for BigInt.
+
+    Implementation: src/bigint/conversion.c
+------------------------------------------------------------------------------------------------------------------------------
+*/
+
 BigIntStatus bigint_set_string( /*Transform string to BigInt.
                                    "" and a bare sign ("+" or "-") are BIGINT_INVALID_ARGUMENT.
                                    "0" -> 0, "+123" -> 123, "-123" -> -123.
@@ -67,7 +80,9 @@ char *bigint_to_string( /*Return an owned decimal string released with free(), o
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
-    Comparison functions for BigInt.
+    Comparison and inspection functions for BigInt.
+
+    Implementation: src/bigint/comparison.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
@@ -95,6 +110,8 @@ bool bigint_is_negative( /*Check if a BigInt is negative*/
     are all fully supported and computed correctly. The one documented
     exception: if quotient and remainder are passed as the SAME object to
     bigint_div_mod, the function will return BIGINT_INVALID_ARGUMENT and not modify either.
+
+    Implementation: src/bigint/arithmetic.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
@@ -143,9 +160,27 @@ BigIntStatus bigint_pow( /*Exponentiation for BigInts (base^exponent). Negative 
     const BigInt *base,
     const BigInt *exponent
 );
-/* Floor integer square root, for non-negative values. Aliasing is supported;
- * failure preserves result. */
-BigIntStatus bigint_isqrt(BigInt *result, const BigInt *value);
+
+/*
+------------------------------------------------------------------------------------------------------------------------------
+    Root functions for BigInt.
+
+    Implementation: src/bigint/roots.c
+------------------------------------------------------------------------------------------------------------------------------
+*/
+
+BigIntStatus bigint_isqrt( /*Floor integer square root for non-negative values. Aliasing is supported.*/
+    BigInt *result,
+    const BigInt *value
+);
+
+/*
+------------------------------------------------------------------------------------------------------------------------------
+    Number-theory functions for BigInt.
+
+    Implementation: src/bigint/number_theory.c
+------------------------------------------------------------------------------------------------------------------------------
+*/
 
 BigIntStatus bigint_gcd( /*Greatest common divisor for BigInts (gcd(a,b))*/
     BigInt *result,
@@ -167,6 +202,8 @@ BigIntStatus bigint_factorial( /* Calculate n!. Requires 0 <= n <= BIGINT_FACTOR
 ------------------------------------------------------------------------------------------------------------------------------
     Bitwise operation functions for BigInt. AND, OR, and XOR currently accept
     only non-negative operands. bigint_not is defined for every value.
+
+    Implementation: src/bigint/bitwise.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
@@ -202,7 +239,9 @@ BigIntStatus bigint_shift_right( /*Right shift for BigInts (a>>n), truncating to
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
-    Additional utility check functions for BigInt.
+    Parity, primality, and perfect-square functions for BigInt.
+
+    Implementation: src/bigint/primality.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 

@@ -5,10 +5,13 @@
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
-    The AST is private to parser.c. The evaluator consumes it through this
-    opaque handle, so parser internals can evolve without changing callers.
+    Callers own an opaque AST handle. Its private representation is shared by
+    parser.c and evaluator.c through expression_internal.h.
+
+    Implementation: src/calculator/parser.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
+
 typedef struct CalculatorExpression CalculatorExpression;
 
 /*
@@ -18,6 +21,7 @@ typedef struct CalculatorExpression CalculatorExpression;
     unchanged and error identifies the unexpected token or character.
 ------------------------------------------------------------------------------------------------------------------------------
 */
+
 CalculatorStatus calculator_parse( /*Parse one input expression into an owned AST*/
     const char *input,
     CalculatorExpression **result,

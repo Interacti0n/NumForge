@@ -7,6 +7,23 @@ the internal representation, semantic decisions, and maintenance boundaries.
 The public API also includes `bigint_isqrt`, which computes the floor square
 root without floating-point conversion and preserves the destination on error.
 
+## Source layout
+
+| File | Responsibility |
+| --- | --- |
+| `bigint.c` | Representation helpers, magnitude primitives, status text, and object lifecycle. |
+| `conversion.c` | Parsing and decimal string conversion. |
+| `comparison.c` | Signed comparison and basic value predicates. |
+| `arithmetic.c` | Sign operations, arithmetic, division, modulo, and integer powers. |
+| `bitwise.c` | Bitwise operations and shifts. |
+| `number_theory.c` | GCD, LCM, and factorial. |
+| `primality.c` | Parity, Miller-Rabin primality testing, and perfect-square detection. |
+| `roots.c` | Floor integer square root. |
+| `bigint_internal.h` | Private representation and declarations shared only by these modules. |
+
+The installed public API remains in `include/numforge/bigint.h`. Helpers from
+`bigint_internal.h` are implementation details and are not consumer API.
+
 ## Representation and invariants
 
 The magnitude is stored as a little-endian array of base-2^64 limbs:

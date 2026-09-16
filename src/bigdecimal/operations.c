@@ -8,89 +8,241 @@
     preserve caller values on failure, including output/input aliasing.
 ------------------------------------------------------------------------------------------------------------------------------
 */
+
 static BigDecimalStatus from_integer_status(BigIntStatus status)
 {
     switch (status)
     {
-        case BIGINT_OK: return BIGDECIMAL_OK;
-        case BIGINT_NULL_ARGUMENT: return BIGDECIMAL_NULL_ARGUMENT;
-        case BIGINT_OUT_OF_MEMORY: return BIGDECIMAL_OUT_OF_MEMORY;
-        case BIGINT_VALUE_TOO_LARGE: return BIGDECIMAL_VALUE_TOO_LARGE;
-        default: return BIGDECIMAL_INVALID_ARGUMENT;
+        case BIGINT_OK:
+            return BIGDECIMAL_OK;
+        case BIGINT_NULL_ARGUMENT:
+            return BIGDECIMAL_NULL_ARGUMENT;
+        case BIGINT_OUT_OF_MEMORY:
+            return BIGDECIMAL_OUT_OF_MEMORY;
+        case BIGINT_VALUE_TOO_LARGE:
+            return BIGDECIMAL_VALUE_TOO_LARGE;
+        default:
+            return BIGDECIMAL_INVALID_ARGUMENT;
     }
 }
 
-BigDecimalStatus bigdecimal_from_bigint(BigDecimal *result, const BigInt *value)
+BigDecimalStatus bigdecimal_from_bigint(
+    BigDecimal *result,
+    const BigInt *value
+)
 {
-    if (result == NULL || value == NULL) return BIGDECIMAL_NULL_ARGUMENT;
-    char *text = bigint_to_string(value);
-    if (text == NULL) return BIGDECIMAL_OUT_OF_MEMORY;
-    BigDecimalStatus status = bigdecimal_set_string(result, text);
+    char *text;
+    BigDecimalStatus status;
+
+    if (result == NULL || value == NULL)
+    {
+        return BIGDECIMAL_NULL_ARGUMENT;
+    }
+
+    text = bigint_to_string(value);
+
+    if (text == NULL)
+    {
+        return BIGDECIMAL_OUT_OF_MEMORY;
+    }
+
+    status = bigdecimal_set_string(result, text);
     free(text);
+
     return status;
 }
 
-BigDecimalStatus bigdecimal_to_bigint(BigInt *result, const BigDecimal *value)
+BigDecimalStatus bigdecimal_to_bigint(
+    BigInt *result,
+    const BigDecimal *value
+)
 {
-    if (result == NULL || value == NULL) return BIGDECIMAL_NULL_ARGUMENT;
-    if (value->scale > 0) return BIGDECIMAL_INVALID_ARGUMENT;
     char *text = NULL;
-    BigDecimalStatus status = bigdecimal_to_string(value, &text);
-    if (status == BIGDECIMAL_OK) status = from_integer_status(bigint_set_string(result, text));
+    BigDecimalStatus status;
+
+    if (result == NULL || value == NULL)
+    {
+        return BIGDECIMAL_NULL_ARGUMENT;
+    }
+
+    if (value->scale > 0)
+    {
+        return BIGDECIMAL_INVALID_ARGUMENT;
+    }
+
+    status = bigdecimal_to_string(value, &text);
+
+    if (status == BIGDECIMAL_OK)
+    {
+        status = from_integer_status(bigint_set_string(result, text));
+    }
+
     free(text);
+
     return status;
 }
 
-BigDecimalStatus bigdecimal_is_integer(bool *result, const BigDecimal *value)
+BigDecimalStatus bigdecimal_is_integer(
+    bool *result,
+    const BigDecimal *value
+)
 {
-    if (result == NULL || value == NULL) return BIGDECIMAL_NULL_ARGUMENT;
+    if (result == NULL || value == NULL)
+    {
+        return BIGDECIMAL_NULL_ARGUMENT;
+    }
+
     *result = value->scale <= 0;
+
     return BIGDECIMAL_OK;
 }
 
-BigDecimalStatus bigdecimal_sign(int *result, const BigDecimal *value)
+BigDecimalStatus bigdecimal_sign(
+    int *result,
+    const BigDecimal *value
+)
 {
-    if (result == NULL || value == NULL) return BIGDECIMAL_NULL_ARGUMENT;
-    *result = bigint_is_zero(value->coefficient) ? 0 : bigint_is_negative(value->coefficient) ? -1 : 1;
+    if (result == NULL || value == NULL)
+    {
+        return BIGDECIMAL_NULL_ARGUMENT;
+    }
+
+    if (bigint_is_zero(value->coefficient))
+    {
+        *result = 0;
+    }
+    else
+    {
+        *result = bigint_is_negative(value->coefficient) ? -1 : 1;
+    }
+
     return BIGDECIMAL_OK;
 }
 
-BigDecimalStatus bigdecimal_min(BigDecimal *result, const BigDecimal *a, const BigDecimal *b)
+BigDecimalStatus bigdecimal_min(
+    BigDecimal *result,
+    const BigDecimal *a,
+    const BigDecimal *b
+)
 {
-    if (result == NULL) return BIGDECIMAL_NULL_ARGUMENT;
     int comparison;
-    BigDecimalStatus status = bigdecimal_compare(&comparison, a, b);
-    return status == BIGDECIMAL_OK ? bigdecimal_copy(result, comparison <= 0 ? a : b) : status;
+    BigDecimalStatus status;
+
+    if (result == NULL)
+    {
+        return BIGDECIMAL_NULL_ARGUMENT;
+    }
+
+    status = bigdecimal_compare(&comparison, a, b);
+
+    if (status != BIGDECIMAL_OK)
+    {
+        return status;
+    }
+
+    return bigdecimal_copy(result, comparison <= 0 ? a : b);
 }
 
-BigDecimalStatus bigdecimal_max(BigDecimal *result, const BigDecimal *a, const BigDecimal *b)
+BigDecimalStatus bigdecimal_max(
+    BigDecimal *result,
+    const BigDecimal *a,
+    const BigDecimal *b
+)
 {
-    if (result == NULL) return BIGDECIMAL_NULL_ARGUMENT;
     int comparison;
-    BigDecimalStatus status = bigdecimal_compare(&comparison, a, b);
-    return status == BIGDECIMAL_OK ? bigdecimal_copy(result, comparison >= 0 ? a : b) : status;
+    BigDecimalStatus status;
+
+    if (result == NULL)
+    {
+        return BIGDECIMAL_NULL_ARGUMENT;
+    }
+
+    status = bigdecimal_compare(&comparison, a, b);
+
+    if (status != BIGDECIMAL_OK)
+    {
+        return status;
+    }
+
+    return bigdecimal_copy(result, comparison >= 0 ? a : b);
 }
 
-BigDecimalStatus bigdecimal_pow(BigDecimal *result, const BigDecimal *base, const BigInt *exponent)
+BigDecimalStatus bigdecimal_pow(
+    BigDecimal *result,
+    const BigDecimal *base,
+    const BigInt *exponent
+)
 {
-    if (result == NULL || base == NULL || exponent == NULL) return BIGDECIMAL_NULL_ARGUMENT;
-    if (bigint_is_negative(exponent)) return BIGDECIMAL_INVALID_ARGUMENT;
-    BigInt *remaining = bigint_create();
-    BigDecimal *accumulator = bigdecimal_create(), *factor = bigdecimal_create();
+    BigInt *remaining;
+    BigDecimal *accumulator;
+    BigDecimal *factor;
     BigDecimalStatus status = BIGDECIMAL_OUT_OF_MEMORY;
-    if (remaining == NULL || accumulator == NULL || factor == NULL) goto cleanup;
+
+    if (result == NULL || base == NULL || exponent == NULL)
+    {
+        return BIGDECIMAL_NULL_ARGUMENT;
+    }
+
+    if (bigint_is_negative(exponent))
+    {
+        return BIGDECIMAL_INVALID_ARGUMENT;
+    }
+
+    remaining = bigint_create();
+    accumulator = bigdecimal_create();
+    factor = bigdecimal_create();
+
+    if (remaining == NULL || accumulator == NULL || factor == NULL)
+    {
+        goto cleanup;
+    }
+
     status = from_integer_status(bigint_copy(remaining, exponent));
-    if (status == BIGDECIMAL_OK) status = bigdecimal_set_string(accumulator, "1");
-    if (status == BIGDECIMAL_OK) status = bigdecimal_copy(factor, base);
+
+    if (status == BIGDECIMAL_OK)
+    {
+        status = bigdecimal_set_string(accumulator, "1");
+    }
+
+    if (status == BIGDECIMAL_OK)
+    {
+        status = bigdecimal_copy(factor, base);
+    }
+
     while (status == BIGDECIMAL_OK && !bigint_is_zero(remaining))
     {
-        if (!numforge_budget_check()) { status = BIGDECIMAL_OUT_OF_MEMORY; break; }
-        if (bigint_is_odd(remaining)) status = bigdecimal_mul(accumulator, accumulator, factor);
-        if (status == BIGDECIMAL_OK) status = from_integer_status(bigint_shift_right(remaining, remaining, 1U));
-        if (status == BIGDECIMAL_OK && !bigint_is_zero(remaining)) status = bigdecimal_mul(factor, factor, factor);
+        if (!numforge_budget_check())
+        {
+            status = BIGDECIMAL_OUT_OF_MEMORY;
+            break;
+        }
+
+        if (bigint_is_odd(remaining))
+        {
+            status = bigdecimal_mul(accumulator, accumulator, factor);
+        }
+
+        if (status == BIGDECIMAL_OK)
+        {
+            status = from_integer_status(
+                bigint_shift_right(remaining, remaining, 1U));
+        }
+
+        if (status == BIGDECIMAL_OK && !bigint_is_zero(remaining))
+        {
+            status = bigdecimal_mul(factor, factor, factor);
+        }
     }
-    if (status == BIGDECIMAL_OK) status = bigdecimal_copy(result, accumulator);
+
+    if (status == BIGDECIMAL_OK)
+    {
+        status = bigdecimal_copy(result, accumulator);
+    }
+
 cleanup:
-    bigint_destroy(remaining); bigdecimal_destroy(accumulator); bigdecimal_destroy(factor);
+    bigint_destroy(remaining);
+    bigdecimal_destroy(accumulator);
+    bigdecimal_destroy(factor);
+
     return status;
 }

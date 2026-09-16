@@ -35,11 +35,6 @@
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
-int bigint_compare_abs( /*Compare the absolute values of two BigInts, returning -1, 0, or 1*/
-    const BigInt *a,
-    const BigInt *b
-);
-
 static uint64_t bigint_divide_128_by_u64( /*Divide a 128-bit value by a uint64_t*/
     uint64_t high,
     uint64_t low,
@@ -882,7 +877,7 @@ int bigint_compare_abs( /*Compare two absolute values of BigInts*/
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
-    Operation functions for BigInt.
+    Status and lifecycle functions for BigInt.
 ------------------------------------------------------------------------------------------------------------------------------
 */
 

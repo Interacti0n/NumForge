@@ -47,6 +47,39 @@ add expression syntax, presentation and application resource limits.
 | [BigInt design](docs/BIGINT_DESIGN.md) | Limb representation, semantics, and optimization boundaries. |
 | [BigDecimal design](docs/BIGDECIMAL_DESIGN.md) | Exact-decimal representation, rounding, and future work. |
 | [Calculator design](docs/CALCULATOR_DESIGN.md) | Expression grammar, evaluation policy, and CLI/web integration. |
+| [Testing guide](docs/TESTING.md) | Unit, integration, browser, fuzz, and performance checks. |
+
+## Project layout
+
+```text
+NumForge/
+├── include/numforge/   Public BigInt, BigDecimal, and runtime headers
+├── src/
+│   ├── bigint/        Integer implementation and private helpers
+│   ├── bigdecimal/    Decimal implementation and private helpers
+│   ├── internal/      Allocators, resource budgets, and test instrumentation
+│   ├── calculator/    Expression syntax and evaluation using the public library
+│   ├── web/           Local HTTP server, adapter, and embedded SK/EN pages
+│   └── main.c         CLI entry point
+├── tests/             Unit, property, and integration tests
+│   ├── browser/       Playwright browser scenarios and their npm dependencies
+│   ├── fuzz/          Fuzz harnesses, replay driver, and dictionaries
+│   └── package_consumer/  Independent installed-library C/C++ consumer
+├── benchmarks/        Optional phase and allocation benchmarks
+├── cmake/             Package configuration and coverage support
+├── docs/              API, design, usage, and testing documentation
+└── .github/workflows/ Continuous integration
+```
+
+`NumForge::numforge` contains the numeric library and runtime support.
+The private `numforge_client` target adds the calculator and HTTP adapters;
+the CLI and web executables use this client layer. Only `include/numforge/`
+is installed as public headers. Module-level source maps are in the design
+documents above and in the corresponding header comments.
+
+Local build trees, editor state, browser reports, and `PROJECT_REVIEW.md`
+are ignored by Git. Browser npm dependencies are test tooling; running the
+calculator requires no Node.js installation.
 
 ## Build
 

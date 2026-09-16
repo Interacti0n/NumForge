@@ -9,8 +9,11 @@
 
     The tokenizer deliberately leaves unary plus/minus to the parser. This
     makes -2^2 and 2*-3 unambiguous.
+
+    Implementation: src/calculator/tokenizer.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
+
 typedef enum CalculatorTokenType
 {
     CALCULATOR_TOKEN_NUMBER,
@@ -35,6 +38,7 @@ typedef enum CalculatorTokenType
     text points into the original input; it is never separately allocated.
 ------------------------------------------------------------------------------------------------------------------------------
 */
+
 typedef struct CalculatorToken
 {
     CalculatorTokenType type;
@@ -61,6 +65,7 @@ typedef struct CalculatorTokenizer
     with a source offset.
 ------------------------------------------------------------------------------------------------------------------------------
 */
+
 CalculatorStatus calculator_tokenizer_init( /*Initialize a tokenizer over a NUL-terminated input string*/
     CalculatorTokenizer *tokenizer,
     const char *input

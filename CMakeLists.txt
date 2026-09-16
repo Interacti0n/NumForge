@@ -6,6 +6,9 @@ project(NumForge
     LANGUAGES C
 )
 
+# Keep a compile database available to IDEs such as VS Code IntelliSense.
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
@@ -81,11 +84,16 @@ add_library(numforge STATIC
     src/bigint/bigint.c
     src/bigint/arithmetic.c
     src/bigint/bitwise.c
+    src/bigint/comparison.c
     src/bigint/conversion.c
     src/bigint/number_theory.c
     src/bigint/primality.c
     src/bigint/roots.c
     src/bigdecimal/bigdecimal.c
+    src/bigdecimal/arithmetic.c
+    src/bigdecimal/comparison.c
+    src/bigdecimal/conversion.c
+    src/bigdecimal/division.c
     src/bigdecimal/operations.c
     src/bigdecimal/roots.c
     src/bigdecimal/format.c

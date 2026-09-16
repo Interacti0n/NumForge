@@ -10,8 +10,11 @@
 
     Evaluate a parsed expression to an owned BigDecimal destination. The result
     is not modified on failure.
+
+    Implementation: src/calculator/evaluator.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
+
 CalculatorStatus calculator_evaluate(
     BigDecimal *result,
     const CalculatorExpression *expression,

@@ -10,7 +10,7 @@ const source = fs.readFileSync(path.join(__dirname, '../src/web/web_page.h'), 'u
 
 function scriptFor(english) {
     const name = english ? 'NUMFORGE_WEB_PAGE_EN' : 'NUMFORGE_WEB_PAGE';
-    const array = source.match(new RegExp(`static const char \\*const ${name}\\[\\] = \\{([\\s\\S]*?)\\};`))[1];
+    const array = source.match(new RegExp(`static const char \\*const ${name}\\[\\]\\s*=\\s*\\{([\\s\\S]*?)\\};`))[1];
     const names = array.match(/NUMFORGE_WEB_PAGE_SCRIPT_\w+/g);
     let script = '';
     for (const part of names) {

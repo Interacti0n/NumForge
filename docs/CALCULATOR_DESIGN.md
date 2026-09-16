@@ -3,7 +3,6 @@
 The calculator is an application layer over `BigDecimal`. Its source stays in
 `src/calculator/` rather than the public include tree; it is an application
 client over the public numeric API.
-stable.
 
 ## Modules
 
@@ -14,7 +13,6 @@ stable.
 | `tokenizer.c` | Converts source text into location-aware tokens. Implemented for decimal literals, identifiers, whitespace, binary and postfix operators, and parentheses. |
 | `parser.c` | Converts tokens into an opaque expression tree (AST). Implemented as recursive descent with postfix, power, unary, multiplicative, and additive precedence layers. |
 | `evaluator.c` | Evaluates the AST to `BigDecimal` using `CalculatorContext`. Implemented for unary signs, exact binary exponentiation, square, cube, factorial, and binary operators. |
-| `roots.c` | Internal real roots: exact-finite detection, scaled integer Newton iteration and significant-digit rounding. |
 | `formatter.c` | Rounds a completed result to the requested output scale and selects ordinary or scientific notation. |
 | `functions.c` | Immutable registry of named calls, accepted arities and implementation dispatch identifiers. |
 | `src/main.c` | Interactive command-line shell around the calculator pipeline. |
@@ -104,7 +102,9 @@ evaluated arguments are rejected; prior arithmetic still follows the working
 precision policy. Temporaries are cleaned up on domain, allocation and budget
 failures without replacing the caller's destination.
 
-Real roots live in `roots.c`, not the stable public BigDecimal API. For canonical
+Real roots are implemented in `src/bigdecimal/roots.c` and exposed through the
+public BigDecimal API. The evaluator validates the calculator's degree limit
+and passes working precision and rounding to these library calls. For canonical
 `C * 10^-s`, a finite kth root exists exactly when `s` is divisible by k and
 `abs(C)` is a perfect kth power; these results are not rounded internally.
 Otherwise, exponent division normalizes the radicand to k times the working

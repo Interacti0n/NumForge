@@ -8,8 +8,11 @@
     Internal function registry. Names are lowercase ASCII letters only.
     A zero maximum denotes variadic arity, bounded by input/allocation limits.
     Recognized calls need not have a numerical implementation yet.
+
+    Implementation: src/calculator/functions.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
+
 typedef enum CalculatorFunctionImplementation
 {
     CALCULATOR_FUNCTION_PENDING,
@@ -37,6 +40,10 @@ typedef struct CalculatorFunction
 } CalculatorFunction;
 
 /* Returns an immutable registry entry, or NULL for an unknown name. */
-const CalculatorFunction *calculator_function_find(const char *text, size_t length);
+
+const CalculatorFunction *calculator_function_find(
+    const char *text,
+    size_t length
+);
 
 #endif

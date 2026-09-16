@@ -38,7 +38,8 @@ struct BigInt
  * decimal zeros. On cancellation the temporary may be partially reduced. */
 BigIntStatus bigint_strip_decimal_zeros(BigInt *value, uint64_t *removed);
 
-/* Shared implementation helpers used by the split BigInt modules. */
+/* Shared implementation helpers used by the split BigInt modules.
+ * Implementation: src/bigint/bigint.c. */
 BigIntStatus bigint_size_add(size_t a, size_t b, size_t *out);
 BigIntStatus bigint_size_mul(size_t a, size_t b, size_t *out);
 void bigint_normalize(BigInt *value);

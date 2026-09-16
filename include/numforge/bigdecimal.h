@@ -13,6 +13,8 @@ extern "C" {
 ------------------------------------------------------------------------------------------------------------------------------
     Opaque exact base-10 number. Values must be created and destroyed through
     this API; their coefficient and scale remain private implementation details.
+
+    Implementation: src/bigdecimal/bigdecimal.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 typedef struct BigDecimal BigDecimal;
@@ -20,6 +22,8 @@ typedef struct BigDecimal BigDecimal;
 /*
 ------------------------------------------------------------------------------------------------------------------------------
     Status codes returned by BigDecimal operations.
+
+    Implementation: src/bigdecimal/bigdecimal.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 typedef enum BigDecimalStatus
@@ -36,6 +40,8 @@ typedef enum BigDecimalStatus
 /*
 ------------------------------------------------------------------------------------------------------------------------------
     Rounding modes used by division and rescaling.
+
+    Used by: src/bigdecimal/division.c, roots.c, and format.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 typedef enum BigDecimalRoundingMode
@@ -62,6 +68,9 @@ const char *bigdecimal_status_to_string( /*Human-readable description of a BigDe
     returns ordinary decimal notation through result, owned by the caller and
     released with free(). On failure, output BigDecimal values and *result are
     unchanged.
+
+    Implementation: lifecycle and copy in src/bigdecimal/bigdecimal.c;
+    text conversion in src/bigdecimal/conversion.c.
 ------------------------------------------------------------------------------------------------------------------------------
 */
 BigDecimal *bigdecimal_create(
@@ -90,6 +99,8 @@ BigDecimalStatus bigdecimal_to_string(
 
     comparison receives a value less than, equal to, or greater than zero;
     boolean results are written on success.
+
+    Implementation: src/bigdecimal/comparison.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 BigDecimalStatus bigdecimal_compare(
@@ -112,6 +123,8 @@ BigDecimalStatus bigdecimal_is_negative(
 
     All operations support output/input aliasing, for example
     bigdecimal_add(value, value, other). On failure, result is unchanged.
+
+    Implementation: src/bigdecimal/arithmetic.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 BigDecimalStatus bigdecimal_abs(
@@ -145,6 +158,8 @@ BigDecimalStatus bigdecimal_mul(
     A positive target scale keeps digits after the decimal point; a negative
     scale rounds to powers of ten. Stored results are normalized, so trailing
     zeroes are not retained. Division by zero leaves result unchanged.
+
+    Implementation: src/bigdecimal/division.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 BigDecimalStatus bigdecimal_rescale(
@@ -153,37 +168,114 @@ BigDecimalStatus bigdecimal_rescale(
     int64_t target_scale,
     BigDecimalRoundingMode rounding
 );
+BigDecimalStatus bigdecimal_div(
+    BigDecimal *result,
+    const BigDecimal *a,
+    const BigDecimal *b,
+    int64_t target_scale,
+    BigDecimalRoundingMode rounding
+);
 
-/* Exact integer conversions; fractional input to to_bigint is rejected.
- * All outputs are preserved on failure. */
-BigDecimalStatus bigdecimal_from_bigint(BigDecimal *result, const BigInt *value);
-BigDecimalStatus bigdecimal_to_bigint(BigInt *result, const BigDecimal *value);
-BigDecimalStatus bigdecimal_is_integer(bool *result, const BigDecimal *value);
-BigDecimalStatus bigdecimal_sign(int *result, const BigDecimal *value);
-BigDecimalStatus bigdecimal_min(BigDecimal *result, const BigDecimal *a, const BigDecimal *b);
-BigDecimalStatus bigdecimal_max(BigDecimal *result, const BigDecimal *a, const BigDecimal *b);
+/*
+------------------------------------------------------------------------------------------------------------------------------
+    Integer conversion, inspection, selection, and power functions.
 
-/* Exact non-negative integer exponent; 0^0 is 1. Output/input aliasing works. */
-BigDecimalStatus bigdecimal_pow(BigDecimal *result, const BigDecimal *base, const BigInt *exponent);
+    Fractional input to to_bigint is rejected. pow accepts a non-negative
+    integer exponent and defines 0^0 as 1. All outputs are preserved on
+    failure, and output/input aliasing is supported where applicable.
 
-/* Real roots with explicit working significant digits (>=1) and rounding.
- * Exact finite decimal roots remain exact, even beyond requested digits.
- * Degree is a positive uint32_t; negative values require odd degree.
- * Irrational roots round to digits, not decimal places. Failure preserves
- * result; output/input aliasing is supported. No calculator limits apply. */
-BigDecimalStatus bigdecimal_root(BigDecimal *result, const BigDecimal *value,
-    uint32_t degree, int64_t digits, BigDecimalRoundingMode rounding);
-BigDecimalStatus bigdecimal_sqrt(BigDecimal *result, const BigDecimal *value,
-    int64_t digits, BigDecimalRoundingMode rounding);
-BigDecimalStatus bigdecimal_cbrt(BigDecimal *result, const BigDecimal *value,
-    int64_t digits, BigDecimalRoundingMode rounding);
+    Implementation: src/bigdecimal/operations.c
+------------------------------------------------------------------------------------------------------------------------------
+*/
+BigDecimalStatus bigdecimal_from_bigint(
+    BigDecimal *result,
+    const BigInt *value
+);
+BigDecimalStatus bigdecimal_to_bigint(
+    BigInt *result,
+    const BigDecimal *value
+);
+BigDecimalStatus bigdecimal_is_integer(
+    bool *result,
+    const BigDecimal *value
+);
+BigDecimalStatus bigdecimal_sign(
+    int *result,
+    const BigDecimal *value
+);
+BigDecimalStatus bigdecimal_min(
+    BigDecimal *result,
+    const BigDecimal *a,
+    const BigDecimal *b
+);
+BigDecimalStatus bigdecimal_max(
+    BigDecimal *result,
+    const BigDecimal *a,
+    const BigDecimal *b
+);
+BigDecimalStatus bigdecimal_pow(
+    BigDecimal *result,
+    const BigDecimal *base,
+    const BigInt *exponent
+);
 
-/* Significant-digit division; exact variant preserves finite quotients and
- * rounds only recurring ones. Existing bigdecimal_div retains fixed scale. */
-BigDecimalStatus bigdecimal_div_significant(BigDecimal *result, const BigDecimal *a,
-    const BigDecimal *b, int64_t digits, BigDecimalRoundingMode rounding);
-BigDecimalStatus bigdecimal_div_exact_or_significant(BigDecimal *result, const BigDecimal *a,
-    const BigDecimal *b, int64_t digits, BigDecimalRoundingMode rounding);
+/*
+------------------------------------------------------------------------------------------------------------------------------
+    Real-root functions with explicit significant digits and rounding.
+
+    Exact finite decimal roots remain exact even beyond the requested digits.
+    Degree must be positive; negative values require an odd degree. Irrational
+    roots round to significant digits, not decimal places. Failure preserves
+    result, output/input aliasing is supported, and calculator limits do not
+    apply to these library calls.
+
+    Implementation: src/bigdecimal/roots.c
+------------------------------------------------------------------------------------------------------------------------------
+*/
+BigDecimalStatus bigdecimal_root(
+    BigDecimal *result,
+    const BigDecimal *value,
+    uint32_t degree,
+    int64_t digits,
+    BigDecimalRoundingMode rounding
+);
+BigDecimalStatus bigdecimal_sqrt(
+    BigDecimal *result,
+    const BigDecimal *value,
+    int64_t digits,
+    BigDecimalRoundingMode rounding
+);
+BigDecimalStatus bigdecimal_cbrt(
+    BigDecimal *result,
+    const BigDecimal *value,
+    int64_t digits,
+    BigDecimalRoundingMode rounding
+);
+
+/*
+------------------------------------------------------------------------------------------------------------------------------
+    Significant-digit division functions.
+
+    The exact-first variant preserves finite quotients and rounds only
+    recurring results. bigdecimal_div retains fixed-scale semantics.
+
+    Implementation: src/bigdecimal/division.c
+------------------------------------------------------------------------------------------------------------------------------
+*/
+BigDecimalStatus bigdecimal_div_significant(
+    BigDecimal *result,
+    const BigDecimal *a,
+    const BigDecimal *b,
+    int64_t digits,
+    BigDecimalRoundingMode rounding
+);
+BigDecimalStatus bigdecimal_div_exact_or_significant(
+    BigDecimal *result,
+    const BigDecimal *a,
+    const BigDecimal *b,
+    int64_t digits,
+    BigDecimalRoundingMode rounding
+);
 
 typedef enum BigDecimalConstant
 {
@@ -191,22 +283,30 @@ typedef enum BigDecimalConstant
     BIGDECIMAL_CONSTANT_E,
     BIGDECIMAL_CONSTANT_PHI
 } BigDecimalConstant;
-/* Stored approximations with 500 decimal places, not exact irrational values. */
-BigDecimalStatus bigdecimal_set_constant(BigDecimal *result, BigDecimalConstant constant);
 
-/* Readable output: ordinary notation for exponent magnitude <10, scientific
- * otherwise. Places applies after the decimal point (of scientific mantissa
- * when applicable); -1 keeps all stored digits. Caller frees the returned
- * string with free(). On failure *result is unchanged. */
-BigDecimalStatus bigdecimal_format(const BigDecimal *value, int64_t places,
-    BigDecimalRoundingMode rounding, char **result);
+/*
+------------------------------------------------------------------------------------------------------------------------------
+    Built-in constants and readable formatting.
 
-BigDecimalStatus bigdecimal_div(
+    Constants are stored approximations with 500 decimal places, not exact
+    irrational values. Formatting uses ordinary notation for exponent
+    magnitude below 10 and scientific notation otherwise. places applies
+    after the decimal point, or after the scientific mantissa; -1 keeps all
+    stored digits. The caller releases the returned string with free().
+
+    Implementation: constants in src/bigdecimal/constants.c;
+    formatting in src/bigdecimal/format.c.
+------------------------------------------------------------------------------------------------------------------------------
+*/
+BigDecimalStatus bigdecimal_set_constant(
     BigDecimal *result,
-    const BigDecimal *a,
-    const BigDecimal *b,
-    int64_t target_scale,
-    BigDecimalRoundingMode rounding
+    BigDecimalConstant constant
+);
+BigDecimalStatus bigdecimal_format(
+    const BigDecimal *value,
+    int64_t places,
+    BigDecimalRoundingMode rounding,
+    char **result
 );
 
 #ifdef __cplusplus

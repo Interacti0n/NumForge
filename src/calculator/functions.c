@@ -9,6 +9,7 @@
     arguments, rather than producing an approximate or placeholder result.
 ------------------------------------------------------------------------------------------------------------------------------
 */
+
 static const CalculatorFunction calculator_functions[] =
 {
     { "abs", 1, 1, CALCULATOR_FUNCTION_ABS },
@@ -37,16 +38,25 @@ static const CalculatorFunction calculator_functions[] =
     { "degrees", 1, 1, CALCULATOR_FUNCTION_PENDING }
 };
 
-const CalculatorFunction *calculator_function_find(const char *text, size_t length)
+const CalculatorFunction *calculator_function_find(
+    const char *text,
+    size_t length
+)
 {
-    if (text == NULL) return NULL;
+    if (text == NULL)
+    {
+        return NULL;
+    }
+
     for (size_t index = 0; index < sizeof(calculator_functions) / sizeof(calculator_functions[0]); index++)
     {
         const CalculatorFunction *function = &calculator_functions[index];
+
         if (strlen(function->name) == length && memcmp(function->name, text, length) == 0)
         {
             return function;
         }
     }
+
     return NULL;
 }

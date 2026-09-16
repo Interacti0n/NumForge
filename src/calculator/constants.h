@@ -11,8 +11,11 @@
     UTF-8 symbols π, e, and φ. Their decimal expansions are stored as fixed,
     high-precision text and converted to BigDecimal only during evaluation.
     Symbol recognition is client syntax; values come from the public library.
+
+    Implementation: src/calculator/constants.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
+
 typedef enum CalculatorConstant
 {
     CALCULATOR_CONSTANT_PI,
@@ -25,6 +28,7 @@ typedef enum CalculatorConstant
     Constant operation functions.
 ------------------------------------------------------------------------------------------------------------------------------
 */
+
 bool calculator_constant_from_text(
     const char *text,
     size_t length,

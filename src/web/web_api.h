@@ -8,6 +8,8 @@
     Internal adapter between the local HTTP server and the calculator pipeline.
     It accepts plain expression text and returns the owned decimal text produced
     by the same parser and BigDecimal evaluator used by the console program.
+
+    Implementation: src/web/web_api.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
@@ -22,6 +24,7 @@
     failure, result receives NULL and error identifies the calculator failure.
 ------------------------------------------------------------------------------------------------------------------------------
 */
+
 CalculatorStatus numforge_web_evaluate(
     const char *input,
     char **result,

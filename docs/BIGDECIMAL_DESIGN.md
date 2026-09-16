@@ -3,8 +3,25 @@
 `BigDecimal` provides exact base-10 values on top of `BigInt`, without using
 binary floating point. Its public API is declared in
 `include/numforge/bigdecimal.h` and implemented in
-`src/bigdecimal/` (`bigdecimal.c`, `operations.c`, `roots.c`, `format.c`,
-and `constants.c`). No numeric implementation depends on calculator headers.
+`src/bigdecimal/`. No numeric implementation depends on calculator headers.
+
+## Source layout
+
+| File | Responsibility |
+| --- | --- |
+| `bigdecimal.c` | Shared private helpers, canonicalization, status text, and object lifecycle. |
+| `conversion.c` | Parsing and conversion to ordinary decimal text. |
+| `comparison.c` | Numeric comparison and basic predicates. |
+| `arithmetic.c` | Sign operations and exact addition, subtraction, and multiplication. |
+| `division.c` | Rescaling, fixed-scale division, significant-digit division, and exact-first division. |
+| `operations.c` | BigInt conversions, integer/sign helpers, min/max, and integer powers. |
+| `roots.c` | General real roots plus square-root and cube-root wrappers. |
+| `format.c` | Precision-aware readable and scientific result formatting. |
+| `constants.c` | Built-in high-precision mathematical constants. |
+| `bigdecimal_internal.h` | Private representation and declarations shared only by these modules. |
+
+The installed public API remains entirely in `include/numforge/bigdecimal.h`;
+the source split does not expose the internal representation or helper calls.
 
 ## Current API
 
@@ -156,9 +173,11 @@ tested.
 
 ## BigInt boundary
 
-The implementation uses the public `BigInt` API. This keeps the layers
-independent and prevents `BigDecimal` from relying on limb layout. Power-of-ten
-construction and normalization are centralized behind internal helpers. If
-profiling later shows repeated decimal scaling is expensive, a small,
-well-tested `BigInt` helper for multiplication or division by a `uint64_t` can
-be added without exposing the limb representation.
+Most decimal operations use the public `BigInt` API. There are two internal
+dependencies within the numeric library: normalization calls the private
+`bigint_strip_decimal_zeros` helper, and the root implementation reads the
+coefficient's limbs to determine its bit length. These dependencies stay in
+`src/`; installed headers keep both numeric representations opaque.
+Power-of-ten construction and normalization are centralized behind private
+helpers. The calculator and web clients use only public numeric APIs and
+must not include either numeric internal header.

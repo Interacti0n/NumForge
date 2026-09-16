@@ -13,8 +13,11 @@
     also own their NUL-terminated decimal text, copied from the tokenizer so an
     AST remains valid after the caller releases or replaces the original input
     string.
+
+    Implementation: src/calculator/parser.c and src/calculator/evaluator.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
+
 typedef enum CalculatorExpressionType
 {
     CALCULATOR_EXPRESSION_NUMBER,

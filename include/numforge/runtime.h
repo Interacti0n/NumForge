@@ -22,11 +22,22 @@ extern "C" {
     Budget-aware allocation helpers retain malloc/calloc/realloc ownership;
     use standard free(). Failed realloc preserves the original allocation.
     No resource scope makes arithmetic constant-time or suitable for cryptography.
+
+    Implementation: src/internal/numforge_alloc.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
-void *numforge_malloc(size_t size);
-void *numforge_calloc(size_t count, size_t size);
-void *numforge_realloc(void *memory, size_t size);
+
+void *numforge_malloc(
+    size_t size
+);
+void *numforge_calloc(
+    size_t count,
+    size_t size
+);
+void *numforge_realloc(
+    void *memory,
+    size_t size
+);
 
 typedef enum NumForgeBudgetFailure
 {
@@ -35,13 +46,26 @@ typedef enum NumForgeBudgetFailure
     NUMFORGE_BUDGET_MEMORY
 } NumForgeBudgetFailure;
 
-uint64_t numforge_monotonic_ms(void);
+uint64_t numforge_monotonic_ms(
+    void
+);
 /* Nested pipeline stages reuse their caller's budget. Only its owner ends it.
  * Allocation volume is cumulative, not live memory: free() stays standard. */
-bool numforge_budget_begin(uint64_t milliseconds, size_t allocation_bytes, size_t single_allocation);
-bool numforge_budget_check(void);
-NumForgeBudgetFailure numforge_budget_failure(void);
-void numforge_budget_end(void);
+
+bool numforge_budget_begin(
+    uint64_t milliseconds,
+    size_t allocation_bytes,
+    size_t single_allocation
+);
+bool numforge_budget_check(
+    void
+);
+NumForgeBudgetFailure numforge_budget_failure(
+    void
+);
+void numforge_budget_end(
+    void
+);
 
 
 #ifdef __cplusplus

@@ -13,8 +13,7 @@ CalculatorStatus numforge_web_evaluate(
     CalculatorError *error
 )
 {
-    return numforge_web_evaluate_with_output_scale(
-        input, CALCULATOR_DEFAULT_OUTPUT_SCALE, result, error);
+    return numforge_web_evaluate_with_output_scale(input, CALCULATOR_DEFAULT_OUTPUT_SCALE, result, error);
 }
 
 CalculatorStatus numforge_web_evaluate_with_output_scale(
@@ -32,25 +31,35 @@ CalculatorStatus numforge_web_evaluate_with_output_scale(
     {
         *result = NULL;
     }
+
     if (input == NULL || result == NULL)
     {
         calculator_error_set(error, CALCULATOR_NULL_ARGUMENT, 0);
+
         return CALCULATOR_NULL_ARGUMENT;
     }
 
     length = 0U;
-    while (length <= NUMFORGE_WEB_MAX_EXPRESSION_LENGTH && input[length] != '\0') length++;
+
+    while (length <= NUMFORGE_WEB_MAX_EXPRESSION_LENGTH && input[length] != '\0')
+    {
+        length++;
+    }
+
     if (length > NUMFORGE_WEB_MAX_EXPRESSION_LENGTH)
     {
         calculator_error_set(error, CALCULATOR_VALUE_TOO_LARGE, length);
+
         return CALCULATOR_VALUE_TOO_LARGE;
     }
 
     calculator_context_init(&context);
     status = calculator_context_set_output_scale(&context, output_scale);
+
     if (status != CALCULATOR_OK)
     {
         calculator_error_set(error, status, 0);
+
         return status;
     }
 
