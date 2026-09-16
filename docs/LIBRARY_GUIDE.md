@@ -71,3 +71,8 @@ int main(void)
 For complete signatures, domains, rounding, runtime budgets and threading
 guidance see [API.md](API.md). The installed package is exercised by the
 repository's C and C++ package-consumer tests.
+
+Real roots and the `bigdecimal_exp`, `bigdecimal_ln`, `bigdecimal_log10` and
+`bigdecimal_log` functions accept an explicit significant-digit count and
+rounding mode. Logarithm arguments must be positive; an explicit logarithm
+base must also be positive and different from one.

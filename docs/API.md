@@ -88,6 +88,7 @@ retain unnecessary trailing zeroes.
 | Exact arithmetic | `bigdecimal_abs`, `bigdecimal_negate`, `bigdecimal_add`, `bigdecimal_sub`, `bigdecimal_mul`, `bigdecimal_pow` |
 | Rounded arithmetic | `bigdecimal_rescale`, `bigdecimal_div`, `bigdecimal_div_significant`, `bigdecimal_div_exact_or_significant` |
 | Real roots | `bigdecimal_sqrt`, `bigdecimal_cbrt`, `bigdecimal_root` |
+| Exponential and logarithmic | `bigdecimal_exp`, `bigdecimal_ln`, `bigdecimal_log10`, `bigdecimal_log` |
 | Constants and display | `bigdecimal_set_constant`, `bigdecimal_format` |
 
 Addition, subtraction, and multiplication are exact. Division and rescaling
@@ -113,6 +114,11 @@ keeps decimal places; a negative scale rounds to tens, hundreds, and so on.
   digit count with explicit rounding. Exact finite roots stay exact; others
   round to that count. Degree 1 is identity. Calculator caps are not embedded
   here; size/scale overflow and exhausted resources still return errors.
+- `bigdecimal_exp` computes e^x. `bigdecimal_ln` requires x > 0;
+  `bigdecimal_log10` uses base 10; `bigdecimal_log` accepts an explicit base
+  greater than zero and different from one. Each takes a positive significant
+  digit count and an explicit rounding mode. Results use guarded decimal
+  series and argument reduction without binary floating-point conversion.
 - `bigdecimal_set_constant` accepts `BIGDECIMAL_CONSTANT_PI`, `_E`, or `_PHI`:
   stored 500-decimal-place approximations, not exact irrational values.
 - `bigdecimal_format` takes places >=0 or -1 for all stored digits. Scientific
@@ -213,7 +219,7 @@ names; recognition is separate from numerical implementation:
 | `mod(a;b)` | Integer remainder after division truncating toward zero; nonzero remainder has the dividend's sign. `mod(-7;3) = -1`; zero divisor is an error. |
 | `isqrt(n)` | Floor of the square root of a non-negative integer: `isqrt(15) = 3`. |
 | `sqrt(x)`, `cbrt(x)`, `root(x;n)` | Active real roots; `√(x)` aliases `sqrt(x)`. Square roots require x ≥ 0; cube roots accept negative x. `root` accepts integer n from 1 to 10000, and negative x only for odd n. |
-| `exp(x)`, `ln(x)`, `log(x)`, `log(x;b)` | Not implemented. Planned bases: e for ln, 10 for one-argument log, b for two-argument log. |
+| `exp(x)`, `ln(x)`, `log(x)`, `log(x;b)` | Active. `ln` uses base e, one-argument `log` uses base 10, and the second argument selects an arbitrary base. Logarithm inputs must be positive; a custom base must be positive and not 1. |
 | `sin(x)`, `cos(x)`, `tan(x)`, `asin(x)`, `acos(x)`, `atan(x)` | Not implemented. Planned angle unit: radians. atan takes only one argument. |
 | `radians(x)`, `degrees(x)` | Not implemented; planned degree/radian conversions. |
 
@@ -246,9 +252,9 @@ names, not products. Numeric suffixes such as `log2` are not supported.
 
 The local browser page has active keypad buttons for this grammar, including
 power, square, cube, factorial and an argument separator. Named functions are
-organized in four collapsible groups. Its root controls are active; trigonometric,
-logarithmic and exponential controls remain visibly marked as planned and
-disabled. The keypad inserts `.`, while directly typed `,` is accepted as the
+organized in four collapsible groups. Root, logarithmic and exponential
+controls are active; trigonometric and angle-conversion controls remain visibly
+marked as planned and disabled. The keypad inserts `.`, while directly typed `,` is accepted as the
 same decimal separator. The page is available in Slovak and English and
 provides a one-click control to copy the displayed result.
 The result panel is five lines high by default. Longer output shows a

@@ -16,6 +16,7 @@ binary floating point. Its public API is declared in
 | `division.c` | Rescaling, fixed-scale division, significant-digit division, and exact-first division. |
 | `operations.c` | BigInt conversions, integer/sign helpers, min/max, and integer powers. |
 | `roots.c` | General real roots plus square-root and cube-root wrappers. |
+| `transcendental.c` | Guarded exponential and logarithmic functions with decimal argument reduction. |
 | `format.c` | Precision-aware readable and scientific result formatting. |
 | `constants.c` | Built-in high-precision mathematical constants. |
 | `bigdecimal_internal.h` | Private representation and declarations shared only by these modules. |
@@ -34,8 +35,8 @@ The public header defines the component's stable 1.x surface:
   `bigdecimal_is_negative`;
 - exact arithmetic: absolute value, negation, addition, subtraction, and
   multiplication;
-- controlled inexact operations: `bigdecimal_rescale` and `bigdecimal_div`,
-  each accepting a target scale and `BigDecimalRoundingMode`.
+- controlled inexact operations: division, rescaling, real roots, exponential,
+  and logarithmic functions with explicit precision and rounding.
 
 All listed operations are implemented. Every mutating operation computes into
 a temporary value and commits only on success, so its destination is unchanged
@@ -52,6 +53,17 @@ exponent division normalizes the radicand independently of the absolute scale.
 Integer Newton iteration computes a floor root with a guard digit; a sticky
 digit encodes the nonzero tail for the six rescaling modes. Degree and precision
 are public arguments with checked size/scale arithmetic, not application caps.
+
+Transcendental functions also take significant digits and a rounding mode.
+`exp` repeatedly halves its argument into [-0.5, 0.5], evaluates its Taylor
+series with 24 guard digits, and reconstructs the result by squaring. `ln`
+repeatedly square-roots a positive input into [0.9, 1.1], evaluates
+`2 * atanh((x-1)/(x+1))`, and restores the removed powers of two. `log10` and
+arbitrary-base `log` divide two guarded natural logarithms. Internal iterations
+use half-even rounding so directed output modes cannot prevent convergence;
+the requested rounding mode is applied to the final significant result. A
+bounded number of reduction steps rejects magnitudes that cannot fit the
+representation, and every loop checks an active cooperative resource budget.
 
 ## Representation
 

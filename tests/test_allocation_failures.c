@@ -18,7 +18,7 @@
 #error "allocation_failure_tests requires NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING"
 #endif
 
-#define ALLOCATION_TEST_MAX_FAILURE_INDEX 1024U
+#define ALLOCATION_TEST_MAX_FAILURE_INDEX 4096U
 
 typedef BigIntStatus (*BigIntUnaryOperation)(BigInt *, const BigInt *);
 typedef BigIntStatus (*BigIntBinaryOperation)(BigInt *, const BigInt *, const BigInt *);
@@ -99,6 +99,16 @@ static BigDecimalStatus bigdecimal_rescale_to_25(BigDecimal *result, const BigDe
     return bigdecimal_rescale(result, value, 25, BIGDECIMAL_ROUND_HALF_EVEN);
 }
 
+static BigDecimalStatus bigdecimal_exp_to_25(BigDecimal *result, const BigDecimal *value)
+{
+    return bigdecimal_exp(result, value, 25, BIGDECIMAL_ROUND_HALF_EVEN);
+}
+
+static BigDecimalStatus bigdecimal_ln_to_25(BigDecimal *result, const BigDecimal *value)
+{
+    return bigdecimal_ln(result, value, 25, BIGDECIMAL_ROUND_HALF_EVEN);
+}
+
 static BigDecimalStatus bigdecimal_divide_to_25(
     BigDecimal *result,
     const BigDecimal *a,
@@ -106,6 +116,15 @@ static BigDecimalStatus bigdecimal_divide_to_25(
 )
 {
     return bigdecimal_div(result, a, b, 25, BIGDECIMAL_ROUND_HALF_EVEN);
+}
+
+static BigDecimalStatus bigdecimal_log_to_25(
+    BigDecimal *result,
+    const BigDecimal *value,
+    const BigDecimal *base
+)
+{
+    return bigdecimal_log(result, value, base, 25, BIGDECIMAL_ROUND_HALF_EVEN);
 }
 
 /*
@@ -823,6 +842,8 @@ void test_bigdecimal_arithmetic_failure_paths(void)
     assert_bigdecimal_unary_failure_safety(bigdecimal_abs, "-12345678901234567890.25");
     assert_bigdecimal_unary_failure_safety(bigdecimal_negate, a);
     assert_bigdecimal_unary_failure_safety(bigdecimal_rescale_to_25, a);
+    assert_bigdecimal_unary_failure_safety(bigdecimal_exp_to_25, "1");
+    assert_bigdecimal_unary_failure_safety(bigdecimal_ln_to_25, "2");
     assert_bigdecimal_binary_failure_safety(bigdecimal_add, a, b);
     assert_bigdecimal_binary_failure_safety(bigdecimal_min, a, b);
     assert_bigdecimal_binary_failure_safety(bigdecimal_max, a, b);
@@ -839,6 +860,38 @@ void test_bigdecimal_aliasing_preserves_destination_on_allocation_failure(void)
     assert_bigdecimal_binary_alias_failure_safety(bigdecimal_add, a, b);
     assert_bigdecimal_binary_alias_failure_safety(bigdecimal_mul, a, b);
     assert_bigdecimal_binary_alias_failure_safety(bigdecimal_divide_to_25, a, b);
+}
+
+void test_logarithm_sampled_allocation_failures_and_aliasing(void)
+{
+    for (size_t failure_index = 1U; failure_index <= 128U; failure_index++)
+    {
+        BigDecimal *result = make_bigdecimal("7.77");
+        BigDecimal *value = make_bigdecimal("8");
+        BigDecimal *base = make_bigdecimal("2");
+
+        numforge_test_allocator_begin(failure_index);
+        BigDecimalStatus status = bigdecimal_log_to_25(result, value, base);
+        bool injected = numforge_test_allocator_did_fail();
+        numforge_test_allocator_end();
+
+        TEST_ASSERT_TRUE(injected);
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OUT_OF_MEMORY, status);
+        assert_bigdecimal_text("7.77", result);
+        bigdecimal_destroy(result);
+        bigdecimal_destroy(value);
+        bigdecimal_destroy(base);
+    }
+
+    BigDecimal *value = make_bigdecimal("8");
+    BigDecimal *base = make_bigdecimal("2");
+
+    numforge_test_allocator_begin(0U);
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_log_to_25(value, value, base));
+    numforge_test_allocator_end();
+    assert_bigdecimal_text("3", value);
+    bigdecimal_destroy(value);
+    bigdecimal_destroy(base);
 }
 
 /*
@@ -1194,6 +1247,7 @@ int main(void)
     RUN_TEST(test_bigdecimal_conversion_and_comparison_failure_paths);
     RUN_TEST(test_bigdecimal_arithmetic_failure_paths);
     RUN_TEST(test_bigdecimal_aliasing_preserves_destination_on_allocation_failure);
+    RUN_TEST(test_logarithm_sampled_allocation_failures_and_aliasing);
     RUN_TEST(test_parser_preserves_output_on_every_allocation_failure);
     RUN_TEST(test_evaluator_preserves_destination_on_every_allocation_failure);
     RUN_TEST(test_formatter_clears_output_on_every_allocation_failure);

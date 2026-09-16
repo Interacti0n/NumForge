@@ -5,6 +5,11 @@ All notable changes to NumForge are documented in this file. The project uses
 
 ## Unreleased
 
+- Add public arbitrary-precision `exp`, `ln`, base-10 `log10`, and
+  arbitrary-base `log` BigDecimal operations without binary floating point.
+  Enable `exp(x)`, `ln(x)`, `log(x)` and `log(x;b)` in the calculator and
+  SK/EN web UI, including domain, aliasing and regression coverage.
+
 - Implement real `sqrt`/`√`, `cbrt` and `root(x;n)` without floating-point
   conversion. Preserve exact finite roots; round irrational roots at working
   significant precision. Allow integer degrees 1..10000, with negative values

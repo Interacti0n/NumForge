@@ -28,7 +28,10 @@ typedef enum CalculatorFunctionImplementation
     CALCULATOR_FUNCTION_ISQRT,
     CALCULATOR_FUNCTION_SQRT,
     CALCULATOR_FUNCTION_CBRT,
-    CALCULATOR_FUNCTION_ROOT
+    CALCULATOR_FUNCTION_ROOT,
+    CALCULATOR_FUNCTION_EXP,
+    CALCULATOR_FUNCTION_LN,
+    CALCULATOR_FUNCTION_LOG
 } CalculatorFunctionImplementation;
 
 typedef struct CalculatorFunction

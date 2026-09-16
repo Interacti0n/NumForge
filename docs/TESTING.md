@@ -38,6 +38,11 @@ extreme int64 scales, rounding boundaries, exact large coefficients and Unicode
 aliases. Allocation injection visits every allocation on representative exact
 and irrational paths; deadline injection samples early and deep checkpoints.
 
+`transcendental_tests` covers known exponential and logarithmic values,
+directed rounding, compact magnitudes, arbitrary bases, aliases, invalid
+domains and the strong destination-preservation contract. Allocation injection
+exhausts representative `exp`/`ln` paths and samples the composed logarithm.
+
 ```sh
 ctest --test-dir build -C Debug -R numeric_oracle --output-on-failure
 ```
@@ -125,7 +130,8 @@ precision, keypad entry, clipboard, help/navigation, arithmetic errors,
 transport failures and stale-response protection. Network-failure and delayed
 response cases use controlled interception; ordinary calculations reach C.
 Function-group tests also cover keyboard expansion, pending calls, arity
-errors, active integer functions, five-line result expansion and mobile layout.
+errors, active integer/root/exponential/logarithmic functions, five-line result
+expansion and mobile layout.
 `function_calls_tests` covers all
 registered names, syntax/depth/argument limits and e/E boundaries; allocation
 failure tests exercise partial nested calls and argument-array growth.

@@ -25,6 +25,11 @@ static int public_api_checks(void)
     if (bigdecimal_set_constant(a, BIGDECIMAL_CONSTANT_PI) != BIGDECIMAL_OK ||
         bigdecimal_sign(&sign, a) != BIGDECIMAL_OK || sign != 1 ||
         bigdecimal_is_integer(&integer, a) != BIGDECIMAL_OK || integer ||
+        bigdecimal_set_string(a, "0") != BIGDECIMAL_OK ||
+        bigdecimal_exp(a, a, 34, BIGDECIMAL_ROUND_HALF_EVEN) != BIGDECIMAL_OK ||
+        bigdecimal_to_string(a, &text) != BIGDECIMAL_OK || strcmp(text, "1") != 0) goto cleanup;
+    free(text); text = NULL;
+    if (
         bigdecimal_set_string(a, "81") != BIGDECIMAL_OK ||
         bigdecimal_sqrt(a, a, 34, BIGDECIMAL_ROUND_HALF_EVEN) != BIGDECIMAL_OK ||
         bigdecimal_to_bigint(n, a) != BIGDECIMAL_OK ||

@@ -600,6 +600,79 @@ static CalculatorStatus calculator_evaluate_root_call(
     return CALCULATOR_OK;
 }
 
+/*
+------------------------------------------------------------------------------------------------------------------------------
+    Exponential and logarithmic calls. log(x) uses base ten; log(x; base)
+    accepts an explicit positive base other than one.
+------------------------------------------------------------------------------------------------------------------------------
+*/
+
+static CalculatorStatus calculator_evaluate_transcendental_call(
+    BigDecimal **result,
+    const CalculatorExpression *expression,
+    const CalculatorEvaluation *evaluation,
+    CalculatorError *error
+)
+{
+    BigDecimal *value = NULL;
+    BigDecimal *base = NULL;
+    CalculatorFunctionImplementation operation = expression->data.call.function->implementation;
+    CalculatorStatus status =
+        calculator_evaluate_expression(&value, expression->data.call.arguments[0], evaluation, error);
+    bool child_error = status != CALCULATOR_OK;
+    int64_t digits = evaluation->context->division_scale;
+
+    if (status == CALCULATOR_OK && expression->data.call.count == 2U)
+    {
+        status = calculator_evaluate_expression(
+            &base, expression->data.call.arguments[1], evaluation, error);
+        child_error = status != CALCULATOR_OK;
+    }
+
+    if (digits < CALCULATOR_DEFAULT_DIVISION_SCALE)
+    {
+        digits = CALCULATOR_DEFAULT_DIVISION_SCALE;
+    }
+
+    if (status == CALCULATOR_OK && operation == CALCULATOR_FUNCTION_EXP)
+    {
+        status = calculator_from_bigdecimal_status(
+            bigdecimal_exp(value, value, digits, evaluation->context->rounding));
+    }
+    else if (status == CALCULATOR_OK && operation == CALCULATOR_FUNCTION_LN)
+    {
+        status = calculator_from_bigdecimal_status(
+            bigdecimal_ln(value, value, digits, evaluation->context->rounding));
+    }
+    else if (status == CALCULATOR_OK && base == NULL)
+    {
+        status = calculator_from_bigdecimal_status(
+            bigdecimal_log10(value, value, digits, evaluation->context->rounding));
+    }
+    else if (status == CALCULATOR_OK)
+    {
+        status = calculator_from_bigdecimal_status(
+            bigdecimal_log(value, value, base, digits, evaluation->context->rounding));
+    }
+
+    bigdecimal_destroy(base);
+
+    if (status != CALCULATOR_OK)
+    {
+        bigdecimal_destroy(value);
+
+        if (!child_error)
+        {
+            calculator_error_set(error, status, expression->offset);
+        }
+
+        return status;
+    }
+
+    *result = value;
+    return CALCULATOR_OK;
+}
+
 /* Evaluate basic calls left to right, retaining at most the selected value
  * and the current argument. Even an unselected argument must be evaluated
  * so that its errors are not silently discarded. */
@@ -722,6 +795,10 @@ static CalculatorStatus calculator_evaluate_expression(
             case CALCULATOR_FUNCTION_CBRT:
             case CALCULATOR_FUNCTION_ROOT:
                 return calculator_evaluate_root_call(result, expression, evaluation, error);
+            case CALCULATOR_FUNCTION_EXP:
+            case CALCULATOR_FUNCTION_LN:
+            case CALCULATOR_FUNCTION_LOG:
+                return calculator_evaluate_transcendental_call(result, expression, evaluation, error);
             case CALCULATOR_FUNCTION_GCD:
             case CALCULATOR_FUNCTION_LCM:
             case CALCULATOR_FUNCTION_MOD:

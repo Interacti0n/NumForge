@@ -69,7 +69,7 @@ for (const lang of ['sk', 'en']) {
         test('function groups, aliases and pending calls', async ({ page }, testInfo) => {
             await expect(page.locator('details.function-group')).toHaveCount(4);
             await expect(page.locator('[data-function]')).toHaveCount(24);
-            await expect(page.locator('[data-function]:disabled')).toHaveCount(11);
+            await expect(page.locator('[data-function]:disabled')).toHaveCount(8);
             const powers = page.locator('details').filter({ has: page.locator('[data-function="pow"]') });
             await powers.locator('summary').focus();
             await page.keyboard.press('Enter');
@@ -82,9 +82,15 @@ for (const lang of ['sk', 'en']) {
             await page.locator('[data-action=evaluate]').click();
             await expect(page.locator('#result')).toHaveText('8');
             await calculate(page, 'factorial(5)', '120');
-            await page.locator('#expression').fill('exp(1)');
+            await page.locator('[data-action="clear"]').click();
+            await page.locator('[data-function="exp"]').click();
+            await expect(page.locator('#expression')).toHaveValue('exp(');
+            await page.locator('#expression').fill('exp(0)');
             await page.locator('#expression').press('Enter');
-            await expect(page.locator('#result')).toContainText(lang === 'sk' ? 'funkcia nie je implementovaná' : 'not implemented');
+            await expect(page.locator('#result')).toHaveText('1');
+            await calculate(page, 'ln(1)', '0');
+            await calculate(page, 'log(100)', '2');
+            await calculate(page, 'log(8;2)', '3');
             await page.locator('#expression').fill('atan(1;2)');
             await page.locator('#expression').press('Enter');
             await expect(page.locator('#result')).toContainText(lang === 'sk' ? 'nesprávny počet argumentov' : 'wrong number of arguments');

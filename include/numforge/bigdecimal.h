@@ -41,7 +41,7 @@ typedef enum BigDecimalStatus
 ------------------------------------------------------------------------------------------------------------------------------
     Rounding modes used by division and rescaling.
 
-    Used by: src/bigdecimal/division.c, roots.c, and format.c
+    Used by: src/bigdecimal/division.c, roots.c, transcendental.c, and format.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 typedef enum BigDecimalRoundingMode
@@ -248,6 +248,44 @@ BigDecimalStatus bigdecimal_sqrt(
 BigDecimalStatus bigdecimal_cbrt(
     BigDecimal *result,
     const BigDecimal *value,
+    int64_t digits,
+    BigDecimalRoundingMode rounding
+);
+
+/*
+------------------------------------------------------------------------------------------------------------------------------
+    Exponential and logarithmic functions with explicit significant digits.
+
+    exp computes e^value. ln and log10 require a positive value. log requires
+    a positive value and a positive base other than one. Irrational results
+    are rounded to significant digits. Failure preserves result and
+    output/input aliasing is supported.
+
+    Implementation: src/bigdecimal/transcendental.c
+------------------------------------------------------------------------------------------------------------------------------
+*/
+BigDecimalStatus bigdecimal_exp(
+    BigDecimal *result,
+    const BigDecimal *value,
+    int64_t digits,
+    BigDecimalRoundingMode rounding
+);
+BigDecimalStatus bigdecimal_ln(
+    BigDecimal *result,
+    const BigDecimal *value,
+    int64_t digits,
+    BigDecimalRoundingMode rounding
+);
+BigDecimalStatus bigdecimal_log10(
+    BigDecimal *result,
+    const BigDecimal *value,
+    int64_t digits,
+    BigDecimalRoundingMode rounding
+);
+BigDecimalStatus bigdecimal_log(
+    BigDecimal *result,
+    const BigDecimal *value,
+    const BigDecimal *base,
     int64_t digits,
     BigDecimalRoundingMode rounding
 );

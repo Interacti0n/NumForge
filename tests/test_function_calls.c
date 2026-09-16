@@ -90,7 +90,7 @@ static void test_evaluation_and_implicit_products(void)
         TEST_ASSERT_EQUAL_STRING(cases[i].expected, text);
         free(text);
     }
-    static const char *const pending[] = { "exp(2)", "2sin(1)", "log(1/0)" };
+    static const char *const pending[] = { "2sin(1)" };
     for (size_t i = 0; i < sizeof(pending) / sizeof(pending[0]); i++)
     {
         char *text = NULL;
@@ -101,6 +101,33 @@ static void test_evaluation_and_implicit_products(void)
     TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, calculator_compute("pow(2;-1)", &context, &text, &error));
     TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, calculator_compute("factorial(1.5)", &context, &text, &error));
     TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE, calculator_compute("factorial(10001)", &context, &text, &error));
+    TEST_ASSERT_NULL(text);
+
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("exp(0)", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("1", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("ln(1)", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("0", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("log(100)", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("2", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("log(8;2)", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("3", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("log(8;0.5)", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("-3", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, calculator_compute("ln(0)", &context, &text, &error));
+    TEST_ASSERT_NULL(text);
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, calculator_compute("log(8;1)", &context, &text, &error));
+    TEST_ASSERT_NULL(text);
+    TEST_ASSERT_EQUAL(CALCULATOR_DIVISION_BY_ZERO, calculator_compute("log(1/0)", &context, &text, &error));
     TEST_ASSERT_NULL(text);
     TEST_ASSERT_EQUAL(CALCULATOR_DIVISION_BY_ZERO, calculator_compute("min(0;1/0)", &context, &text, &error));
     TEST_ASSERT_EQUAL_UINT(7, error.offset);

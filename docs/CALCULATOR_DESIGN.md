@@ -12,7 +12,7 @@ client over the public numeric API.
 | `constants.c` | Maps `π`, `e`, and `φ` to fixed 500-decimal-place BigDecimal approximations. |
 | `tokenizer.c` | Converts source text into location-aware tokens. Implemented for decimal literals, identifiers, whitespace, binary and postfix operators, and parentheses. |
 | `parser.c` | Converts tokens into an opaque expression tree (AST). Implemented as recursive descent with postfix, power, unary, multiplicative, and additive precedence layers. |
-| `evaluator.c` | Evaluates the AST to `BigDecimal` using `CalculatorContext`. Implemented for unary signs, exact binary exponentiation, square, cube, factorial, and binary operators. |
+| `evaluator.c` | Evaluates the AST to `BigDecimal` using `CalculatorContext`. Implements arithmetic, roots, integer calls, exponential and logarithmic calls, and selection functions. |
 | `formatter.c` | Rounds a completed result to the requested output scale and selects ordinary or scientific notation. |
 | `functions.c` | Immutable registry of named calls, accepted arities and implementation dispatch identifiers. |
 | `src/main.c` | Interactive command-line shell around the calculator pipeline. |
@@ -51,10 +51,10 @@ checkbox sends `?precision=full`. HTTP `POST` requests require an exact
 own loopback origins, preventing unrelated pages from triggering expensive
 local calculations. Slovak and English routes use `?lang=sk` and `?lang=en`;
 the result panel copies the currently displayed result through the browser
-clipboard API, with a local fallback. The visible trigonometric, logarithmic,
-and exponential controls are disabled placeholders.
-Their calls are recognized but report not implemented. Basic abs/sign/min/max
-controls, integer gcd/lcm/mod/isqrt controls and sqrt/cbrt/root controls are active.
+clipboard API, with a local fallback. Exponential and logarithmic controls are
+active; the visible trigonometric and angle-conversion controls remain disabled
+placeholders. Basic abs/sign/min/max controls, integer gcd/lcm/mod/isqrt controls
+and sqrt/cbrt/root controls are active.
 
 Nonblocking sockets use absolute monotonic deadlines: two seconds for the
 complete incoming request and two seconds for a response. Slow byte-by-byte
@@ -116,6 +116,16 @@ expression. Roots use at least 34 working significant digits, or a higher
 context division precision; full output retains this finite working precision.
 Degree 1 is identity; degrees 1..10000 are accepted, with negative arguments
 only for odd degrees. Intermediate size and cooperative time limits still apply.
+
+Exponential and logarithmic functions are implemented in
+`src/bigdecimal/transcendental.c` and exposed through the public BigDecimal API.
+`exp(x)` computes e^x; `ln(x)` requires x > 0; `log(x)` has base 10; and
+`log(x;b)` requires x > 0, b > 0 and b != 1. Argument reduction repeatedly
+halves exponential inputs and repeatedly square-roots logarithm inputs before
+evaluating guarded decimal series. The result is then reconstructed at the
+requested significant precision. No binary floating-point conversion is used.
+The evaluator uses at least 34 significant digits, or the higher context
+precision, and all loops participate in the normal cooperative resource budget.
 
 Call nodes own an argument-pointer array and child expressions; registry entries
 have static lifetime. Array growth uses the fault-injectable allocator. Parse

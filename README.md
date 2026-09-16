@@ -17,6 +17,8 @@ add expression syntax, presentation and application resource limits.
 - Perfect-square and Miller-Rabin probable-prime checks.
 - Exact decimal arithmetic with configurable rounding for division and
   rescaling.
+- Arbitrary-precision real roots, exponential, natural logarithm, common
+  logarithm, and logarithms with a caller-selected base.
 - Interactive expression calculator with source-positioned diagnostics.
 - Built-in 500-decimal-place approximations of `π`, `e`, and `φ` in the
   calculator syntax.
