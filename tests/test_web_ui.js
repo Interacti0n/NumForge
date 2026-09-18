@@ -47,7 +47,8 @@ function createUI(english) {
             documentElement: {lang: english ? 'en' : 'sk'},
             querySelector: element,
             querySelectorAll: selector => selector === '[data-action]' ? [clear]
-                : selector === '[data-angle]' ? [angleRad, angleDeg] : [insert]
+                : selector === '[data-angle]' ? [angleRad, angleDeg]
+                : selector === '[data-insert]' ? [insert] : []
         },
         navigator: {clipboard: {writeText: async text => copied.push(text)}},
         window: {isSecureContext: true}, TextEncoder, AbortController,
@@ -99,11 +100,13 @@ async function test(english) {
     const invalid = ui.submit('6');
     ui.pending[4].resolve({ok: false, headers: {get: () => 'text/plain'}});
     await invalid;
-    assert.equal(ui.element('#result').textContent, english ? 'Error: Calculation failed.' : 'Chyba: Výpočet zlyhal.');
+    assert.ok(ui.element('#result').textContent.includes(english ? 'Unexpected server response' : 'Neočakávaná odpoveď servera'));
     const network = ui.submit('7');
     ui.pending[5].reject(new TypeError('Failed to fetch'));
     await network;
     assert.ok(!ui.element('#result').textContent.includes('fetch'));
+    assert.ok(ui.element('#result').textContent.includes(english ? 'Cannot contact the server' : 'Nepodarilo sa spojiť'));
+    assert.ok(ui.element('#result').textContent.includes('Enter'));
 
     const success = ui.submit('8'); ui.respond(6, '8'); await success;
     await ui.element('#copy-result').listeners.click();
@@ -151,10 +154,49 @@ async function testAutomaticCalculation(english) {
     assert.equal(ui.element('#result').textContent, '');
 }
 
+async function testErrorContext(english) {
+    const cases = [
+        ['π/0', 'division by zero', 2, 'π⟦/⟧0'],
+        ['sqrt(-1)', 'invalid argument', 1, '⟦sqrt⟧(-1)'],
+        ['2+', 'syntax error', 3, english ? 'at the end of the expression' : 'na konci výrazu'],
+        ['😀+?', 'invalid token', 3, '😀+⟦?⟧'],
+    ];
+    for (const [input, status, column, excerpt] of cases) {
+        const ui = createUI(english);
+        const request = ui.submit(input);
+        ui.pending[0].resolve({ok: false, headers: {get: () => 'application/json'},
+            json: async () => ({ok: false, status, column})});
+        await request;
+        assert.ok(ui.element('#result').textContent.includes(excerpt));
+        assert.ok(ui.element('#result').textContent.includes(`${english ? 'position' : 'pozícia'} ${column}`));
+        if (input === 'sqrt(-1)') assert.ok(ui.element('#result').textContent.includes('x ≥ 0'));
+    }
+}
+
 (async () => {
+    for (const english of [false, true]) {
+        for (const data of [null, {ok: true}, {ok: true, result: 42}, {ok: 'true'}]) {
+            const ui = createUI(english);
+            const request = ui.submit('1');
+            ui.pending[0].resolve({ok: true, headers: {get: () => 'application/json'}, json: async () => data});
+            await request;
+            assert.ok(ui.element('#result').textContent.includes(english ? 'Unexpected' : 'Neočakávaná'));
+            assert.equal(ui.element('#copy-result').disabled, true);
+        }
+        const ui = createUI(english);
+        assert.equal(ui.element('#angle-indicator').textContent, 'RAD');
+        ui.element('angle-deg').listeners.click();
+        assert.equal(ui.element('#angle-indicator').textContent, 'DEG');
+        const request = ui.submit('1');
+        ui.pending[0].resolve({ok: true, headers: {get: () => 'application/json'}, json: async () => { throw new SyntaxError(); }});
+        await request;
+        assert.ok(ui.element('#result').textContent.includes(english ? 'Unexpected' : 'Neočakávaná'));
+    }
     await test(false);
     await test(true);
     await testAutomaticCalculation(false);
     await testAutomaticCalculation(true);
+    await testErrorContext(false);
+    await testErrorContext(true);
     console.log('SK/EN web UI regressions passed');
 })().catch(error => { console.error(error); process.exitCode = 1; });

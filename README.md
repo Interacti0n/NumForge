@@ -170,12 +170,22 @@ arguments support `gcd`, `lcm`, `mod` and floor square root `isqrt`. Real roots
 `sqrt`/`√`, `cbrt` and `root(x;n)` preserve exact finite roots and otherwise use
 working precision (34 significant digits by default). Trigonometric and inverse
 trigonometric calls use the shared RAD/DEG selector; explicit `radians(x)` and
-`degrees(x)` conversions remain available. Four collapsible groups contain the
-function controls. The page is available in Slovak and English, and the displayed
+`degrees(x)` conversions remain available. Four horizontal tabs contain the
+function controls, with signatures and domain hints on hover, focus or touch.
+An indicator beside the expression mirrors the shared angle mode. Connection
+and unexpected-response errors offer retry with Enter.
+The page is available in Slovak and English, and the displayed
 result can be copied with one click. See the
 [API overview](docs/API.md) for exact syntax and the local HTTP API.
 Long results stay in a compact five-line panel and can be expanded with
 `Show all` when needed.
+Working precision remains automatic; only output precision is user-configurable.
+The web server keeps one successful numeric result per page (up to eight pages).
+Changing the display reuses it when safe; a changed working precision recomputes
+context-dependent expressions. Exact factorials can be reformatted without
+recalculating. Reloading the page or cache eviction may require a fresh calculation.
+The collapsed calculator fits the viewport height, scaling down in short
+windows. Vertical page scrolling is needed only while a long result is expanded.
 
 Both the interactive CLI and local HTTP adapter accept expressions up to 4096
 UTF-8 bytes. This is an application input limit rather than a limit of the
@@ -269,7 +279,7 @@ executables:
   installed package through `find_package(NumForge)`, including a C++ linkage
   test when `NUMFORGE_TEST_CPP=ON`.
 
-CI also runs eighteen SK/EN Chromium scenarios from `tests/browser`, using a
+CI also runs twenty SK/EN Chromium scenarios from `tests/browser`, using a
 pinned Playwright dependency and the real C server, separately from CTest.
 Only this browser suite requires npm packages; the application does not.
 Reproduction commands, scope and opt-in phase benchmarks are in

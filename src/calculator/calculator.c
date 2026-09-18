@@ -2,6 +2,7 @@
 #include "parser.h"
 #include "evaluator.h"
 #include "formatter.h"
+#include "expression_internal.h"
 
 #include <numforge/runtime.h>
 
@@ -159,10 +160,87 @@ CalculatorStatus calculator_budget_status(
     return status;
 }
 
-CalculatorStatus calculator_compute(
+/*
+------------------------------------------------------------------------------------------------------------------------------
+    Conservative proof of independence from working precision. Only explicitly
+    exact operations qualify, and every operand must qualify too. Unknown/new
+    operations default to context-dependent; no inference from numeric output.
+------------------------------------------------------------------------------------------------------------------------------
+*/
+
+static bool calculator_expression_independent(const CalculatorExpression *expression)
+{
+    switch (expression->type)
+    {
+        case CALCULATOR_EXPRESSION_NUMBER:
+            return true;
+        case CALCULATOR_EXPRESSION_UNARY:
+            return calculator_expression_independent(expression->data.unary.operand);
+        case CALCULATOR_EXPRESSION_POSTFIX:
+            return (expression->data.postfix.operation == CALCULATOR_POSTFIX_SQUARE ||
+                    expression->data.postfix.operation == CALCULATOR_POSTFIX_CUBE ||
+                    expression->data.postfix.operation == CALCULATOR_POSTFIX_FACTORIAL) &&
+                   calculator_expression_independent(expression->data.postfix.operand);
+        case CALCULATOR_EXPRESSION_BINARY:
+            return (expression->data.binary.operation == CALCULATOR_BINARY_ADD ||
+                    expression->data.binary.operation == CALCULATOR_BINARY_SUBTRACT ||
+                    expression->data.binary.operation == CALCULATOR_BINARY_MULTIPLY ||
+                    expression->data.binary.operation == CALCULATOR_BINARY_POWER) &&
+                   calculator_expression_independent(expression->data.binary.left) &&
+                   calculator_expression_independent(expression->data.binary.right);
+        case CALCULATOR_EXPRESSION_CALL:
+            switch (expression->data.call.function->implementation)
+            {
+                case CALCULATOR_FUNCTION_POWER:
+                case CALCULATOR_FUNCTION_FACTORIAL:
+                case CALCULATOR_FUNCTION_ABS:
+                case CALCULATOR_FUNCTION_SIGN:
+                case CALCULATOR_FUNCTION_MIN:
+                case CALCULATOR_FUNCTION_MAX:
+                case CALCULATOR_FUNCTION_GCD:
+                case CALCULATOR_FUNCTION_LCM:
+                case CALCULATOR_FUNCTION_MOD:
+                case CALCULATOR_FUNCTION_ISQRT:
+                    break;
+                default:
+                    return false;
+            }
+            for (size_t index = 0U; index < expression->data.call.count; index++)
+            {
+                if (!calculator_expression_independent(expression->data.call.arguments[index]))
+                {
+                    return false;
+                }
+            }
+            return true;
+        default:
+            return false;
+    }
+}
+
+void calculator_value_destroy(CalculatorValue *value)
+{
+    if (value != NULL)
+    {
+        bigdecimal_destroy(value->number);
+        memset(value, 0, sizeof(*value));
+    }
+}
+
+bool calculator_value_matches(const CalculatorValue *value, const CalculatorContext *context)
+{
+    return value != NULL && value->number != NULL && context != NULL &&
+           value->context.angle_unit == context->angle_unit &&
+           value->context.rounding == context->rounding &&
+           (value->independent ||
+            (value->context.division_scale == context->division_scale &&
+             value->context.significant_division == context->significant_division));
+}
+
+CalculatorStatus calculator_compute_value(
     const char *input,
     const CalculatorContext *context,
-    char **result,
+    CalculatorValue *result,
     CalculatorError *error
 )
 {
@@ -174,7 +252,7 @@ CalculatorStatus calculator_compute(
 
     if (result != NULL)
     {
-        *result = NULL;
+        memset(result, 0, sizeof(*result));
     }
 
     if (input == NULL || context == NULL || result == NULL)
@@ -216,22 +294,14 @@ CalculatorStatus calculator_compute(
 
     if (status == CALCULATOR_OK)
     {
-        status = calculator_format_result(value, context, result);
+        result->independent = calculator_expression_independent(expression);
     }
-
-    if (status == CALCULATOR_OK && strlen(*result) > CALCULATOR_MAX_OUTPUT_BYTES)
-    {
-        status = CALCULATOR_VALUE_TOO_LARGE;
-    }
-
-    bigdecimal_destroy(value);
     calculator_expression_destroy(expression);
     status = calculator_budget_status(status);
 
     if (status != CALCULATOR_OK)
     {
-        free(*result);
-        *result = NULL;
+        bigdecimal_destroy(value);
 
         if (error == NULL || error->status != status)
         {
@@ -240,6 +310,8 @@ CalculatorStatus calculator_compute(
     }
     else
     {
+        result->number = value;
+        result->context = *context;
         calculator_error_clear(error);
     }
 
@@ -248,6 +320,48 @@ CalculatorStatus calculator_compute(
         numforge_budget_end();
     }
 
+    return status;
+}
+
+/* Keep the original one-shot API and its shared compute/format time budget. */
+CalculatorStatus calculator_compute(
+    const char *input,
+    const CalculatorContext *context,
+    char **result,
+    CalculatorError *error
+)
+{
+    CalculatorValue value = {0};
+    CalculatorStatus status;
+    bool owner;
+
+    if (result != NULL)
+    {
+        *result = NULL;
+    }
+    if (input == NULL || context == NULL || result == NULL)
+    {
+        calculator_error_set(error, CALCULATOR_NULL_ARGUMENT, 0U);
+        return CALCULATOR_NULL_ARGUMENT;
+    }
+    if (context->time_limit_ms < 0)
+    {
+        calculator_error_set(error, CALCULATOR_INVALID_ARGUMENT, 0U);
+        return CALCULATOR_INVALID_ARGUMENT;
+    }
+    owner = numforge_budget_begin(
+        (uint64_t)context->time_limit_ms, CALCULATOR_ALLOCATION_BUDGET, CALCULATOR_SINGLE_ALLOCATION);
+    status = calculator_compute_value(input, context, &value, error);
+    if (status == CALCULATOR_OK)
+    {
+        status = calculator_format_result(value.number, context, result);
+        calculator_error_set(error, status, 0U);
+    }
+    calculator_value_destroy(&value);
+    if (owner)
+    {
+        numforge_budget_end();
+    }
     return status;
 }
 

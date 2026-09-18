@@ -55,6 +55,16 @@ typedef struct CalculatorContext
     bool significant_division;
 } CalculatorContext;
 
+/* Owned, unformatted value. independent is a conservative proof from the AST,
+ * not a rounded/inexact flag. Initialize to zero and destroy before reuse. */
+typedef struct CalculatorValue
+{
+    BigDecimal *number;
+    CalculatorContext context;
+    bool independent;
+} CalculatorValue;
+
+
 #define CALCULATOR_DEFAULT_OUTPUT_SCALE 10
 #define CALCULATOR_UNLIMITED_OUTPUT_SCALE (-1)
 #define CALCULATOR_DEFAULT_DIVISION_SCALE 34
@@ -83,6 +93,15 @@ typedef struct CalculatorError
     CalculatorStatus status;
     size_t offset;
 } CalculatorError;
+
+CalculatorStatus calculator_compute_value(
+    const char *input,
+    const CalculatorContext *context,
+    CalculatorValue *result,
+    CalculatorError *error
+);
+void calculator_value_destroy(CalculatorValue *value);
+bool calculator_value_matches(const CalculatorValue *value, const CalculatorContext *context);
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------

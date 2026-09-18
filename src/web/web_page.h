@@ -278,10 +278,13 @@ static const char NUMFORGE_WEB_PAGE_START_CONT_1[] =
     "aria-current=\"true\" title=\"Slovenčina\">🇸🇰 SK</a><a href=\"/?lang=en\" lang=\"en\" title=\"English\">🇬🇧 "
     "EN</a></nav>\n"
     "  </header>\n"
-    "  <p>Zapíš výraz a NumForge ho vyhodnotí priamo cez C parser a presný BigDecimal.</p>\n"
     "  <form id=\"calculator\">\n"
+    "    <span id=\"angle-indicator\" role=\"status\" title=\"Aktívna jednotka uhlov\">RAD</span>\n"
     "    <input id=\"expression\" aria-label=\"Matematický výraz\" autocomplete=\"off\" autofocus>\n"
-    "    <button type=\"submit\">Vypočítať</button>\n"
+    "    <div class=\"calculate-controls\"><button type=\"submit\">Vypočítať</button>\n"
+    "    <div class=\"angle-switch\" role=\"group\" aria-label=\"Jednotka uhla\">"
+    "<button type=\"button\" data-angle=\"rad\">RAD</button>"
+    "<button type=\"button\" data-angle=\"deg\">DEG</button></div></div>\n"
     "  </form>\n";
 
 static const char NUMFORGE_WEB_PAGE_PRECISION[] =
@@ -578,10 +581,13 @@ static const char NUMFORGE_WEB_PAGE_EN_START_CONT_1[] =
     "title=\"Slovenčina\">🇸🇰 SK</a><a href=\"/?lang=en\" lang=\"en\" aria-current=\"true\" title=\"English\">🇬🇧 "
     "EN</a></nav>\n"
     "  </header>\n"
-    "  <p>Enter an expression and NumForge evaluates it directly with its C parser and exact BigDecimal.</p>\n"
     "  <form id=\"calculator\">\n"
+    "    <span id=\"angle-indicator\" role=\"status\" title=\"Active angle unit\">RAD</span>\n"
     "    <input id=\"expression\" aria-label=\"Mathematical expression\" autocomplete=\"off\" autofocus>\n"
-    "    <button type=\"submit\">Calculate</button>\n"
+    "    <div class=\"calculate-controls\"><button type=\"submit\">Calculate</button>\n"
+    "    <div class=\"angle-switch\" role=\"group\" aria-label=\"Angle unit\">"
+    "<button type=\"button\" data-angle=\"rad\">RAD</button>"
+    "<button type=\"button\" data-angle=\"deg\">DEG</button></div></div>\n"
     "  </form>\n";
 
 static const char NUMFORGE_WEB_PAGE_EN_PRECISION[] =
@@ -683,9 +689,6 @@ static const char NUMFORGE_WEB_PAGE_FUNCTIONS_2[] =
 
 static const char NUMFORGE_WEB_PAGE_FUNCTIONS_3[] =
     "<details class=\"function-group\"><summary>Uhly a goniometria</summary>\n"
-    "<div class=\"angle-switch\" role=\"group\" aria-label=\"Jednotka uhla\">"
-    "<button type=\"button\" data-angle=\"rad\">RAD</button>"
-    "<button type=\"button\" data-angle=\"deg\">DEG</button></div>\n"
     "<div class=\"keypad functions\">\n"
     "<button type=\"button\" data-function=\"sin\" data-insert=\"sin(\">sin</button>\n"
     "<button type=\"button\" data-function=\"cos\" data-insert=\"cos(\">cos</button>\n"
@@ -730,9 +733,6 @@ static const char NUMFORGE_WEB_PAGE_EN_FUNCTIONS_2[] =
 
 static const char NUMFORGE_WEB_PAGE_EN_FUNCTIONS_3[] =
     "<details class=\"function-group\"><summary>Angles and trigonometry</summary>\n"
-    "<div class=\"angle-switch\" role=\"group\" aria-label=\"Angle unit\">"
-    "<button type=\"button\" data-angle=\"rad\">RAD</button>"
-    "<button type=\"button\" data-angle=\"deg\">DEG</button></div>\n"
     "<div class=\"keypad functions\">\n"
     "<button type=\"button\" data-function=\"sin\" data-insert=\"sin(\">sin</button>\n"
     "<button type=\"button\" data-function=\"cos\" data-insert=\"cos(\">cos</button>\n"
@@ -748,6 +748,20 @@ static const char NUMFORGE_WEB_PAGE_EN_FUNCTIONS_3[] =
 
 static const char NUMFORGE_FUNCTION_STYLE[] =
     "<style>\n"
+    "    body { max-width:none; padding:8px; box-sizing:border-box; }\n"
+    "    .calculator-shell { margin:0 auto; display:flow-root; }\n"
+    "    .calculator-shell p { margin:6px 0; line-height:1.3; }\n"
+    "    .calculator-shell form { margin-top:8px; }\n"
+    "    .calculator-shell .keypad { margin-top:6px; gap:5px; }\n"
+    "    .calculator-shell .keypad button { min-height:32px; padding:7px 10px; }\n"
+    "    .calculator-shell .precision { margin:8px 0; }\n"
+    "    .calculator-shell .result-panel { margin-top:8px; padding:10px; }\n"
+    "    .calculator-shell .guide-link { margin-top:6px; }\n"
+    "    .calculator-shell .function-group { margin-top:6px; padding:8px; }\n"
+    "    .function-tabs { display:flex; gap:6px; overflow-x:auto; margin-top:12px; }\n"
+    "    .function-tabs button { flex:0 0 auto; padding:8px 12px; font-size:.85rem; }\n"
+    "    .function-tabs [aria-selected=true] { background:#f2b84b; color:#18202d; }\n"
+    "    .function-group[hidden] { display:none; }\n"
     "    .function-group\n"
     "    {\n"
     "        margin-top: 12px;\n"
@@ -772,8 +786,8 @@ static const char NUMFORGE_FUNCTION_STYLE[] =
     "    {\n"
     "        display: flex;\n"
     "        justify-content: flex-end;\n"
-    "        gap: 6px;\n"
-    "        margin: 10px 0 4px;\n"
+    "        gap: 0;\n"
+    "        margin: 6px 0 4px;\n"
     "    }\n"
     "    .angle-switch button\n"
     "    {\n"
@@ -785,6 +799,15 @@ static const char NUMFORGE_FUNCTION_STYLE[] =
     "        background: #f2b84b;\n"
     "        color: #18202d;\n"
     "    }\n"
+    "    .angle-switch button:first-child { border-radius: 8px 0 0 8px; }\n"
+    "    .calculate-controls { display: flex; flex-direction: column; }\n"
+    "    #expression { align-self: flex-start; width: 0; }\n"
+    "    .angle-switch button { background: #1c2028; color: #adb5c3; font-size: .8rem; }\n"
+    "    .angle-switch button.active { background: #f2b84b; color: #18202d; font-weight: bold; }\n"
+    "    .angle-switch button.active::before { content: '✓ '; }\n"
+    "    .angle-switch button:last-child { border-radius: 0 8px 8px 0; }\n"
+    "    #angle-indicator { align-self: center; font-size: .75rem; color: #f2b84b; }\n"
+    "    #function-help { font-size: .8rem; margin: 4px 0; min-height: 2.5em; }\n"
     "</style>\n";
 
 /*
@@ -859,7 +882,7 @@ static const char NUMFORGE_WEB_PAGE_SCRIPT_START[] =
     "        precision : 'Enter a non-negative whole number of decimal places.',\n"
     "        failure : 'Calculation failed.',\n"
     "        error : 'Error: ',\n"
-    "        column : ' at column ',\n"
+    "        position : 'position ', near : ' near ', end : ' at the end of the expression',\n"
     "        copy : '⧉ Copy',\n"
     "        copied : '✓ Copied',\n"
     "        showAll : 'Show all',\n"
@@ -870,7 +893,7 @@ static const char NUMFORGE_WEB_PAGE_SCRIPT_START[] =
     "        precision : 'Zadaj nezáporný celý počet desatinných miest.',\n"
     "        failure : 'Výpočet zlyhal.',\n"
     "        error : 'Chyba: ',\n"
-    "        column : ' v stĺpci ',\n"
+    "        position : 'pozícia ', near : ' pri ', end : ' na konci výrazu',\n"
     "        copy : '⧉ Kopírovať',\n"
     "        copied : '✓ Skopírované',\n"
     "        showAll : 'Zobraziť všetko',\n"
@@ -895,6 +918,7 @@ static const char NUMFORGE_WEB_PAGE_SCRIPT_START_CONT_1[] =
     "    function selectAngleUnit(unit, recalculate)\n"
     "    {\n"
     "        angleUnit = unit === 'deg' ? 'deg' : 'rad';\n"
+    "        document.querySelector('#angle-indicator').textContent = angleUnit.toUpperCase();\n"
     "        angleButtons.forEach((button) => {\n"
     "            const selected = button.dataset.angle === angleUnit;\n"
     "            button.classList.toggle('active', selected);\n"
@@ -916,7 +940,24 @@ static const char NUMFORGE_WEB_PAGE_SCRIPT_START_CONT_1[] =
     "            return data.error || text.failure;\n"
     "        }\n"
     "        const status = english ? data.status : (slovakStatus[data.status] || data.status);\n"
-    "        return status + (Number.isInteger(data.column) ? text.column + data.column : '');\n"
+    "        const located = ['invalid argument', 'invalid token', 'syntax error',\n"
+    "                         'division by zero', 'wrong number of arguments'];\n"
+    "        const chars = [...expression.value];\n"
+    "        if (!located.includes(data.status) || !Number.isInteger(data.column) ||\n"
+    "            data.column < 1 || data.column > chars.length + 1) return status;\n"
+    "        const index = data.column - 1;\n"
+    "        const position = ' (' + text.position + data.column + ')';\n"
+    "        if (index === chars.length) return status + text.end + position;\n"
+    "        let end = index + 1;\n"
+    "        if (/[a-zA-Z]/.test(chars[index]))\n"
+    "            while (end < chars.length && /[a-zA-Z]/.test(chars[end])) end++;\n"
+    "        end = Math.min(end, index + 24);\n"
+    "        const left = Math.max(0, index - 8), right = Math.min(chars.length, end + 8);\n"
+    "        const excerpt = (left ? '…' : '') + chars.slice(left, index).join('') +\n"
+    "            '⟦' + chars.slice(index, end).join('') + '⟧' +\n"
+    "            chars.slice(end, right).join('') + (right < chars.length ? '…' : '');\n"
+    "        return status + text.near + '“' + excerpt + '”' + position +\n"
+    "            domainHint(data.status, chars.slice(index, end).join(''));\n"
     "    }\n"
     "\n"
     "    function scheduleCalculation(delay = 300)\n"
@@ -939,14 +980,234 @@ static const char NUMFORGE_WEB_PAGE_SCRIPT_START_CONT_1[] =
     "\n"
     "    precision.addEventListener('input', () => scheduleCalculation());\n";
 
+/* Fit the collapsed calculator; expanded results intentionally retain scrolling. */
+static const char NUMFORGE_WEB_PAGE_SCRIPT_FIT[] =
+    "    if (typeof ResizeObserver !== 'undefined')\n"
+    "    {\n"
+    "        const shell = document.createElement('main');\n"
+    "        shell.className = 'calculator-shell';\n"
+    "        [...document.body.children].forEach((child) => {\n"
+    "            if (!['SCRIPT', 'STYLE'].includes(child.tagName)) shell.append(child);\n"
+    "        });\n"
+    "        document.body.prepend(shell);\n"
+    "        let fitting = false;\n"
+    "        function fitCalculator()\n"
+    "        {\n"
+    "            if (fitting || resultExpanded) return;\n"
+    "            fitting = true;\n"
+    "            shell.style.width = Math.max(1, Math.min(720, window.innerWidth - 16)) + 'px';\n"
+    "            shell.style.zoom = 1;\n"
+    "            const available = (window.visualViewport?.height || window.innerHeight) - 32;\n"
+    "            shell.style.zoom = Math.min(1, Math.max(1, available) / shell.offsetHeight);\n"
+    "            fitting = false;\n"
+    "        }\n"
+    "        new ResizeObserver(fitCalculator).observe(shell);\n"
+    "        window.addEventListener('resize', fitCalculator);\n"
+    "        window.visualViewport?.addEventListener('resize', fitCalculator);\n"
+    "        fitCalculator();\n"
+    "    }\n";
+
+static const char NUMFORGE_WEB_PAGE_SCRIPT_HELP_DATA[] =
+    "    const functionHelp = {\n"
+    "        abs: [\"|x|\",\"abs(x)\",\"Absolútna hodnota.\",\"Absolute value.\"],\n"
+    "        sign: [\"sign\",\"sign(x)\",\"Znamienko: -1, 0 alebo 1.\",\"Sign: -1, 0 or 1.\"],\n"
+    "        min: [\"min\",\"min(x;y;...)\",\"Minimum z 2 až 256 hodnôt.\",\"Minimum of 2 to 256 values.\"],\n"
+    "        max: [\"max\",\"max(x;y;...)\",\"Maximum z 2 až 256 hodnôt.\",\"Maximum of 2 to 256 values.\"],\n"
+    "        gcd: [\"gcd\",\"gcd(x;y)\",\"Najväčší spoločný deliteľ celých čísel.\",\"Greatest common divisor of integers.\"],\n"
+    "        lcm: [\"lcm\",\"lcm(x;y)\",\"Najmenší spoločný násobok celých čísel.\",\"Least common multiple of integers.\"],\n"
+    "        mod: [\"mod\",\"mod(x;y)\",\"Zvyšok celočíselného delenia; y ≠ 0.\",\"Integer division remainder; y ≠ 0.\"],\n"
+    "        factorial: [\"n!\",\"factorial(n)\",\"Celé n od 0 do 10000.\",\"Integer n from 0 to 10000.\"],\n"
+    "        isqrt: [\"isqrt\",\"isqrt(n)\",\"Celá časť odmocniny; celé n ≥ 0.\",\"Integer square root; integer n ≥ 0.\"],\n"
+    "        pow: [\"xʸ\",\"pow(x;n)\",\"Exponent n musí byť nezáporné celé číslo.\",\"Exponent n must be a non-negative integer.\"],\n"
+    "        sqrt: [\"√x\",\"sqrt(x)\",\"Druhá odmocnina; x ≥ 0.\",\"Square root; x ≥ 0.\"],\n"
+    "        cbrt: [\"∛x\",\"cbrt(x)\",\"Tretia odmocnina aj zo záporného čísla.\",\"Cube root, including negative numbers.\"]\n"
+    "    };\n";
+
+static const char NUMFORGE_WEB_PAGE_SCRIPT_HELP_MORE[] =
+    "    Object.assign(functionHelp, {\n"
+    "        root: [\"ⁿ√x\",\"root(x;n)\",\"Celé n od 1 do 10000; záporné x iba pre nepárne n.\",\"Integer n from 1 to 10000; negative x requires odd n.\"],\n"
+    "        exp: [\"eˣ\",\"exp(x)\",\"Eulerovo číslo umocnené na x.\",\"Euler’s number raised to x.\"],\n"
+    "        ln: [\"ln\",\"ln(x)\",\"Prirodzený logaritmus; x > 0.\",\"Natural logarithm; x > 0.\"],\n"
+    "        log: [\"log\",\"log(x) / log(x;y)\",\"Základ 10 alebo y; x > 0, y > 0 a y ≠ 1.\",\"Base 10 or y; x > 0, y > 0 and y ≠ 1.\"],\n"
+    "        sin: [\"sin\",\"sin(x)\",\"Sínus; vstup podľa RAD/DEG.\",\"Sine; input follows RAD/DEG.\"],\n"
+    "        cos: [\"cos\",\"cos(x)\",\"Kosínus; vstup podľa RAD/DEG.\",\"Cosine; input follows RAD/DEG.\"],\n"
+    "        tan: [\"tan\",\"tan(x)\",\"Tangens; RAD/DEG, nedefinovaný v póloch (90° + k·180°).\",\"Tangent; RAD/DEG, undefined at poles (90° + k·180°).\"],\n"
+    "        asin: [\"asin\",\"asin(x)\",\"Inverzný sínus; -1 ≤ x ≤ 1, výsledok RAD/DEG.\",\"Inverse sine; -1 ≤ x ≤ 1, result in RAD/DEG.\"],\n"
+    "        acos: [\"acos\",\"acos(x)\",\"Inverzný kosínus; -1 ≤ x ≤ 1, výsledok RAD/DEG.\",\"Inverse cosine; -1 ≤ x ≤ 1, result in RAD/DEG.\"],\n"
+    "        atan: [\"atan\",\"atan(x)\",\"Inverzný tangens; výsledok RAD/DEG.\",\"Inverse tangent; result in RAD/DEG.\"],\n"
+    "        radians: [\"° → rad\",\"radians(x)\",\"Prevod stupňov na radiány nezávisle od režimu.\",\"Convert degrees to radians regardless of mode.\"],\n"
+    "        degrees: [\"rad → °\",\"degrees(x)\",\"Prevod radiánov na stupne nezávisle od režimu.\",\"Convert radians to degrees regardless of mode.\"]\n"
+    "    });\n";
+
+static const char NUMFORGE_WEB_PAGE_SCRIPT_HELP_UI[] =
+    "    function describeFunction(name)\n"
+    "    {\n"
+    "        const info = functionHelp[name];\n"
+    "        return info ? info[1] + ': ' + info[english ? 3 : 2] : '';\n"
+    "    }\n"
+    "    function domainHint(status, name)\n"
+    "    {\n"
+    "        if (!['invalid argument', 'wrong number of arguments'].includes(status)) return '';\n"
+    "        const hint = describeFunction(name);\n"
+    "        return hint ? ' — ' + hint : '';\n"
+    "    }\n"
+    "    const helpButtons = [...document.querySelectorAll('[data-function]')];\n"
+    "    if (helpButtons.length)\n"
+    "    {\n"
+    "        const help = document.createElement('p');\n"
+    "        help.id = 'function-help';\n"
+    "        help.setAttribute('aria-live', 'polite');\n"
+    "        help.textContent = english ? 'Choose a function to see its arguments. Separate arguments with ;.'\n"
+    "                                   : 'Vyber funkciu pre opis argumentov. Argumenty oddeľ bodkočiarkou ;.';\n"
+    "        helpButtons.at(-1).closest('details').after(help);\n"
+    "        helpButtons.forEach((button) => {\n"
+    "            const name = button.dataset.insert.slice(0, -1);\n"
+    "            const info = functionHelp[name];\n"
+    "            if (!info) return;\n"
+    "            button.textContent = info[0];\n"
+    "            button.title = describeFunction(name);\n"
+    "            button.setAttribute('aria-label', describeFunction(name));\n"
+    "            button.setAttribute('aria-describedby', 'function-help');\n"
+    "            ['mouseenter', 'focus', 'click'].forEach((event) =>\n"
+    "                button.addEventListener(event, () => { help.textContent = describeFunction(name); }));\n"
+    "        });\n"
+    "    }\n";
+
+static const char NUMFORGE_WEB_PAGE_SCRIPT_REQUEST[] =
+    "    let cacheClient = '';\n"
+    "    if (typeof crypto !== 'undefined' && crypto.getRandomValues)\n"
+    "    {\n"
+    "        const bytes = crypto.getRandomValues(new Uint8Array(16));\n"
+    "        cacheClient = [...bytes].map(value => value.toString(16).padStart(2, '0')).join('');\n"
+    "    }\n"
+    "    async function requestEvaluation(url, options)\n"
+    "    {\n"
+    "        if (cacheClient) url += '&client=' + cacheClient + '&revision=' + generation;\n"
+    "        let response;\n"
+    "        try { response = await fetch(url, options); }\n"
+    "        catch (error)\n"
+    "        {\n"
+    "            if (error.name === 'AbortError') throw error;\n"
+    "            throw new Error(english\n"
+    "                ? 'Cannot contact the server. Check the connection and that the server is running, then press Enter to retry.'\n"
+    "                : 'Nepodarilo sa spojiť so serverom. Skontroluj spojenie a či server beží, potom opakuj stlačením Enter.');\n"
+    "        }\n"
+    "        const unexpected = english ? 'Unexpected server response. Press Enter to retry.'\n"
+    "                                   : 'Neočakávaná odpoveď servera. Opakuj stlačením Enter.';\n"
+    "        if (!response.headers.get('content-type')?.includes('application/json'))\n"
+    "            throw new Error(unexpected);\n"
+    "        let data;\n"
+    "        try { data = await response.json(); }\n"
+    "        catch (error)\n"
+    "        {\n"
+    "            if (error.name === 'AbortError') throw error;\n"
+    "            throw new Error(unexpected);\n"
+    "        }\n"
+    "        if (!data || typeof data !== 'object' || typeof data.ok !== 'boolean' ||\n"
+    "            (data.ok && typeof data.result !== 'string'))\n"
+    "            throw new Error(unexpected);\n"
+    "        return {response, data};\n"
+    "    }\n";
+
+static const char NUMFORGE_WEB_PAGE_SCRIPT_LANGUAGE[] =
+    "    // Transfer only on an explicit language navigation, scoped to this tab.\n"
+    "    document.querySelectorAll('.language-switch a').forEach((link) => {\n"
+    "        link.addEventListener('click', () => {\n"
+    "            try\n"
+    "            {\n"
+    "                sessionStorage.setItem('numforge-language-input', JSON.stringify({\n"
+    "                    expression: expression.value, precision: precision.value,\n"
+    "                    full: fullPrecision.checked\n"
+    "                }));\n"
+    "            }\n"
+    "            catch (_) {}\n"
+    "        });\n"
+    "    });\n"
+    "    try\n"
+    "    {\n"
+    "        const saved = sessionStorage.getItem('numforge-language-input');\n"
+    "        sessionStorage.removeItem('numforge-language-input');\n"
+    "        if (saved)\n"
+    "        {\n"
+    "            const state = JSON.parse(saved);\n"
+    "            if (typeof state.expression === 'string' && typeof state.precision === 'string' &&\n"
+    "                typeof state.full === 'boolean')\n"
+    "            {\n"
+    "                expression.value = state.expression;\n"
+    "                precision.value = state.precision;\n"
+    "                fullPrecision.checked = state.full;\n"
+    "                precision.disabled = state.full;\n"
+    "                scheduleCalculation(0);\n"
+    "            }\n"
+    "        }\n"
+    "    }\n"
+    "    catch (_) {}\n";
+
+static const char NUMFORGE_WEB_PAGE_SCRIPT_TABS[] =
+    "    const groups = [...document.querySelectorAll('details.function-group')];\n"
+    "    if (groups.length)\n"
+    "    {\n"
+    "        const tabs = document.createElement('div');\n"
+    "        tabs.className = 'function-tabs';\n"
+    "        tabs.setAttribute('role', 'tablist');\n"
+    "        tabs.setAttribute('aria-label', english ? 'Functions' : 'Funkcie');\n"
+    "        groups[0].before(tabs);\n"
+    "        function selectGroup(index)\n"
+    "        {\n"
+    "            groups.forEach((group, i) => {\n"
+    "                group.hidden = i !== index;\n"
+    "                tabs.children[i].setAttribute('aria-selected', String(i === index));\n"
+    "                tabs.children[i].tabIndex = i === index ? 0 : -1;\n"
+    "            });\n"
+    "        }\n"
+    "        groups.forEach((group, i) => {\n"
+    "            const summary = group.querySelector('summary');\n"
+    "            const button = document.createElement('button');\n"
+    "            button.type = 'button';\n"
+    "            button.textContent = summary.textContent;\n"
+    "            button.id = 'function-tab-' + i;\n"
+    "            group.id = 'function-panel-' + i;\n"
+    "            button.setAttribute('role', 'tab');\n"
+    "            button.setAttribute('aria-controls', group.id);\n"
+    "            group.setAttribute('role', 'tabpanel');\n"
+    "            group.setAttribute('aria-labelledby', button.id);\n"
+    "            group.open = true;\n"
+    "            summary.hidden = true;\n"
+    "            button.addEventListener('click', () => selectGroup(i));\n"
+    "            button.addEventListener('keydown', (event) => {\n"
+    "                let next = i;\n"
+    "                if (event.key === 'ArrowRight') next = (i + 1) % groups.length;\n"
+    "                else if (event.key === 'ArrowLeft') next = (i + groups.length - 1) % groups.length;\n"
+    "                else if (event.key === 'Home') next = 0;\n"
+    "                else if (event.key === 'End') next = groups.length - 1;\n"
+    "                else return;\n"
+    "                event.preventDefault();\n"
+    "                selectGroup(next);\n"
+    "                tabs.children[next].focus();\n"
+    "            });\n"
+    "            tabs.append(button);\n"
+    "        });\n"
+    "        selectGroup(0);\n"
+    "    }\n"
+    "    expression.addEventListener('keydown', (event) => {\n"
+    "        if (event.key === 'Enter' && !event.isComposing)\n"
+    "        {\n"
+    "            event.preventDefault();\n"
+    "            expression.setSelectionRange(expression.value.length, expression.value.length);\n"
+    "            form.requestSubmit();\n"
+    "        }\n"
+    "    });\n";
+
 static const char NUMFORGE_WEB_PAGE_SCRIPT_START_CONT_1B[] =
     "\n"
-    "    function insertText(text)\n"
+    "    function insertText(text, isFunction = false)\n"
     "    {\n"
     "        invalidate();\n"
     "        const start = expression.selectionStart ?? expression.value.length;\n"
     "        const end = expression.selectionEnd ?? start;\n"
-    "        expression.setRangeText(text, start, end, 'end');\n"
+    "        const insertion = isFunction ? text + ')' : text;\n"
+    "        expression.setRangeText(insertion, start, end, 'end');\n"
+    "        if (isFunction) expression.setSelectionRange(start + text.length, start + text.length);\n"
     "        expression.focus();\n"
     "        scheduleCalculation();\n"
     "    }\n"
@@ -990,7 +1251,8 @@ static const char NUMFORGE_WEB_PAGE_SCRIPT_START_CONT_1B[] =
     "    }\n"
     "\n"
     "    document.querySelectorAll('[data-insert]')\n"
-    "        .forEach((button) => button.addEventListener('click', () => insertText(button.dataset.insert)));\n"
+    "        .forEach((button) => button.addEventListener('click', () =>\n"
+    "            insertText(button.dataset.insert, Boolean(button.dataset.function))));\n"
     "\n"
     "    document.querySelectorAll('[data-action]')\n"
     "        .forEach((button) => button.addEventListener('click', () => {\n"
@@ -1080,19 +1342,14 @@ static const char NUMFORGE_WEB_PAGE_SCRIPT_START_CONT_2[] =
     "                throw new Error(english ? 'Expression exceeds 4096 UTF-8 bytes.'\n"
     "                                        : 'Výraz presahuje 4096 UTF-8 bajtov.');\n"
     "            }\n"
-    "            const response =\n"
-    "                await fetch('/api/evaluate?precision=' + encodeURIComponent(requestedPrecision) +\n"
+    "            const {response, data} =\n"
+    "                await requestEvaluation('/api/evaluate?precision=' + encodeURIComponent(requestedPrecision) +\n"
     "                            '&angle=' + angleUnit, {\n"
     "                    method : 'POST',\n"
     "                    headers : {'Content-Type' : 'text/plain; charset=utf-8'},\n"
     "                    body : expression.value,\n"
     "                    signal : controller.signal\n"
     "                });\n"
-    "            if (!response.headers.get('content-type')?.includes('application/json'))\n"
-    "            {\n"
-    "                throw new Error(text.failure);\n"
-    "            }\n"
-    "            const data = await response.json();\n"
     "            if (id !== generation)\n"
     "            {\n"
     "                return;\n"
@@ -1145,6 +1402,13 @@ static const char *const NUMFORGE_WEB_PAGE[] =
     NUMFORGE_WEB_PAGE_FUNCTIONS_3,
     NUMFORGE_WEB_PAGE_SCRIPT_START,
     NUMFORGE_WEB_PAGE_SCRIPT_START_CONT_1,
+    NUMFORGE_WEB_PAGE_SCRIPT_HELP_DATA,
+    NUMFORGE_WEB_PAGE_SCRIPT_HELP_MORE,
+    NUMFORGE_WEB_PAGE_SCRIPT_HELP_UI,
+    NUMFORGE_WEB_PAGE_SCRIPT_REQUEST,
+    NUMFORGE_WEB_PAGE_SCRIPT_TABS,
+    NUMFORGE_WEB_PAGE_SCRIPT_LANGUAGE,
+    NUMFORGE_WEB_PAGE_SCRIPT_FIT,
     NUMFORGE_WEB_PAGE_SCRIPT_START_CONT_1B,
     NUMFORGE_WEB_PAGE_SCRIPT_START_CONT_2,
     NULL
@@ -1165,6 +1429,13 @@ static const char *const NUMFORGE_WEB_PAGE_EN[] =
     NUMFORGE_WEB_PAGE_EN_FUNCTIONS_3,
     NUMFORGE_WEB_PAGE_SCRIPT_START,
     NUMFORGE_WEB_PAGE_SCRIPT_START_CONT_1,
+    NUMFORGE_WEB_PAGE_SCRIPT_HELP_DATA,
+    NUMFORGE_WEB_PAGE_SCRIPT_HELP_MORE,
+    NUMFORGE_WEB_PAGE_SCRIPT_HELP_UI,
+    NUMFORGE_WEB_PAGE_SCRIPT_REQUEST,
+    NUMFORGE_WEB_PAGE_SCRIPT_TABS,
+    NUMFORGE_WEB_PAGE_SCRIPT_LANGUAGE,
+    NUMFORGE_WEB_PAGE_SCRIPT_FIT,
     NUMFORGE_WEB_PAGE_SCRIPT_START_CONT_1B,
     NUMFORGE_WEB_PAGE_SCRIPT_START_CONT_2,
     NULL
@@ -1177,6 +1448,9 @@ static const char *const NUMFORGE_WEB_PAGE_EN[] =
 */
 
 static const char NUMFORGE_API_FUNCTIONS_SK[] =
+    "<p>Jednotku RAD/DEG vidíš aj pri vstupe. Opis funkcie a jej argumentov sa zobrazí po prejdení "
+    "myšou, zameraní klávesnicou alebo dotyku tlačidla. Pri chybe spojenia či neočakávanej "
+    "odpovedi servera môžeš výpočet zopakovať cez Enter; tieto chyby nie sú chybami výrazu.</p>\n"
     "<h2>Volania funkcií</h2>\n"
     "<p><code>sqrt(x)</code> alebo <code>√(x)</code> je druhá odmocnina pre x ≥ 0; <code>cbrt(x)</code> "
     "aj pre záporné x. <code>root(x;n)</code> je n-tá odmocnina, celé n od 1 do 10000; záporné x iba pri "
@@ -1209,6 +1483,9 @@ static const char NUMFORGE_API_FUNCTIONS_SK[] =
     "platné názvy.</p>\n";
 
 static const char NUMFORGE_API_FUNCTIONS_EN[] =
+    "<p>The RAD/DEG unit is also shown beside the input. Function signatures and argument hints "
+    "appear on hover, keyboard focus or touch. Connection failures and unexpected server responses "
+    "can be retried with Enter; these are distinct from expression errors.</p>\n"
     "<h2>Function calls</h2>\n"
     "<p><code>sqrt(x)</code> or <code>√(x)</code> is the square root for x ≥ 0; <code>cbrt(x)</code> also "
     "accepts negative x. <code>root(x;n)</code> takes an integer degree from 1 to 10000; negative x "
@@ -1461,11 +1738,39 @@ static const char NUMFORGE_API_PAGE_C_LIBRARY[] =
     "</body>\n"
     "</html>\n";
 
+static const char NUMFORGE_API_CACHE_SK[] =
+    "<h2>Automatická presnosť a cache</h2>\n"
+    "<p>Nastavuješ iba výstupné desatinné miesta. Pracovná presnosť zostáva automatická: "
+    "max(34, N+4) významných číslic, pri plnom výstupe 34. Server uchováva posledný úspešný "
+    "číselný výsledok každej stránky, najviac pre osem klientov. Pri rovnakom pracovnom kontexte "
+    "iba zmení výpis; pri zmene pracovnej presnosti výraz prepočíta. Preukázateľne presné výrazy "
+    "ako 10000! možno znovu vypísať aj pri inej presnosti bez výpočtu. Obnovenie stránky alebo "
+    "vyradenie z cache môže vyvolať nový výpočet. Toto nie je záruka správnosti každej poslednej "
+    "číslice pri rušení číslic v medzivýsledkoch.</p>\n"
+    "<p>Voliteľné HTTP parametre za precision/angle: <code>&amp;client=32_hex_znakov&amp;revision=N</code>. "
+    "Client má presne 32 malých hexadecimálnych znakov; revision rastie od 1 do 9007199254740991. "
+    "Úspešná odpoveď potom obsahuje aj boolean <code>cached</code>. Bez týchto parametrov "
+    "je API bezstavové. Identifikátor nie je autentifikácia.</p>\n";
+
+static const char NUMFORGE_API_CACHE_EN[] =
+    "<h2>Automatic precision and cache</h2>\n"
+    "<p>You choose only output decimal places. Working precision remains automatic: "
+    "max(34, N+4) significant digits, or 34 for full output. The server retains the last successful "
+    "numeric result per page, for up to eight clients. Matching working contexts only reformat; "
+    "changes to working precision recompute the expression. Proven precision-independent expressions "
+    "such as 10000! can be reformatted across precisions without evaluation. Reload or eviction "
+    "may require a new calculation. This does not certify every final digit under cancellation.</p>\n"
+    "<p>Optional HTTP parameters after precision/angle: <code>&amp;client=32_hex_digits&amp;revision=N</code>. "
+    "Client is exactly 32 lowercase hexadecimal digits; revision increases from 1 to 9007199254740991. "
+    "Successful responses then also include the boolean <code>cached</code>. Without these parameters "
+    "the API is stateless. The identifier is not authentication.</p>\n";
+
 static const char *const NUMFORGE_API_PAGE[] =
 {
     NUMFORGE_API_PAGE_START,
     NUMFORGE_API_PAGE_SK_CONTENT,
     NUMFORGE_API_FUNCTIONS_SK,
+    NUMFORGE_API_CACHE_SK,
     NUMFORGE_API_PAGE_HTTP,
     NUMFORGE_API_PAGE_C_LIBRARY,
     NULL
@@ -1724,6 +2029,7 @@ static const char *const NUMFORGE_API_PAGE_EN[] =
     NUMFORGE_API_PAGE_EN_START,
     NUMFORGE_API_PAGE_EN_START_CONT_1,
     NUMFORGE_API_FUNCTIONS_EN,
+    NUMFORGE_API_CACHE_EN,
     NUMFORGE_API_PAGE_EN_DETAILS,
     NUMFORGE_API_PAGE_EN_C_LIBRARY,
     NULL

@@ -396,7 +396,7 @@ if(BUILD_TESTING)
         COMMAND calculator_tests
     )
 
-    foreach(suite IN ITEMS calculator_contract parser_fuzz http_request function_calls roots transcendental trigonometric constants)
+    foreach(suite IN ITEMS calculator_contract parser_fuzz http_request function_calls roots transcendental trigonometric constants web_cache)
         add_executable(${suite}_tests tests/test_${suite}.c)
         target_include_directories(${suite}_tests PRIVATE ${PROJECT_SOURCE_DIR}/src/calculator)
         target_link_libraries(${suite}_tests PRIVATE numforge_client unity)

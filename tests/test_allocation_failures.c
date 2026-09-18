@@ -1338,6 +1338,51 @@ void test_pipeline_deadline_covers_all_checkpoints(void)
     TEST_ASSERT_TRUE(completed);
 }
 
+void test_cache_preserves_value_on_every_allocation_failure(void)
+{
+    for (size_t scenario = 0U; scenario < 2U; scenario++)
+    {
+        bool completed = false;
+        for (size_t index = 1U; index <= ALLOCATION_TEST_MAX_FAILURE_INDEX; index++)
+        {
+            NumForgeWebCache cache = {0};
+            CalculatorError error;
+            char *text = NULL;
+            bool reused;
+            CalculatorStatus status = numforge_web_evaluate_cached(
+                &cache, 1U, "42", 10, CALCULATOR_ANGLE_RADIANS, &text, &error, &reused);
+            TEST_ASSERT_EQUAL(CALCULATOR_OK, status);
+            free(text);
+            text = NULL;
+            numforge_test_allocator_begin(index);
+            status = numforge_web_evaluate_cached(&cache, 2U, scenario == 0U ? "42" : "1/3",
+                50, CALCULATOR_ANGLE_RADIANS, &text, &error, &reused);
+            bool failed = numforge_test_allocator_did_fail();
+            numforge_test_allocator_end();
+            if (failed)
+            {
+                TEST_ASSERT_NOT_EQUAL(CALCULATOR_OK, status);
+                TEST_ASSERT_EQUAL(status, error.status);
+                TEST_ASSERT_NULL(text);
+                TEST_ASSERT_EQUAL_STRING("42", cache.expression);
+                TEST_ASSERT_FALSE(reused);
+            }
+            else
+            {
+                TEST_ASSERT_EQUAL(CALCULATOR_OK, status);
+                completed = true;
+            }
+            free(text);
+            numforge_web_cache_clear(&cache);
+            if (completed)
+            {
+                break;
+            }
+        }
+        TEST_ASSERT_TRUE(completed);
+    }
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -1368,6 +1413,7 @@ int main(void)
     RUN_TEST(test_evaluator_preserves_destination_on_every_allocation_failure);
     RUN_TEST(test_formatter_clears_output_on_every_allocation_failure);
     RUN_TEST(test_calculator_pipeline_reports_every_injected_allocation_failure);
+    RUN_TEST(test_cache_preserves_value_on_every_allocation_failure);
 
     return UNITY_END();
 }

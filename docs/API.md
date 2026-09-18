@@ -265,10 +265,18 @@ names, not products. Numeric suffixes such as `log2` are not supported.
 
 The local browser page has active keypad buttons for this grammar, including
 power, square, cube, factorial and an argument separator. Named functions are
-organized in four collapsible groups. Root, logarithmic and exponential
-and trigonometric controls are active. A RAD/DEG selector beside the
-trigonometric controls applies to the complete expression and is remembered by
-the browser. The keypad inserts `.`, while directly typed `,` is accepted as the
+organized in four horizontal tabs with one active panel. Function buttons insert
+both parentheses and place the caret inside; Enter calculates and moves the
+caret to the end of the expression. Root, logarithmic and exponential
+and trigonometric controls are active. A RAD/DEG selector below Calculate
+applies to the complete expression and is remembered by
+the browser. A read-only indicator beside the expression shows the same mode.
+The active mode has a yellow-orange background; the inactive mode is dark.
+Switching language preserves the expression and output settings within the tab
+using session storage when available, then recalculates in the selected language.
+Function buttons show mathematical labels where useful and expose signatures
+and domain hints on hover, keyboard focus and activation (including touch).
+The keypad inserts `.`, while directly typed `,` is accepted as the
 same decimal separator. The page is available in Slovak and English and
 provides a one-click control to copy the displayed result.
 The result panel is five lines high by default. Longer output shows a
@@ -314,6 +322,18 @@ its original explicit decimal-scale policy, independent of this calculator mode.
 
 ## Local HTTP API
 
+The calculator layout keeps all controls within the viewport while the result
+is collapsed to five lines. Compact spacing and proportional scaling adapt to
+short windows. Expanding a long result allows vertical page scrolling; collapsing
+it restores the fitted layout. This layout policy does not apply to the API guide.
+
+The web UI shows expression errors beside a short excerpt, marking the reported
+token with `⟦…⟧` and including its one-based Unicode character position. An error
+after the last character is described as being at the end of the expression.
+The marker identifies where the error was detected, not necessarily the only
+incorrect character. Resource and connection failures have no expression marker.
+The HTTP error fields remain unchanged.
+
 `numforge_web` serves the calculator and exposes one local endpoint:
 
 ```text
@@ -345,6 +365,28 @@ HTTP 403. Native local clients may omit `Origin`. `precision` is optional: it
 accepts a non-negative whole number or `full`; if omitted, it defaults to `10`.
 `angle` accepts `rad` or `deg` and defaults to `rad`; when supplied it follows
 `precision` in the query string.
+The browser optionally appends `&client=<32 lowercase hex digits>&revision=<N>`
+after the normal options. `N` is a positive increasing integer up to
+9007199254740991. These parameters opt into a bounded per-client cache;
+successful responses then also contain `"cached":true` or `false`.
+Without them, the endpoint remains stateless and its response shape is unchanged.
+The browser generates a fresh random client ID for each page load, not a cookie
+or shared local-storage identity. The server holds at most eight clients with
+one successful numeric value each; FIFO eviction frees the old value. Older or
+duplicate revisions may compute a response but cannot replace the stored value.
+Errors preserve the last successful value. This is not authentication or a
+public multiuser service.
+
+Only output precision is configurable in the UI; working precision remains
+automatic. Matching input and working context allow reformatting without another
+evaluation. Changes to working precision trigger recalculation in either direction
+unless an AST-based whitelist proves the entire expression precision-independent
+(for example `10000!`). Division, constants, real roots and transcendental calls
+are conservatively context-dependent, even if a particular result is exact.
+Changing RAD/DEG also invalidates reuse. `full` keeps the existing 34-digit working
+policy, not infinite precision. More requested digits do not certify accuracy
+under cancellation; no rounded/inexact guarantee is inferred from the output.
+
 Out-of-memory calculation failures return HTTP 500 with the same JSON fields.
 Malformed HTTP requests return JSON HTTP 400. Oversized bodies return JSON
 HTTP 413; a request that does not finish arriving within two seconds returns
@@ -352,6 +394,10 @@ JSON HTTP 408. The receive deadline covers the complete headers and body and
 is not restarted by each byte. Responses also have a bounded send deadline.
 Unknown routes return plain-text HTTP 404; the UI tolerates non-JSON/network
 failures and ignores responses superseded by a new calculation or input edit.
+The UI distinguishes connection failures from unexpected server responses and
+offers retry with Enter. Calculation errors retain their status and source
+position, with argument rules for recognized function-domain/arity errors.
+These hints do not change the HTTP error schema or numerical API.
 Transfer-Encoding is unsupported and rejected; use Content-Length framing.
 
 The local server accepts expressions up to 4096 bytes and listens only on

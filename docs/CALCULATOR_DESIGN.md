@@ -65,6 +65,39 @@ The page invalidates pending results on input changes and uses request
 generations to ignore stale responses. Aborting browser fetch is a UI measure;
 the C pipeline independently enforces its own calculation budget.
 
+## Retained results and automatic precision
+
+`calculator_compute_value` creates a `CalculatorValue` owning the unformatted
+BigDecimal, its evaluation context and a conservative precision-independence
+flag. Zero-initialize this handle and destroy it before reuse. The original
+`calculator_compute` remains a one-shot wrapper with a shared compute/format
+resource budget; the installed numeric library API is unchanged.
+
+The web adapter can retain one handle and the original expression per client.
+Cache hits call only the formatter. Identity includes the exact input text,
+rounding, angle mode and working division policy/precision, not output scale.
+Working precision stays automatic at max(34, N+4), or 34 for full output.
+A precision change in either direction recomputes context-dependent expressions.
+An explicit AST whitelist permits precision-independent arithmetic, powers,
+factorials and exact integer calls only when all their operands qualify. This
+is not a rounded/inexact flag: division, constants and real roots conservatively
+miss on a context change, even when a particular value happens to be exact.
+
+The sequential server retains at most eight page IDs, evicts FIFO and destroys
+the evicted handle. Each retained coefficient's limb allocation is bounded by
+the existing 128 KiB single-allocation limit (roughly 1 MiB total limb storage,
+plus fixed expressions/metadata). There is no TTL or disk persistence; reload
+creates a new page ID. Formatting still has time, memory and output-size limits.
+Monotonic client revisions prevent older work from replacing newer work; errors
+do not discard the last successful value. Browser generation checks separately
+prevent stale responses from appearing in the UI. Requests without a client ID
+remain stateless; lack of browser crypto support falls back to this path.
+
+Dedicated cache tests compare hits with fresh evaluation, including cancellation
+of significant digits, context changes, errors and client isolation. Allocation
+fault injection covers replacement and formatting without corrupting retained
+values. HTTP/browser tests cover validation, eviction and page isolation.
+
 ## Expression grammar
 
 ```text

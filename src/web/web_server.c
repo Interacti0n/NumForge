@@ -404,11 +404,103 @@ static bool numforge_parse_page_language(
     return false;
 }
 
+/*
+------------------------------------------------------------------------------------------------------------------------------
+    Bounded per-page cache. Eight clients, one value each, FIFO eviction.
+    Values were allocated under the calculator's single-allocation bound;
+    numeric limb storage per retained value is at most 128 KiB. No cookies or
+    cross-tab storage: each page creates a fresh random identifier.
+------------------------------------------------------------------------------------------------------------------------------
+*/
+
+#define NUMFORGE_WEB_CACHE_CLIENTS 8U
+static struct
+{
+    char client[33];
+    NumForgeWebCache cache;
+} numforge_clients[NUMFORGE_WEB_CACHE_CLIENTS];
+static size_t numforge_next_client;
+
+static bool numforge_parse_cache_options(char *target, char client[33], uint64_t *revision)
+{
+    char *suffix = strstr(target, "&client=");
+    const char *number;
+    uint64_t parsed = 0U;
+
+    client[0] = '\0';
+    *revision = 0U;
+    if (suffix == NULL)
+    {
+        return true;
+    }
+    number = suffix + strlen("&client=");
+    if (strlen(number) < 32U + strlen("&revision=") + 1U)
+    {
+        return false;
+    }
+    for (size_t index = 0U; index < 32U; index++)
+    {
+        if (!((number[index] >= '0' && number[index] <= '9') ||
+              (number[index] >= 'a' && number[index] <= 'f')))
+        {
+            return false;
+        }
+    }
+    if (strncmp(number + 32U, "&revision=", strlen("&revision=")) != 0)
+    {
+        return false;
+    }
+    memcpy(client, number, 32U);
+    client[32] = '\0';
+    number += 32U + strlen("&revision=");
+    while (*number != '\0')
+    {
+        if (*number < '0' || *number > '9' ||
+            parsed > (UINT64_C(9007199254740991) - (uint64_t)(*number - '0')) / 10U)
+        {
+            return false;
+        }
+        parsed = parsed * 10U + (uint64_t)(*number - '0');
+        number++;
+    }
+    if (parsed == 0U)
+    {
+        return false;
+    }
+    *revision = parsed;
+    *suffix = '\0';
+    return true;
+}
+
+static NumForgeWebCache *numforge_client_cache(const char *client)
+{
+    size_t index;
+
+    if (*client == '\0')
+    {
+        return NULL;
+    }
+    for (index = 0U; index < NUMFORGE_WEB_CACHE_CLIENTS; index++)
+    {
+        if (strcmp(numforge_clients[index].client, client) == 0)
+        {
+            return &numforge_clients[index].cache;
+        }
+    }
+    index = numforge_next_client;
+    numforge_next_client = (index + 1U) % NUMFORGE_WEB_CACHE_CLIENTS;
+    numforge_web_cache_clear(&numforge_clients[index].cache);
+    memcpy(numforge_clients[index].client, client, 33U);
+    return &numforge_clients[index].cache;
+}
+
 static void numforge_handle_evaluation(
     NumForgeSocket socket,
     const char *body,
     int64_t output_scale,
-    CalculatorAngleUnit angle_unit
+    CalculatorAngleUnit angle_unit,
+    const char *client,
+    uint64_t revision
 )
 {
     CalculatorError error;
@@ -416,18 +508,27 @@ static void numforge_handle_evaluation(
     char *result = NULL;
     char *response;
     size_t response_capacity;
+    bool reused = false;
 
-    status = numforge_web_evaluate_with_options(
-        body, output_scale, angle_unit, &result, &error);
+    status = numforge_web_evaluate_cached(
+        numforge_client_cache(client), revision, body, output_scale, angle_unit, &result, &error, &reused);
 
     if (status == CALCULATOR_OK)
     {
-        response_capacity = strlen(result) + 32U;
+        response_capacity = strlen(result) + 64U;
         response = malloc(response_capacity);
 
         if (response != NULL)
         {
-            (void)snprintf(response, response_capacity, "{\"ok\":true,\"result\":\"%s\"}", result);
+            if (*client == '\0')
+            {
+                (void)snprintf(response, response_capacity, "{\"ok\":true,\"result\":\"%s\"}", result);
+            }
+            else
+            {
+                (void)snprintf(response, response_capacity, "{\"ok\":true,\"result\":\"%s\",\"cached\":%s}",
+                               result, reused ? "true" : "false");
+            }
             numforge_send_response(socket, 200, "OK", "application/json; charset=utf-8", response);
             free(response);
         }
@@ -487,6 +588,8 @@ static void numforge_handle_connection(
     char request[NUMFORGE_WEB_REQUEST_CAPACITY];
     char method[16];
     char target[128];
+    char client[33];
+    uint64_t revision;
     const char *body;
     size_t length;
     size_t body_length = 0U;
@@ -582,9 +685,10 @@ static void numforge_handle_connection(
                 "application/json; charset=utf-8",
                 "{\"ok\":false,\"error\":\"request body contains a NUL byte\",\"status\":\"invalid argument\",\"column\":1}");
         }
-        else if (numforge_parse_evaluation_options(target, &output_scale, &angle_unit))
+        else if (numforge_parse_cache_options(target, client, &revision) &&
+                 numforge_parse_evaluation_options(target, &output_scale, &angle_unit))
         {
-            numforge_handle_evaluation(socket, body, output_scale, angle_unit);
+            numforge_handle_evaluation(socket, body, output_scale, angle_unit, client, revision);
         }
         else
         {

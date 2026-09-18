@@ -15,6 +15,28 @@
 
 #define NUMFORGE_WEB_MAX_EXPRESSION_LENGTH CALCULATOR_MAX_INPUT_BYTES
 
+/* One owned successful value per client. Zero-initialize; clear on eviction.
+ * Revision prevents an older queued request from replacing newer work.
+ * No thread safety: the loopback server currently handles requests serially. */
+typedef struct NumForgeWebCache
+{
+    CalculatorValue value;
+    char expression[NUMFORGE_WEB_MAX_EXPRESSION_LENGTH + 1U];
+    uint64_t revision;
+} NumForgeWebCache;
+
+void numforge_web_cache_clear(NumForgeWebCache *cache);
+CalculatorStatus numforge_web_evaluate_cached(
+    NumForgeWebCache *cache,
+    uint64_t revision,
+    const char *input,
+    int64_t output_scale,
+    CalculatorAngleUnit angle_unit,
+    char **result,
+    CalculatorError *error,
+    bool *reused
+);
+
 /*
 ------------------------------------------------------------------------------------------------------------------------------
     Evaluate one expression with NumForge's default calculator policy and the

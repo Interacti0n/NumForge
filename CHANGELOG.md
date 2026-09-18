@@ -5,6 +5,29 @@ All notable changes to NumForge are documented in this file. The project uses
 
 ## Unreleased
 
+- Place the contrasting RAD/DEG selector below Calculate, remove the introductory
+  paragraph and preserve the expression/output settings when switching language.
+
+- Retain unformatted calculator values for a bounded, isolated per-page web cache.
+  Keep working precision automatic; reformat compatible cached values and
+  recompute context-dependent expressions when working precision changes.
+  Proven precision-independent expressions such as factorials can be reformatted
+  across output precisions without evaluation. Add cache, allocation-failure,
+  HTTP eviction/revision and browser isolation regressions.
+
+- Add a shared RAD/DEG indicator beside the expression, a segmented angle selector,
+  bilingual function signatures/domain hints for mouse, keyboard and touch, and
+  clearer calculation, connection and unexpected-response errors.
+
+- Fit the collapsed web calculator to the viewport height; allow vertical page
+  scrolling for expanded results and test the layout across desktop/mobile sizes.
+- Show web expression errors with a marked source excerpt and character position,
+  including an explicit end-of-expression message in Slovak and English.
+
+- Insert complete function calls with the caret inside the parentheses, move
+  the caret to the expression end on Enter, and organize web functions into
+  horizontal tabs with one active panel.
+
 - Add arbitrary-precision radian sine, cosine, tangent, asin, acos, and atan,
   magnitude-aware π argument reduction, calculator RAD/DEG mode, explicit angle
   conversions, HTTP selection, and active bilingual web controls.

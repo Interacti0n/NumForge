@@ -1,4 +1,8 @@
 #include "web_api.h"
+#include "formatter.h"
+
+#include <numforge/runtime.h>
+#include <string.h>
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
@@ -35,9 +39,45 @@ CalculatorStatus numforge_web_evaluate_with_options(
     CalculatorError *error
 )
 {
+    return numforge_web_evaluate_cached(NULL, 0U, input, output_scale, angle_unit, result, error, NULL);
+}
+
+void numforge_web_cache_clear(NumForgeWebCache *cache)
+{
+    if (cache != NULL)
+    {
+        calculator_value_destroy(&cache->value);
+        memset(cache, 0, sizeof(*cache));
+    }
+}
+
+CalculatorStatus numforge_web_evaluate_cached(
+    NumForgeWebCache *cache,
+    uint64_t revision,
+    const char *input,
+    int64_t output_scale,
+    CalculatorAngleUnit angle_unit,
+    char **result,
+    CalculatorError *error,
+    bool *reused
+)
+{
     CalculatorContext context;
     CalculatorStatus status;
+    CalculatorValue value = {0};
+    bool owner;
+    bool replace = false;
     size_t length;
+
+    if (reused != NULL)
+    {
+        *reused = false;
+    }
+    if (cache != NULL && revision > cache->revision)
+    {
+        cache->revision = revision;
+        replace = true;
+    }
 
     if (result != NULL)
     {
@@ -84,5 +124,38 @@ CalculatorStatus numforge_web_evaluate_with_options(
         return status;
     }
 
-    return calculator_compute(input, &context, result, error);
+    owner = numforge_budget_begin(
+        (uint64_t)context.time_limit_ms, CALCULATOR_ALLOCATION_BUDGET, CALCULATOR_SINGLE_ALLOCATION);
+    if (cache != NULL && strcmp(cache->expression, input) == 0 &&
+        calculator_value_matches(&cache->value, &context))
+    {
+        status = calculator_format_result(cache->value.number, &context, result);
+        calculator_error_set(error, status, 0U);
+        if (reused != NULL)
+        {
+            *reused = status == CALCULATOR_OK;
+        }
+    }
+    else
+    {
+        status = calculator_compute_value(input, &context, &value, error);
+        if (status == CALCULATOR_OK)
+        {
+            status = calculator_format_result(value.number, &context, result);
+            calculator_error_set(error, status, 0U);
+        }
+        if (status == CALCULATOR_OK && replace)
+        {
+            calculator_value_destroy(&cache->value);
+            cache->value = value;
+            value.number = NULL;
+            memcpy(cache->expression, input, length + 1U);
+        }
+    }
+    calculator_value_destroy(&value);
+    if (owner)
+    {
+        numforge_budget_end();
+    }
+    return status;
 }
