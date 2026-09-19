@@ -268,9 +268,9 @@ power, square, cube, factorial and an argument separator. Named functions are
 organized in four horizontal tabs with one active panel. Function buttons insert
 both parentheses and place the caret inside; Enter calculates and moves the
 caret to the end of the expression. Root, logarithmic and exponential
-and trigonometric controls are active. A RAD/DEG selector below Calculate
+and trigonometric controls are active. A RAD/DEG selector on the right beside precision settings
 applies to the complete expression and is remembered by
-the browser. A read-only indicator beside the expression shows the same mode.
+the browser. There is no separate angle indicator beside the expression.
 The active mode has a yellow-orange background; the inactive mode is dark.
 Switching language preserves the expression and output settings within the tab
 using session storage when available, then recalculates in the selected language.
@@ -283,7 +283,12 @@ The result panel is five lines high by default. Longer output shows a
 `Show all`/`Zobraziť všetko` control; clicking it or the result expands the
 panel, and the same control collapses it again.
 
-Results default to 10 decimal places, rounded half-even. A caller can request a
+Results default to 10 decimal places, rounded half-even.
+The browser offers Auto (10 places), Full, and Custom; only Custom shows a
+numeric field. Full skips final output rounding, not working-precision limits.
+Language switching preserves the selected mode and custom value.
+
+A caller can request a
 non-negative output scale from 0 through 10000,
 or `full` to skip the final output rounding. For a numeric scale `N`, non-terminating division
 uses `max(34, N + 4)` significant digits. With `full`, division uses its

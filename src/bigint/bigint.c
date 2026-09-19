@@ -6,6 +6,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#if defined(_MSC_VER) && defined(_M_X64)
+#include <intrin.h>
+#endif
 
 #define BIGINT_LIMB_BITS 64U
 #define BIGINT_MAX_LIMBS (SIZE_MAX / BIGINT_LIMB_BITS)
@@ -55,6 +58,17 @@ static uint64_t bigint_divide_128_by_u64( /*Divide a 128-bit value by a uint64_t
     assert(divisor != 0);
     assert(high < divisor);
 
+#if defined(__SIZEOF_INT128__)
+    {
+        __uint128_t dividend = ((__uint128_t)high << 64) | (__uint128_t)low;
+
+        *remainder = (uint64_t)(dividend % divisor);
+        return (uint64_t)(dividend / divisor);
+    }
+#elif defined(_MSC_VER) && defined(_M_X64)
+    return _udiv128(high, low, divisor, remainder);
+#else
+
     uint64_t quotient = 0;
     uint64_t current_remainder = high;
 
@@ -86,6 +100,7 @@ static uint64_t bigint_divide_128_by_u64( /*Divide a 128-bit value by a uint64_t
     *remainder = current_remainder;
 
     return quotient;
+#endif
 }
 
 BigIntStatus bigint_size_add( /*Overflow-checked size_t addition: out = a+b*/

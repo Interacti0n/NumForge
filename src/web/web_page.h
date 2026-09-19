@@ -279,19 +279,20 @@ static const char NUMFORGE_WEB_PAGE_START_CONT_1[] =
     "EN</a></nav>\n"
     "  </header>\n"
     "  <form id=\"calculator\">\n"
-    "    <span id=\"angle-indicator\" role=\"status\" title=\"Aktívna jednotka uhlov\">RAD</span>\n"
     "    <input id=\"expression\" aria-label=\"Matematický výraz\" autocomplete=\"off\" autofocus>\n"
-    "    <div class=\"calculate-controls\"><button type=\"submit\">Vypočítať</button>\n"
-    "    <div class=\"angle-switch\" role=\"group\" aria-label=\"Jednotka uhla\">"
-    "<button type=\"button\" data-angle=\"rad\">RAD</button>"
-    "<button type=\"button\" data-angle=\"deg\">DEG</button></div></div>\n"
+    "    <button type=\"submit\">Vypočítať</button>\n"
     "  </form>\n";
 
 static const char NUMFORGE_WEB_PAGE_PRECISION[] =
     "  <section class=\"precision\" aria-label=\"Nastavenie výstupnej presnosti\">\n"
-    "    <label>Desatinné miesta <input id=\"precision\" type=\"number\" min=\"0\" max=\"10000\" step=\"1\" "
-    "value=\"10\" inputmode=\"numeric\"></label>\n"
-    "    <label><input id=\"full-precision\" type=\"checkbox\"> Plný výstup</label>\n"
+    "    <div class=\"precision-controls\">\n"
+    "    <label>Presnosť <select id=\"precision-mode\"><option value=\"auto\">Auto (10 miest)</option>"
+    "<option value=\"full\">Full</option><option value=\"custom\">Vlastná</option></select></label>\n"
+    "    <label id=\"custom-precision\" hidden>Desatinné miesta <input id=\"precision\" type=\"number\" "
+    "min=\"0\" max=\"10000\" step=\"1\" value=\"10\" inputmode=\"numeric\" disabled></label>\n"
+    "    </div><div class=\"angle-switch\" role=\"group\" aria-label=\"Jednotka uhla\">"
+    "<button type=\"button\" data-angle=\"rad\">RAD</button>"
+    "<button type=\"button\" data-angle=\"deg\">DEG</button></div>\n"
     "  </section>\n";
 
 static const char NUMFORGE_WEB_PAGE_RESULT[] =
@@ -582,19 +583,20 @@ static const char NUMFORGE_WEB_PAGE_EN_START_CONT_1[] =
     "EN</a></nav>\n"
     "  </header>\n"
     "  <form id=\"calculator\">\n"
-    "    <span id=\"angle-indicator\" role=\"status\" title=\"Active angle unit\">RAD</span>\n"
     "    <input id=\"expression\" aria-label=\"Mathematical expression\" autocomplete=\"off\" autofocus>\n"
-    "    <div class=\"calculate-controls\"><button type=\"submit\">Calculate</button>\n"
-    "    <div class=\"angle-switch\" role=\"group\" aria-label=\"Angle unit\">"
-    "<button type=\"button\" data-angle=\"rad\">RAD</button>"
-    "<button type=\"button\" data-angle=\"deg\">DEG</button></div></div>\n"
+    "    <button type=\"submit\">Calculate</button>\n"
     "  </form>\n";
 
 static const char NUMFORGE_WEB_PAGE_EN_PRECISION[] =
     "  <section class=\"precision\" aria-label=\"Output precision settings\">\n"
-    "    <label>Decimal places <input id=\"precision\" type=\"number\" min=\"0\" max=\"10000\" step=\"1\" "
-    "value=\"10\" inputmode=\"numeric\"></label>\n"
-    "    <label><input id=\"full-precision\" type=\"checkbox\"> Full output</label>\n"
+    "    <div class=\"precision-controls\">\n"
+    "    <label>Precision <select id=\"precision-mode\"><option value=\"auto\">Auto (10 places)</option>"
+    "<option value=\"full\">Full</option><option value=\"custom\">Custom</option></select></label>\n"
+    "    <label id=\"custom-precision\" hidden>Decimal places <input id=\"precision\" type=\"number\" "
+    "min=\"0\" max=\"10000\" step=\"1\" value=\"10\" inputmode=\"numeric\" disabled></label>\n"
+    "    </div><div class=\"angle-switch\" role=\"group\" aria-label=\"Angle unit\">"
+    "<button type=\"button\" data-angle=\"rad\">RAD</button>"
+    "<button type=\"button\" data-angle=\"deg\">DEG</button></div>\n"
     "  </section>\n";
 
 static const char NUMFORGE_WEB_PAGE_EN_RESULT[] =
@@ -800,13 +802,16 @@ static const char NUMFORGE_FUNCTION_STYLE[] =
     "        color: #18202d;\n"
     "    }\n"
     "    .angle-switch button:first-child { border-radius: 8px 0 0 8px; }\n"
-    "    .calculate-controls { display: flex; flex-direction: column; }\n"
-    "    #expression { align-self: flex-start; width: 0; }\n"
+    "    .precision { flex-wrap: nowrap; gap: 8px; }\n"
+    "    .precision-controls { display: flex; flex: 1; min-width: 0; flex-wrap: wrap; align-items: center; gap: 8px 16px; }\n"
+    "    .precision-controls label { flex-wrap: wrap; }\n"
+    "    .precision-controls [hidden] { display: none; }\n"
+    "    #precision-mode { min-width: 0; padding: 8px; border: 1px solid #3b4352; border-radius: 8px; background: #1c2028; color: inherit; font: inherit; }\n"
+    "    .precision .angle-switch { margin: 0 0 0 auto; flex-shrink: 0; }\n"
     "    .angle-switch button { background: #1c2028; color: #adb5c3; font-size: .8rem; }\n"
     "    .angle-switch button.active { background: #f2b84b; color: #18202d; font-weight: bold; }\n"
     "    .angle-switch button.active::before { content: '✓ '; }\n"
     "    .angle-switch button:last-child { border-radius: 0 8px 8px 0; }\n"
-    "    #angle-indicator { align-self: center; font-size: .75rem; color: #f2b84b; }\n"
     "    #function-help { font-size: .8rem; margin: 4px 0; min-height: 2.5em; }\n"
     "</style>\n";
 
@@ -827,7 +832,7 @@ static const char NUMFORGE_WEB_PAGE_SCRIPT_START[] =
     "    const expandResult = document.querySelector('#expand-result');\n"
     "    const copyResult = document.querySelector('#copy-result');\n"
     "    const precision = document.querySelector('#precision');\n"
-    "    const fullPrecision = document.querySelector('#full-precision');\n"
+    "    const precisionMode = document.querySelector('#precision-mode');\n"
     "    const angleButtons = [...document.querySelectorAll('[data-angle]')];\n"
     "    const english = document.documentElement.lang === 'en';\n"
     "    let generation = 0;\n"
@@ -918,7 +923,6 @@ static const char NUMFORGE_WEB_PAGE_SCRIPT_START_CONT_1[] =
     "    function selectAngleUnit(unit, recalculate)\n"
     "    {\n"
     "        angleUnit = unit === 'deg' ? 'deg' : 'rad';\n"
-    "        document.querySelector('#angle-indicator').textContent = angleUnit.toUpperCase();\n"
     "        angleButtons.forEach((button) => {\n"
     "            const selected = button.dataset.angle === angleUnit;\n"
     "            button.classList.toggle('active', selected);\n"
@@ -1117,7 +1121,7 @@ static const char NUMFORGE_WEB_PAGE_SCRIPT_LANGUAGE[] =
     "            {\n"
     "                sessionStorage.setItem('numforge-language-input', JSON.stringify({\n"
     "                    expression: expression.value, precision: precision.value,\n"
-    "                    full: fullPrecision.checked\n"
+    "                    mode: precisionMode.value\n"
     "                }));\n"
     "            }\n"
     "            catch (_) {}\n"
@@ -1131,12 +1135,12 @@ static const char NUMFORGE_WEB_PAGE_SCRIPT_LANGUAGE[] =
     "        {\n"
     "            const state = JSON.parse(saved);\n"
     "            if (typeof state.expression === 'string' && typeof state.precision === 'string' &&\n"
-    "                typeof state.full === 'boolean')\n"
+    "                ['auto', 'full', 'custom'].includes(state.mode))\n"
     "            {\n"
     "                expression.value = state.expression;\n"
     "                precision.value = state.precision;\n"
-    "                fullPrecision.checked = state.full;\n"
-    "                precision.disabled = state.full;\n"
+    "                precisionMode.value = state.mode;\n"
+    "                updatePrecisionMode();\n"
     "                scheduleCalculation(0);\n"
     "            }\n"
     "        }\n"
@@ -1310,11 +1314,21 @@ static const char NUMFORGE_WEB_PAGE_SCRIPT_START_CONT_2[] =
     "\n"
     "    result.addEventListener('click', toggleResultExpansion);\n"
     "\n"
-    "    fullPrecision.addEventListener('change', () => {\n"
-    "        precision.disabled = fullPrecision.checked;\n"
+    "    function updatePrecisionMode()\n"
+    "    {\n"
+    "        const custom = precisionMode.value === 'custom';\n"
+    "        precision.disabled = !custom;\n"
+    "        document.querySelector('#custom-precision').hidden = !custom;\n"
+    "    }\n"
+    "    updatePrecisionMode();\n"
+    "    precisionMode.addEventListener('change', () => {\n"
+    "        updatePrecisionMode();\n"
     "        scheduleCalculation(0);\n"
     "    });\n"
     "\n"
+    "\n";
+
+static const char NUMFORGE_WEB_PAGE_SCRIPT_SUBMIT[] =
     "    form.addEventListener('submit', async (event) => {\n"
     "        event.preventDefault();\n"
     "        invalidate();\n"
@@ -1330,8 +1344,9 @@ static const char NUMFORGE_WEB_PAGE_SCRIPT_START_CONT_2[] =
     "        copyResult.textContent = text.copy;\n"
     "        try\n"
     "        {\n"
-    "            const requestedPrecision = fullPrecision.checked ? 'full' : precision.value;\n"
-    "            if (!fullPrecision.checked &&\n"
+    "            const requestedPrecision = precisionMode.value === 'full' ? 'full' :\n"
+    "                (precisionMode.value === 'custom' ? precision.value : '10');\n"
+    "            if (requestedPrecision !== 'full' &&\n"
     "                (!/^[0-9]+$/.test(requestedPrecision) || Number(requestedPrecision) > 10000))\n"
     "            {\n"
     "                throw new Error(english ? 'Precision must be between 0 and 10000.'\n"
@@ -1411,6 +1426,7 @@ static const char *const NUMFORGE_WEB_PAGE[] =
     NUMFORGE_WEB_PAGE_SCRIPT_FIT,
     NUMFORGE_WEB_PAGE_SCRIPT_START_CONT_1B,
     NUMFORGE_WEB_PAGE_SCRIPT_START_CONT_2,
+    NUMFORGE_WEB_PAGE_SCRIPT_SUBMIT,
     NULL
 };
 
@@ -1438,6 +1454,7 @@ static const char *const NUMFORGE_WEB_PAGE_EN[] =
     NUMFORGE_WEB_PAGE_SCRIPT_FIT,
     NUMFORGE_WEB_PAGE_SCRIPT_START_CONT_1B,
     NUMFORGE_WEB_PAGE_SCRIPT_START_CONT_2,
+    NUMFORGE_WEB_PAGE_SCRIPT_SUBMIT,
     NULL
 };
 
@@ -1448,7 +1465,7 @@ static const char *const NUMFORGE_WEB_PAGE_EN[] =
 */
 
 static const char NUMFORGE_API_FUNCTIONS_SK[] =
-    "<p>Jednotku RAD/DEG vidíš aj pri vstupe. Opis funkcie a jej argumentov sa zobrazí po prejdení "
+    "<p>Prepínač RAD/DEG je napravo vedľa nastavenia presnosti. Opis funkcie a jej argumentov sa zobrazí po prejdení "
     "myšou, zameraní klávesnicou alebo dotyku tlačidla. Pri chybe spojenia či neočakávanej "
     "odpovedi servera môžeš výpočet zopakovať cez Enter; tieto chyby nie sú chybami výrazu.</p>\n"
     "<h2>Volania funkcií</h2>\n"
@@ -1483,7 +1500,7 @@ static const char NUMFORGE_API_FUNCTIONS_SK[] =
     "platné názvy.</p>\n";
 
 static const char NUMFORGE_API_FUNCTIONS_EN[] =
-    "<p>The RAD/DEG unit is also shown beside the input. Function signatures and argument hints "
+    "<p>The RAD/DEG selector is on the right beside precision settings. Function signatures and argument hints "
     "appear on hover, keyboard focus or touch. Connection failures and unexpected server responses "
     "can be retried with Enter; these are distinct from expression errors.</p>\n"
     "<h2>Function calls</h2>\n"
@@ -1740,6 +1757,9 @@ static const char NUMFORGE_API_PAGE_C_LIBRARY[] =
 
 static const char NUMFORGE_API_CACHE_SK[] =
     "<h2>Automatická presnosť a cache</h2>\n"
+    "<p>Výstup: <strong>Auto</strong> používa 10 desatinných miest, <strong>Full</strong> vypne "
+    "finálne zaokrúhlenie a <strong>Vlastná</strong> zobrazí pole pre 0–10000 miest. Full neznamená "
+    "nekonečnú pracovnú presnosť. Režim aj vlastná hodnota sa zachovajú pri zmene jazyka.</p>\n"
     "<p>Nastavuješ iba výstupné desatinné miesta. Pracovná presnosť zostáva automatická: "
     "max(34, N+4) významných číslic, pri plnom výstupe 34. Server uchováva posledný úspešný "
     "číselný výsledok každej stránky, najviac pre osem klientov. Pri rovnakom pracovnom kontexte "
@@ -1754,6 +1774,9 @@ static const char NUMFORGE_API_CACHE_SK[] =
 
 static const char NUMFORGE_API_CACHE_EN[] =
     "<h2>Automatic precision and cache</h2>\n"
+    "<p>Output: <strong>Auto</strong> uses 10 decimal places, <strong>Full</strong> skips final "
+    "rounding, and <strong>Custom</strong> shows a field for 0–10000 places. Full does not mean "
+    "infinite working precision. Language switching preserves the mode and custom value.</p>\n"
     "<p>You choose only output decimal places. Working precision remains automatic: "
     "max(34, N+4) significant digits, or 34 for full output. The server retains the last successful "
     "numeric result per page, for up to eight clients. Matching working contexts only reformat; "

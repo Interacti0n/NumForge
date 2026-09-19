@@ -1,6 +1,7 @@
 #include <numforge/bigdecimal.h>
 
 #include "bigdecimal_internal.h"
+#include "../bigint/bigint_internal.h"
 #include "../internal/numforge_alloc.h"
 
 #include <stdbool.h>
@@ -107,6 +108,39 @@ typedef struct DecimalScientificExponent
     bool negative;
     uint64_t magnitude;
 } DecimalScientificExponent;
+
+/* Return true only when conservative bit-length bounds prove that the decimal
+ * exponent lies strictly inside the fixed-notation range. The loose rational
+ * bounds surround log10(2); an inconclusive result keeps the exact old path. */
+static bool decimal_definitely_fixed(const BigDecimal *value)
+{
+    size_t bits = bigint_bit_length(value->coefficient);
+    size_t minimum_digits;
+    size_t maximum_digits;
+    int64_t minimum_exponent;
+    int64_t maximum_exponent;
+
+    if (bits == 0U || (uint64_t)bits > (uint64_t)INT64_MAX ||
+        bits - 1U > (SIZE_MAX - 99999U) / 30102U ||
+        bits > (SIZE_MAX - 99999U) / 30103U)
+    {
+        return bits == 0U;
+    }
+
+    minimum_digits = ((bits - 1U) * 30102U) / 100000U + 1U;
+    maximum_digits = (bits * 30103U + 99999U) / 100000U;
+
+    if ((uint64_t)minimum_digits > (uint64_t)INT64_MAX ||
+        (uint64_t)maximum_digits > (uint64_t)INT64_MAX ||
+        !bigdecimal_i64_sub((int64_t)minimum_digits - 1, value->scale, &minimum_exponent) ||
+        !bigdecimal_i64_sub((int64_t)maximum_digits - 1, value->scale, &maximum_exponent))
+    {
+        return false;
+    }
+
+    return minimum_exponent > -BIGDECIMAL_SCIENTIFIC_EXPONENT_THRESHOLD &&
+           maximum_exponent < BIGDECIMAL_SCIENTIFIC_EXPONENT_THRESHOLD;
+}
 
 static bool decimal_scientific_exponent(
     size_t digit_count,
@@ -394,8 +428,13 @@ static BigDecimalStatus decimal_format_result_impl(
     }
 
     *result = NULL;
-    status = decimal_try_format_scientific(
-        value, places, rounding, result, &used_scientific);
+    used_scientific = false;
+    status = BIGDECIMAL_OK;
+    if (!decimal_definitely_fixed(value))
+    {
+        status = decimal_try_format_scientific(
+            value, places, rounding, result, &used_scientific);
+    }
     if (status != BIGDECIMAL_OK || used_scientific)
     {
         return status;

@@ -42,6 +42,7 @@ function createUI(english) {
     const angleRad = element('angle-rad'); angleRad.dataset.angle = 'rad';
     const angleDeg = element('angle-deg'); angleDeg.dataset.angle = 'deg';
     element('#precision').value = '10';
+    element('#precision-mode').value = 'custom';
     vm.runInNewContext(scriptFor(english), {
         document: {
             documentElement: {lang: english ? 'en' : 'sk'},
@@ -137,8 +138,8 @@ async function testAutomaticCalculation(english) {
     const rounded = ui.timers.at(-1)();
     assert.ok(ui.pending[1].url.endsWith('precision=2&angle=rad'));
     ui.respond(1, '0.12'); await rounded;
-    ui.element('#full-precision').checked = true;
-    ui.element('#full-precision').listeners.change();
+    ui.element('#precision-mode').value = 'full';
+    ui.element('#precision-mode').listeners.change();
     assert.equal(ui.element('#precision').disabled, true);
     const full = ui.timers.at(-1)();
     assert.ok(ui.pending[2].url.endsWith('precision=full&angle=rad'));
@@ -184,10 +185,9 @@ async function testErrorContext(english) {
             assert.equal(ui.element('#copy-result').disabled, true);
         }
         const ui = createUI(english);
-        assert.equal(ui.element('#angle-indicator').textContent, 'RAD');
         ui.element('angle-deg').listeners.click();
-        assert.equal(ui.element('#angle-indicator').textContent, 'DEG');
         const request = ui.submit('1');
+        assert.ok(ui.pending[0].url.includes('angle=deg'));
         ui.pending[0].resolve({ok: true, headers: {get: () => 'application/json'}, json: async () => { throw new SyntaxError(); }});
         await request;
         assert.ok(ui.element('#result').textContent.includes(english ? 'Unexpected' : 'Neočakávaná'));

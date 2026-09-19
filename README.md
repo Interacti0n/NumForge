@@ -172,7 +172,7 @@ working precision (34 significant digits by default). Trigonometric and inverse
 trigonometric calls use the shared RAD/DEG selector; explicit `radians(x)` and
 `degrees(x)` conversions remain available. Four horizontal tabs contain the
 function controls, with signatures and domain hints on hover, focus or touch.
-An indicator beside the expression mirrors the shared angle mode. Connection
+The RAD/DEG selector sits on the right beside the precision settings. Connection
 and unexpected-response errors offer retry with Enter.
 The page is available in Slovak and English, and the displayed
 result can be copied with one click. See the
@@ -180,6 +180,8 @@ result can be copied with one click. See the
 Long results stay in a compact five-line panel and can be expanded with
 `Show all` when needed.
 Working precision remains automatic; only output precision is user-configurable.
+Choose Auto (10 decimal places), Full (no final output rounding), or Custom
+(0–10000 places). The number field appears only in Custom mode.
 The web server keeps one successful numeric result per page (up to eight pages).
 Changing the display reuses it when safe; a changed working precision recomputes
 context-dependent expressions. Exact factorials can be reformatted without
@@ -282,7 +284,7 @@ executables:
 CI also runs twenty SK/EN Chromium scenarios from `tests/browser`, using a
 pinned Playwright dependency and the real C server, separately from CTest.
 Only this browser suite requires npm packages; the application does not.
-Reproduction commands, scope and opt-in phase benchmarks are in
+Reproduction commands, scope, direct arithmetic/conversion and calculator-phase benchmarks are in
 [TESTING.md](docs/TESTING.md).
 
 The native and dependency-free Node.js suites run through CTest when

@@ -37,6 +37,24 @@ static void assert_decimal_equals(const char *expected, const BigDecimal *value)
     free(actual);
 }
 
+static void assert_decimal_format(
+    const char *expected,
+    const char *input,
+    int64_t places,
+    BigDecimalRoundingMode rounding
+)
+{
+    BigDecimal *value = make_decimal(input);
+    char *actual = NULL;
+
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK,
+                      bigdecimal_format(value, places, rounding, &actual));
+    TEST_ASSERT_NOT_NULL(actual);
+    TEST_ASSERT_EQUAL_STRING(expected, actual);
+    free(actual);
+    bigdecimal_destroy(value);
+}
+
 void test_lifetime_and_status_strings(void)
 {
     BigDecimal *value = bigdecimal_create();
@@ -65,6 +83,14 @@ void test_parse_format_and_canonical_form(void)
         assert_decimal_equals(expected[index], value);
         bigdecimal_destroy(value);
     }
+}
+
+void test_readable_format_thresholds_and_rounding_carry(void)
+{
+    assert_decimal_format("0.000000001", "1E-9", 10, BIGDECIMAL_ROUND_HALF_EVEN);
+    assert_decimal_format("1E-10", "1E-10", 10, BIGDECIMAL_ROUND_HALF_EVEN);
+    assert_decimal_format("1000000000", "999999999.5", 0, BIGDECIMAL_ROUND_HALF_UP);
+    assert_decimal_format("1E+10", "9999999999.5", 0, BIGDECIMAL_ROUND_HALF_UP);
 }
 
 void test_invalid_parse_does_not_modify_destination(void)
@@ -446,6 +472,7 @@ int main(void)
 
     RUN_TEST(test_lifetime_and_status_strings);
     RUN_TEST(test_parse_format_and_canonical_form);
+    RUN_TEST(test_readable_format_thresholds_and_rounding_carry);
     RUN_TEST(test_invalid_parse_does_not_modify_destination);
     RUN_TEST(test_scale_overflow_does_not_modify_destination);
     RUN_TEST(test_copy_comparison_and_inspection);

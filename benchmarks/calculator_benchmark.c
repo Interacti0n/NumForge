@@ -1,12 +1,12 @@
 #include "evaluator.h"
 #include "formatter.h"
+#include "benchmark_clock.h"
 #include "../src/internal/numforge_alloc.h"
 
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
@@ -42,7 +42,7 @@ static int run_case(
         CalculatorError error;
         BigDecimal *value = bigdecimal_create();
         char *text = NULL;
-        clock_t times[4];
+        double times[4];
 
         if (value == NULL)
         {
@@ -50,7 +50,7 @@ static int run_case(
         }
 
         numforge_alloc_stats_reset();
-        times[0] = clock();
+        times[0] = benchmark_seconds();
 
         CalculatorStatus status = calculator_parse(
             input,
@@ -58,7 +58,7 @@ static int run_case(
             &error
         );
 
-        times[1] = clock();
+        times[1] = benchmark_seconds();
         calls[0] += numforge_alloc_stats_calls();
         bytes[0] += numforge_alloc_stats_bytes();
 
@@ -74,7 +74,7 @@ static int run_case(
             );
         }
 
-        times[2] = clock();
+        times[2] = benchmark_seconds();
         calls[1] += numforge_alloc_stats_calls();
         bytes[1] += numforge_alloc_stats_bytes();
 
@@ -89,7 +89,7 @@ static int run_case(
             );
         }
 
-        times[3] = clock();
+        times[3] = benchmark_seconds();
         calls[2] += numforge_alloc_stats_calls();
         bytes[2] += numforge_alloc_stats_bytes();
 
@@ -101,7 +101,7 @@ static int run_case(
         {
             fprintf(
                 stderr,
-                "Benchmark failed: %s (%s)\\n",
+                "Benchmark failed: %s (%s)\n",
                 label,
                 calculator_status_to_string(status)
             );
@@ -111,8 +111,7 @@ static int run_case(
 
         for (size_t phase = 0; phase < 3; phase++)
         {
-            if (times[phase] == (clock_t)-1 ||
-                times[phase + 1] == (clock_t)-1)
+            if (times[phase] < 0.0 || times[phase + 1] < times[phase])
             {
                 return EXIT_FAILURE;
             }
@@ -128,7 +127,7 @@ static int run_case(
     {
         printf(
             ",%.3f,%" PRIu64 ",%" PRIu64,
-            elapsed[phase] * 1000 / CLOCKS_PER_SEC,
+            elapsed[phase] * 1000.0,
             calls[phase],
             bytes[phase]
         );

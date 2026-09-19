@@ -133,6 +133,11 @@ error-safety rule.
 The public `bigdecimal_to_string` function produces ordinary decimal notation.
 The calculator's separate formatter adds scientific notation when useful
 without changing the stored value or the public BigDecimal conversion contract.
+Before its exact scientific check, the formatter uses conservative integer
+bounds around `log10(2)` to prove when a value must remain in ordinary notation.
+That proof skips a redundant full coefficient conversion; inconclusive values
+retain the exact previous path, and rounding is followed by another notation
+check so a carry across the scientific threshold is handled correctly.
 
 ### Addition and subtraction
 

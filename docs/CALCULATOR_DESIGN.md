@@ -46,7 +46,8 @@ Windows. The CTest smoke test starts the actual executable on a temporary port
 and exercises its HTTP transport over real sockets.
 
 The page sends the selected output scale as `?precision=N`; its full-output
-checkbox sends `?precision=full`. The RAD/DEG selector adds `&angle=rad` or
+mode sends `?precision=full`. Auto sends 10; Custom uses the numeric field.
+The RAD/DEG selector adds `&angle=rad` or
 `&angle=deg` and is remembered in browser local storage. HTTP `POST` requests require an exact
 `Content-Length`. If a browser sends an `Origin`, the server accepts only its
 own loopback origins, preventing unrelated pages from triggering expensive

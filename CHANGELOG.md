@@ -5,7 +5,19 @@ All notable changes to NumForge are documented in this file. The project uses
 
 ## Unreleased
 
-- Place the contrasting RAD/DEG selector below Calculate, remove the introductory
+- Accelerate decimal conversion with native 128-by-64 division on GCC/Clang and
+  MSVC x64 while retaining the portable fallback, and avoid a redundant initial
+  coefficient conversion for provably fixed-notation BigDecimal values. Add a
+  dedicated decimal conversion/formatting benchmark.
+
+- Add an opt-in direct BigInt multiplication benchmark with reproducible operand
+  patterns, size ratios, squaring, warm-up and calibrated median timings.
+  Use a shared high-resolution monotonic timer for both benchmark executables.
+
+- Offer Auto (10 places), Full and Custom output precision modes; show the
+  numeric field only for Custom and preserve the mode across language changes.
+
+- Place the contrasting RAD/DEG selector beside precision settings on the right, remove the introductory
   paragraph and preserve the expression/output settings when switching language.
 
 - Retain unformatted calculator values for a bounded, isolated per-page web cache.
@@ -15,7 +27,7 @@ All notable changes to NumForge are documented in this file. The project uses
   across output precisions without evaluation. Add cache, allocation-failure,
   HTTP eviction/revision and browser isolation regressions.
 
-- Add a shared RAD/DEG indicator beside the expression, a segmented angle selector,
+- Add a shared segmented RAD/DEG selector,
   bilingual function signatures/domain hints for mouse, keyboard and touch, and
   clearer calculation, connection and unexpected-response errors.
 

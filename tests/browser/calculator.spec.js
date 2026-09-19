@@ -35,9 +35,11 @@ for (const lang of ['sk', 'en']) {
             await calculate(page, '0,1+0.2', '0.3');
             await page.locator('#copy-result').click();
             await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe('0.3');
+            if (await page.locator('#precision-mode').inputValue() !== 'custom')
+                await page.locator('#precision-mode').selectOption('custom');
             await page.locator('#precision').fill('2');
             await calculate(page, '1/8', '0.12');
-            await page.locator('#full-precision').check();
+            await page.locator('#precision-mode').selectOption('full');
             await expect(page.locator('#precision')).toBeDisabled();
             await calculate(page, '1/8', '0.125');
             await calculate(page, '((1E80+1)/8)*8-1E80', '1');
@@ -71,9 +73,11 @@ for (const lang of ['sk', 'en']) {
             expect(settings.y + settings.height).toBeLessThan(panel.y);
             await page.locator('#expression').fill('1/8');
             await expect(page.locator('#result')).toHaveText('0.125');
+            if (await page.locator('#precision-mode').inputValue() !== 'custom')
+                await page.locator('#precision-mode').selectOption('custom');
             await page.locator('#precision').fill('2');
             await expect(page.locator('#result')).toHaveText('0.12');
-            await page.locator('#full-precision').check();
+            await page.locator('#precision-mode').selectOption('full');
             await expect(page.locator('#result')).toHaveText('0.125');
             await page.locator('#expression').fill('2+');
             await page.locator('#expression').press('End');
@@ -179,9 +183,11 @@ for (const lang of ['sk', 'en']) {
                 await expect(page.locator('#result')).toHaveText(expected);
             }
             await calculate(page, '√(0,25)', '0.5');
+            if (await page.locator('#precision-mode').inputValue() !== 'custom')
+                await page.locator('#precision-mode').selectOption('custom');
             await page.locator('#precision').fill('3');
             await calculate(page, 'sqrt(2)', '1.414');
-            await page.locator('#full-precision').check();
+            await page.locator('#precision-mode').selectOption('full');
             await expect(page.locator('#result')).toHaveText('1.414213562373095048801688724209698');
             await page.locator('#expression').fill('root(-16;4)');
             await page.locator('#expression').press('Enter');
@@ -194,7 +200,7 @@ for (const lang of ['sk', 'en']) {
             const lineHeight = await result.evaluate(el => parseFloat(getComputedStyle(el).lineHeight) *
                 Number(getComputedStyle(el.closest('.calculator-shell')).zoom));
             expect((await result.boundingBox()).height).toBeCloseTo(5 * lineHeight, 0);
-            await page.locator('#full-precision').check();
+            await page.locator('#precision-mode').selectOption('full');
             await calculate(page, '2^2000', (2n ** 2000n).toString()[0] + '.' + (2n ** 2000n).toString().slice(1) + 'E+602');
             await expect(page.locator('#expand-result')).toBeVisible();
             await page.locator('#expand-result').click();
@@ -214,7 +220,7 @@ for (const lang of ['sk', 'en']) {
                 }
             }
             await page.setViewportSize({width: 375, height: 667});
-            await page.locator('#full-precision').check();
+            await page.locator('#precision-mode').selectOption('full');
             await page.locator('#expression').fill('2^2000');
             await page.locator('#expression').press('Enter');
             await expect(page.locator('#expand-result')).toBeVisible();
@@ -231,6 +237,8 @@ for (const lang of ['sk', 'en']) {
             async function answer(expression, scale) {
                 await page.locator('#expression').fill(expression);
                 const response = page.waitForResponse(r => r.url().includes('/api/evaluate'));
+                if (await page.locator('#precision-mode').inputValue() !== 'custom')
+                    await page.locator('#precision-mode').selectOption('custom');
                 await page.locator('#precision').fill(String(scale));
                 await page.locator('#expression').press('Enter');
                 return (await response).json();
@@ -250,15 +258,19 @@ for (const lang of ['sk', 'en']) {
             await other.close();
         });
         test('angle selector placement, contrast and language state', async ({ page }) => {
-            const submit = await page.locator('#calculator button[type=submit]').boundingBox();
+            const settings = await page.locator('.precision-controls').boundingBox();
             const selector = await page.locator('.angle-switch').boundingBox();
-            expect(selector.y).toBeGreaterThanOrEqual(submit.y + submit.height);
+            expect(selector.x).toBeGreaterThanOrEqual(settings.x + settings.width);
+            expect(Math.abs(selector.y + selector.height / 2 - settings.y - settings.height / 2)).toBeLessThan(2);
+            await expect(page.locator('#angle-indicator')).toHaveCount(0);
             await page.locator('[data-angle=deg]').click();
             const colors = await page.locator('[data-angle]').evaluateAll(buttons =>
                 buttons.map(button => getComputedStyle(button).backgroundColor));
             expect(colors[0]).not.toBe(colors[1]);
             await expect(page.locator('[data-angle=deg]')).toHaveAttribute('aria-pressed', 'true');
             await page.locator('#expression').fill('π+sqrt(2)');
+            if (await page.locator('#precision-mode').inputValue() !== 'custom')
+                await page.locator('#precision-mode').selectOption('custom');
             await page.locator('#precision').fill('20');
             const other = lang === 'sk' ? 'en' : 'sk';
             await page.locator(`.language-switch a[lang=${other}]`).click();
@@ -266,22 +278,22 @@ for (const lang of ['sk', 'en']) {
             await expect(page.locator('#expression')).toHaveValue('π+sqrt(2)');
             await expect(page.locator('#precision')).toHaveValue('20');
             await expect(page.locator('[data-angle=deg]')).toHaveAttribute('aria-pressed', 'true');
-            await page.locator('#full-precision').check();
+            await page.locator('#precision-mode').selectOption('full');
             await page.locator(`.language-switch a[lang=${lang}]`).click();
             await expect(page.locator('#expression')).toHaveValue('π+sqrt(2)');
-            await expect(page.locator('#full-precision')).toBeChecked();
+            await expect(page.locator('#precision-mode')).toHaveValue('full');
             await expect(page.locator('#precision')).toBeDisabled();
             await expect(page.locator('body')).not.toContainText('C parser and exact BigDecimal');
             await expect(page.locator('body')).not.toContainText('cez C parser a presný BigDecimal');
         });
-        test('function help, domains and shared angle indicator', async ({ page }) => {
-            await expect(page.locator('#angle-indicator')).toHaveText('RAD');
+        test('function help, domains and shared angle selector', async ({ page }) => {
+            await expect(page.locator('[data-angle=rad]')).toHaveAttribute('aria-pressed', 'true');
             await page.locator('#function-tab-3').click();
             await page.locator('[data-angle=deg]').press('Enter');
-            await expect(page.locator('#angle-indicator')).toHaveText('DEG');
+            await expect(page.locator('[data-angle=deg]')).toHaveAttribute('aria-pressed', 'true');
             await expect(page.locator('[data-angle=deg]')).toHaveAttribute('aria-pressed', 'true');
             await page.reload();
-            await expect(page.locator('#angle-indicator')).toHaveText('DEG');
+            await expect(page.locator('[data-angle=deg]')).toHaveAttribute('aria-pressed', 'true');
             await page.locator('#function-tab-3').click();
             await page.locator('[data-function=asin]').focus();
             await expect(page.locator('#function-help')).toContainText('-1 ≤ x ≤ 1');

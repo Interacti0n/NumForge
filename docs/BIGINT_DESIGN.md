@@ -88,6 +88,12 @@ Formatting and parsing use chunks of up to 19 decimal digits because 10^19
 fits in `uint64_t`. This reduces the number of full-magnitude operations
 compared with processing one decimal digit at a time.
 
+Formatting repeatedly divides a scratch magnitude by `10^19`. On GCC/Clang
+targets with `__int128` and MSVC x64, its 128-by-64 primitive uses the native
+compiler operation. Other targets, including the supported 32-bit build, retain
+the checked bit-serial fallback. Both paths have the same `high < divisor`
+precondition and quotient/remainder semantics; public conversion is unchanged.
+
 ## Arithmetic semantics
 
 - Addition, subtraction, multiplication, division, and modulo are signed.
@@ -123,7 +129,8 @@ aliasing safety, and portability. Likely future optimizations, after profiling,
 are:
 
 - faster multiplication algorithms for very large limb counts;
-- specialized division for common small divisors;
+- divide-and-conquer conversion if measurements show that full decimal output
+  remains a bottleneck after the native single-limb division fast path;
 - cached powers used repeatedly by higher-level decimal operations.
 
 These must preserve the representation and public semantic contracts above.
