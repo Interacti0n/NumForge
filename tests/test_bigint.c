@@ -1500,6 +1500,78 @@ void test_factorial_above_practical_limit(void)
 }
 
 /* ============================================================
+   PERMUTATIONS / COMBINATIONS
+   ============================================================ */
+
+void test_permutations_and_combinations(void)
+{
+    static const struct
+    {
+        const char *n;
+        const char *r;
+        const char *permutation;
+        const char *combination;
+    } cases[] = {
+        { "0", "0", "1", "1" },
+        { "5", "0", "1", "1" },
+        { "5", "2", "20", "10" },
+        { "5", "5", "120", "1" },
+        { "20", "5", "1860480", "15504" },
+        { "52", "5", "311875200", "2598960" },
+        { "100", "50",
+          "3068518756254966037202730459529469739228459721684688959447786986982158958772355072000000000000",
+          "100891344545564193334812497256" }
+    };
+
+    for (size_t index = 0U; index < sizeof(cases) / sizeof(cases[0]); index++)
+    {
+        BigInt *n = make_bigint(cases[index].n);
+        BigInt *r = make_bigint(cases[index].r);
+        BigInt *result = bigint_create();
+
+        TEST_ASSERT_NOT_NULL(result);
+        TEST_ASSERT_EQUAL(BIGINT_OK, bigint_permutation(result, n, r));
+        assert_bigint_string(result, cases[index].permutation);
+        TEST_ASSERT_EQUAL(BIGINT_OK, bigint_combination(result, n, r));
+        assert_bigint_string(result, cases[index].combination);
+
+        bigint_destroy(n);
+        bigint_destroy(r);
+        bigint_destroy(result);
+    }
+}
+
+void test_combinatorics_aliasing_and_domains(void)
+{
+    BigInt *n = make_bigint("10");
+    BigInt *r = make_bigint("3");
+    BigInt *negative = make_bigint("-1");
+    BigInt *too_large = make_bigint("11");
+    BigInt *result = make_bigint("42");
+
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_permutation(n, n, r));
+    assert_bigint_string(n, "720");
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_combination(r, too_large, r));
+    assert_bigint_string(r, "165");
+
+    TEST_ASSERT_EQUAL(BIGINT_NEGATIVE_ARGUMENT,
+                      bigint_permutation(result, negative, r));
+    assert_bigint_string(result, "42");
+    TEST_ASSERT_EQUAL(BIGINT_NEGATIVE_ARGUMENT,
+                      bigint_combination(result, too_large, negative));
+    assert_bigint_string(result, "42");
+    TEST_ASSERT_EQUAL(BIGINT_INVALID_ARGUMENT,
+                      bigint_combination(result, too_large, n));
+    assert_bigint_string(result, "42");
+
+    bigint_destroy(n);
+    bigint_destroy(r);
+    bigint_destroy(negative);
+    bigint_destroy(too_large);
+    bigint_destroy(result);
+}
+
+/* ============================================================
    BITWISE AND
    ============================================================ */
 
@@ -2263,6 +2335,13 @@ void test_arithmetic_null_arguments(void)
         bigint_factorial(NULL, a)
     );
 
+    TEST_ASSERT_EQUAL(BIGINT_NULL_ARGUMENT, bigint_permutation(NULL, a, b));
+    TEST_ASSERT_EQUAL(BIGINT_NULL_ARGUMENT, bigint_permutation(r, NULL, b));
+    TEST_ASSERT_EQUAL(BIGINT_NULL_ARGUMENT, bigint_permutation(r, a, NULL));
+    TEST_ASSERT_EQUAL(BIGINT_NULL_ARGUMENT, bigint_combination(NULL, a, b));
+    TEST_ASSERT_EQUAL(BIGINT_NULL_ARGUMENT, bigint_combination(r, NULL, b));
+    TEST_ASSERT_EQUAL(BIGINT_NULL_ARGUMENT, bigint_combination(r, a, NULL));
+
     TEST_ASSERT_EQUAL(
         BIGINT_NULL_ARGUMENT,
         bigint_and(NULL, a, b)
@@ -2422,6 +2501,10 @@ int main(void)
     RUN_TEST(test_factorial_negative);
     RUN_TEST(test_factorial_overflow);
     RUN_TEST(test_factorial_above_practical_limit);
+
+    /* Permutations and combinations */
+    RUN_TEST(test_permutations_and_combinations);
+    RUN_TEST(test_combinatorics_aliasing_and_domains);
 
     /* Bitwise */
     RUN_TEST(test_and_basic);

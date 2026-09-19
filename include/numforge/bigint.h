@@ -197,6 +197,16 @@ BigIntStatus bigint_factorial( /* Calculate n!. Requires 0 <= n <= BIGINT_FACTOR
     BigInt *result,
     const BigInt *value
 );
+BigIntStatus bigint_permutation( /* Calculate nPr exactly. Requires 0 <= r <= n. */
+    BigInt *result,
+    const BigInt *n,
+    const BigInt *r
+);
+BigIntStatus bigint_combination( /* Calculate nCr exactly. Requires 0 <= r <= n. */
+    BigInt *result,
+    const BigInt *n,
+    const BigInt *r
+);
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------

@@ -197,6 +197,54 @@ void test_rescale_rounding(void)
     bigdecimal_destroy(result);
 }
 
+void test_named_rounding_operations(void)
+{
+    static const struct
+    {
+        const char *input;
+        const char *expected_floor;
+        const char *expected_ceil;
+        const char *expected_trunc;
+    } integer_cases[] = {
+        { "1.9", "1", "2", "1" },
+        { "-1.9", "-2", "-1", "-1" },
+        { "2", "2", "2", "2" }
+    };
+    BigDecimal *result = bigdecimal_create();
+
+    TEST_ASSERT_NOT_NULL(result);
+
+    for (size_t index = 0U;
+         index < sizeof(integer_cases) / sizeof(integer_cases[0]);
+         index++)
+    {
+        BigDecimal *value = make_decimal(integer_cases[index].input);
+
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_floor(result, value));
+        assert_decimal_equals(integer_cases[index].expected_floor, result);
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_ceil(result, value));
+        assert_decimal_equals(integer_cases[index].expected_ceil, result);
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_trunc(result, value));
+        assert_decimal_equals(integer_cases[index].expected_trunc, result);
+        bigdecimal_destroy(value);
+    }
+
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(result, "2.5"));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_round(result, result, 0));
+    assert_decimal_equals("2", result);
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(result, "3.5"));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_round(result, result, 0));
+    assert_decimal_equals("4", result);
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(result, "12.345"));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_round(result, result, 2));
+    assert_decimal_equals("12.34", result);
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(result, "155"));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_round(result, result, -1));
+    assert_decimal_equals("160", result);
+
+    bigdecimal_destroy(result);
+}
+
 void test_zero_identities_avoid_extreme_scale_work(void)
 {
     BigDecimal *zero = bigdecimal_create();
@@ -439,6 +487,12 @@ void test_null_and_invalid_arguments(void)
                       bigdecimal_rescale(NULL, value, 0, BIGDECIMAL_ROUND_TOWARD_ZERO));
     TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT,
                       bigdecimal_rescale(result, NULL, 0, BIGDECIMAL_ROUND_TOWARD_ZERO));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_floor(NULL, value));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_floor(result, NULL));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_ceil(NULL, value));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_trunc(NULL, value));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_round(NULL, value, 0));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_round(result, NULL, 0));
     TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT,
                       bigdecimal_div(NULL, value, other, 0, BIGDECIMAL_ROUND_TOWARD_ZERO));
     TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT,
@@ -478,6 +532,7 @@ int main(void)
     RUN_TEST(test_copy_comparison_and_inspection);
     RUN_TEST(test_exact_arithmetic_and_aliasing);
     RUN_TEST(test_rescale_rounding);
+    RUN_TEST(test_named_rounding_operations);
     RUN_TEST(test_zero_identities_avoid_extreme_scale_work);
     RUN_TEST(test_division_and_rounding);
     RUN_TEST(test_division_cancels_extreme_scales_before_reporting_overflow);

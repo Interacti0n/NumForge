@@ -14,10 +14,12 @@ static void test_registered_calls_and_arity(void)
 {
     static const char *const inputs[] = {
         "abs(1)", "sign(1)", "min(1;2;3)", "max(1;2)", "gcd(12;18)",
-        "lcm(2;3)", "mod(3;2)", "factorial(3)", "isqrt(4)", "pow(2;3)",
+        "lcm(2;3)", "mod(3;2)", "npr(5;2)", "ncr(5;2)",
+        "factorial(3)", "isqrt(4)", "pow(2;3)",
         "sqrt(4)", "cbrt(-8)", "root(8;3)", "exp(2)", "ln(e)", "log(10)",
         "log(8;2)", "sin(1)", "cos(1)", "tan(1)", "asin(1)", "acos(1)",
-        "atan(1)", "radians(90)", "degrees(1)", "sqrt(abs(-4))", "√(4)"
+        "atan(1)", "radians(90)", "degrees(1)", "floor(1.2)", "ceil(1.2)",
+        "trunc(-1.2)", "round(1.25)", "round(1.25;1)", "sqrt(abs(-4))", "√(4)"
     };
     for (size_t i = 0; i < sizeof(inputs) / sizeof(inputs[0]); i++)
     {
@@ -35,6 +37,12 @@ static void test_call_errors(void)
         { "log()", CALCULATOR_ARGUMENT_COUNT, 0 },
         { "log(1;2;3)", CALCULATOR_ARGUMENT_COUNT, 0 },
         { "atan(1;2)", CALCULATOR_ARGUMENT_COUNT, 0 },
+        { "floor()", CALCULATOR_ARGUMENT_COUNT, 0 },
+        { "ceil(1;2)", CALCULATOR_ARGUMENT_COUNT, 0 },
+        { "round()", CALCULATOR_ARGUMENT_COUNT, 0 },
+        { "round(1;2;3)", CALCULATOR_ARGUMENT_COUNT, 0 },
+        { "npr(5)", CALCULATOR_ARGUMENT_COUNT, 0 },
+        { "ncr(5;2;1)", CALCULATOR_ARGUMENT_COUNT, 0 },
         { "min(1)", CALCULATOR_ARGUMENT_COUNT, 0 },
         { "gcd(12,18)", CALCULATOR_ARGUMENT_COUNT, 0 },
         { "2+sin()", CALCULATOR_ARGUMENT_COUNT, 2 },
@@ -79,7 +87,13 @@ static void test_evaluation_and_implicit_products(void)
         { "max(-3;-2;-10)", "-2" }, { "min(1.00;1)", "1" },
         { "max(1E100000;2)", "1E+100000" },
         { "min(1E-100000;2)", "1E-100000" },
-        { "max(9007199254740992;9007199254740993)-9007199254740992", "1" }
+        { "max(9007199254740992;9007199254740993)-9007199254740992", "1" },
+        { "floor(1.9)+ceil(1.1)+trunc(-1.9)", "2" },
+        { "floor(-1.1)", "-2" }, { "ceil(-1.9)", "-1" },
+        { "round(2.5)+round(3.5)+round(-2.5)+round(-3.5)", "0" },
+        { "round(12.345;2)", "12.34" }, { "round(12.355;2)", "12.36" },
+        { "round(145;-1)", "140" }, { "round(155;-1)", "160" },
+        { "round(1.234;1+1)", "1.23" }
     };
     CalculatorContext context;
     CalculatorError error;
@@ -95,6 +109,12 @@ static void test_evaluation_and_implicit_products(void)
     TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, calculator_compute("pow(2;-1)", &context, &text, &error));
     TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, calculator_compute("factorial(1.5)", &context, &text, &error));
     TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE, calculator_compute("factorial(10001)", &context, &text, &error));
+    TEST_ASSERT_NULL(text);
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,
+                      calculator_compute("round(1;1.5)", &context, &text, &error));
+    TEST_ASSERT_NULL(text);
+    TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE,
+                      calculator_compute("round(1;9223372036854775808)", &context, &text, &error));
     TEST_ASSERT_NULL(text);
 
     TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("exp(0)", &context, &text, &error));
@@ -214,7 +234,10 @@ static void test_integer_function_domains_and_boundaries(void)
         { "isqrt(18446744073709551615)", "4294967295" },
         { "isqrt(18446744073709551616)", "4294967296" },
         { "isqrt(18446744073709551617)", "4294967296" },
-        { "2gcd(12;18)+isqrt(lcm(16;4))", "16" }
+        { "npr(5;2)", "20" }, { "ncr(5;2)", "10" },
+        { "ncr(52;5)", "2598960" }, { "ncr(100;97)", "161700" },
+        { "npr(0;0)+ncr(0;0)", "2" },
+        { "2gcd(12;18)+isqrt(lcm(16;4))+ncr(5;2)", "26" }
     };
     CalculatorContext context;
     CalculatorError error;
@@ -228,7 +251,8 @@ static void test_integer_function_domains_and_boundaries(void)
     }
     static const char *const invalid[] = {
         "gcd(1.1;2)", "gcd(2;-0.1)", "lcm(2;1.5)", "mod(1.5;2)",
-        "mod(2;1.5)", "isqrt(-1)", "isqrt(0.1)", "isqrt(1E-100000)"
+        "mod(2;1.5)", "npr(-1;0)", "npr(5;-1)", "ncr(2;3)",
+        "ncr(5;1.5)", "isqrt(-1)", "isqrt(0.1)", "isqrt(1E-100000)"
     };
     for (size_t i = 0; i < sizeof(invalid) / sizeof(invalid[0]); i++)
     {

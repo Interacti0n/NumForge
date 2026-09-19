@@ -16,7 +16,7 @@ root without floating-point conversion and preserves the destination on error.
 | `comparison.c` | Signed comparison and basic value predicates. |
 | `arithmetic.c` | Sign operations, arithmetic, division, modulo, and integer powers. |
 | `bitwise.c` | Bitwise operations and shifts. |
-| `number_theory.c` | GCD, LCM, and factorial. |
+| `number_theory.c` | GCD, LCM, factorial, permutations, and combinations. |
 | `primality.c` | Parity, Miller-Rabin primality testing, and perfect-square detection. |
 | `roots.c` | Floor integer square root. |
 | `bigint_internal.h` | Private representation and declarations shared only by these modules. |
@@ -103,6 +103,9 @@ precondition and quotient/remainder semantics; public conversion is unchanged.
 - Powers reject negative exponents.
 - Factorial accepts `0 <= n <= BIGINT_FACTORIAL_MAX_N`; the limit prevents an
   unbounded resource request.
+- Permutations and combinations require `0 <= r <= n`. Permutations use the
+  falling product directly. Combinations use symmetry and exact division after
+  each multiplication, avoiding full factorial intermediates.
 - GCD is non-negative; LCM is computed as `(|a| / gcd(a, b)) × |b|` to reduce
   intermediate growth.
 

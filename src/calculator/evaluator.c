@@ -4,6 +4,7 @@
 #include <numforge/bigint.h>
 #include <numforge/runtime.h>
 
+#include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -420,8 +421,13 @@ static CalculatorStatus calculator_evaluate_integer_call(
             break;
         }
 
-        status =
-            calculator_bigdecimal_to_bigint(&arguments[i], value, operation != CALCULATOR_FUNCTION_ISQRT);
+        {
+            bool signed_input = operation == CALCULATOR_FUNCTION_GCD ||
+                                operation == CALCULATOR_FUNCTION_LCM ||
+                                operation == CALCULATOR_FUNCTION_MOD;
+            status = calculator_bigdecimal_to_bigint(
+                &arguments[i], value, signed_input);
+        }
         bigdecimal_destroy(value);
         value = NULL;
 
@@ -455,6 +461,14 @@ static CalculatorStatus calculator_evaluate_integer_call(
                 break;
             case CALCULATOR_FUNCTION_MOD:
                 integer_status = bigint_mod(integer_result, arguments[0], arguments[1]);
+                break;
+            case CALCULATOR_FUNCTION_NPR:
+                integer_status = bigint_permutation(
+                    integer_result, arguments[0], arguments[1]);
+                break;
+            case CALCULATOR_FUNCTION_NCR:
+                integer_status = bigint_combination(
+                    integer_result, arguments[0], arguments[1]);
                 break;
             default:
                 integer_status = bigint_isqrt(integer_result, arguments[0]);
@@ -1210,6 +1224,164 @@ static CalculatorStatus calculator_evaluate_basic_call(
     return CALCULATOR_OK;
 }
 
+/* Decimal-place arguments are exact integers. Bounds are checked before text
+ * conversion so compact values with enormous exponents are rejected without
+ * expanding them into impractically large strings. */
+static CalculatorStatus calculator_decimal_to_i64(
+    const BigDecimal *value,
+    int64_t *result
+)
+{
+    BigDecimal *minimum = NULL;
+    BigDecimal *maximum = NULL;
+    char *text = NULL;
+    bool integer = false;
+    int comparison = 0;
+    CalculatorStatus status = calculator_from_bigdecimal_status(
+        bigdecimal_is_integer(&integer, value));
+
+    if (status != CALCULATOR_OK || !integer)
+    {
+        return status == CALCULATOR_OK ? CALCULATOR_INVALID_ARGUMENT : status;
+    }
+
+    minimum = bigdecimal_create();
+    maximum = bigdecimal_create();
+
+    if (minimum == NULL || maximum == NULL)
+    {
+        status = CALCULATOR_OUT_OF_MEMORY;
+        goto cleanup;
+    }
+
+    status = calculator_from_bigdecimal_status(
+        bigdecimal_set_string(minimum, "-9223372036854775808"));
+
+    if (status == CALCULATOR_OK)
+    {
+        status = calculator_from_bigdecimal_status(
+            bigdecimal_set_string(maximum, "9223372036854775807"));
+    }
+
+    if (status == CALCULATOR_OK)
+    {
+        status = calculator_from_bigdecimal_status(
+            bigdecimal_compare(&comparison, value, minimum));
+    }
+
+    if (status == CALCULATOR_OK && comparison < 0)
+    {
+        status = CALCULATOR_VALUE_TOO_LARGE;
+    }
+
+    if (status == CALCULATOR_OK)
+    {
+        status = calculator_from_bigdecimal_status(
+            bigdecimal_compare(&comparison, value, maximum));
+    }
+
+    if (status == CALCULATOR_OK && comparison > 0)
+    {
+        status = CALCULATOR_VALUE_TOO_LARGE;
+    }
+
+    if (status == CALCULATOR_OK)
+    {
+        status = calculator_from_bigdecimal_status(
+            bigdecimal_to_string(value, &text));
+    }
+
+    if (status == CALCULATOR_OK)
+    {
+        *result = (int64_t)strtoimax(text, NULL, 10);
+    }
+
+cleanup:
+    free(text);
+    bigdecimal_destroy(minimum);
+    bigdecimal_destroy(maximum);
+    return status;
+}
+
+/*
+------------------------------------------------------------------------------------------------------------------------------
+    Integer and decimal-place rounding calls.
+------------------------------------------------------------------------------------------------------------------------------
+*/
+
+static CalculatorStatus calculator_evaluate_rounding_call(
+    BigDecimal **result,
+    const CalculatorExpression *expression,
+    const CalculatorEvaluation *evaluation,
+    CalculatorError *error
+)
+{
+    CalculatorFunctionImplementation operation = expression->data.call.function->implementation;
+    BigDecimal *value = NULL;
+    BigDecimal *places_value = NULL;
+    int64_t places = 0;
+    CalculatorStatus status = calculator_evaluate_expression(
+        &value, expression->data.call.arguments[0], evaluation, error);
+    bool child_error = status != CALCULATOR_OK;
+
+    if (status == CALCULATOR_OK && expression->data.call.count == 2U)
+    {
+        status = calculator_evaluate_expression(
+            &places_value, expression->data.call.arguments[1], evaluation, error);
+        child_error = status != CALCULATOR_OK;
+    }
+
+    if (status == CALCULATOR_OK && places_value != NULL)
+    {
+        status = calculator_decimal_to_i64(places_value, &places);
+    }
+
+    if (status == CALCULATOR_OK)
+    {
+        BigDecimalStatus decimal_status;
+
+        switch (operation)
+        {
+            case CALCULATOR_FUNCTION_FLOOR:
+                decimal_status = bigdecimal_floor(value, value);
+                break;
+            case CALCULATOR_FUNCTION_CEIL:
+                decimal_status = bigdecimal_ceil(value, value);
+                break;
+            case CALCULATOR_FUNCTION_TRUNC:
+                decimal_status = bigdecimal_trunc(value, value);
+                break;
+            default:
+                decimal_status = bigdecimal_round(value, value, places);
+                break;
+        }
+
+        status = calculator_from_bigdecimal_status(decimal_status);
+    }
+
+    bigdecimal_destroy(places_value);
+
+    if (status == CALCULATOR_OK && calculator_time_limit_reached(evaluation))
+    {
+        status = CALCULATOR_TIME_LIMIT;
+    }
+
+    if (status != CALCULATOR_OK)
+    {
+        bigdecimal_destroy(value);
+
+        if (!child_error)
+        {
+            calculator_error_set(error, status, expression->offset);
+        }
+
+        return status;
+    }
+
+    *result = value;
+    return CALCULATOR_OK;
+}
+
 static CalculatorStatus calculator_evaluate_expression(
     BigDecimal **result,
     const CalculatorExpression *expression,
@@ -1257,6 +1429,8 @@ static CalculatorStatus calculator_evaluate_expression(
             case CALCULATOR_FUNCTION_GCD:
             case CALCULATOR_FUNCTION_LCM:
             case CALCULATOR_FUNCTION_MOD:
+            case CALCULATOR_FUNCTION_NPR:
+            case CALCULATOR_FUNCTION_NCR:
             case CALCULATOR_FUNCTION_ISQRT:
                 return calculator_evaluate_integer_call(result, expression, evaluation, error);
             case CALCULATOR_FUNCTION_ABS:
@@ -1264,6 +1438,11 @@ static CalculatorStatus calculator_evaluate_expression(
             case CALCULATOR_FUNCTION_MIN:
             case CALCULATOR_FUNCTION_MAX:
                 return calculator_evaluate_basic_call(result, expression, evaluation, error);
+            case CALCULATOR_FUNCTION_FLOOR:
+            case CALCULATOR_FUNCTION_CEIL:
+            case CALCULATOR_FUNCTION_TRUNC:
+            case CALCULATOR_FUNCTION_ROUND:
+                return calculator_evaluate_rounding_call(result, expression, evaluation, error);
             case CALCULATOR_FUNCTION_POWER:
                 operation.type = CALCULATOR_EXPRESSION_BINARY;
                 operation.data.binary.operation = CALCULATOR_BINARY_POWER;

@@ -99,6 +99,11 @@ static BigDecimalStatus bigdecimal_rescale_to_25(BigDecimal *result, const BigDe
     return bigdecimal_rescale(result, value, 25, BIGDECIMAL_ROUND_HALF_EVEN);
 }
 
+static BigDecimalStatus bigdecimal_round_to_minus_5(BigDecimal *result, const BigDecimal *value)
+{
+    return bigdecimal_round(result, value, -5);
+}
+
 static BigDecimalStatus bigdecimal_exp_to_25(BigDecimal *result, const BigDecimal *value)
 {
     return bigdecimal_exp(result, value, 25, BIGDECIMAL_ROUND_HALF_EVEN);
@@ -610,6 +615,8 @@ void test_bigint_divmod_and_number_theory_failure_paths(void)
     TEST_ASSERT_TRUE(completed);
     assert_bigint_binary_failure_safety(bigint_gcd, a_text, b_text);
     assert_bigint_binary_failure_safety(bigint_lcm, a_text, b_text);
+    assert_bigint_binary_failure_safety(bigint_permutation, "100", "30");
+    assert_bigint_binary_failure_safety(bigint_combination, "100", "30");
     assert_bigint_unary_failure_safety(bigint_factorial, "50");
 }
 
@@ -859,6 +866,10 @@ void test_bigdecimal_arithmetic_failure_paths(void)
     assert_bigdecimal_unary_failure_safety(bigdecimal_abs, "-12345678901234567890.25");
     assert_bigdecimal_unary_failure_safety(bigdecimal_negate, a);
     assert_bigdecimal_unary_failure_safety(bigdecimal_rescale_to_25, a);
+    assert_bigdecimal_unary_failure_safety(bigdecimal_floor, a);
+    assert_bigdecimal_unary_failure_safety(bigdecimal_ceil, a);
+    assert_bigdecimal_unary_failure_safety(bigdecimal_trunc, a);
+    assert_bigdecimal_unary_failure_safety(bigdecimal_round_to_minus_5, a);
     assert_bigdecimal_unary_failure_safety(bigdecimal_exp_to_25, "1");
     assert_bigdecimal_unary_failure_safety(bigdecimal_ln_to_25, "2");
     assert_bigdecimal_binary_failure_safety(bigdecimal_add, a, b);
@@ -1069,7 +1080,14 @@ void test_evaluator_preserves_destination_on_every_allocation_failure(void)
         CalculatorStatus status;
         bool injected;
 
-        TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_parse("max(abs(pow(1.5;3));sign(-2);9) + factorial(2) + 7/28 + 1/3 + gcd(-48;18) + lcm(4;-6) + mod(-7;3) + isqrt(999)", &expression, &error));
+        TEST_ASSERT_EQUAL(
+            CALCULATOR_OK,
+            calculator_parse(
+                "max(abs(pow(1.5;3));sign(-2);9) + factorial(2) + 7/28 + 1/3 + "
+                "gcd(-48;18) + lcm(4;-6) + mod(-7;3) + npr(8;3) + ncr(8;3) + isqrt(999) + "
+                "round(1.2345;2) + floor(-1.2) + ceil(1.2) + trunc(-1.2)",
+                &expression,
+                &error));
         result = make_bigdecimal("7.77");
         calculator_context_init(&context);
 

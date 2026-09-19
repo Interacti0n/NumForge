@@ -197,9 +197,15 @@ static bool calculator_expression_independent(const CalculatorExpression *expres
                 case CALCULATOR_FUNCTION_SIGN:
                 case CALCULATOR_FUNCTION_MIN:
                 case CALCULATOR_FUNCTION_MAX:
+                case CALCULATOR_FUNCTION_FLOOR:
+                case CALCULATOR_FUNCTION_CEIL:
+                case CALCULATOR_FUNCTION_TRUNC:
+                case CALCULATOR_FUNCTION_ROUND:
                 case CALCULATOR_FUNCTION_GCD:
                 case CALCULATOR_FUNCTION_LCM:
                 case CALCULATOR_FUNCTION_MOD:
+                case CALCULATOR_FUNCTION_NPR:
+                case CALCULATOR_FUNCTION_NCR:
                 case CALCULATOR_FUNCTION_ISQRT:
                     break;
                 default:

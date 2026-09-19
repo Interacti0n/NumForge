@@ -53,7 +53,7 @@ optional leading sign and digits only.
 | Status text | `bigint_status_to_string` |
 | Comparison and predicates | `bigint_compare`, `bigint_is_zero`, `bigint_is_one`, `bigint_is_negative`, `bigint_is_even`, `bigint_is_odd` |
 | Arithmetic | `bigint_abs`, `bigint_negate`, `bigint_add`, `bigint_sub`, `bigint_mul`, `bigint_div`, `bigint_mod`, `bigint_div_mod`, `bigint_pow` |
-| Number theory | `bigint_gcd`, `bigint_lcm`, `bigint_factorial`, `bigint_isqrt`, `bigint_is_probable_prime`, `bigint_is_perfect_square` |
+| Number theory | `bigint_gcd`, `bigint_lcm`, `bigint_factorial`, `bigint_permutation`, `bigint_combination`, `bigint_isqrt`, `bigint_is_probable_prime`, `bigint_is_perfect_square` |
 | Bit operations | `bigint_and`, `bigint_or`, `bigint_xor`, `bigint_not`, `bigint_shift_left`, `bigint_shift_right` |
 
 Division truncates toward zero and the remainder has the dividend's sign.
@@ -63,6 +63,11 @@ factorial input to 100000. AND, OR, and XOR accept only non-negative values;
 perfect-square checks return `BigIntStatus` and write their boolean answer
 through an output pointer, so allocation failure cannot be confused with a
 valid `false` result.
+
+`bigint_permutation` computes nPr as a falling product and
+`bigint_combination` computes nCr with exact division at each step, avoiding
+factorial-sized temporaries. Both require `0 <= r <= n`, support aliasing, and
+preserve the destination on failure.
 
 `bigint_isqrt` computes floor(sqrt(value)), accepts zero and rejects negative
 input with `BIGINT_NEGATIVE_ARGUMENT`. Output/input aliasing is supported.
@@ -86,7 +91,7 @@ retain unnecessary trailing zeroes.
 | Status text | `bigdecimal_status_to_string` |
 | Comparison and predicates | `bigdecimal_compare`, `bigdecimal_is_zero`, `bigdecimal_is_negative`, `bigdecimal_is_integer`, `bigdecimal_sign`, `bigdecimal_min`, `bigdecimal_max` |
 | Exact arithmetic | `bigdecimal_abs`, `bigdecimal_negate`, `bigdecimal_add`, `bigdecimal_sub`, `bigdecimal_mul`, `bigdecimal_pow` |
-| Rounded arithmetic | `bigdecimal_rescale`, `bigdecimal_div`, `bigdecimal_div_significant`, `bigdecimal_div_exact_or_significant` |
+| Rounded arithmetic | `bigdecimal_rescale`, `bigdecimal_floor`, `bigdecimal_ceil`, `bigdecimal_trunc`, `bigdecimal_round`, `bigdecimal_div`, `bigdecimal_div_significant`, `bigdecimal_div_exact_or_significant` |
 | Real roots | `bigdecimal_sqrt`, `bigdecimal_cbrt`, `bigdecimal_root` |
 | Exponential and logarithmic | `bigdecimal_exp`, `bigdecimal_ln`, `bigdecimal_log10`, `bigdecimal_log` |
 | Trigonometric | `bigdecimal_sin`, `bigdecimal_cos`, `bigdecimal_tan`, `bigdecimal_asin`, `bigdecimal_acos`, `bigdecimal_atan` |
@@ -105,6 +110,9 @@ keeps decimal places; a negative scale rounds to tens, hundreds, and so on.
 - `bigdecimal_sign` writes -1/0/1; `is_integer` writes a bool. Neither allocates.
 - `bigdecimal_min`/`max` copy a selected operand without rounding; ties select
   the first operand. Aliasing is supported.
+- `bigdecimal_floor`, `ceil`, and `trunc` round to an integer in the named
+  direction. `bigdecimal_round` uses half-even at a requested decimal-place
+  count; negative places select tens, hundreds, and larger powers of ten.
 - `bigdecimal_pow` takes a non-negative BigInt exponent and computes exactly;
   `0^0 = 1`. Negative and fractional exponents are not implemented.
 - `bigdecimal_div_significant` rounds to a positive significant-digit count.
@@ -222,15 +230,17 @@ return `CALCULATOR_VALUE_TOO_LARGE` instead of risking process stack overflow.
 ### Named calls
 
 Names contain lowercase ASCII letters only and require parentheses. Arguments
-use semicolons, not commas: `pow(1,5;2)` is `2.25`. The registry recognizes 24
+use semicolons, not commas: `pow(1,5;2)` is `2.25`. The registry recognizes 30
 names; recognition is separate from numerical implementation:
 
 | Calls | Current calculation support |
 | --- | --- |
 | `pow(x;y)`, `factorial(n)` | Active aliases of `x^y` and `n!`, with identical domains and limits. |
 | `abs(x)`, `sign(x)`, `min(a;b;…)`, `max(a;b;…)` | Active: absolute value, sign −1/0/1 and minimum/maximum of at least two arguments. |
+| `floor(x)`, `ceil(x)`, `trunc(x)`, `round(x)`, `round(x;n)` | Active decimal rounding. `round` uses half-even, defaults to zero places, and accepts a signed integer n; negative n selects tens, hundreds, and larger powers. |
 | `gcd(a;b)`, `lcm(a;b)` | Integer arguments; non-negative GCD/LCM. `gcd(0;0) = 0`; LCM is zero if either argument is zero. |
 | `mod(a;b)` | Integer remainder after division truncating toward zero; nonzero remainder has the dividend's sign. `mod(-7;3) = -1`; zero divisor is an error. |
+| `npr(n;r)`, `ncr(n;r)` | Exact permutations and combinations without repetition. Both arguments are integers and require `0 ≤ r ≤ n`; `npr(5;2) = 20`, `ncr(5;2) = 10`. |
 | `isqrt(n)` | Floor of the square root of a non-negative integer: `isqrt(15) = 3`. |
 | `sqrt(x)`, `cbrt(x)`, `root(x;n)` | Active real roots; `√(x)` aliases `sqrt(x)`. Square roots require x ≥ 0; cube roots accept negative x. `root` accepts integer n from 1 to 10000, and negative x only for odd n. |
 | `exp(x)`, `ln(x)`, `log(x)`, `log(x;b)` | Active. `ln` uses base e, one-argument `log` uses base 10, and the second argument selects an arbitrary base. Logarithm inputs must be positive; a custom base must be positive and not 1. |
@@ -241,10 +251,11 @@ Wrong arity returns `wrong number of arguments` at the function name; unknown
 names return `invalid token`. Nesting and implicit products work, for
 example `pow(2;factorial(3))` and `2pow(2;3)`.
 
-Basic calls accept all finite decimal values without introducing rounding;
+Selection calls accept all finite decimal values without introducing rounding;
 their arguments follow the normal working-precision policy. Min/max evaluate
 every argument left to right and propagate all errors. Ties retain the first
-value. Negative zero has sign 0.
+value. Negative zero has sign 0. Named rounding calls deliberately change the
+value but do not depend on the calculator's display precision.
 
 Roots first preserve exact finite decimal results, even when they exceed working
 precision. Other roots are rounded to max(34, N+4) significant digits with the

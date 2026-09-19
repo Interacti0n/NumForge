@@ -9,8 +9,9 @@
 ------------------------------------------------------------------------------------------------------------------------------
     Number-theory functions for BigInt.
 
-    GCD, LCM, and factorial are kept together because they compose the public
-    arithmetic API while sharing the same ownership and budget conventions.
+    GCD, LCM, factorial, permutations, and combinations are kept together
+    because they compose the public arithmetic API while sharing the same
+    ownership and budget conventions.
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
@@ -236,4 +237,141 @@ BigIntStatus bigint_factorial( /*Calculate factorial of a BigInt (n!)*/
 
     free(temporary.limbs);
     return status;
+}
+
+/* Compute a falling product directly. For combinations, divide by each next
+ * factor of r! immediately; the recurrence is exact at every step and avoids
+ * constructing either n! or r! as a large temporary. */
+static BigIntStatus bigint_combinatorial(
+    BigInt *result,
+    const BigInt *n,
+    const BigInt *r,
+    bool combination
+)
+{
+    BigInt temporary = {0};
+    BigInt effective_r = {0};
+    BigInt factor = {0};
+    BigInt counter = {0};
+    BigInt one = {0};
+    BigInt quotient = {0};
+    BigInt remainder = {0};
+    BigInt difference = {0};
+    BigIntStatus status;
+
+    if (result == NULL || n == NULL || r == NULL)
+    {
+        return BIGINT_NULL_ARGUMENT;
+    }
+
+    if (n->is_negative || r->is_negative)
+    {
+        return BIGINT_NEGATIVE_ARGUMENT;
+    }
+
+    if (bigint_compare(r, n) > 0)
+    {
+        return BIGINT_INVALID_ARGUMENT;
+    }
+
+    status = bigint_set_uint64(&temporary, 1U);
+
+    if (status == BIGINT_OK)
+    {
+        status = bigint_set_uint64(&one, 1U);
+    }
+
+    if (status == BIGINT_OK)
+    {
+        status = bigint_sub(&difference, n, r);
+    }
+
+    if (status == BIGINT_OK)
+    {
+        const BigInt *selected_r = combination && bigint_compare(r, &difference) > 0
+                                       ? &difference
+                                       : r;
+        status = bigint_copy(&effective_r, selected_r);
+    }
+
+    if (status == BIGINT_OK)
+    {
+        status = bigint_sub(&factor, n, &effective_r);
+    }
+
+    while (status == BIGINT_OK && bigint_compare(&counter, &effective_r) < 0)
+    {
+        if (!numforge_budget_check())
+        {
+            status = BIGINT_OUT_OF_MEMORY;
+            break;
+        }
+
+        status = bigint_add(&factor, &factor, &one);
+
+        if (status == BIGINT_OK)
+        {
+            status = bigint_add(&counter, &counter, &one);
+        }
+
+        if (status == BIGINT_OK)
+        {
+            status = bigint_mul(&temporary, &temporary, &factor);
+        }
+
+        if (status == BIGINT_OK && combination)
+        {
+            status = bigint_div_mod(
+                &quotient,
+                &remainder,
+                &temporary,
+                &counter);
+
+            if (status == BIGINT_OK && !bigint_is_zero(&remainder))
+            {
+                status = BIGINT_INVALID_ARGUMENT;
+            }
+
+            if (status == BIGINT_OK)
+            {
+                BigInt swap = temporary;
+                temporary = quotient;
+                quotient = swap;
+            }
+        }
+    }
+
+    if (status == BIGINT_OK)
+    {
+        temporary.is_negative = false;
+        bigint_commit(result, &temporary);
+    }
+
+    free(temporary.limbs);
+    free(effective_r.limbs);
+    free(factor.limbs);
+    free(counter.limbs);
+    free(one.limbs);
+    free(quotient.limbs);
+    free(remainder.limbs);
+    free(difference.limbs);
+    return status;
+}
+
+BigIntStatus bigint_permutation(
+    BigInt *result,
+    const BigInt *n,
+    const BigInt *r
+)
+{
+    return bigint_combinatorial(result, n, r, false);
+}
+
+BigIntStatus bigint_combination(
+    BigInt *result,
+    const BigInt *n,
+    const BigInt *r
+)
+{
+    return bigint_combinatorial(result, n, r, true);
 }

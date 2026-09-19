@@ -95,8 +95,14 @@ for (const lang of ['sk', 'en']) {
         });
         test('function groups, aliases and trigonometry', async ({ page }, testInfo) => {
             await expect(page.locator('details.function-group')).toHaveCount(4);
-            await expect(page.locator('[data-function]')).toHaveCount(24);
+            await expect(page.locator('[data-function]')).toHaveCount(30);
             await expect(page.locator('[data-function]:disabled')).toHaveCount(0);
+            await page.locator('#function-tab-0').click();
+            await page.locator('[data-function="round"]').click();
+            await expect(page.locator('#expression')).toHaveValue('round()');
+            await page.locator('#expression').fill('round(12.345;2)');
+            await page.locator('#expression').press('Enter');
+            await expect(page.locator('#result')).toHaveText('12.34');
             const powers = page.locator('details').filter({ has: page.locator('[data-function="pow"]') });
             await page.locator('#function-tab-2').focus();
             await page.keyboard.press('Enter');
@@ -155,7 +161,8 @@ for (const lang of ['sk', 'en']) {
             await page.locator('#function-tab-1').click();
             for (const [name, args, expected] of [
                 ['gcd', '-48;18)', '6'], ['lcm', '-4;6)', '12'],
-                ['mod', '-7;3)', '-1'], ['isqrt', '18446744073709551616)', '4294967296']
+                ['mod', '-7;3)', '-1'], ['npr', '5;2)', '20'], ['ncr', '5;2)', '10'],
+                ['isqrt', '18446744073709551616)', '4294967296']
             ]) {
                 await page.locator('[data-action=clear]').click();
                 await page.locator(`[data-function="${name}"]`).click();

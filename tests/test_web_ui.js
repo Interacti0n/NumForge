@@ -159,6 +159,7 @@ async function testErrorContext(english) {
     const cases = [
         ['π/0', 'division by zero', 2, 'π⟦/⟧0'],
         ['sqrt(-1)', 'invalid argument', 1, '⟦sqrt⟧(-1)'],
+        ['round(1;1.5)', 'invalid argument', 1, '⟦round⟧(1;1.5)'],
         ['2+', 'syntax error', 3, english ? 'at the end of the expression' : 'na konci výrazu'],
         ['😀+?', 'invalid token', 3, '😀+⟦?⟧'],
     ];
@@ -171,6 +172,7 @@ async function testErrorContext(english) {
         assert.ok(ui.element('#result').textContent.includes(excerpt));
         assert.ok(ui.element('#result').textContent.includes(`${english ? 'position' : 'pozícia'} ${column}`));
         if (input === 'sqrt(-1)') assert.ok(ui.element('#result').textContent.includes('x ≥ 0'));
+        if (input === 'round(1;1.5)') assert.ok(ui.element('#result').textContent.includes('round(x;n)'));
     }
 }
 

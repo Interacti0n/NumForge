@@ -36,15 +36,17 @@ The public header defines the component's stable 1.x surface:
   `bigdecimal_is_negative`;
 - exact arithmetic: absolute value, negation, addition, subtraction, and
   multiplication;
-- controlled inexact operations: division, rescaling, real roots, exponential,
-  logarithmic, and trigonometric functions with explicit precision and rounding.
+- controlled inexact operations: division, rescaling, named integer/decimal-place
+  rounding, real roots, exponential, logarithmic, and trigonometric functions
+  with explicit precision and rounding.
 
 All listed operations are implemented. Every mutating operation computes into
 a temporary value and commits only on success, so its destination is unchanged
 after an error.
 
 Additive APIs also provide exact integer conversions, sign/integer predicates,
-min/max, integer powers, real roots, significant and exact-first division,
+min/max, floor/ceil/trunc/half-even round, integer powers, real roots,
+significant and exact-first division,
 constants and readable formatting; see [API.md](API.md#additional-numeric-operations).
 The calculator calls public APIs without accessing the representation.
 

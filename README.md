@@ -165,8 +165,12 @@ by these application policies. Cancellation is cooperative, not a hard real-time
 process-kill guarantee.
 Named calls use parentheses and semicolons: `pow(2;3)` and `factorial(5)`
 already calculate through the existing operators. `abs`, `sign`, `min` and `max`
-also calculate using decimal values without additional rounding. Integer-valued
-arguments support `gcd`, `lcm`, `mod` and floor square root `isqrt`. Real roots
+also calculate using decimal values without additional rounding. `floor`, `ceil`
+and `trunc` round to an integer; `round(x)` and `round(x;n)` use half-even at
+zero or `n` decimal places, including negative `n` for tens and larger powers.
+Integer-valued arguments support `gcd`, `lcm`, `mod` and floor square root
+`isqrt`. `npr(n;r)` and `ncr(n;r)` provide exact permutations and combinations
+for integers satisfying `0 ≤ r ≤ n`. Real roots
 `sqrt`/`√`, `cbrt` and `root(x;n)` preserve exact finite roots and otherwise use
 working precision (34 significant digits by default). Trigonometric and inverse
 trigonometric calls use the shared RAD/DEG selector; explicit `radians(x)` and

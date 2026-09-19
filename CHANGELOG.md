@@ -5,6 +5,14 @@ All notable changes to NumForge are documented in this file. The project uses
 
 ## Unreleased
 
+- Add public BigDecimal `floor`, `ceil`, `trunc`, and half-even `round`
+  operations. Enable matching calculator calls, including optional signed
+  decimal places for `round(x;n)`, with bilingual controls and documentation.
+
+- Add exact public BigInt permutation and combination operations without
+  factorial intermediates. Enable calculator `npr(n;r)` and `ncr(n;r)` calls
+  for non-negative integer arguments satisfying `r <= n`.
+
 - Accelerate decimal conversion with native 128-by-64 division on GCC/Clang and
   MSVC x64 while retaining the portable fallback, and avoid a redundant initial
   coefficient conversion for provably fixed-notation BigDecimal values. Add a

@@ -10,15 +10,19 @@
 static int public_api_checks(void)
 {
     BigDecimal *a = bigdecimal_create(), *b = bigdecimal_create();
-    BigInt *n = bigint_create();
+    BigInt *n = bigint_create(), *r = bigint_create();
     char *text = NULL;
     bool integer = false;
     int sign = 0, result = 1;
-    if (a == NULL || b == NULL || n == NULL) goto cleanup;
+    if (a == NULL || b == NULL || n == NULL || r == NULL) goto cleanup;
     if (bigint_set_string(n, "3") != BIGINT_OK ||
         bigdecimal_set_string(a, "1.5") != BIGDECIMAL_OK ||
         bigdecimal_pow(a, a, n) != BIGDECIMAL_OK ||
         bigdecimal_root(a, a, 3, 34, BIGDECIMAL_ROUND_HALF_EVEN) != BIGDECIMAL_OK ||
+        bigdecimal_floor(b, a) != BIGDECIMAL_OK ||
+        bigdecimal_ceil(b, a) != BIGDECIMAL_OK ||
+        bigdecimal_trunc(b, a) != BIGDECIMAL_OK ||
+        bigdecimal_round(b, a, 1) != BIGDECIMAL_OK ||
         bigdecimal_format(a, -1, BIGDECIMAL_ROUND_HALF_EVEN, &text) != BIGDECIMAL_OK ||
         strcmp(text, "1.5") != 0) goto cleanup;
     free(text); text = NULL;
@@ -46,6 +50,16 @@ static int public_api_checks(void)
         bigdecimal_div_exact_or_significant(b, a, a, 20, BIGDECIMAL_ROUND_HALF_EVEN) != BIGDECIMAL_OK ||
         bigdecimal_cbrt(b, b, 34, BIGDECIMAL_ROUND_HALF_EVEN) != BIGDECIMAL_OK ||
         bigdecimal_to_string(b, &text) != BIGDECIMAL_OK || strcmp(text, "1") != 0) goto cleanup;
+    free(text); text = NULL;
+    if (bigint_set_string(n, "5") != BIGINT_OK ||
+        bigint_set_string(r, "2") != BIGINT_OK ||
+        bigint_permutation(n, n, r) != BIGINT_OK ||
+        (text = bigint_to_string(n)) == NULL || strcmp(text, "20") != 0) goto cleanup;
+    free(text); text = NULL;
+    if (bigint_set_string(n, "5") != BIGINT_OK ||
+        bigint_combination(n, n, r) != BIGINT_OK ||
+        (text = bigint_to_string(n)) == NULL || strcmp(text, "10") != 0) goto cleanup;
+    free(text); text = NULL;
     if (!numforge_budget_begin(5000, 1024, 512)) goto cleanup;
     if (!numforge_budget_check() || numforge_budget_failure() != NUMFORGE_BUDGET_OK)
     {
@@ -55,7 +69,7 @@ static int public_api_checks(void)
     numforge_budget_end();
     result = 0;
 cleanup:
-    free(text); bigint_destroy(n); bigdecimal_destroy(a); bigdecimal_destroy(b);
+    free(text); bigint_destroy(n); bigint_destroy(r); bigdecimal_destroy(a); bigdecimal_destroy(b);
     return result;
 }
 #endif

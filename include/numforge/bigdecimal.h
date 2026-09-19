@@ -157,7 +157,10 @@ BigDecimalStatus bigdecimal_mul(
 
     A positive target scale keeps digits after the decimal point; a negative
     scale rounds to powers of ten. Stored results are normalized, so trailing
-    zeroes are not retained. Division by zero leaves result unchanged.
+    zeroes are not retained. floor, ceil, and trunc round to an integer;
+    round uses half-even at the requested number of decimal places. Negative
+    places round to tens, hundreds, and larger powers of ten. Division by zero
+    leaves result unchanged.
 
     Implementation: src/bigdecimal/division.c
 ------------------------------------------------------------------------------------------------------------------------------
@@ -167,6 +170,23 @@ BigDecimalStatus bigdecimal_rescale(
     const BigDecimal *value,
     int64_t target_scale,
     BigDecimalRoundingMode rounding
+);
+BigDecimalStatus bigdecimal_floor(
+    BigDecimal *result,
+    const BigDecimal *value
+);
+BigDecimalStatus bigdecimal_ceil(
+    BigDecimal *result,
+    const BigDecimal *value
+);
+BigDecimalStatus bigdecimal_trunc(
+    BigDecimal *result,
+    const BigDecimal *value
+);
+BigDecimalStatus bigdecimal_round(
+    BigDecimal *result,
+    const BigDecimal *value,
+    int64_t places
 );
 BigDecimalStatus bigdecimal_div(
     BigDecimal *result,

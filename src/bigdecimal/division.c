@@ -454,6 +454,39 @@ BigDecimalStatus bigdecimal_rescale(
     return status;
 }
 
+BigDecimalStatus bigdecimal_floor(
+    BigDecimal *result,
+    const BigDecimal *value
+)
+{
+    return bigdecimal_rescale(result, value, 0, BIGDECIMAL_ROUND_FLOOR);
+}
+
+BigDecimalStatus bigdecimal_ceil(
+    BigDecimal *result,
+    const BigDecimal *value
+)
+{
+    return bigdecimal_rescale(result, value, 0, BIGDECIMAL_ROUND_CEILING);
+}
+
+BigDecimalStatus bigdecimal_trunc(
+    BigDecimal *result,
+    const BigDecimal *value
+)
+{
+    return bigdecimal_rescale(result, value, 0, BIGDECIMAL_ROUND_TOWARD_ZERO);
+}
+
+BigDecimalStatus bigdecimal_round(
+    BigDecimal *result,
+    const BigDecimal *value,
+    int64_t places
+)
+{
+    return bigdecimal_rescale(result, value, places, BIGDECIMAL_ROUND_HALF_EVEN);
+}
+
 BigDecimalStatus bigdecimal_div(
     BigDecimal *result,
     const BigDecimal *a,

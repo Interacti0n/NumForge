@@ -124,11 +124,16 @@ Variables remain outside the grammar. The function registry recognizes the
 names and arities listed in [API.md](API.md#named-calls). `pow` and `factorial` reuse existing operator paths.
 `abs`, `sign`, `min` and `max` use decimal operations directly. Min/max retain
 only the selected and current values, evaluating arguments left to right.
+`floor`, `ceil`, `trunc`, and `round` call the corresponding public BigDecimal
+operations. `round(x)` defaults to zero places; its optional second argument is
+an exact signed 64-bit integer and may be negative. Midpoints use half-even.
 
 `gcd`, `lcm` and `mod` reuse BigInt operations, accepting signed integer-valued
 arguments (including `12.00`). `mod` is a truncating remainder, not Euclidean
 modulo. `isqrt` requires a non-negative integer and uses decreasing integer
 Newton iteration from a power-of-two upper bound; it stops at the floor root.
+`npr` and `ncr` reuse the public exact combinatorics operations and require
+non-negative integers with `r <= n`.
 No floating-point conversions or output-precision rounding are used. Fractional
 evaluated arguments are rejected; prior arithmetic still follows the working
 precision policy. Temporaries are cleaned up on domain, allocation and budget
