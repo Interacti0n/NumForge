@@ -48,6 +48,10 @@ recurring means, single values, result aliasing, invalid/null sequences and
 every representative allocation-failure point. Calculator tests cover arity,
 nested expressions and display-precision rounding of recurring means.
 
+Statistics tests cover population versus sample denominators, singleton
+domains, directed rounding, result aliasing, very large closely spaced values,
+calculator arity, cache precision and deterministic allocation failures.
+
 `constants_tests` checks stored-value rounding, directed rounding, invalid
 arguments, destination preservation, and dynamically calculated 520-digit π,
 e, and φ against the complete stored prefixes. Calculator contract tests also

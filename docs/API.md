@@ -92,6 +92,7 @@ retain unnecessary trailing zeroes.
 | Comparison and predicates | `bigdecimal_compare`, `bigdecimal_is_zero`, `bigdecimal_is_negative`, `bigdecimal_is_integer`, `bigdecimal_sign`, `bigdecimal_min`, `bigdecimal_max` |
 | Exact arithmetic | `bigdecimal_abs`, `bigdecimal_negate`, `bigdecimal_add`, `bigdecimal_sub`, `bigdecimal_mul`, `bigdecimal_pow` |
 | Sequence aggregates | `bigdecimal_sum`, `bigdecimal_product`, `bigdecimal_mean` |
+| Statistics | `bigdecimal_variance_population`, `bigdecimal_standard_deviation_population`, `bigdecimal_standard_deviation_sample` |
 | Rounded arithmetic | `bigdecimal_rescale`, `bigdecimal_floor`, `bigdecimal_ceil`, `bigdecimal_trunc`, `bigdecimal_round`, `bigdecimal_div`, `bigdecimal_div_significant`, `bigdecimal_div_exact_or_significant` |
 | Real roots | `bigdecimal_sqrt`, `bigdecimal_cbrt`, `bigdecimal_root` |
 | Exponential and logarithmic | `bigdecimal_exp`, `bigdecimal_ln`, `bigdecimal_log10`, `bigdecimal_log` |
@@ -120,6 +121,10 @@ keeps decimal places; a negative scale rounds to tens, hundreds, and so on.
   exactly. `bigdecimal_mean` forms the exact sum first, then preserves a
   terminating quotient exactly or rounds a recurring quotient to the requested
   positive significant-digit count. All three accept output/input aliasing.
+- Population variance and standard deviation divide by `n` and accept one or
+  more values. Sample standard deviation divides by `n−1` and requires at least
+  two values. Exact sums and squared sums prevent cancellation from a rounded
+  intermediate mean; final recurring division and roots use explicit precision.
 - `bigdecimal_div_significant` rounds to a positive significant-digit count.
   `bigdecimal_div_exact_or_significant` preserves terminating quotients exactly,
   even beyond that count, and rounds only non-terminating quotients.
@@ -235,7 +240,7 @@ return `CALCULATOR_VALUE_TOO_LARGE` instead of risking process stack overflow.
 ### Named calls
 
 Names contain lowercase ASCII letters only and require parentheses. Arguments
-use semicolons, not commas: `pow(1,5;2)` is `2.25`. The registry recognizes 33
+use semicolons, not commas: `pow(1,5;2)` is `2.25`. The registry recognizes 36
 names; recognition is separate from numerical implementation:
 
 | Calls | Current calculation support |
@@ -243,6 +248,7 @@ names; recognition is separate from numerical implementation:
 | `pow(x;y)`, `factorial(n)` | Active aliases of `x^y` and `n!`, with identical domains and limits. |
 | `abs(x)`, `sign(x)`, `min(a;b;…)`, `max(a;b;…)` | Active: absolute value, sign −1/0/1 and minimum/maximum of at least two arguments. |
 | `sum(a;b;…)`, `product(a;b;…)`, `mean(a;b;…)` | One to 256 decimal arguments. Sum and product are exact. Mean divides the exact sum by the count, preserving a terminating decimal or rounding a recurring result to working precision. |
+| `variance(a;b;…)`, `stdevp(a;b;…)`, `stdev(a;b;…)` | Population variance and standard deviation use denominator `n` and accept at least one value. Sample `stdev` uses `n−1` and requires at least two values. |
 | `floor(x)`, `ceil(x)`, `trunc(x)`, `round(x)`, `round(x;n)` | Active decimal rounding. `round` uses half-even, defaults to zero places, and accepts a signed integer n; negative n selects tens, hundreds, and larger powers. |
 | `gcd(a;b)`, `lcm(a;b)` | Integer arguments; non-negative GCD/LCM. `gcd(0;0) = 0`; LCM is zero if either argument is zero. |
 | `mod(a;b)` | Integer remainder after division truncating toward zero; nonzero remainder has the dividend's sign. `mod(-7;3) = -1`; zero divisor is an error. |

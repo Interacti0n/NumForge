@@ -87,6 +87,11 @@ and aggregate it exactly. `bigdecimal_mean` first forms the exact sum, then
 preserves a terminating quotient or rounds a recurring quotient using the
 caller's significant-digit count and rounding mode.
 
+`bigdecimal_variance_population` and
+`bigdecimal_standard_deviation_population` divide by the population size `n`.
+`bigdecimal_standard_deviation_sample` divides by `n−1` and requires at least
+two values. Their sufficient statistics are exact before final division/root.
+
 `bigdecimal_set_constant` returns the complete stored 500-decimal-place π, e,
 or φ approximation. Use `bigdecimal_set_constant_significant` when the caller
 controls significant digits and rounding; requests above 500 digits are

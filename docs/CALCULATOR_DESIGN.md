@@ -129,6 +129,11 @@ only the selected and current values, evaluating arguments left to right.
 delegate aggregation to the public BigDecimal API. Sum and product are exact.
 Mean accumulates exactly and performs one exact-first division by the count;
 only a recurring quotient depends on working precision.
+`variance` and `stdevp` use population denominator `n`; `stdev` uses sample
+denominator `n−1` and requires two values. The library evaluates
+`n*sum(d²)-sum(d)²` exactly for `d=x−x₀`, avoiding cancellation caused by a
+rounded mean and avoiding huge squares from a shared offset.
+Standard deviation uses guarded internal variance before the final root.
 `floor`, `ceil`, `trunc`, and `round` call the corresponding public BigDecimal
 operations. `round(x)` defaults to zero places; its optional second argument is
 an exact signed 64-bit integer and may be negative. Midpoints use half-even.

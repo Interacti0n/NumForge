@@ -698,7 +698,7 @@ static const char NUMFORGE_WEB_PAGE_FUNCTIONS_2[] =
     "<button type=\"button\" data-function=\"log\" data-insert=\"log(\" title=\"Dekadický alebo všeobecný logaritmus\">log</button>\n"
     "</div></details>\n";
 
-static const char NUMFORGE_WEB_PAGE_FUNCTIONS_3[] =
+static const char NUMFORGE_WEB_PAGE_FUNCTIONS_4[] =
     "<details class=\"function-group\"><summary>Uhly a goniometria</summary>\n"
     "<div class=\"keypad functions\">\n"
     "<button type=\"button\" data-function=\"sin\" data-insert=\"sin(\">sin</button>\n"
@@ -712,6 +712,13 @@ static const char NUMFORGE_WEB_PAGE_FUNCTIONS_3[] =
     "</div></details>\n"
     "<p style=\"color:#adb5c3;font-size:.9rem\">Argumenty oddeľuj ; — napr. pow(2;3).</p>\n"
     "<a class=\"guide-link\" href=\"/api?lang=sk\">Ako funguje výpočet a API →</a>\n";
+
+static const char NUMFORGE_WEB_PAGE_FUNCTIONS_3[] =
+    "<details class=\"function-group\"><summary>Štatistika</summary><div class=\"keypad functions\">\n"
+    "<button type=\"button\" data-function=\"variance\" data-insert=\"variance(\">variance</button>\n"
+    "<button type=\"button\" data-function=\"stdevp\" data-insert=\"stdevp(\">stdevp</button>\n"
+    "<button type=\"button\" data-function=\"stdev\" data-insert=\"stdev(\">stdev</button>\n"
+    "</div></details>\n";
 
 static const char NUMFORGE_WEB_PAGE_EN_FUNCTIONS_0[] =
     "<details class=\"function-group\"><summary>Basic</summary><div class=\"keypad functions\">\n"
@@ -751,7 +758,7 @@ static const char NUMFORGE_WEB_PAGE_EN_FUNCTIONS_2[] =
     "<button type=\"button\" data-function=\"log\" data-insert=\"log(\" title=\"Common or arbitrary-base logarithm\">log</button>\n"
     "</div></details>\n";
 
-static const char NUMFORGE_WEB_PAGE_EN_FUNCTIONS_3[] =
+static const char NUMFORGE_WEB_PAGE_EN_FUNCTIONS_4[] =
     "<details class=\"function-group\"><summary>Angles and trigonometry</summary>\n"
     "<div class=\"keypad functions\">\n"
     "<button type=\"button\" data-function=\"sin\" data-insert=\"sin(\">sin</button>\n"
@@ -765,6 +772,13 @@ static const char NUMFORGE_WEB_PAGE_EN_FUNCTIONS_3[] =
     "</div></details>\n"
     "<p style=\"color:#adb5c3;font-size:.9rem\">Separate arguments with ; — e.g. pow(2;3).</p>\n"
     "<a class=\"guide-link\" href=\"/api?lang=en\">How calculation and the API work →</a>\n";
+
+static const char NUMFORGE_WEB_PAGE_EN_FUNCTIONS_3[] =
+    "<details class=\"function-group\"><summary>Statistics</summary><div class=\"keypad functions\">\n"
+    "<button type=\"button\" data-function=\"variance\" data-insert=\"variance(\">variance</button>\n"
+    "<button type=\"button\" data-function=\"stdevp\" data-insert=\"stdevp(\">stdevp</button>\n"
+    "<button type=\"button\" data-function=\"stdev\" data-insert=\"stdev(\">stdev</button>\n"
+    "</div></details>\n";
 
 static const char NUMFORGE_FUNCTION_STYLE[] =
     "<style>\n"
@@ -1060,6 +1074,9 @@ static const char NUMFORGE_WEB_PAGE_SCRIPT_HELP_MORE[] =
     "        exp: [\"eˣ\",\"exp(x)\",\"Eulerovo číslo umocnené na x.\",\"Euler’s number raised to x.\"],\n"
     "        ln: [\"ln\",\"ln(x)\",\"Prirodzený logaritmus; x > 0.\",\"Natural logarithm; x > 0.\"],\n"
     "        log: [\"log\",\"log(x) / log(x;y)\",\"Základ 10 alebo y; x > 0, y > 0 a y ≠ 1.\",\"Base 10 or y; x > 0, y > 0 and y ≠ 1.\"],\n"
+    "        variance: [\"variance\",\"variance(x;y;...)\",\"Populačný rozptyl; 1 až 256 hodnôt.\",\"Population variance; 1 to 256 values.\"],\n"
+    "        stdevp: [\"stdevp\",\"stdevp(x;y;...)\",\"Populačná smerodajná odchýlka; delí n.\",\"Population standard deviation; divides by n.\"],\n"
+    "        stdev: [\"stdev\",\"stdev(x;y;...)\",\"Výberová smerodajná odchýlka; aspoň 2 hodnoty, delí n−1.\",\"Sample standard deviation; at least 2 values, divides by n−1.\"],\n"
     "        sin: [\"sin\",\"sin(x)\",\"Sínus; vstup podľa RAD/DEG.\",\"Sine; input follows RAD/DEG.\"],\n"
     "        cos: [\"cos\",\"cos(x)\",\"Kosínus; vstup podľa RAD/DEG.\",\"Cosine; input follows RAD/DEG.\"],\n"
     "        tan: [\"tan\",\"tan(x)\",\"Tangens; RAD/DEG, nedefinovaný v póloch (90° + k·180°).\",\"Tangent; RAD/DEG, undefined at poles (90° + k·180°).\"],\n"
@@ -1442,6 +1459,7 @@ static const char *const NUMFORGE_WEB_PAGE[] =
     NUMFORGE_WEB_PAGE_FUNCTIONS_1,
     NUMFORGE_WEB_PAGE_FUNCTIONS_2,
     NUMFORGE_WEB_PAGE_FUNCTIONS_3,
+    NUMFORGE_WEB_PAGE_FUNCTIONS_4,
     NUMFORGE_WEB_PAGE_SCRIPT_START,
     NUMFORGE_WEB_PAGE_SCRIPT_START_CONT_1,
     NUMFORGE_WEB_PAGE_SCRIPT_HELP_DATA,
@@ -1470,6 +1488,7 @@ static const char *const NUMFORGE_WEB_PAGE_EN[] =
     NUMFORGE_WEB_PAGE_EN_FUNCTIONS_1,
     NUMFORGE_WEB_PAGE_EN_FUNCTIONS_2,
     NUMFORGE_WEB_PAGE_EN_FUNCTIONS_3,
+    NUMFORGE_WEB_PAGE_EN_FUNCTIONS_4,
     NUMFORGE_WEB_PAGE_SCRIPT_START,
     NUMFORGE_WEB_PAGE_SCRIPT_START_CONT_1,
     NUMFORGE_WEB_PAGE_SCRIPT_HELP_DATA,
@@ -1513,6 +1532,9 @@ static const char NUMFORGE_API_FUNCTIONS_SK[] =
     "<p><code>sum(a;b;…)</code> a <code>product(a;b;…)</code> počítajú presne; "
     "<code>mean(a;b;…)</code> delí presný súčet počtom hodnôt a prípadný periodický výsledok "
     "zaokrúhli pracovnou presnosťou. Každá funkcia prijíma 1 až 256 argumentov.</p>\n"
+    "<p><code>variance(a;b;…)</code> je populačný rozptyl a <code>stdevp(a;b;…)</code> populačná "
+    "smerodajná odchýlka; obe delia počtom hodnôt n. Výberové <code>stdev(a;b;…)</code> delí n−1 "
+    "a vyžaduje aspoň dve hodnoty. Medzivýpočty sú presné až po finálne delenie alebo odmocninu.</p>\n"
     "<p><code>floor(x)</code>, <code>ceil(x)</code> a <code>trunc(x)</code> vracajú celé číslo. "
     "<code>round(x)</code> zaokrúhľuje na celé číslo a <code>round(x;n)</code> na celé n desatinných miest "
     "pravidlom half-even; záporné n znamená desiatky, stovky a vyššie rády.</p>\n"
@@ -1556,6 +1578,9 @@ static const char NUMFORGE_API_FUNCTIONS_EN[] =
     "<p><code>sum(a;b;…)</code> and <code>product(a;b;…)</code> are exact; "
     "<code>mean(a;b;…)</code> divides the exact sum by the value count and rounds only a recurring "
     "result to working precision. Each function accepts 1 to 256 arguments.</p>\n"
+    "<p><code>variance(a;b;…)</code> is population variance and <code>stdevp(a;b;…)</code> is population "
+    "standard deviation; both divide by the value count n. Sample <code>stdev(a;b;…)</code> divides by "
+    "n−1 and requires at least two values. Intermediates stay exact until final division or root.</p>\n"
     "<p><code>floor(x)</code>, <code>ceil(x)</code>, and <code>trunc(x)</code> return an integer. "
     "<code>round(x)</code> rounds to an integer and <code>round(x;n)</code> to integer n decimal places using "
     "half-even; negative n selects tens, hundreds, and larger powers of ten.</p>\n"
@@ -1785,6 +1810,9 @@ static const char NUMFORGE_API_PAGE_C_LIBRARY[] =
     "<code>bigdecimal_add</code>, <code>bigdecimal_sub</code>, <code>bigdecimal_mul</code></li>\n"
     "  <li>Agregácie: presné <code>bigdecimal_sum</code> a <code>bigdecimal_product</code>; "
     "<code>bigdecimal_mean</code> s významnými číslicami a režimom zaokrúhlenia</li>\n"
+    "  <li>Štatistika: <code>bigdecimal_variance_population</code>, "
+    "<code>bigdecimal_standard_deviation_population</code>, "
+    "<code>bigdecimal_standard_deviation_sample</code></li>\n"
     "  <li>Ďalšie: konverzie, <code>bigdecimal_pow</code>, <code>bigdecimal_sqrt</code>, "
     "<code>bigdecimal_cbrt</code>, <code>bigdecimal_root</code>, <code>bigdecimal_exp</code>, "
     "<code>bigdecimal_ln</code>, <code>bigdecimal_log10</code>, <code>bigdecimal_log</code>, "
@@ -2084,6 +2112,9 @@ static const char NUMFORGE_API_PAGE_EN_C_LIBRARY[] =
     "<code>bigdecimal_add</code>, <code>bigdecimal_sub</code>, <code>bigdecimal_mul</code></li>\n"
     "  <li>Aggregates: exact <code>bigdecimal_sum</code> and <code>bigdecimal_product</code>; "
     "<code>bigdecimal_mean</code> with significant digits and a rounding mode</li>\n"
+    "  <li>Statistics: <code>bigdecimal_variance_population</code>, "
+    "<code>bigdecimal_standard_deviation_population</code>, "
+    "<code>bigdecimal_standard_deviation_sample</code></li>\n"
     "  <li>Further operations: powers, roots, <code>bigdecimal_exp</code>, <code>bigdecimal_ln</code>, "
     "<code>bigdecimal_log10</code>, <code>bigdecimal_log</code>, significant division, "
     "<code>bigdecimal_sin</code>, <code>bigdecimal_cos</code>, <code>bigdecimal_tan</code>, inverse "

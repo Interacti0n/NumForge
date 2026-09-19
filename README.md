@@ -172,7 +172,8 @@ Integer-valued arguments support `gcd`, `lcm`, `mod` and floor square root
 `isqrt`. `npr(n;r)` and `ncr(n;r)` provide exact permutations and combinations
 for integers satisfying `0 ≤ r ≤ n`. `sum`, `product`, and `mean` aggregate
 one to 256 decimal values; sum and product are exact, while mean rounds only
-a non-terminating quotient to working precision. Real roots
+a non-terminating quotient to working precision. `variance` and `stdevp` use
+population denominator `n`; `stdev` uses sample denominator `n−1`. Real roots
 `sqrt`/`√`, `cbrt` and `root(x;n)` preserve exact finite roots and otherwise use
 working precision (34 significant digits by default). Trigonometric and inverse
 trigonometric calls use the shared RAD/DEG selector; explicit `radians(x)` and

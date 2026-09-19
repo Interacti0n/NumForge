@@ -95,8 +95,8 @@ for (const lang of ['sk', 'en']) {
             await expect(page.locator('#result')).toBeEmpty();
         });
         test('function groups, aliases and trigonometry', async ({ page }, testInfo) => {
-            await expect(page.locator('details.function-group')).toHaveCount(4);
-            await expect(page.locator('[data-function]')).toHaveCount(33);
+            await expect(page.locator('details.function-group')).toHaveCount(5);
+            await expect(page.locator('[data-function]')).toHaveCount(36);
             await expect(page.locator('[data-function]:disabled')).toHaveCount(0);
             await page.locator('#function-tab-0').click();
             await page.locator('[data-function="round"]').click();
@@ -105,6 +105,11 @@ for (const lang of ['sk', 'en']) {
             await page.locator('#expression').press('Enter');
             await expect(page.locator('#result')).toHaveText('12.34');
             await calculate(page, 'mean(1;2;2)', '1.6666666667');
+            await page.locator('[data-action="clear"]').click();
+            await page.locator('#function-tab-3').click();
+            await page.locator('[data-function="variance"]').click();
+            await expect(page.locator('#expression')).toHaveValue('variance()');
+            await calculate(page, 'stdev(1;2;3)', '1');
             await page.locator('[data-action="clear"]').click();
             const powers = page.locator('details').filter({ has: page.locator('[data-function="pow"]') });
             await page.locator('#function-tab-2').focus();
@@ -130,7 +135,7 @@ for (const lang of ['sk', 'en']) {
             await calculate(page, 'log(100)', '2');
             await calculate(page, 'log(8;2)', '3');
             const angles = page.locator('details').filter({ has: page.locator('[data-function="sin"]') });
-            await page.locator('#function-tab-3').click();
+            await page.locator('#function-tab-4').click();
             await expect(page.locator('details.function-group:visible')).toHaveCount(1);
             await expect(page.locator('[data-angle="rad"]')).toHaveClass(/active/);
             await page.locator('[data-action="clear"]').click();
@@ -139,7 +144,7 @@ for (const lang of ['sk', 'en']) {
             await page.locator('[data-function="sqrt"]').click();
             await expect(page.locator('#expression')).toHaveValue('sin(sqrt())');
             expect(await page.locator('#expression').evaluate(el => el.selectionStart)).toBe(9);
-            await page.locator('#function-tab-3').click();
+            await page.locator('#function-tab-4').click();
             await calculate(page, 'sin(π/2)', '1');
             await page.locator('[data-angle="deg"]').click();
             await expect(page.locator('[data-angle="deg"]')).toHaveClass(/active/);
@@ -298,13 +303,13 @@ for (const lang of ['sk', 'en']) {
         });
         test('function help, domains and shared angle selector', async ({ page }) => {
             await expect(page.locator('[data-angle=rad]')).toHaveAttribute('aria-pressed', 'true');
-            await page.locator('#function-tab-3').click();
+            await page.locator('#function-tab-4').click();
             await page.locator('[data-angle=deg]').press('Enter');
             await expect(page.locator('[data-angle=deg]')).toHaveAttribute('aria-pressed', 'true');
             await expect(page.locator('[data-angle=deg]')).toHaveAttribute('aria-pressed', 'true');
             await page.reload();
             await expect(page.locator('[data-angle=deg]')).toHaveAttribute('aria-pressed', 'true');
-            await page.locator('#function-tab-3').click();
+            await page.locator('#function-tab-4').click();
             await page.locator('[data-function=asin]').focus();
             await expect(page.locator('#function-help')).toContainText('-1 ≤ x ≤ 1');
             await page.locator('#expression').fill('asin(2)');

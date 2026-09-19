@@ -1226,8 +1226,9 @@ static CalculatorStatus calculator_evaluate_basic_call(
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
-    Variadic decimal aggregates. The public BigDecimal API owns all numeric
-    semantics; the calculator only evaluates arguments and supplies context.
+    Variadic decimal aggregates and statistics. The public BigDecimal API owns
+    all numeric semantics; the calculator only evaluates arguments and supplies
+    context.
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
@@ -1281,9 +1282,36 @@ static CalculatorStatus calculator_evaluate_aggregate_call(
         {
             decimal_status = bigdecimal_product(value, inputs, expression->data.call.count);
         }
-        else
+        else if (operation == CALCULATOR_FUNCTION_MEAN)
         {
             decimal_status = bigdecimal_mean(
+                value,
+                inputs,
+                expression->data.call.count,
+                evaluation->context->division_scale,
+                evaluation->context->rounding);
+        }
+        else if (operation == CALCULATOR_FUNCTION_VARIANCE)
+        {
+            decimal_status = bigdecimal_variance_population(
+                value,
+                inputs,
+                expression->data.call.count,
+                evaluation->context->division_scale,
+                evaluation->context->rounding);
+        }
+        else if (operation == CALCULATOR_FUNCTION_STANDARD_DEVIATION_POPULATION)
+        {
+            decimal_status = bigdecimal_standard_deviation_population(
+                value,
+                inputs,
+                expression->data.call.count,
+                evaluation->context->division_scale,
+                evaluation->context->rounding);
+        }
+        else
+        {
+            decimal_status = bigdecimal_standard_deviation_sample(
                 value,
                 inputs,
                 expression->data.call.count,
@@ -1537,6 +1565,9 @@ static CalculatorStatus calculator_evaluate_expression(
             case CALCULATOR_FUNCTION_SUM:
             case CALCULATOR_FUNCTION_PRODUCT:
             case CALCULATOR_FUNCTION_MEAN:
+            case CALCULATOR_FUNCTION_VARIANCE:
+            case CALCULATOR_FUNCTION_STANDARD_DEVIATION_POPULATION:
+            case CALCULATOR_FUNCTION_STANDARD_DEVIATION_SAMPLE:
                 return calculator_evaluate_aggregate_call(result, expression, evaluation, error);
             case CALCULATOR_FUNCTION_FLOOR:
             case CALCULATOR_FUNCTION_CEIL:

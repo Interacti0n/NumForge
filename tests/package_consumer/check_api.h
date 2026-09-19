@@ -36,6 +36,12 @@ static int public_api_checks(void)
         bigdecimal_set_string(a, "1") != BIGDECIMAL_OK ||
         bigdecimal_set_string(b, "3") != BIGDECIMAL_OK ||
         bigdecimal_mean(a, values, 2, 20, BIGDECIMAL_ROUND_HALF_EVEN) != BIGDECIMAL_OK ||
+        bigdecimal_variance_population(
+            b, values, 2, 20, BIGDECIMAL_ROUND_HALF_EVEN) != BIGDECIMAL_OK ||
+        bigdecimal_standard_deviation_population(
+            b, values, 2, 20, BIGDECIMAL_ROUND_HALF_EVEN) != BIGDECIMAL_OK ||
+        bigdecimal_standard_deviation_sample(
+            b, values, 2, 20, BIGDECIMAL_ROUND_HALF_EVEN) != BIGDECIMAL_OK ||
         bigdecimal_to_string(a, &text) != BIGDECIMAL_OK || strcmp(text, "2") != 0) goto cleanup;
     free(text); text = NULL;
     if (bigdecimal_set_constant(a, BIGDECIMAL_CONSTANT_PI) != BIGDECIMAL_OK ||

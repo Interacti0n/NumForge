@@ -64,8 +64,10 @@ static void test_context_changes_recompute_in_both_directions(void)
     check_value("1/3", -1, CALCULATOR_ANGLE_RADIANS, 5U, true);
     check_value("mean(1;2;2)", 10, CALCULATOR_ANGLE_RADIANS, 6U, false);
     check_value("mean(1;2;2)", 50, CALCULATOR_ANGLE_RADIANS, 7U, false);
-    check_value("sin(90)", 10, CALCULATOR_ANGLE_DEGREES, 8U, false);
-    check_value("sin(90)", 10, CALCULATOR_ANGLE_RADIANS, 9U, false);
+    check_value("variance(1;2;3)", 10, CALCULATOR_ANGLE_RADIANS, 8U, false);
+    check_value("variance(1;2;3)", 50, CALCULATOR_ANGLE_RADIANS, 9U, false);
+    check_value("sin(90)", 10, CALCULATOR_ANGLE_DEGREES, 10U, false);
+    check_value("sin(90)", 10, CALCULATOR_ANGLE_RADIANS, 11U, false);
 }
 
 static void test_integer_looking_result_is_not_an_exactness_proof(void)

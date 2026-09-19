@@ -32,5 +32,8 @@
 "sum(1;2;3)"
 "product(1;2;3)"
 "mean(1;2;3)"
+"variance(1;2;3)"
+"stdevp(1;2;3)"
+"stdev(1;2;3)"
 "\xCF\x80"
 "\xCF\x86"
