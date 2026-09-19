@@ -12,9 +12,11 @@ static int public_api_checks(void)
     BigDecimal *a = bigdecimal_create(), *b = bigdecimal_create();
     BigInt *n = bigint_create(), *r = bigint_create();
     char *text = NULL;
+    const BigDecimal *values[2];
     bool integer = false;
     int sign = 0, result = 1;
     if (a == NULL || b == NULL || n == NULL || r == NULL) goto cleanup;
+    values[0] = a; values[1] = b;
     if (bigint_set_string(n, "3") != BIGINT_OK ||
         bigdecimal_set_string(a, "1.5") != BIGDECIMAL_OK ||
         bigdecimal_pow(a, a, n) != BIGDECIMAL_OK ||
@@ -25,6 +27,16 @@ static int public_api_checks(void)
         bigdecimal_round(b, a, 1) != BIGDECIMAL_OK ||
         bigdecimal_format(a, -1, BIGDECIMAL_ROUND_HALF_EVEN, &text) != BIGDECIMAL_OK ||
         strcmp(text, "1.5") != 0) goto cleanup;
+    free(text); text = NULL;
+    if (bigdecimal_set_string(a, "1") != BIGDECIMAL_OK ||
+        bigdecimal_set_string(b, "3") != BIGDECIMAL_OK ||
+        bigdecimal_sum(a, values, 2) != BIGDECIMAL_OK ||
+        bigdecimal_set_string(a, "1") != BIGDECIMAL_OK ||
+        bigdecimal_product(b, values, 2) != BIGDECIMAL_OK ||
+        bigdecimal_set_string(a, "1") != BIGDECIMAL_OK ||
+        bigdecimal_set_string(b, "3") != BIGDECIMAL_OK ||
+        bigdecimal_mean(a, values, 2, 20, BIGDECIMAL_ROUND_HALF_EVEN) != BIGDECIMAL_OK ||
+        bigdecimal_to_string(a, &text) != BIGDECIMAL_OK || strcmp(text, "2") != 0) goto cleanup;
     free(text); text = NULL;
     if (bigdecimal_set_constant(a, BIGDECIMAL_CONSTANT_PI) != BIGDECIMAL_OK ||
         bigdecimal_set_constant_significant(

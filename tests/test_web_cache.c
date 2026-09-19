@@ -51,6 +51,8 @@ static void test_exact_results_reformat_across_precision_changes(void)
     check_value("100!", 0, CALCULATOR_ANGLE_RADIANS, 4U, true);
     check_value("pow(1.25;3)+isqrt(99)", 2, CALCULATOR_ANGLE_RADIANS, 5U, false);
     check_value("pow(1.25;3)+isqrt(99)", 100, CALCULATOR_ANGLE_RADIANS, 6U, true);
+    check_value("sum(1.25;2.75)+product(2;3)", 2, CALCULATOR_ANGLE_RADIANS, 7U, false);
+    check_value("sum(1.25;2.75)+product(2;3)", 100, CALCULATOR_ANGLE_RADIANS, 8U, true);
 }
 
 static void test_context_changes_recompute_in_both_directions(void)
@@ -60,8 +62,10 @@ static void test_context_changes_recompute_in_both_directions(void)
     check_value("1/3", 50, CALCULATOR_ANGLE_RADIANS, 3U, false);
     check_value("1/3", 10, CALCULATOR_ANGLE_RADIANS, 4U, false);
     check_value("1/3", -1, CALCULATOR_ANGLE_RADIANS, 5U, true);
-    check_value("sin(90)", 10, CALCULATOR_ANGLE_DEGREES, 6U, false);
-    check_value("sin(90)", 10, CALCULATOR_ANGLE_RADIANS, 7U, false);
+    check_value("mean(1;2;2)", 10, CALCULATOR_ANGLE_RADIANS, 6U, false);
+    check_value("mean(1;2;2)", 50, CALCULATOR_ANGLE_RADIANS, 7U, false);
+    check_value("sin(90)", 10, CALCULATOR_ANGLE_DEGREES, 8U, false);
+    check_value("sin(90)", 10, CALCULATOR_ANGLE_RADIANS, 9U, false);
 }
 
 static void test_integer_looking_result_is_not_an_exactness_proof(void)

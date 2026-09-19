@@ -1224,6 +1224,102 @@ static CalculatorStatus calculator_evaluate_basic_call(
     return CALCULATOR_OK;
 }
 
+/*
+------------------------------------------------------------------------------------------------------------------------------
+    Variadic decimal aggregates. The public BigDecimal API owns all numeric
+    semantics; the calculator only evaluates arguments and supplies context.
+------------------------------------------------------------------------------------------------------------------------------
+*/
+
+static CalculatorStatus calculator_evaluate_aggregate_call(
+    BigDecimal **result,
+    const CalculatorExpression *expression,
+    const CalculatorEvaluation *evaluation,
+    CalculatorError *error
+)
+{
+    BigDecimal *arguments[CALCULATOR_MAX_CALL_ARGUMENTS] = {NULL};
+    const BigDecimal *inputs[CALCULATOR_MAX_CALL_ARGUMENTS];
+    BigDecimal *value = NULL;
+    CalculatorStatus status = CALCULATOR_OK;
+    CalculatorFunctionImplementation operation = expression->data.call.function->implementation;
+    bool child_error = false;
+
+    for (size_t index = 0U; index < expression->data.call.count; index++)
+    {
+        status = calculator_evaluate_expression(
+            &arguments[index], expression->data.call.arguments[index], evaluation, error);
+
+        if (status != CALCULATOR_OK)
+        {
+            child_error = true;
+            break;
+        }
+
+        inputs[index] = arguments[index];
+    }
+
+    if (status == CALCULATOR_OK)
+    {
+        value = bigdecimal_create();
+
+        if (value == NULL)
+        {
+            status = CALCULATOR_OUT_OF_MEMORY;
+        }
+    }
+
+    if (status == CALCULATOR_OK)
+    {
+        BigDecimalStatus decimal_status;
+
+        if (operation == CALCULATOR_FUNCTION_SUM)
+        {
+            decimal_status = bigdecimal_sum(value, inputs, expression->data.call.count);
+        }
+        else if (operation == CALCULATOR_FUNCTION_PRODUCT)
+        {
+            decimal_status = bigdecimal_product(value, inputs, expression->data.call.count);
+        }
+        else
+        {
+            decimal_status = bigdecimal_mean(
+                value,
+                inputs,
+                expression->data.call.count,
+                evaluation->context->division_scale,
+                evaluation->context->rounding);
+        }
+
+        status = calculator_from_bigdecimal_status(decimal_status);
+    }
+
+    for (size_t index = 0U; index < expression->data.call.count; index++)
+    {
+        bigdecimal_destroy(arguments[index]);
+    }
+
+    if (status == CALCULATOR_OK && calculator_time_limit_reached(evaluation))
+    {
+        status = CALCULATOR_TIME_LIMIT;
+    }
+
+    if (status != CALCULATOR_OK)
+    {
+        bigdecimal_destroy(value);
+
+        if (!child_error)
+        {
+            calculator_error_set(error, status, expression->offset);
+        }
+
+        return status;
+    }
+
+    *result = value;
+    return CALCULATOR_OK;
+}
+
 /* Decimal-place arguments are exact integers. Bounds are checked before text
  * conversion so compact values with enormous exponents are rejected without
  * expanding them into impractically large strings. */
@@ -1438,6 +1534,10 @@ static CalculatorStatus calculator_evaluate_expression(
             case CALCULATOR_FUNCTION_MIN:
             case CALCULATOR_FUNCTION_MAX:
                 return calculator_evaluate_basic_call(result, expression, evaluation, error);
+            case CALCULATOR_FUNCTION_SUM:
+            case CALCULATOR_FUNCTION_PRODUCT:
+            case CALCULATOR_FUNCTION_MEAN:
+                return calculator_evaluate_aggregate_call(result, expression, evaluation, error);
             case CALCULATOR_FUNCTION_FLOOR:
             case CALCULATOR_FUNCTION_CEIL:
             case CALCULATOR_FUNCTION_TRUNC:

@@ -82,6 +82,11 @@ base must also be positive and different from one.
 digits, and an explicit rounding mode. Degree conversion belongs to clients,
 not the numeric library.
 
+`bigdecimal_sum` and `bigdecimal_product` accept a non-empty array of values
+and aggregate it exactly. `bigdecimal_mean` first forms the exact sum, then
+preserves a terminating quotient or rounds a recurring quotient using the
+caller's significant-digit count and rounding mode.
+
 `bigdecimal_set_constant` returns the complete stored 500-decimal-place π, e,
 or φ approximation. Use `bigdecimal_set_constant_significant` when the caller
 controls significant digits and rounding; requests above 500 digits are

@@ -13,6 +13,7 @@ binary floating point. Its public API is declared in
 | `conversion.c` | Parsing and conversion to ordinary decimal text. |
 | `comparison.c` | Numeric comparison and basic predicates. |
 | `arithmetic.c` | Sign operations and exact addition, subtraction, and multiplication. |
+| `aggregation.c` | Exact sequence sum/product and exact-first arithmetic mean. |
 | `division.c` | Rescaling, fixed-scale division, significant-digit division, and exact-first division. |
 | `operations.c` | BigInt conversions, integer/sign helpers, min/max, and integer powers. |
 | `roots.c` | General real roots plus square-root and cube-root wrappers. |
@@ -34,19 +35,19 @@ The public header defines the component's stable 1.x surface:
   `bigdecimal_to_string`;
 - comparison and inspection: `bigdecimal_compare`, `bigdecimal_is_zero`,
   `bigdecimal_is_negative`;
-- exact arithmetic: absolute value, negation, addition, subtraction, and
-  multiplication;
+- exact arithmetic: absolute value, negation, addition, subtraction,
+  multiplication, sequence sum, and sequence product;
 - controlled inexact operations: division, rescaling, named integer/decimal-place
-  rounding, real roots, exponential, logarithmic, and trigonometric functions
-  with explicit precision and rounding.
+  rounding, sequence mean, real roots, exponential, logarithmic, and
+  trigonometric functions with explicit precision and rounding.
 
 All listed operations are implemented. Every mutating operation computes into
 a temporary value and commits only on success, so its destination is unchanged
 after an error.
 
 Additive APIs also provide exact integer conversions, sign/integer predicates,
-min/max, floor/ceil/trunc/half-even round, integer powers, real roots,
-significant and exact-first division,
+min/max, sequence aggregates, floor/ceil/trunc/half-even round, integer powers,
+real roots, significant and exact-first division,
 constants and readable formatting; see [API.md](API.md#additional-numeric-operations).
 The calculator calls public APIs without accessing the representation.
 

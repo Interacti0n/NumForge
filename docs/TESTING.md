@@ -43,6 +43,11 @@ directed rounding, compact magnitudes, arbitrary bases, aliases, invalid
 domains and the strong destination-preservation contract. Allocation injection
 exhausts representative `exp`/`ln` paths and samples the composed logarithm.
 
+Sequence aggregate tests cover exact mixed-scale sum/product, terminating and
+recurring means, single values, result aliasing, invalid/null sequences and
+every representative allocation-failure point. Calculator tests cover arity,
+nested expressions and display-precision rounding of recurring means.
+
 `constants_tests` checks stored-value rounding, directed rounding, invalid
 arguments, destination preservation, and dynamically calculated 520-digit π,
 e, and φ against the complete stored prefixes. Calculator contract tests also

@@ -19,7 +19,9 @@ static void test_registered_calls_and_arity(void)
         "sqrt(4)", "cbrt(-8)", "root(8;3)", "exp(2)", "ln(e)", "log(10)",
         "log(8;2)", "sin(1)", "cos(1)", "tan(1)", "asin(1)", "acos(1)",
         "atan(1)", "radians(90)", "degrees(1)", "floor(1.2)", "ceil(1.2)",
-        "trunc(-1.2)", "round(1.25)", "round(1.25;1)", "sqrt(abs(-4))", "√(4)"
+        "trunc(-1.2)", "round(1.25)", "round(1.25;1)",
+        "sum(1;2;3)", "product(1;2;3)", "mean(1;2;3)",
+        "sqrt(abs(-4))", "√(4)"
     };
     for (size_t i = 0; i < sizeof(inputs) / sizeof(inputs[0]); i++)
     {
@@ -43,6 +45,9 @@ static void test_call_errors(void)
         { "round(1;2;3)", CALCULATOR_ARGUMENT_COUNT, 0 },
         { "npr(5)", CALCULATOR_ARGUMENT_COUNT, 0 },
         { "ncr(5;2;1)", CALCULATOR_ARGUMENT_COUNT, 0 },
+        { "sum()", CALCULATOR_ARGUMENT_COUNT, 0 },
+        { "product()", CALCULATOR_ARGUMENT_COUNT, 0 },
+        { "mean()", CALCULATOR_ARGUMENT_COUNT, 0 },
         { "min(1)", CALCULATOR_ARGUMENT_COUNT, 0 },
         { "gcd(12,18)", CALCULATOR_ARGUMENT_COUNT, 0 },
         { "2+sin()", CALCULATOR_ARGUMENT_COUNT, 2 },
@@ -93,7 +98,11 @@ static void test_evaluation_and_implicit_products(void)
         { "round(2.5)+round(3.5)+round(-2.5)+round(-3.5)", "0" },
         { "round(12.345;2)", "12.34" }, { "round(12.355;2)", "12.36" },
         { "round(145;-1)", "140" }, { "round(155;-1)", "160" },
-        { "round(1.234;1+1)", "1.23" }
+        { "round(1.234;1+1)", "1.23" },
+        { "sum(1;2.5;-0.5)", "3" }, { "sum(7)", "7" },
+        { "product(2;-3;0.5)", "-3" }, { "product(7)", "7" },
+        { "mean(1;2;3)", "2" }, { "mean(1;2;2)", "1.6666666667" },
+        { "2sum(1;2)+product(2;3)", "12" }
     };
     CalculatorContext context;
     CalculatorError error;

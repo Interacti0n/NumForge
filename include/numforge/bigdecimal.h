@@ -2,6 +2,7 @@
 #define NUMFORGE_BIGDECIMAL_H
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <numforge/bigint.h>
 #include <stdint.h>
 
@@ -149,6 +150,36 @@ BigDecimalStatus bigdecimal_mul(
     BigDecimal *result,
     const BigDecimal *a,
     const BigDecimal *b
+);
+
+/*
+------------------------------------------------------------------------------------------------------------------------------
+    Aggregate arithmetic functions for BigDecimal sequences.
+
+    sum and product are exact. mean forms an exact sum and rounds only a
+    non-terminating quotient to the requested positive number of significant
+    digits. At least one non-NULL value is required. Output/input aliasing is
+    supported and failure preserves result.
+
+    Implementation: src/bigdecimal/aggregation.c
+------------------------------------------------------------------------------------------------------------------------------
+*/
+BigDecimalStatus bigdecimal_sum(
+    BigDecimal *result,
+    const BigDecimal *const *values,
+    size_t count
+);
+BigDecimalStatus bigdecimal_product(
+    BigDecimal *result,
+    const BigDecimal *const *values,
+    size_t count
+);
+BigDecimalStatus bigdecimal_mean(
+    BigDecimal *result,
+    const BigDecimal *const *values,
+    size_t count,
+    int64_t digits,
+    BigDecimalRoundingMode rounding
 );
 
 /*

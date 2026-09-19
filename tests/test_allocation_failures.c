@@ -149,6 +149,40 @@ static BigDecimalStatus bigdecimal_log_to_25(
     return bigdecimal_log(result, value, base, 25, BIGDECIMAL_ROUND_HALF_EVEN);
 }
 
+static BigDecimalStatus bigdecimal_sum_two(
+    BigDecimal *result,
+    const BigDecimal *a,
+    const BigDecimal *b
+)
+{
+    const BigDecimal *values[] = {a, b};
+
+    return bigdecimal_sum(result, values, 2U);
+}
+
+static BigDecimalStatus bigdecimal_product_two(
+    BigDecimal *result,
+    const BigDecimal *a,
+    const BigDecimal *b
+)
+{
+    const BigDecimal *values[] = {a, b};
+
+    return bigdecimal_product(result, values, 2U);
+}
+
+static BigDecimalStatus bigdecimal_mean_two(
+    BigDecimal *result,
+    const BigDecimal *a,
+    const BigDecimal *b
+)
+{
+    const BigDecimal *values[] = {a, b};
+
+    return bigdecimal_mean(
+        result, values, 2U, 25, BIGDECIMAL_ROUND_HALF_EVEN);
+}
+
 /*
 ------------------------------------------------------------------------------------------------------------------------------
     Exhaust one operation's allocation sites. Every injected failure must
@@ -877,6 +911,9 @@ void test_bigdecimal_arithmetic_failure_paths(void)
     assert_bigdecimal_binary_failure_safety(bigdecimal_max, a, b);
     assert_bigdecimal_binary_failure_safety(bigdecimal_sub, a, b);
     assert_bigdecimal_binary_failure_safety(bigdecimal_mul, a, b);
+    assert_bigdecimal_binary_failure_safety(bigdecimal_sum_two, a, b);
+    assert_bigdecimal_binary_failure_safety(bigdecimal_product_two, a, b);
+    assert_bigdecimal_binary_failure_safety(bigdecimal_mean_two, a, b);
     assert_bigdecimal_binary_failure_safety(bigdecimal_divide_to_25, a, b);
 }
 
@@ -984,6 +1021,9 @@ void test_bigdecimal_aliasing_preserves_destination_on_allocation_failure(void)
 
     assert_bigdecimal_binary_alias_failure_safety(bigdecimal_add, a, b);
     assert_bigdecimal_binary_alias_failure_safety(bigdecimal_mul, a, b);
+    assert_bigdecimal_binary_alias_failure_safety(bigdecimal_sum_two, a, b);
+    assert_bigdecimal_binary_alias_failure_safety(bigdecimal_product_two, a, b);
+    assert_bigdecimal_binary_alias_failure_safety(bigdecimal_mean_two, a, b);
     assert_bigdecimal_binary_alias_failure_safety(bigdecimal_divide_to_25, a, b);
 }
 

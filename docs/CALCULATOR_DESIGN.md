@@ -54,7 +54,8 @@ own loopback origins, preventing unrelated pages from triggering expensive
 local calculations. Slovak and English routes use `?lang=sk` and `?lang=en`;
 the result panel copies the currently displayed result through the browser
 clipboard API, with a local fallback. Exponential, logarithmic, trigonometric,
-and angle-conversion controls are active. Basic abs/sign/min/max controls, integer gcd/lcm/mod/isqrt controls
+and angle-conversion controls are active. Basic abs/sign/min/max and aggregate
+sum/product/mean controls, integer gcd/lcm/mod/isqrt controls
 and sqrt/cbrt/root controls are active.
 
 Nonblocking sockets use absolute monotonic deadlines: two seconds for the
@@ -124,6 +125,10 @@ Variables remain outside the grammar. The function registry recognizes the
 names and arities listed in [API.md](API.md#named-calls). `pow` and `factorial` reuse existing operator paths.
 `abs`, `sign`, `min` and `max` use decimal operations directly. Min/max retain
 only the selected and current values, evaluating arguments left to right.
+`sum`, `product`, and `mean` evaluate one to 256 arguments left to right and
+delegate aggregation to the public BigDecimal API. Sum and product are exact.
+Mean accumulates exactly and performs one exact-first division by the count;
+only a recurring quotient depends on working precision.
 `floor`, `ceil`, `trunc`, and `round` call the corresponding public BigDecimal
 operations. `round(x)` defaults to zero places; its optional second argument is
 an exact signed 64-bit integer and may be negative. Midpoints use half-even.
@@ -182,8 +187,8 @@ Call nodes own an argument-pointer array and child expressions; registry entries
 have static lifetime. Array growth uses the fault-injectable allocator. Parse
 failure frees partial children/arrays and preserves the caller's output handle.
 Calls count toward both recursive parsing and AST depth limits (256); arity is
-also capped at 256, including variadic min/max. Empty calls and wrong argument
-counts report `ARGUMENT_COUNT` at the function name; malformed separators report
+also capped at 256, including variadic selection and aggregate calls. Empty
+calls and wrong argument counts report `ARGUMENT_COUNT` at the function name; malformed separators report
 syntax errors. Function names are scanned as whole ASCII-letter sequences and
 matched case-sensitively; underscores and numeric suffixes are not names.
 

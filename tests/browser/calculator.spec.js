@@ -61,6 +61,7 @@ for (const lang of ['sk', 'en']) {
             await expect(page.locator('#copy-result')).toBeDisabled();
             await page.locator('.guide-link').click();
             await expect(page.locator('html')).toHaveAttribute('lang', lang);
+            await expect(page.locator('body')).toContainText('bigdecimal_mean');
             const other = lang === 'sk' ? 'en' : 'sk';
             await page.locator(`a[href="/api?lang=${other}"]`).click();
             await expect(page.locator('html')).toHaveAttribute('lang', other);
@@ -95,7 +96,7 @@ for (const lang of ['sk', 'en']) {
         });
         test('function groups, aliases and trigonometry', async ({ page }, testInfo) => {
             await expect(page.locator('details.function-group')).toHaveCount(4);
-            await expect(page.locator('[data-function]')).toHaveCount(30);
+            await expect(page.locator('[data-function]')).toHaveCount(33);
             await expect(page.locator('[data-function]:disabled')).toHaveCount(0);
             await page.locator('#function-tab-0').click();
             await page.locator('[data-function="round"]').click();
@@ -103,6 +104,8 @@ for (const lang of ['sk', 'en']) {
             await page.locator('#expression').fill('round(12.345;2)');
             await page.locator('#expression').press('Enter');
             await expect(page.locator('#result')).toHaveText('12.34');
+            await calculate(page, 'mean(1;2;2)', '1.6666666667');
+            await page.locator('[data-action="clear"]').click();
             const powers = page.locator('details').filter({ has: page.locator('[data-function="pow"]') });
             await page.locator('#function-tab-2').focus();
             await page.keyboard.press('Enter');

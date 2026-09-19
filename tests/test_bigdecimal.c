@@ -174,6 +174,70 @@ void test_exact_arithmetic_and_aliasing(void)
     bigdecimal_destroy(result);
 }
 
+void test_sequence_aggregates_and_aliasing(void)
+{
+    BigDecimal *a = make_decimal("1.25");
+    BigDecimal *b = make_decimal("-0.25");
+    BigDecimal *c = make_decimal("3");
+    BigDecimal *result = make_decimal("42");
+    const BigDecimal *values[] = {a, b, c};
+
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_sum(result, values, 3U));
+    assert_decimal_equals("4", result);
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_product(result, values, 3U));
+    assert_decimal_equals("-0.9375", result);
+    TEST_ASSERT_EQUAL(
+        BIGDECIMAL_OK,
+        bigdecimal_mean(result, values, 3U, 10, BIGDECIMAL_ROUND_HALF_EVEN));
+    assert_decimal_equals("1.333333333", result);
+    TEST_ASSERT_EQUAL(
+        BIGDECIMAL_OK,
+        bigdecimal_mean(result, values, 3U, 2, BIGDECIMAL_ROUND_CEILING));
+    assert_decimal_equals("1.4", result);
+    TEST_ASSERT_EQUAL(
+        BIGDECIMAL_OK,
+        bigdecimal_mean(result, values, 1U, 1, BIGDECIMAL_ROUND_HALF_EVEN));
+    assert_decimal_equals("1.25", result);
+
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_sum(a, values, 3U));
+    assert_decimal_equals("4", a);
+
+    bigdecimal_destroy(a);
+    bigdecimal_destroy(b);
+    bigdecimal_destroy(c);
+    bigdecimal_destroy(result);
+}
+
+void test_sequence_aggregate_arguments_preserve_result(void)
+{
+    BigDecimal *value = make_decimal("2");
+    BigDecimal *result = make_decimal("42");
+    const BigDecimal *values[] = {value};
+    const BigDecimal *invalid[] = {value, NULL};
+
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_sum(NULL, values, 1U));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_sum(result, NULL, 1U));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_INVALID_ARGUMENT, bigdecimal_sum(result, values, 0U));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_INVALID_ARGUMENT, bigdecimal_product(result, values, 0U));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_product(result, invalid, 2U));
+    TEST_ASSERT_EQUAL(
+        BIGDECIMAL_NULL_ARGUMENT,
+        bigdecimal_mean(NULL, values, 1U, 10, BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(
+        BIGDECIMAL_INVALID_ARGUMENT,
+        bigdecimal_mean(result, values, 0U, 10, BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(
+        BIGDECIMAL_INVALID_ARGUMENT,
+        bigdecimal_mean(result, values, 1U, 0, BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(
+        BIGDECIMAL_INVALID_ARGUMENT,
+        bigdecimal_mean(result, values, 1U, 10, (BigDecimalRoundingMode)99));
+    assert_decimal_equals("42", result);
+
+    bigdecimal_destroy(value);
+    bigdecimal_destroy(result);
+}
+
 void test_rescale_rounding(void)
 {
     BigDecimal *value = make_decimal("1.250");
@@ -531,6 +595,8 @@ int main(void)
     RUN_TEST(test_scale_overflow_does_not_modify_destination);
     RUN_TEST(test_copy_comparison_and_inspection);
     RUN_TEST(test_exact_arithmetic_and_aliasing);
+    RUN_TEST(test_sequence_aggregates_and_aliasing);
+    RUN_TEST(test_sequence_aggregate_arguments_preserve_result);
     RUN_TEST(test_rescale_rounding);
     RUN_TEST(test_named_rounding_operations);
     RUN_TEST(test_zero_identities_avoid_extreme_scale_work);

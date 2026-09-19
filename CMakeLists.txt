@@ -91,6 +91,7 @@ add_library(numforge STATIC
     src/bigint/roots.c
     src/bigdecimal/bigdecimal.c
     src/bigdecimal/arithmetic.c
+    src/bigdecimal/aggregation.c
     src/bigdecimal/comparison.c
     src/bigdecimal/conversion.c
     src/bigdecimal/division.c
