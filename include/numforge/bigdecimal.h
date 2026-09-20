@@ -186,15 +186,35 @@ BigDecimalStatus bigdecimal_mean(
 ------------------------------------------------------------------------------------------------------------------------------
     Statistical functions for BigDecimal sequences.
 
-    Population variance and standard deviation divide by n and accept at
-    least one value. Sample standard deviation divides by n - 1 and requires
-    at least two values. Exact sufficient statistics avoid cancellation from
-    rounded intermediate means; only final division and roots use the requested
-    significant digits and rounding mode. Failure preserves result.
+    median is exact for finite decimal inputs. Geometric mean accepts only
+    non-negative values; harmonic mean accepts only positive values. Population
+    variance and standard deviation divide by n and accept at least one value.
+    Sample standard deviation divides by n - 1 and requires at least two values.
+    Only final division and roots use the requested significant digits and
+    rounding mode. Failure preserves result.
 
     Implementation: src/bigdecimal/statistics.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
+BigDecimalStatus bigdecimal_median(
+    BigDecimal *result,
+    const BigDecimal *const *values,
+    size_t count
+);
+BigDecimalStatus bigdecimal_geometric_mean(
+    BigDecimal *result,
+    const BigDecimal *const *values,
+    size_t count,
+    int64_t digits,
+    BigDecimalRoundingMode rounding
+);
+BigDecimalStatus bigdecimal_harmonic_mean(
+    BigDecimal *result,
+    const BigDecimal *const *values,
+    size_t count,
+    int64_t digits,
+    BigDecimalRoundingMode rounding
+);
 BigDecimalStatus bigdecimal_variance_population(
     BigDecimal *result,
     const BigDecimal *const *values,

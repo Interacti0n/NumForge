@@ -14,6 +14,9 @@ All notable changes to NumForge are documented in this file. The project uses
   sufficient statistics, guarded roots and explicit public precision. Include
   a dedicated Statistics web category, bilingual help and edge-case tests.
 
+- Add exact `median`, non-negative `geomean`, and positive-domain `harmean`
+  through the public BigDecimal API, calculator, bilingual web UI and tests.
+
 - Add public BigDecimal `floor`, `ceil`, `trunc`, and half-even `round`
   operations. Enable matching calculator calls, including optional signed
   decimal places for `round(x;n)`, with bilingual controls and documentation.

@@ -21,6 +21,7 @@ static void test_registered_calls_and_arity(void)
         "atan(1)", "radians(90)", "degrees(1)", "floor(1.2)", "ceil(1.2)",
         "trunc(-1.2)", "round(1.25)", "round(1.25;1)",
         "sum(1;2;3)", "product(1;2;3)", "mean(1;2;3)",
+        "median(3;1;2)", "geomean(1;4)", "harmean(1;2;4)",
         "variance(1;2;3)", "stdevp(1;2;3)", "stdev(1;2;3)",
         "sqrt(abs(-4))", "√(4)"
     };
@@ -49,6 +50,9 @@ static void test_call_errors(void)
         { "sum()", CALCULATOR_ARGUMENT_COUNT, 0 },
         { "product()", CALCULATOR_ARGUMENT_COUNT, 0 },
         { "mean()", CALCULATOR_ARGUMENT_COUNT, 0 },
+        { "median()", CALCULATOR_ARGUMENT_COUNT, 0 },
+        { "geomean()", CALCULATOR_ARGUMENT_COUNT, 0 },
+        { "harmean()", CALCULATOR_ARGUMENT_COUNT, 0 },
         { "variance()", CALCULATOR_ARGUMENT_COUNT, 0 },
         { "stdevp()", CALCULATOR_ARGUMENT_COUNT, 0 },
         { "stdev(1)", CALCULATOR_ARGUMENT_COUNT, 0 },
@@ -106,6 +110,8 @@ static void test_evaluation_and_implicit_products(void)
         { "sum(1;2.5;-0.5)", "3" }, { "sum(7)", "7" },
         { "product(2;-3;0.5)", "-3" }, { "product(7)", "7" },
         { "mean(1;2;3)", "2" }, { "mean(1;2;2)", "1.6666666667" },
+        { "median(9;-1;2;4)", "3" }, { "geomean(1;4)", "2" },
+        { "harmean(1;2;4)", "1.7142857143" },
         { "variance(1;2;3)", "0.6666666667" },
         { "stdevp(1;2;3)", "0.8164965809" }, { "stdev(1;2;3)", "1" },
         { "variance(1E50;1E50+1;1E50+2)", "0.6666666667" },
@@ -124,6 +130,10 @@ static void test_evaluation_and_implicit_products(void)
     char *text = NULL;
     TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, calculator_compute("pow(2;-1)", &context, &text, &error));
     TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, calculator_compute("factorial(1.5)", &context, &text, &error));
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,
+                      calculator_compute("geomean(-1;4)", &context, &text, &error));
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,
+                      calculator_compute("harmean(0;4)", &context, &text, &error));
     TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE, calculator_compute("factorial(10001)", &context, &text, &error));
     TEST_ASSERT_NULL(text);
     TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,

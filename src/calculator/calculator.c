@@ -199,6 +199,7 @@ static bool calculator_expression_independent(const CalculatorExpression *expres
                 case CALCULATOR_FUNCTION_MAX:
                 case CALCULATOR_FUNCTION_SUM:
                 case CALCULATOR_FUNCTION_PRODUCT:
+                case CALCULATOR_FUNCTION_MEDIAN:
                 case CALCULATOR_FUNCTION_FLOOR:
                 case CALCULATOR_FUNCTION_CEIL:
                 case CALCULATOR_FUNCTION_TRUNC:

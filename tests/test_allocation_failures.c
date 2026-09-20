@@ -183,6 +183,41 @@ static BigDecimalStatus bigdecimal_mean_two(
         result, values, 2U, 25, BIGDECIMAL_ROUND_HALF_EVEN);
 }
 
+static BigDecimalStatus bigdecimal_median_two(
+    BigDecimal *result,
+    const BigDecimal *a,
+    const BigDecimal *b
+)
+{
+    const BigDecimal *values[] = {a, b};
+
+    return bigdecimal_median(result, values, 2U);
+}
+
+static BigDecimalStatus bigdecimal_geomean_two(
+    BigDecimal *result,
+    const BigDecimal *a,
+    const BigDecimal *b
+)
+{
+    const BigDecimal *values[] = {a, b};
+
+    return bigdecimal_geometric_mean(
+        result, values, 2U, 25, BIGDECIMAL_ROUND_HALF_EVEN);
+}
+
+static BigDecimalStatus bigdecimal_harmean_two(
+    BigDecimal *result,
+    const BigDecimal *a,
+    const BigDecimal *b
+)
+{
+    const BigDecimal *values[] = {a, b};
+
+    return bigdecimal_harmonic_mean(
+        result, values, 2U, 25, BIGDECIMAL_ROUND_HALF_EVEN);
+}
+
 static BigDecimalStatus bigdecimal_variance_two(
     BigDecimal *result,
     const BigDecimal *a,
@@ -950,6 +985,9 @@ void test_bigdecimal_arithmetic_failure_paths(void)
     assert_bigdecimal_binary_failure_safety(bigdecimal_sum_two, a, b);
     assert_bigdecimal_binary_failure_safety(bigdecimal_product_two, a, b);
     assert_bigdecimal_binary_failure_safety(bigdecimal_mean_two, a, b);
+    assert_bigdecimal_binary_failure_safety(bigdecimal_median_two, a, b);
+    assert_bigdecimal_binary_failure_safety(bigdecimal_geomean_two, a, b);
+    assert_bigdecimal_binary_failure_safety(bigdecimal_harmean_two, a, b);
     assert_bigdecimal_binary_failure_safety(bigdecimal_variance_two, a, b);
     assert_bigdecimal_binary_failure_safety(bigdecimal_stdevp_two, a, b);
     assert_bigdecimal_binary_failure_safety(bigdecimal_stdev_two, a, b);
@@ -1063,6 +1101,9 @@ void test_bigdecimal_aliasing_preserves_destination_on_allocation_failure(void)
     assert_bigdecimal_binary_alias_failure_safety(bigdecimal_sum_two, a, b);
     assert_bigdecimal_binary_alias_failure_safety(bigdecimal_product_two, a, b);
     assert_bigdecimal_binary_alias_failure_safety(bigdecimal_mean_two, a, b);
+    assert_bigdecimal_binary_alias_failure_safety(bigdecimal_median_two, a, b);
+    assert_bigdecimal_binary_alias_failure_safety(bigdecimal_geomean_two, a, b);
+    assert_bigdecimal_binary_alias_failure_safety(bigdecimal_harmean_two, a, b);
     assert_bigdecimal_binary_alias_failure_safety(bigdecimal_variance_two, a, b);
     assert_bigdecimal_binary_alias_failure_safety(bigdecimal_stdevp_two, a, b);
     assert_bigdecimal_binary_alias_failure_safety(bigdecimal_stdev_two, a, b);

@@ -36,6 +36,11 @@ static int public_api_checks(void)
         bigdecimal_set_string(a, "1") != BIGDECIMAL_OK ||
         bigdecimal_set_string(b, "3") != BIGDECIMAL_OK ||
         bigdecimal_mean(a, values, 2, 20, BIGDECIMAL_ROUND_HALF_EVEN) != BIGDECIMAL_OK ||
+        bigdecimal_median(b, values, 2) != BIGDECIMAL_OK ||
+        bigdecimal_geometric_mean(
+            b, values, 2, 20, BIGDECIMAL_ROUND_HALF_EVEN) != BIGDECIMAL_OK ||
+        bigdecimal_harmonic_mean(
+            b, values, 2, 20, BIGDECIMAL_ROUND_HALF_EVEN) != BIGDECIMAL_OK ||
         bigdecimal_variance_population(
             b, values, 2, 20, BIGDECIMAL_ROUND_HALF_EVEN) != BIGDECIMAL_OK ||
         bigdecimal_standard_deviation_population(

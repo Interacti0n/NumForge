@@ -87,6 +87,11 @@ and aggregate it exactly. `bigdecimal_mean` first forms the exact sum, then
 preserves a terminating quotient or rounds a recurring quotient using the
 caller's significant-digit count and rounding mode.
 
+`bigdecimal_median` returns the exact middle value or exact average of the two
+middle values. `bigdecimal_geometric_mean` accepts non-negative inputs;
+`bigdecimal_harmonic_mean` requires positive nonzero inputs. Approximate roots
+and recurring final quotients use the requested digits and rounding mode.
+
 `bigdecimal_variance_population` and
 `bigdecimal_standard_deviation_population` divide by the population size `n`.
 `bigdecimal_standard_deviation_sample` divides by `n−1` and requires at least

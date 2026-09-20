@@ -347,6 +347,96 @@ void test_statistics_domains_and_large_close_values(void)
     bigdecimal_destroy(result);
 }
 
+void test_median_geometric_and_harmonic_means(void)
+{
+    BigDecimal *minus_one = make_decimal("-1");
+    BigDecimal *one = make_decimal("1");
+    BigDecimal *two = make_decimal("2");
+    BigDecimal *four = make_decimal("4");
+    BigDecimal *nine = make_decimal("9");
+    BigDecimal *zero = make_decimal("0");
+    BigDecimal *result = make_decimal("42");
+    const BigDecimal *odd[] = {nine, minus_one, two};
+    const BigDecimal *even[] = {nine, minus_one, two, four};
+    const BigDecimal *middle_pair[] = {one, two};
+    const BigDecimal *single[] = {four};
+    const BigDecimal *with_null[] = {one, NULL};
+    const BigDecimal *geometric[] = {one, two};
+    const BigDecimal *geometric_exact[] = {one, four};
+    const BigDecimal *geometric_zero[] = {zero, four};
+    const BigDecimal *harmonic[] = {one, two, four};
+    const BigDecimal *invalid_negative[] = {one, minus_one};
+    const BigDecimal *invalid_zero[] = {one, zero};
+
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_median(NULL, odd, 3U));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_median(result, NULL, 1U));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_median(result, with_null, 2U));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_INVALID_ARGUMENT, bigdecimal_median(result, odd, 0U));
+    TEST_ASSERT_EQUAL(
+        BIGDECIMAL_INVALID_ARGUMENT,
+        bigdecimal_geometric_mean(
+            result, geometric, 2U, 0, BIGDECIMAL_ROUND_HALF_EVEN));
+    assert_decimal_equals("42", result);
+
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_median(result, odd, 3U));
+    assert_decimal_equals("2", result);
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_median(result, even, 4U));
+    assert_decimal_equals("3", result);
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_median(result, middle_pair, 2U));
+    assert_decimal_equals("1.5", result);
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_median(nine, even, 4U));
+    assert_decimal_equals("3", nine);
+
+    TEST_ASSERT_EQUAL(
+        BIGDECIMAL_OK,
+        bigdecimal_geometric_mean(
+            result, geometric_exact, 2U, 10, BIGDECIMAL_ROUND_HALF_EVEN));
+    assert_decimal_equals("2", result);
+    TEST_ASSERT_EQUAL(
+        BIGDECIMAL_OK,
+        bigdecimal_geometric_mean(
+            result, geometric, 2U, 10, BIGDECIMAL_ROUND_HALF_EVEN));
+    assert_decimal_equals("1.414213562", result);
+    TEST_ASSERT_EQUAL(
+        BIGDECIMAL_OK,
+        bigdecimal_geometric_mean(
+            result, geometric_zero, 2U, 10, BIGDECIMAL_ROUND_HALF_EVEN));
+    assert_decimal_equals("0", result);
+    TEST_ASSERT_EQUAL(
+        BIGDECIMAL_OK,
+        bigdecimal_geometric_mean(
+            result, single, 1U, 10, BIGDECIMAL_ROUND_HALF_EVEN));
+    assert_decimal_equals("4", result);
+
+    TEST_ASSERT_EQUAL(
+        BIGDECIMAL_OK,
+        bigdecimal_harmonic_mean(
+            result, harmonic, 3U, 10, BIGDECIMAL_ROUND_HALF_EVEN));
+    assert_decimal_equals("1.714285714", result);
+    TEST_ASSERT_EQUAL(
+        BIGDECIMAL_OK,
+        bigdecimal_harmonic_mean(
+            result, single, 1U, 10, BIGDECIMAL_ROUND_HALF_EVEN));
+    assert_decimal_equals("4", result);
+    TEST_ASSERT_EQUAL(
+        BIGDECIMAL_INVALID_ARGUMENT,
+        bigdecimal_geometric_mean(
+            result, invalid_negative, 2U, 10, BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(
+        BIGDECIMAL_INVALID_ARGUMENT,
+        bigdecimal_harmonic_mean(
+            result, invalid_zero, 2U, 10, BIGDECIMAL_ROUND_HALF_EVEN));
+    assert_decimal_equals("4", result);
+
+    bigdecimal_destroy(minus_one);
+    bigdecimal_destroy(one);
+    bigdecimal_destroy(two);
+    bigdecimal_destroy(four);
+    bigdecimal_destroy(nine);
+    bigdecimal_destroy(zero);
+    bigdecimal_destroy(result);
+}
+
 void test_rescale_rounding(void)
 {
     BigDecimal *value = make_decimal("1.250");
@@ -708,6 +798,7 @@ int main(void)
     RUN_TEST(test_sequence_aggregate_arguments_preserve_result);
     RUN_TEST(test_population_and_sample_statistics);
     RUN_TEST(test_statistics_domains_and_large_close_values);
+    RUN_TEST(test_median_geometric_and_harmonic_means);
     RUN_TEST(test_rescale_rounding);
     RUN_TEST(test_named_rounding_operations);
     RUN_TEST(test_zero_identities_avoid_extreme_scale_work);

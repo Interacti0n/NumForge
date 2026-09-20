@@ -1,16 +1,20 @@
 #include "bigdecimal_internal.h"
+#include "../internal/numforge_alloc.h"
 
 #include <numforge/bigdecimal.h>
 
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #define BIGDECIMAL_STATISTICS_GUARD_DIGITS INT64_C(16)
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
-    Decimal statistics based on exact sufficient statistics.
+    Decimal order statistics, specialized means, and exact sufficient
+    statistics. Median sorts references only. Geometric mean roots the exact
+    product; harmonic mean keeps its reciprocal sum as an exact fraction.
 
     For d_i = x_i - x_0:
     variance_population = (n * sum(d_i^2) - sum(d_i)^2) / n^2
@@ -62,6 +66,293 @@ static BigDecimalStatus statistics_set_count(
 
     (void)snprintf(text, sizeof(text), "%zu", count);
     return bigdecimal_set_string(value, text);
+}
+
+static BigDecimalStatus statistics_validate_non_negative(
+    const BigDecimal *const *values,
+    size_t count,
+    bool allow_zero,
+    bool *contains_zero
+)
+{
+    if (contains_zero != NULL)
+    {
+        *contains_zero = false;
+    }
+
+    for (size_t index = 0U; index < count; index++)
+    {
+        bool negative = false;
+        bool zero = false;
+        BigDecimalStatus status = bigdecimal_is_negative(&negative, values[index]);
+
+        if (status == BIGDECIMAL_OK)
+        {
+            status = bigdecimal_is_zero(&zero, values[index]);
+        }
+
+        if (status != BIGDECIMAL_OK)
+        {
+            return status;
+        }
+
+        if (negative || (!allow_zero && zero))
+        {
+            return BIGDECIMAL_INVALID_ARGUMENT;
+        }
+
+        if (zero && contains_zero != NULL)
+        {
+            *contains_zero = true;
+        }
+    }
+
+    return BIGDECIMAL_OK;
+}
+
+BigDecimalStatus bigdecimal_median(
+    BigDecimal *result,
+    const BigDecimal *const *values,
+    size_t count
+)
+{
+    const BigDecimal **ordered;
+    BigDecimal *sum = NULL;
+    BigDecimal *half = NULL;
+    BigDecimalStatus status = statistics_validate(
+        result, values, count, 1U, 1, BIGDECIMAL_ROUND_HALF_EVEN);
+
+    if (status != BIGDECIMAL_OK)
+    {
+        return status;
+    }
+
+    if (count > SIZE_MAX / sizeof(*ordered))
+    {
+        return BIGDECIMAL_VALUE_TOO_LARGE;
+    }
+
+    ordered = numforge_malloc(count * sizeof(*ordered));
+
+    if (ordered == NULL)
+    {
+        return BIGDECIMAL_OUT_OF_MEMORY;
+    }
+
+    for (size_t index = 0U; index < count; index++)
+    {
+        ordered[index] = values[index];
+    }
+
+    for (size_t index = 1U; status == BIGDECIMAL_OK && index < count; index++)
+    {
+        const BigDecimal *selected = ordered[index];
+        size_t position = index;
+
+        while (position > 0U)
+        {
+            int comparison;
+
+            status = bigdecimal_compare(&comparison, ordered[position - 1U], selected);
+
+            if (status != BIGDECIMAL_OK || comparison <= 0)
+            {
+                break;
+            }
+
+            ordered[position] = ordered[position - 1U];
+            position--;
+        }
+
+        ordered[position] = selected;
+    }
+
+    if (status == BIGDECIMAL_OK && count % 2U != 0U)
+    {
+        status = bigdecimal_copy(result, ordered[count / 2U]);
+    }
+    else if (status == BIGDECIMAL_OK)
+    {
+        sum = bigdecimal_create();
+        half = bigdecimal_create();
+
+        if (sum == NULL || half == NULL)
+        {
+            status = BIGDECIMAL_OUT_OF_MEMORY;
+        }
+        else
+        {
+            status = bigdecimal_add(sum, ordered[count / 2U - 1U], ordered[count / 2U]);
+
+            if (status == BIGDECIMAL_OK)
+            {
+                status = bigdecimal_set_string(half, "0.5");
+            }
+
+            if (status == BIGDECIMAL_OK)
+            {
+                status = bigdecimal_mul(result, sum, half);
+            }
+        }
+    }
+
+    bigdecimal_destroy(sum);
+    bigdecimal_destroy(half);
+    free(ordered);
+    return status;
+}
+
+BigDecimalStatus bigdecimal_geometric_mean(
+    BigDecimal *result,
+    const BigDecimal *const *values,
+    size_t count,
+    int64_t digits,
+    BigDecimalRoundingMode rounding
+)
+{
+    BigDecimal *product;
+    bool contains_zero;
+    BigDecimalStatus status = statistics_validate(
+        result, values, count, 1U, digits, rounding);
+
+    if (status != BIGDECIMAL_OK)
+    {
+        return status;
+    }
+
+#if SIZE_MAX > UINT32_MAX
+    if (count > UINT32_MAX)
+    {
+        return BIGDECIMAL_VALUE_TOO_LARGE;
+    }
+#endif
+
+    status = statistics_validate_non_negative(values, count, true, &contains_zero);
+
+    if (status != BIGDECIMAL_OK)
+    {
+        return status;
+    }
+
+    if (contains_zero)
+    {
+        return bigdecimal_set_string(result, "0");
+    }
+
+    product = bigdecimal_create();
+
+    if (product == NULL)
+    {
+        return BIGDECIMAL_OUT_OF_MEMORY;
+    }
+
+    status = bigdecimal_product(product, values, count);
+
+    if (status == BIGDECIMAL_OK)
+    {
+        status = bigdecimal_root(result, product, (uint32_t)count, digits, rounding);
+    }
+
+    bigdecimal_destroy(product);
+    return status;
+}
+
+BigDecimalStatus bigdecimal_harmonic_mean(
+    BigDecimal *result,
+    const BigDecimal *const *values,
+    size_t count,
+    int64_t digits,
+    BigDecimalRoundingMode rounding
+)
+{
+    BigDecimal *numerator = NULL;
+    BigDecimal *denominator = NULL;
+    BigDecimal *next_numerator = NULL;
+    BigDecimal *next_denominator = NULL;
+    BigDecimal *count_value = NULL;
+    BigDecimal *scaled_denominator = NULL;
+    BigDecimalStatus status = statistics_validate(
+        result, values, count, 1U, digits, rounding);
+
+    if (status != BIGDECIMAL_OK)
+    {
+        return status;
+    }
+
+    status = statistics_validate_non_negative(values, count, false, NULL);
+
+    if (status != BIGDECIMAL_OK)
+    {
+        return status;
+    }
+
+    numerator = bigdecimal_create();
+    denominator = bigdecimal_create();
+    next_numerator = bigdecimal_create();
+    next_denominator = bigdecimal_create();
+    count_value = bigdecimal_create();
+    scaled_denominator = bigdecimal_create();
+
+    if (numerator == NULL || denominator == NULL || next_numerator == NULL ||
+        next_denominator == NULL || count_value == NULL || scaled_denominator == NULL)
+    {
+        status = BIGDECIMAL_OUT_OF_MEMORY;
+        goto cleanup;
+    }
+
+    status = bigdecimal_set_string(denominator, "1");
+
+    for (size_t index = 0U; status == BIGDECIMAL_OK && index < count; index++)
+    {
+        BigDecimal *swap;
+
+        status = bigdecimal_mul(next_numerator, numerator, values[index]);
+
+        if (status == BIGDECIMAL_OK)
+        {
+            status = bigdecimal_add(next_numerator, next_numerator, denominator);
+        }
+
+        if (status == BIGDECIMAL_OK)
+        {
+            status = bigdecimal_mul(next_denominator, denominator, values[index]);
+        }
+
+        if (status == BIGDECIMAL_OK)
+        {
+            swap = numerator;
+            numerator = next_numerator;
+            next_numerator = swap;
+            swap = denominator;
+            denominator = next_denominator;
+            next_denominator = swap;
+        }
+    }
+
+    if (status == BIGDECIMAL_OK)
+    {
+        status = statistics_set_count(count_value, count);
+    }
+
+    if (status == BIGDECIMAL_OK)
+    {
+        status = bigdecimal_mul(scaled_denominator, denominator, count_value);
+    }
+
+    if (status == BIGDECIMAL_OK)
+    {
+        status = bigdecimal_div_exact_or_significant(
+            result, scaled_denominator, numerator, digits, rounding);
+    }
+
+cleanup:
+    bigdecimal_destroy(numerator);
+    bigdecimal_destroy(denominator);
+    bigdecimal_destroy(next_numerator);
+    bigdecimal_destroy(next_denominator);
+    bigdecimal_destroy(count_value);
+    bigdecimal_destroy(scaled_denominator);
+    return status;
 }
 
 static BigDecimalStatus statistics_variance(

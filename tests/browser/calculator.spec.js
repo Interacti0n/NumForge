@@ -96,7 +96,7 @@ for (const lang of ['sk', 'en']) {
         });
         test('function groups, aliases and trigonometry', async ({ page }, testInfo) => {
             await expect(page.locator('details.function-group')).toHaveCount(5);
-            await expect(page.locator('[data-function]')).toHaveCount(36);
+            await expect(page.locator('[data-function]')).toHaveCount(39);
             await expect(page.locator('[data-function]:disabled')).toHaveCount(0);
             await page.locator('#function-tab-0').click();
             await page.locator('[data-function="round"]').click();
@@ -107,6 +107,10 @@ for (const lang of ['sk', 'en']) {
             await calculate(page, 'mean(1;2;2)', '1.6666666667');
             await page.locator('[data-action="clear"]').click();
             await page.locator('#function-tab-3').click();
+            await page.locator('[data-function="median"]').click();
+            await expect(page.locator('#expression')).toHaveValue('median()');
+            await calculate(page, 'harmean(1;2;4)', '1.7142857143');
+            await page.locator('[data-action="clear"]').click();
             await page.locator('[data-function="variance"]').click();
             await expect(page.locator('#expression')).toHaveValue('variance()');
             await calculate(page, 'stdev(1;2;3)', '1');

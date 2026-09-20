@@ -129,6 +129,10 @@ only the selected and current values, evaluating arguments left to right.
 delegate aggregation to the public BigDecimal API. Sum and product are exact.
 Mean accumulates exactly and performs one exact-first division by the count;
 only a recurring quotient depends on working precision.
+`median` orders references without changing arguments and returns an exact
+middle value or exact average. `geomean` accepts non-negative inputs and takes
+the root of their exact product. `harmean` requires positive inputs and builds
+the reciprocal sum as an exact numerator/denominator before its final division.
 `variance` and `stdevp` use population denominator `n`; `stdev` uses sample
 denominator `n−1` and requires two values. The library evaluates
 `n*sum(d²)-sum(d)²` exactly for `d=x−x₀`, avoiding cancellation caused by a

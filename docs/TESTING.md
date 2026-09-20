@@ -51,6 +51,8 @@ nested expressions and display-precision rounding of recurring means.
 Statistics tests cover population versus sample denominators, singleton
 domains, directed rounding, result aliasing, very large closely spaced values,
 calculator arity, cache precision and deterministic allocation failures.
+Median and mean-family tests additionally cover odd/even sequences, exact and
+irrational geometric roots, zero/negative domains and recurring harmonic means.
 
 `constants_tests` checks stored-value rounding, directed rounding, invalid
 arguments, destination preservation, and dynamically calculated 520-digit π,

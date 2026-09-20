@@ -13,6 +13,7 @@ int main(void)
         "(2+3)*4", "πe", "1e3", "1.2.3", "2 3", "2^3^2", "5!", "1/0",
         "pow(2;factorial(3))", "sqrt(abs(-4))", "log(8;2)", "min(1;2;3;4;5)",
         "sum(1;2;3)", "product(1;2;3)", "mean(1;2;3)",
+        "median(1;2;3)", "geomean(1;2;3)", "harmean(1;2;3)",
         "variance(1;2;3)", "stdevp(1;2;3)", "stdev(1;2;3)",
         "atan(1;2)", "exp(1)", "log(1;;2)", "√(4)", "e(2)", "log2(8)",
         "GET / HTTP/1.1\r\n\r\n", "POST /api/evaluate HTTP/1.1\r\nContent-Length: 3\r\n\r\n2+2",

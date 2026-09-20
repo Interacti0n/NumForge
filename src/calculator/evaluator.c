@@ -1291,6 +1291,29 @@ static CalculatorStatus calculator_evaluate_aggregate_call(
                 evaluation->context->division_scale,
                 evaluation->context->rounding);
         }
+        else if (operation == CALCULATOR_FUNCTION_MEDIAN)
+        {
+            decimal_status = bigdecimal_median(
+                value, inputs, expression->data.call.count);
+        }
+        else if (operation == CALCULATOR_FUNCTION_GEOMETRIC_MEAN)
+        {
+            decimal_status = bigdecimal_geometric_mean(
+                value,
+                inputs,
+                expression->data.call.count,
+                evaluation->context->division_scale,
+                evaluation->context->rounding);
+        }
+        else if (operation == CALCULATOR_FUNCTION_HARMONIC_MEAN)
+        {
+            decimal_status = bigdecimal_harmonic_mean(
+                value,
+                inputs,
+                expression->data.call.count,
+                evaluation->context->division_scale,
+                evaluation->context->rounding);
+        }
         else if (operation == CALCULATOR_FUNCTION_VARIANCE)
         {
             decimal_status = bigdecimal_variance_population(
@@ -1565,6 +1588,9 @@ static CalculatorStatus calculator_evaluate_expression(
             case CALCULATOR_FUNCTION_SUM:
             case CALCULATOR_FUNCTION_PRODUCT:
             case CALCULATOR_FUNCTION_MEAN:
+            case CALCULATOR_FUNCTION_MEDIAN:
+            case CALCULATOR_FUNCTION_GEOMETRIC_MEAN:
+            case CALCULATOR_FUNCTION_HARMONIC_MEAN:
             case CALCULATOR_FUNCTION_VARIANCE:
             case CALCULATOR_FUNCTION_STANDARD_DEVIATION_POPULATION:
             case CALCULATOR_FUNCTION_STANDARD_DEVIATION_SAMPLE:

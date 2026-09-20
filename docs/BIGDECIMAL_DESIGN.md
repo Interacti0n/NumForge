@@ -14,7 +14,7 @@ binary floating point. Its public API is declared in
 | `comparison.c` | Numeric comparison and basic predicates. |
 | `arithmetic.c` | Sign operations and exact addition, subtraction, and multiplication. |
 | `aggregation.c` | Exact sequence sum/product and exact-first arithmetic mean. |
-| `statistics.c` | Exact sufficient statistics plus population/sample dispersion. |
+| `statistics.c` | Median, geometric/harmonic means, and population/sample dispersion. |
 | `division.c` | Rescaling, fixed-scale division, significant-digit division, and exact-first division. |
 | `operations.c` | BigInt conversions, integer/sign helpers, min/max, and integer powers. |
 | `roots.c` | General real roots plus square-root and cube-root wrappers. |
@@ -39,7 +39,7 @@ The public header defines the component's stable 1.x surface:
 - exact arithmetic: absolute value, negation, addition, subtraction,
   multiplication, sequence sum, and sequence product;
 - controlled inexact operations: division, rescaling, named integer/decimal-place
-  rounding, sequence mean, variance, standard deviation, real roots, exponential,
+  rounding, sequence means, median, variance, standard deviation, real roots, exponential,
   logarithmic, and trigonometric functions with explicit precision and rounding.
 
 All listed operations are implemented. Every mutating operation computes into
