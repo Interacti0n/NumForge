@@ -131,6 +131,66 @@ static BigDecimalStatus bigdecimal_atan_to_25(BigDecimal *result, const BigDecim
     return bigdecimal_atan(result, value, 25, BIGDECIMAL_ROUND_HALF_EVEN);
 }
 
+static BigDecimalStatus bigdecimal_sinh_to_25(BigDecimal *result, const BigDecimal *value)
+{
+    return bigdecimal_sinh(result, value, 25, BIGDECIMAL_ROUND_HALF_EVEN);
+}
+
+static BigDecimalStatus bigdecimal_cosh_to_25(BigDecimal *result, const BigDecimal *value)
+{
+    return bigdecimal_cosh(result, value, 25, BIGDECIMAL_ROUND_HALF_EVEN);
+}
+
+static BigDecimalStatus bigdecimal_tanh_to_25(BigDecimal *result, const BigDecimal *value)
+{
+    return bigdecimal_tanh(result, value, 25, BIGDECIMAL_ROUND_HALF_EVEN);
+}
+
+static BigDecimalStatus bigdecimal_asinh_to_25(BigDecimal *result, const BigDecimal *value)
+{
+    return bigdecimal_asinh(result, value, 25, BIGDECIMAL_ROUND_HALF_EVEN);
+}
+
+static BigDecimalStatus bigdecimal_acosh_to_25(BigDecimal *result, const BigDecimal *value)
+{
+    return bigdecimal_acosh(result, value, 25, BIGDECIMAL_ROUND_HALF_EVEN);
+}
+
+static BigDecimalStatus bigdecimal_atanh_to_25(BigDecimal *result, const BigDecimal *value)
+{
+    return bigdecimal_atanh(result, value, 25, BIGDECIMAL_ROUND_HALF_EVEN);
+}
+
+static BigDecimalStatus bigdecimal_power_minus_three(
+    BigDecimal *result,
+    const BigDecimal *value
+)
+{
+    BigInt *exponent = bigint_create();
+    BigIntStatus integer_status;
+    BigDecimalStatus status;
+
+    if (exponent == NULL)
+    {
+        return BIGDECIMAL_OUT_OF_MEMORY;
+    }
+
+    integer_status = bigint_set_string(exponent, "-3");
+
+    if (integer_status != BIGINT_OK)
+    {
+        bigint_destroy(exponent);
+        return integer_status == BIGINT_OUT_OF_MEMORY
+                   ? BIGDECIMAL_OUT_OF_MEMORY
+                   : BIGDECIMAL_INVALID_ARGUMENT;
+    }
+
+    status = bigdecimal_pow_signed(
+        result, value, exponent, 25, BIGDECIMAL_ROUND_HALF_EVEN);
+    bigint_destroy(exponent);
+    return status;
+}
+
 static BigDecimalStatus bigdecimal_divide_to_25(
     BigDecimal *result,
     const BigDecimal *a,
@@ -1091,6 +1151,17 @@ void test_trigonometric_sampled_allocation_failures(void)
     assert_sampled_unary_allocation_failures(bigdecimal_atan_to_25, "1");
 }
 
+void test_signed_power_and_hyperbolic_sampled_allocation_failures(void)
+{
+    assert_sampled_unary_allocation_failures(bigdecimal_power_minus_three, "2");
+    assert_sampled_unary_allocation_failures(bigdecimal_sinh_to_25, "0.5");
+    assert_sampled_unary_allocation_failures(bigdecimal_cosh_to_25, "0.5");
+    assert_sampled_unary_allocation_failures(bigdecimal_tanh_to_25, "0.5");
+    assert_sampled_unary_allocation_failures(bigdecimal_asinh_to_25, "0.5");
+    assert_sampled_unary_allocation_failures(bigdecimal_acosh_to_25, "2");
+    assert_sampled_unary_allocation_failures(bigdecimal_atanh_to_25, "0.5");
+}
+
 void test_bigdecimal_aliasing_preserves_destination_on_allocation_failure(void)
 {
     static const char a[] = "123456789012345678901234567890.123456789";
@@ -1549,6 +1620,7 @@ int main(void)
     RUN_TEST(test_bigdecimal_aliasing_preserves_destination_on_allocation_failure);
     RUN_TEST(test_dynamic_constant_sampled_allocation_failures);
     RUN_TEST(test_trigonometric_sampled_allocation_failures);
+    RUN_TEST(test_signed_power_and_hyperbolic_sampled_allocation_failures);
     RUN_TEST(test_logarithm_sampled_allocation_failures_and_aliasing);
     RUN_TEST(test_parser_preserves_output_on_every_allocation_failure);
     RUN_TEST(test_evaluator_preserves_destination_on_every_allocation_failure);

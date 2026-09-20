@@ -82,6 +82,15 @@ base must also be positive and different from one.
 digits, and an explicit rounding mode. Degree conversion belongs to clients,
 not the numeric library.
 
+`bigdecimal_sinh`, `bigdecimal_cosh`, `bigdecimal_tanh`, `bigdecimal_asinh`,
+`bigdecimal_acosh`, and `bigdecimal_atanh` use explicit significant digits and
+rounding. They are not angle functions. `acosh` requires x ≥ 1 and `atanh`
+requires -1 < x < 1.
+
+Use exact `bigdecimal_pow` for non-negative integer exponents. Use
+`bigdecimal_pow_signed` when negative integer exponents are accepted; it keeps
+terminating reciprocals exact and rounds only recurring reciprocals.
+
 `bigdecimal_sum` and `bigdecimal_product` accept a non-empty array of values
 and aggregate it exactly. `bigdecimal_mean` first forms the exact sum, then
 preserves a terminating quotient or rounds a recurring quotient using the

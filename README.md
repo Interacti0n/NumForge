@@ -21,6 +21,8 @@ add expression syntax, presentation and application resource limits.
   logarithm, and logarithms with a caller-selected base.
 - Arbitrary-precision radian sine, cosine, tangent, and inverse trigonometric
   functions with guarded large-argument reduction.
+- Arbitrary-precision hyperbolic and inverse hyperbolic functions with stable
+  small-argument and extreme-value paths.
 - Interactive expression calculator with source-positioned diagnostics.
 - Precision-aware approximations of `π`, `e`, and `φ`: stored values make
   ordinary requests cheap, while requests beyond 500 digits are calculated
@@ -153,7 +155,8 @@ runs.
 
 The page includes a clickable keypad for the current expression grammar,
 including `π`, `e`, `φ`, `xʸ`, `x²`, `x³`, and `n!`. Powers, squaring, and
-cubing accept any exact decimal base with a non-negative whole-number exponent;
+cubing accept any exact decimal base with a whole-number exponent; negative
+exponents use a precision-aware reciprocal, preserving finite decimals exactly;
 factorial requires an input from 0 to 10000. Its precision control defaults to
 10 decimal places (configurable from 0 to 10000); full output is also available.
 Non-terminating division uses working significant digits, so `1E-40 / 1` remains `1E-40`.
@@ -178,7 +181,8 @@ and `stdevp` use population denominator `n`; `stdev` uses sample denominator
 `n−1`. Real roots `sqrt`/`√`, `cbrt` and `root(x;n)` preserve exact finite roots
 and otherwise use working precision (34 significant digits by default). Trigonometric and inverse
 trigonometric calls use the shared RAD/DEG selector; explicit `radians(x)` and
-`degrees(x)` conversions remain available. Five horizontal tabs contain the
+`degrees(x)` conversions remain available. Hyperbolic calls are independent of
+RAD/DEG. Six horizontal tabs contain the
 function controls, with signatures and domain hints on hover, focus or touch.
 The RAD/DEG selector sits on the right beside the precision settings. Connection
 and unexpected-response errors offer retry with Enter.
@@ -258,6 +262,8 @@ executables:
   and destination-preservation checks.
 - `trigonometric_tests`: forward/inverse radian values, large-argument
   reduction, domains, rounding, aliasing, and destination preservation.
+- `hyperbolic_tests`: forward/inverse values, tiny and extreme arguments,
+  domains, rounding, aliasing, and destination preservation.
 - `calculator_tests`: covers tokenization, parsing, evaluation, source
   positions, and division policy.
 - `calculator_contract_tests`: covers numeric-token boundaries, implicit

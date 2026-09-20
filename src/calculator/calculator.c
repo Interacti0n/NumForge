@@ -184,14 +184,12 @@ static bool calculator_expression_independent(const CalculatorExpression *expres
         case CALCULATOR_EXPRESSION_BINARY:
             return (expression->data.binary.operation == CALCULATOR_BINARY_ADD ||
                     expression->data.binary.operation == CALCULATOR_BINARY_SUBTRACT ||
-                    expression->data.binary.operation == CALCULATOR_BINARY_MULTIPLY ||
-                    expression->data.binary.operation == CALCULATOR_BINARY_POWER) &&
+                    expression->data.binary.operation == CALCULATOR_BINARY_MULTIPLY) &&
                    calculator_expression_independent(expression->data.binary.left) &&
                    calculator_expression_independent(expression->data.binary.right);
         case CALCULATOR_EXPRESSION_CALL:
             switch (expression->data.call.function->implementation)
             {
-                case CALCULATOR_FUNCTION_POWER:
                 case CALCULATOR_FUNCTION_FACTORIAL:
                 case CALCULATOR_FUNCTION_ABS:
                 case CALCULATOR_FUNCTION_SIGN:

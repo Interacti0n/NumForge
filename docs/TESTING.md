@@ -68,6 +68,12 @@ explicit conversions, exact degree tangent poles, symbolic `sin(π)`, and
 retaining a small angle beside a `1E50*π` multiple. Allocation injection
 samples early, middle, and late sine/atan failures.
 
+`hyperbolic_tests` checks independent reference values, identities, odd/even
+symmetry, tiny inputs, large-argument saturation, inverse domains, directed
+rounding, aliasing and destination preservation. Signed-power tests cover exact
+and recurring reciprocals, signs, zero, legacy API compatibility and allocation
+failure safety.
+
 ```sh
 ctest --test-dir build -C Debug -R numeric_oracle --output-on-failure
 ```
@@ -155,7 +161,7 @@ precision, keypad entry, clipboard, help/navigation, arithmetic errors,
 transport failures and stale-response protection. Network-failure and delayed
 response cases use controlled interception; ordinary calculations reach C.
 Function-group tests also cover keyboard expansion, arity errors, the RAD/DEG
-selector, active integer/root/exponential/logarithmic/trigonometric functions, five-line result
+selector, active integer/root/exponential/logarithmic/trigonometric/hyperbolic functions, five-line result
 expansion and mobile layout.
 `function_calls_tests` covers all
 registered names, syntax/depth/argument limits and e/E boundaries; allocation

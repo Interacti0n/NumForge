@@ -49,6 +49,12 @@ static const CalculatorFunction calculator_functions[] =
     { "asin", 1, 1, CALCULATOR_FUNCTION_ASIN },
     { "acos", 1, 1, CALCULATOR_FUNCTION_ACOS },
     { "atan", 1, 1, CALCULATOR_FUNCTION_ATAN },
+    { "sinh", 1, 1, CALCULATOR_FUNCTION_SINH },
+    { "cosh", 1, 1, CALCULATOR_FUNCTION_COSH },
+    { "tanh", 1, 1, CALCULATOR_FUNCTION_TANH },
+    { "asinh", 1, 1, CALCULATOR_FUNCTION_ASINH },
+    { "acosh", 1, 1, CALCULATOR_FUNCTION_ACOSH },
+    { "atanh", 1, 1, CALCULATOR_FUNCTION_ATANH },
     { "radians", 1, 1, CALCULATOR_FUNCTION_RADIANS },
     { "degrees", 1, 1, CALCULATOR_FUNCTION_DEGREES }
 };

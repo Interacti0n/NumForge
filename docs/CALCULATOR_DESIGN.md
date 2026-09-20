@@ -12,7 +12,7 @@ client over the public numeric API.
 | `constants.c` | Maps `π`, `e`, and `φ` to the precision-aware public BigDecimal constant API. |
 | `tokenizer.c` | Converts source text into location-aware tokens. Implemented for decimal literals, identifiers, whitespace, binary and postfix operators, and parentheses. |
 | `parser.c` | Converts tokens into an opaque expression tree (AST). Implemented as recursive descent with postfix, power, unary, multiplicative, and additive precedence layers. |
-| `evaluator.c` | Evaluates the AST to `BigDecimal` using `CalculatorContext`. Implements arithmetic, roots, integer, exponential, logarithmic, trigonometric, conversion, and selection calls. |
+| `evaluator.c` | Evaluates the AST to `BigDecimal` using `CalculatorContext`. Implements arithmetic, roots, integer, exponential, logarithmic, trigonometric, hyperbolic, conversion, and selection calls. |
 | `formatter.c` | Rounds a completed result to the requested output scale and selects ordinary or scientific notation. |
 | `functions.c` | Immutable registry of named calls, accepted arities and implementation dispatch identifiers. |
 | `src/main.c` | Interactive command-line shell around the calculator pipeline. |
@@ -54,7 +54,7 @@ own loopback origins, preventing unrelated pages from triggering expensive
 local calculations. Slovak and English routes use `?lang=sk` and `?lang=en`;
 the result panel copies the currently displayed result through the browser
 clipboard API, with a local fallback. Exponential, logarithmic, trigonometric,
-and angle-conversion controls are active. Basic abs/sign/min/max and aggregate
+hyperbolic, and angle-conversion controls are active. Basic abs/sign/min/max and aggregate
 sum/product/mean controls, integer gcd/lcm/mod/isqrt controls
 and sqrt/cbrt/root controls are active.
 
@@ -204,10 +204,11 @@ matched case-sensitively; underscores and numeric suffixes are not names.
 `^` is right-associative and binds more tightly than unary signs and
 multiplication. Thus `2^3^2` is `2^(3^2)` and `-2^2` is `-(2^2)`. Its evaluator
 uses binary exponentiation: the base is an exact `BigDecimal`, while the
-exponent must be a non-negative whole number represented as `BigInt`. This
-keeps `1.5^3` exact while using logarithmically many BigDecimal multiplications.
-`0^0` is defined as `1`; negative and fractional exponents currently return an
-invalid-argument error.
+exponent must be a whole number represented as `BigInt`. This keeps `1.5^3`
+exact while using logarithmically many BigDecimal multiplications. Negative
+exponents use the public precision-aware reciprocal operation. `0^0` is defined
+as `1`; zero to a negative exponent is division by zero, and fractional
+exponents return an invalid-argument error.
 
 Postfix operators bind tighter than unary signs and multiplication, so `-2²`
 is `-(2²)` and `(2 + 3)!` is valid. Square and cube evaluate as exact

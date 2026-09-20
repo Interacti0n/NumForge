@@ -5,6 +5,12 @@ All notable changes to NumForge are documented in this file. The project uses
 
 ## Unreleased
 
+- Add precision-aware negative integer powers through `bigdecimal_pow_signed`
+  and the calculator while retaining the exact non-negative `bigdecimal_pow`
+  contract. Add public `sinh`, `cosh`, `tanh`, `asinh`, `acosh`, and `atanh`
+  operations with stable small/extreme argument paths, bilingual calculator
+  controls, domains, documentation, consumer coverage and failure-safety tests.
+
 - Add public BigDecimal sequence aggregation with exact `sum` and `product`,
   plus exact-first `mean` with explicit significant-digit rounding. Enable the
   matching variadic calculator calls, bilingual web controls, documentation,

@@ -287,8 +287,11 @@ BigDecimalStatus bigdecimal_div(
     Integer conversion, inspection, selection, and power functions.
 
     Fractional input to to_bigint is rejected. pow accepts a non-negative
-    integer exponent and defines 0^0 as 1. All outputs are preserved on
-    failure, and output/input aliasing is supported where applicable.
+    integer exponent and defines 0^0 as 1. pow_signed additionally accepts
+    negative integer exponents, preserves finite reciprocals exactly, and
+    rounds recurring reciprocals to the requested significant digits. Zero
+    with a negative exponent is division by zero. All outputs are preserved
+    on failure, and output/input aliasing is supported where applicable.
 
     Implementation: src/bigdecimal/operations.c
 ------------------------------------------------------------------------------------------------------------------------------
@@ -323,6 +326,13 @@ BigDecimalStatus bigdecimal_pow(
     BigDecimal *result,
     const BigDecimal *base,
     const BigInt *exponent
+);
+BigDecimalStatus bigdecimal_pow_signed(
+    BigDecimal *result,
+    const BigDecimal *base,
+    const BigInt *exponent,
+    int64_t digits,
+    BigDecimalRoundingMode rounding
 );
 
 /*
@@ -392,6 +402,55 @@ BigDecimalStatus bigdecimal_log(
     BigDecimal *result,
     const BigDecimal *value,
     const BigDecimal *base,
+    int64_t digits,
+    BigDecimalRoundingMode rounding
+);
+
+/*
+------------------------------------------------------------------------------------------------------------------------------
+    Hyperbolic functions with explicit significant digits.
+
+    sinh, cosh, tanh, and asinh accept every finite decimal value. acosh
+    requires value >= 1; atanh requires -1 < value < 1. Stable series and
+    transformed formulas protect small arguments and large finite magnitudes.
+    Failure preserves result and output/input aliasing is supported.
+
+    Implementation: src/bigdecimal/hyperbolic.c
+------------------------------------------------------------------------------------------------------------------------------
+*/
+BigDecimalStatus bigdecimal_sinh(
+    BigDecimal *result,
+    const BigDecimal *value,
+    int64_t digits,
+    BigDecimalRoundingMode rounding
+);
+BigDecimalStatus bigdecimal_cosh(
+    BigDecimal *result,
+    const BigDecimal *value,
+    int64_t digits,
+    BigDecimalRoundingMode rounding
+);
+BigDecimalStatus bigdecimal_tanh(
+    BigDecimal *result,
+    const BigDecimal *value,
+    int64_t digits,
+    BigDecimalRoundingMode rounding
+);
+BigDecimalStatus bigdecimal_asinh(
+    BigDecimal *result,
+    const BigDecimal *value,
+    int64_t digits,
+    BigDecimalRoundingMode rounding
+);
+BigDecimalStatus bigdecimal_acosh(
+    BigDecimal *result,
+    const BigDecimal *value,
+    int64_t digits,
+    BigDecimalRoundingMode rounding
+);
+BigDecimalStatus bigdecimal_atanh(
+    BigDecimal *result,
+    const BigDecimal *value,
     int64_t digits,
     BigDecimalRoundingMode rounding
 );

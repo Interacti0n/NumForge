@@ -246,3 +246,70 @@ cleanup:
 
     return status;
 }
+
+BigDecimalStatus bigdecimal_pow_signed(
+    BigDecimal *result,
+    const BigDecimal *base,
+    const BigInt *exponent,
+    int64_t digits,
+    BigDecimalRoundingMode rounding
+)
+{
+    BigInt *magnitude = NULL;
+    BigDecimal *power = NULL;
+    BigDecimal *one = NULL;
+    BigDecimalStatus status = BIGDECIMAL_OUT_OF_MEMORY;
+
+    if (result == NULL || base == NULL || exponent == NULL)
+    {
+        return BIGDECIMAL_NULL_ARGUMENT;
+    }
+
+    if (digits < 1 || !bigdecimal_valid_rounding(rounding))
+    {
+        return BIGDECIMAL_INVALID_ARGUMENT;
+    }
+
+    if (!bigint_is_negative(exponent))
+    {
+        return bigdecimal_pow(result, base, exponent);
+    }
+
+    if (bigint_is_zero(base->coefficient))
+    {
+        return BIGDECIMAL_DIVISION_BY_ZERO;
+    }
+
+    magnitude = bigint_create();
+    power = bigdecimal_create();
+    one = bigdecimal_create();
+
+    if (magnitude == NULL || power == NULL || one == NULL)
+    {
+        goto cleanup;
+    }
+
+    status = from_integer_status(bigint_abs(magnitude, exponent));
+
+    if (status == BIGDECIMAL_OK)
+    {
+        status = bigdecimal_pow(power, base, magnitude);
+    }
+
+    if (status == BIGDECIMAL_OK)
+    {
+        status = bigdecimal_set_string(one, "1");
+    }
+
+    if (status == BIGDECIMAL_OK)
+    {
+        status = bigdecimal_div_exact_or_significant(
+            result, one, power, digits, rounding);
+    }
+
+cleanup:
+    bigint_destroy(magnitude);
+    bigdecimal_destroy(power);
+    bigdecimal_destroy(one);
+    return status;
+}

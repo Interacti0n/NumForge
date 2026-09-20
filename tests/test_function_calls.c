@@ -18,7 +18,9 @@ static void test_registered_calls_and_arity(void)
         "factorial(3)", "isqrt(4)", "pow(2;3)",
         "sqrt(4)", "cbrt(-8)", "root(8;3)", "exp(2)", "ln(e)", "log(10)",
         "log(8;2)", "sin(1)", "cos(1)", "tan(1)", "asin(1)", "acos(1)",
-        "atan(1)", "radians(90)", "degrees(1)", "floor(1.2)", "ceil(1.2)",
+        "atan(1)", "sinh(1)", "cosh(1)", "tanh(1)", "asinh(1)",
+        "acosh(2)", "atanh(0.5)", "radians(90)", "degrees(1)",
+        "floor(1.2)", "ceil(1.2)",
         "trunc(-1.2)", "round(1.25)", "round(1.25;1)",
         "sum(1;2;3)", "product(1;2;3)", "mean(1;2;3)",
         "median(3;1;2)", "geomean(1;4)", "harmean(1;2;4)",
@@ -93,6 +95,8 @@ static void test_evaluation_and_implicit_products(void)
         { "1e3-1*e*3", "0" }, { "1E3", "1000" },
         { "πe-π*e", "0" }, { "e(2+2)-4*e", "0" }, { "2(2+2)", "8" },
         { "pow(0;0)", "1" },
+        { "2^-3", "0.125" }, { "pow(3;-1)", "0.3333333333" },
+        { "pow(-2;-3)", "-0.125" },
         { "sin(1E50*π)+sin(π)", "0" },
         { "abs(-1,25)", "1.25" }, { "abs(-0)", "0" },
         { "sign(-1E-100000)", "-1" }, { "sign(0)", "0" },
@@ -128,7 +132,9 @@ static void test_evaluation_and_implicit_products(void)
         free(text);
     }
     char *text = NULL;
-    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, calculator_compute("pow(2;-1)", &context, &text, &error));
+    TEST_ASSERT_EQUAL(CALCULATOR_DIVISION_BY_ZERO,
+                      calculator_compute("pow(0;-1)", &context, &text, &error));
+    TEST_ASSERT_NULL(text);
     TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, calculator_compute("factorial(1.5)", &context, &text, &error));
     TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,
                       calculator_compute("geomean(-1;4)", &context, &text, &error));
@@ -163,6 +169,37 @@ static void test_evaluation_and_implicit_products(void)
     TEST_ASSERT_EQUAL_STRING("-3", text);
     free(text);
     text = NULL;
+
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("sinh(1)", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("1.1752011936", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("cosh(1)", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("1.5430806348", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("tanh(1)", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("0.761594156", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("asinh(1)", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("0.881373587", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("acosh(2)", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("1.3169578969", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("atanh(0.5)", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("0.5493061443", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,
+                      calculator_compute("acosh(0.5)", &context, &text, &error));
+    TEST_ASSERT_NULL(text);
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,
+                      calculator_compute("atanh(1)", &context, &text, &error));
+    TEST_ASSERT_NULL(text);
 
     TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("sin(π/6)", &context, &text, &error));
     TEST_ASSERT_EQUAL_STRING("0.5", text);

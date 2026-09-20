@@ -91,12 +91,14 @@ retain unnecessary trailing zeroes.
 | Status text | `bigdecimal_status_to_string` |
 | Comparison and predicates | `bigdecimal_compare`, `bigdecimal_is_zero`, `bigdecimal_is_negative`, `bigdecimal_is_integer`, `bigdecimal_sign`, `bigdecimal_min`, `bigdecimal_max` |
 | Exact arithmetic | `bigdecimal_abs`, `bigdecimal_negate`, `bigdecimal_add`, `bigdecimal_sub`, `bigdecimal_mul`, `bigdecimal_pow` |
+| Signed integer powers | `bigdecimal_pow_signed` |
 | Sequence aggregates | `bigdecimal_sum`, `bigdecimal_product`, `bigdecimal_mean` |
 | Statistics | `bigdecimal_median`, `bigdecimal_geometric_mean`, `bigdecimal_harmonic_mean`, `bigdecimal_variance_population`, `bigdecimal_standard_deviation_population`, `bigdecimal_standard_deviation_sample` |
 | Rounded arithmetic | `bigdecimal_rescale`, `bigdecimal_floor`, `bigdecimal_ceil`, `bigdecimal_trunc`, `bigdecimal_round`, `bigdecimal_div`, `bigdecimal_div_significant`, `bigdecimal_div_exact_or_significant` |
 | Real roots | `bigdecimal_sqrt`, `bigdecimal_cbrt`, `bigdecimal_root` |
 | Exponential and logarithmic | `bigdecimal_exp`, `bigdecimal_ln`, `bigdecimal_log10`, `bigdecimal_log` |
 | Trigonometric | `bigdecimal_sin`, `bigdecimal_cos`, `bigdecimal_tan`, `bigdecimal_asin`, `bigdecimal_acos`, `bigdecimal_atan` |
+| Hyperbolic | `bigdecimal_sinh`, `bigdecimal_cosh`, `bigdecimal_tanh`, `bigdecimal_asinh`, `bigdecimal_acosh`, `bigdecimal_atanh` |
 | Constants and display | `bigdecimal_set_constant`, `bigdecimal_set_constant_significant`, `bigdecimal_format` |
 
 Addition, subtraction, and multiplication are exact. Division and rescaling
@@ -116,7 +118,10 @@ keeps decimal places; a negative scale rounds to tens, hundreds, and so on.
   direction. `bigdecimal_round` uses half-even at a requested decimal-place
   count; negative places select tens, hundreds, and larger powers of ten.
 - `bigdecimal_pow` takes a non-negative BigInt exponent and computes exactly;
-  `0^0 = 1`. Negative and fractional exponents are not implemented.
+  `0^0 = 1`. `bigdecimal_pow_signed` additionally accepts negative BigInt
+  exponents, preserves terminating reciprocals exactly, and rounds recurring
+  reciprocals using its explicit significant-digit count and rounding mode.
+  Zero to a negative exponent returns `BIGDECIMAL_DIVISION_BY_ZERO`.
 - `bigdecimal_sum` and `bigdecimal_product` aggregate one or more values
   exactly. `bigdecimal_mean` forms the exact sum first, then preserves a
   terminating quotient exactly or rounds a recurring quotient to the requested
@@ -211,9 +216,11 @@ Euler's constant, so `5e`
 means `5 * e` and `1e3` means `1 * e * 3`. Scientific notation always uses
 uppercase `E`: `5E-1` means `0.5` and `1E3` means `1000`. Powers use binary
 exponentiation with exact BigDecimal multiplication, so decimal bases are valid
-when the exponent is a non-negative whole number. `2^3^2` means `2^(3^2)`;
-`0^0` is `1`. Negative and decimal exponents and variables are not implemented
-yet. Named integer and root functions use the public BigDecimal core; squaring
+when the exponent is a whole number. Negative exponents use a reciprocal at
+working precision while retaining exact terminating results. `2^3^2` means
+`2^(3^2)`; `0^0` is `1`, and zero to a negative exponent is a division-by-zero
+error. Decimal exponents and variables are not implemented. Named integer and
+root functions use the public BigDecimal core; squaring
 and cubing use exact BigDecimal
 multiplication too.
 
@@ -244,7 +251,7 @@ return `CALCULATOR_VALUE_TOO_LARGE` instead of risking process stack overflow.
 ### Named calls
 
 Names contain lowercase ASCII letters only and require parentheses. Arguments
-use semicolons, not commas: `pow(1,5;2)` is `2.25`. The registry recognizes 39
+use semicolons, not commas: `pow(1,5;2)` is `2.25`. The registry recognizes 45
 names; recognition is separate from numerical implementation:
 
 | Calls | Current calculation support |
@@ -262,6 +269,7 @@ names; recognition is separate from numerical implementation:
 | `sqrt(x)`, `cbrt(x)`, `root(x;n)` | Active real roots; `√(x)` aliases `sqrt(x)`. Square roots require x ≥ 0; cube roots accept negative x. `root` accepts integer n from 1 to 10000, and negative x only for odd n. |
 | `exp(x)`, `ln(x)`, `log(x)`, `log(x;b)` | Active. `ln` uses base e, one-argument `log` uses base 10, and the second argument selects an arbitrary base. Logarithm inputs must be positive; a custom base must be positive and not 1. |
 | `sin(x)`, `cos(x)`, `tan(x)`, `asin(x)`, `acos(x)`, `atan(x)` | Active. They use the selected RAD/DEG calculator mode; inverse results follow the same mode. `asin`/`acos` require x in `[-1,1]`. Exact degree poles such as `tan(90)` are rejected in DEG mode. |
+| `sinh(x)`, `cosh(x)`, `tanh(x)`, `asinh(x)`, `acosh(x)`, `atanh(x)` | Active and independent of RAD/DEG. `acosh` requires x ≥ 1; `atanh` requires -1 < x < 1. |
 | `radians(x)`, `degrees(x)` | Active explicit conversions, independent of the selected angle mode. |
 
 Wrong arity returns `wrong number of arguments` at the function name; unknown
@@ -293,7 +301,8 @@ names, not products. Numeric suffixes such as `log2` are not supported.
 
 The local browser page has active keypad buttons for this grammar, including
 power, square, cube, factorial and an argument separator. Named functions are
-organized in five horizontal tabs with one active panel. Function buttons insert
+organized in six horizontal tabs with one active panel: Basic, Statistics,
+Integers, Powers and logarithms, Trigonometry, and Hyperbolic. Function buttons insert
 both parentheses and place the caret inside; Enter calculates and moves the
 caret to the end of the expression. Root, logarithmic and exponential
 and trigonometric controls are active. A RAD/DEG selector on the right beside precision settings

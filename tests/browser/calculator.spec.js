@@ -95,8 +95,8 @@ for (const lang of ['sk', 'en']) {
             await expect(page.locator('#result')).toBeEmpty();
         });
         test('function groups, aliases and trigonometry', async ({ page }, testInfo) => {
-            await expect(page.locator('details.function-group')).toHaveCount(5);
-            await expect(page.locator('[data-function]')).toHaveCount(39);
+            await expect(page.locator('details.function-group')).toHaveCount(6);
+            await expect(page.locator('[data-function]')).toHaveCount(45);
             await expect(page.locator('[data-function]:disabled')).toHaveCount(0);
             await page.locator('#function-tab-0').click();
             await page.locator('[data-function="round"]').click();
@@ -106,7 +106,7 @@ for (const lang of ['sk', 'en']) {
             await expect(page.locator('#result')).toHaveText('12.34');
             await calculate(page, 'mean(1;2;2)', '1.6666666667');
             await page.locator('[data-action="clear"]').click();
-            await page.locator('#function-tab-3').click();
+            await page.locator('#function-tab-1').click();
             await page.locator('[data-function="median"]').click();
             await expect(page.locator('#expression')).toHaveValue('median()');
             await calculate(page, 'harmean(1;2;4)', '1.7142857143');
@@ -116,7 +116,7 @@ for (const lang of ['sk', 'en']) {
             await calculate(page, 'stdev(1;2;3)', '1');
             await page.locator('[data-action="clear"]').click();
             const powers = page.locator('details').filter({ has: page.locator('[data-function="pow"]') });
-            await page.locator('#function-tab-2').focus();
+            await page.locator('#function-tab-3').focus();
             await page.keyboard.press('Enter');
             await page.locator('[data-function="pow"]').click();
             await expect(page.locator('#expression')).toHaveValue('pow()');
@@ -128,6 +128,7 @@ for (const lang of ['sk', 'en']) {
             await expect(page.locator('#result')).toHaveText('8');
             await page.locator('#expression').press('Enter');
             expect(await page.locator('#expression').evaluate(el => el.selectionStart)).toBe(8);
+            await calculate(page, '2^-3', '0.125');
             await calculate(page, 'factorial(5)', '120');
             await page.locator('[data-action="clear"]').click();
             await page.locator('[data-function="exp"]').click();
@@ -144,7 +145,7 @@ for (const lang of ['sk', 'en']) {
             await expect(page.locator('[data-angle="rad"]')).toHaveClass(/active/);
             await page.locator('[data-action="clear"]').click();
             await page.locator('[data-function="sin"]').click();
-            await page.locator('#function-tab-2').click();
+            await page.locator('#function-tab-3').click();
             await page.locator('[data-function="sqrt"]').click();
             await expect(page.locator('#expression')).toHaveValue('sin(sqrt())');
             expect(await page.locator('#expression').evaluate(el => el.selectionStart)).toBe(9);
@@ -157,6 +158,12 @@ for (const lang of ['sk', 'en']) {
             await calculate(page, 'tan(45)', '1');
             await calculate(page, 'asin(1)', '90');
             await calculate(page, 'degrees(π)', '180');
+            await page.locator('#function-tab-5').click();
+            await page.locator('[data-action="clear"]').click();
+            await page.locator('[data-function="sinh"]').click();
+            await expect(page.locator('#expression')).toHaveValue('sinh()');
+            await calculate(page, 'tanh(1)', '0.761594156');
+            await calculate(page, 'acosh(2)', '1.3169578969');
             await page.locator('#expression').fill('atan(1;2)');
             await page.locator('#expression').press('Enter');
             await expect(page.locator('#result')).toContainText(lang === 'sk' ? 'nesprávny počet argumentov' : 'wrong number of arguments');
@@ -170,7 +177,7 @@ for (const lang of ['sk', 'en']) {
         });
         test('integer buttons execute through C and reject invalid domains', async ({ page }) => {
             const group = page.locator('details').filter({has: page.locator('[data-function="gcd"]')});
-            await page.locator('#function-tab-1').click();
+            await page.locator('#function-tab-2').click();
             for (const [name, args, expected] of [
                 ['gcd', '-48;18)', '6'], ['lcm', '-4;6)', '12'],
                 ['mod', '-7;3)', '-1'], ['npr', '5;2)', '20'], ['ncr', '5;2)', '10'],
@@ -190,7 +197,7 @@ for (const lang of ['sk', 'en']) {
         });
         test('real roots, precision and domain errors', async ({ page }) => {
             const group = page.locator('details').filter({has: page.locator('[data-function="sqrt"]')});
-            await page.locator('#function-tab-2').click();
+            await page.locator('#function-tab-3').click();
             for (const [name, args, expected] of [
                 ['sqrt', '2)', '1.4142135624'], ['cbrt', '-8)', '-2'], ['root', '-32;5)', '-2']
             ]) {
@@ -230,7 +237,7 @@ for (const lang of ['sk', 'en']) {
         test('collapsed calculator fits the viewport in every category', async ({ page }) => {
             for (const [width, height] of [[1280, 720], [1024, 600], [375, 667], [320, 568], [812, 375]]) {
                 await page.setViewportSize({width, height});
-                for (let index = 0; index < 4; index++) {
+                for (let index = 0; index < 6; index++) {
                     await page.locator(`#function-tab-${index}`).click();
                     await expect.poll(() => page.evaluate(() =>
                         document.documentElement.scrollHeight <= window.innerHeight + 1)).toBe(true);
@@ -320,7 +327,7 @@ for (const lang of ['sk', 'en']) {
             await page.locator('#expression').press('Enter');
             await expect(page.locator('#result')).toContainText('-1 ≤ x ≤ 1');
             await expect(page.locator('#result')).toContainText('⟦asin⟧');
-            await page.locator('#function-tab-2').click();
+            await page.locator('#function-tab-3').click();
             await page.locator('[data-action=clear]').click();
             await page.locator('[data-function=log]').dispatchEvent('click');
             await expect(page.locator('#function-help')).toContainText('y ≠ 1');

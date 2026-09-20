@@ -19,6 +19,7 @@ binary floating point. Its public API is declared in
 | `operations.c` | BigInt conversions, integer/sign helpers, min/max, and integer powers. |
 | `roots.c` | General real roots plus square-root and cube-root wrappers. |
 | `transcendental.c` | Guarded exponential and logarithmic functions with decimal argument reduction. |
+| `hyperbolic.c` | Stable hyperbolic and inverse hyperbolic functions. |
 | `trigonometric.c` | Guarded radian trigonometric functions and magnitude-aware π reduction. |
 | `format.c` | Precision-aware readable and scientific result formatting. |
 | `constants.c` | Stored and dynamically calculated high-precision mathematical constants. |
@@ -40,7 +41,8 @@ The public header defines the component's stable 1.x surface:
   multiplication, sequence sum, and sequence product;
 - controlled inexact operations: division, rescaling, named integer/decimal-place
   rounding, sequence means, median, variance, standard deviation, real roots, exponential,
-  logarithmic, and trigonometric functions with explicit precision and rounding.
+  logarithmic, trigonometric, and hyperbolic functions with explicit precision
+  and rounding.
 
 All listed operations are implemented. Every mutating operation computes into
 a temporary value and commits only on success, so its destination is unchanged
@@ -81,6 +83,12 @@ half-angle reduction before its alternating series; `asin` and `acos` build on
 endpoints. `acos` uses a complementary arctangent formula to avoid subtracting
 nearly equal angles near 1. Intermediate rounding is half-even and only the final
 step applies the caller's requested mode.
+
+Hyperbolic functions use series near zero so tiny inputs are not lost through
+subtraction. Larger forward values build on guarded `exp`; `tanh` uses a stable
+negative-exponential ratio and saturates only when the omitted tail cannot affect
+the requested digits. Inverse functions use guarded logarithm/root identities.
+`acosh` requires x ≥ 1 and `atanh` requires -1 < x < 1.
 
 Constants use a hybrid policy. `bigdecimal_set_constant` preserves the original
 full 500-decimal-place values. The precision-aware factory rounds those stored

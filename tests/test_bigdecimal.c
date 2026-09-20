@@ -545,6 +545,80 @@ void test_zero_identities_avoid_extreme_scale_work(void)
     bigdecimal_destroy(result);
 }
 
+void test_signed_integer_powers(void)
+{
+    static const struct
+    {
+        const char *base;
+        const char *exponent;
+        int64_t digits;
+        const char *expected;
+    } cases[] =
+    {
+        { "2", "-3", 2, "0.125" },
+        { "-2", "-3", 20, "-0.125" },
+        { "-2", "-2", 20, "0.25" },
+        { "3", "-1", 10, "0.3333333333" },
+        { "1.25", "3", 2, "1.953125" }
+    };
+
+    for (size_t index = 0; index < sizeof(cases) / sizeof(cases[0]); index++)
+    {
+        BigDecimal *base = make_decimal(cases[index].base);
+        BigInt *exponent = bigint_create();
+
+        TEST_ASSERT_NOT_NULL(exponent);
+        TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(exponent, cases[index].exponent));
+        TEST_ASSERT_EQUAL(
+            BIGDECIMAL_OK,
+            bigdecimal_pow_signed(
+                base, base, exponent, cases[index].digits, BIGDECIMAL_ROUND_HALF_EVEN));
+        assert_decimal_equals(cases[index].expected, base);
+        bigdecimal_destroy(base);
+        bigint_destroy(exponent);
+    }
+}
+
+void test_signed_power_errors_preserve_destination(void)
+{
+    BigDecimal *result = make_decimal("42");
+    BigDecimal *zero = make_decimal("0");
+    BigDecimal *two = make_decimal("2");
+    BigInt *negative = bigint_create();
+
+    TEST_ASSERT_NOT_NULL(negative);
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(negative, "-1"));
+    TEST_ASSERT_EQUAL(
+        BIGDECIMAL_DIVISION_BY_ZERO,
+        bigdecimal_pow_signed(
+            result, zero, negative, 20, BIGDECIMAL_ROUND_HALF_EVEN));
+    assert_decimal_equals("42", result);
+    TEST_ASSERT_EQUAL(BIGDECIMAL_INVALID_ARGUMENT, bigdecimal_pow(result, two, negative));
+    assert_decimal_equals("42", result);
+    TEST_ASSERT_EQUAL(
+        BIGDECIMAL_INVALID_ARGUMENT,
+        bigdecimal_pow_signed(
+            result, two, negative, 0, BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(
+        BIGDECIMAL_INVALID_ARGUMENT,
+        bigdecimal_pow_signed(result, two, negative, 20, (BigDecimalRoundingMode)99));
+    TEST_ASSERT_EQUAL(
+        BIGDECIMAL_NULL_ARGUMENT,
+        bigdecimal_pow_signed(NULL, two, negative, 20, BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(
+        BIGDECIMAL_NULL_ARGUMENT,
+        bigdecimal_pow_signed(result, NULL, negative, 20, BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(
+        BIGDECIMAL_NULL_ARGUMENT,
+        bigdecimal_pow_signed(result, two, NULL, 20, BIGDECIMAL_ROUND_HALF_EVEN));
+    assert_decimal_equals("42", result);
+
+    bigdecimal_destroy(result);
+    bigdecimal_destroy(zero);
+    bigdecimal_destroy(two);
+    bigint_destroy(negative);
+}
+
 /* ============================================================
    Rounded arithmetic
    ============================================================ */
@@ -802,6 +876,8 @@ int main(void)
     RUN_TEST(test_rescale_rounding);
     RUN_TEST(test_named_rounding_operations);
     RUN_TEST(test_zero_identities_avoid_extreme_scale_work);
+    RUN_TEST(test_signed_integer_powers);
+    RUN_TEST(test_signed_power_errors_preserve_destination);
     RUN_TEST(test_division_and_rounding);
     RUN_TEST(test_division_cancels_extreme_scales_before_reporting_overflow);
     RUN_TEST(test_division_rejects_true_scale_overflow_without_modifying_result);

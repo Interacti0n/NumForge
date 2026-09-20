@@ -638,7 +638,7 @@ static const char NUMFORGE_WEB_PAGE_EN_KEYPAD[] =
 static const char NUMFORGE_WEB_PAGE_EN_FUTURE[] =
     "  <p class=\"keypad-label\">Functions and operations</p>\n"
     "  <section class=\"keypad\" aria-label=\"Functions and operations\">\n"
-    "    <button type=\"button\" data-insert=\"^\" title=\"Power: exponent must be a non-negative "
+    "    <button type=\"button\" data-insert=\"^\" title=\"Power: exponent must be an "
     "integer\">xʸ</button><button type=\"button\" data-insert=\"&#178;\" title=\"Square\">x²</button><button "
     "type=\"button\" data-insert=\"&#179;\" title=\"Cube\">x³</button><button type=\"button\" data-insert=\"!\" "
     "title=\"Factorial\">n!</button><button type=\"button\" data-insert=\";\" title=\"Argument separator\">;</button>\n"
@@ -647,7 +647,7 @@ static const char NUMFORGE_WEB_PAGE_EN_FUTURE[] =
 static const char NUMFORGE_WEB_PAGE_FUTURE[] =
     "  <p class=\"keypad-label\">Funkcie a operácie</p>\n"
     "  <section class=\"keypad\" aria-label=\"Funkcie a operácie\">\n"
-    "    <button type=\"button\" data-insert=\"^\" title=\"Mocnina: exponent musí byť nezáporné celé "
+    "    <button type=\"button\" data-insert=\"^\" title=\"Mocnina: exponent musí byť celé "
     "číslo\">xʸ</button><button type=\"button\" data-insert=\"&#178;\" title=\"Druhá "
     "mocnina\">x²</button><button type=\"button\" data-insert=\"&#179;\" title=\"Tretia "
     "mocnina\">x³</button><button type=\"button\" data-insert=\"!\" title=\"Faktoriál\">n!</button><button "
@@ -666,9 +666,6 @@ static const char NUMFORGE_WEB_PAGE_FUNCTIONS_0[] =
     "<button type=\"button\" data-function=\"sign\" data-insert=\"sign(\" title=\"sign(x)\">sign</button>\n"
     "<button type=\"button\" data-function=\"min\" data-insert=\"min(\" title=\"min(a;b;…)\">min</button>\n"
     "<button type=\"button\" data-function=\"max\" data-insert=\"max(\" title=\"max(a;b;…)\">max</button>\n"
-    "<button type=\"button\" data-function=\"sum\" data-insert=\"sum(\">sum</button>\n"
-    "<button type=\"button\" data-function=\"product\" data-insert=\"product(\">product</button>\n"
-    "<button type=\"button\" data-function=\"mean\" data-insert=\"mean(\">mean</button>\n"
     "<button type=\"button\" data-function=\"floor\" data-insert=\"floor(\">floor</button>\n"
     "<button type=\"button\" data-function=\"ceil\" data-insert=\"ceil(\">ceil</button>\n"
     "<button type=\"button\" data-function=\"trunc\" data-insert=\"trunc(\">trunc</button>\n"
@@ -676,6 +673,19 @@ static const char NUMFORGE_WEB_PAGE_FUNCTIONS_0[] =
     "</div></details>\n";
 
 static const char NUMFORGE_WEB_PAGE_FUNCTIONS_1[] =
+    "<details class=\"function-group\"><summary>Štatistika</summary><div class=\"keypad functions\">\n"
+    "<button type=\"button\" data-function=\"sum\" data-insert=\"sum(\">sum</button>\n"
+    "<button type=\"button\" data-function=\"product\" data-insert=\"product(\">product</button>\n"
+    "<button type=\"button\" data-function=\"mean\" data-insert=\"mean(\">mean</button>\n"
+    "<button type=\"button\" data-function=\"median\" data-insert=\"median(\">median</button>\n"
+    "<button type=\"button\" data-function=\"geomean\" data-insert=\"geomean(\">geomean</button>\n"
+    "<button type=\"button\" data-function=\"harmean\" data-insert=\"harmean(\">harmean</button>\n"
+    "<button type=\"button\" data-function=\"variance\" data-insert=\"variance(\">variance</button>\n"
+    "<button type=\"button\" data-function=\"stdevp\" data-insert=\"stdevp(\">stdevp</button>\n"
+    "<button type=\"button\" data-function=\"stdev\" data-insert=\"stdev(\">stdev</button>\n"
+    "</div></details>\n";
+
+static const char NUMFORGE_WEB_PAGE_FUNCTIONS_2[] =
     "<details class=\"function-group\"><summary>Celé čísla</summary><div class=\"keypad functions\">\n"
     "<button type=\"button\" data-function=\"gcd\" data-insert=\"gcd(\">gcd</button>\n"
     "<button type=\"button\" data-function=\"lcm\" data-insert=\"lcm(\">lcm</button>\n"
@@ -687,7 +697,7 @@ static const char NUMFORGE_WEB_PAGE_FUNCTIONS_1[] =
     "<button type=\"button\" data-function=\"isqrt\" data-insert=\"isqrt(\">isqrt</button>\n"
     "</div></details>\n";
 
-static const char NUMFORGE_WEB_PAGE_FUNCTIONS_2[] =
+static const char NUMFORGE_WEB_PAGE_FUNCTIONS_3[] =
     "<details class=\"function-group\"><summary>Mocniny a logaritmy</summary><div class=\"keypad functions\">\n"
     "<button type=\"button\" data-function=\"pow\" data-insert=\"pow(\" title=\"pow(x;y)\">pow</button>\n"
     "<button type=\"button\" data-function=\"sqrt\" data-insert=\"sqrt(\">sqrt</button>\n"
@@ -713,14 +723,14 @@ static const char NUMFORGE_WEB_PAGE_FUNCTIONS_4[] =
     "<p style=\"color:#adb5c3;font-size:.9rem\">Argumenty oddeľuj ; — napr. pow(2;3).</p>\n"
     "<a class=\"guide-link\" href=\"/api?lang=sk\">Ako funguje výpočet a API →</a>\n";
 
-static const char NUMFORGE_WEB_PAGE_FUNCTIONS_3[] =
-    "<details class=\"function-group\"><summary>Štatistika</summary><div class=\"keypad functions\">\n"
-    "<button type=\"button\" data-function=\"median\" data-insert=\"median(\">median</button>\n"
-    "<button type=\"button\" data-function=\"geomean\" data-insert=\"geomean(\">geomean</button>\n"
-    "<button type=\"button\" data-function=\"harmean\" data-insert=\"harmean(\">harmean</button>\n"
-    "<button type=\"button\" data-function=\"variance\" data-insert=\"variance(\">variance</button>\n"
-    "<button type=\"button\" data-function=\"stdevp\" data-insert=\"stdevp(\">stdevp</button>\n"
-    "<button type=\"button\" data-function=\"stdev\" data-insert=\"stdev(\">stdev</button>\n"
+static const char NUMFORGE_WEB_PAGE_FUNCTIONS_5[] =
+    "<details class=\"function-group\"><summary>Hyperbolické</summary><div class=\"keypad functions\">\n"
+    "<button type=\"button\" data-function=\"sinh\" data-insert=\"sinh(\">sinh</button>\n"
+    "<button type=\"button\" data-function=\"cosh\" data-insert=\"cosh(\">cosh</button>\n"
+    "<button type=\"button\" data-function=\"tanh\" data-insert=\"tanh(\">tanh</button>\n"
+    "<button type=\"button\" data-function=\"asinh\" data-insert=\"asinh(\">asinh</button>\n"
+    "<button type=\"button\" data-function=\"acosh\" data-insert=\"acosh(\">acosh</button>\n"
+    "<button type=\"button\" data-function=\"atanh\" data-insert=\"atanh(\">atanh</button>\n"
     "</div></details>\n";
 
 static const char NUMFORGE_WEB_PAGE_EN_FUNCTIONS_0[] =
@@ -729,9 +739,6 @@ static const char NUMFORGE_WEB_PAGE_EN_FUNCTIONS_0[] =
     "<button type=\"button\" data-function=\"sign\" data-insert=\"sign(\" title=\"sign(x)\">sign</button>\n"
     "<button type=\"button\" data-function=\"min\" data-insert=\"min(\" title=\"min(a;b;…)\">min</button>\n"
     "<button type=\"button\" data-function=\"max\" data-insert=\"max(\" title=\"max(a;b;…)\">max</button>\n"
-    "<button type=\"button\" data-function=\"sum\" data-insert=\"sum(\">sum</button>\n"
-    "<button type=\"button\" data-function=\"product\" data-insert=\"product(\">product</button>\n"
-    "<button type=\"button\" data-function=\"mean\" data-insert=\"mean(\">mean</button>\n"
     "<button type=\"button\" data-function=\"floor\" data-insert=\"floor(\">floor</button>\n"
     "<button type=\"button\" data-function=\"ceil\" data-insert=\"ceil(\">ceil</button>\n"
     "<button type=\"button\" data-function=\"trunc\" data-insert=\"trunc(\">trunc</button>\n"
@@ -739,6 +746,19 @@ static const char NUMFORGE_WEB_PAGE_EN_FUNCTIONS_0[] =
     "</div></details>\n";
 
 static const char NUMFORGE_WEB_PAGE_EN_FUNCTIONS_1[] =
+    "<details class=\"function-group\"><summary>Statistics</summary><div class=\"keypad functions\">\n"
+    "<button type=\"button\" data-function=\"sum\" data-insert=\"sum(\">sum</button>\n"
+    "<button type=\"button\" data-function=\"product\" data-insert=\"product(\">product</button>\n"
+    "<button type=\"button\" data-function=\"mean\" data-insert=\"mean(\">mean</button>\n"
+    "<button type=\"button\" data-function=\"median\" data-insert=\"median(\">median</button>\n"
+    "<button type=\"button\" data-function=\"geomean\" data-insert=\"geomean(\">geomean</button>\n"
+    "<button type=\"button\" data-function=\"harmean\" data-insert=\"harmean(\">harmean</button>\n"
+    "<button type=\"button\" data-function=\"variance\" data-insert=\"variance(\">variance</button>\n"
+    "<button type=\"button\" data-function=\"stdevp\" data-insert=\"stdevp(\">stdevp</button>\n"
+    "<button type=\"button\" data-function=\"stdev\" data-insert=\"stdev(\">stdev</button>\n"
+    "</div></details>\n";
+
+static const char NUMFORGE_WEB_PAGE_EN_FUNCTIONS_2[] =
     "<details class=\"function-group\"><summary>Integers</summary><div class=\"keypad functions\">\n"
     "<button type=\"button\" data-function=\"gcd\" data-insert=\"gcd(\">gcd</button>\n"
     "<button type=\"button\" data-function=\"lcm\" data-insert=\"lcm(\">lcm</button>\n"
@@ -750,7 +770,7 @@ static const char NUMFORGE_WEB_PAGE_EN_FUNCTIONS_1[] =
     "<button type=\"button\" data-function=\"isqrt\" data-insert=\"isqrt(\">isqrt</button>\n"
     "</div></details>\n";
 
-static const char NUMFORGE_WEB_PAGE_EN_FUNCTIONS_2[] =
+static const char NUMFORGE_WEB_PAGE_EN_FUNCTIONS_3[] =
     "<details class=\"function-group\"><summary>Powers and logarithms</summary><div class=\"keypad functions\">\n"
     "<button type=\"button\" data-function=\"pow\" data-insert=\"pow(\" title=\"pow(x;y)\">pow</button>\n"
     "<button type=\"button\" data-function=\"sqrt\" data-insert=\"sqrt(\">sqrt</button>\n"
@@ -776,14 +796,14 @@ static const char NUMFORGE_WEB_PAGE_EN_FUNCTIONS_4[] =
     "<p style=\"color:#adb5c3;font-size:.9rem\">Separate arguments with ; — e.g. pow(2;3).</p>\n"
     "<a class=\"guide-link\" href=\"/api?lang=en\">How calculation and the API work →</a>\n";
 
-static const char NUMFORGE_WEB_PAGE_EN_FUNCTIONS_3[] =
-    "<details class=\"function-group\"><summary>Statistics</summary><div class=\"keypad functions\">\n"
-    "<button type=\"button\" data-function=\"median\" data-insert=\"median(\">median</button>\n"
-    "<button type=\"button\" data-function=\"geomean\" data-insert=\"geomean(\">geomean</button>\n"
-    "<button type=\"button\" data-function=\"harmean\" data-insert=\"harmean(\">harmean</button>\n"
-    "<button type=\"button\" data-function=\"variance\" data-insert=\"variance(\">variance</button>\n"
-    "<button type=\"button\" data-function=\"stdevp\" data-insert=\"stdevp(\">stdevp</button>\n"
-    "<button type=\"button\" data-function=\"stdev\" data-insert=\"stdev(\">stdev</button>\n"
+static const char NUMFORGE_WEB_PAGE_EN_FUNCTIONS_5[] =
+    "<details class=\"function-group\"><summary>Hyperbolic</summary><div class=\"keypad functions\">\n"
+    "<button type=\"button\" data-function=\"sinh\" data-insert=\"sinh(\">sinh</button>\n"
+    "<button type=\"button\" data-function=\"cosh\" data-insert=\"cosh(\">cosh</button>\n"
+    "<button type=\"button\" data-function=\"tanh\" data-insert=\"tanh(\">tanh</button>\n"
+    "<button type=\"button\" data-function=\"asinh\" data-insert=\"asinh(\">asinh</button>\n"
+    "<button type=\"button\" data-function=\"acosh\" data-insert=\"acosh(\">acosh</button>\n"
+    "<button type=\"button\" data-function=\"atanh\" data-insert=\"atanh(\">atanh</button>\n"
     "</div></details>\n";
 
 static const char NUMFORGE_FUNCTION_STYLE[] =
@@ -1069,7 +1089,7 @@ static const char NUMFORGE_WEB_PAGE_SCRIPT_HELP_DATA[] =
     "        ncr: [\"nCr\",\"ncr(n;r)\",\"Kombinácie bez opakovania; celé 0 ≤ r ≤ n.\",\"Combinations without repetition; integers 0 ≤ r ≤ n.\"],\n"
     "        factorial: [\"n!\",\"factorial(n)\",\"Celé n od 0 do 10000.\",\"Integer n from 0 to 10000.\"],\n"
     "        isqrt: [\"isqrt\",\"isqrt(n)\",\"Celá časť odmocniny; celé n ≥ 0.\",\"Integer square root; integer n ≥ 0.\"],\n"
-    "        pow: [\"xʸ\",\"pow(x;n)\",\"Exponent n musí byť nezáporné celé číslo.\",\"Exponent n must be a non-negative integer.\"],\n"
+    "        pow: [\"xʸ\",\"pow(x;n)\",\"Exponent n musí byť celé číslo; 0 na záporný exponent nie je definované.\",\"Exponent n must be an integer; zero to a negative exponent is undefined.\"],\n"
     "        sqrt: [\"√x\",\"sqrt(x)\",\"Druhá odmocnina; x ≥ 0.\",\"Square root; x ≥ 0.\"],\n"
     "        cbrt: [\"∛x\",\"cbrt(x)\",\"Tretia odmocnina aj zo záporného čísla.\",\"Cube root, including negative numbers.\"]\n"
     "    };\n";
@@ -1092,6 +1112,12 @@ static const char NUMFORGE_WEB_PAGE_SCRIPT_HELP_MORE[] =
     "        asin: [\"asin\",\"asin(x)\",\"Inverzný sínus; -1 ≤ x ≤ 1, výsledok RAD/DEG.\",\"Inverse sine; -1 ≤ x ≤ 1, result in RAD/DEG.\"],\n"
     "        acos: [\"acos\",\"acos(x)\",\"Inverzný kosínus; -1 ≤ x ≤ 1, výsledok RAD/DEG.\",\"Inverse cosine; -1 ≤ x ≤ 1, result in RAD/DEG.\"],\n"
     "        atan: [\"atan\",\"atan(x)\",\"Inverzný tangens; výsledok RAD/DEG.\",\"Inverse tangent; result in RAD/DEG.\"],\n"
+    "        sinh: [\"sinh\",\"sinh(x)\",\"Hyperbolický sínus; nezávisí od RAD/DEG.\",\"Hyperbolic sine; independent of RAD/DEG.\"],\n"
+    "        cosh: [\"cosh\",\"cosh(x)\",\"Hyperbolický kosínus; nezávisí od RAD/DEG.\",\"Hyperbolic cosine; independent of RAD/DEG.\"],\n"
+    "        tanh: [\"tanh\",\"tanh(x)\",\"Hyperbolický tangens; nezávisí od RAD/DEG.\",\"Hyperbolic tangent; independent of RAD/DEG.\"],\n"
+    "        asinh: [\"asinh\",\"asinh(x)\",\"Inverzný hyperbolický sínus.\",\"Inverse hyperbolic sine.\"],\n"
+    "        acosh: [\"acosh\",\"acosh(x)\",\"Inverzný hyperbolický kosínus; x ≥ 1.\",\"Inverse hyperbolic cosine; x ≥ 1.\"],\n"
+    "        atanh: [\"atanh\",\"atanh(x)\",\"Inverzný hyperbolický tangens; -1 < x < 1.\",\"Inverse hyperbolic tangent; -1 < x < 1.\"],\n"
     "        radians: [\"° → rad\",\"radians(x)\",\"Prevod stupňov na radiány nezávisle od režimu.\",\"Convert degrees to radians regardless of mode.\"],\n"
     "        degrees: [\"rad → °\",\"degrees(x)\",\"Prevod radiánov na stupne nezávisle od režimu.\",\"Convert radians to degrees regardless of mode.\"]\n"
     "    });\n";
@@ -1469,6 +1495,7 @@ static const char *const NUMFORGE_WEB_PAGE[] =
     NUMFORGE_WEB_PAGE_FUNCTIONS_2,
     NUMFORGE_WEB_PAGE_FUNCTIONS_3,
     NUMFORGE_WEB_PAGE_FUNCTIONS_4,
+    NUMFORGE_WEB_PAGE_FUNCTIONS_5,
     NUMFORGE_WEB_PAGE_SCRIPT_START,
     NUMFORGE_WEB_PAGE_SCRIPT_START_CONT_1,
     NUMFORGE_WEB_PAGE_SCRIPT_HELP_DATA,
@@ -1498,6 +1525,7 @@ static const char *const NUMFORGE_WEB_PAGE_EN[] =
     NUMFORGE_WEB_PAGE_EN_FUNCTIONS_2,
     NUMFORGE_WEB_PAGE_EN_FUNCTIONS_3,
     NUMFORGE_WEB_PAGE_EN_FUNCTIONS_4,
+    NUMFORGE_WEB_PAGE_EN_FUNCTIONS_5,
     NUMFORGE_WEB_PAGE_SCRIPT_START,
     NUMFORGE_WEB_PAGE_SCRIPT_START_CONT_1,
     NUMFORGE_WEB_PAGE_SCRIPT_HELP_DATA,
@@ -1553,7 +1581,8 @@ static const char NUMFORGE_API_FUNCTIONS_SK_MORE[] =
     "pravidlom half-even; záporné n znamená desiatky, stovky a vyššie rády.</p>\n"
     "<p>Názvy používajú iba malé písmená, zátvorky sú povinné a argumenty oddeľuje <code>;</code>. Čiarka "
     "zostáva desatinná: <code>pow(1,5;2)</code> = <code>2.25</code>. Najviac 256 argumentov na volanie.</p>\n"
-    "<p>Fungujú <code>pow(x;y)</code> (ako <code>x^y</code>, nezáporný celočíselný exponent) a "
+    "<p>Fungujú <code>pow(x;y)</code> (ako <code>x^y</code>, celočíselný exponent; záporný exponent "
+    "používa recipročnú hodnotu) a "
     "<code>factorial(n)</code> (ako <code>n!</code>, celé n od 0 do 10000).</p>\n"
     "<p>Fungujú aj <code>exp(x)</code>, <code>ln(x)</code>, dekadický <code>log(x)</code> a "
     "<code>log(x;b)</code> so základom b. Logaritmovaný výraz musí byť kladný; základ musí byť kladný "
@@ -1562,6 +1591,9 @@ static const char NUMFORGE_API_FUNCTIONS_SK_MORE[] =
     "<code>acos(x)</code> a jednoargumentový <code>atan(x)</code>. Prepínač RAD/DEG platí pre celý výraz; "
     "inverzné funkcie vracajú výsledok v zvolenej jednotke. <code>asin</code>/<code>acos</code> vyžadujú "
     "x od -1 po 1 a <code>tan(90)</code> je v DEG režime chyba.</p>\n"
+    "<p>Hyperbolické <code>sinh</code>, <code>cosh</code>, <code>tanh</code>, <code>asinh</code>, "
+    "<code>acosh</code> a <code>atanh</code> nezávisia od RAD/DEG. <code>acosh</code> vyžaduje x ≥ 1 "
+    "a <code>atanh</code> vyžaduje -1 &lt; x &lt; 1.</p>\n"
     "<p><code>radians(x)</code> a <code>degrees(x)</code> sú explicitné konverzie nezávislé od prepínača. "
     "Knižničné BigDecimal API vždy používa radiány. <code>√(x)</code> je alias <code>sqrt(x)</code>.</p>\n"
     "<p><code>exp</code> je celý názov, nie násobenie písmen. Samostatné <code>e</code> ostáva konštanta: "
@@ -1604,7 +1636,8 @@ static const char NUMFORGE_API_FUNCTIONS_EN_MORE[] =
     "<p>Names use lowercase letters only, parentheses are mandatory, and <code>;</code> separates "
     "arguments. Comma remains a decimal separator: <code>pow(1,5;2)</code> = <code>2.25</code>. At most "
     "256 arguments per call.</p>\n"
-    "<p><code>pow(x;y)</code> works like <code>x^y</code> (non-negative integer exponent); "
+    "<p><code>pow(x;y)</code> works like <code>x^y</code> (integer exponent; a negative exponent "
+    "uses the reciprocal); "
     "<code>factorial(n)</code> works like <code>n!</code> (integer n from 0 to 10000).</p>\n"
     "<p>Also available: <code>exp(x)</code>, <code>ln(x)</code>, common <code>log(x)</code>, and "
     "<code>log(x;b)</code> with base b. The logarithm argument must be positive; its base must be "
@@ -1613,6 +1646,9 @@ static const char NUMFORGE_API_FUNCTIONS_EN_MORE[] =
     "<code>acos(x)</code>, and one-argument <code>atan(x)</code> are active. The RAD/DEG selector applies "
     "to the whole expression; inverse calls return the selected unit. <code>asin</code>/<code>acos</code> "
     "require x from -1 to 1, and <code>tan(90)</code> is an error in DEG mode.</p>\n"
+    "<p>Hyperbolic <code>sinh</code>, <code>cosh</code>, <code>tanh</code>, <code>asinh</code>, "
+    "<code>acosh</code>, and <code>atanh</code> are independent of RAD/DEG. <code>acosh</code> requires "
+    "x ≥ 1 and <code>atanh</code> requires -1 &lt; x &lt; 1.</p>\n"
     "<p><code>radians(x)</code> and <code>degrees(x)</code> are explicit conversions independent of the "
     "selector. The BigDecimal library API always uses radians. <code>√(x)</code> aliases "
     "<code>sqrt(x)</code>.</p>\n"
@@ -1731,7 +1767,7 @@ static const char NUMFORGE_API_PAGE_SK_CONTENT[] =
     "povinné</td></tr>\n"
     "  <tr><td>Operátory</td><td><code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, "
     "<code>^</code>; mocnina má najvyššiu prioritu medzi binárnymi operátormi, postfixové operácie sa "
-    "viažu ešte silnejšie a exponent musí byť nezáporné celé číslo</td></tr>\n"
+    "viažu ešte silnejšie a exponent musí byť celé číslo</td></tr>\n"
     "  <tr><td>Zátvorky a znamienka</td><td><code>(2 + 3) * 4</code>, <code>-(2.5E-1) * 8</code></td></tr>\n"
     "  <tr><td>Postfixové operácie</td><td><code>12²</code>, <code>2³</code>, <code>5!</code>; faktoriál "
     "vyžaduje nezáporné celé číslo najviac 10000</td></tr>\n"
@@ -1834,11 +1870,12 @@ static const char NUMFORGE_API_PAGE_C_LIBRARY_MORE[] =
     "<code>bigdecimal_variance_population</code>, "
     "<code>bigdecimal_standard_deviation_population</code>, "
     "<code>bigdecimal_standard_deviation_sample</code></li>\n"
-    "  <li>Ďalšie: konverzie, <code>bigdecimal_pow</code>, <code>bigdecimal_sqrt</code>, "
+    "  <li>Ďalšie: konverzie, <code>bigdecimal_pow</code>, <code>bigdecimal_pow_signed</code>, <code>bigdecimal_sqrt</code>, "
     "<code>bigdecimal_cbrt</code>, <code>bigdecimal_root</code>, <code>bigdecimal_exp</code>, "
     "<code>bigdecimal_ln</code>, <code>bigdecimal_log10</code>, <code>bigdecimal_log</code>, "
     "<code>bigdecimal_sin</code>, <code>bigdecimal_cos</code>, <code>bigdecimal_tan</code>, "
     "<code>bigdecimal_asin</code>, <code>bigdecimal_acos</code>, <code>bigdecimal_atan</code>, "
+    "hyperbolické a inverzné hyperbolické funkcie, "
     "významné delenie, <code>bigdecimal_set_constant</code>, "
     "<code>bigdecimal_set_constant_significant</code> a "
     "formátovanie</li>\n"
@@ -2040,7 +2077,7 @@ static const char NUMFORGE_API_PAGE_EN_START[] =
     "<code>E</code> is required</td></tr>\n"
     "  <tr><td>Operators</td><td><code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, "
     "<code>^</code>; power has the highest binary-operator precedence, postfix operations bind more "
-    "tightly, and the exponent must be a non-negative integer</td></tr>\n"
+    "tightly, and the exponent must be an integer</td></tr>\n"
     "  <tr><td>Parentheses and signs</td><td><code>(2 + 3) * 4</code>, <code>-(2.5E-1) * 8</code></td></tr>\n";
 
 static const char NUMFORGE_API_PAGE_EN_START_CONT_1[] =
@@ -2140,10 +2177,10 @@ static const char NUMFORGE_API_PAGE_EN_C_LIBRARY[] =
     "<code>bigdecimal_variance_population</code>, "
     "<code>bigdecimal_standard_deviation_population</code>, "
     "<code>bigdecimal_standard_deviation_sample</code></li>\n"
-    "  <li>Further operations: powers, roots, <code>bigdecimal_exp</code>, <code>bigdecimal_ln</code>, "
+    "  <li>Further operations: signed integer powers, roots, <code>bigdecimal_exp</code>, <code>bigdecimal_ln</code>, "
     "<code>bigdecimal_log10</code>, <code>bigdecimal_log</code>, significant division, "
     "<code>bigdecimal_sin</code>, <code>bigdecimal_cos</code>, <code>bigdecimal_tan</code>, inverse "
-    "trigonometry, "
+    "trigonometry, hyperbolic and inverse hyperbolic functions, "
     "<code>bigdecimal_set_constant</code>, <code>bigdecimal_set_constant_significant</code> and "
     "formatting</li>\n"
     "  <li>Rounded operations: <code>bigdecimal_rescale</code>, <code>bigdecimal_floor</code>, "

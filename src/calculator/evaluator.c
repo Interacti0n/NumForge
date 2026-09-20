@@ -235,13 +235,18 @@ static CalculatorStatus calculator_bigdecimal_pow(
     const CalculatorEvaluation *evaluation
 )
 {
-    (void)evaluation;
     BigInt *integer = NULL;
-    CalculatorStatus status = calculator_bigdecimal_to_bigint(&integer, exponent, false);
+    CalculatorStatus status = calculator_bigdecimal_to_bigint(&integer, exponent, true);
 
     if (status == CALCULATOR_OK)
     {
-        status = calculator_from_bigdecimal_status(bigdecimal_pow(result, base, integer));
+        status = calculator_from_bigdecimal_status(
+            bigdecimal_pow_signed(
+                result,
+                base,
+                integer,
+                evaluation->context->division_scale,
+                evaluation->context->rounding));
     }
 
     bigint_destroy(integer);
@@ -677,6 +682,88 @@ static CalculatorStatus calculator_evaluate_transcendental_call(
     }
 
     bigdecimal_destroy(base);
+
+    if (status != CALCULATOR_OK)
+    {
+        bigdecimal_destroy(value);
+
+        if (!child_error)
+        {
+            calculator_error_set(error, status, expression->offset);
+        }
+
+        return status;
+    }
+
+    *result = value;
+    return CALCULATOR_OK;
+}
+
+/*
+------------------------------------------------------------------------------------------------------------------------------
+    Hyperbolic calls use the active numeric precision but are independent of
+    the calculator's RAD/DEG angle mode.
+------------------------------------------------------------------------------------------------------------------------------
+*/
+
+static CalculatorStatus calculator_evaluate_hyperbolic_call(
+    BigDecimal **result,
+    const CalculatorExpression *expression,
+    const CalculatorEvaluation *evaluation,
+    CalculatorError *error
+)
+{
+    CalculatorFunctionImplementation operation = expression->data.call.function->implementation;
+    BigDecimal *value = NULL;
+    CalculatorStatus status =
+        calculator_evaluate_expression(&value, expression->data.call.arguments[0], evaluation, error);
+    bool child_error = status != CALCULATOR_OK;
+    int64_t digits = evaluation->context->division_scale;
+
+    if (digits < CALCULATOR_DEFAULT_DIVISION_SCALE)
+    {
+        digits = CALCULATOR_DEFAULT_DIVISION_SCALE;
+    }
+
+    if (status == CALCULATOR_OK)
+    {
+        BigDecimalStatus numeric_status;
+
+        switch (operation)
+        {
+            case CALCULATOR_FUNCTION_SINH:
+                numeric_status = bigdecimal_sinh(
+                    value, value, digits, evaluation->context->rounding);
+                break;
+            case CALCULATOR_FUNCTION_COSH:
+                numeric_status = bigdecimal_cosh(
+                    value, value, digits, evaluation->context->rounding);
+                break;
+            case CALCULATOR_FUNCTION_TANH:
+                numeric_status = bigdecimal_tanh(
+                    value, value, digits, evaluation->context->rounding);
+                break;
+            case CALCULATOR_FUNCTION_ASINH:
+                numeric_status = bigdecimal_asinh(
+                    value, value, digits, evaluation->context->rounding);
+                break;
+            case CALCULATOR_FUNCTION_ACOSH:
+                numeric_status = bigdecimal_acosh(
+                    value, value, digits, evaluation->context->rounding);
+                break;
+            default:
+                numeric_status = bigdecimal_atanh(
+                    value, value, digits, evaluation->context->rounding);
+                break;
+        }
+
+        status = calculator_from_bigdecimal_status(numeric_status);
+    }
+
+    if (status == CALCULATOR_OK && calculator_time_limit_reached(evaluation))
+    {
+        status = CALCULATOR_TIME_LIMIT;
+    }
 
     if (status != CALCULATOR_OK)
     {
@@ -1564,6 +1651,13 @@ static CalculatorStatus calculator_evaluate_expression(
             case CALCULATOR_FUNCTION_LN:
             case CALCULATOR_FUNCTION_LOG:
                 return calculator_evaluate_transcendental_call(result, expression, evaluation, error);
+            case CALCULATOR_FUNCTION_SINH:
+            case CALCULATOR_FUNCTION_COSH:
+            case CALCULATOR_FUNCTION_TANH:
+            case CALCULATOR_FUNCTION_ASINH:
+            case CALCULATOR_FUNCTION_ACOSH:
+            case CALCULATOR_FUNCTION_ATANH:
+                return calculator_evaluate_hyperbolic_call(result, expression, evaluation, error);
             case CALCULATOR_FUNCTION_SIN:
             case CALCULATOR_FUNCTION_COS:
             case CALCULATOR_FUNCTION_TAN:

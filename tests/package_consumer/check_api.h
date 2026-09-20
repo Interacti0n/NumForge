@@ -60,6 +60,17 @@ static int public_api_checks(void)
         bigdecimal_exp(a, a, 34, BIGDECIMAL_ROUND_HALF_EVEN) != BIGDECIMAL_OK ||
         bigdecimal_to_string(a, &text) != BIGDECIMAL_OK || strcmp(text, "1") != 0) goto cleanup;
     free(text); text = NULL;
+    if (bigint_set_string(n, "-3") != BIGINT_OK ||
+        bigdecimal_set_string(a, "2") != BIGDECIMAL_OK ||
+        bigdecimal_pow_signed(a, a, n, 20, BIGDECIMAL_ROUND_HALF_EVEN) != BIGDECIMAL_OK ||
+        bigdecimal_sinh(b, a, 20, BIGDECIMAL_ROUND_HALF_EVEN) != BIGDECIMAL_OK ||
+        bigdecimal_cosh(b, a, 20, BIGDECIMAL_ROUND_HALF_EVEN) != BIGDECIMAL_OK ||
+        bigdecimal_tanh(b, a, 20, BIGDECIMAL_ROUND_HALF_EVEN) != BIGDECIMAL_OK ||
+        bigdecimal_asinh(b, a, 20, BIGDECIMAL_ROUND_HALF_EVEN) != BIGDECIMAL_OK ||
+        bigdecimal_set_string(a, "2") != BIGDECIMAL_OK ||
+        bigdecimal_acosh(b, a, 20, BIGDECIMAL_ROUND_HALF_EVEN) != BIGDECIMAL_OK ||
+        bigdecimal_set_string(a, "0.5") != BIGDECIMAL_OK ||
+        bigdecimal_atanh(b, a, 20, BIGDECIMAL_ROUND_HALF_EVEN) != BIGDECIMAL_OK) goto cleanup;
     if (
         bigdecimal_set_string(a, "81") != BIGDECIMAL_OK ||
         bigdecimal_sqrt(a, a, 34, BIGDECIMAL_ROUND_HALF_EVEN) != BIGDECIMAL_OK ||

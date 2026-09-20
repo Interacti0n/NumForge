@@ -640,7 +640,7 @@ void test_evaluator_rejects_invalid_factorial_input(void)
 
 void test_evaluator_rejects_invalid_power_exponent(void)
 {
-    const char *input[] = { "2^1.5", "2^-3" };
+    const char *input[] = { "2^1.5" };
 
     for (size_t index = 0; index < sizeof(input) / sizeof(input[0]); index++)
     {
@@ -703,7 +703,7 @@ void test_evaluator_rejects_compact_invalid_integer_operands(void)
         { "1E-9223372036854775807!", CALCULATOR_INVALID_ARGUMENT },
         { "(-1E9223372036854775807)!", CALCULATOR_INVALID_ARGUMENT },
         { "2^1E-9223372036854775807", CALCULATOR_INVALID_ARGUMENT },
-        { "2^(-1E9223372036854775807)", CALCULATOR_INVALID_ARGUMENT }
+        { "2^(-1E9223372036854775807)", CALCULATOR_VALUE_TOO_LARGE }
     };
     CalculatorContext context;
 
