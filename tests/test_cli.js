@@ -50,3 +50,10 @@ for (const command of ['exit', 'quit']) {
     assert.deepEqual(run(`2+2\r\n${command}\r\n9+9\r\n`).results, ['4']);
 }
 console.log('CLI process regressions passed');
+
+result = run('ans\nprecision 2\n1/8\nprecision full\nans*8\n1/0\nans+1\nhistory\nreset\nans\n');
+assert.deepEqual(result.results, ['0.12', '1', '2']);
+assert.match(result.stdout, /1: 1\/8 -> 0.12/);
+assert.match(result.stdout, /3: ans\+1 -> 2/);
+assert.equal((result.stderr.match(/ans is undefined/g) || []).length, 2);
+assert.match(result.stderr, /division by zero/);

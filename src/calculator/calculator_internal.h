@@ -29,7 +29,10 @@ typedef enum CalculatorStatus
     CALCULATOR_SCALE_OVERFLOW,
     CALCULATOR_TIME_LIMIT,
     CALCULATOR_NOT_IMPLEMENTED,
-    CALCULATOR_ARGUMENT_COUNT
+    CALCULATOR_ARGUMENT_COUNT,
+    CALCULATOR_UNDEFINED_ANSWER,
+    CALCULATOR_STALE_REQUEST,
+    CALCULATOR_SESSION_EXPIRED
 } CalculatorStatus;
 
 typedef enum CalculatorAngleUnit
@@ -62,6 +65,7 @@ typedef struct CalculatorValue
     BigDecimal *number;
     CalculatorContext context;
     bool independent;
+    bool uses_answer;
 } CalculatorValue;
 
 
@@ -97,6 +101,13 @@ typedef struct CalculatorError
 CalculatorStatus calculator_compute_value(
     const char *input,
     const CalculatorContext *context,
+    CalculatorValue *result,
+    CalculatorError *error
+);
+CalculatorStatus calculator_compute_value_with_answer(
+    const char *input,
+    const CalculatorContext *context,
+    const BigDecimal *answer,
     CalculatorValue *result,
     CalculatorError *error
 );

@@ -1,5 +1,31 @@
 const { test, expect } = require('@playwright/test');
 
+test('HTTP sessions: confirmation replay, isolation and expiration', async ({ request }) => {
+    const client = 'b'.repeat(32);
+    async function send(id, revision, action, input = '', precision = 10) {
+        const response = await request.post('/api/evaluate?precision=' + precision +
+            '&angle=rad&client=' + id + '&revision=' + revision + '&action=' + action, {data: input});
+        return response.json();
+    }
+    expect((await send(client, 1, 'preview', 'ans')).status).toContain('session expired');
+    expect((await send(client, 1, 'start')).ok).toBe(true);
+    expect((await send(client, 1, 'preview', 'ans')).status).toBe('ans is undefined');
+    expect((await send(client, 2, 'commit', '1/8', 2)).result).toBe('0.12');
+    expect((await send(client, 3, 'preview', 'ans', 'full')).result).toBe('0.125');
+    expect((await send(client, 4, 'commit', 'ans+1', 'full')).result).toBe('1.125');
+    expect((await send(client, 4, 'commit', 'ans+1', 'full')).result).toBe('1.125');
+    expect((await send(client, 5, 'preview', 'ans+1', 'full')).result).toBe('2.125');
+    expect((await send(client, 3, 'commit', 'ans+1')).status).toBe('stale session request');
+    expect((await send(client, 6, 'commit', '1/0')).ok).toBe(false);
+    expect((await send(client, 7, 'preview', 'ans', 'full')).result).toBe('1.125');
+    for (let index = 20; index < 28; index++) {
+        const other = index.toString(16).padStart(32, '0');
+        expect((await send(other, 1, 'start')).ok).toBe(true);
+        expect((await send(other, 1, 'preview', 'ans')).status).toBe('ans is undefined');
+    }
+    expect((await send(client, 4, 'commit', 'ans+1', 'full')).status).toContain('session expired');
+});
+
 test('HTTP cache validation, stale revisions and bounded eviction', async ({ request }) => {
     const first = 'a'.repeat(32);
     async function send(client, revision, input = '42', precision = 10) {
@@ -31,6 +57,34 @@ for (const lang of ['sk', 'en']) {
             await page.locator('#expression').press('Enter');
             await expect(page.locator('#result')).toHaveText(expected);
         }
+        test('ans changes only on confirmation; history and reload', async ({ page, context }) => {
+            await calculate(page, '5', '5');
+            await page.locator('#expression').fill('ans+1');
+            await expect(page.locator('#result')).toHaveText('6');
+            await expect(page.locator('#history-list li')).toHaveCount(1);
+            await page.locator('#expression').press('Enter');
+            await expect(page.locator('#history-list li')).toHaveCount(2);
+            await expect(page.locator('#result')).toHaveText('6');
+            await page.locator('#expression').press('Enter');
+            await expect(page.locator('#result')).toHaveText('7');
+            await expect(page.locator('#history-list li')).toHaveCount(3);
+            await page.locator('.session-panel summary').click();
+            await page.locator('#history-list button').first().click();
+            await expect(page.locator('#expression')).toHaveValue('5');
+            await expect(page.locator('#history-list li')).toHaveCount(3);
+            await calculate(page, 'ans', '7');
+            const other = await context.newPage();
+            await other.goto('/?lang=' + lang);
+            await other.locator('#expression').fill('ans');
+            await other.locator('#expression').press('Enter');
+            await expect(other.locator('#result')).toContainText(lang === 'sk' ? 'nemá potvrdenú' : 'undefined');
+            await other.close();
+            await page.locator('#reset-session').click();
+            await expect(page.locator('#history-list li')).toHaveCount(0);
+            await page.locator('#expression').fill('ans');
+            await page.locator('#expression').press('Enter');
+            await expect(page.locator('#result')).toContainText(lang === 'sk' ? 'nemá potvrdenú' : 'undefined');
+        });
         test('real C calculation, precision, buttons and clipboard', async ({ page }) => {
             await calculate(page, '0,1+0.2', '0.3');
             await page.locator('#copy-result').click();
@@ -53,6 +107,24 @@ for (const lang of ['sk', 'en']) {
             await expect(page.locator('#expression')).toHaveValue('2+');
             await page.locator('[data-insert="π"]').click();
             await expect(page.locator('#expression')).toHaveValue('2+π');
+        });
+        test('lost confirmation response retries the original committed value', async ({ page }) => {
+            await calculate(page, '5', '5');
+            await page.route('**/api/evaluate*', async route => {
+                if (!route.request().url().includes('&action=commit')) return route.continue();
+                await route.fetch(); // The C server commits, but the browser never receives its reply.
+                await route.abort();
+            });
+            await page.locator('#expression').fill('ans+1');
+            await page.locator('#expression').press('Enter');
+            await expect(page.locator('#result')).toContainText(lang === 'sk' ? 'neisté' : 'uncertain');
+            await page.unroute('**/api/evaluate*');
+            await page.locator('#expression').fill('999');
+            await page.locator('#expression').press('Enter');
+            await expect(page.locator('#expression')).toHaveValue('ans+1');
+            await expect(page.locator('#result')).toHaveText('6');
+            await expect(page.locator('#history-list li')).toHaveCount(2);
+            await calculate(page, 'ans', '6');
         });
         test('errors and language navigation on both pages', async ({ page }) => {
             await page.locator('#expression').fill('1/0');
@@ -261,12 +333,13 @@ for (const lang of ['sk', 'en']) {
         });
         test('cache reformats values, recomputes precision and isolates pages', async ({ page, context }) => {
             async function answer(expression, scale) {
-                await page.locator('#expression').fill(expression);
-                const response = page.waitForResponse(r => r.url().includes('/api/evaluate'));
-                if (await page.locator('#precision-mode').inputValue() !== 'custom')
-                    await page.locator('#precision-mode').selectOption('custom');
-                await page.locator('#precision').fill(String(scale));
-                await page.locator('#expression').press('Enter');
+                const response = page.waitForResponse(r => r.url().includes('&action=commit'));
+                await page.evaluate(({expression, scale}) => {
+                    document.querySelector('#expression').value = expression;
+                    document.querySelector('#precision-mode').value = 'custom';
+                    document.querySelector('#precision').value = String(scale);
+                    document.querySelector('#calculator').requestSubmit();
+                }, {expression, scale});
                 return (await response).json();
             }
             expect((await answer('100!', 10)).cached).toBe(false);
@@ -277,7 +350,7 @@ for (const lang of ['sk', 'en']) {
             expect((await answer('1/3', 10)).cached).toBe(false);
             const other = await context.newPage();
             await other.goto(`/?lang=${lang}`);
-            const response = other.waitForResponse(r => r.url().includes('/api/evaluate'));
+            const response = other.waitForResponse(r => r.url().includes('&action=commit'));
             await other.locator('#expression').fill('1/3');
             await other.locator('#expression').press('Enter');
             expect((await (await response).json()).cached).toBe(false);
@@ -364,7 +437,6 @@ for (const lang of ['sk', 'en']) {
                 finished();
             });
             await page.locator('#expression').fill('1+1');
-            await page.locator('#expression').press('Enter');
             await seen;
             await page.locator('[data-action=clear]').click();
             await expect(page.locator('#copy-result')).toBeDisabled();

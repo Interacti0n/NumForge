@@ -20,6 +20,44 @@ CalculatorStatus numforge_web_evaluate(
     return numforge_web_evaluate_with_output_scale(input, CALCULATOR_DEFAULT_OUTPUT_SCALE, result, error);
 }
 
+CalculatorStatus numforge_web_evaluate_session(
+    CalculatorSession *session,
+    uint64_t revision,
+    bool commit,
+    const char *input,
+    int64_t output_scale,
+    CalculatorAngleUnit angle_unit,
+    char **result,
+    CalculatorError *error,
+    bool *reused
+)
+{
+    CalculatorContext context;
+    CalculatorStatus status;
+
+    if (result != NULL)
+    {
+        *result = NULL;
+    }
+    if (reused != NULL)
+    {
+        *reused = false;
+    }
+    calculator_context_init(&context);
+    status = calculator_context_set_output_scale(&context, output_scale);
+    if (status == CALCULATOR_OK)
+    {
+        status = calculator_context_set_angle_unit(&context, angle_unit);
+    }
+    if (status != CALCULATOR_OK)
+    {
+        calculator_error_set(error, status, 0U);
+        return status;
+    }
+
+    return calculator_session_compute(session, revision, commit, input, &context, result, error, reused);
+}
+
 CalculatorStatus numforge_web_evaluate_with_output_scale(
     const char *input,
     int64_t output_scale,

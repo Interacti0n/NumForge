@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "calculator_internal.h"
+#include "session.h"
 
 #define CALCULATOR_MAX_INPUT_LENGTH CALCULATOR_MAX_INPUT_BYTES
 #define CALCULATOR_INPUT_CAPACITY (CALCULATOR_MAX_INPUT_LENGTH + 3U)
@@ -144,6 +145,8 @@ static bool calculator_handle_angle_command(
 int main(void)
 {
     CalculatorContext context;
+    CalculatorSession session = {0};
+    uint64_t revision = 0U;
     char input[CALCULATOR_INPUT_CAPACITY];
 
     calculator_context_init(&context);
@@ -153,6 +156,7 @@ int main(void)
     puts("Type exit or quit to stop.");
     puts("Use 'precision N' or 'precision full' to set output formatting.");
     puts("Use 'angle rad' or 'angle deg' to select the trigonometric angle unit.");
+    puts("ans holds the last successful result. Use 'history' to list results or 'reset' to clear the session.");
 
     for (;;)
     {
@@ -169,6 +173,7 @@ int main(void)
             if (ferror(stdin))
             {
                 fputs("failed to read input\n", stderr);
+                calculator_session_destroy(&session);
                 return 1;
             }
 
@@ -206,7 +211,24 @@ int main(void)
             continue;
         }
 
-        status = calculator_compute(input, &context, &text, &error);
+        if (strcmp(input, "reset") == 0)
+        {
+            calculator_session_destroy(&session);
+            puts("session reset");
+            continue;
+        }
+        if (strcmp(input, "history") == 0)
+        {
+            for (size_t index = 0U; index < session.count; index++)
+            {
+                printf("%zu: %s -> %s\n", index + 1U,
+                    session.history[index].expression, session.history[index].display);
+            }
+            continue;
+        }
+
+        status = calculator_session_compute(&session, ++revision, true,
+            input, &context, &text, &error, NULL);
         if (status != CALCULATOR_OK)
         {
             calculator_print_error(input, error);
@@ -217,5 +239,6 @@ int main(void)
         free(text);
     }
 
+    calculator_session_destroy(&session);
     return 0;
 }

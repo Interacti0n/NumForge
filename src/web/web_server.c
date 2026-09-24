@@ -421,6 +421,58 @@ static struct
 } numforge_clients[NUMFORGE_WEB_CACHE_CLIENTS];
 static size_t numforge_next_client;
 
+/* Sessions are separate from the optional legacy preview cache. A missing
+ * session is only created by an explicit start; stale requests cannot revive
+ * an evicted session and apply an old confirmation to fresh state. */
+static struct
+{
+    char client[33];
+    CalculatorSession session;
+} numforge_sessions[NUMFORGE_WEB_CACHE_CLIENTS];
+static size_t numforge_next_session;
+
+static CalculatorSession *numforge_client_session(const char *client, bool create)
+{
+    size_t index;
+
+    for (index = 0U; index < NUMFORGE_WEB_CACHE_CLIENTS; index++)
+    {
+        if (strcmp(numforge_sessions[index].client, client) == 0)
+        {
+            return &numforge_sessions[index].session;
+        }
+    }
+    if (!create)
+    {
+        return NULL;
+    }
+
+    index = numforge_next_session;
+    numforge_next_session = (index + 1U) % NUMFORGE_WEB_CACHE_CLIENTS;
+    calculator_session_destroy(&numforge_sessions[index].session);
+    memcpy(numforge_sessions[index].client, client, 33U);
+    return &numforge_sessions[index].session;
+}
+
+static bool numforge_parse_session_action(char *target, const char **action)
+{
+    char *suffix = strstr(target, "&action=");
+
+    *action = NULL;
+    if (suffix == NULL)
+    {
+        return true;
+    }
+    *action = suffix + strlen("&action=");
+    if (strcmp(*action, "start") != 0 && strcmp(*action, "preview") != 0 &&
+        strcmp(*action, "commit") != 0)
+    {
+        return false;
+    }
+    *suffix = '\0';
+    return true;
+}
+
 static bool numforge_parse_cache_options(char *target, char client[33], uint64_t *revision)
 {
     char *suffix = strstr(target, "&client=");
@@ -500,7 +552,8 @@ static void numforge_handle_evaluation(
     int64_t output_scale,
     CalculatorAngleUnit angle_unit,
     const char *client,
-    uint64_t revision
+    uint64_t revision,
+    const char *action
 )
 {
     CalculatorError error;
@@ -510,8 +563,32 @@ static void numforge_handle_evaluation(
     size_t response_capacity;
     bool reused = false;
 
-    status = numforge_web_evaluate_cached(
-        numforge_client_cache(client), revision, body, output_scale, angle_unit, &result, &error, &reused);
+    if (action != NULL)
+    {
+        CalculatorSession *session = numforge_client_session(client, strcmp(action, "start") == 0);
+
+        if (strcmp(action, "start") == 0)
+        {
+            numforge_send_response(socket, 200, "OK", "application/json; charset=utf-8",
+                "{\"ok\":true,\"result\":\"\"}");
+            return;
+        }
+        if (session == NULL)
+        {
+            status = CALCULATOR_SESSION_EXPIRED;
+            calculator_error_set(&error, status, 0U);
+        }
+        else
+        {
+            status = numforge_web_evaluate_session(session, revision, strcmp(action, "commit") == 0,
+                body, output_scale, angle_unit, &result, &error, &reused);
+        }
+    }
+    else
+    {
+        status = numforge_web_evaluate_cached(
+            numforge_client_cache(client), revision, body, output_scale, angle_unit, &result, &error, &reused);
+    }
 
     if (status == CALCULATOR_OK)
     {
@@ -590,6 +667,7 @@ static void numforge_handle_connection(
     char target[128];
     char client[33];
     uint64_t revision;
+    const char *action;
     const char *body;
     size_t length;
     size_t body_length = 0U;
@@ -685,10 +763,12 @@ static void numforge_handle_connection(
                 "application/json; charset=utf-8",
                 "{\"ok\":false,\"error\":\"request body contains a NUL byte\",\"status\":\"invalid argument\",\"column\":1}");
         }
-        else if (numforge_parse_cache_options(target, client, &revision) &&
-                 numforge_parse_evaluation_options(target, &output_scale, &angle_unit))
+        else if (numforge_parse_session_action(target, &action) &&
+                 numforge_parse_cache_options(target, client, &revision) &&
+                 numforge_parse_evaluation_options(target, &output_scale, &angle_unit) &&
+                 (action == NULL || *client != '\0'))
         {
-            numforge_handle_evaluation(socket, body, output_scale, angle_unit, client, revision);
+            numforge_handle_evaluation(socket, body, output_scale, angle_unit, client, revision, action);
         }
         else
         {

@@ -35,6 +35,7 @@ typedef struct CalculatorEvaluation
 {
     const CalculatorContext *context;
     CalculatorConstantCache *constant_cache;
+    const BigDecimal *answer;
 } CalculatorEvaluation;
 
 static bool calculator_time_limit_reached(
@@ -1633,6 +1634,28 @@ static CalculatorStatus calculator_evaluate_expression(
         return CALCULATOR_TIME_LIMIT;
     }
 
+    if (expression->type == CALCULATOR_EXPRESSION_ANSWER)
+    {
+        if (evaluation->answer == NULL)
+        {
+            calculator_error_set(error, CALCULATOR_UNDEFINED_ANSWER, expression->offset);
+            return CALCULATOR_UNDEFINED_ANSWER;
+        }
+
+        value = bigdecimal_create();
+        status = value == NULL ? CALCULATOR_OUT_OF_MEMORY :
+            calculator_from_bigdecimal_status(bigdecimal_copy(value, evaluation->answer));
+        if (status != CALCULATOR_OK)
+        {
+            bigdecimal_destroy(value);
+            calculator_error_set(error, status, expression->offset);
+            return status;
+        }
+
+        *result = value;
+        return CALCULATOR_OK;
+    }
+
     if (expression->type == CALCULATOR_EXPRESSION_CALL)
     {
         /* Borrow children for the existing operator path; this temporary node
@@ -1965,6 +1988,7 @@ static CalculatorStatus calculator_evaluate_impl(
     BigDecimal *result,
     const CalculatorExpression *expression,
     const CalculatorContext *context,
+    const BigDecimal *answer,
     CalculatorError *error
 )
 {
@@ -2011,6 +2035,7 @@ static CalculatorStatus calculator_evaluate_impl(
 
     evaluation.context = context;
     evaluation.constant_cache = &constant_cache;
+    evaluation.answer = answer;
 
     for (size_t index = 0U; index < CALCULATOR_CONSTANT_COUNT; index++)
     {
@@ -2058,18 +2083,29 @@ CalculatorStatus calculator_evaluate(
     CalculatorError *error
 )
 {
+    return calculator_evaluate_with_answer(result, expression, context, NULL, error);
+}
+
+CalculatorStatus calculator_evaluate_with_answer(
+    BigDecimal *result,
+    const CalculatorExpression *expression,
+    const CalculatorContext *context,
+    const BigDecimal *answer,
+    CalculatorError *error
+)
+{
     bool owner;
     CalculatorStatus status;
 
     if (context == NULL)
     {
-        return calculator_evaluate_impl(result, expression, context, error);
+        return calculator_evaluate_impl(result, expression, context, answer, error);
     }
 
     owner = numforge_budget_begin(context->time_limit_ms < 0 ? 0U : (uint64_t)context->time_limit_ms,
                                   CALCULATOR_ALLOCATION_BUDGET,
                                   CALCULATOR_SINGLE_ALLOCATION);
-    status = calculator_evaluate_impl(result, expression, context, error);
+    status = calculator_evaluate_impl(result, expression, context, answer, error);
 
     if (status != CALCULATOR_OK && context->time_limit_ms >= 0)
     {

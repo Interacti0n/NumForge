@@ -110,6 +110,7 @@ add_library(numforge STATIC
 if(NUMFORGE_BUILD_APPS OR BUILD_TESTING OR NUMFORGE_BUILD_FUZZERS OR NUMFORGE_BUILD_BENCHMARKS)
     add_library(numforge_client STATIC
         src/calculator/calculator.c
+        src/calculator/session.c
         src/calculator/constants.c
         src/calculator/tokenizer.c
         src/calculator/parser.c
@@ -461,6 +462,14 @@ if(BUILD_TESTING)
     add_executable(allocation_failure_tests
         tests/test_allocation_failures.c
     )
+
+    add_executable(session_tests tests/test_session.c)
+    target_include_directories(session_tests PRIVATE ${PROJECT_SOURCE_DIR}/src/internal)
+    target_compile_definitions(session_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
+    target_link_libraries(session_tests PRIVATE numforge_client unity)
+    numforge_enable_diagnostics(session_tests)
+    add_test(NAME session_tests COMMAND session_tests)
+    set_tests_properties(session_tests PROPERTIES TIMEOUT 60)
 
     target_include_directories(allocation_failure_tests
         PRIVATE

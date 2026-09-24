@@ -109,6 +109,18 @@ typedef struct DecimalScientificExponent
     uint64_t magnitude;
 } DecimalScientificExponent;
 
+/* A 32-bit size_t always fits int64_t. On wider targets, check before the
+ * conversion without provoking an always-false warning on 32-bit GCC. */
+static bool decimal_size_fits_int64(size_t value)
+{
+#if SIZE_MAX > INT64_MAX
+    return value <= (size_t)INT64_MAX;
+#else
+    (void)value;
+    return true;
+#endif
+}
+
 /* Return true only when conservative bit-length bounds prove that the decimal
  * exponent lies strictly inside the fixed-notation range. The loose rational
  * bounds surround log10(2); an inconclusive result keeps the exact old path. */
@@ -120,7 +132,7 @@ static bool decimal_definitely_fixed(const BigDecimal *value)
     int64_t minimum_exponent;
     int64_t maximum_exponent;
 
-    if (bits == 0U || (uint64_t)bits > (uint64_t)INT64_MAX ||
+    if (bits == 0U || !decimal_size_fits_int64(bits) ||
         bits - 1U > (SIZE_MAX - 99999U) / 30102U ||
         bits > (SIZE_MAX - 99999U) / 30103U)
     {
@@ -130,8 +142,8 @@ static bool decimal_definitely_fixed(const BigDecimal *value)
     minimum_digits = ((bits - 1U) * 30102U) / 100000U + 1U;
     maximum_digits = (bits * 30103U + 99999U) / 100000U;
 
-    if ((uint64_t)minimum_digits > (uint64_t)INT64_MAX ||
-        (uint64_t)maximum_digits > (uint64_t)INT64_MAX ||
+    if (!decimal_size_fits_int64(minimum_digits) ||
+        !decimal_size_fits_int64(maximum_digits) ||
         !bigdecimal_i64_sub((int64_t)minimum_digits - 1, value->scale, &minimum_exponent) ||
         !bigdecimal_i64_sub((int64_t)maximum_digits - 1, value->scale, &maximum_exponent))
     {

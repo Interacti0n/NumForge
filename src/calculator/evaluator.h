@@ -22,4 +22,12 @@ CalculatorStatus calculator_evaluate(
     CalculatorError *error
 );
 
+CalculatorStatus calculator_evaluate_with_answer(
+    BigDecimal *result,
+    const CalculatorExpression *expression,
+    const CalculatorContext *context,
+    const BigDecimal *answer,
+    CalculatorError *error
+);
+
 #endif

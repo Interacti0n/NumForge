@@ -9,6 +9,7 @@ client over the public numeric API.
 | Module | Responsibility |
 | --- | --- |
 | `calculator.c` | Shared status/error handling, precision defaults and the bounded complete `calculator_compute` pipeline used by CLI and HTTP. |
+| `session.c` | Private client session: confirmed values, bounded history, preview reuse and idempotent confirmation. |
 | `constants.c` | Maps `π`, `e`, and `φ` to the precision-aware public BigDecimal constant API. |
 | `tokenizer.c` | Converts source text into location-aware tokens. Implemented for decimal literals, identifiers, whitespace, binary and postfix operators, and parentheses. |
 | `parser.c` | Converts tokens into an opaque expression tree (AST). Implemented as recursive descent with postfix, power, unary, multiplicative, and additive precedence layers. |
@@ -93,12 +94,54 @@ creates a new page ID. Formatting still has time, memory and output-size limits.
 Monotonic client revisions prevent older work from replacing newer work; errors
 do not discard the last successful value. Browser generation checks separately
 prevent stale responses from appearing in the UI. Requests without a client ID
-remain stateless; lack of browser crypto support falls back to this path.
+remain stateless. This legacy cache protocol is retained for existing clients;
+the browser uses the explicit session protocol described below and requires
+browser crypto for its page identifier.
 
 Dedicated cache tests compare hits with fresh evaluation, including cancellation
 of significant digits, context changes, errors and client isolation. Allocation
 fault injection covers replacement and formatting without corrupting retained
 values. HTTP/browser tests cover validation, eviction and page isolation.
+
+## Confirmed state and history
+
+`CalculatorSession` belongs to the client layer, not the installed numeric API.
+The parser represents `ans` as its own AST node; evaluation borrows the last
+confirmed BigDecimal and copies it using the public API. One-shot evaluation
+has no answer and reports `ans is undefined`. No textual substitution, global
+numeric state or alternate arithmetic path is involved.
+
+`calculator_session_compute` accepts an explicit request revision and a commit
+flag. Preview computes/formats without changing history. Confirmation prepares
+the value, display and expression before changing state, including on allocation,
+deadline or output-limit errors. A successful commit owns one history entry;
+ans borrows the newest value. Each entry retains its evaluation context and
+original display. A changed output precision never recomputes stored ans.
+
+History holds 16 entries, evicting the oldest. Each retained coefficient is
+bounded by the pipeline's 128 KiB allocation limit, each display by 64 KiB and
+each expression by 4096 bytes: history retains less than 4 MiB per session,
+including fixed metadata. The preview owns one separate bounded value. The
+server holds eight sessions with FIFO eviction; session eviction is reported
+explicitly and never silently recreates a session on evaluation. Reload,
+language navigation and New session create a new random page ID. There is no
+disk persistence or TTL. Browser history is a bounded display mirror of
+confirmed entries; clicking an entry restores input only. CLI `history` lists
+entries and `reset` destroys the session while retaining precision/angle settings.
+
+The latest successful commit can be replayed with the same revision, expression
+and settings; it returns the original display without recomputation or a second
+history entry. Older or conflicting revisions fail. A commit clears preview
+state. The latest confirmed value can still serve as a cache source when its AST
+does not use ans; otherwise the next expression evaluates against the new answer.
+Preview clearing is separate from session destruction.
+
+The browser serializes confirmations and suppresses previews while one is
+unresolved. Editing can invalidate display but cannot abort a sent confirmation.
+A late successful response still adds history without overwriting newer input's
+display. On an uncertain network response, Enter retries the original request
+ID and restores the captured expression/settings; it does not confirm a new expression until
+that request resolves. Automatic retries never consume a new confirmation.
 
 ## Expression grammar
 
@@ -108,7 +151,7 @@ term        := unary (('*' | '/' | IMPLICIT_MULTIPLY) unary)*
 unary       := ('+' | '-') unary | power
 power       := postfix ('^' unary)?
 postfix     := primary ('²' | '³' | '!')*
-primary     := NUMBER | CONSTANT | '(' expression ')' | call
+primary     := NUMBER | CONSTANT | 'ans' | '(' expression ')' | call
 call        := FUNCTION '(' arguments ')' | '√' '(' expression ')'
 arguments   := expression (';' expression)*
 CONSTANT    := π | e | φ
@@ -121,7 +164,7 @@ sign is always a separate `PLUS` or `MINUS` token, which keeps unary and binary
 operators unambiguous. The evaluator normalizes a comma to a point before
 calling the public BigDecimal API.
 
-Variables remain outside the grammar. The function registry recognizes the
+User-defined variables remain outside the grammar. The function registry recognizes the
 names and arities listed in [API.md](API.md#named-calls). `pow` and `factorial` reuse existing operator paths.
 `abs`, `sign`, `min` and `max` use decimal operations directly. Min/max retain
 only the selected and current values, evaluating arguments left to right.

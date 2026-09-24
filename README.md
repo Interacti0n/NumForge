@@ -93,58 +93,44 @@ calculator requires no Node.js installation.
 ### Build the library and demo
 
 ```sh
-cmake -S . -B build -DBUILD_TESTING=OFF
-cmake --build build --parallel
+cmake -DNUMFORGE_LOCAL_TESTS=OFF -P cmake/LocalBuild.cmake
 ```
+
+This uses an ignored build directory tied to the current project path. When
+the project is moved, CMake generates a new build directory; an old `build/`
+tree can contain test and executable paths from the previous location. For
+the complete local test suite, run `cmake -P cmake/LocalBuild.cmake`.
 
 ### Build and run tests
 
 ```sh
-cmake -S . -B build -DBUILD_TESTING=ON
-cmake --build build --parallel
-ctest --test-dir build --output-on-failure
+cmake -P cmake/LocalBuild.cmake
 ```
 
-With a multi-configuration generator such as Visual Studio, specify a
-configuration:
-
-```sh
-cmake --build build --config Debug --parallel
-ctest --test-dir build -C Debug --output-on-failure
-```
+The command configures Release, builds and runs CTest. It prints the current
+build path. After moving the project, the path changes and the next run uses a
+new build tree. See [Testing guide](docs/TESTING.md) for targeted and CI checks.
 
 For stricter local verification with GCC or Clang:
 
 ```sh
-cmake -S . -B build -DBUILD_TESTING=ON \
+cmake -S . -B build-sanitize -DBUILD_TESTING=ON \
   -DNUMFORGE_WARNINGS_AS_ERRORS=ON \
   -DNUMFORGE_ENABLE_SANITIZERS=ON
-cmake --build build --parallel
-ctest --test-dir build --output-on-failure
+cmake --build build-sanitize --parallel
+ctest --test-dir build-sanitize --output-on-failure
 ```
 
 `NUMFORGE_ENABLE_SANITIZERS` enables AddressSanitizer and
-UndefinedBehaviorSanitizer on GCC and Clang.
+UndefinedBehaviorSanitizer on GCC and Clang. For a manual build like this,
+choose a fresh directory after moving the project.
 
 ### Run the local web calculator
 
-No Node.js, package manager, database, or external service is needed. Build
-the project and start the `numforge_web` executable. On Windows with the
-default Visual Studio generator:
-
-```powershell
-cmake -S . -B build -DBUILD_TESTING=ON
-cmake --build build --config Debug --parallel 2
-.\build\Debug\numforge_web.exe
-```
-
-With a single-configuration generator, as normally used on Linux and macOS:
-
-```sh
-cmake -S . -B build -DBUILD_TESTING=ON
-cmake --build build --parallel
-./build/numforge_web
-```
+No Node.js, package manager, database, or external service is needed. Run
+`cmake -DNUMFORGE_LOCAL_TESTS=OFF -P cmake/LocalBuild.cmake`, then start the
+`numforge_web` executable in the printed build directory. Visual Studio puts
+it in that directory's `Release/` subdirectory.
 
 On Windows, the executable automatically opens `http://127.0.0.1:8765` in the
 default browser. It listens only on the local machine; press `Ctrl+C` in the
@@ -194,10 +180,20 @@ Long results stay in a compact five-line panel and can be expanded with
 Working precision remains automatic; only output precision is user-configurable.
 Choose Auto (10 decimal places), Full (no final output rounding), or Custom
 (0–10000 places). The number field appears only in Custom mode.
-The web server keeps one successful numeric result per page (up to eight pages).
+Each page has an isolated in-memory session (up to eight pages on the server).
+Automatic previews do not change `ans`. Enter, Calculate or `=` confirms a
+successful result and appends it to the last 16 history entries. `ans` stores
+the internal value, so confirming `1/8` at two output places retains `0.125`.
+Increasing precision cannot recover digits already lost in an approximation.
+History buttons restore only the expression; evaluation uses the current `ans`.
+New session, reload and language navigation start with undefined `ans` and empty
+history. FIFO session eviction or server restart requires reloading the page.
+The CLI confirms each successful expression and supports `history` and `reset`.
+
+The web server also retains a preview value per session.
 Changing the display reuses it when safe; a changed working precision recomputes
 context-dependent expressions. Exact factorials can be reformatted without
-recalculating. Reloading the page or cache eviction may require a fresh calculation.
+recalculating. Confirmations invalidate previews that depend on the previous `ans`.
 The collapsed calculator fits the viewport height, scaling down in short
 windows. Vertical page scrolling is needed only while a long result is expanded.
 

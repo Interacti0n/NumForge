@@ -418,14 +418,20 @@ static CalculatorStatus calculator_parse_primary(
             return calculator_parse_call(parser, function, result);
         }
 
-        if (!calculator_constant_from_text(parser->current.text, parser->current.length, &constant))
+        if (parser->current.length == 3U && memcmp(parser->current.text, "ans", 3U) == 0)
+        {
+            expression = calculator_expression_create(CALCULATOR_EXPRESSION_ANSWER, parser->current.offset);
+        }
+        else if (calculator_constant_from_text(parser->current.text, parser->current.length, &constant))
+        {
+            expression = calculator_expression_create_constant(&parser->current, constant);
+        }
+        else
         {
             calculator_error_set(parser->error, CALCULATOR_INVALID_TOKEN, parser->current.offset);
 
             return CALCULATOR_INVALID_TOKEN;
         }
-
-        expression = calculator_expression_create_constant(&parser->current, constant);
 
         if (expression == NULL)
         {

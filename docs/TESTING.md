@@ -3,17 +3,34 @@
 ## Run the complete local suite
 
 ```sh
-cmake -S . -B build -DBUILD_TESTING=ON -DNUMFORGE_WARNINGS_AS_ERRORS=ON
-cmake --build build --config Debug --parallel 2
-ctest --test-dir build -C Debug --output-on-failure
+cmake -P cmake/LocalBuild.cmake
 ```
 
-Use the configuration you built; `-C Debug` is needed by Visual Studio and
-other multi-configuration generators. Node.js enables the UI and numerical
+The command configures a Release build, builds it and runs CTest. Its ignored
+directory under `build/local-tests-*` depends on the absolute project path.
+After moving or renaming the project it creates a new build tree instead of
+using CMake files that point at the old location. It also checks both source
+and build paths saved in an existing cache before reusing it. It does not
+delete old build trees. Use the printed build path for any direct `ctest`
+command. A standalone `ctest --test-dir build` can run stale generated tests
+from a previous project location and is not a reliable validation step.
+
+Node.js enables the UI and numerical
 oracle suites with no npm install. Add `-DNUMFORGE_REQUIRE_NODE_TESTS=ON` to
-require them instead of allowing a local skip; CI CTest jobs do this.
+your own CMake configure to require them instead of allowing a local skip;
+CI CTest jobs do this.
 Unity is a pinned, test-only dependency. Testing tools are not installed with
 the production library.
+
+## Calculator sessions
+
+`session_tests` exercises undefined ans, preview/commit separation, duplicate
+and stale revisions, preserved internal precision, isolated sessions, bounded
+history, cache clearing and failure atomicity at every allocation in a
+representative confirmation. Deadline/resource failures preserve confirmed state.
+CLI regressions cover history/reset. SK/EN UI tests cover uncertain confirmation
+retries using the same ID, input edits during confirmation and history restore;
+browser tests additionally exercise real HTTP replay and session eviction.
 
 ## Independent numerical oracle
 
@@ -74,9 +91,10 @@ rounding, aliasing and destination preservation. Signed-power tests cover exact
 and recurring reciprocals, signs, zero, legacy API compatibility and allocation
 failure safety.
 
-```sh
-ctest --test-dir build -C Debug -R numeric_oracle --output-on-failure
-```
+The local build command above already runs this suite. To rerun only the
+numeric oracle, use `ctest --test-dir <printed-build-path> -C Release -R
+numeric_oracle --output-on-failure`, replacing the path with the one printed
+by `cmake/LocalBuild.cmake`.
 
 Failures print the input, expected value and actual value. Preserve any newly
 found bug as a small focused C regression as well. Generated numerical tests

@@ -5,6 +5,16 @@ All notable changes to NumForge are documented in this file. The project uses
 
 ## Unreleased
 
+- Fix 32-bit GCC warnings-as-errors in the decimal formatter by checking
+  whether a `size_t` can exceed `INT64_MAX` only on platforms where it can.
+
+- Add private calculator sessions shared by CLI and web: `ans`, explicit
+  confirmation and a bounded 16-entry in-memory history retaining internal
+  values. Previews never update ans; failed confirmations preserve state.
+  Add CLI `history`/`reset`, bilingual history controls and HTTP session
+  start/preview/commit actions with replay protection and explicit expiration.
+  Keep numeric public APIs and the legacy stateless/cache HTTP paths unchanged.
+
 - Add precision-aware negative integer powers through `bigdecimal_pow_signed`
   and the calculator while retaining the exact non-negative `bigdecimal_pow`
   contract. Add public `sinh`, `cosh`, `tanh`, `asinh`, `acosh`, and `atanh`

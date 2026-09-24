@@ -407,7 +407,7 @@ HTTP 403. Native local clients may omit `Origin`. `precision` is optional: it
 accepts a non-negative whole number or `full`; if omitted, it defaults to `10`.
 `angle` accepts `rad` or `deg` and defaults to `rad`; when supplied it follows
 `precision` in the query string.
-The browser optionally appends `&client=<32 lowercase hex digits>&revision=<N>`
+Legacy clients may append `&client=<32 lowercase hex digits>&revision=<N>`
 after the normal options. `N` is a positive increasing integer up to
 9007199254740991. These parameters opt into a bounded per-client cache;
 successful responses then also contain `"cached":true` or `false`.
@@ -418,6 +418,32 @@ one successful numeric value each; FIFO eviction frees the old value. Older or
 duplicate revisions may compute a response but cannot replace the stored value.
 Errors preserve the last successful value. This is not authentication or a
 public multiuser service.
+
+The browser adds a final `&action=start|preview|commit` after client/revision.
+For example, start a page session with a POST to
+`/api/evaluate?precision=10&angle=rad&client=<32 lowercase hex digits>&revision=1&action=start`
+and an empty body. Start returns `{"ok":true,"result":""}` and is idempotent
+for an existing ID. Then send expressions with action `preview` or `commit` and
+increasing revisions. Start does not consume an evaluation revision.
+
+Preview does not change `ans` or history. Commit confirms a successful internal
+value and adds history atomically; failed calculations preserve both. `ans` is
+initially undefined and always refers to the stored value, not its display.
+Increasing precision does not recompute its original expression. Repeating the
+latest successful commit with the same revision, expression and settings returns
+the original result; conflicting or older revisions return `stale session request`.
+An unresolved confirmation must be retried with its original ID before sending
+another confirmation. A new intentional Enter/`=` uses a new revision.
+
+The session pool is separate from the legacy cache: eight sessions, FIFO
+eviction, 16 confirmed entries each and less than 4 MiB retained history per
+session. Each entry stores input, internal value, context and display. Evaluation
+of an unknown/evicted session returns `session expired; reload the page` and
+never starts another session implicitly. Reload, New session and language
+navigation use a fresh random ID; server restart loses all sessions. IDs are
+not authentication. History buttons restore only input, so expressions with
+`ans` use the current answer when evaluated again. CLI `history` lists its
+session entries; `reset` clears them and ans, retaining precision/angle settings.
 
 Only output precision is configurable in the UI; working precision remains
 automatic. Matching input and working context allow reformatting without another

@@ -2,6 +2,19 @@
 #define NUMFORGE_WEB_API_H
 
 #include "calculator_internal.h"
+#include "session.h"
+
+CalculatorStatus numforge_web_evaluate_session(
+    CalculatorSession *session,
+    uint64_t revision,
+    bool commit,
+    const char *input,
+    int64_t output_scale,
+    CalculatorAngleUnit angle_unit,
+    char **result,
+    CalculatorError *error,
+    bool *reused
+);
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
