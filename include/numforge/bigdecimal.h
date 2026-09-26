@@ -571,6 +571,30 @@ BigDecimalStatus bigdecimal_format(
     char **result
 );
 
+typedef enum BigDecimalFormatMode
+{
+    BIGDECIMAL_FORMAT_AUTO = 0,
+    BIGDECIMAL_FORMAT_PLAIN,
+    BIGDECIMAL_FORMAT_SCIENTIFIC,
+    BIGDECIMAL_FORMAT_MATHEMATICAL
+} BigDecimalFormatMode;
+
+/* Uses bigdecimal_format's rounding policy, then changes notation only.
+ * Auto selects scientific for a rounded exponent >=10 or <=-10, or when
+ * plain output would exceed 80 characters. Scientific uses E+/-exponent;
+ * mathematical uses UTF-8 " × 10^" and the exponent. Zero is always "0".
+ * max_output_bytes excludes the NUL; SIZE_MAX means no extra bound.
+ * On failure *result is unchanged. A successful string belongs to the caller
+ * and must be released with free(). The old API contract is unchanged. */
+BigDecimalStatus bigdecimal_format_mode(
+    const BigDecimal *value,
+    int64_t places,
+    BigDecimalRoundingMode rounding,
+    BigDecimalFormatMode mode,
+    size_t max_output_bytes,
+    char **result
+);
+
 #ifdef __cplusplus
 }
 #endif

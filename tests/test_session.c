@@ -1,8 +1,10 @@
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include <unity.h>
 
 #include "session.h"
+#include "random.h"
 #include "web_api.h"
 #include "numforge_alloc.h"
 
@@ -151,6 +153,120 @@ static void test_limits_preserve_confirmed_state(void)
     TEST_ASSERT_EQUAL_UINT(1U, session.count);
 }
 
+static void test_random_preview_commit_and_replay(void)
+{
+    uint64_t expected_state = UINT64_C(0x123456789abcdef0);
+    char first[37];
+    char second[37];
+    session.random_state = expected_state;
+    session.random_initialized = true;
+    calculator_random_decimal(&expected_state, first);
+    calculator_random_decimal(&expected_state, second);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_context_set_output_scale(&context, -1));
+
+    check_result(1U, false, "rand()", first);
+    TEST_ASSERT_EQUAL_UINT64(UINT64_C(0x123456789abcdef0), session.random_state);
+    check_result(2U, false, "rand()", first);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_context_set_output_scale(&context, 10));
+    {
+        char *short_display = NULL;
+        CalculatorError error;
+        TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_session_compute(&session, 3U, false,
+            "rand()", &context, &short_display, &error, NULL));
+        free(short_display);
+    }
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_context_set_output_scale(&context, -1));
+    check_result(4U, true, "rand()", first);
+    TEST_ASSERT_EQUAL_UINT64(session.preview_random_state, session.random_state);
+    check_result(4U, true, "rand()", first);
+    TEST_ASSERT_EQUAL_UINT(1U, session.count);
+    check_result(5U, true, "rand()", second);
+    TEST_ASSERT_EQUAL_UINT64(expected_state, session.random_state);
+}
+
+static void test_random_range_multiple_calls_and_failure(void)
+{
+    uint64_t expected_state = UINT64_C(0x137a5b9cdef01234);
+    char first[37];
+    char second[37];
+    char expression[90];
+    char *expected_sum = NULL;
+    CalculatorError error;
+    session.random_state = expected_state;
+    session.random_initialized = true;
+    calculator_random_decimal(&expected_state, first);
+    calculator_random_decimal(&expected_state, second);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_context_set_output_scale(&context, -1));
+    (void)snprintf(expression, sizeof(expression), "%s+%s", first, second);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute(expression, &context, &expected_sum, &error));
+    check_result(1U, true, "rand()+rand()", expected_sum);
+    free(expected_sum);
+    TEST_ASSERT_EQUAL_UINT64(expected_state, session.random_state);
+
+    check_error(2U, true, "rand(0)", CALCULATOR_INVALID_ARGUMENT);
+    check_error(3U, true, "rand(2;2)", CALCULATOR_INVALID_ARGUMENT);
+    check_error(4U, true, "rand(2;1)", CALCULATOR_INVALID_ARGUMENT);
+    check_error(5U, true, "rand(1/0)", CALCULATOR_DIVISION_BY_ZERO);
+    check_error(6U, true, "rand(1;2;3)", CALCULATOR_ARGUMENT_COUNT);
+    TEST_ASSERT_EQUAL_UINT64(expected_state, session.random_state);
+    TEST_ASSERT_EQUAL_UINT(1U, session.count);
+
+    /* Range forms use the same first draw as the corresponding affine expression. */
+    calculator_session_destroy(&session);
+    session.random_state = UINT64_C(0x137a5b9cdef01234);
+    session.random_initialized = true;
+    (void)snprintf(expression, sizeof(expression), "2*%s", first);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute(expression, &context, &expected_sum, &error));
+    check_result(1U, true, "rand(2)", expected_sum);
+    free(expected_sum);
+    expected_sum = NULL;
+
+    calculator_session_destroy(&session);
+    session.random_state = UINT64_C(0x137a5b9cdef01234);
+    session.random_initialized = true;
+    (void)snprintf(expression, sizeof(expression), "2+3*%s", first);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute(expression, &context, &expected_sum, &error));
+    check_result(1U, true, "rand(2;5)", expected_sum);
+    free(expected_sum);
+}
+
+static void test_notation_changes_only_display(void)
+{
+    bool reused = false;
+    char *text = NULL;
+    CalculatorError error;
+    check_result(1U, true, "1E20", "1E+20");
+    context.notation = BIGDECIMAL_FORMAT_PLAIN;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_session_compute(&session, 2U, false,
+        "1E20", &context, &text, &error, &reused));
+    TEST_ASSERT_TRUE(reused);
+    TEST_ASSERT_EQUAL_STRING("100000000000000000000", text);
+    free(text);
+    text = NULL;
+    context.notation = BIGDECIMAL_FORMAT_MATHEMATICAL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_session_compute(&session, 3U, false,
+        "1E20", &context, &text, &error, &reused));
+    TEST_ASSERT_TRUE(reused);
+    TEST_ASSERT_EQUAL_STRING("1 × 10^20", text);
+    free(text);
+    TEST_ASSERT_EQUAL_UINT(1U, session.count);
+    check_result(4U, true, "ans", "1 × 10^20");
+    context.notation = BIGDECIMAL_FORMAT_AUTO;
+    check_result(5U, false, "ans", "1E+20");
+    TEST_ASSERT_EQUAL_UINT(2U, session.count);
+}
+
+static void test_plain_output_limit_preserves_session(void)
+{
+    check_result(1U, true, "7", "7");
+    context.notation = BIGDECIMAL_FORMAT_PLAIN;
+    check_error(2U, true, "1E100000", CALCULATOR_VALUE_TOO_LARGE);
+    TEST_ASSERT_EQUAL_UINT(1U, session.count);
+    context.notation = BIGDECIMAL_FORMAT_SCIENTIFIC;
+    check_result(3U, false, "1E100000", "1E+100000");
+    check_result(4U, false, "ans", "7E+0");
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -159,5 +275,9 @@ int main(void)
     RUN_TEST(test_bounded_history_and_context);
     RUN_TEST(test_confirmation_is_atomic_on_every_allocation_failure);
     RUN_TEST(test_limits_preserve_confirmed_state);
+    RUN_TEST(test_random_preview_commit_and_replay);
+    RUN_TEST(test_random_range_multiple_calls_and_failure);
+    RUN_TEST(test_notation_changes_only_display);
+    RUN_TEST(test_plain_output_limit_preserves_session);
     return UNITY_END();
 }

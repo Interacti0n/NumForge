@@ -1,5 +1,6 @@
 #include "evaluator.h"
 #include "expression_internal.h"
+#include "random.h"
 
 #include <numforge/bigint.h>
 #include <numforge/runtime.h>
@@ -36,7 +37,112 @@ typedef struct CalculatorEvaluation
     const CalculatorContext *context;
     CalculatorConstantCache *constant_cache;
     const BigDecimal *answer;
+    uint64_t *random_state;
 } CalculatorEvaluation;
+
+static CalculatorStatus calculator_evaluate_expression(
+    BigDecimal **result,
+    const CalculatorExpression *expression,
+    const CalculatorEvaluation *evaluation,
+    CalculatorError *error
+);
+static CalculatorStatus calculator_from_bigdecimal_status(BigDecimalStatus status);
+
+static CalculatorStatus calculator_evaluate_random_call(
+    BigDecimal **result,
+    const CalculatorExpression *expression,
+    const CalculatorEvaluation *evaluation,
+    CalculatorError *error
+)
+{
+    BigDecimal *lower = NULL;
+    BigDecimal *upper = NULL;
+    BigDecimal *unit = NULL;
+    BigDecimal *span = NULL;
+    BigDecimal *value = NULL;
+    CalculatorStatus status = CALCULATOR_OK;
+    int comparison = 0;
+    char digits[37];
+    size_t count = expression->data.call.count;
+
+    lower = bigdecimal_create();
+    upper = bigdecimal_create();
+    unit = bigdecimal_create();
+    span = bigdecimal_create();
+    value = bigdecimal_create();
+    if (lower == NULL || upper == NULL || unit == NULL || span == NULL || value == NULL)
+    {
+        status = CALCULATOR_OUT_OF_MEMORY;
+        goto done;
+    }
+    if (count == 2U)
+    {
+        BigDecimal *argument = NULL;
+        status = calculator_evaluate_expression(&argument, expression->data.call.arguments[0], evaluation, error);
+        if (status == CALCULATOR_OK)
+        {
+            status = calculator_from_bigdecimal_status(bigdecimal_copy(lower, argument));
+        }
+        bigdecimal_destroy(argument);
+    }
+    if (status == CALCULATOR_OK && count >= 1U)
+    {
+        BigDecimal *argument = NULL;
+        status = calculator_evaluate_expression(&argument, expression->data.call.arguments[count - 1U], evaluation, error);
+        if (status == CALCULATOR_OK)
+        {
+            status = calculator_from_bigdecimal_status(bigdecimal_copy(upper, argument));
+        }
+        bigdecimal_destroy(argument);
+    }
+    if (status == CALCULATOR_OK && count == 0U)
+    {
+        status = calculator_from_bigdecimal_status(bigdecimal_set_string(upper, "1"));
+    }
+    if (status == CALCULATOR_OK)
+    {
+        status = calculator_from_bigdecimal_status(bigdecimal_compare(&comparison, lower, upper));
+    }
+    if (status == CALCULATOR_OK && comparison >= 0)
+    {
+        status = CALCULATOR_INVALID_ARGUMENT;
+    }
+    if (status == CALCULATOR_OK)
+    {
+        calculator_random_decimal(evaluation->random_state, digits);
+        status = calculator_from_bigdecimal_status(bigdecimal_set_string(unit, digits));
+    }
+    if (status == CALCULATOR_OK)
+    {
+        status = calculator_from_bigdecimal_status(bigdecimal_sub(span, upper, lower));
+    }
+    if (status == CALCULATOR_OK)
+    {
+        status = calculator_from_bigdecimal_status(bigdecimal_mul(value, span, unit));
+    }
+    if (status == CALCULATOR_OK)
+    {
+        status = calculator_from_bigdecimal_status(bigdecimal_add(value, lower, value));
+    }
+done:
+    bigdecimal_destroy(lower);
+    bigdecimal_destroy(upper);
+    bigdecimal_destroy(unit);
+    bigdecimal_destroy(span);
+    if (status == CALCULATOR_OK)
+    {
+        *result = value;
+    }
+    else
+    {
+        bigdecimal_destroy(value);
+        if (error == NULL || error->status != status)
+        {
+            calculator_error_set(error, status, expression->offset);
+        }
+    }
+    return status;
+}
 
 static bool calculator_time_limit_reached(
     const CalculatorEvaluation *evaluation
@@ -46,13 +152,6 @@ static bool calculator_time_limit_reached(
 
     return !numforge_budget_check() && numforge_budget_failure() == NUMFORGE_BUDGET_TIME;
 }
-
-static CalculatorStatus calculator_evaluate_expression(
-    BigDecimal **result,
-    const CalculatorExpression *expression,
-    const CalculatorEvaluation *evaluation,
-    CalculatorError *error
-);
 
 static CalculatorStatus calculator_from_bigdecimal_status(
     BigDecimalStatus status
@@ -1666,6 +1765,8 @@ static CalculatorStatus calculator_evaluate_expression(
 
         switch (expression->data.call.function->implementation)
         {
+            case CALCULATOR_FUNCTION_RANDOM:
+                return calculator_evaluate_random_call(result, expression, evaluation, error);
             case CALCULATOR_FUNCTION_SQRT:
             case CALCULATOR_FUNCTION_CBRT:
             case CALCULATOR_FUNCTION_ROOT:
@@ -1989,6 +2090,7 @@ static CalculatorStatus calculator_evaluate_impl(
     const CalculatorExpression *expression,
     const CalculatorContext *context,
     const BigDecimal *answer,
+    uint64_t *random_state,
     CalculatorError *error
 )
 {
@@ -2036,6 +2138,7 @@ static CalculatorStatus calculator_evaluate_impl(
     evaluation.context = context;
     evaluation.constant_cache = &constant_cache;
     evaluation.answer = answer;
+    evaluation.random_state = random_state;
 
     for (size_t index = 0U; index < CALCULATOR_CONSTANT_COUNT; index++)
     {
@@ -2083,7 +2186,7 @@ CalculatorStatus calculator_evaluate(
     CalculatorError *error
 )
 {
-    return calculator_evaluate_with_answer(result, expression, context, NULL, error);
+    return calculator_evaluate_with_answer(result, expression, context, NULL, NULL, error);
 }
 
 CalculatorStatus calculator_evaluate_with_answer(
@@ -2091,21 +2194,28 @@ CalculatorStatus calculator_evaluate_with_answer(
     const CalculatorExpression *expression,
     const CalculatorContext *context,
     const BigDecimal *answer,
+    uint64_t *random_state,
     CalculatorError *error
 )
 {
     bool owner;
     CalculatorStatus status;
+    uint64_t local_random_state = calculator_random_seed();
+
+    if (random_state == NULL)
+    {
+        random_state = &local_random_state;
+    }
 
     if (context == NULL)
     {
-        return calculator_evaluate_impl(result, expression, context, answer, error);
+        return calculator_evaluate_impl(result, expression, context, answer, random_state, error);
     }
 
     owner = numforge_budget_begin(context->time_limit_ms < 0 ? 0U : (uint64_t)context->time_limit_ms,
                                   CALCULATOR_ALLOCATION_BUDGET,
                                   CALCULATOR_SINGLE_ALLOCATION);
-    status = calculator_evaluate_impl(result, expression, context, answer, error);
+    status = calculator_evaluate_impl(result, expression, context, answer, random_state, error);
 
     if (status != CALCULATOR_OK && context->time_limit_ms >= 0)
     {

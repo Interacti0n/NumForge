@@ -33,6 +33,10 @@ typedef struct CalculatorSession
     uint64_t revision;
     CalculatorValue preview;
     char preview_expression[CALCULATOR_MAX_INPUT_BYTES + 1U];
+    uint64_t random_state;
+    uint64_t preview_random_start;
+    uint64_t preview_random_state;
+    bool random_initialized;
 } CalculatorSession;
 
 void calculator_session_destroy(CalculatorSession *session);

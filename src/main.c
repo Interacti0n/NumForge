@@ -137,6 +137,27 @@ static bool calculator_handle_angle_command(
     return false;
 }
 
+static bool calculator_handle_notation_command(const char *input, CalculatorContext *context)
+{
+    if (strcmp(input, "notation") == 0)
+    {
+        static const char *names[] = {"auto", "plain", "scientific", "math"};
+        printf("output notation: %s\n", names[context->notation]);
+        return true;
+    }
+    if (strncmp(input, "notation ", 9U) != 0)
+    {
+        return false;
+    }
+    const char *name = input + 9U;
+    if (strcmp(name, "auto") == 0) context->notation = BIGDECIMAL_FORMAT_AUTO;
+    else if (strcmp(name, "plain") == 0) context->notation = BIGDECIMAL_FORMAT_PLAIN;
+    else if (strcmp(name, "scientific") == 0) context->notation = BIGDECIMAL_FORMAT_SCIENTIFIC;
+    else if (strcmp(name, "math") == 0) context->notation = BIGDECIMAL_FORMAT_MATHEMATICAL;
+    else fputs("notation must be auto, plain, scientific, or math\n", stderr);
+    return true;
+}
+
 /*
 ------------------------------------------------------------------------------------------------------------------------------
     Main command-line calculator operation.
@@ -156,7 +177,9 @@ int main(void)
     puts("Type exit or quit to stop.");
     puts("Use 'precision N' or 'precision full' to set output formatting.");
     puts("Use 'angle rad' or 'angle deg' to select the trigonometric angle unit.");
+    puts("Use 'notation auto|plain|scientific|math' to select result notation.");
     puts("ans holds the last successful result. Use 'history' to list results or 'reset' to clear the session.");
+    puts("rand(), rand(x), and rand(x;y) draw independent random decimals in bounded ranges.");
 
     for (;;)
     {
@@ -207,6 +230,10 @@ int main(void)
             continue;
         }
         if (calculator_handle_angle_command(input, &context))
+        {
+            continue;
+        }
+        if (calculator_handle_notation_command(input, &context))
         {
             continue;
         }

@@ -26,6 +26,44 @@ test('HTTP sessions: confirmation replay, isolation and expiration', async ({ re
     expect((await send(client, 4, 'commit', 'ans+1', 'full')).status).toContain('session expired');
 });
 
+test('HTTP random previews remain stable and confirmation adopts them', async ({ request }) => {
+    const client = 'c'.repeat(32);
+    async function send(revision, action, input = '', precision = 'full') {
+        const response = await request.post('/api/evaluate?precision=' + precision +
+            '&angle=rad&client=' + client + '&revision=' + revision + '&action=' + action, {data: input});
+        return response.json();
+    }
+    expect((await send(1, 'start')).ok).toBe(true);
+    const preview = await send(1, 'preview', 'rand()+rand()');
+    expect(preview.ok).toBe(true);
+    expect((await send(2, 'preview', 'rand()+rand()')).result).toBe(preview.result);
+    expect((await send(3, 'commit', 'rand()+rand()')).result).toBe(preview.result);
+    expect((await send(3, 'commit', 'rand()+rand()')).result).toBe(preview.result);
+    const ranged = await send(4, 'commit', 'rand(2;5)');
+    expect(ranged.ok).toBe(true);
+    expect(Number(ranged.result)).toBeGreaterThanOrEqual(2);
+    expect(Number(ranged.result)).toBeLessThan(5);
+    expect((await send(5, 'commit', 'rand(0)')).ok).toBe(false);
+});
+
+test('HTTP notation changes preserve the confirmed number and expose copy text', async ({ request }) => {
+    const client = 'd'.repeat(32);
+    async function send(revision, action, input, notation) {
+        const response = await request.post('/api/evaluate?precision=2&angle=rad&notation=' + notation +
+            '&client=' + client + '&revision=' + revision + '&action=' + action, {data: input});
+        return response.json();
+    }
+    expect((await send(1, 'start', '', 'auto')).ok).toBe(true);
+    expect((await send(1, 'commit', '123.456', 'plain')).result).toBe('123.46');
+    const math = await send(2, 'preview', 'ans', 'math');
+    expect(math.result).toBe('1.2346 × 10^2');
+    expect(math.copy).toBe('1.2346E+2');
+    expect((await send(3, 'preview', 'ans', 'scientific')).result).toBe('1.2346E+2');
+    expect((await send(4, 'preview', 'ans', 'plain')).result).toBe('123.46');
+    expect((await send(5, 'commit', '1E100000', 'plain')).ok).toBe(false);
+    expect((await send(6, 'preview', 'ans', 'auto')).result).toBe('123.46');
+});
+
 test('HTTP cache validation, stale revisions and bounded eviction', async ({ request }) => {
     const first = 'a'.repeat(32);
     async function send(client, revision, input = '42', precision = 10) {
@@ -57,6 +95,19 @@ for (const lang of ['sk', 'en']) {
             await page.locator('#expression').press('Enter');
             await expect(page.locator('#result')).toHaveText(expected);
         }
+        test('notation selector changes display and mathematical copy', async ({ page }) => {
+            await page.locator('#precision-mode').selectOption('custom');
+            await page.locator('#precision').fill('2');
+            await page.locator('#notation-mode').selectOption('math');
+            await calculate(page, '123.456', '1.2346 × 10^2');
+            await page.locator('#copy-result').click();
+            expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('1.2346E+2');
+            await page.locator('#notation-mode').selectOption('plain');
+            await expect(page.locator('#result')).toHaveText('123.46');
+            await page.locator('#notation-mode').selectOption('scientific');
+            await expect(page.locator('#result')).toHaveText('1.2346E+2');
+            await expect(page.locator('#history-list li')).toHaveCount(1);
+        });
         test('ans changes only on confirmation; history and reload', async ({ page, context }) => {
             await calculate(page, '5', '5');
             await page.locator('#expression').fill('ans+1');
@@ -168,9 +219,13 @@ for (const lang of ['sk', 'en']) {
         });
         test('function groups, aliases and trigonometry', async ({ page }, testInfo) => {
             await expect(page.locator('details.function-group')).toHaveCount(6);
-            await expect(page.locator('[data-function]')).toHaveCount(45);
+            await expect(page.locator('[data-function]')).toHaveCount(46);
             await expect(page.locator('[data-function]:disabled')).toHaveCount(0);
             await page.locator('#function-tab-0').click();
+            await page.locator('[data-function="rand"]').click();
+            await expect(page.locator('#expression')).toHaveValue('rand()');
+            await expect(page.locator('#expression')).toHaveJSProperty('selectionStart', 6);
+            await page.locator('[data-action="clear"]').click();
             await page.locator('[data-function="round"]').click();
             await expect(page.locator('#expression')).toHaveValue('round()');
             await page.locator('#expression').fill('round(12.345;2)');

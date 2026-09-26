@@ -5,6 +5,16 @@ All notable changes to NumForge are documented in this file. The project uses
 
 ## Unreleased
 
+- Add selectable Auto, plain, scientific and mathematical result notation to
+  the public BigDecimal formatter, CLI and browser. Auto uses scientific output
+  for exponent magnitude at least 10 or plain output over 80 characters.
+  Mathematical output copies as parser-compatible `E` notation; explicit plain
+  output respects the application size limit without changing the stored value.
+
+- Add calculator `rand()`, `rand(x)` and `rand(x;y)` with independent 34-place
+  decimal draws, bounded ranges, stable session previews and replay-safe
+  confirmation. Document the non-cryptographic distribution and add a web key.
+
 - Fix 32-bit GCC warnings-as-errors in the decimal formatter by checking
   whether a `size_t` can exceed `INT64_MAX` only on platforms where it can.
 

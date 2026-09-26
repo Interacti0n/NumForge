@@ -152,6 +152,11 @@ calculator also bounds allocations and output size. Exceeding these limits
 returns `TLE` or `value too large`; public numeric library calls remain uncapped
 by these application policies. Cancellation is cooperative, not a hard real-time
 process-kill guarantee.
+The `rand()` key inserts a complete call. `rand()`, `rand(x)` and `rand(x;y)`
+draw independently in `[0,1)`, `[0,x)` and `[x,y)` (`x > 0`, `x < y`). Draws use
+a 34-place decimal grid. Repeated previews keep their draws; a new confirmation
+draws again. The generator is not cryptographically secure.
+
 Named calls use parentheses and semicolons: `pow(2;3)` and `factorial(5)`
 already calculate through the existing operators. `abs`, `sign`, `min` and `max`
 also calculate using decimal values without additional rounding. `floor`, `ceil`
@@ -177,9 +182,16 @@ result can be copied with one click. See the
 [API overview](docs/API.md) for exact syntax and the local HTTP API.
 Long results stay in a compact five-line panel and can be expanded with
 `Show all` when needed.
-Working precision remains automatic; only output precision is user-configurable.
+Working precision remains automatic; output precision and notation are user-configurable.
 Choose Auto (10 decimal places), Full (no final output rounding), or Custom
 (0–10000 places). The number field appears only in Custom mode.
+The separate notation selector offers Auto, plain, scientific (`1.23E+45`)
+and mathematical (`1.23 × 10^45`) output. Auto selects scientific when the
+rounded exponent is at least 10 in magnitude or plain output exceeds 80
+characters. Plain output is limited to 65536 UTF-8 bytes; an oversized result
+reports an error. Mathematical output copies as parser-compatible `E` notation
+when it fits the input range and size limit. The CLI uses `notation auto`,
+`notation plain`, `notation scientific` or `notation math`.
 Each page has an isolated in-memory session (up to eight pages on the server).
 Automatic previews do not change `ans`. Enter, Calculate or `=` confirms a
 successful result and appends it to the last 16 history entries. `ans` stores

@@ -67,7 +67,8 @@ CalculatorStatus calculator_format_result(
     else
     {
         status = calculator_from_bigdecimal_status(
-            bigdecimal_format(value, context->output_scale, context->rounding, result));
+            bigdecimal_format_mode(value, context->output_scale, context->rounding,
+                context->notation, CALCULATOR_MAX_OUTPUT_BYTES, result));
     }
 
     status = calculator_budget_status(status);

@@ -93,6 +93,77 @@ void test_readable_format_thresholds_and_rounding_carry(void)
     assert_decimal_format("1E+10", "9999999999.5", 0, BIGDECIMAL_ROUND_HALF_UP);
 }
 
+void test_format_modes_share_rounded_value_and_respect_limits(void)
+{
+    BigDecimal *value = make_decimal("9999999999.5");
+    char *output = NULL;
+    char marker[] = "unchanged";
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_format_mode(value, 0,
+        BIGDECIMAL_ROUND_HALF_UP, BIGDECIMAL_FORMAT_PLAIN, 80U, &output));
+    TEST_ASSERT_EQUAL_STRING("10000000000", output);
+    free(output);
+    output = NULL;
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_format_mode(value, 0,
+        BIGDECIMAL_ROUND_HALF_UP, BIGDECIMAL_FORMAT_SCIENTIFIC, 80U, &output));
+    TEST_ASSERT_EQUAL_STRING("1E+10", output);
+    free(output);
+    output = NULL;
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_format_mode(value, 0,
+        BIGDECIMAL_ROUND_HALF_UP, BIGDECIMAL_FORMAT_MATHEMATICAL, 80U, &output));
+    TEST_ASSERT_EQUAL_STRING("1 × 10^10", output);
+    free(output);
+    output = marker;
+    TEST_ASSERT_EQUAL(BIGDECIMAL_VALUE_TOO_LARGE, bigdecimal_format_mode(value, 0,
+        BIGDECIMAL_ROUND_HALF_UP, BIGDECIMAL_FORMAT_PLAIN, 5U, &output));
+    TEST_ASSERT_EQUAL_PTR(marker, output);
+    bigdecimal_destroy(value);
+
+    value = make_decimal("1E-10");
+    output = NULL;
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_format_mode(value, -1,
+        BIGDECIMAL_ROUND_HALF_EVEN, BIGDECIMAL_FORMAT_PLAIN, 80U, &output));
+    TEST_ASSERT_EQUAL_STRING("0.0000000001", output);
+    free(output);
+    output = NULL;
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_format_mode(value, -1,
+        BIGDECIMAL_ROUND_HALF_EVEN, BIGDECIMAL_FORMAT_MATHEMATICAL, 80U, &output));
+    TEST_ASSERT_EQUAL_STRING("1 × 10^-10", output);
+    free(output);
+    bigdecimal_destroy(value);
+
+    value = make_decimal("0");
+    output = NULL;
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_format_mode(value, -1,
+        BIGDECIMAL_ROUND_HALF_EVEN, BIGDECIMAL_FORMAT_SCIENTIFIC, 80U, &output));
+    TEST_ASSERT_EQUAL_STRING("0", output);
+    free(output);
+    bigdecimal_destroy(value);
+
+    {
+        char digits[82];
+        digits[0] = '1';
+        digits[1] = '.';
+        memset(digits + 2U, '1', 78U);
+        digits[80] = '\0';
+        value = make_decimal(digits);
+        output = NULL;
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_format_mode(value, -1,
+            BIGDECIMAL_ROUND_HALF_EVEN, BIGDECIMAL_FORMAT_AUTO, 128U, &output));
+        TEST_ASSERT_EQUAL_STRING(digits, output);
+        free(output);
+        bigdecimal_destroy(value);
+        digits[80] = '1';
+        digits[81] = '\0';
+        value = make_decimal(digits);
+        output = NULL;
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_format_mode(value, -1,
+            BIGDECIMAL_ROUND_HALF_EVEN, BIGDECIMAL_FORMAT_AUTO, 128U, &output));
+        TEST_ASSERT_NOT_NULL(strstr(output, "E+0"));
+        free(output);
+        bigdecimal_destroy(value);
+    }
+}
+
 void test_invalid_parse_does_not_modify_destination(void)
 {
     const char *invalid[] = { "", "+", ".", "1e", "1.2.3", " 1", "1x" };
@@ -864,6 +935,7 @@ int main(void)
     RUN_TEST(test_lifetime_and_status_strings);
     RUN_TEST(test_parse_format_and_canonical_form);
     RUN_TEST(test_readable_format_thresholds_and_rounding_carry);
+    RUN_TEST(test_format_modes_share_rounded_value_and_respect_limits);
     RUN_TEST(test_invalid_parse_does_not_modify_destination);
     RUN_TEST(test_scale_overflow_does_not_modify_destination);
     RUN_TEST(test_copy_comparison_and_inspection);

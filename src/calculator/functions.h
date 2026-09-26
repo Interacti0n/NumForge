@@ -60,7 +60,8 @@ typedef enum CalculatorFunctionImplementation
     CALCULATOR_FUNCTION_ACOSH,
     CALCULATOR_FUNCTION_ATANH,
     CALCULATOR_FUNCTION_RADIANS,
-    CALCULATOR_FUNCTION_DEGREES
+    CALCULATOR_FUNCTION_DEGREES,
+    CALCULATOR_FUNCTION_RANDOM
 } CalculatorFunctionImplementation;
 
 typedef struct CalculatorFunction

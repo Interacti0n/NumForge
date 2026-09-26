@@ -54,6 +54,7 @@ typedef struct CalculatorContext
     int64_t output_scale;
     int64_t time_limit_ms;
     BigDecimalRoundingMode rounding;
+    BigDecimalFormatMode notation;
     CalculatorAngleUnit angle_unit;
     bool significant_division;
 } CalculatorContext;
@@ -66,6 +67,7 @@ typedef struct CalculatorValue
     CalculatorContext context;
     bool independent;
     bool uses_answer;
+    bool uses_random;
 } CalculatorValue;
 
 
@@ -108,6 +110,7 @@ CalculatorStatus calculator_compute_value_with_answer(
     const char *input,
     const CalculatorContext *context,
     const BigDecimal *answer,
+    uint64_t *random_state,
     CalculatorValue *result,
     CalculatorError *error
 );

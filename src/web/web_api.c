@@ -32,6 +32,16 @@ CalculatorStatus numforge_web_evaluate_session(
     bool *reused
 )
 {
+    return numforge_web_evaluate_session_mode(session, revision, commit, input,
+        output_scale, angle_unit, BIGDECIMAL_FORMAT_AUTO, result, error, reused);
+}
+
+CalculatorStatus numforge_web_evaluate_session_mode(
+    CalculatorSession *session, uint64_t revision, bool commit, const char *input,
+    int64_t output_scale, CalculatorAngleUnit angle_unit, BigDecimalFormatMode notation,
+    char **result, CalculatorError *error, bool *reused
+)
+{
     CalculatorContext context;
     CalculatorStatus status;
 
@@ -54,6 +64,8 @@ CalculatorStatus numforge_web_evaluate_session(
         calculator_error_set(error, status, 0U);
         return status;
     }
+
+    context.notation = notation;
 
     return calculator_session_compute(session, revision, commit, input, &context, result, error, reused);
 }
@@ -98,6 +110,16 @@ CalculatorStatus numforge_web_evaluate_cached(
     char **result,
     CalculatorError *error,
     bool *reused
+)
+{
+    return numforge_web_evaluate_cached_mode(cache, revision, input, output_scale,
+        angle_unit, BIGDECIMAL_FORMAT_AUTO, result, error, reused);
+}
+
+CalculatorStatus numforge_web_evaluate_cached_mode(
+    NumForgeWebCache *cache, uint64_t revision, const char *input,
+    int64_t output_scale, CalculatorAngleUnit angle_unit, BigDecimalFormatMode notation,
+    char **result, CalculatorError *error, bool *reused
 )
 {
     CalculatorContext context;
@@ -162,9 +184,11 @@ CalculatorStatus numforge_web_evaluate_cached(
         return status;
     }
 
+    context.notation = notation;
+
     owner = numforge_budget_begin(
         (uint64_t)context.time_limit_ms, CALCULATOR_ALLOCATION_BUDGET, CALCULATOR_SINGLE_ALLOCATION);
-    if (cache != NULL && strcmp(cache->expression, input) == 0 &&
+    if (cache != NULL && !cache->value.uses_random && strcmp(cache->expression, input) == 0 &&
         calculator_value_matches(&cache->value, &context))
     {
         status = calculator_format_result(cache->value.number, &context, result);
@@ -182,7 +206,7 @@ CalculatorStatus numforge_web_evaluate_cached(
             status = calculator_format_result(value.number, &context, result);
             calculator_error_set(error, status, 0U);
         }
-        if (status == CALCULATOR_OK && replace)
+        if (status == CALCULATOR_OK && replace && !value.uses_random)
         {
             calculator_value_destroy(&cache->value);
             cache->value = value;

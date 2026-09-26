@@ -85,6 +85,11 @@ static int public_api_checks(void)
         bigdecimal_cbrt(b, b, 34, BIGDECIMAL_ROUND_HALF_EVEN) != BIGDECIMAL_OK ||
         bigdecimal_to_string(b, &text) != BIGDECIMAL_OK || strcmp(text, "1") != 0) goto cleanup;
     free(text); text = NULL;
+    if (bigdecimal_set_string(a, "12.5") != BIGDECIMAL_OK ||
+        bigdecimal_format_mode(a, -1, BIGDECIMAL_ROUND_HALF_EVEN,
+            BIGDECIMAL_FORMAT_MATHEMATICAL, 80U, &text) != BIGDECIMAL_OK ||
+        strcmp(text, "1.25 × 10^1") != 0) goto cleanup;
+    free(text); text = NULL;
     if (bigint_set_string(n, "5") != BIGINT_OK ||
         bigint_set_string(r, "2") != BIGINT_OK ||
         bigint_permutation(n, n, r) != BIGINT_OK ||

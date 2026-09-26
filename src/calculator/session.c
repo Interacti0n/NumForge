@@ -1,5 +1,6 @@
 #include "session.h"
 #include "formatter.h"
+#include "random.h"
 
 #include <numforge/runtime.h>
 #include <stdlib.h>
@@ -68,6 +69,9 @@ CalculatorStatus calculator_session_compute(
     char *display = NULL;
     bool owner;
     bool hit;
+    bool same_preview;
+    uint64_t random_start;
+    uint64_t random_next;
     size_t length = 0U;
 
     if (result != NULL)
@@ -110,6 +114,7 @@ CalculatorStatus calculator_session_compute(
         context->division_scale == last->value.context.division_scale &&
         context->output_scale == last->value.context.output_scale &&
         context->rounding == last->value.context.rounding &&
+        context->notation == last->value.context.notation &&
         context->angle_unit == last->value.context.angle_unit &&
         context->significant_division == last->value.context.significant_division)
     {
@@ -124,10 +129,19 @@ CalculatorStatus calculator_session_compute(
     else
     {
         session->revision = revision;
+        if (!session->random_initialized)
+        {
+            session->random_state = calculator_random_seed();
+            session->random_initialized = true;
+        }
+        same_preview = session->preview.number != NULL &&
+            strcmp(input, session->preview_expression) == 0;
+        random_start = same_preview ? session->preview_random_start : session->random_state;
+        random_next = random_start;
         hit = strcmp(input, session->preview_expression) == 0 &&
             calculator_value_matches(&session->preview, context);
         cached = &session->preview;
-        if (!hit && last != NULL && !last->value.uses_answer &&
+        if (!hit && last != NULL && !last->value.uses_answer && !last->value.uses_random &&
             strcmp(input, last->expression) == 0 && calculator_value_matches(&last->value, context))
         {
             cached = &last->value;
@@ -163,11 +177,16 @@ CalculatorStatus calculator_session_compute(
             value.context = *context;
             value.independent = cached->independent;
             value.uses_answer = cached->uses_answer;
+            value.uses_random = cached->uses_random;
+            if (cached == &session->preview)
+            {
+                random_next = session->preview_random_state;
+            }
         }
         else
         {
             status = calculator_compute_value_with_answer(input, context,
-                last == NULL ? NULL : last->value.number, &value, error);
+                last == NULL ? NULL : last->value.number, &random_next, &value, error);
         }
         if (status == CALCULATOR_OK)
         {
@@ -187,6 +206,7 @@ CalculatorStatus calculator_session_compute(
             calculator_session_clear_preview(session);
             if (commit)
             {
+                session->random_state = random_next;
                 if (session->count == CALCULATOR_HISTORY_CAPACITY)
                 {
                     calculator_value_destroy(&session->history[0].value);
@@ -205,6 +225,8 @@ CalculatorStatus calculator_session_compute(
             else
             {
                 session->preview = value;
+                session->preview_random_start = random_start;
+                session->preview_random_state = random_next;
                 memcpy(session->preview_expression, input, length + 1U);
             }
             value.number = NULL;

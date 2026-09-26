@@ -14,7 +14,7 @@ client over the public numeric API.
 | `tokenizer.c` | Converts source text into location-aware tokens. Implemented for decimal literals, identifiers, whitespace, binary and postfix operators, and parentheses. |
 | `parser.c` | Converts tokens into an opaque expression tree (AST). Implemented as recursive descent with postfix, power, unary, multiplicative, and additive precedence layers. |
 | `evaluator.c` | Evaluates the AST to `BigDecimal` using `CalculatorContext`. Implements arithmetic, roots, integer, exponential, logarithmic, trigonometric, hyperbolic, conversion, and selection calls. |
-| `formatter.c` | Rounds a completed result to the requested output scale and selects ordinary or scientific notation. |
+| `formatter.c` | Formats a completed result at the requested output scale and notation without changing the stored value. |
 | `functions.c` | Immutable registry of named calls, accepted arities and implementation dispatch identifiers. |
 | `src/main.c` | Interactive command-line shell around the calculator pipeline. |
 | `src/web/web_api.c` | Text-to-result adapter used by the local web server. |
@@ -49,12 +49,14 @@ and exercises its HTTP transport over real sockets.
 The page sends the selected output scale as `?precision=N`; its full-output
 mode sends `?precision=full`. Auto sends 10; Custom uses the numeric field.
 The RAD/DEG selector adds `&angle=rad` or
-`&angle=deg` and is remembered in browser local storage. HTTP `POST` requests require an exact
+`&angle=deg`; the notation selector adds `&notation=auto|plain|scientific|math`.
+Both settings are preserved when changing the page language. HTTP `POST` requests require an exact
 `Content-Length`. If a browser sends an `Origin`, the server accepts only its
 own loopback origins, preventing unrelated pages from triggering expensive
 local calculations. Slovak and English routes use `?lang=sk` and `?lang=en`;
-the result panel copies the currently displayed result through the browser
-clipboard API, with a local fallback. Exponential, logarithmic, trigonometric,
+the result panel copies the displayed result through the browser clipboard API,
+with a local fallback. Mathematical notation copies as parser-compatible `E`
+text if it fits the input limits. Exponential, logarithmic, trigonometric,
 hyperbolic, and angle-conversion controls are active. Basic abs/sign/min/max and aggregate
 sum/product/mean controls, integer gcd/lcm/mod/isqrt controls
 and sqrt/cbrt/root controls are active.
@@ -127,7 +129,8 @@ explicitly and never silently recreates a session on evaluation. Reload,
 language navigation and New session create a new random page ID. There is no
 disk persistence or TTL. Browser history is a bounded display mirror of
 confirmed entries; clicking an entry restores input only. CLI `history` lists
-entries and `reset` destroys the session while retaining precision/angle settings.
+entries and `reset` destroys the session while retaining precision, angle and
+notation settings.
 
 The latest successful commit can be replayed with the same revision, expression
 and settings; it returns the original display without recomputation or a second
@@ -135,6 +138,16 @@ history entry. Older or conflicting revisions fail. A commit clears preview
 state. The latest confirmed value can still serve as a cache source when its AST
 does not use ans; otherwise the next expression evaluates against the new answer.
 Preview clearing is separate from session destruction.
+
+`rand` is private calculator state. Each session owns a non-cryptographic
+generator; a candidate evaluation uses a local state copy. A preview stores
+the starting and ending states with its numeric value. Reformatting reuses the
+value; recalculation with a changed working context starts at the same state
+so its draws remain stable. A successful commit adopts the ending state and
+its value atomically. Errors leave the committed generator state unchanged.
+Random values are never reused from confirmed history or the legacy cache.
+Each occurrence draws a new uniform 34-place decimal in `[0,1)`; the ranged
+forms transform it exactly. Tests can supply a fixed private seed.
 
 The browser serializes confirmations and suppresses previews while one is
 unresolved. Editing can invalidate display but cannot abort a sent confirmation.
@@ -279,8 +292,8 @@ constant times a parenthesized expression. Adjacent ASCII names require `*`
 
 ## Evaluation policy and errors
 
-`CalculatorContext` holds working division precision, output scale, rounding,
-angle unit, and a time budget. `significant_division` defaults to true: `division_scale`
+`CalculatorContext` holds working division precision, output scale, notation,
+rounding, angle unit, and a time budget. `significant_division` defaults to true: `division_scale`
 then counts significant digits for non-terminating division, defaulting to 34
 with half-even rounding. Terminating division is exact within resource limits.
 An explicitly false mode retains the internal legacy fixed-scale behavior;
@@ -347,6 +360,16 @@ requested number of decimal places with the context's rounding mode. When a
 non-zero result has exponent at least `10` or at most `-10`, the scientific
 path instead rounds the mantissa directly to at most that many places. Exact
 operations remain exact until this optional final formatting step.
+
+The notation setting selects Auto, plain, scientific (`1.23E+45`) or
+mathematical (`1.23 × 10^45`) representation after the same canonical final
+rounding. Auto checks the rounded exponent first, then chooses scientific if
+the exponent magnitude is at least 10 or plain text would exceed 80 characters.
+Changing notation is excluded from numeric cache identity, so it reuses the
+stored result and does not advance `rand` or change `ans`. Plain output above
+the 65536-byte application limit fails without replacing the stored value.
+The web response supplies parser-compatible `E` copy text for mathematical
+notation, or disables copying when the parser range or input size is exceeded.
 
 For extreme positive or negative internal scales, such as `1E100000` or
 `1E-100000`, the formatter builds scientific notation directly from the

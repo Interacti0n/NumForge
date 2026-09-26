@@ -99,7 +99,7 @@ retain unnecessary trailing zeroes.
 | Exponential and logarithmic | `bigdecimal_exp`, `bigdecimal_ln`, `bigdecimal_log10`, `bigdecimal_log` |
 | Trigonometric | `bigdecimal_sin`, `bigdecimal_cos`, `bigdecimal_tan`, `bigdecimal_asin`, `bigdecimal_acos`, `bigdecimal_atan` |
 | Hyperbolic | `bigdecimal_sinh`, `bigdecimal_cosh`, `bigdecimal_tanh`, `bigdecimal_asinh`, `bigdecimal_acosh`, `bigdecimal_atanh` |
-| Constants and display | `bigdecimal_set_constant`, `bigdecimal_set_constant_significant`, `bigdecimal_format` |
+| Constants and display | `bigdecimal_set_constant`, `bigdecimal_set_constant_significant`, `bigdecimal_format`, `bigdecimal_format_mode` |
 
 Addition, subtraction, and multiplication are exact. Division and rescaling
 take an explicit target scale and one of these rounding modes:
@@ -165,6 +165,15 @@ keeps decimal places; a negative scale rounds to tens, hundreds, and so on.
   to the mantissa; otherwise places applies to the ordinary decimal part.
   The number is not changed. Caller frees the resulting string with `free()`;
   unlike the client formatter, this API preserves `*result` on failure.
+- `bigdecimal_format_mode` adds `BIGDECIMAL_FORMAT_AUTO`, `_PLAIN`,
+  `_SCIENTIFIC` and `_MATHEMATICAL`. Auto selects scientific notation when the
+  rounded result has exponent >=10 or <=-10, or its plain representation would
+  exceed 80 characters. Scientific output uses an explicit exponent sign, such
+  as `1.23E+45`; mathematical output uses `1.23 × 10^45`. Zero is always `0`.
+  Every mode uses the same rounding result as `bigdecimal_format`; only the
+  representation changes. `max_output_bytes` bounds the result excluding its
+  terminating NUL. An oversized result returns `BIGDECIMAL_VALUE_TOO_LARGE`
+  without changing `*result`. The caller frees a successful string with `free()`.
 
 All follow the common null-argument, aliasing and strong failure contracts.
 Pointers must refer to live initialized objects; dangling pointers and concurrent
@@ -251,13 +260,14 @@ return `CALCULATOR_VALUE_TOO_LARGE` instead of risking process stack overflow.
 ### Named calls
 
 Names contain lowercase ASCII letters only and require parentheses. Arguments
-use semicolons, not commas: `pow(1,5;2)` is `2.25`. The registry recognizes 45
+use semicolons, not commas: `pow(1,5;2)` is `2.25`. The registry recognizes 46
 names; recognition is separate from numerical implementation:
 
 | Calls | Current calculation support |
 | --- | --- |
 | `pow(x;y)`, `factorial(n)` | Active aliases of `x^y` and `n!`, with identical domains and limits. |
 | `abs(x)`, `sign(x)`, `min(a;b;…)`, `max(a;b;…)` | Active: absolute value, sign −1/0/1 and minimum/maximum of at least two arguments. |
+| `rand()`, `rand(x)`, `rand(x;y)` | Random decimal in `[0,1)`, `[0,x)` for `x > 0`, or `[x,y)` for `x < y`. Each occurrence draws independently. |
 | `sum(a;b;…)`, `product(a;b;…)`, `mean(a;b;…)` | One to 256 decimal arguments. Sum and product are exact. Mean divides the exact sum by the count, preserving a terminating decimal or rounding a recurring result to working precision. |
 | `median(a;b;…)`, `geomean(a;b;…)`, `harmean(a;b;…)` | Exact median; geometric mean of non-negative values; harmonic mean of positive nonzero values. One to 256 arguments. |
 | `variance(a;b;…)`, `stdevp(a;b;…)`, `stdev(a;b;…)` | Population variance and standard deviation use denominator `n` and accept at least one value. Sample `stdev` uses `n−1` and requires at least two values. |
@@ -275,6 +285,14 @@ names; recognition is separate from numerical implementation:
 Wrong arity returns `wrong number of arguments` at the function name; unknown
 names return `invalid token`. Nesting and implicit products work, for
 example `pow(2;factorial(3))` and `2pow(2;3)`.
+
+`rand()` draws uniformly from the 34-place decimal grid `0/10^34` through
+`(10^34-1)/10^34`. The ranged forms apply exact decimal multiplication and
+addition to this draw. They are discrete, not a continuous distribution, and
+are not cryptographically secure. The internal value is below the upper bound;
+rounding the displayed result to fewer places can show that bound. Output
+precision does not change the draw. Each call in one expression advances the
+private calculator generator independently, in evaluation order.
 
 Selection calls accept all finite decimal values without introducing rounding;
 their arguments follow the normal working-precision policy. Min/max evaluate
@@ -323,16 +341,22 @@ panel, and the same control collapses it again.
 Results default to 10 decimal places, rounded half-even.
 The browser offers Auto (10 places), Full, and Custom; only Custom shows a
 numeric field. Full skips final output rounding, not working-precision limits.
-Language switching preserves the selected mode and custom value.
+Separately, the notation selector offers Auto, plain, scientific and
+mathematical output. Auto selects scientific when the rounded exponent is
+outside -9..9 or plain output would exceed 80 characters. Scientific uses
+`1.23E+45`; mathematical uses `1.23 × 10^45`. The copy button converts
+mathematical notation to parser-compatible `E` form when possible. A plain
+result over the 65536-byte application output limit returns an error. Language
+switching preserves both selectors and the custom precision value.
 
 A caller can request a
 non-negative output scale from 0 through 10000,
 or `full` to skip the final output rounding. For a numeric scale `N`, non-terminating division
 uses `max(34, N + 4)` significant digits. With `full`, division uses its
 34-significant-digit half-even policy; `full` cannot make a recurring decimal
-exact or recover previously rounded digits. Very
-large or small non-zero output uses scientific notation at an absolute exponent
-of 10 or greater; its mantissa is rounded to at most the selected number of
+exact or recover previously rounded digits. In Auto mode, very large or small
+non-zero output uses scientific notation at an absolute exponent of 10 or greater;
+its mantissa is rounded to at most the selected number of
 decimal places, for example `1.2345678901E-12`.
 
 At extreme internal scales, a formatted exponent can exceed the input parser's
@@ -406,7 +430,10 @@ Browser requests that include `Origin` must come from this server's own
 HTTP 403. Native local clients may omit `Origin`. `precision` is optional: it
 accepts a non-negative whole number or `full`; if omitted, it defaults to `10`.
 `angle` accepts `rad` or `deg` and defaults to `rad`; when supplied it follows
-`precision` in the query string.
+`precision` in the query string. Optional `notation=auto|plain|scientific|math`
+follows `angle` and defaults to `auto`. A successful mathematical response adds
+`"copy":"1.23E+45"` (or `"copy":null` if the result cannot fit the parser's
+input range or size limit). Other modes retain the existing response fields.
 Legacy clients may append `&client=<32 lowercase hex digits>&revision=<N>`
 after the normal options. `N` is a positive increasing integer up to
 9007199254740991. These parameters opt into a bounded per-client cache;
@@ -435,6 +462,14 @@ the original result; conflicting or older revisions return `stale session reques
 An unresolved confirmation must be retried with its original ID before sending
 another confirmation. A new intentional Enter/`=` uses a new revision.
 
+For expressions containing `rand`, a preview keeps the same draws across
+automatic repeat requests and precision changes. A successful commit adopts
+those draws and advances the session generator once per occurrence. A new
+intentional commit makes fresh draws. Failed requests and replay of the same
+successful commit do not advance it. Each session has its own generator state;
+reloading or resetting starts a new sequence. One-shot and legacy HTTP requests
+draw afresh and do not cache random expressions.
+
 The session pool is separate from the legacy cache: eight sessions, FIFO
 eviction, 16 confirmed entries each and less than 4 MiB retained history per
 session. Each entry stores input, internal value, context and display. Evaluation
@@ -443,10 +478,12 @@ never starts another session implicitly. Reload, New session and language
 navigation use a fresh random ID; server restart loses all sessions. IDs are
 not authentication. History buttons restore only input, so expressions with
 `ans` use the current answer when evaluated again. CLI `history` lists its
-session entries; `reset` clears them and ans, retaining precision/angle settings.
+session entries; `reset` clears them and ans, retaining precision, angle and
+notation settings.
 
-Only output precision is configurable in the UI; working precision remains
-automatic. Matching input and working context allow reformatting without another
+Output precision and notation are configurable in the UI; working precision remains
+automatic. Changing notation only reformats the retained numeric value.
+Matching input and working context allow reformatting without another
 evaluation. Changes to working precision trigger recalculation in either direction
 unless an AST-based whitelist proves the entire expression precision-independent
 (for example `10000!`). Division, constants, real roots and transcendental calls

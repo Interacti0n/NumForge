@@ -106,6 +106,22 @@ static void test_failures_and_older_requests_do_not_replace_success(void)
     check_value("2+2", 10, CALCULATOR_ANGLE_RADIANS, 15U, false);
 }
 
+static void test_random_expression_is_never_reused(void)
+{
+    CalculatorError error;
+    char *text = NULL;
+    bool reused = true;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, numforge_web_evaluate_cached(&cache, 1U,
+        "rand()", -1, CALCULATOR_ANGLE_RADIANS, &text, &error, &reused));
+    TEST_ASSERT_FALSE(reused);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, numforge_web_evaluate_cached(&cache, 2U,
+        "rand()", -1, CALCULATOR_ANGLE_RADIANS, &text, &error, &reused));
+    TEST_ASSERT_FALSE(reused);
+    free(text);
+}
+
 static void test_clients_are_independent(void)
 {
     NumForgeWebCache other = {0};
@@ -129,6 +145,7 @@ int main(void)
     RUN_TEST(test_context_changes_recompute_in_both_directions);
     RUN_TEST(test_integer_looking_result_is_not_an_exactness_proof);
     RUN_TEST(test_failures_and_older_requests_do_not_replace_success);
+    RUN_TEST(test_random_expression_is_never_reused);
     RUN_TEST(test_clients_are_independent);
     return UNITY_END();
 }

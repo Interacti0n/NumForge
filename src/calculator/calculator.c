@@ -78,6 +78,7 @@ void calculator_context_init(
     context->output_scale = CALCULATOR_DEFAULT_OUTPUT_SCALE;
     context->time_limit_ms = CALCULATOR_DEFAULT_TIME_LIMIT_MS;
     context->rounding = BIGDECIMAL_ROUND_HALF_EVEN;
+    context->notation = BIGDECIMAL_FORMAT_AUTO;
     context->angle_unit = CALCULATOR_ANGLE_RADIANS;
     context->significant_division = true;
 }
@@ -258,6 +259,35 @@ static bool calculator_expression_uses_answer(const CalculatorExpression *expres
     }
 }
 
+static bool calculator_expression_uses_random(const CalculatorExpression *expression)
+{
+    switch (expression->type)
+    {
+        case CALCULATOR_EXPRESSION_CALL:
+            if (expression->data.call.function->implementation == CALCULATOR_FUNCTION_RANDOM)
+            {
+                return true;
+            }
+            for (size_t index = 0U; index < expression->data.call.count; index++)
+            {
+                if (calculator_expression_uses_random(expression->data.call.arguments[index]))
+                {
+                    return true;
+                }
+            }
+            return false;
+        case CALCULATOR_EXPRESSION_UNARY:
+            return calculator_expression_uses_random(expression->data.unary.operand);
+        case CALCULATOR_EXPRESSION_POSTFIX:
+            return calculator_expression_uses_random(expression->data.postfix.operand);
+        case CALCULATOR_EXPRESSION_BINARY:
+            return calculator_expression_uses_random(expression->data.binary.left) ||
+                calculator_expression_uses_random(expression->data.binary.right);
+        default:
+            return false;
+    }
+}
+
 void calculator_value_destroy(CalculatorValue *value)
 {
     if (value != NULL)
@@ -284,13 +314,14 @@ CalculatorStatus calculator_compute_value(
     CalculatorError *error
 )
 {
-    return calculator_compute_value_with_answer(input, context, NULL, result, error);
+    return calculator_compute_value_with_answer(input, context, NULL, NULL, result, error);
 }
 
 CalculatorStatus calculator_compute_value_with_answer(
     const char *input,
     const CalculatorContext *context,
     const BigDecimal *answer,
+    uint64_t *random_state,
     CalculatorValue *result,
     CalculatorError *error
 )
@@ -341,13 +372,14 @@ CalculatorStatus calculator_compute_value_with_answer(
         value = bigdecimal_create();
         status =
             value == NULL ? CALCULATOR_OUT_OF_MEMORY :
-                calculator_evaluate_with_answer(value, expression, context, answer, error);
+                calculator_evaluate_with_answer(value, expression, context, answer, random_state, error);
     }
 
     if (status == CALCULATOR_OK)
     {
         result->independent = calculator_expression_independent(expression);
         result->uses_answer = calculator_expression_uses_answer(expression);
+        result->uses_random = calculator_expression_uses_random(expression);
     }
     calculator_expression_destroy(expression);
     status = calculator_budget_status(status);

@@ -13,6 +13,7 @@
 static const CalculatorFunction calculator_functions[] =
 {
     { "abs", 1, 1, CALCULATOR_FUNCTION_ABS },
+    { "rand", 0, 2, CALCULATOR_FUNCTION_RANDOM },
     { "sign", 1, 1, CALCULATOR_FUNCTION_SIGN },
     { "min", 2, 0, CALCULATOR_FUNCTION_MIN },
     { "max", 2, 0, CALCULATOR_FUNCTION_MAX },

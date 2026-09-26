@@ -294,17 +294,20 @@ static bool numforge_is_evaluation_target(
 static bool numforge_parse_evaluation_options(
     const char *target,
     int64_t *output_scale,
-    CalculatorAngleUnit *angle_unit
+    CalculatorAngleUnit *angle_unit,
+    BigDecimalFormatMode *notation
 )
 {
     const char *value;
     const char *angle;
+    const char *notation_option;
+    size_t angle_length;
     char *end;
     long long parsed;
     char precision[32];
     size_t precision_length;
 
-    if (target == NULL || output_scale == NULL || angle_unit == NULL)
+    if (target == NULL || output_scale == NULL || angle_unit == NULL || notation == NULL)
     {
         return false;
     }
@@ -313,6 +316,7 @@ static bool numforge_parse_evaluation_options(
     {
         *output_scale = CALCULATOR_DEFAULT_OUTPUT_SCALE;
         *angle_unit = CALCULATOR_ANGLE_RADIANS;
+        *notation = BIGDECIMAL_FORMAT_AUTO;
 
         return true;
     }
@@ -323,8 +327,24 @@ static bool numforge_parse_evaluation_options(
     }
 
     value = target + strlen("/api/evaluate?precision=");
+    notation_option = strstr(value, "&notation=");
+    *notation = BIGDECIMAL_FORMAT_AUTO;
+    if (notation_option != NULL)
+    {
+        const char *name = notation_option + strlen("&notation=");
+        if (strcmp(name, "auto") == 0) *notation = BIGDECIMAL_FORMAT_AUTO;
+        else if (strcmp(name, "plain") == 0) *notation = BIGDECIMAL_FORMAT_PLAIN;
+        else if (strcmp(name, "scientific") == 0) *notation = BIGDECIMAL_FORMAT_SCIENTIFIC;
+        else if (strcmp(name, "math") == 0) *notation = BIGDECIMAL_FORMAT_MATHEMATICAL;
+        else return false;
+    }
     angle = strstr(value, "&angle=");
-    precision_length = angle == NULL ? strlen(value) : (size_t)(angle - value);
+    if (angle != NULL && notation_option != NULL && notation_option < angle)
+    {
+        return false;
+    }
+    precision_length = angle != NULL ? (size_t)(angle - value) :
+        notation_option != NULL ? (size_t)(notation_option - value) : strlen(value);
 
     if (precision_length == 0U || precision_length >= sizeof(precision))
     {
@@ -338,17 +358,22 @@ static bool numforge_parse_evaluation_options(
     {
         *angle_unit = CALCULATOR_ANGLE_RADIANS;
     }
-    else if (strcmp(angle + strlen("&angle="), "rad") == 0)
-    {
-        *angle_unit = CALCULATOR_ANGLE_RADIANS;
-    }
-    else if (strcmp(angle + strlen("&angle="), "deg") == 0)
-    {
-        *angle_unit = CALCULATOR_ANGLE_DEGREES;
-    }
     else
     {
-        return false;
+        const char *name = angle + strlen("&angle=");
+        angle_length = notation_option == NULL ? strlen(name) : (size_t)(notation_option - name);
+        if (angle_length == 3U && strncmp(name, "rad", 3U) == 0)
+        {
+            *angle_unit = CALCULATOR_ANGLE_RADIANS;
+        }
+        else if (angle_length == 3U && strncmp(name, "deg", 3U) == 0)
+        {
+            *angle_unit = CALCULATOR_ANGLE_DEGREES;
+        }
+        else
+        {
+            return false;
+        }
     }
 
     if (strcmp(precision, "full") == 0)
@@ -546,11 +571,60 @@ static NumForgeWebCache *numforge_client_cache(const char *client)
     return &numforge_clients[index].cache;
 }
 
+static char *numforge_math_copy_text(const char *display)
+{
+    static const char marker[] = " × 10^";
+    const char *position = strstr(display, marker);
+    const char *exponent;
+    char *copy;
+    char *end;
+    size_t prefix;
+    size_t length;
+
+    if (position == NULL)
+    {
+        length = strlen(display);
+        if (length > CALCULATOR_MAX_INPUT_BYTES) return NULL;
+        copy = malloc(length + 1U);
+        if (copy != NULL) memcpy(copy, display, length + 1U);
+        return copy;
+    }
+    exponent = position + strlen(marker);
+    errno = 0;
+    if (strtoull(exponent + (*exponent == '+' || *exponent == '-'), &end, 10) >
+            (unsigned long long)INT64_MAX ||
+        errno != 0 || *end != '\0')
+    {
+        return NULL;
+    }
+    prefix = (size_t)(position - display);
+    length = prefix + 1U + strlen(exponent) +
+        ((*exponent == '+' || *exponent == '-') ? 0U : 1U);
+    if (length > CALCULATOR_MAX_INPUT_BYTES) return NULL;
+    copy = malloc(length + 1U);
+    if (copy != NULL)
+    {
+        memcpy(copy, display, prefix);
+        copy[prefix] = 'E';
+        if (*exponent != '+' && *exponent != '-')
+        {
+            copy[prefix + 1U] = '+';
+            memcpy(copy + prefix + 2U, exponent, strlen(exponent) + 1U);
+        }
+        else
+        {
+            memcpy(copy + prefix + 1U, exponent, strlen(exponent) + 1U);
+        }
+    }
+    return copy;
+}
+
 static void numforge_handle_evaluation(
     NumForgeSocket socket,
     const char *body,
     int64_t output_scale,
     CalculatorAngleUnit angle_unit,
+    BigDecimalFormatMode notation,
     const char *client,
     uint64_t revision,
     const char *action
@@ -560,6 +634,7 @@ static void numforge_handle_evaluation(
     CalculatorStatus status;
     char *result = NULL;
     char *response;
+    char *copy_text = NULL;
     size_t response_capacity;
     bool reused = false;
 
@@ -580,24 +655,47 @@ static void numforge_handle_evaluation(
         }
         else
         {
-            status = numforge_web_evaluate_session(session, revision, strcmp(action, "commit") == 0,
-                body, output_scale, angle_unit, &result, &error, &reused);
+            status = numforge_web_evaluate_session_mode(session, revision, strcmp(action, "commit") == 0,
+                body, output_scale, angle_unit, notation, &result, &error, &reused);
         }
     }
     else
     {
-        status = numforge_web_evaluate_cached(
-            numforge_client_cache(client), revision, body, output_scale, angle_unit, &result, &error, &reused);
+        status = numforge_web_evaluate_cached_mode(
+            numforge_client_cache(client), revision, body, output_scale, angle_unit,
+            notation, &result, &error, &reused);
     }
 
     if (status == CALCULATOR_OK)
     {
-        response_capacity = strlen(result) + 64U;
+        if (notation == BIGDECIMAL_FORMAT_MATHEMATICAL)
+        {
+            copy_text = numforge_math_copy_text(result);
+        }
+        response_capacity = strlen(result) + (copy_text == NULL ? 0U : strlen(copy_text)) + 96U;
         response = malloc(response_capacity);
 
         if (response != NULL)
         {
-            if (*client == '\0')
+            if (notation == BIGDECIMAL_FORMAT_MATHEMATICAL)
+            {
+                if (*client == '\0')
+                {
+                    (void)snprintf(response, response_capacity,
+                        "{\"ok\":true,\"result\":\"%s\",\"copy\":%s%s%s}",
+                        result, copy_text == NULL ? "null" : "\"",
+                        copy_text == NULL ? "" : copy_text, copy_text == NULL ? "" : "\"");
+                }
+                else
+                {
+                    (void)snprintf(response, response_capacity,
+                        "{\"ok\":true,\"result\":\"%s\",\"copy\":%s%s%s,\"cached\":%s}",
+                        result, copy_text == NULL ? "null" : "\"",
+                        copy_text == NULL ? "" : copy_text, copy_text == NULL ? "" : "\"",
+                        reused ? "true" : "false");
+                }
+            }
+            else if (*client == '\0')
             {
                 (void)snprintf(response, response_capacity, "{\"ok\":true,\"result\":\"%s\"}", result);
             }
@@ -618,6 +716,8 @@ static void numforge_handle_evaluation(
                 "application/json; charset=utf-8",
                 "{\"ok\":false,\"error\":\"out of memory\",\"status\":\"out of memory\",\"column\":1}");
         }
+
+        free(copy_text);
 
         free(result);
 
@@ -664,7 +764,7 @@ static void numforge_handle_connection(
 {
     char request[NUMFORGE_WEB_REQUEST_CAPACITY];
     char method[16];
-    char target[128];
+    char target[192];
     char client[33];
     uint64_t revision;
     const char *action;
@@ -673,6 +773,7 @@ static void numforge_handle_connection(
     size_t body_length = 0U;
     int64_t output_scale;
     CalculatorAngleUnit angle_unit;
+    BigDecimalFormatMode notation;
     bool english;
     bool has_content_length;
     bool origin_allowed;
@@ -765,10 +866,10 @@ static void numforge_handle_connection(
         }
         else if (numforge_parse_session_action(target, &action) &&
                  numforge_parse_cache_options(target, client, &revision) &&
-                 numforge_parse_evaluation_options(target, &output_scale, &angle_unit) &&
+                 numforge_parse_evaluation_options(target, &output_scale, &angle_unit, &notation) &&
                  (action == NULL || *client != '\0'))
         {
-            numforge_handle_evaluation(socket, body, output_scale, angle_unit, client, revision, action);
+            numforge_handle_evaluation(socket, body, output_scale, angle_unit, notation, client, revision, action);
         }
         else
         {
@@ -777,7 +878,7 @@ static void numforge_handle_connection(
                 400,
                 "Bad Request",
                 "application/json; charset=utf-8",
-                "{\"ok\":false,\"error\":\"invalid precision or angle unit\",\"status\":\"invalid argument\",\"column\":1}");
+                "{\"ok\":false,\"error\":\"invalid precision, angle unit or notation\",\"status\":\"invalid argument\",\"column\":1}");
         }
     }
     else

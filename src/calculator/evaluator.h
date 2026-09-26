@@ -27,6 +27,7 @@ CalculatorStatus calculator_evaluate_with_answer(
     const CalculatorExpression *expression,
     const CalculatorContext *context,
     const BigDecimal *answer,
+    uint64_t *random_state,
     CalculatorError *error
 );
 

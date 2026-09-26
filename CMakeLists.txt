@@ -102,6 +102,7 @@ add_library(numforge STATIC
     src/bigdecimal/hyperbolic.c
     src/bigdecimal/trigonometric.c
     src/bigdecimal/format.c
+    src/bigdecimal/format_mode.c
     src/bigdecimal/constants.c
     src/internal/numforge_alloc.c
 )
@@ -111,6 +112,7 @@ if(NUMFORGE_BUILD_APPS OR BUILD_TESTING OR NUMFORGE_BUILD_FUZZERS OR NUMFORGE_BU
     add_library(numforge_client STATIC
         src/calculator/calculator.c
         src/calculator/session.c
+        src/calculator/random.c
         src/calculator/constants.c
         src/calculator/tokenizer.c
         src/calculator/parser.c
@@ -121,6 +123,9 @@ if(NUMFORGE_BUILD_APPS OR BUILD_TESTING OR NUMFORGE_BUILD_FUZZERS OR NUMFORGE_BU
         src/web/http_request.c
     )
     target_link_libraries(numforge_client PUBLIC numforge)
+    if(WIN32)
+        target_link_libraries(numforge_client PRIVATE bcrypt)
+    endif()
     target_include_directories(numforge_client PUBLIC
         ${PROJECT_SOURCE_DIR}/src/calculator
         ${PROJECT_SOURCE_DIR}/src/web)
