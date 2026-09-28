@@ -36,6 +36,7 @@ typedef socklen_t SmokeSocketLength;
 #define SMOKE_RESPONSE_CAPACITY 65536U
 #define SMOKE_START_ATTEMPTS 200U
 #define SMOKE_RETRY_DELAY_MS 25U
+#define SMOKE_LOOPBACK_IPV4 0x7f000001UL
 
 typedef struct SmokeServerProcess
 {
@@ -117,7 +118,7 @@ static bool smoke_choose_port(uint16_t *port)
 
     memset(&address, 0, sizeof(address));
     address.sin_family = AF_INET;
-    address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    address.sin_addr.s_addr = htonl(SMOKE_LOOPBACK_IPV4);
     address.sin_port = htons(0U);
 
     if (bind(socket_value, (const struct sockaddr *)&address, sizeof(address)) != 0 ||
@@ -273,7 +274,7 @@ static SmokeSocket smoke_connect(uint16_t port)
     smoke_configure_socket(socket_value);
     memset(&address, 0, sizeof(address));
     address.sin_family = AF_INET;
-    address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    address.sin_addr.s_addr = htonl(SMOKE_LOOPBACK_IPV4);
     address.sin_port = htons(port);
 
     if (connect(socket_value, (const struct sockaddr *)&address, sizeof(address)) != 0)
