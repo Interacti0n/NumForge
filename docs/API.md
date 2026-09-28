@@ -572,7 +572,9 @@ Transfer-Encoding is unsupported and rejected; use Content-Length framing.
 The local server accepts expressions up to 4096 bytes and listens only on
 loopback, using port 8765 by default. `numforge_web --port N` selects another
 port from 1 through 65535, and `--no-browser` suppresses automatic browser
-launching on Windows. Browser origins must match the selected loopback port.
+launching on Windows. The `NUMFORGE_WEB_NO_BROWSER=1` environment setting
+also suppresses launching for headless runs. Browser origins must match the
+selected loopback port.
 Error columns are one-based Unicode character positions; the calculator
 internals retain zero-based UTF-8 byte offsets so source tokens remain lossless.
 The example body above is exactly six UTF-8 bytes and has no trailing newline.
