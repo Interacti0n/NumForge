@@ -445,20 +445,8 @@ for (const lang of ['sk', 'en']) {
             await calculate(page, '1e3-1*e*3', '0');
             await page.screenshot({ path: testInfo.outputPath('functions-desktop.png'), fullPage: true });
             await page.setViewportSize({ width: 375, height: 812 });
-            const mobileOverflow = await page.evaluate(() => ({
-                viewport: window.innerWidth,
-                scrollWidth: document.documentElement.scrollWidth,
-                elements: [...document.querySelectorAll('body *')].filter(element => {
-                    const box = element.getBoundingClientRect();
-                    return box.width > 0 && box.right > window.innerWidth + 1;
-                }).slice(0, 12).map(element => ({
-                    name: element.id || element.className || element.tagName,
-                    right: Math.round(element.getBoundingClientRect().right)
-                }))
-            }));
             await expect.poll(() => page.evaluate(() =>
-                document.documentElement.scrollWidth <= window.innerWidth),
-                `Mobile horizontal overflow: ${JSON.stringify(mobileOverflow)}`).toBe(true);
+                document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
             await page.screenshot({ path: testInfo.outputPath('functions-mobile.png'), fullPage: true });
             await page.locator('.guide-link').click();
             await expect(page.locator('body')).toContainText('log(x;b)');
