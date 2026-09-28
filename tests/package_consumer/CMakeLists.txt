@@ -6,7 +6,7 @@ set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
-find_package(NumForge 1.0 CONFIG REQUIRED)
+find_package(NumForge 2.0 CONFIG REQUIRED)
 
 if(TARGET NumForge::numforge_client)
     message(FATAL_ERROR "Private client target must not be exported with numeric API")

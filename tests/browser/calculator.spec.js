@@ -328,7 +328,7 @@ for (const lang of ['sk', 'en']) {
         });
         test('automatic calculation and precision above result', async ({ page }, testInfo) => {
             await expect(page.locator('.page-footer')).toBeVisible();
-            await expect(page.locator('.page-footer')).toContainText('v1.0.0');
+            await expect(page.locator('.page-footer')).toContainText('v2.0.0');
             await expect(page.locator('.page-footer a[href$="/LICENSE"]')).toBeVisible();
             await expect(page.locator('.page-footer a[href="https://github.com/Interacti0n/NumForge"]')).toBeVisible();
             const settings = await page.locator('.precision').boundingBox();
@@ -797,7 +797,7 @@ for (const lang of ['sk', 'en']) {
         test('guide navigation remains visible while reading on desktop', async ({ page }) => {
             await page.setViewportSize({width: 1280, height: 720});
             await page.locator('.guide-link').click();
-            await expect(page.locator('.page-footer')).toContainText('v1.0.0');
+            await expect(page.locator('.page-footer')).toContainText('v2.0.0');
             await expect(page.locator('.page-footer a[href$="/LICENSE"]')).toBeVisible();
             const headerY = (await page.locator('.page-header').boundingBox()).y;
             const menuY = (await page.locator('.guide-toc').boundingBox()).y;

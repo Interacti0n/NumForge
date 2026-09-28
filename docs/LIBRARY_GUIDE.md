@@ -21,7 +21,7 @@ evaluator and HTTP code are not part of the installed numeric target.
 ## CMake consumer
 
 ```cmake
-find_package(NumForge 1.0 CONFIG REQUIRED)
+find_package(NumForge 2.0 CONFIG REQUIRED)
 add_executable(example example.c)
 target_link_libraries(example PRIVATE NumForge::numforge)
 ```

@@ -3,7 +3,12 @@
 All notable changes to NumForge are documented in this file. The project uses
 [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## [2.0.0] - 2026-09-28
+
+This release greatly expands the numeric library and refreshes its optional CLI
+and web calculator. Existing BigInt and BigDecimal C signatures remain source
+compatible with 1.0. The CMake package now uses major version 2, so consumers
+that request NumForge 1.x through `find_package` must update that requirement.
 
 - Add Linux ARM64 and macOS ARM64 CI jobs for Release builds, the full CTest
   suite and installed-package checks with external C and C++ consumers.
@@ -304,4 +309,5 @@ All notable changes to NumForge are documented in this file. The project uses
 
 - Released under the MIT License, copyright 2026 Interacti0n.
 
+[2.0.0]: https://github.com/Interacti0n/NumForge/releases/tag/v2.0.0
 [1.0.0]: https://github.com/Interacti0n/NumForge/releases/tag/v1.0.0

@@ -6,10 +6,10 @@ the public headers: `include/numforge/bigint.h`,
 `include/numforge/bigdecimal.h`, `include/numforge/bigrational.h` and optional
 `include/numforge/runtime.h`.
 
-## Stable 1.x scope
+## Public C API scope
 
-The public API consists of these four headers; existing numeric signatures
-remain compatible and the new operations are additive.
+The public API consists of these four headers. Existing 1.x numeric signatures
+remain source compatible in 2.0, and the new operations are additive.
 The calculator implementation and `src/web/web_api.h` are private application
 code, not headers for library consumers. `numforge_web` and its loopback HTTP
 endpoint are shipped local-tool features; they are not an Internet-facing or

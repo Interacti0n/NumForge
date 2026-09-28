@@ -274,15 +274,15 @@ find_package(NumForge CONFIG REQUIRED)
 target_link_libraries(my_target PRIVATE NumForge::numforge)
 ```
 
-### Stable 1.x API scope
+### Public C API compatibility
 
 The public API consists of `include/numforge/bigint.h`,
 `include/numforge/bigdecimal.h`, `include/numforge/bigrational.h` and optional
 `include/numforge/runtime.h`.
-Existing 1.x numeric signatures remain compatible. Calculator modules and `src/web/` are
-application code, not public C library headers. The loopback HTTP endpoint is
-documented for local use, but is not an Internet-facing service or a separately
-versioned remote API.
+Existing 1.x numeric signatures remain source compatible in 2.0. Calculator
+modules and `src/web/` are application code, not public C library headers.
+The loopback HTTP endpoint is documented for local use, but is not an
+Internet-facing service or a separately versioned remote API.
 
 ## Testing
 
@@ -359,11 +359,13 @@ numeric calls use the standard allocator without an application budget.
 
 ## Project status and roadmap
 
-NumForge 1.0 provides stable `BigInt` and `BigDecimal` library APIs plus the
-initial exact-decimal CLI and local browser calculator. The additive BigRational
-API is available in the current unreleased version. Future work is mostly
-additive: broader test coverage, performance optimization for very large
-operands, and calculator features. Planned work includes:
+NumForge 2.0 provides stable `BigInt`, `BigDecimal` and `BigRational` library
+APIs plus optional CLI and local browser calculators. Existing BigInt and
+BigDecimal C signatures remain source compatible with 1.0; CMake package
+consumers that requested major version 1 must update their `find_package`
+requirement. Future work is mostly additive: broader test coverage,
+performance optimization for very large operands, and calculator features.
+Planned work includes:
 
 1. Broaden `BigDecimal` with larger generated decimal vectors, optional
    external-oracle checks, and performance optimizations. Its representation
@@ -373,8 +375,9 @@ operands, and calculator features. Planned work includes:
    and evaluation policy are in [the calculator design](docs/CALCULATOR_DESIGN.md).
 3. Performance profiling and targeted optimization of very large operands.
 
-The public C headers follow semantic versioning. Incompatible public API
-changes are reserved for a future major release.
+The public C headers follow semantic versioning. NumForge 2.0 marks a major
+expansion of the overall product; it does not remove the 1.0 numeric C API.
+Future incompatible public API changes require another major release.
 
 ## License
 
