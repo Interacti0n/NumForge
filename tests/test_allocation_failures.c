@@ -5,12 +5,12 @@
 
 #include <numforge/bigdecimal.h>
 #include <numforge/bigint.h>
+#include <numforge/bigrational.h>
 
 #include "numforge_alloc.h"
 #include "evaluator.h"
 #include "formatter.h"
 #include "parser.h"
-#include <numforge/bigdecimal.h>
 #include "calculator_internal.h"
 #include "web_api.h"
 
@@ -80,6 +80,26 @@ static void assert_bigdecimal_text(const char *expected, const BigDecimal *value
 
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_to_string(value, &actual));
     TEST_ASSERT_NOT_NULL(actual);
+    TEST_ASSERT_EQUAL_STRING(expected, actual);
+    free(actual);
+}
+
+static BigRational *make_bigrational(const char *numerator, const char *denominator)
+{
+    BigInt *top = make_bigint(numerator);
+    BigInt *bottom = make_bigint(denominator);
+    BigRational *value = bigrational_create();
+    TEST_ASSERT_NOT_NULL(value);
+    TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_set_fraction(value, top, bottom));
+    bigint_destroy(top);
+    bigint_destroy(bottom);
+    return value;
+}
+
+static void assert_bigrational_text(const char *expected, const BigRational *value)
+{
+    char *actual = NULL;
+    TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_to_string(value, &actual));
     TEST_ASSERT_EQUAL_STRING(expected, actual);
     free(actual);
 }
@@ -1456,7 +1476,7 @@ void test_calculator_pipeline_reports_every_injected_allocation_failure(void)
         else
         {
             TEST_ASSERT_EQUAL(CALCULATOR_OK, status);
-            TEST_ASSERT_EQUAL_STRING("5.9583333333", result);
+            TEST_ASSERT_EQUAL_STRING("143/24", result);
             completed = true;
         }
         free(result);
@@ -1530,7 +1550,7 @@ void test_pipeline_deadline_covers_all_checkpoints(void)
     CalculatorContext context;
     bool completed = false;
     calculator_context_init(&context);
-    for (size_t index = 1U; index <= 1024U; index++)
+    for (size_t index = 1U; index <= ALLOCATION_TEST_MAX_FAILURE_INDEX; index++)
     {
         CalculatorError error;
         char *text = NULL;
@@ -1595,6 +1615,98 @@ void test_cache_preserves_value_on_every_allocation_failure(void)
     }
 }
 
+void test_bigrational_preserves_aliases_on_every_allocation_failure(void)
+{
+    typedef BigRationalStatus (*Operation)(
+        BigRational *, const BigRational *, const BigRational *);
+    const Operation operations[] = {
+        bigrational_add, bigrational_sub, bigrational_mul, bigrational_div
+    };
+
+    for (size_t operation = 0U; operation < sizeof(operations) / sizeof(operations[0]); operation++)
+    {
+        bool completed = false;
+        for (size_t index = 1U; index <= ALLOCATION_TEST_MAX_FAILURE_INDEX; index++)
+        {
+            BigRational *a = make_bigrational("12345678901234567890", "99999999999999999999");
+            BigRational *b = make_bigrational("9876543210987654321", "88888888888888888889");
+            BigRationalStatus status;
+            bool failed;
+
+            numforge_test_allocator_begin(index);
+            status = operations[operation](a, a, b);
+            failed = numforge_test_allocator_did_fail();
+            numforge_test_allocator_end();
+
+            if (failed)
+            {
+                TEST_ASSERT_EQUAL(BIGRATIONAL_OUT_OF_MEMORY, status);
+                assert_bigrational_text("137174210/1111111111", a);
+            }
+            else
+            {
+                TEST_ASSERT_EQUAL(BIGRATIONAL_OK, status);
+                completed = true;
+            }
+            bigrational_destroy(a);
+            bigrational_destroy(b);
+            if (completed) break;
+        }
+        TEST_ASSERT_TRUE(completed);
+    }
+}
+
+void test_bigrational_conversion_preserves_outputs_on_allocation_failure(void)
+{
+    for (size_t scenario = 0U; scenario < 3U; scenario++)
+    {
+        bool completed = false;
+        for (size_t index = 1U; index <= ALLOCATION_TEST_MAX_FAILURE_INDEX; index++)
+        {
+            BigRational *rational = make_bigrational("7", "8");
+            BigDecimal *decimal = make_bigdecimal(scenario == 0U ? "1.25" : "9");
+            char *text = (char *)"unchanged";
+            char *original_text = text;
+            BigRationalStatus status;
+            bool failed;
+
+            numforge_test_allocator_begin(index);
+            if (scenario == 0U)
+            {
+                status = bigrational_from_bigdecimal(rational, decimal);
+            }
+            else if (scenario == 1U)
+            {
+                status = bigrational_to_bigdecimal(decimal, rational, 20, BIGDECIMAL_ROUND_HALF_EVEN);
+            }
+            else
+            {
+                status = bigrational_to_string(rational, &text);
+            }
+            failed = numforge_test_allocator_did_fail();
+            numforge_test_allocator_end();
+
+            if (failed)
+            {
+                TEST_ASSERT_EQUAL(BIGRATIONAL_OUT_OF_MEMORY, status);
+                assert_bigrational_text("7/8", rational);
+                if (scenario == 1U) assert_bigdecimal_text("9", decimal);
+                if (scenario == 2U) TEST_ASSERT_EQUAL_PTR(original_text, text);
+            }
+            else
+            {
+                TEST_ASSERT_EQUAL(BIGRATIONAL_OK, status);
+                completed = true;
+            }
+            if (scenario == 2U && status == BIGRATIONAL_OK) free(text);
+            bigdecimal_destroy(decimal);
+            bigrational_destroy(rational);
+            if (completed) break;
+        }
+        TEST_ASSERT_TRUE(completed);
+    }
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -1627,6 +1739,8 @@ int main(void)
     RUN_TEST(test_formatter_clears_output_on_every_allocation_failure);
     RUN_TEST(test_calculator_pipeline_reports_every_injected_allocation_failure);
     RUN_TEST(test_cache_preserves_value_on_every_allocation_failure);
+    RUN_TEST(test_bigrational_preserves_aliases_on_every_allocation_failure);
+    RUN_TEST(test_bigrational_conversion_preserves_outputs_on_allocation_failure);
 
     return UNITY_END();
 }

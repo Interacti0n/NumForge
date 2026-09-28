@@ -3,11 +3,12 @@
 This is the short reference for the public C library and the local calculator
 HTTP endpoint. Function signatures and all edge-case constraints remain in
 the public headers: `include/numforge/bigint.h`,
-`include/numforge/bigdecimal.h` and optional `include/numforge/runtime.h`.
+`include/numforge/bigdecimal.h`, `include/numforge/bigrational.h` and optional
+`include/numforge/runtime.h`.
 
 ## Stable 1.x scope
 
-The public API consists of these three headers; existing numeric signatures
+The public API consists of these four headers; existing numeric signatures
 remain compatible and the new operations are additive.
 The calculator implementation and `src/web/web_api.h` are private application
 code, not headers for library consumers. `numforge_web` and its loopback HTTP
@@ -16,7 +17,7 @@ separately versioned remote service.
 
 ## Common rules
 
-- `BigInt` and `BigDecimal` are opaque. Create them with `*_create()` and
+- `BigInt`, `BigDecimal` and `BigRational` are opaque. Create them with `*_create()` and
   release them with `*_destroy()`; both destroy functions accept `NULL`.
 - Mutating functions return a status code. On failure, their output is left
   unchanged unless their public-header comment explicitly says otherwise.
@@ -196,6 +197,36 @@ Cancellation is cooperative, not a hard deadline. Budget-aware
 Independent objects can be used by separate threads; shared mutation requires
 caller synchronization. Arithmetic is not constant-time or cryptographically audited.
 
+## BigRational
+
+Include `<numforge/bigrational.h>` and link `NumForge::numforge`. This is an
+opaque exact fraction independent of the calculator. `bigrational_create()`
+returns zero; `bigrational_destroy(NULL)` is safe. `bigrational_set_fraction`
+accepts `BigInt` numerator and denominator and rejects denominator zero. Values
+are reduced with a positive denominator and zero is internally `0/1`.
+`bigrational_to_string` writes `a/b` or just `a` when the denominator is one;
+the caller frees the successful string with `free()`. No fraction text parser is
+part of this initial API.
+
+`bigrational_copy`, `add`, `sub`, `mul`, `div`, `negate`, `abs`, and `compare`
+are exact. Division by a zero rational returns `BIGRATIONAL_DIVISION_BY_ZERO`.
+Every mutating operation supports output/input aliasing and leaves its output
+unchanged on failure. `bigrational_get_numerator` and `_get_denominator` copy
+into initialized caller-owned `BigInt` objects; they do not expose private
+storage. Multiplication and division cancel cross factors before multiplying.
+
+`bigrational_from_bigint` is exact. `bigrational_from_bigdecimal` converts the
+*stored finite decimal* exactly: `0.1` becomes `1/10`. It cannot tell whether
+that decimal approximated an irrational value. The calculator's typed result
+keeps such approximations on the Decimal path instead of converting them back
+to a supposedly exact fraction.
+`bigrational_to_bigdecimal(result, value, digits, rounding)` requires a positive
+significant-digit count and a `BigDecimalRoundingMode`. Terminating quotients
+remain exact; recurring quotients are rounded at that precision. A calculator
+client passes its current working precision and applies final output rounding
+afterwards. The rational API itself has no fixed calculator size or time limit;
+callers may use the optional runtime budget.
+
 ## Calculator expressions
 
 The calculator is currently an application layer, not a public C header. It
@@ -225,13 +256,35 @@ Euler's constant, so `5e`
 means `5 * e` and `1e3` means `1 * e * 3`. Scientific notation always uses
 uppercase `E`: `5E-1` means `0.5` and `1E3` means `1000`. Powers use binary
 exponentiation with exact BigDecimal multiplication, so decimal bases are valid
-when the exponent is a whole number. Negative exponents use a reciprocal at
-working precision while retaining exact terminating results. `2^3^2` means
+when the exponent is a whole number. The typed calculator keeps rational bases
+and integer exponents exact, including negative exponents; an approximate base
+uses a reciprocal at working precision. `2^3^2` means
 `2^(3^2)`; `0^0` is `1`, and zero to a negative exponent is a division-by-zero
-error. Decimal exponents and variables are not implemented. Named integer and
-root functions use the public BigDecimal core; squaring
-and cubing use exact BigDecimal
-multiplication too.
+error. Decimal exponents and variables are not implemented. Integer functions
+use the public BigInt core. Exact rational powers and proven roots use BigInt
+and BigRational operations; approximate roots use the public BigDecimal core.
+
+The calculator retains exact BigInt or canonical BigRational values for
+arithmetic trees made of decimal literals, `ans`, unary signs and `+`, `-`,
+`*`, `/`, integer powers and postfix square/cube/factorial. Decimal literals,
+including comma input, are converted exactly; `0.1+0.2` is internally `3/10`,
+and a denominator of one is stored as BigInt. `sqrt`, `cbrt` and `root` keep a
+fraction when both numerator and denominator have proven integer roots, so
+`sqrt(4/9)` is internally `2/3`.
+
+Exact typed calls also cover `pow`, `abs`, `sign`, `min`, `max`, `sum`, `product`,
+`mean`, `median`, `geomean`, `harmean`, `variance`, `stdevp`, `stdev`,
+`floor`, `ceil`, `trunc`, `round`, `factorial`, `isqrt`, `gcd`,
+`lcm`, `mod`, `npr` and `ncr` when
+their arguments are exact and satisfy the existing domains. Irrational roots,
+constants and other functions use the decimal path. Exact subtrees are converted
+at the current working precision where that path needs them. Auto output uses
+a reduced fraction when its denominator is at most 10000, its text is at most
+16 characters including sign and slash, and it is at least two characters
+shorter than the rounded decimal display. Fraction mode shows exact non-integers
+as `a/b` up to 16 characters; longer fractions and approximate results use Auto
+decimal notation. Exact integers have no `/1`. Decimal output alone does not prove
+mathematical exactness.
 
 Repeated decimal separators (`1.2.3`, `1,2,3`) and adjacent numeric tokens
 (`2 3`, `2 .3`) are errors. Delimited products like `(2)3`, `3!2` and `2²3`
@@ -282,6 +335,13 @@ names; recognition is separate from numerical implementation:
 | `sinh(x)`, `cosh(x)`, `tanh(x)`, `asinh(x)`, `acosh(x)`, `atanh(x)` | Active and independent of RAD/DEG. `acosh` requires x ≥ 1; `atanh` requires -1 < x < 1. |
 | `radians(x)`, `degrees(x)` | Active explicit conversions, independent of the selected angle mode. |
 
+Each inverse trigonometric or hyperbolic calculator call also accepts both
+`arc` and `arcus` prefixes: `asin` → `arcsin`/`arcussin`, `acos` →
+`arccos`/`arcuscos`, `atan` → `arctan`/`arcustan`, and likewise
+`asinh`/`acosh`/`atanh` → `arcsinh`/`arccosh`/`arctanh` and
+`arcussinh`/`arcuscosh`/`arcustanh`. These are parser aliases for the
+same calculator operations, arity, domain and angle mode.
+
 Wrong arity returns `wrong number of arguments` at the function name; unknown
 names return `invalid token`. Nesting and implicit products work, for
 example `pow(2;factorial(3))` and `2pow(2;3)`.
@@ -327,8 +387,10 @@ and trigonometric controls are active. A RAD/DEG selector on the right beside pr
 applies to the complete expression and is remembered by
 the browser. There is no separate angle indicator beside the expression.
 The active mode has a yellow-orange background; the inactive mode is dark.
-Switching language preserves the expression and output settings within the tab
-using session storage when available, then recalculates in the selected language.
+Switching language or visiting the guide and returning in the same tab keeps
+the server session, confirmed `ans`, history, expression, output settings and
+recent tools through session storage when available. A normal reload or New
+session starts fresh. Server restart or eviction still loses the in-memory value.
 Function buttons show mathematical labels where useful and expose signatures
 and domain hints on hover, keyboard focus and activation (including touch).
 The keypad inserts `.`, while directly typed `,` is accepted as the
@@ -341,9 +403,10 @@ panel, and the same control collapses it again.
 Results default to 10 decimal places, rounded half-even.
 The browser offers Auto (10 places), Full, and Custom; only Custom shows a
 numeric field. Full skips final output rounding, not working-precision limits.
-Separately, the notation selector offers Auto, plain, scientific and
-mathematical output. Auto selects scientific when the rounded exponent is
-outside -9..9 or plain output would exceed 80 characters. Scientific uses
+Separately, the notation selector offers Auto, plain, scientific,
+mathematical and fraction output. Auto first chooses a short exact fraction
+under the rule above; otherwise it selects scientific when the rounded exponent
+is outside -9..9 or plain output would exceed 80 characters. Scientific uses
 `1.23E+45`; mathematical uses `1.23 × 10^45`. The copy button converts
 mathematical notation to parser-compatible `E` form when possible. A plain
 result over the 65536-byte application output limit returns an error. Language
@@ -363,21 +426,19 @@ At extreme internal scales, a formatted exponent can exceed the input parser's
 signed 64-bit range. Output is a display representation, not a guaranteed
 round-trip serialization format; copying it back may return a range error.
 
-Terminating division preserves the exact intermediate result within resource
-limits, including quotients that terminate after reduction, such as `7/28`.
-Exceeding the limits returns an error rather than a rounded replacement.
-Non-terminating division rounds to its working significant-digit precision,
-independently of the magnitude. `1E-40 / 1` therefore remains `1E-40` both by
-default and in `full` mode; `1E-40 / 3` displays `3.3333333333E-41` by default.
+Exact divisions retain a reduced rational intermediate, including recurring
+quotients. `(1/3)*3-1` therefore evaluates to exactly `0`. The decimal display
+of `1E-40 / 3` is rounded to the current working precision and shows
+`3.3333333333E-41` by default. Raising precision can reformat the stored
+rational without losing its numerator and denominator. Exceeding resource
+limits returns an error rather than a rounded replacement.
 
-Output places are not a guarantee of whole-expression accuracy. At default
-precision, `(1/3)*3-1` gives `-1E-34`. However, `(1E34+1)/1-1E34` gives exactly
-`1`, since finite decimal quotients no longer lose intermediate digits.
-`full` uses 34 working
-digits, not unlimited accuracy. There are currently no `inexact` or `rounded`
+Output places are not a guarantee of whole-expression accuracy. Expressions
+using irrational roots, constants or other approximate functions keep their
+rounded BigDecimal result. `full` uses 34 working digits where approximation is
+needed, not unlimited accuracy. There are currently no `inexact` or `rounded`
 flags. See the evaluation policy in [CALCULATOR_DESIGN.md](CALCULATOR_DESIGN.md).
-Rounding at non-terminating division is still approximate: cancellation can expose its
-error, and no rigorous whole-expression error bound or inexact flag is claimed.
+No rigorous whole-expression error bound is claimed.
 Constants are prepared at max(34, N+4) significant working digits for an N-place
 output request. Stored 500-place values cover ordinary requests; larger requests
 calculate additional digits dynamically. A forward trigonometric call may
@@ -430,7 +491,7 @@ Browser requests that include `Origin` must come from this server's own
 HTTP 403. Native local clients may omit `Origin`. `precision` is optional: it
 accepts a non-negative whole number or `full`; if omitted, it defaults to `10`.
 `angle` accepts `rad` or `deg` and defaults to `rad`; when supplied it follows
-`precision` in the query string. Optional `notation=auto|plain|scientific|math`
+`precision` in the query string. Optional `notation=auto|plain|scientific|math|fraction`
 follows `angle` and defaults to `auto`. A successful mathematical response adds
 `"copy":"1.23E+45"` (or `"copy":null` if the result cannot fit the parser's
 input range or size limit). Other modes retain the existing response fields.
@@ -456,8 +517,10 @@ increasing revisions. Start does not consume an evaluation revision.
 Preview does not change `ans` or history. Commit confirms a successful internal
 value and adds history atomically; failed calculations preserve both. `ans` is
 initially undefined and always refers to the stored value, not its display.
-Increasing precision does not recompute its original expression. Repeating the
-latest successful commit with the same revision, expression and settings returns
+Increasing precision does not recompute its original expression. An exact
+stored `ans`, such as `1/3`, can be displayed at a higher precision; a
+previously approximated `ans` retains its original digits. Repeating the latest
+successful commit with the same revision, expression and settings returns
 the original result; conflicting or older revisions return `stale session request`.
 An unresolved confirmation must be retried with its original ID before sending
 another confirmation. A new intentional Enter/`=` uses a new revision.
@@ -474,8 +537,9 @@ The session pool is separate from the legacy cache: eight sessions, FIFO
 eviction, 16 confirmed entries each and less than 4 MiB retained history per
 session. Each entry stores input, internal value, context and display. Evaluation
 of an unknown/evicted session returns `session expired; reload the page` and
-never starts another session implicitly. Reload, New session and language
-navigation use a fresh random ID; server restart loses all sessions. IDs are
+never starts another session implicitly. Reload and New session use a fresh
+random ID; language and guide navigation in the same tab reuse the ID and
+revision through session storage. Server restart loses all sessions. IDs are
 not authentication. History buttons restore only input, so expressions with
 `ans` use the current answer when evaluated again. CLI `history` lists its
 session entries; `reset` clears them and ans, retaining precision, angle and
@@ -484,10 +548,10 @@ notation settings.
 Output precision and notation are configurable in the UI; working precision remains
 automatic. Changing notation only reformats the retained numeric value.
 Matching input and working context allow reformatting without another
-evaluation. Changes to working precision trigger recalculation in either direction
-unless an AST-based whitelist proves the entire expression precision-independent
-(for example `10000!`). Division, constants, real roots and transcendental calls
-are conservatively context-dependent, even if a particular result is exact.
+evaluation. Exact typed integer and rational results, including divisions and
+proven roots, can also be reformatted when working precision changes.
+Approximate constants, irrational roots and transcendental calls require
+recalculation when working precision changes.
 Changing RAD/DEG also invalidates reuse. `full` keeps the existing 34-digit working
 policy, not infinite precision. More requested digits do not certify accuracy
 under cancellation; no rounded/inexact guarantee is inferred from the output.

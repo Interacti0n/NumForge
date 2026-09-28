@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#17002f">
+  <style>html { background: #17002f; } body { visibility: hidden; } html.css-error body { visibility: visible; }</style>
+  <title>NumForge · Usage and API</title>
+  <link rel="icon" type="image/png" href="/assets/logo.png">
+  <link rel="stylesheet" href="/assets/api.css" onerror="document.documentElement.classList.add('css-error')">
+</head>
+<body>
+  <div class="guide-shell">
+    <header class="page-header">
+      <a class="brand" href="/?lang=en" aria-label="NumForge">
+        <img class="brand-mark" src="/assets/logo.png" alt="" width="45" height="45">
+        <span class="brand-text"><strong>NumForge</strong><small>Guide</small></span>
+      </a>
+      <nav class="header-actions" aria-label="Navigation">
+        <a class="back-link" href="/?lang=en">← Calculator</a>
+        <span class="language-switch" aria-label="Language selection">
+          <a href="/api?lang=sk" lang="sk"  title="Slovenčina">🇸🇰 SK</a>
+          <a href="/api?lang=en" lang="en" aria-current="true" title="English">🇬🇧 EN</a>
+        </span>
+      </nav>
+    </header>
+    <div class="guide-layout">
+      <aside class="guide-sidebar">
+        <nav class="guide-toc" aria-label="On this page">
+          <span class="toc-title">On this page</span>
+          <a href="#syntax">Expressions</a>
+          <a href="#functions">Functions</a>
+          <a href="#cache">Precision and cache</a>
+          <a href="#random">Random values</a>
+          <a href="#history">ans and history</a>
+          <a href="#precision">Output precision</a>
+          <a href="#http">Local HTTP</a>
+          <a href="#library">Public C API</a>
+        </nav>
+      </aside>
+      <main class="guide-content">
+<p class="eyebrow">DOCUMENTATION</p>
+  <h1 class="guide-title"><img class="guide-wordmark" src="/assets/wordmark.png" alt="NumForge" width="2172" height="724"><span>Usage and API</span></h1>
+  <p>JavaScript sends expressions to the local server. The C application parses and evaluates them with BigInt, BigRational or BigDecimal, then formats the result.</p>
+  <p class="notice">Exact expressions retain integers and reduced fractions. Decimal output for a recurring fraction uses the current precision; the default display has 10 decimal places.</p>
+  <h2 id="syntax">What you can enter</h2>
+  <table><tr><th>Element</th><th>Examples</th></tr>
+  <tr><td>Integers and decimals</td><td><code>42</code>, <code>-1.5</code>, <code>1,5</code>, <code>.25</code>, <code>1.</code></td></tr>
+  <tr><td>Scientific notation</td><td><code>1.25E-3</code>, <code>6E4</code>; uppercase <code>E</code> is required</td></tr>
+  <tr><td>Operators</td><td><code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>^</code>; power has the highest binary-operator precedence, postfix operations bind more tightly, and the exponent must be an integer</td></tr>
+  <tr><td>Parentheses and signs</td><td><code>(2 + 3) * 4</code>, <code>-(2.5E-1) * 8</code></td></tr>
+  <tr><td>Postfix operations</td><td><code>12²</code>, <code>2³</code>, <code>5!</code>; factorial requires a non-negative integer no greater than 10000</td></tr>
+  <tr><td>Constants</td><td><code>π</code>, <code>e</code>, <code>φ</code></td></tr>
+  <tr><td>Implicit multiplication</td><td><code>2π</code>, <code>πe</code>, <code>2(3 + 4)</code></td></tr></table>
+  <p><code>%</code> and variables are not supported yet.</p>
+  <p>Constants use stored 500-decimal-place values at ordinary precision and are calculated dynamically for larger requests. Standalone lowercase <code>e</code> means Euler's number: <code>5e</code> means <code>5 * e</code> and <code>1e3</code> means <code>1 * e * 3</code>. Scientific notation always uses uppercase <code>E</code>: <code>5E-1</code> is <code>0.5</code> and <code>1E3</code> is <code>1000</code>. Trigonometry uses one RAD/DEG selector whose choice is remembered by the browser.</p>
+<p>The RAD/DEG selector is on the right beside precision settings. Function signatures and argument hints appear on hover, keyboard focus or touch. Connection failures and unexpected server responses can be retried with Enter; these are distinct from expression errors.</p>
+<h2 id="functions">Function calls</h2>
+<p><code>sqrt(x)</code> or <code>√(x)</code> is the square root for x ≥ 0; <code>cbrt(x)</code> also accepts negative x. <code>root(x;n)</code> takes an integer degree from 1 to 10000; negative x requires odd n. Exact finite roots remain exact; other roots use max(34, N+4) significant digits (full output: 34), then output formatting. Time and memory limits still apply.</p>
+<p><code>gcd(a;b)</code> and <code>lcm(a;b)</code> return the non-negative greatest common divisor and least common multiple of integers. <code>gcd(0;0)=0</code>; lcm with zero is 0. <code>mod(a;b)</code> is the integer remainder with the dividend's sign: <code>mod(-7;3)=-1</code>; a zero divisor is an error. <code>isqrt(n)</code> is the floor square root of a non-negative integer: <code>isqrt(15)=3</code>. Decimal spellings of whole values, such as 4.00, are accepted.</p>
+<p><code>npr(n;r)</code> calculates permutations and <code>ncr(n;r)</code> combinations without repetition. Both arguments must be integers satisfying <code>0 ≤ r ≤ n</code>.</p>
+<p>Also available: <code>abs(x)</code> (absolute value), <code>sign(x)</code> (−1, 0 or 1), <code>min(a;b;…)</code> and <code>max(a;b;…)</code> (at least two arguments). They compare evaluated values without additional rounding.</p>
+<p><code>sum(a;b;…)</code> and <code>product(a;b;…)</code> are exact; <code>mean(a;b;…)</code> divides the exact sum by the value count and rounds only a recurring result to working precision. Each function accepts 1 to 256 arguments.</p>
+<p><code>variance(a;b;…)</code> is population variance and <code>stdevp(a;b;…)</code> is population standard deviation; both divide by the value count n. Sample <code>stdev(a;b;…)</code> divides by n−1 and requires at least two values. Intermediates stay exact until final division or root.</p>
+<p><code>median(a;b;…)</code> returns the exact median. <code>geomean(a;b;…)</code> accepts non-negative values and <code>harmean(a;b;…)</code> only positive nonzero values.</p>
+<p><code>floor(x)</code>, <code>ceil(x)</code>, and <code>trunc(x)</code> return an integer. <code>round(x)</code> rounds to an integer and <code>round(x;n)</code> to integer n decimal places using half-even; negative n selects tens, hundreds, and larger powers of ten.</p>
+<p>Names use lowercase letters only, parentheses are mandatory, and <code>;</code> separates arguments. Comma remains a decimal separator: <code>pow(1,5;2)</code> = <code>2.25</code>. At most 256 arguments per call.</p>
+<p><code>pow(x;y)</code> works like <code>x^y</code> (integer exponent; a negative exponent uses the reciprocal); <code>factorial(n)</code> works like <code>n!</code> (integer n from 0 to 10000).</p>
+<p>Also available: <code>exp(x)</code>, <code>ln(x)</code>, common <code>log(x)</code>, and <code>log(x;b)</code> with base b. The logarithm argument must be positive; its base must be positive and different from 1.</p>
+<p><code>sin(x)</code>, <code>cos(x)</code>, <code>tan(x)</code>, <code>asin(x)</code>, <code>acos(x)</code>, and one-argument <code>atan(x)</code> are active. Inverse calls also accept <code>arc</code> and <code>arcus</code> names, such as <code>arcsin(x)</code>, <code>arcussin(x)</code>, <code>arctan(x)</code>, and <code>arcustan(x)</code>. The RAD/DEG selector applies to the whole expression; inverse calls return the selected unit. <code>asin</code>/<code>acos</code> require x from -1 to 1, and <code>tan(90)</code> is an error in DEG mode.</p>
+<p>Hyperbolic <code>sinh</code>, <code>cosh</code>, <code>tanh</code>, <code>asinh</code>, <code>acosh</code>, and <code>atanh</code> are independent of RAD/DEG. Their inverse calls also accept both longer forms, such as <code>arcsinh(x)</code>, <code>arcussinh(x)</code>, <code>arccosh(x)</code>, and <code>arcuscosh(x)</code>. <code>acosh</code> requires x ≥ 1 and <code>atanh</code> requires -1 &lt; x &lt; 1. Function search recognizes every alias as well as the prefixes <code>arc</code> and <code>arcus</code>.</p>
+<p><code>radians(x)</code> and <code>degrees(x)</code> are explicit conversions independent of the selector. The BigDecimal library API always uses radians. <code>√(x)</code> aliases <code>sqrt(x)</code>.</p>
+<p><code>exp</code> is one name, not a product of letters. Standalone <code>e</code> remains a constant: <code>e(2)</code> = <code>e*2</code>, <code>1e3</code> = <code>1*e*3</code>, <code>1E3</code> = <code>1000</code>. Separate adjacent names with <code>*</code>; <code>ee</code> and <code>esin</code> are not valid names.</p>
+<h2 id="cache">Automatic precision and cache</h2>
+<p>Output: <strong>Auto</strong> uses 10 decimal places, <strong>Full</strong> skips final rounding, and <strong>Custom</strong> shows a field for 0–10000 places. Full does not mean infinite working precision. Language switching preserves the mode and custom value.</p>
+<p>The separate notation selector offers Auto, plain, scientific (<code>1.23E+45</code>), mathematical (<code>1.23 × 10^45</code>) and Fraction output. Auto shows an exact fraction when its denominator is at most 10000, its text is at most 16 characters, and it is at least two characters shorter than the decimal display. Otherwise, after rounding, Auto uses scientific when |exponent| ≥ 10 or plain output would exceed 80 characters. Fraction shows an exact non-integer as a/b up to 16 characters; longer fractions and approximate results use Auto decimal notation. Integers remain without /1. Output is limited to 65536 bytes. Mathematical output copies in parser-compatible E form when it fits the input limits. Changing notation does not change the stored value or ans.</p>
+<p>You choose output decimal places and notation. Working precision remains automatic: max(34, N+4) significant digits, or 34 for full output. The server retains the last successful numeric result per browser session, for up to eight clients. Matching working contexts only reformat; changes to working precision recompute the expression. Proven precision-independent expressions such as 10000! can be reformatted across precisions without evaluation. Reload or session eviction requires a new session. This does not certify every final digit under cancellation.</p>
+<p>Optional HTTP parameters after precision/angle: <code>&amp;client=32_hex_digits&amp;revision=N</code>. Before client, <code>&amp;notation=auto|plain|scientific|math|fraction</code> selects output notation; mathematical responses add <code>copy</code> in E form, or null when it exceeds limits. Client is exactly 32 lowercase hexadecimal digits; revision increases from 1 to 9007199254740991. Successful responses then also include the boolean <code>cached</code>. Without these parameters the API is stateless. The identifier is not authentication.</p>
+<h2 id="random">Random values</h2><p><code>rand()</code> draws in [0,1), <code>rand(x)</code> in [0,x) for x &gt; 0, and <code>rand(x;y)</code> in [x,y) for x &lt; y. Each occurrence draws separately from a 34-place decimal grid. Repeated previews keep their draws; a new Enter draws again. This is not cryptographically secure.</p>
+<h2 id="history">ans and history</h2><p>Preview does not change ans. Enter, Calculate or = confirms a successful result and appends history. ans holds the internal value, not the rounded display; higher precision cannot recover lost approximation digits. Before the first confirmation ans is undefined. Errors preserve state.</p>
+<p>History is always visible and retains the last 16 confirmations. Each entry stays on one line; a long preview ends with three dots, while the full result remains available for insertion or through its copy button. Clicking an entry inserts its result at the input cursor, or at the end when there is no cursor. Language changes and guide navigation in the same tab keep the session, history, input and settings. Reloading the calculator or choosing New session starts over. The server retains eight sessions, evicting the oldest; reload after expiration. Restarting the server also loses in-memory sessions. CLI commands are history and reset. C clears only input.</p>
+<p>The browser appends <code>&amp;action=start</code> (empty body), followed by requests with <code>&amp;action=preview</code> or <code>&amp;action=commit</code>. Start performs no calculation. Repeating the latest successful confirmation with the same revision, expression and settings returns the original result. On an uncertain response Enter retries the same request; a new confirmation waits. Older or conflicting revisions are rejected. Requests without action keep the original behavior.</p>
+  <p>Exact division retains a reduced fraction, including recurring quotients. Decimal display rounds according to the selected settings. <code>(1E34+1)/1-1E34 = 1</code>.</p>
+  <p><code>1.2.3</code>, <code>1,2,3</code> and <code>2 3</code> are errors, not products. <code>(2)3</code>, <code>3!2</code> and <code>2²3</code> remain valid. Implicit multiplication has the same precedence as * and /: <code>6/2(1+2) = 9</code>.</p>
+  <p>Exact rational arithmetic retains <code>(1/3)*3-1 = 0</code>. Output places do not guarantee whole-expression accuracy for approximate functions such as irrational roots. Full output does not undo their rounding.</p>
+  <h2 id="precision">Output precision</h2>
+  <p><strong>Decimal places</strong>: 0–10000, default 10; applies to the mantissa in scientific notation. Non-terminating division uses max(34, N+4) significant digits. <strong>Full output</strong> skips final rounding, not 34-digit division. <code>1E-40 / 1</code> stays <code>1E-40</code>. Constants use the same working precision; intermediate results can still be rounded.</p>
+  <p>The whole calculation has a 5 s budget, including parsing and output, checked inside expensive numeric loops. Cancellation is cooperative, not a hard real-time guarantee. Limits: 64 MiB cumulative allocations, 128 KiB per allocation, 65536 output bytes, depth 256. Exceeding them returns <code>TLE</code> or <code>value too large</code>. Public numeric APIs do not have these application limits.</p>
+  <h2 id="http">Local HTTP interface</h2>
+  <p>A local client sends UTF-8 expressions to <code>POST /api/evaluate?precision=10&amp;angle=rad</code>. Port is 8765 or selected with <code>--port</code>. Precision is 0–10000 or <code>full</code>; angle is <code>rad</code> or <code>deg</code>. Input is limited to 4096 bytes (HTTP 413 if exceeded) and must arrive completely within 2 s (HTTP 408). Individual bytes do not restart the deadline.</p>
+  <pre>POST /api/evaluate?precision=10&amp;angle=rad HTTP/1.1
+Host: 127.0.0.1:8765
+Content-Type: text/plain; charset=utf-8
+Content-Length: 6
+
+π / 2
+
+HTTP/1.1 200 OK
+{"ok":true,"result":"1.5707963268"}</pre>
+  <p><code>Content-Length</code> is required; without it the server returns HTTP 411. A foreign browser <code>Origin</code> gets HTTP 403. Invalid expressions or precision return HTTP 400 JSON with <code>ok</code>, <code>error</code>, <code>status</code>, and a one-based <code>column</code>. Out-of-memory calculation failures return HTTP 500.</p>
+  <h2 id="library">Public C API</h2>
+  <p>The public types are <code>BigInt</code>, <code>BigDecimal</code> and <code>BigRational</code>. They are opaque: create them with <code>*_create()</code>, release them with <code>*_destroy()</code>, and release strings from <code>*_to_string()</code> with <code>free()</code>.</p>
+  <h3>BigInt</h3>
+  <p><code>#include &lt;numforge/bigint.h&gt;</code></p>
+  <ul><li>Status: <code>bigint_status_to_string</code></li>
+  <li>Lifecycle and text: <code>bigint_create</code>, <code>bigint_destroy</code>, <code>bigint_copy</code>, <code>bigint_set_string</code>, <code>bigint_to_string</code></li>
+  <li>Comparison: <code>bigint_compare</code>, <code>bigint_is_zero</code>, <code>bigint_is_one</code>, <code>bigint_is_negative</code>, <code>bigint_is_even</code>, <code>bigint_is_odd</code></li>
+  <li>Arithmetic: <code>bigint_abs</code>, <code>bigint_negate</code>, <code>bigint_add</code>, <code>bigint_sub</code>, <code>bigint_mul</code>, <code>bigint_div</code>, <code>bigint_mod</code>, <code>bigint_div_mod</code>, <code>bigint_pow</code></li>
+  <li>Number theory: <code>bigint_gcd</code>, <code>bigint_lcm</code>, <code>bigint_factorial</code>, <code>bigint_permutation</code>, <code>bigint_combination</code>, <code>bigint_isqrt</code>, <code>bigint_is_probable_prime</code>, <code>bigint_is_perfect_square</code></li>
+  <li>Bits: <code>bigint_and</code>, <code>bigint_or</code>, <code>bigint_xor</code>, <code>bigint_not</code>, <code>bigint_shift_left</code>, <code>bigint_shift_right</code></li></ul>
+  <p>Division truncates toward zero. <code>bigint_div_mod</code> requires distinct objects for quotient and remainder. Bitwise AND/OR/XOR accept non-negative values only. Probable-prime and perfect-square checks return status separately from their <code>bool</code> result.</p>
+  <h3>BigDecimal</h3>
+  <p><code>#include &lt;numforge/bigdecimal.h&gt;</code></p>
+  <ul><li>Status: <code>bigdecimal_status_to_string</code></li>
+  <li>Lifecycle and text: <code>bigdecimal_create</code>, <code>bigdecimal_destroy</code>, <code>bigdecimal_copy</code>, <code>bigdecimal_set_string</code>, <code>bigdecimal_to_string</code></li>
+  <li>Comparison: <code>bigdecimal_compare</code>, <code>bigdecimal_is_zero</code>, <code>bigdecimal_is_negative</code></li>
+  <li>Exact operations: <code>bigdecimal_abs</code>, <code>bigdecimal_negate</code>, <code>bigdecimal_add</code>, <code>bigdecimal_sub</code>, <code>bigdecimal_mul</code></li>
+  <li>Aggregates: exact <code>bigdecimal_sum</code> and <code>bigdecimal_product</code>; <code>bigdecimal_mean</code> with significant digits and a rounding mode</li>
+  <li>Statistics: <code>bigdecimal_median</code>, <code>bigdecimal_geometric_mean</code>, <code>bigdecimal_harmonic_mean</code>, <code>bigdecimal_variance_population</code>, <code>bigdecimal_standard_deviation_population</code>, <code>bigdecimal_standard_deviation_sample</code></li>
+  <li>Further operations: signed integer powers, roots, <code>bigdecimal_exp</code>, <code>bigdecimal_ln</code>, <code>bigdecimal_log10</code>, <code>bigdecimal_log</code>, significant division, <code>bigdecimal_sin</code>, <code>bigdecimal_cos</code>, <code>bigdecimal_tan</code>, inverse trigonometry, hyperbolic and inverse hyperbolic functions, <code>bigdecimal_set_constant</code>, <code>bigdecimal_set_constant_significant</code> and formatting</li>
+  <li>Rounded operations: <code>bigdecimal_rescale</code>, <code>bigdecimal_floor</code>, <code>bigdecimal_ceil</code>, <code>bigdecimal_trunc</code>, <code>bigdecimal_round</code>, <code>bigdecimal_div</code>; modes <code>TOWARD_ZERO</code>, <code>AWAY_FROM_ZERO</code>, <code>FLOOR</code>, <code>CEILING</code>, <code>HALF_UP</code>, <code>HALF_EVEN</code> with the <code>BIGDECIMAL_ROUND_</code> prefix</li></ul>
+  <h3>BigRational</h3>
+  <p><code>#include &lt;numforge/bigrational.h&gt;</code></p>
+  <p>Stores exact reduced fractions with a positive denominator. It provides exact arithmetic, comparison, conversion from <code>BigInt</code> and <code>BigDecimal</code>, and conversion to <code>BigDecimal</code> with explicit precision and rounding. A denominator of one prints as an integer.</p>
+  <p>Mutating operations return a status code and leave the destination value unchanged on failure. Full signatures are in the headers and a more detailed overview is in <code>docs/API.md</code>.</p>
+      </main>
+    </div>
+    <footer class="page-footer"><span>NumForge v@NUMFORGE_VERSION@ · © 2026 Interacti0n</span><nav class="footer-links" aria-label="Project information"><a href="/LICENSE" data-license>MIT License</a><a href="https://github.com/Interacti0n/NumForge" target="_blank" rel="noopener noreferrer">GitHub</a></nav></footer>
+  </div>
+  <script src="/assets/navigation.js"></script>
+</body>
+</html>

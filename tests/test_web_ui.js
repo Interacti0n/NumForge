@@ -1,25 +1,12 @@
 'use strict';
 
-// Execute the actual embedded page script with a minimal DOM and controlled
+// Execute the calculator source script with a minimal DOM and controlled
 // network promises. No framework or browser installation is required.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-const source = fs.readFileSync(path.join(__dirname, '../src/web/web_page.h'), 'utf8');
-
-function scriptFor(english) {
-    const name = english ? 'NUMFORGE_WEB_PAGE_EN' : 'NUMFORGE_WEB_PAGE';
-    const array = source.match(new RegExp(`static const char \\*const ${name}\\[\\]\\s*=\\s*\\{([\\s\\S]*?)\\};`))[1];
-    const names = array.match(/NUMFORGE_WEB_PAGE_SCRIPT_\w+/g);
-    let script = '';
-    for (const part of names) {
-        const block = source.match(new RegExp(`static const char ${part}\\[\\] =([\\s\\S]*?);\\r?\\n\\r?\\n`))[1];
-        script += block.match(/"(?:\\.|[^"\\])*"/g).map(literal => JSON.parse(literal)).join('');
-    }
-    assert.ok(script.includes('</script>'), `${name} must contain the complete script`);
-    return script.split('<script>')[1].split('</script>')[0];
-}
+const source = fs.readFileSync(path.join(__dirname, '../web/calculator.js'), 'utf8');
 
 async function createUI(english) {
     const elements = new Map();
@@ -31,10 +18,11 @@ async function createUI(english) {
             addEventListener(event, handler) { this.listeners[event] = handler; },
             setAttribute() {},
             children: [],
-            append(child) { this.children.push(child); },
+            append(...children) { this.children.push(...children); },
             replaceChildren() { this.children = []; },
             requestSubmit() { return this.listeners.submit({preventDefault() {}}); },
             focus() {},
+            setSelectionRange(start, end) { this.selectionStart = start; this.selectionEnd = end; },
             setRangeText(text, start, end) { this.value = this.value.slice(0, start) + text + this.value.slice(end); }
         });
         return elements.get(id);
@@ -49,6 +37,7 @@ async function createUI(english) {
     const runtime = {
         document: {
             documentElement: {lang: english ? 'en' : 'sk'},
+            addEventListener() {},
             querySelector: element,
             createElement: name => element(Symbol(name)),
             querySelectorAll: selector => selector === '[data-action]' ? [clear]
@@ -57,6 +46,8 @@ async function createUI(english) {
         },
         navigator: {clipboard: {writeText: async text => copied.push(text)}},
         window: {isSecureContext: true, location: {reload() {}}}, TextEncoder, AbortController,
+        getComputedStyle: () => ({lineHeight: '20px', paddingTop: '8px', paddingBottom: '8px',
+            borderTopWidth: '1px', borderBottomWidth: '1px'}),
         crypto: {getRandomValues: bytes => bytes.fill(1)},
         TypeError, SyntaxError,
         setTimeout: callback => (timers.push(callback), timers.length),
@@ -65,7 +56,7 @@ async function createUI(english) {
             ? Promise.resolve({ok: true, headers: {get: () => 'application/json'}, json: async () => ({ok: true, result: ''})})
             : new Promise((resolve, reject) => pending.push({url, options, resolve, reject}))
     };
-    vm.runInNewContext(scriptFor(english), runtime);
+    vm.runInNewContext(source, runtime);
     await runtime.ensureSession();
     const preview = value => {
         element('#expression').value = value;
@@ -214,10 +205,12 @@ async function testConfirmation(english) {
     ui.respond(2, '6'); await retry;
     assert.equal(ui.element('#history-list').children.length, 1);
     const item = ui.element('#history-list').children[0].children[0];
-    assert.equal(item.textContent, 'ans+1 → 6');
+    assert.deepEqual(item.children[0].children.map(child => child.textContent), ['ans+1', ' → ', '6']);
     item.listeners.click();
-    assert.equal(ui.element('#expression').value, 'ans+1');
-    assert.equal(ui.pending.length, 3, 'history restores input without confirming');
+    assert.equal(ui.element('#expression').value, 'ans+16');
+    assert.equal(ui.pending.length, 3, 'history inserts the result without confirming');
+    await ui.element('#history-list').children[0].children[1].listeners.click();
+    assert.deepEqual(ui.copied, ['6']);
 
     const next = ui.confirm('ans+1');
     ui.element('#expression').value = '2+2';

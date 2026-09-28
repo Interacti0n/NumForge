@@ -15,8 +15,8 @@ cmake --install build-library
 ```
 
 The installed package exports `NumForge::numforge`. It contains BigInt,
-BigDecimal and optional runtime-budget support; parser, evaluator and HTTP code
-are not part of the installed numeric target.
+BigDecimal, BigRational and optional runtime-budget support; parser,
+evaluator and HTTP code are not part of the installed numeric target.
 
 ## CMake consumer
 
@@ -26,8 +26,9 @@ add_executable(example example.c)
 target_link_libraries(example PRIVATE NumForge::numforge)
 ```
 
-Include `<numforge/bigint.h>` for arbitrary-precision signed integers and
-`<numforge/bigdecimal.h>` for exact base-10 values. `<numforge/runtime.h>` is
+Include `<numforge/bigint.h>` for arbitrary-precision signed integers,
+`<numforge/bigdecimal.h>` for exact base-10 values, and
+`<numforge/bigrational.h>` for exact reduced fractions. `<numforge/runtime.h>` is
 optional and provides an explicitly scoped, thread-local allocation/deadline
 budget. Ordinary numeric calls start no budget.
 
@@ -35,7 +36,8 @@ budget. Ordinary numeric calls start no budget.
 
 Create values with `*_create()` and release them with `*_destroy()`; destroying
 `NULL` is safe. Text returned by `bigint_to_string()`,
-`bigdecimal_to_string()` or `bigdecimal_format()` belongs to the caller and is
+`bigdecimal_to_string()`, `bigdecimal_format()` or
+`bigrational_to_string()` belongs to the caller and is
 released with `free()`.
 
 Mutating operations return a status and preserve their destination on failure.

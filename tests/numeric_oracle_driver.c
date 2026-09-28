@@ -10,7 +10,6 @@
 #include <numforge/bigdecimal.h>
 #include "bigdecimal_internal.h"
 #include "../src/calculator/evaluator.h"
-#include <numforge/bigdecimal.h>
 
 int main(void)
 {
@@ -28,7 +27,7 @@ int main(void)
     {
         int status;
         char *text = NULL;
-        if (op[0] == 'c')
+        if (!strcmp(op, "calc"))
         {
             CalculatorExpression *expression = NULL;
             CalculatorContext context;
@@ -70,6 +69,22 @@ int main(void)
                 else if (!strcmp(op, "dcalc")) status = bigdecimal_div_exact_or_significant(dr, da, db, scale, (BigDecimalRoundingMode)rounding);
                 else if (!strcmp(op, "dscale")) status = bigdecimal_rescale(dr, da, scale, (BigDecimalRoundingMode)rounding);
                 else if (!strcmp(op, "rroot")) status = bigdecimal_root(dr, da, (uint32_t)strtoul(b, NULL, 10), scale, (BigDecimalRoundingMode)rounding);
+                else if (!strcmp(op, "exp")) status = bigdecimal_exp(dr, da, scale, (BigDecimalRoundingMode)rounding);
+                else if (!strcmp(op, "ln")) status = bigdecimal_ln(dr, da, scale, (BigDecimalRoundingMode)rounding);
+                else if (!strcmp(op, "log10")) status = bigdecimal_log10(dr, da, scale, (BigDecimalRoundingMode)rounding);
+                else if (!strcmp(op, "log")) status = bigdecimal_log(dr, da, db, scale, (BigDecimalRoundingMode)rounding);
+                else if (!strcmp(op, "sin")) status = bigdecimal_sin(dr, da, scale, (BigDecimalRoundingMode)rounding);
+                else if (!strcmp(op, "cos")) status = bigdecimal_cos(dr, da, scale, (BigDecimalRoundingMode)rounding);
+                else if (!strcmp(op, "tan")) status = bigdecimal_tan(dr, da, scale, (BigDecimalRoundingMode)rounding);
+                else if (!strcmp(op, "asin")) status = bigdecimal_asin(dr, da, scale, (BigDecimalRoundingMode)rounding);
+                else if (!strcmp(op, "acos")) status = bigdecimal_acos(dr, da, scale, (BigDecimalRoundingMode)rounding);
+                else if (!strcmp(op, "atan")) status = bigdecimal_atan(dr, da, scale, (BigDecimalRoundingMode)rounding);
+                else if (!strcmp(op, "sinh")) status = bigdecimal_sinh(dr, da, scale, (BigDecimalRoundingMode)rounding);
+                else if (!strcmp(op, "cosh")) status = bigdecimal_cosh(dr, da, scale, (BigDecimalRoundingMode)rounding);
+                else if (!strcmp(op, "tanh")) status = bigdecimal_tanh(dr, da, scale, (BigDecimalRoundingMode)rounding);
+                else if (!strcmp(op, "asinh")) status = bigdecimal_asinh(dr, da, scale, (BigDecimalRoundingMode)rounding);
+                else if (!strcmp(op, "acosh")) status = bigdecimal_acosh(dr, da, scale, (BigDecimalRoundingMode)rounding);
+                else if (!strcmp(op, "atanh")) status = bigdecimal_atanh(dr, da, scale, (BigDecimalRoundingMode)rounding);
                 else status = 99;
             }
             if (!status) status = bigdecimal_to_string(dr, &text);

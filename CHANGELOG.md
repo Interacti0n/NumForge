@@ -5,6 +5,79 @@ All notable changes to NumForge are documented in this file. The project uses
 
 ## Unreleased
 
+- Add Linux ARM64 and macOS ARM64 CI jobs for Release builds, the full CTest
+  suite and installed-package checks with external C and C++ consumers.
+
+- Show the supplied NumForge wordmark in the Slovak and English guide titles.
+
+- Use the supplied NumForge PNG logo in the calculator and guide headers and
+  as the favicon on both language versions.
+
+- Extend the independent numerical oracle with 319 frozen high-precision
+  exp/log, trigonometric and hyperbolic references. Check domain errors and
+  nearest rounding exactly, and bound directed approximation error to 1 ULP.
+
+- Align calculator and guide header/footer dimensions, keep a result or error
+  line visible under expanded input, preserve the same-tab web session across
+  language and guide navigation, show the local MIT text in a dialog, and open
+  GitHub in a new tab. Start results at the top of their panel with a
+  subtle accent while keeping long values and errors readable.
+
+- Accept `arc` and `arcus` aliases for all six inverse trigonometric and
+  hyperbolic calculator functions. Include those names in bilingual function
+  search, help and documentation.
+
+- Redesign the bilingual local calculator and API guide with responsive layouts,
+  larger touch controls, searchable function groups and a
+  guide table of contents. Let narrow screens scroll at normal scale instead
+  of shrinking the entire calculator to fit the viewport. Keep the desktop
+  calculator within the viewport at ordinary window heights, open long results
+  in a scrollable modal, make output settings quieter, and keep the guide
+  navigation visible while reading. Move settings to a compact strip above the
+  expression, enlarge secondary keypad labels, list function categories
+  vertically in a panel separate from larger function buttons, allow
+  accent-free Slovak search, and fit recent tools into one readable row according
+  to the available width. Keep function help visible below
+  the scrolling list, use a full-width compact settings bar, and align both
+  pages with Melanie Brown's Deep Purple palette. Give each calculator card a
+  title and icon, let the session fill the sidebar below the function library,
+  and allow the expanded result to close on outside click or copy its value.
+  Keep the entire guide header and section menu in place while its text scrolls.
+  Show the CMake project version, MIT license, author and GitHub link in a
+  shared footer on both pages. Start expressions at one line, grow to five
+  lines, then enlarge the same editable field over the
+  result for long input without blocking keypad controls, and collapse it on
+  Enter or Esc. Let the result fill the available height above the keypad
+  before marking overflow with an ellipsis and `Show all...`.
+
+- Split calculator value formatting, named and trigonometric function calls,
+  exact function implementations, and web server startup into focused private
+  C modules. This reorganizes the client code without changing its API.
+
+- Move the SK/EN web pages, CSS, and calculator JavaScript into editable source
+  files under `web/`. Generate their embedded C representation at build time so
+  the local server remains a single executable; serve styles and script through
+  local asset routes.
+
+- Add a fraction notation to CLI and browser output. It shows exact reduced
+  fractions without /1 up to 16 characters; longer fractions and approximate
+  values use Auto decimal notation. Auto chooses a fraction with denominator at
+  most 10000 and at most 16 output characters when it is at least two characters
+  shorter than the decimal display. Restore the rand button in
+  the English function panel.
+
+- Preserve exact BigInt and BigRational results through calculator previews,
+  confirmed `ans`, history and cache for literal arithmetic, integer powers,
+  proven rational roots and selected named arithmetic, aggregation and integer
+  functions. Convert exact subexpressions at the current working precision when
+  an irrational result or approximate constant needs BigDecimal. Output
+  notation is selected by the formatter without changing the stored value.
+
+- Add a standalone public `BigRational` numeric API with reduced exact
+  fractions, arithmetic, comparison, conversions to and from BigInt/BigDecimal,
+  and integer-style text for denominator one. Decimal conversion preserves
+  terminating values and rounds recurring values at explicit precision.
+
 - Add selectable Auto, plain, scientific and mathematical result notation to
   the public BigDecimal formatter, CLI and browser. Auto uses scientific output
   for exponent magnitude at least 10 or plain output over 80 characters.

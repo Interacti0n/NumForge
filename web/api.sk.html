@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="sk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#17002f">
+  <style>html { background: #17002f; } body { visibility: hidden; } html.css-error body { visibility: visible; }</style>
+  <title>NumForge · Použitie a API</title>
+  <link rel="icon" type="image/png" href="/assets/logo.png">
+  <link rel="stylesheet" href="/assets/api.css" onerror="document.documentElement.classList.add('css-error')">
+</head>
+<body>
+  <div class="guide-shell">
+    <header class="page-header">
+      <a class="brand" href="/?lang=sk" aria-label="NumForge">
+        <img class="brand-mark" src="/assets/logo.png" alt="" width="45" height="45">
+        <span class="brand-text"><strong>NumForge</strong><small>Príručka</small></span>
+      </a>
+      <nav class="header-actions" aria-label="Navigácia">
+        <a class="back-link" href="/?lang=sk">← Kalkulačka</a>
+        <span class="language-switch" aria-label="Výber jazyka">
+          <a href="/api?lang=sk" lang="sk" aria-current="true" title="Slovenčina">🇸🇰 SK</a>
+          <a href="/api?lang=en" lang="en"  title="English">🇬🇧 EN</a>
+        </span>
+      </nav>
+    </header>
+    <div class="guide-layout">
+      <aside class="guide-sidebar">
+        <nav class="guide-toc" aria-label="Na tejto stránke">
+          <span class="toc-title">Na tejto stránke</span>
+          <a href="#syntax">Zápis výrazov</a>
+          <a href="#precision">Výstupná presnosť</a>
+          <a href="#functions">Funkcie</a>
+          <a href="#cache">Presnosť a cache</a>
+          <a href="#random">Náhodné čísla</a>
+          <a href="#history">ans a história</a>
+          <a href="#http">Lokálne HTTP</a>
+          <a href="#library">Verejné C API</a>
+        </nav>
+      </aside>
+      <main class="guide-content">
+<p class="eyebrow">DOKUMENTÁCIA</p>
+  <h1 class="guide-title"><img class="guide-wordmark" src="/assets/wordmark.png" alt="NumForge" width="2172" height="724"><span>Použitie a API</span></h1>
+  <p>JavaScript iba odošle výraz lokálnemu serveru; samotný výpočet vykoná C aplikácia: tokenizer → parser → evaluator → presný zlomok alebo BigDecimal → formatter.</p>
+  <p class="notice">Aritmetika presných vstupov uchová celé čísla a zlomky bez zaokrúhlenia. Desatinný výpis periodického zlomku používa najmenej 34 významných číslic; výstup má predvolene 10 desatinných miest.</p>
+  <h2 id="syntax">Čo môžeš zadať do kalkulačky</h2>
+  <table><tr><th>Prvok</th><th>Príklady</th></tr>
+  <tr><td>Celé a desatinné čísla</td><td><code>42</code>, <code>-1.5</code>, <code>1,5</code>, <code>.25</code>, <code>1.</code></td></tr>
+  <tr><td>Vedecký zápis</td><td><code>1.25E-3</code>, <code>6E4</code>; veľké <code>E</code> je povinné</td></tr>
+  <tr><td>Operátory</td><td><code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>^</code>; mocnina má najvyššiu prioritu medzi binárnymi operátormi, postfixové operácie sa viažu ešte silnejšie a exponent musí byť celé číslo</td></tr>
+  <tr><td>Zátvorky a znamienka</td><td><code>(2 + 3) * 4</code>, <code>-(2.5E-1) * 8</code></td></tr>
+  <tr><td>Postfixové operácie</td><td><code>12²</code>, <code>2³</code>, <code>5!</code>; faktoriál vyžaduje nezáporné celé číslo najviac 10000</td></tr>
+  <tr><td>Konštanty</td><td><code>π</code>, <code>e</code>, <code>φ</code></td></tr>
+  <tr><td>Implicitné násobenie</td><td><code>2π</code>, <code>πe</code>, <code>2(3 + 4)</code></td></tr></table>
+  <p>Operátor <code>%</code> a premenné zatiaľ nie sú podporované.</p>
+  <p>Konštanty používajú uložených 500 desatinných miest pre bežnú presnosť a pri vyššej sa dopočítajú dynamicky. Samostatné malé <code>e</code> znamená Eulerovo číslo, preto <code>5e</code> znamená <code>5 * e</code> a <code>1e3</code> znamená <code>1 * e * 3</code>. Vedecký zápis vždy používa veľké <code>E</code>: <code>5E-1</code> je <code>0.5</code> a <code>1E3</code> je <code>1000</code>. Goniometria používa spoločný prepínač RAD/DEG a jeho voľbu si prehliadač zapamätá.</p>
+  <h2 id="precision">Výstupná presnosť</h2>
+  <p><strong>Desatinné miesta</strong>: 0–10000, predvolene 10; vo vedeckom zápise platia pre mantisu. Desatinný výpis presného periodického zlomku používa max(34, N+4) významných číslic. <strong>Plný výstup</strong> vypne finálne zaokrúhlenie, nie pracovnú presnosť približných výsledkov. <code>1E-40 / 1</code> zostane <code>1E-40</code>. Konštanty používajú rovnakú pracovnú presnosť; medzivýsledky sa stále môžu zaokrúhliť.</p>
+<p>Prepínač RAD/DEG je v nastaveniach výstupu. Opis funkcie a jej argumentov sa zobrazí po prejdení myšou, zameraní klávesnicou alebo dotyku tlačidla. Pri chybe spojenia či neočakávanej odpovedi servera môžeš výpočet zopakovať cez Enter; tieto chyby nie sú chybami výrazu.</p>
+<h2 id="functions">Volania funkcií</h2>
+<p><code>sqrt(x)</code> alebo <code>√(x)</code> je druhá odmocnina pre x ≥ 0; <code>cbrt(x)</code> aj pre záporné x. <code>root(x;n)</code> je n-tá odmocnina, celé n od 1 do 10000; záporné x iba pri nepárnom n. Presné konečné odmocniny zostávajú presné, ostatné používajú max(34, N+4) platných číslic (plný výpis: 34), potom sa formátujú. Platia časové a pamäťové limity.</p>
+<p><code>gcd(a;b)</code> a <code>lcm(a;b)</code> vracajú nezáporný najväčší spoločný deliteľ a najmenší spoločný násobok celých čísel. <code>gcd(0;0)=0</code>; lcm s nulou je 0. <code>mod(a;b)</code> je celočíselný zvyšok so znamienkom delenca: <code>mod(-7;3)=-1</code>; deliteľ nesmie byť 0. <code>isqrt(n)</code> je dolná celá odmocnina nezáporného celého čísla: <code>isqrt(15)=3</code>. Desatinné zápisy celých hodnôt, napr. 4.00, sú povolené.</p>
+<p><code>npr(n;r)</code> počíta permutácie a <code>ncr(n;r)</code> kombinácie bez opakovania. Oba argumenty musia byť celé a platiť <code>0 ≤ r ≤ n</code>.</p>
+<p>Fungujú aj <code>abs(x)</code> (absolútna hodnota), <code>sign(x)</code> (−1, 0 alebo 1), <code>min(a;b;…)</code> a <code>max(a;b;…)</code> (najmenej dva argumenty). Porovnávajú vypočítané hodnoty bez ďalšieho zaokrúhlenia.</p>
+<p><code>sum(a;b;…)</code> a <code>product(a;b;…)</code> počítajú presne; <code>mean(a;b;…)</code> delí presný súčet počtom hodnôt a prípadný periodický výsledok zaokrúhli pracovnou presnosťou. Každá funkcia prijíma 1 až 256 argumentov.</p>
+<p><code>variance(a;b;…)</code> je populačný rozptyl a <code>stdevp(a;b;…)</code> populačná smerodajná odchýlka; obe delia počtom hodnôt n. Výberové <code>stdev(a;b;…)</code> delí n−1 a vyžaduje aspoň dve hodnoty. Medzivýpočty sú presné až po finálne delenie alebo odmocninu.</p>
+<p><code>median(a;b;…)</code> vracia presný medián. <code>geomean(a;b;…)</code> prijíma nezáporné hodnoty a <code>harmean(a;b;…)</code> iba kladné nenulové hodnoty.</p>
+<p><code>floor(x)</code>, <code>ceil(x)</code> a <code>trunc(x)</code> vracajú celé číslo. <code>round(x)</code> zaokrúhľuje na celé číslo a <code>round(x;n)</code> na celé n desatinných miest pravidlom half-even; záporné n znamená desiatky, stovky a vyššie rády.</p>
+<p>Názvy používajú iba malé písmená, zátvorky sú povinné a argumenty oddeľuje <code>;</code>. Čiarka zostáva desatinná: <code>pow(1,5;2)</code> = <code>2.25</code>. Najviac 256 argumentov na volanie.</p>
+<p>Fungujú <code>pow(x;y)</code> (ako <code>x^y</code>, celočíselný exponent; záporný exponent používa recipročnú hodnotu) a <code>factorial(n)</code> (ako <code>n!</code>, celé n od 0 do 10000).</p>
+<p>Fungujú aj <code>exp(x)</code>, <code>ln(x)</code>, dekadický <code>log(x)</code> a <code>log(x;b)</code> so základom b. Logaritmovaný výraz musí byť kladný; základ musí byť kladný a nesmie byť 1.</p>
+<p>Fungujú <code>sin(x)</code>, <code>cos(x)</code>, <code>tan(x)</code>, <code>asin(x)</code>, <code>acos(x)</code> a jednoargumentový <code>atan(x)</code>. Inverzné funkcie prijímajú aj názvy s <code>arc</code> alebo <code>arcus</code>: napríklad <code>arcsin(x)</code>, <code>arcussin(x)</code>, <code>arctan(x)</code> a <code>arcustan(x)</code>. Prepínač RAD/DEG platí pre celý výraz; inverzné funkcie vracajú výsledok v zvolenej jednotke. <code>asin</code>/<code>acos</code> vyžadujú x od -1 po 1 a <code>tan(90)</code> je v DEG režime chyba.</p>
+<p>Hyperbolické <code>sinh</code>, <code>cosh</code>, <code>tanh</code>, <code>asinh</code>, <code>acosh</code> a <code>atanh</code> nezávisia od RAD/DEG. Aj inverzné hyperbolické funkcie prijímajú oba dlhšie tvary, napríklad <code>arcsinh(x)</code>, <code>arcussinh(x)</code>, <code>arccosh(x)</code> a <code>arcuscosh(x)</code>. <code>acosh</code> vyžaduje x ≥ 1 a <code>atanh</code> vyžaduje -1 &lt; x &lt; 1. Vyhľadávanie v knižnici funkcií rozpoznáva všetky tieto názvy aj samotné <code>arc</code> a <code>arcus</code>.</p>
+<p><code>radians(x)</code> a <code>degrees(x)</code> sú explicitné konverzie nezávislé od prepínača. Knižničné BigDecimal API vždy používa radiány. <code>√(x)</code> je alias <code>sqrt(x)</code>.</p>
+<p><code>exp</code> je celý názov, nie násobenie písmen. Samostatné <code>e</code> ostáva konštanta: <code>e(2)</code> = <code>e*2</code>, <code>1e3</code> = <code>1*e*3</code>, <code>1E3</code> = <code>1000</code>. Susedné názvy oddeľ <code>*</code>; <code>ee</code> či <code>esin</code> nie sú platné názvy.</p>
+<h2 id="cache">Automatická presnosť a cache</h2>
+<p>Výstup: <strong>Auto</strong> používa 10 desatinných miest, <strong>Full</strong> vypne finálne zaokrúhlenie a <strong>Vlastná</strong> zobrazí pole pre 0–10000 miest. Full neznamená nekonečnú pracovnú presnosť. Režim aj vlastná hodnota sa zachovajú pri zmene jazyka.</p>
+<p>Samostatný prepínač zápisu ponúka Auto, bežný, vedecký (<code>1.23E+45</code>), matematický (<code>1.23 × 10^45</code>) a Zlomok. Auto ukáže presný zlomok, ak má menovateľ najviac 10000, zápis najviac 16 znakov a je aspoň o dva znaky kratší než desatinný výpis. Inak po zaokrúhlení použije vedecký výpis pri |exponente| ≥ 10 alebo keď by bežný výpis presiahol 80 znakov. Zlomok ukáže presný necelý výsledok ako a/b do 16 znakov; dlhšie zlomky a približné výsledky použijú desatinný Auto zápis. Celé výsledky zostanú bez /1. Výpis má limit 65536 bajtov. Matematický výpis sa kopíruje ako vstup pre parser vo forme E, ak sa zmestí do vstupných limitov. Prepnutie zápisu nemení uloženú hodnotu ani ans.</p>
+<p>Nastavuješ výstupné desatinné miesta a zápis. Pracovná presnosť zostáva automatická: max(34, N+4) významných číslic, pri plnom výstupe 34. Server uchováva posledný úspešný číselný výsledok každého sedenia prehliadača, najviac pre osem klientov. Pri rovnakom pracovnom kontexte iba zmení výpis; pri zmene pracovnej presnosti výraz prepočíta. Preukázateľne presné výrazy ako 10000! možno znovu vypísať aj pri inej presnosti bez výpočtu. Obnovenie kalkulačky alebo vyradenie sedenia vyžaduje nové sedenie. Toto nie je záruka správnosti každej poslednej číslice pri rušení číslic v medzivýsledkoch.</p>
+<p>Voliteľné HTTP parametre za precision/angle: <code>&amp;client=32_hex_znakov&amp;revision=N</code>. Pred client možno uviesť <code>&amp;notation=auto|plain|scientific|math|fraction</code>; matematická odpoveď pridá <code>copy</code> s E zápisom alebo null pri prekročení limitu. Client má presne 32 malých hexadecimálnych znakov; revision rastie od 1 do 9007199254740991. Úspešná odpoveď potom obsahuje aj boolean <code>cached</code>. Bez týchto parametrov je API bezstavové. Identifikátor nie je autentifikácia.</p>
+<h2 id="random">Náhodné čísla</h2><p><code>rand()</code> dá hodnotu v [0,1), <code>rand(x)</code> v [0,x) pre x &gt; 0 a <code>rand(x;y)</code> v [x,y) pre x &lt; y. Každé volanie žrebuje zvlášť z 34-miestnej desatinnej mriežky. Opakovaný náhľad drží tie isté hody; nový Enter žrebuje znova. Nejde o kryptografický generátor.</p>
+<h2 id="history">ans a história</h2><p>Náhľad nemení ans. Enter, Vypočítať alebo = potvrdí úspešný výsledok a pridá históriu. ans uchová internú hodnotu, nie zaokrúhlený výpis; vyššia presnosť neobnoví stratené cifry aproximácie. Pred prvým potvrdením je ans nedefinované. Chyba stav nemení.</p>
+<p>História je stále viditeľná a uchová posledných 16 potvrdení. Každý záznam je v jednom riadku; dlhý náhľad končí tromi bodkami, celý výsledok zostáva dostupný na vloženie alebo cez tlačidlo kopírovania. Kliknutie na riadok vloží výsledok na pozíciu kurzora vo vstupe, prípadne na koniec. Zmena jazyka a prechod na návod a späť v tej istej karte zachovajú sedenie, históriu, vstup aj nastavenia. Obnovenie kalkulačky alebo Nové sedenie začnú odznova. Server uchová najviac osem sedení, staršie vyradí; vtedy treba obnoviť stránku. Reštart servera tiež stratí pamäťové sedenia. CLI má príkazy history a reset. C vymaže iba vstup.</p>
+<p>Web pridáva na koniec HTTP parametrov <code>&amp;action=start</code> (prázdne telo), potom <code>&amp;action=preview</code> alebo <code>&amp;action=commit</code>. Start nevykoná výpočet. Opakovanie posledného úspešného potvrdenia s rovnakým revision, výrazom a nastaveniami vráti pôvodný výsledok. Pri neistej odpovedi Enter zopakuje tú istú požiadavku; nové potvrdenie počká. Staršie alebo konfliktné revízie sa odmietnu. API bez action si zachováva pôvodné správanie.</p>
+  <p>Presné delenie uchová skrátený zlomok vrátane periodických výsledkov. Desatinný výpis sa zaokrúhli podľa nastavení. <code>(1E34+1)/1-1E34 = 1</code>.</p>
+  <p><code>1.2.3</code>, <code>1,2,3</code> a <code>2 3</code> sú chyby, nie násobenie. Platí <code>(2)3</code>, <code>3!2</code> aj <code>2²3</code>. Násobenie bez znamienka má rovnakú prioritu ako * a /: <code>6/2(1+2) = 9</code>.</p>
+  <p>Presná zlomková aritmetika dá <code>(1/3)*3-1 = 0</code>. Počet miest nezaručuje presnosť výrazov s približnými funkciami, napríklad iracionálnymi odmocninami. Plný výstup ich zaokrúhlenie neodstráni.</p>
+  <p>Celý výpočet má rozpočet 5 s vrátane parsovania a výstupu; kontroly sú aj v náročných numerických slučkách. Rušenie je kooperatívne, nie tvrdá real-time záruka. Limity: 64 MiB súčtu alokácií, 128 KiB jednej alokácie, 65536 bajtov výstupu, hĺbka 256. Prekročenie vráti <code>TLE</code> alebo <code>value too large</code>. Verejné číselné API tieto aplikačné limity nemá.</p>
+  <h2 id="http">Lokálne HTTP rozhranie</h2>
+  <p>Vlastný lokálny klient môže poslať UTF-8 výraz na <code>POST /api/evaluate?precision=10&amp;angle=rad</code>. Port je 8765 alebo zvolený cez <code>--port</code>. Presnosť je 0–10000 alebo <code>full</code>; uhol je <code>rad</code> alebo <code>deg</code>. Vstup má limit 4096 bajtov (HTTP 413 pri prekročení); celý musí prísť do 2 s (HTTP 408). Priebežné posielanie bajtov limit neobnovuje.</p>
+  <pre>POST /api/evaluate?precision=10&amp;angle=rad HTTP/1.1
+Host: 127.0.0.1:8765
+Content-Type: text/plain; charset=utf-8
+Content-Length: 6
+
+π / 2
+
+HTTP/1.1 200 OK
+{"ok":true,"result":"1.5707963268"}</pre>
+  <p><code>Content-Length</code> je povinný; bez neho server vráti HTTP 411. Cudzí browser <code>Origin</code> dostane HTTP 403. Chybný výraz alebo presnosť vráti HTTP 400 JSON s poľami <code>ok</code>, <code>error</code>, <code>status</code> a od jednotky číslovaným <code>column</code>. Nedostatok pamäte vráti HTTP 500.</p>
+  <h2 id="library">Verejné C API</h2>
+  <p>Verejné typy sú <code>BigInt</code>, <code>BigDecimal</code> a <code>BigRational</code>. Sú nepriehľadné: vytvor ich cez <code>*_create()</code>, uvoľni cez <code>*_destroy()</code> a reťazce z <code>*_to_string()</code> uvoľni cez <code>free()</code>.</p>
+  <h3>BigInt</h3>
+  <p><code>#include &lt;numforge/bigint.h&gt;</code></p>
+  <ul><li>Stav: <code>bigint_status_to_string</code></li>
+  <li>Životný cyklus a text: <code>bigint_create</code>, <code>bigint_destroy</code>, <code>bigint_copy</code>, <code>bigint_set_string</code>, <code>bigint_to_string</code></li>
+  <li>Porovnanie: <code>bigint_compare</code>, <code>bigint_is_zero</code>, <code>bigint_is_one</code>, <code>bigint_is_negative</code>, <code>bigint_is_even</code>, <code>bigint_is_odd</code></li>
+  <li>Aritmetika: <code>bigint_abs</code>, <code>bigint_negate</code>, <code>bigint_add</code>, <code>bigint_sub</code>, <code>bigint_mul</code>, <code>bigint_div</code>, <code>bigint_mod</code>, <code>bigint_div_mod</code>, <code>bigint_pow</code></li>
+  <li>Teória čísel: <code>bigint_gcd</code>, <code>bigint_lcm</code>, <code>bigint_factorial</code>, <code>bigint_permutation</code>, <code>bigint_combination</code>, <code>bigint_isqrt</code>, <code>bigint_is_probable_prime</code>, <code>bigint_is_perfect_square</code></li>
+  <li>Bity: <code>bigint_and</code>, <code>bigint_or</code>, <code>bigint_xor</code>, <code>bigint_not</code>, <code>bigint_shift_left</code>, <code>bigint_shift_right</code></li></ul>
+  <p>Delenie skracuje smerom k nule. <code>bigint_div_mod</code> vyžaduje rozdielne objekty pre podiel a zvyšok. Bitové AND/OR/XOR prijímajú iba nezáporné hodnoty. Test prvočíselnosti a dokonalej druhej mocniny vracia status oddelene od výsledku typu <code>bool</code>.</p>
+  <h3>BigDecimal</h3>
+  <p><code>#include &lt;numforge/bigdecimal.h&gt;</code></p>
+  <ul><li>Stav: <code>bigdecimal_status_to_string</code></li>
+  <li>Životný cyklus a text: <code>bigdecimal_create</code>, <code>bigdecimal_destroy</code>, <code>bigdecimal_copy</code>, <code>bigdecimal_set_string</code>, <code>bigdecimal_to_string</code></li>
+  <li>Porovnanie: <code>bigdecimal_compare</code>, <code>bigdecimal_is_zero</code>, <code>bigdecimal_is_negative</code></li>
+  <li>Presné operácie: <code>bigdecimal_abs</code>, <code>bigdecimal_negate</code>, <code>bigdecimal_add</code>, <code>bigdecimal_sub</code>, <code>bigdecimal_mul</code></li>
+  <li>Agregácie: presné <code>bigdecimal_sum</code> a <code>bigdecimal_product</code>; <code>bigdecimal_mean</code> s významnými číslicami a režimom zaokrúhlenia</li>
+  <li>Štatistika: <code>bigdecimal_median</code>, <code>bigdecimal_geometric_mean</code>, <code>bigdecimal_harmonic_mean</code>, <code>bigdecimal_variance_population</code>, <code>bigdecimal_standard_deviation_population</code>, <code>bigdecimal_standard_deviation_sample</code></li>
+  <li>Ďalšie: konverzie, <code>bigdecimal_pow</code>, <code>bigdecimal_pow_signed</code>, <code>bigdecimal_sqrt</code>, <code>bigdecimal_cbrt</code>, <code>bigdecimal_root</code>, <code>bigdecimal_exp</code>, <code>bigdecimal_ln</code>, <code>bigdecimal_log10</code>, <code>bigdecimal_log</code>, <code>bigdecimal_sin</code>, <code>bigdecimal_cos</code>, <code>bigdecimal_tan</code>, <code>bigdecimal_asin</code>, <code>bigdecimal_acos</code>, <code>bigdecimal_atan</code>, hyperbolické a inverzné hyperbolické funkcie, významné delenie, <code>bigdecimal_set_constant</code>, <code>bigdecimal_set_constant_significant</code> a formátovanie</li>
+  <li>Zaokrúhľované operácie: <code>bigdecimal_rescale</code>, <code>bigdecimal_floor</code>, <code>bigdecimal_ceil</code>, <code>bigdecimal_trunc</code>, <code>bigdecimal_round</code>, <code>bigdecimal_div</code>; režimy <code>TOWARD_ZERO</code>, <code>AWAY_FROM_ZERO</code>, <code>FLOOR</code>, <code>CEILING</code>, <code>HALF_UP</code>, <code>HALF_EVEN</code> s prefixom <code>BIGDECIMAL_ROUND_</code></li></ul>
+  <h3>BigRational</h3>
+  <p><code>#include &lt;numforge/bigrational.h&gt;</code></p>
+  <p>Uchováva presné skrátené zlomky s kladným menovateľom. Podporuje presnú aritmetiku, porovnanie, prevody z <code>BigInt</code> a <code>BigDecimal</code> a prevod na <code>BigDecimal</code> so zvolenou presnosťou a zaokrúhlením. Menovateľ 1 sa vypisuje ako celé číslo.</p>
+  <p>Mutujúce operácie vracajú stavový kód a pri chybe ponechajú cieľovú hodnotu nezmenenú. Úplné signatúry sú v hlavičkách a podrobnejší prehľad v <code>docs/API.md</code> projekte.</p>
+      </main>
+    </div>
+    <footer class="page-footer"><span>NumForge v@NUMFORGE_VERSION@ · © 2026 Interacti0n</span><nav class="footer-links" aria-label="Informácie o projekte"><a href="/LICENSE" data-license>MIT licencia</a><a href="https://github.com/Interacti0n/NumForge" target="_blank" rel="noopener noreferrer">GitHub</a></nav></footer>
+  </div>
+  <script src="/assets/navigation.js"></script>
+</body>
+</html>

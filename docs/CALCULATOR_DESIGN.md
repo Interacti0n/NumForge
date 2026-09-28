@@ -1,6 +1,6 @@
 # Calculator design
 
-The calculator is an application layer over `BigDecimal`. Its source stays in
+The calculator is an application layer over `BigInt`, `BigRational` and `BigDecimal`. Its source stays in
 `src/calculator/` rather than the public include tree; it is an application
 client over the public numeric API.
 
@@ -9,23 +9,30 @@ client over the public numeric API.
 | Module | Responsibility |
 | --- | --- |
 | `calculator.c` | Shared status/error handling, precision defaults and the bounded complete `calculator_compute` pipeline used by CLI and HTTP. |
+| `value.c` | Owns typed values, projects exact values to the requested decimal precision, and selects fraction or decimal output. |
 | `session.c` | Private client session: confirmed values, bounded history, preview reuse and idempotent confirmation. |
 | `constants.c` | Maps `π`, `e`, and `φ` to the precision-aware public BigDecimal constant API. |
 | `tokenizer.c` | Converts source text into location-aware tokens. Implemented for decimal literals, identifiers, whitespace, binary and postfix operators, and parentheses. |
 | `parser.c` | Converts tokens into an opaque expression tree (AST). Implemented as recursive descent with postfix, power, unary, multiplicative, and additive precedence layers. |
-| `evaluator.c` | Evaluates the AST to `BigDecimal` using `CalculatorContext`. Implements arithmetic, roots, integer, exponential, logarithmic, trigonometric, hyperbolic, conversion, and selection calls. |
+| `evaluator.c` | Walks decimal and approximate AST branches using `CalculatorContext`; handles operators, random values and exact-to-decimal handoff. |
+| `evaluator_functions.c` | Implements named decimal calls for integer, root, transcendental, hyperbolic, aggregate and rounding functions. |
+| `evaluator_trigonometric.c` | Handles angle conversion, reduction and trigonometric calculator calls. |
+| `exact_evaluator.c` | Walks exact AST branches with BigRational and hands exact integers or fractions to the typed result. |
+| `exact_functions.c` | Implements exact powers, proven rational roots, selected integer operations and rounding. |
 | `formatter.c` | Formats a completed result at the requested output scale and notation without changing the stored value. |
 | `functions.c` | Immutable registry of named calls, accepted arities and implementation dispatch identifiers. |
 | `src/main.c` | Interactive command-line shell around the calculator pipeline. |
 | `src/web/web_api.c` | Text-to-result adapter used by the local web server. |
-| `src/web/web_server.c` | Loopback-only HTTP server that serves the calculator page and `POST /api/evaluate`. |
+| `src/web/web_main.c` | Starts the loopback server, parses command-line options and opens the browser when requested. |
+| `src/web/web_server.c` | Handles bounded HTTP connections, embedded assets, calculator sessions and `POST /api/evaluate`. |
 | `src/web/http_request.c` | Bounded, socket-independent HTTP framing and header validation; returns incomplete, ready, malformed or oversized status. |
-| `src/web/web_page.h` | Embedded calculator and API-guide pages with active controls for the current grammar. |
+| `web/` | Editable SK/EN calculator and API HTML, shared CSS, and calculator JavaScript. |
+| `cmake/EmbedWeb.cmake` | Generates the private web asset header in the build tree; it is never edited by hand. |
 
 The dependencies run in one direction:
 
 ```text
-input -> tokenizer -> parser/AST -> evaluator -> BigDecimal -> formatted result
+input -> tokenizer -> parser/AST -> typed exact or decimal evaluator -> CalculatorValue -> formatted result
 ```
 
 Both `main.c` and the web adapter call this pipeline. They own only transport,
@@ -34,7 +41,13 @@ remain in the calculator modules.
 
 ## Local web interface
 
-`numforge_web` serves a self-contained page from the C executable. Its active
+`numforge_web` serves four pages and their CSS/JavaScript/PNG assets from the C
+executable. CMake embeds the files from `web/` into a generated header; asset
+routes use `/assets/calculator.css`, `/assets/api.css` and
+`/assets/calculator.js`; `/assets/logo.png` supplies the header mark and favicon,
+and `/assets/wordmark.png` supplies the guide introduction.
+Editing a source asset and rebuilding updates the
+executable without changing runtime file lookup or installation layout. Its active
 keypad inserts digits, parentheses, `.`, `+`, `-`, `*`, `/`, `π`, `e`, `φ`,
 `^`, `²`, `³`, and `!`, then sends the complete expression to the same web
 adapter used by `POST /api/evaluate`. Typing `,` directly is also valid because
@@ -49,7 +62,7 @@ and exercises its HTTP transport over real sockets.
 The page sends the selected output scale as `?precision=N`; its full-output
 mode sends `?precision=full`. Auto sends 10; Custom uses the numeric field.
 The RAD/DEG selector adds `&angle=rad` or
-`&angle=deg`; the notation selector adds `&notation=auto|plain|scientific|math`.
+`&angle=deg`; the notation selector adds `&notation=auto|plain|scientific|math|fraction`.
 Both settings are preserved when changing the page language. HTTP `POST` requests require an exact
 `Content-Length`. If a browser sends an `Origin`, the server accepts only its
 own loopback origins, preventing unrelated pages from triggering expensive
@@ -60,6 +73,38 @@ text if it fits the input limits. Exponential, logarithmic, trigonometric,
 hyperbolic, and angle-conversion controls are active. Basic abs/sign/min/max and aggregate
 sum/product/mean controls, integer gcd/lcm/mod/isqrt controls
 and sqrt/cbrt/root controls are active.
+
+The browser presents the expression, output settings, result and keypad as a
+single calculation flow. Function categories and the session/history panel are
+beside it on wide screens and follow it on narrow screens. Function search
+matches names and descriptions across all categories; clearing the search
+restores the selected category. Search normalizes Slovak diacritics. Categories
+are listed vertically in a panel distinct from the function buttons, with a
+divider below search. Up to twelve recently used constants, operations and
+functions are remembered; as many as fit appear in one row below the keypad,
+with larger touch targets on narrow screens. Narrow screens scroll at normal scale so controls retain
+usable touch sizes. The SK/EN API guide has a linked table of contents.
+The expression field starts at one line and grows to five as text wraps;
+longer input expands over the result
+without hiding the keypad or function library. Enter collapses the field and
+confirms the calculation; Esc only collapses it. A truncated result uses a visible
+ellipsis and an explicit expansion button.
+On desktop, the result uses the height available above the keypad before
+offering full-result expansion. The calculator shell fits the viewport at ordinary window heights;
+function lists and the always-visible history use internal scrolling. Opening a long
+result shows a centered modal with its own scroll area, copy control and
+outside-click dismissal, leaving the calculator in place. The API guide scrolls
+only its text while the header and section menu remain fixed; at narrow widths
+the menu becomes a horizontal strip. The full-width settings bar sits above the
+expression and stays compact in height. Desktop sidebar space below the function
+library belongs to the session and history. The calculator and guide use colors
+based on Melanie Brown's Deep Purple VS Code theme.
+The six inverse trigonometric and hyperbolic calculator functions accept
+both `arc` and `arcus` spellings alongside their short `a` names. The web
+function search includes those aliases; all spellings dispatch to the same
+operation and argument checks.
+The calculator and guide footers show the CMake project version, MIT license,
+copyright holder and GitHub repository.
 
 Nonblocking sockets use absolute monotonic deadlines: two seconds for the
 complete incoming request and two seconds for a response. Slow byte-by-byte
@@ -73,8 +118,9 @@ the C pipeline independently enforces its own calculation budget.
 ## Retained results and automatic precision
 
 `calculator_compute_value` creates a `CalculatorValue` owning the unformatted
-BigDecimal, its evaluation context and a conservative precision-independence
-flag. Zero-initialize this handle and destroy it before reuse. The original
+BigDecimal projection and, for exact results, a tagged BigInt or BigRational.
+It also stores the evaluation context and a precision-independence flag.
+Zero-initialize this handle and destroy it before reuse. The original
 `calculator_compute` remains a one-shot wrapper with a shared compute/format
 resource budget; the installed numeric library API is unchanged.
 
@@ -83,10 +129,10 @@ Cache hits call only the formatter. Identity includes the exact input text,
 rounding, angle mode and working division policy/precision, not output scale.
 Working precision stays automatic at max(34, N+4), or 34 for full output.
 A precision change in either direction recomputes context-dependent expressions.
-An explicit AST whitelist permits precision-independent arithmetic, powers,
-factorials and exact integer calls only when all their operands qualify. This
-is not a rounded/inexact flag: division, constants and real roots conservatively
-miss on a context change, even when a particular value happens to be exact.
+An exact typed value can be reformatted across output precision changes,
+including recurring rational quotients, proven roots and exact statistics.
+Approximate values remain conservative on context changes. The type tag
+does not claim a rigorous error bound.
 
 The sequential server retains at most eight page IDs, evicts FIFO and destroys
 the evicted handle. Each retained coefficient's limb allocation is bounded by
@@ -128,7 +174,8 @@ server holds eight sessions with FIFO eviction; session eviction is reported
 explicitly and never silently recreates a session on evaluation. Reload,
 language navigation and New session create a new random page ID. There is no
 disk persistence or TTL. Browser history is a bounded display mirror of
-confirmed entries; clicking an entry restores input only. CLI `history` lists
+confirmed entries; clicking an entry inserts its parser-compatible result at
+the input cursor, and a separate button copies that result. CLI `history` lists
 entries and `reset` destroys the session while retaining precision, angle and
 notation settings.
 
@@ -259,16 +306,15 @@ matched case-sensitively; underscores and numeric suffixes are not names.
 
 `^` is right-associative and binds more tightly than unary signs and
 multiplication. Thus `2^3^2` is `2^(3^2)` and `-2^2` is `-(2^2)`. Its evaluator
-uses binary exponentiation: the base is an exact `BigDecimal`, while the
-exponent must be a whole number represented as `BigInt`. This keeps `1.5^3`
-exact while using logarithmically many BigDecimal multiplications. Negative
-exponents use the public precision-aware reciprocal operation. `0^0` is defined
+uses binary exponentiation: exact rational bases and whole-number exponents
+stay rational, including negative exponents. Approximate bases use BigDecimal
+with the current working precision. `0^0` is defined
 as `1`; zero to a negative exponent is division by zero, and fractional
 exponents return an invalid-argument error.
 
 Postfix operators bind tighter than unary signs and multiplication, so `-2²`
-is `-(2²)` and `(2 + 3)!` is valid. Square and cube evaluate as exact
-BigDecimal multiplication: `x²` is `x * x`, and `x³` is `(x * x) * x`.
+is `-(2²)` and `(2 + 3)!` is valid. Square and cube preserve an exact
+rational operand; `x²` is `x * x`, and `x³` is `(x * x) * x`.
 Factorial delegates to `bigint_factorial`; it accepts only a non-negative whole
 number up to 10000 in the calculator, and reports an invalid-argument error for
 other inputs or `VALUE_TOO_LARGE` above that calculator limit.
@@ -294,8 +340,9 @@ constant times a parenthesized expression. Adjacent ASCII names require `*`
 
 `CalculatorContext` holds working division precision, output scale, notation,
 rounding, angle unit, and a time budget. `significant_division` defaults to true: `division_scale`
-then counts significant digits for non-terminating division, defaulting to 34
-with half-even rounding. Terminating division is exact within resource limits.
+then counts significant digits when an exact rational must become BigDecimal,
+defaulting to 34 with half-even rounding. Exact rational divisions remain
+unrounded internally within resource limits.
 An explicitly false mode retains the internal legacy fixed-scale behavior;
 the public BigDecimal division API always retains fixed-scale semantics.
 Output defaults to 10 decimal places and accepts 0..10000. For output `N`,
@@ -304,15 +351,13 @@ rescaling and uses 34 working significant digits. It does not imply infinite
 precision or undo intermediate rounding.
 
 This is an operation-by-operation policy, not a guaranteed error bound for
-the whole expression. Addition, subtraction and multiplication are exact on
-their stored operands. The calculator reduces the coefficient denominator by
-the GCD and removes factors of two and five. If no other factor remains,
-division uses enough decimal places for the exact quotient before restoring
-the operand scales. Thus `(1E34+1)/1-1E34` and `((1E80+1)/8)*8-1E80` give `1`.
-Failure to fit the exact result returns an error, not a rounded substitute.
-Non-terminating division still rounds: `(1/3)*3-1` is `-1E-34` by default.
-Full output resets non-terminating division to 34 working digits;
-it is not a request for the highest possible accuracy.
+the whole expression. Exact literal arithmetic uses reduced BigRational
+values, collapsing a denominator of one to BigInt in the result. Thus
+`(1E34+1)/1-1E34`, `((1E80+1)/8)*8-1E80` and `(1/3)*3-1`
+evaluate exactly. Failure to fit the exact result returns an error, not a
+rounded substitute. The rational becomes BigDecimal at a decimal display or
+when an approximate branch needs it. Full output uses 34 working digits for
+such conversion; it is not a request for infinite displayed digits.
 
 These behaviors are regression-tested in `tests/test_calculator_contract.c`.
 No automatic retry at higher precision, certified error estimate, or
@@ -361,10 +406,15 @@ non-zero result has exponent at least `10` or at most `-10`, the scientific
 path instead rounds the mantissa directly to at most that many places. Exact
 operations remain exact until this optional final formatting step.
 
-The notation setting selects Auto, plain, scientific (`1.23E+45`) or
-mathematical (`1.23 × 10^45`) representation after the same canonical final
-rounding. Auto checks the rounded exponent first, then chooses scientific if
-the exponent magnitude is at least 10 or plain text would exceed 80 characters.
+The notation setting selects Auto, plain, scientific (`1.23E+45`), mathematical
+(`1.23 × 10^45`) or Fraction representation. Auto uses a reduced exact fraction
+when its denominator is at most 10000, its complete text (including sign and
+slash) is at most 16 characters, and that text saves at least two characters
+against the rounded decimal display. Fraction mode shows an exact non-integer
+as `a/b` up to 16 characters. Longer fractions and approximate results use Auto
+decimal formatting; exact integers remain integers. Otherwise Auto checks the
+rounded exponent first, then chooses scientific if the exponent magnitude is at
+least 10 or plain text would exceed 80 characters.
 Changing notation is excluded from numeric cache identity, so it reuses the
 stored result and does not advance `rand` or change `ans`. Plain output above
 the 65536-byte application limit fails without replacing the stored value.

@@ -17,7 +17,7 @@ CalculatorStatus numforge_web_evaluate_session(
 );
 CalculatorStatus numforge_web_evaluate_session_mode(
     CalculatorSession *session, uint64_t revision, bool commit, const char *input,
-    int64_t output_scale, CalculatorAngleUnit angle_unit, BigDecimalFormatMode notation,
+    int64_t output_scale, CalculatorAngleUnit angle_unit, CalculatorNotation notation,
     char **result, CalculatorError *error, bool *reused
 );
 
@@ -56,7 +56,7 @@ CalculatorStatus numforge_web_evaluate_cached(
 );
 CalculatorStatus numforge_web_evaluate_cached_mode(
     NumForgeWebCache *cache, uint64_t revision, const char *input,
-    int64_t output_scale, CalculatorAngleUnit angle_unit, BigDecimalFormatMode notation,
+    int64_t output_scale, CalculatorAngleUnit angle_unit, CalculatorNotation notation,
     char **result, CalculatorError *error, bool *reused
 );
 

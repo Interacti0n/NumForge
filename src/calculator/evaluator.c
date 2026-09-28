@@ -1,6 +1,7 @@
-#include "evaluator.h"
+#include "evaluator_internal.h"
 #include "expression_internal.h"
 #include "random.h"
+#include "exact_evaluator.h"
 
 #include <numforge/bigint.h>
 #include <numforge/runtime.h>
@@ -25,28 +26,6 @@
     Internal helper functions for evaluator operations.
 ------------------------------------------------------------------------------------------------------------------------------
 */
-
-typedef struct CalculatorConstantCache
-{
-    BigDecimal *values[CALCULATOR_CONSTANT_COUNT];
-    int64_t digits[CALCULATOR_CONSTANT_COUNT];
-} CalculatorConstantCache;
-
-typedef struct CalculatorEvaluation
-{
-    const CalculatorContext *context;
-    CalculatorConstantCache *constant_cache;
-    const BigDecimal *answer;
-    uint64_t *random_state;
-} CalculatorEvaluation;
-
-static CalculatorStatus calculator_evaluate_expression(
-    BigDecimal **result,
-    const CalculatorExpression *expression,
-    const CalculatorEvaluation *evaluation,
-    CalculatorError *error
-);
-static CalculatorStatus calculator_from_bigdecimal_status(BigDecimalStatus status);
 
 static CalculatorStatus calculator_evaluate_random_call(
     BigDecimal **result,
@@ -144,7 +123,7 @@ done:
     return status;
 }
 
-static bool calculator_time_limit_reached(
+bool calculator_time_limit_reached(
     const CalculatorEvaluation *evaluation
 )
 {
@@ -153,7 +132,7 @@ static bool calculator_time_limit_reached(
     return !numforge_budget_check() && numforge_budget_failure() == NUMFORGE_BUDGET_TIME;
 }
 
-static CalculatorStatus calculator_from_bigdecimal_status(
+CalculatorStatus calculator_from_bigdecimal_status(
     BigDecimalStatus status
 )
 {
@@ -176,7 +155,7 @@ static CalculatorStatus calculator_from_bigdecimal_status(
     }
 }
 
-static CalculatorStatus calculator_from_bigint_status(
+CalculatorStatus calculator_from_bigint_status(
     BigIntStatus status
 )
 {
@@ -239,7 +218,7 @@ static CalculatorStatus calculator_set_number(
 
 /* Domain checks use public predicates, never numeric representation fields. */
 
-static bool calculator_nonnegative_integer(
+bool calculator_nonnegative_integer(
     const BigDecimal *value
 )
 {
@@ -250,7 +229,7 @@ static bool calculator_nonnegative_integer(
            bigdecimal_sign(&sign, value) == BIGDECIMAL_OK && integer && sign >= 0;
 }
 
-static CalculatorStatus calculator_bigdecimal_to_bigint(
+CalculatorStatus calculator_bigdecimal_to_bigint(
     BigInt **result,
     const BigDecimal *value,
     bool signed_input
@@ -282,7 +261,7 @@ static CalculatorStatus calculator_bigdecimal_to_bigint(
     return status;
 }
 
-static CalculatorStatus calculator_set_bigdecimal_from_bigint(
+CalculatorStatus calculator_set_bigdecimal_from_bigint(
     BigDecimal *value,
     const BigInt *integer
 )
@@ -497,1226 +476,11 @@ static CalculatorStatus calculator_evaluate_postfix(
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
-    Integer-valued calls and their application domain checks.
+    Recursive expression evaluation and function dispatch.
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
-static CalculatorStatus calculator_evaluate_integer_call(
-    BigDecimal **result,
-    const CalculatorExpression *expression,
-    const CalculatorEvaluation *evaluation,
-    CalculatorError *error
-)
-{
-    BigInt *arguments[2] = {NULL, NULL};
-    BigInt *integer_result = NULL;
-    BigDecimal *value = NULL;
-    CalculatorStatus status = CALCULATOR_OK;
-    CalculatorFunctionImplementation operation = expression->data.call.function->implementation;
-    bool child_error = false;
-
-    for (size_t i = 0; i < expression->data.call.count; i++)
-    {
-        status =
-            calculator_evaluate_expression(&value, expression->data.call.arguments[i], evaluation, error);
-
-        if (status != CALCULATOR_OK)
-        {
-            child_error = true;
-            break;
-        }
-
-        {
-            bool signed_input = operation == CALCULATOR_FUNCTION_GCD ||
-                                operation == CALCULATOR_FUNCTION_LCM ||
-                                operation == CALCULATOR_FUNCTION_MOD;
-            status = calculator_bigdecimal_to_bigint(
-                &arguments[i], value, signed_input);
-        }
-        bigdecimal_destroy(value);
-        value = NULL;
-
-        if (status != CALCULATOR_OK)
-        {
-            break;
-        }
-    }
-
-    if (status == CALCULATOR_OK)
-    {
-        integer_result = bigint_create();
-
-        if (integer_result == NULL)
-        {
-            status = CALCULATOR_OUT_OF_MEMORY;
-        }
-    }
-
-    if (status == CALCULATOR_OK)
-    {
-        BigIntStatus integer_status;
-
-        switch (operation)
-        {
-            case CALCULATOR_FUNCTION_GCD:
-                integer_status = bigint_gcd(integer_result, arguments[0], arguments[1]);
-                break;
-            case CALCULATOR_FUNCTION_LCM:
-                integer_status = bigint_lcm(integer_result, arguments[0], arguments[1]);
-                break;
-            case CALCULATOR_FUNCTION_MOD:
-                integer_status = bigint_mod(integer_result, arguments[0], arguments[1]);
-                break;
-            case CALCULATOR_FUNCTION_NPR:
-                integer_status = bigint_permutation(
-                    integer_result, arguments[0], arguments[1]);
-                break;
-            case CALCULATOR_FUNCTION_NCR:
-                integer_status = bigint_combination(
-                    integer_result, arguments[0], arguments[1]);
-                break;
-            default:
-                integer_status = bigint_isqrt(integer_result, arguments[0]);
-                break;
-        }
-
-        status = calculator_from_bigint_status(integer_status);
-    }
-
-    if (status == CALCULATOR_OK)
-    {
-        value = bigdecimal_create();
-        status = value == NULL ? CALCULATOR_OUT_OF_MEMORY
-                               : calculator_set_bigdecimal_from_bigint(value, integer_result);
-    }
-
-    bigint_destroy(arguments[0]);
-    bigint_destroy(arguments[1]);
-    bigint_destroy(integer_result);
-
-    if (calculator_time_limit_reached(evaluation))
-    {
-        status = CALCULATOR_TIME_LIMIT;
-    }
-
-    if (status != CALCULATOR_OK)
-    {
-        bigdecimal_destroy(value);
-
-        if (!child_error)
-        {
-            calculator_error_set(error, status, expression->offset);
-        }
-
-        return status;
-    }
-
-    *result = value;
-
-    return CALCULATOR_OK;
-}
-
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Real-root calls and application degree limits.
-------------------------------------------------------------------------------------------------------------------------------
-*/
-
-static bool calculator_decimal_zero(
-    const BigDecimal *value
-)
-{
-    bool zero = false;
-    (void)bigdecimal_is_zero(&zero, value);
-
-    return zero;
-}
-
-/* Root degree is an application parameter, not a rounded numeric argument. */
-
-static CalculatorStatus calculator_evaluate_root_call(
-    BigDecimal **result,
-    const CalculatorExpression *expression,
-    const CalculatorEvaluation *evaluation,
-    CalculatorError *error
-)
-{
-    BigDecimal *value = NULL, *degree_value = NULL, *limit = NULL;
-    CalculatorFunctionImplementation operation = expression->data.call.function->implementation;
-    uint32_t degree = operation == CALCULATOR_FUNCTION_CBRT ? 3U : 2U;
-    CalculatorStatus status =
-        calculator_evaluate_expression(&value, expression->data.call.arguments[0], evaluation, error);
-    bool child_error = status != CALCULATOR_OK;
-
-    if (status == CALCULATOR_OK && operation == CALCULATOR_FUNCTION_ROOT)
-    {
-        status = calculator_evaluate_expression(
-            &degree_value, expression->data.call.arguments[1], evaluation, error);
-        child_error = status != CALCULATOR_OK;
-
-        if (status == CALCULATOR_OK &&
-            (!calculator_nonnegative_integer(degree_value) || calculator_decimal_zero(degree_value)))
-        {
-            status = CALCULATOR_INVALID_ARGUMENT;
-        }
-
-        if (status == CALCULATOR_OK)
-        {
-            limit = bigdecimal_create();
-            status = limit == NULL ? CALCULATOR_OUT_OF_MEMORY
-                                   : calculator_from_bigdecimal_status(bigdecimal_set_string(
-                                         limit, CALCULATOR_STRINGIFY(CALCULATOR_MAX_ROOT_DEGREE)));
-        }
-
-        if (status == CALCULATOR_OK)
-        {
-            int comparison = 0;
-            status = calculator_from_bigdecimal_status(bigdecimal_compare(&comparison, degree_value, limit));
-
-            if (status == CALCULATOR_OK && comparison > 0)
-            {
-                status = CALCULATOR_VALUE_TOO_LARGE;
-            }
-        }
-
-        if (status == CALCULATOR_OK)
-        {
-            char *text = NULL;
-            status = calculator_from_bigdecimal_status(bigdecimal_to_string(degree_value, &text));
-
-            if (status == CALCULATOR_OK)
-            {
-                degree = (uint32_t)strtoul(text, NULL, 10);
-            }
-
-            free(text);
-        }
-    }
-
-    if (status == CALCULATOR_OK)
-    {
-        int64_t digits = evaluation->context->division_scale;
-
-        if (digits < CALCULATOR_DEFAULT_DIVISION_SCALE)
-        {
-            digits = CALCULATOR_DEFAULT_DIVISION_SCALE;
-        }
-
-        status = calculator_from_bigdecimal_status(
-            bigdecimal_root(value, value, degree, digits, evaluation->context->rounding));
-    }
-
-    bigdecimal_destroy(degree_value);
-    bigdecimal_destroy(limit);
-
-    if (status != CALCULATOR_OK)
-    {
-        bigdecimal_destroy(value);
-
-        if (!child_error)
-        {
-            calculator_error_set(error, status, expression->offset);
-        }
-
-        return status;
-    }
-
-    *result = value;
-
-    return CALCULATOR_OK;
-}
-
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Exponential and logarithmic calls. log(x) uses base ten; log(x; base)
-    accepts an explicit positive base other than one.
-------------------------------------------------------------------------------------------------------------------------------
-*/
-
-static CalculatorStatus calculator_evaluate_transcendental_call(
-    BigDecimal **result,
-    const CalculatorExpression *expression,
-    const CalculatorEvaluation *evaluation,
-    CalculatorError *error
-)
-{
-    BigDecimal *value = NULL;
-    BigDecimal *base = NULL;
-    CalculatorFunctionImplementation operation = expression->data.call.function->implementation;
-    CalculatorStatus status =
-        calculator_evaluate_expression(&value, expression->data.call.arguments[0], evaluation, error);
-    bool child_error = status != CALCULATOR_OK;
-    int64_t digits = evaluation->context->division_scale;
-
-    if (status == CALCULATOR_OK && expression->data.call.count == 2U)
-    {
-        status = calculator_evaluate_expression(
-            &base, expression->data.call.arguments[1], evaluation, error);
-        child_error = status != CALCULATOR_OK;
-    }
-
-    if (digits < CALCULATOR_DEFAULT_DIVISION_SCALE)
-    {
-        digits = CALCULATOR_DEFAULT_DIVISION_SCALE;
-    }
-
-    if (status == CALCULATOR_OK && operation == CALCULATOR_FUNCTION_EXP)
-    {
-        status = calculator_from_bigdecimal_status(
-            bigdecimal_exp(value, value, digits, evaluation->context->rounding));
-    }
-    else if (status == CALCULATOR_OK && operation == CALCULATOR_FUNCTION_LN)
-    {
-        status = calculator_from_bigdecimal_status(
-            bigdecimal_ln(value, value, digits, evaluation->context->rounding));
-    }
-    else if (status == CALCULATOR_OK && base == NULL)
-    {
-        status = calculator_from_bigdecimal_status(
-            bigdecimal_log10(value, value, digits, evaluation->context->rounding));
-    }
-    else if (status == CALCULATOR_OK)
-    {
-        status = calculator_from_bigdecimal_status(
-            bigdecimal_log(value, value, base, digits, evaluation->context->rounding));
-    }
-
-    bigdecimal_destroy(base);
-
-    if (status != CALCULATOR_OK)
-    {
-        bigdecimal_destroy(value);
-
-        if (!child_error)
-        {
-            calculator_error_set(error, status, expression->offset);
-        }
-
-        return status;
-    }
-
-    *result = value;
-    return CALCULATOR_OK;
-}
-
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Hyperbolic calls use the active numeric precision but are independent of
-    the calculator's RAD/DEG angle mode.
-------------------------------------------------------------------------------------------------------------------------------
-*/
-
-static CalculatorStatus calculator_evaluate_hyperbolic_call(
-    BigDecimal **result,
-    const CalculatorExpression *expression,
-    const CalculatorEvaluation *evaluation,
-    CalculatorError *error
-)
-{
-    CalculatorFunctionImplementation operation = expression->data.call.function->implementation;
-    BigDecimal *value = NULL;
-    CalculatorStatus status =
-        calculator_evaluate_expression(&value, expression->data.call.arguments[0], evaluation, error);
-    bool child_error = status != CALCULATOR_OK;
-    int64_t digits = evaluation->context->division_scale;
-
-    if (digits < CALCULATOR_DEFAULT_DIVISION_SCALE)
-    {
-        digits = CALCULATOR_DEFAULT_DIVISION_SCALE;
-    }
-
-    if (status == CALCULATOR_OK)
-    {
-        BigDecimalStatus numeric_status;
-
-        switch (operation)
-        {
-            case CALCULATOR_FUNCTION_SINH:
-                numeric_status = bigdecimal_sinh(
-                    value, value, digits, evaluation->context->rounding);
-                break;
-            case CALCULATOR_FUNCTION_COSH:
-                numeric_status = bigdecimal_cosh(
-                    value, value, digits, evaluation->context->rounding);
-                break;
-            case CALCULATOR_FUNCTION_TANH:
-                numeric_status = bigdecimal_tanh(
-                    value, value, digits, evaluation->context->rounding);
-                break;
-            case CALCULATOR_FUNCTION_ASINH:
-                numeric_status = bigdecimal_asinh(
-                    value, value, digits, evaluation->context->rounding);
-                break;
-            case CALCULATOR_FUNCTION_ACOSH:
-                numeric_status = bigdecimal_acosh(
-                    value, value, digits, evaluation->context->rounding);
-                break;
-            default:
-                numeric_status = bigdecimal_atanh(
-                    value, value, digits, evaluation->context->rounding);
-                break;
-        }
-
-        status = calculator_from_bigdecimal_status(numeric_status);
-    }
-
-    if (status == CALCULATOR_OK && calculator_time_limit_reached(evaluation))
-    {
-        status = CALCULATOR_TIME_LIMIT;
-    }
-
-    if (status != CALCULATOR_OK)
-    {
-        bigdecimal_destroy(value);
-
-        if (!child_error)
-        {
-            calculator_error_set(error, status, expression->offset);
-        }
-
-        return status;
-    }
-
-    *result = value;
-    return CALCULATOR_OK;
-}
-
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Trigonometric calls. The numeric library is radian-only; calculator angle
-    mode performs guarded conversion at the client boundary. Explicit
-    radians/degrees calls are independent of the selected mode.
-------------------------------------------------------------------------------------------------------------------------------
-*/
-
-static CalculatorStatus calculator_convert_angle(
-    BigDecimal *value,
-    bool to_radians,
-    int64_t digits
-)
-{
-    BigDecimal *pi = bigdecimal_create();
-    BigDecimal *factor = bigdecimal_create();
-    BigDecimal *product = bigdecimal_create();
-    BigDecimalStatus numeric_status = BIGDECIMAL_OUT_OF_MEMORY;
-    int64_t conversion_digits;
-
-    if (pi == NULL || factor == NULL || product == NULL)
-    {
-        goto cleanup;
-    }
-
-    if (digits > INT64_MAX - CALCULATOR_ANGLE_GUARD_DIGITS)
-    {
-        numeric_status = BIGDECIMAL_VALUE_TOO_LARGE;
-        goto cleanup;
-    }
-
-    conversion_digits = digits + CALCULATOR_ANGLE_GUARD_DIGITS;
-    numeric_status = bigdecimal_set_constant_significant(
-        pi, BIGDECIMAL_CONSTANT_PI, conversion_digits, BIGDECIMAL_ROUND_HALF_EVEN);
-
-    if (numeric_status != BIGDECIMAL_OK)
-    {
-        goto cleanup;
-    }
-
-    numeric_status = bigdecimal_set_string(factor, "180");
-
-    if (numeric_status != BIGDECIMAL_OK)
-    {
-        goto cleanup;
-    }
-
-    numeric_status = to_radians ? bigdecimal_mul(product, value, pi)
-                                : bigdecimal_mul(product, value, factor);
-
-    if (numeric_status != BIGDECIMAL_OK)
-    {
-        goto cleanup;
-    }
-
-    numeric_status = bigdecimal_div_exact_or_significant(
-        value,
-        product,
-        to_radians ? factor : pi,
-        conversion_digits,
-        BIGDECIMAL_ROUND_HALF_EVEN);
-
-cleanup:
-    bigdecimal_destroy(pi);
-    bigdecimal_destroy(factor);
-    bigdecimal_destroy(product);
-    return calculator_from_bigdecimal_status(numeric_status);
-}
-
-/* Remove complete turns exactly before converting degrees to radians. */
-static CalculatorStatus calculator_reduce_degrees(BigDecimal *value)
-{
-    BigDecimal *turn = bigdecimal_create();
-    BigDecimal *count = bigdecimal_create();
-    BigDecimal *product = bigdecimal_create();
-    BigDecimalStatus status = BIGDECIMAL_OUT_OF_MEMORY;
-
-    if (turn != NULL && count != NULL && product != NULL)
-    {
-        status = bigdecimal_set_string(turn, "360");
-        if (status == BIGDECIMAL_OK)
-        {
-            status = bigdecimal_div(count, value, turn, 0, BIGDECIMAL_ROUND_HALF_EVEN);
-        }
-        if (status == BIGDECIMAL_OK)
-        {
-            status = bigdecimal_mul(product, count, turn);
-        }
-        if (status == BIGDECIMAL_OK)
-        {
-            status = bigdecimal_sub(value, value, product);
-        }
-    }
-
-    bigdecimal_destroy(turn);
-    bigdecimal_destroy(count);
-    bigdecimal_destroy(product);
-    return calculator_from_bigdecimal_status(status);
-}
-
-static CalculatorStatus calculator_degree_tangent_pole(
-    const BigDecimal *value,
-    bool *is_pole
-)
-{
-    BigInt *integer = bigint_create();
-    BigInt *period = bigint_create();
-    BigInt *remainder = bigint_create();
-    BigInt *absolute = bigint_create();
-    BigInt *right_angle = bigint_create();
-    BigDecimalStatus decimal_status;
-    BigIntStatus integer_status = BIGINT_OUT_OF_MEMORY;
-    int comparison = 0;
-
-    *is_pole = false;
-
-    if (integer == NULL || period == NULL || remainder == NULL ||
-        absolute == NULL || right_angle == NULL)
-    {
-        goto cleanup;
-    }
-
-    decimal_status = bigdecimal_to_bigint(integer, value);
-
-    if (decimal_status == BIGDECIMAL_INVALID_ARGUMENT)
-    {
-        integer_status = BIGINT_OK;
-        goto cleanup;
-    }
-
-    if (decimal_status != BIGDECIMAL_OK)
-    {
-        bigint_destroy(integer);
-        bigint_destroy(period);
-        bigint_destroy(remainder);
-        bigint_destroy(absolute);
-        bigint_destroy(right_angle);
-        return calculator_from_bigdecimal_status(decimal_status);
-    }
-
-    integer_status = bigint_set_string(period, "180");
-
-    if (integer_status == BIGINT_OK)
-    {
-        integer_status = bigint_set_string(right_angle, "90");
-    }
-
-    if (integer_status == BIGINT_OK)
-    {
-        integer_status = bigint_mod(remainder, integer, period);
-    }
-
-    if (integer_status == BIGINT_OK)
-    {
-        integer_status = bigint_abs(absolute, remainder);
-    }
-
-    if (integer_status == BIGINT_OK)
-    {
-        comparison = bigint_compare(absolute, right_angle);
-        *is_pole = comparison == 0;
-    }
-
-cleanup:
-    bigint_destroy(integer);
-    bigint_destroy(period);
-    bigint_destroy(remainder);
-    bigint_destroy(absolute);
-    bigint_destroy(right_angle);
-    return calculator_from_bigint_status(integer_status);
-}
-
-static CalculatorStatus calculator_angle_integer_digits(
-    const BigDecimal *value,
-    int64_t *digits
-)
-{
-    char *text = NULL;
-    const char *cursor;
-    const char *exponent;
-    BigDecimalStatus numeric_status;
-    int64_t count = 0;
-
-    numeric_status = bigdecimal_format(
-        value, 0, BIGDECIMAL_ROUND_TOWARD_ZERO, &text);
-
-    if (numeric_status != BIGDECIMAL_OK)
-    {
-        return calculator_from_bigdecimal_status(numeric_status);
-    }
-
-    exponent = strchr(text, 'E');
-
-    if (exponent != NULL)
-    {
-        bool positive = exponent[1] == '+';
-
-        cursor = exponent + 2;
-
-        while (*cursor >= '0' && *cursor <= '9')
-        {
-            int digit = *cursor - '0';
-
-            if (count > (INT64_MAX - digit) / 10)
-            {
-                free(text);
-                return CALCULATOR_VALUE_TOO_LARGE;
-            }
-
-            count = count * 10 + digit;
-            cursor++;
-        }
-
-        if (positive)
-        {
-            if (count == INT64_MAX)
-            {
-                free(text);
-                return CALCULATOR_VALUE_TOO_LARGE;
-            }
-
-            count++;
-        }
-        else
-        {
-            count = 0;
-        }
-    }
-    else
-    {
-        cursor = text;
-
-        if (*cursor == '-')
-        {
-            cursor++;
-        }
-
-        if (*cursor != '0')
-        {
-            while (*cursor >= '0' && *cursor <= '9')
-            {
-                count++;
-                cursor++;
-            }
-        }
-    }
-
-    free(text);
-    *digits = count;
-    return CALCULATOR_OK;
-}
-
-static CalculatorStatus calculator_refine_angle_argument(
-    BigDecimal **value,
-    const CalculatorExpression *argument,
-    const CalculatorEvaluation *evaluation,
-    int64_t result_digits,
-    CalculatorError *error
-)
-{
-    CalculatorContext refined_context;
-    CalculatorEvaluation refined_evaluation;
-    BigDecimal *refined_value = NULL;
-    CalculatorStatus status;
-    int64_t integer_digits = 0;
-    int64_t required_digits;
-    int64_t guard_digits = CALCULATOR_ANGLE_GUARD_DIGITS +
-                           CALCULATOR_ANGLE_REDUCTION_GUARD_DIGITS;
-
-    status = calculator_angle_integer_digits(*value, &integer_digits);
-
-    if (status != CALCULATOR_OK)
-    {
-        return status;
-    }
-
-    if (result_digits > INT64_MAX - guard_digits ||
-        result_digits + guard_digits > INT64_MAX - integer_digits)
-    {
-        return CALCULATOR_VALUE_TOO_LARGE;
-    }
-
-    required_digits = result_digits + guard_digits + integer_digits;
-
-    if (required_digits <= evaluation->context->division_scale)
-    {
-        return CALCULATOR_OK;
-    }
-
-    refined_context = *evaluation->context;
-    refined_context.division_scale = required_digits;
-    refined_evaluation = *evaluation;
-    refined_evaluation.context = &refined_context;
-
-    status = calculator_evaluate_expression(
-        &refined_value, argument, &refined_evaluation, error);
-
-    if (status != CALCULATOR_OK)
-    {
-        return status;
-    }
-
-    bigdecimal_destroy(*value);
-    *value = refined_value;
-    return CALCULATOR_OK;
-}
-
-static CalculatorStatus calculator_evaluate_trigonometric_call(
-    BigDecimal **result,
-    const CalculatorExpression *expression,
-    const CalculatorEvaluation *evaluation,
-    CalculatorError *error
-)
-{
-    CalculatorFunctionImplementation operation = expression->data.call.function->implementation;
-    BigDecimal *value = NULL;
-    CalculatorStatus status =
-        calculator_evaluate_expression(&value, expression->data.call.arguments[0], evaluation, error);
-    bool child_error = status != CALCULATOR_OK;
-    int64_t digits = evaluation->context->division_scale;
-
-    if (digits < CALCULATOR_DEFAULT_DIVISION_SCALE)
-    {
-        digits = CALCULATOR_DEFAULT_DIVISION_SCALE;
-    }
-
-    if (status == CALCULATOR_OK && operation == CALCULATOR_FUNCTION_RADIANS)
-    {
-        status = calculator_convert_angle(value, true, digits);
-    }
-    else if (status == CALCULATOR_OK && operation == CALCULATOR_FUNCTION_DEGREES)
-    {
-        status = calculator_convert_angle(value, false, digits);
-    }
-    else if (status == CALCULATOR_OK)
-    {
-        bool inverse = operation == CALCULATOR_FUNCTION_ASIN ||
-                       operation == CALCULATOR_FUNCTION_ACOS ||
-                       operation == CALCULATOR_FUNCTION_ATAN;
-
-        if (!inverse)
-        {
-            status = calculator_refine_angle_argument(
-                &value,
-                expression->data.call.arguments[0],
-                evaluation,
-                digits,
-                error);
-        }
-
-        if (status == CALCULATOR_OK && !inverse &&
-            evaluation->context->angle_unit == CALCULATOR_ANGLE_DEGREES)
-        {
-            if (operation == CALCULATOR_FUNCTION_TAN)
-            {
-                bool is_pole = false;
-                status = calculator_degree_tangent_pole(value, &is_pole);
-
-                if (status == CALCULATOR_OK && is_pole)
-                {
-                    status = CALCULATOR_INVALID_ARGUMENT;
-                }
-            }
-
-            if (status == CALCULATOR_OK)
-            {
-                status = calculator_reduce_degrees(value);
-            }
-
-            if (status == CALCULATOR_OK)
-            {
-                status = calculator_convert_angle(
-                    value, true, digits + CALCULATOR_ANGLE_REDUCTION_GUARD_DIGITS + 1);
-            }
-        }
-
-        if (status == CALCULATOR_OK)
-        {
-            BigDecimalStatus numeric_status;
-
-            switch (operation)
-            {
-                case CALCULATOR_FUNCTION_SIN:
-                    numeric_status = bigdecimal_sin(
-                        value, value, digits, evaluation->context->rounding);
-                    break;
-                case CALCULATOR_FUNCTION_COS:
-                    numeric_status = bigdecimal_cos(
-                        value, value, digits, evaluation->context->rounding);
-                    break;
-                case CALCULATOR_FUNCTION_TAN:
-                    numeric_status = bigdecimal_tan(
-                        value, value, digits, evaluation->context->rounding);
-                    break;
-                case CALCULATOR_FUNCTION_ASIN:
-                    numeric_status = bigdecimal_asin(
-                        value, value, digits, evaluation->context->rounding);
-                    break;
-                case CALCULATOR_FUNCTION_ACOS:
-                    numeric_status = bigdecimal_acos(
-                        value, value, digits, evaluation->context->rounding);
-                    break;
-                default:
-                    numeric_status = bigdecimal_atan(
-                        value, value, digits, evaluation->context->rounding);
-                    break;
-            }
-
-            status = calculator_from_bigdecimal_status(numeric_status);
-        }
-
-        if (status == CALCULATOR_OK && inverse &&
-            evaluation->context->angle_unit == CALCULATOR_ANGLE_DEGREES)
-        {
-            status = calculator_convert_angle(value, false, digits);
-        }
-    }
-
-    if (status == CALCULATOR_OK && calculator_time_limit_reached(evaluation))
-    {
-        status = CALCULATOR_TIME_LIMIT;
-    }
-
-    if (status != CALCULATOR_OK)
-    {
-        bigdecimal_destroy(value);
-
-        if (!child_error)
-        {
-            calculator_error_set(error, status, expression->offset);
-        }
-
-        return status;
-    }
-
-    *result = value;
-    return CALCULATOR_OK;
-}
-
-/* Evaluate basic calls left to right, retaining at most the selected value
- * and the current argument. Even an unselected argument must be evaluated
- * so that its errors are not silently discarded. */
-
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Decimal selection calls: absolute value, sign, minimum, and maximum.
-------------------------------------------------------------------------------------------------------------------------------
-*/
-
-static CalculatorStatus calculator_evaluate_basic_call(
-    BigDecimal **result,
-    const CalculatorExpression *expression,
-    const CalculatorEvaluation *evaluation,
-    CalculatorError *error
-)
-{
-    BigDecimal *selected = NULL;
-    CalculatorFunctionImplementation operation = expression->data.call.function->implementation;
-    CalculatorStatus status =
-        calculator_evaluate_expression(&selected, expression->data.call.arguments[0], evaluation, error);
-
-    if (status != CALCULATOR_OK)
-    {
-        return status;
-    }
-
-    if (operation == CALCULATOR_FUNCTION_ABS)
-    {
-        status = calculator_from_bigdecimal_status(bigdecimal_abs(selected, selected));
-    }
-    else if (operation == CALCULATOR_FUNCTION_SIGN)
-    {
-        int numeric_sign = 0;
-        (void)bigdecimal_sign(&numeric_sign, selected);
-        const char *sign = numeric_sign == 0 ? "0" : numeric_sign < 0 ? "-1" : "1";
-        status = calculator_from_bigdecimal_status(bigdecimal_set_string(selected, sign));
-    }
-    else
-    {
-        for (size_t index = 1; index < expression->data.call.count; index++)
-        {
-            BigDecimal *argument = NULL;
-            int comparison = 0;
-            status = calculator_evaluate_expression(
-                &argument, expression->data.call.arguments[index], evaluation, error);
-
-            if (status != CALCULATOR_OK)
-            {
-                bigdecimal_destroy(selected);
-
-                return status;
-            }
-
-            status = calculator_from_bigdecimal_status(bigdecimal_compare(&comparison, argument, selected));
-
-            if (status == CALCULATOR_OK && ((operation == CALCULATOR_FUNCTION_MIN && comparison < 0) ||
-                                            (operation == CALCULATOR_FUNCTION_MAX && comparison > 0)))
-            {
-                BigDecimal *previous = selected;
-                selected = argument;
-                argument = previous;
-            }
-
-            bigdecimal_destroy(argument);
-
-            if (status != CALCULATOR_OK)
-            {
-                break;
-            }
-        }
-    }
-
-    if (status == CALCULATOR_OK && calculator_time_limit_reached(evaluation))
-    {
-        status = CALCULATOR_TIME_LIMIT;
-    }
-
-    if (status != CALCULATOR_OK)
-    {
-        bigdecimal_destroy(selected);
-        calculator_error_set(error, status, expression->offset);
-
-        return status;
-    }
-
-    *result = selected;
-
-    return CALCULATOR_OK;
-}
-
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Variadic decimal aggregates and statistics. The public BigDecimal API owns
-    all numeric semantics; the calculator only evaluates arguments and supplies
-    context.
-------------------------------------------------------------------------------------------------------------------------------
-*/
-
-static CalculatorStatus calculator_evaluate_aggregate_call(
-    BigDecimal **result,
-    const CalculatorExpression *expression,
-    const CalculatorEvaluation *evaluation,
-    CalculatorError *error
-)
-{
-    BigDecimal *arguments[CALCULATOR_MAX_CALL_ARGUMENTS] = {NULL};
-    const BigDecimal *inputs[CALCULATOR_MAX_CALL_ARGUMENTS];
-    BigDecimal *value = NULL;
-    CalculatorStatus status = CALCULATOR_OK;
-    CalculatorFunctionImplementation operation = expression->data.call.function->implementation;
-    bool child_error = false;
-
-    for (size_t index = 0U; index < expression->data.call.count; index++)
-    {
-        status = calculator_evaluate_expression(
-            &arguments[index], expression->data.call.arguments[index], evaluation, error);
-
-        if (status != CALCULATOR_OK)
-        {
-            child_error = true;
-            break;
-        }
-
-        inputs[index] = arguments[index];
-    }
-
-    if (status == CALCULATOR_OK)
-    {
-        value = bigdecimal_create();
-
-        if (value == NULL)
-        {
-            status = CALCULATOR_OUT_OF_MEMORY;
-        }
-    }
-
-    if (status == CALCULATOR_OK)
-    {
-        BigDecimalStatus decimal_status;
-
-        if (operation == CALCULATOR_FUNCTION_SUM)
-        {
-            decimal_status = bigdecimal_sum(value, inputs, expression->data.call.count);
-        }
-        else if (operation == CALCULATOR_FUNCTION_PRODUCT)
-        {
-            decimal_status = bigdecimal_product(value, inputs, expression->data.call.count);
-        }
-        else if (operation == CALCULATOR_FUNCTION_MEAN)
-        {
-            decimal_status = bigdecimal_mean(
-                value,
-                inputs,
-                expression->data.call.count,
-                evaluation->context->division_scale,
-                evaluation->context->rounding);
-        }
-        else if (operation == CALCULATOR_FUNCTION_MEDIAN)
-        {
-            decimal_status = bigdecimal_median(
-                value, inputs, expression->data.call.count);
-        }
-        else if (operation == CALCULATOR_FUNCTION_GEOMETRIC_MEAN)
-        {
-            decimal_status = bigdecimal_geometric_mean(
-                value,
-                inputs,
-                expression->data.call.count,
-                evaluation->context->division_scale,
-                evaluation->context->rounding);
-        }
-        else if (operation == CALCULATOR_FUNCTION_HARMONIC_MEAN)
-        {
-            decimal_status = bigdecimal_harmonic_mean(
-                value,
-                inputs,
-                expression->data.call.count,
-                evaluation->context->division_scale,
-                evaluation->context->rounding);
-        }
-        else if (operation == CALCULATOR_FUNCTION_VARIANCE)
-        {
-            decimal_status = bigdecimal_variance_population(
-                value,
-                inputs,
-                expression->data.call.count,
-                evaluation->context->division_scale,
-                evaluation->context->rounding);
-        }
-        else if (operation == CALCULATOR_FUNCTION_STANDARD_DEVIATION_POPULATION)
-        {
-            decimal_status = bigdecimal_standard_deviation_population(
-                value,
-                inputs,
-                expression->data.call.count,
-                evaluation->context->division_scale,
-                evaluation->context->rounding);
-        }
-        else
-        {
-            decimal_status = bigdecimal_standard_deviation_sample(
-                value,
-                inputs,
-                expression->data.call.count,
-                evaluation->context->division_scale,
-                evaluation->context->rounding);
-        }
-
-        status = calculator_from_bigdecimal_status(decimal_status);
-    }
-
-    for (size_t index = 0U; index < expression->data.call.count; index++)
-    {
-        bigdecimal_destroy(arguments[index]);
-    }
-
-    if (status == CALCULATOR_OK && calculator_time_limit_reached(evaluation))
-    {
-        status = CALCULATOR_TIME_LIMIT;
-    }
-
-    if (status != CALCULATOR_OK)
-    {
-        bigdecimal_destroy(value);
-
-        if (!child_error)
-        {
-            calculator_error_set(error, status, expression->offset);
-        }
-
-        return status;
-    }
-
-    *result = value;
-    return CALCULATOR_OK;
-}
-
-/* Decimal-place arguments are exact integers. Bounds are checked before text
- * conversion so compact values with enormous exponents are rejected without
- * expanding them into impractically large strings. */
-static CalculatorStatus calculator_decimal_to_i64(
-    const BigDecimal *value,
-    int64_t *result
-)
-{
-    BigDecimal *minimum = NULL;
-    BigDecimal *maximum = NULL;
-    char *text = NULL;
-    bool integer = false;
-    int comparison = 0;
-    CalculatorStatus status = calculator_from_bigdecimal_status(
-        bigdecimal_is_integer(&integer, value));
-
-    if (status != CALCULATOR_OK || !integer)
-    {
-        return status == CALCULATOR_OK ? CALCULATOR_INVALID_ARGUMENT : status;
-    }
-
-    minimum = bigdecimal_create();
-    maximum = bigdecimal_create();
-
-    if (minimum == NULL || maximum == NULL)
-    {
-        status = CALCULATOR_OUT_OF_MEMORY;
-        goto cleanup;
-    }
-
-    status = calculator_from_bigdecimal_status(
-        bigdecimal_set_string(minimum, "-9223372036854775808"));
-
-    if (status == CALCULATOR_OK)
-    {
-        status = calculator_from_bigdecimal_status(
-            bigdecimal_set_string(maximum, "9223372036854775807"));
-    }
-
-    if (status == CALCULATOR_OK)
-    {
-        status = calculator_from_bigdecimal_status(
-            bigdecimal_compare(&comparison, value, minimum));
-    }
-
-    if (status == CALCULATOR_OK && comparison < 0)
-    {
-        status = CALCULATOR_VALUE_TOO_LARGE;
-    }
-
-    if (status == CALCULATOR_OK)
-    {
-        status = calculator_from_bigdecimal_status(
-            bigdecimal_compare(&comparison, value, maximum));
-    }
-
-    if (status == CALCULATOR_OK && comparison > 0)
-    {
-        status = CALCULATOR_VALUE_TOO_LARGE;
-    }
-
-    if (status == CALCULATOR_OK)
-    {
-        status = calculator_from_bigdecimal_status(
-            bigdecimal_to_string(value, &text));
-    }
-
-    if (status == CALCULATOR_OK)
-    {
-        *result = (int64_t)strtoimax(text, NULL, 10);
-    }
-
-cleanup:
-    free(text);
-    bigdecimal_destroy(minimum);
-    bigdecimal_destroy(maximum);
-    return status;
-}
-
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Integer and decimal-place rounding calls.
-------------------------------------------------------------------------------------------------------------------------------
-*/
-
-static CalculatorStatus calculator_evaluate_rounding_call(
-    BigDecimal **result,
-    const CalculatorExpression *expression,
-    const CalculatorEvaluation *evaluation,
-    CalculatorError *error
-)
-{
-    CalculatorFunctionImplementation operation = expression->data.call.function->implementation;
-    BigDecimal *value = NULL;
-    BigDecimal *places_value = NULL;
-    int64_t places = 0;
-    CalculatorStatus status = calculator_evaluate_expression(
-        &value, expression->data.call.arguments[0], evaluation, error);
-    bool child_error = status != CALCULATOR_OK;
-
-    if (status == CALCULATOR_OK && expression->data.call.count == 2U)
-    {
-        status = calculator_evaluate_expression(
-            &places_value, expression->data.call.arguments[1], evaluation, error);
-        child_error = status != CALCULATOR_OK;
-    }
-
-    if (status == CALCULATOR_OK && places_value != NULL)
-    {
-        status = calculator_decimal_to_i64(places_value, &places);
-    }
-
-    if (status == CALCULATOR_OK)
-    {
-        BigDecimalStatus decimal_status;
-
-        switch (operation)
-        {
-            case CALCULATOR_FUNCTION_FLOOR:
-                decimal_status = bigdecimal_floor(value, value);
-                break;
-            case CALCULATOR_FUNCTION_CEIL:
-                decimal_status = bigdecimal_ceil(value, value);
-                break;
-            case CALCULATOR_FUNCTION_TRUNC:
-                decimal_status = bigdecimal_trunc(value, value);
-                break;
-            default:
-                decimal_status = bigdecimal_round(value, value, places);
-                break;
-        }
-
-        status = calculator_from_bigdecimal_status(decimal_status);
-    }
-
-    bigdecimal_destroy(places_value);
-
-    if (status == CALCULATOR_OK && calculator_time_limit_reached(evaluation))
-    {
-        status = CALCULATOR_TIME_LIMIT;
-    }
-
-    if (status != CALCULATOR_OK)
-    {
-        bigdecimal_destroy(value);
-
-        if (!child_error)
-        {
-            calculator_error_set(error, status, expression->offset);
-        }
-
-        return status;
-    }
-
-    *result = value;
-    return CALCULATOR_OK;
-}
-
-static CalculatorStatus calculator_evaluate_expression(
+CalculatorStatus calculator_evaluate_expression(
     BigDecimal **result,
     const CalculatorExpression *expression,
     const CalculatorEvaluation *evaluation,
@@ -1731,6 +495,48 @@ static CalculatorStatus calculator_evaluate_expression(
         calculator_error_set(error, CALCULATOR_TIME_LIMIT, expression->offset);
 
         return CALCULATOR_TIME_LIMIT;
+    }
+
+    if (evaluation->context->significant_division &&
+        (expression->type == CALCULATOR_EXPRESSION_BINARY ||
+         expression->type == CALCULATOR_EXPRESSION_POSTFIX ||
+         expression->type == CALCULATOR_EXPRESSION_CALL ||
+         (expression->type == CALCULATOR_EXPRESSION_UNARY &&
+          expression->data.unary.operand->type == CALCULATOR_EXPRESSION_BINARY)) &&
+        calculator_exact_supported(expression, evaluation->typed_answer))
+    {
+        BigRational *exact = NULL;
+        value = bigdecimal_create();
+        status = value == NULL ? CALCULATOR_OUT_OF_MEMORY :
+            calculator_evaluate_exact(&exact, expression, evaluation->typed_answer, error);
+        if (status == CALCULATOR_NOT_IMPLEMENTED)
+        {
+            bigrational_destroy(exact);
+            bigdecimal_destroy(value);
+            calculator_error_clear(error);
+        }
+        else
+        {
+            if (status == CALCULATOR_OK)
+            {
+                BigRationalStatus rational_status = bigrational_to_bigdecimal(
+                    value, exact, evaluation->context->division_scale, evaluation->context->rounding);
+                status = rational_status == BIGRATIONAL_OK ? CALCULATOR_OK :
+                    rational_status == BIGRATIONAL_OUT_OF_MEMORY ? CALCULATOR_OUT_OF_MEMORY :
+                    rational_status == BIGRATIONAL_SCALE_OVERFLOW ? CALCULATOR_SCALE_OVERFLOW :
+                    rational_status == BIGRATIONAL_VALUE_TOO_LARGE ? CALCULATOR_VALUE_TOO_LARGE :
+                    CALCULATOR_INVALID_ARGUMENT;
+            }
+            bigrational_destroy(exact);
+            if (status == CALCULATOR_OK)
+            {
+                *result = value;
+                return CALCULATOR_OK;
+            }
+            bigdecimal_destroy(value);
+            calculator_error_set(error, status, expression->offset);
+            return status;
+        }
     }
 
     if (expression->type == CALCULATOR_EXPRESSION_ANSWER)
@@ -2090,6 +896,7 @@ static CalculatorStatus calculator_evaluate_impl(
     const CalculatorExpression *expression,
     const CalculatorContext *context,
     const BigDecimal *answer,
+    const CalculatorValue *typed_answer,
     uint64_t *random_state,
     CalculatorError *error
 )
@@ -2138,6 +945,7 @@ static CalculatorStatus calculator_evaluate_impl(
     evaluation.context = context;
     evaluation.constant_cache = &constant_cache;
     evaluation.answer = answer;
+    evaluation.typed_answer = typed_answer;
     evaluation.random_state = random_state;
 
     for (size_t index = 0U; index < CALCULATOR_CONSTANT_COUNT; index++)
@@ -2186,7 +994,7 @@ CalculatorStatus calculator_evaluate(
     CalculatorError *error
 )
 {
-    return calculator_evaluate_with_answer(result, expression, context, NULL, NULL, error);
+    return calculator_evaluate_with_answer(result, expression, context, NULL, NULL, NULL, error);
 }
 
 CalculatorStatus calculator_evaluate_with_answer(
@@ -2194,6 +1002,7 @@ CalculatorStatus calculator_evaluate_with_answer(
     const CalculatorExpression *expression,
     const CalculatorContext *context,
     const BigDecimal *answer,
+    const CalculatorValue *typed_answer,
     uint64_t *random_state,
     CalculatorError *error
 )
@@ -2209,13 +1018,13 @@ CalculatorStatus calculator_evaluate_with_answer(
 
     if (context == NULL)
     {
-        return calculator_evaluate_impl(result, expression, context, answer, random_state, error);
+        return calculator_evaluate_impl(result, expression, context, answer, typed_answer, random_state, error);
     }
 
     owner = numforge_budget_begin(context->time_limit_ms < 0 ? 0U : (uint64_t)context->time_limit_ms,
                                   CALCULATOR_ALLOCATION_BUDGET,
                                   CALCULATOR_SINGLE_ALLOCATION);
-    status = calculator_evaluate_impl(result, expression, context, answer, random_state, error);
+    status = calculator_evaluate_impl(result, expression, context, answer, typed_answer, random_state, error);
 
     if (status != CALCULATOR_OK && context->time_limit_ms >= 0)
     {

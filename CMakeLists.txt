@@ -104,6 +104,7 @@ add_library(numforge STATIC
     src/bigdecimal/format.c
     src/bigdecimal/format_mode.c
     src/bigdecimal/constants.c
+    src/bigrational/bigrational.c
     src/internal/numforge_alloc.c
 )
 
@@ -111,12 +112,17 @@ add_library(numforge STATIC
 if(NUMFORGE_BUILD_APPS OR BUILD_TESTING OR NUMFORGE_BUILD_FUZZERS OR NUMFORGE_BUILD_BENCHMARKS)
     add_library(numforge_client STATIC
         src/calculator/calculator.c
+        src/calculator/value.c
         src/calculator/session.c
         src/calculator/random.c
         src/calculator/constants.c
         src/calculator/tokenizer.c
         src/calculator/parser.c
         src/calculator/evaluator.c
+        src/calculator/evaluator_functions.c
+        src/calculator/evaluator_trigonometric.c
+        src/calculator/exact_evaluator.c
+        src/calculator/exact_functions.c
         src/calculator/functions.c
         src/calculator/formatter.c
         src/web/web_api.c
@@ -172,14 +178,44 @@ numforge_enable_diagnostics(calculator)
 # Local web application
 # ============================================================
 
+set(NUMFORGE_WEB_ASSETS
+    LICENSE
+    web/calculator.sk.html
+    web/calculator.en.html
+    web/api.sk.html
+    web/api.en.html
+    web/calculator.css
+    web/api.css
+    web/navigation.js
+    web/calculator.js
+    web/logo.png
+    web/wordmark.png
+)
+set(NUMFORGE_WEB_GENERATED_DIR "${PROJECT_BINARY_DIR}/generated/web")
+set(NUMFORGE_WEB_GENERATED_HEADER "${NUMFORGE_WEB_GENERATED_DIR}/web_page.h")
+add_custom_command(
+    OUTPUT "${NUMFORGE_WEB_GENERATED_HEADER}"
+    COMMAND "${CMAKE_COMMAND}"
+        "-DNUMFORGE_WEB_SOURCE_DIR=${PROJECT_SOURCE_DIR}/web"
+        "-DNUMFORGE_WEB_OUTPUT=${NUMFORGE_WEB_GENERATED_HEADER}"
+        "-DNUMFORGE_WEB_VERSION=${PROJECT_VERSION}"
+        -P "${PROJECT_SOURCE_DIR}/cmake/EmbedWeb.cmake"
+    DEPENDS "${PROJECT_SOURCE_DIR}/cmake/EmbedWeb.cmake"
+        ${NUMFORGE_WEB_ASSETS}
+    VERBATIM
+)
+
 add_executable(numforge_web
+    src/web/web_main.c
     src/web/web_server.c
+    "${NUMFORGE_WEB_GENERATED_HEADER}"
 )
 
 target_include_directories(numforge_web
     PRIVATE
         ${PROJECT_SOURCE_DIR}/src/calculator
         ${PROJECT_SOURCE_DIR}/src/web
+        ${NUMFORGE_WEB_GENERATED_DIR}
 )
 
 target_link_libraries(numforge_web
@@ -363,6 +399,11 @@ if(BUILD_TESTING)
     add_executable(bigdecimal_tests
         tests/test_bigdecimal.c
     )
+
+    add_executable(bigrational_tests tests/test_bigrational.c)
+    target_link_libraries(bigrational_tests PRIVATE numforge unity)
+    numforge_enable_diagnostics(bigrational_tests)
+    add_test(NAME bigrational_tests COMMAND bigrational_tests)
 
     target_link_libraries(bigdecimal_tests
         PRIVATE

@@ -50,28 +50,56 @@ static void test_exact_results_reformat_across_precision_changes(void)
     check_value("100!", -1, CALCULATOR_ANGLE_RADIANS, 3U, true);
     check_value("100!", 0, CALCULATOR_ANGLE_RADIANS, 4U, true);
     check_value("pow(1.25;3)+isqrt(99)", 2, CALCULATOR_ANGLE_RADIANS, 5U, false);
-    check_value("pow(1.25;3)+isqrt(99)", 100, CALCULATOR_ANGLE_RADIANS, 6U, false);
+    check_value("pow(1.25;3)+isqrt(99)", 100, CALCULATOR_ANGLE_RADIANS, 6U, true);
     check_value("sum(1.25;2.75)+product(2;3)", 2, CALCULATOR_ANGLE_RADIANS, 7U, false);
     check_value("sum(1.25;2.75)+product(2;3)", 100, CALCULATOR_ANGLE_RADIANS, 8U, true);
     check_value("median(9;-1;2;4)", 2, CALCULATOR_ANGLE_RADIANS, 9U, false);
     check_value("median(9;-1;2;4)", 100, CALCULATOR_ANGLE_RADIANS, 10U, true);
 }
 
+static void test_fraction_notation_reformats_cached_value(void)
+{
+    CalculatorError error;
+    char *text = NULL;
+    bool reused = false;
+
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, numforge_web_evaluate_cached_mode(&cache, 1U,
+        "1/3", 10, CALCULATOR_ANGLE_RADIANS, CALCULATOR_NOTATION_AUTO,
+        &text, &error, &reused));
+    TEST_ASSERT_FALSE(reused);
+    TEST_ASSERT_EQUAL_STRING("1/3", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, numforge_web_evaluate_cached_mode(&cache, 2U,
+        "1/3", 10, CALCULATOR_ANGLE_RADIANS, CALCULATOR_NOTATION_PLAIN,
+        &text, &error, &reused));
+    TEST_ASSERT_TRUE(reused);
+    TEST_ASSERT_EQUAL_STRING("0.3333333333", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, numforge_web_evaluate_cached_mode(&cache, 3U,
+        "1/3", 10, CALCULATOR_ANGLE_RADIANS, CALCULATOR_NOTATION_FRACTION,
+        &text, &error, &reused));
+    TEST_ASSERT_TRUE(reused);
+    TEST_ASSERT_EQUAL_STRING("1/3", text);
+    free(text);
+}
+
 static void test_context_changes_recompute_in_both_directions(void)
 {
     check_value("1/3", 10, CALCULATOR_ANGLE_RADIANS, 1U, false);
     check_value("1/3", 20, CALCULATOR_ANGLE_RADIANS, 2U, true);
-    check_value("1/3", 50, CALCULATOR_ANGLE_RADIANS, 3U, false);
-    check_value("1/3", 10, CALCULATOR_ANGLE_RADIANS, 4U, false);
+    check_value("1/3", 50, CALCULATOR_ANGLE_RADIANS, 3U, true);
+    check_value("1/3", 10, CALCULATOR_ANGLE_RADIANS, 4U, true);
     check_value("1/3", -1, CALCULATOR_ANGLE_RADIANS, 5U, true);
     check_value("mean(1;2;2)", 10, CALCULATOR_ANGLE_RADIANS, 6U, false);
-    check_value("mean(1;2;2)", 50, CALCULATOR_ANGLE_RADIANS, 7U, false);
+    check_value("mean(1;2;2)", 50, CALCULATOR_ANGLE_RADIANS, 7U, true);
     check_value("variance(1;2;3)", 10, CALCULATOR_ANGLE_RADIANS, 8U, false);
-    check_value("variance(1;2;3)", 50, CALCULATOR_ANGLE_RADIANS, 9U, false);
+    check_value("variance(1;2;3)", 50, CALCULATOR_ANGLE_RADIANS, 9U, true);
     check_value("geomean(1;2)", 10, CALCULATOR_ANGLE_RADIANS, 10U, false);
     check_value("geomean(1;2)", 50, CALCULATOR_ANGLE_RADIANS, 11U, false);
     check_value("3^-1", 10, CALCULATOR_ANGLE_RADIANS, 12U, false);
-    check_value("3^-1", 50, CALCULATOR_ANGLE_RADIANS, 13U, false);
+    check_value("3^-1", 50, CALCULATOR_ANGLE_RADIANS, 13U, true);
     check_value("sin(90)", 10, CALCULATOR_ANGLE_DEGREES, 14U, false);
     check_value("sin(90)", 10, CALCULATOR_ANGLE_RADIANS, 15U, false);
 }
@@ -79,11 +107,11 @@ static void test_context_changes_recompute_in_both_directions(void)
 static void test_integer_looking_result_is_not_an_exactness_proof(void)
 {
     check_value("(1E40+1)/3*3-1E40", 10, CALCULATOR_ANGLE_RADIANS, 1U, false);
-    check_value("(1E40+1)/3*3-1E40", 50, CALCULATOR_ANGLE_RADIANS, 2U, false);
+    check_value("(1E40+1)/3*3-1E40", 50, CALCULATOR_ANGLE_RADIANS, 2U, true);
     check_value("sin(0)", 10, CALCULATOR_ANGLE_RADIANS, 3U, false);
     check_value("sin(0)", 50, CALCULATOR_ANGLE_RADIANS, 4U, false);
     check_value("sqrt(4)", 10, CALCULATOR_ANGLE_RADIANS, 5U, false);
-    check_value("sqrt(4)", 50, CALCULATOR_ANGLE_RADIANS, 6U, false);
+    check_value("sqrt(4)", 50, CALCULATOR_ANGLE_RADIANS, 6U, true);
 }
 
 static void test_failures_and_older_requests_do_not_replace_success(void)
@@ -142,6 +170,7 @@ int main(void)
 {
     UNITY_BEGIN();
     RUN_TEST(test_exact_results_reformat_across_precision_changes);
+    RUN_TEST(test_fraction_notation_reformats_cached_value);
     RUN_TEST(test_context_changes_recompute_in_both_directions);
     RUN_TEST(test_integer_looking_result_is_not_an_exactness_proof);
     RUN_TEST(test_failures_and_older_requests_do_not_replace_success);

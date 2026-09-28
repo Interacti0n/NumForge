@@ -35,7 +35,7 @@ void test_web_api_evaluates_with_exact_c_bigdecimal(void)
 
     result = NULL;
     TEST_ASSERT_EQUAL(CALCULATOR_OK, numforge_web_evaluate("1,25E-1 + .25", &result, &error));
-    TEST_ASSERT_EQUAL_STRING("0.375", result);
+    TEST_ASSERT_EQUAL_STRING("3/8", result);
     free(result);
 
     result = NULL;
@@ -55,7 +55,7 @@ void test_web_api_evaluates_with_exact_c_bigdecimal(void)
 
     result = NULL;
     TEST_ASSERT_EQUAL(CALCULATOR_OK, numforge_web_evaluate("1.5^3 + 2^10", &result, &error));
-    TEST_ASSERT_EQUAL_STRING("1027.375", result);
+    TEST_ASSERT_EQUAL_STRING("8219/8", result);
     free(result);
 
 }
@@ -67,7 +67,7 @@ void test_web_api_honors_output_precision(void)
 
     TEST_ASSERT_EQUAL(CALCULATOR_OK,
                       numforge_web_evaluate_with_output_scale("1 / 3", 3, &result, &error));
-    TEST_ASSERT_EQUAL_STRING("0.333", result);
+    TEST_ASSERT_EQUAL_STRING("1/3", result);
     free(result);
 
     result = NULL;
@@ -116,7 +116,32 @@ void test_web_api_honors_output_precision(void)
         CALCULATOR_OK,
         numforge_web_evaluate_with_output_scale(
             "1 / 3", CALCULATOR_UNLIMITED_OUTPUT_SCALE, &result, &error));
-    TEST_ASSERT_EQUAL_STRING("0.3333333333333333333333333333333333", result);
+    TEST_ASSERT_EQUAL_STRING("1/3", result);
+    free(result);
+}
+
+void test_web_api_fraction_notation(void)
+{
+    CalculatorError error;
+    char *result = NULL;
+    bool reused = false;
+
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, numforge_web_evaluate_cached_mode(NULL, 0U,
+        "0.1+0.2", 10, CALCULATOR_ANGLE_RADIANS, CALCULATOR_NOTATION_FRACTION,
+        &result, &error, &reused));
+    TEST_ASSERT_EQUAL_STRING("3/10", result);
+    free(result);
+    result = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, numforge_web_evaluate_cached_mode(NULL, 0U,
+        "123456789012345/7", 10, CALCULATOR_ANGLE_RADIANS, CALCULATOR_NOTATION_FRACTION,
+        &result, &error, &reused));
+    TEST_ASSERT_NULL(strchr(result, '/'));
+    free(result);
+    result = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, numforge_web_evaluate_cached_mode(NULL, 0U,
+        "sqrt(2)", 10, CALCULATOR_ANGLE_RADIANS, CALCULATOR_NOTATION_FRACTION,
+        &result, &error, &reused));
+    TEST_ASSERT_NULL(strchr(result, '/'));
     free(result);
 }
 
@@ -256,6 +281,7 @@ int main(void)
 
     RUN_TEST(test_web_api_evaluates_with_exact_c_bigdecimal);
     RUN_TEST(test_web_api_honors_output_precision);
+    RUN_TEST(test_web_api_fraction_notation);
     RUN_TEST(test_web_api_honors_angle_units);
     RUN_TEST(test_web_api_preserves_calculator_errors);
     RUN_TEST(test_web_api_rejects_empty_and_oversized_input);

@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#17002f">
+  <style>html { background: #17002f; } body { visibility: hidden; } html.css-error body { visibility: visible; }</style>
+  <title>NumForge · Precision calculator</title>
+  <link rel="icon" type="image/png" href="/assets/logo.png">
+  <link rel="stylesheet" href="/assets/calculator.css" onerror="document.documentElement.classList.add('css-error')">
+</head>
+<body>
+  <div class="app-shell calculator-shell">
+    <header class="page-header">
+      <a class="brand" href="/?lang=en" aria-label="NumForge">
+        <img class="brand-mark" src="/assets/logo.png" alt="" width="45" height="45">
+        <span class="brand-text"><strong>NumForge</strong><small>Precision calculator</small></span>
+      </a>
+      <nav class="header-actions" aria-label="Navigation">
+        <a class="guide-link" href="/api?lang=en">Guide & API <span aria-hidden="true">↗</span></a>
+        <span class="language-switch" aria-label="Language selection">
+          <a href="/?lang=sk" lang="sk"  title="Slovenčina">🇸🇰 SK</a>
+          <a href="/?lang=en" lang="en" aria-current="true" title="English">🇬🇧 EN</a>
+        </span>
+      </nav>
+    </header>
+
+    <div class="workspace">
+      <main class="calculator-column">
+        <div class="intro">
+          <p class="eyebrow">CALCULATION WORKSPACE</p>
+          <h1>Exact expressions. Clear results.</h1>
+          <p>Type naturally, use the keypad, or pick a function. Results preview as you type; Enter saves them to history.</p>
+        </div>
+
+        <section class="card precision" aria-labelledby="settings-title">
+          <div class="section-title settings-title"><span class="section-icon" aria-hidden="true">⚙</span><h2 id="settings-title">Settings</h2></div>
+          <div class="precision-controls">
+            <label class="field">Precision
+              <select id="precision-mode"><option value="auto">Auto · 10 places</option><option value="full">Full output</option><option value="custom">Custom</option></select>
+            </label>
+            <label class="field" id="custom-precision" hidden>Decimal places
+              <input id="precision" type="number" min="0" max="10000" step="1" value="10" inputmode="numeric" disabled>
+            </label>
+            <label class="field">Notation
+              <select id="notation-mode"><option value="auto">Auto</option><option value="plain">Plain</option><option value="scientific">Scientific</option><option value="math">Mathematical</option><option value="fraction">Fraction</option></select>
+            </label>
+            <div class="field angle-field"><span>Angle</span>
+              <div class="angle-switch" role="group" aria-label="Angle unit"><button type="button" data-angle="rad">RAD</button><button type="button" data-angle="deg">DEG</button></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card expression-card" aria-labelledby="expression-title">
+          <div class="section-heading"><div class="section-title"><span class="section-icon" aria-hidden="true">∑</span><h2 id="expression-title">Mathematical expression</h2></div><div class="expression-actions"><button id="expand-expression" class="expand-expression" type="button" aria-expanded="false" hidden>Show full expression...</button></div></div>
+          <form id="calculator">
+            <textarea id="expression" aria-label="Mathematical expression" placeholder="Try (1/3)*3 or sin(π/2)" rows="1" spellcheck="false" autofocus></textarea>
+            <button class="primary-button" type="submit">Calculate <span aria-hidden="true">→</span></button>
+          </form>
+          <a class="function-shortcut" href="#functions-title">Browse the function library ↓</a>
+        </section>
+        <section class="card result-panel" aria-live="polite" aria-labelledby="result-title">
+          <div class="result-heading"><div class="section-title"><span class="section-icon" aria-hidden="true">=</span><h2 id="result-title">Result</h2></div><button id="copy-result" type="button" disabled title="Copy result" aria-label="Copy result">⧉ Copy</button></div>
+          <div class="result-body"><output id="result" data-placeholder="Your result preview will appear here"></output><span id="result-more-marker" aria-hidden="true" hidden>...</span></div>
+          <button id="expand-result" type="button" hidden>Show all...</button>
+        </section>
+        <dialog id="result-dialog" aria-labelledby="result-dialog-title">
+          <div class="result-dialog-heading"><div class="section-title"><span class="section-icon" aria-hidden="true">=</span><h2 id="result-dialog-title">Full result</h2></div><div class="dialog-actions"><button id="copy-result-dialog" type="button" disabled aria-label="Copy result">⧉ Copy</button><button id="close-result-dialog" type="button" aria-label="Close full result">✕</button></div></div>
+          <pre id="result-full"></pre>
+        </dialog>
+
+        <section class="card keypad-card" aria-labelledby="keypad-title">
+          <div class="section-heading"><div class="section-title"><span class="section-icon" aria-hidden="true">⌗</span><h2 id="keypad-title">Keypad</h2></div><span>Or type directly into the field above.</span></div>
+          <section class="keypad edit-keypad" aria-label="Edit expression">
+            <button type="button" class="operator" data-insert="(">(</button><button type="button" class="operator" data-insert=")">)</button><button type="button" data-insert=".">.</button><button type="button" class="action" data-action="clear">C</button><button type="button" class="action" data-action="backspace" aria-label="Delete last character">⌫</button>
+          </section>
+          <section class="keypad number-keypad" aria-label="Numbers and operators">
+            <button type="button" data-insert="7">7</button><button type="button" data-insert="8">8</button><button type="button" data-insert="9">9</button><button type="button" class="operator" data-insert="/">÷</button><button type="button" class="operator" data-insert="*">×</button>
+            <button type="button" data-insert="4">4</button><button type="button" data-insert="5">5</button><button type="button" data-insert="6">6</button><button type="button" class="operator" data-insert="-">−</button><button type="button" class="operator" data-insert="+">+</button>
+            <button type="button" data-insert="1">1</button><button type="button" data-insert="2">2</button><button type="button" data-insert="3">3</button><button type="button" data-insert="0">0</button><button type="button" class="equals" data-action="evaluate">=</button>
+          </section>
+          <div class="keypad-bottom">
+            <div><p class="keypad-label">Constants</p><section class="keypad constants" aria-label="Constants">
+              <button type="button" data-insert="&#960;" title="π">π</button><button type="button" data-insert="e" title="Euler">e</button><button type="button" data-insert="&#966;" title="φ">φ</button>
+            </section></div>
+            <div><p class="keypad-label">More operations</p><section class="keypad operations" aria-label="More operations">
+              <button type="button" data-insert="^" title="Power with an integer exponent">xʸ</button><button type="button" data-insert="&#178;" title="Square">x²</button><button type="button" data-insert="&#179;" title="Cube">x³</button><button type="button" data-insert="!" title="Factorial">n!</button><button type="button" data-insert=";" title="Argument separator">;</button>
+            </section></div>
+          </div>
+          <div class="recent-row" aria-label="Recently used buttons">
+            <p class="keypad-label">Recent</p><div id="recent-buttons" class="recent-buttons"></div>
+          </div>
+        </section>
+      </main>
+
+      <aside class="sidebar" aria-label="Functions and session">
+        <section class="card function-library" aria-labelledby="functions-title">
+          <div class="sidebar-heading"><span class="sidebar-icon" aria-hidden="true">ƒ</span><div><h2 id="functions-title">Function library</h2><p>Search by name or choose a category. Click a function to insert it.</p></div></div>
+          <label class="search-field">Search functions<input id="function-search" type="search" placeholder="Try square root, sin, mean…" autocomplete="off"></label>
+          <p id="search-status" role="status" hidden></p>
+          <div class="function-groups">
+<details class="function-group"><summary>Basic</summary><div class="keypad functions">
+<button type="button" data-function="abs" data-insert="abs(" title="abs(x)">abs</button>
+<button type="button" data-function="sign" data-insert="sign(" title="sign(x)">sign</button>
+<button type="button" data-function="rand" data-insert="rand()" title="rand() / rand(x) / rand(x;y)">rand</button>
+<button type="button" data-function="min" data-insert="min(" title="min(a;b;…)">min</button>
+<button type="button" data-function="max" data-insert="max(" title="max(a;b;…)">max</button>
+<button type="button" data-function="floor" data-insert="floor(">floor</button>
+<button type="button" data-function="ceil" data-insert="ceil(">ceil</button>
+<button type="button" data-function="trunc" data-insert="trunc(">trunc</button>
+<button type="button" data-function="round" data-insert="round(">round</button>
+</div></details>
+<details class="function-group"><summary>Statistics</summary><div class="keypad functions">
+<button type="button" data-function="sum" data-insert="sum(">sum</button>
+<button type="button" data-function="product" data-insert="product(">product</button>
+<button type="button" data-function="mean" data-insert="mean(">mean</button>
+<button type="button" data-function="median" data-insert="median(">median</button>
+<button type="button" data-function="geomean" data-insert="geomean(">geomean</button>
+<button type="button" data-function="harmean" data-insert="harmean(">harmean</button>
+<button type="button" data-function="variance" data-insert="variance(">variance</button>
+<button type="button" data-function="stdevp" data-insert="stdevp(">stdevp</button>
+<button type="button" data-function="stdev" data-insert="stdev(">stdev</button>
+</div></details>
+<details class="function-group"><summary>Integers</summary><div class="keypad functions">
+<button type="button" data-function="gcd" data-insert="gcd(">gcd</button>
+<button type="button" data-function="lcm" data-insert="lcm(">lcm</button>
+<button type="button" data-function="mod" data-insert="mod(">mod</button>
+<button type="button" data-function="npr" data-insert="npr(">nPr</button>
+<button type="button" data-function="ncr" data-insert="ncr(">nCr</button>
+<button type="button" data-function="factorial" data-insert="factorial(" title="factorial(n)">factorial</button>
+<button type="button" data-function="isqrt" data-insert="isqrt(">isqrt</button>
+</div></details>
+<details class="function-group"><summary>Powers and logarithms</summary><div class="keypad functions">
+<button type="button" data-function="pow" data-insert="pow(" title="pow(x;y)">pow</button>
+<button type="button" data-function="sqrt" data-insert="sqrt(">sqrt</button>
+<button type="button" data-function="cbrt" data-insert="cbrt(">cbrt</button>
+<button type="button" data-function="root" data-insert="root(">root</button>
+<button type="button" data-function="exp" data-insert="exp(" title="e raised to x">exp</button>
+<button type="button" data-function="ln" data-insert="ln(" title="Natural logarithm">ln</button>
+<button type="button" data-function="log" data-insert="log(" title="Common or arbitrary-base logarithm">log</button>
+</div></details>
+<details class="function-group"><summary>Angles and trigonometry</summary>
+<div class="keypad functions">
+<button type="button" data-function="sin" data-insert="sin(">sin</button>
+<button type="button" data-function="cos" data-insert="cos(">cos</button>
+<button type="button" data-function="tan" data-insert="tan(">tan</button>
+<button type="button" data-function="asin" data-insert="asin(">asin</button>
+<button type="button" data-function="acos" data-insert="acos(">acos</button>
+<button type="button" data-function="atan" data-insert="atan(">atan</button>
+<button type="button" data-function="radians" data-insert="radians(">radians</button>
+<button type="button" data-function="degrees" data-insert="degrees(">degrees</button>
+</div></details>
+<details class="function-group"><summary>Hyperbolic</summary><div class="keypad functions">
+<button type="button" data-function="sinh" data-insert="sinh(">sinh</button>
+<button type="button" data-function="cosh" data-insert="cosh(">cosh</button>
+<button type="button" data-function="tanh" data-insert="tanh(">tanh</button>
+<button type="button" data-function="asinh" data-insert="asinh(">asinh</button>
+<button type="button" data-function="acosh" data-insert="acosh(">acosh</button>
+<button type="button" data-function="atanh" data-insert="atanh(">atanh</button>
+</div></details>
+          </div>
+        </section>
+        <section class="card session-panel" aria-labelledby="session-title">
+          <div class="sidebar-heading"><span class="sidebar-icon session-icon" aria-hidden="true">↺</span><div><h2 id="session-title">Session</h2><p>Confirmed results remain available through ans.</p></div></div>
+          <div class="session-actions"><button type="button" data-insert="ans" title="Last result">ans <span>Last result</span></button><button type="button" id="reset-session">New session</button></div>
+          <div class="history-section"><h3 id="history-title">History <span>· last 16</span></h3><ol id="history-list" aria-labelledby="history-title"></ol></div>
+        </section>
+      </aside>
+    </div>
+    <footer class="page-footer"><span>NumForge v@NUMFORGE_VERSION@ · © 2026 Interacti0n</span><nav class="footer-links" aria-label="Project information"><a href="/LICENSE" data-license>MIT License</a><a href="https://github.com/Interacti0n/NumForge" target="_blank" rel="noopener noreferrer">GitHub</a></nav></footer>
+  </div>
+  <script src="/assets/navigation.js"></script>
+  <script src="/assets/calculator.js"></script>
+</body>
+</html>

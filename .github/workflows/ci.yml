@@ -74,6 +74,60 @@ jobs:
       - name: Test 32-bit targets
         run: ctest --test-dir build-32 --output-on-failure
 
+  arm64:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux ARM64
+            runner: ubuntu-24.04-arm
+            arch: aarch64
+          - name: macOS ARM64
+            runner: macos-15
+            arch: arm64
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Verify native architecture
+        run: test "$(uname -m)" = "${{ matrix.arch }}"
+      - name: Configure Release tests
+        run: >-
+          cmake -S . -B build-arm64
+          -DCMAKE_BUILD_TYPE=Release
+          -DBUILD_TESTING=ON
+          -DNUMFORGE_REQUIRE_NODE_TESTS=ON
+          -DNUMFORGE_WARNINGS_AS_ERRORS=ON
+      - name: Build
+        run: cmake --build build-arm64 --parallel 2
+      - name: Test library, CLI and local server
+        run: ctest --test-dir build-arm64 --output-on-failure
+      - name: Configure installable package
+        run: >-
+          cmake -S . -B build-arm64-package
+          -DCMAKE_BUILD_TYPE=Release
+          -DBUILD_TESTING=OFF
+          -DNUMFORGE_BUILD_APPS=OFF
+          -DNUMFORGE_WARNINGS_AS_ERRORS=ON
+          -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/stage
+      - name: Build and install package
+        run: |
+          cmake --build build-arm64-package --parallel 2
+          cmake --install build-arm64-package
+      - name: Configure installed C and C++ consumers
+        run: >-
+          cmake -S tests/package_consumer -B build-arm64-consumer
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_PREFIX_PATH=${{ github.workspace }}/stage
+          -DNUMFORGE_TEST_CPP=ON
+      - name: Test installed package
+        run: |
+          cmake --build build-arm64-consumer --parallel 2
+          ctest --test-dir build-arm64-consumer --output-on-failure
+
   windows:
     runs-on: windows-2022
     steps:

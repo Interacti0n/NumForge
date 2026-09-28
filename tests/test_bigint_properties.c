@@ -3,8 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "unity.h"
-#include "numforge/bigint.h"
+#include <unity.h>
+#include <numforge/bigint.h>
 
 /* ============================================================
    Test helpers

@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 
 #include <unity.h>
 
@@ -826,6 +827,252 @@ void test_significant_division_rounds_both_signs_in_all_modes(void)
     }
 }
 
+void test_typed_exact_values_and_approximate_boundary(void)
+{
+    CalculatorContext context;
+    CalculatorError error;
+    CalculatorValue value = {0};
+    char *text = NULL;
+
+    calculator_context_init(&context);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute_value("1/3", &context, &value, &error));
+    TEST_ASSERT_NOT_NULL(value.rational);
+    TEST_ASSERT_NULL(value.integer);
+    context.significant_division = false;
+    TEST_ASSERT_FALSE(calculator_value_matches(&value, &context));
+    context.significant_division = true;
+    calculator_value_destroy(&value);
+
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute_value("(1/3)*3-1", &context, &value, &error));
+    TEST_ASSERT_NOT_NULL(value.integer);
+    TEST_ASSERT_NULL(value.rational);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_format_value(&value, &context, &text));
+    TEST_ASSERT_EQUAL_STRING("0", text);
+    free(text);
+    text = NULL;
+    calculator_value_destroy(&value);
+
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute_value("0,1+0,2", &context, &value, &error));
+    TEST_ASSERT_NOT_NULL(value.rational);
+    TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_to_string(value.rational, &text));
+    TEST_ASSERT_EQUAL_STRING("3/10", text);
+    free(text);
+    text = NULL;
+    calculator_value_destroy(&value);
+
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute_value("sqrt(2)+1/3", &context, &value, &error));
+    TEST_ASSERT_NULL(value.integer);
+    TEST_ASSERT_NULL(value.rational);
+    TEST_ASSERT_NOT_NULL(value.number);
+    TEST_ASSERT_EQUAL(CALCULATOR_VALUE_DECIMAL, value.kind);
+    calculator_value_destroy(&value);
+
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute_value("(2/3)^-2", &context, &value, &error));
+    TEST_ASSERT_NOT_NULL(value.rational);
+    TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_to_string(value.rational, &text));
+    TEST_ASSERT_EQUAL_STRING("9/4", text);
+    free(text);
+    text = NULL;
+    calculator_value_destroy(&value);
+
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute_value("sqrt(4/9)+1/3", &context, &value, &error));
+    TEST_ASSERT_NOT_NULL(value.integer);
+    TEST_ASSERT_NULL(value.rational);
+    calculator_value_destroy(&value);
+
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute_value("sqrt(2)", &context, &value, &error));
+    TEST_ASSERT_NULL(value.integer);
+    TEST_ASSERT_NULL(value.rational);
+    calculator_value_destroy(&value);
+
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute_value("geomean(2;3)+1/3", &context, &value, &error));
+    TEST_ASSERT_EQUAL(CALCULATOR_VALUE_DECIMAL, value.kind);
+    calculator_value_destroy(&value);
+
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute_value("stdevp(1;2;3)", &context, &value, &error));
+    TEST_ASSERT_EQUAL(CALCULATOR_VALUE_DECIMAL, value.kind);
+    calculator_value_destroy(&value);
+
+    TEST_ASSERT_EQUAL(CALCULATOR_DIVISION_BY_ZERO,
+        calculator_compute_value("0^-1", &context, &value, &error));
+    TEST_ASSERT_NULL(value.number);
+}
+
+static void assert_exact_calculator_value(const char *expression, const char *expected, bool integer)
+{
+    CalculatorContext context;
+    CalculatorError error;
+    CalculatorValue value = {0};
+    char *text = NULL;
+
+    calculator_context_init(&context);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute_value(expression, &context, &value, &error));
+    if (integer)
+    {
+        TEST_ASSERT_EQUAL(CALCULATOR_VALUE_INTEGER, value.kind);
+        TEST_ASSERT_NOT_NULL(value.integer);
+        TEST_ASSERT_NULL(value.rational);
+        text = bigint_to_string(value.integer);
+    }
+    else
+    {
+        TEST_ASSERT_EQUAL(CALCULATOR_VALUE_RATIONAL, value.kind);
+        TEST_ASSERT_NULL(value.integer);
+        TEST_ASSERT_NOT_NULL(value.rational);
+        TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_to_string(value.rational, &text));
+    }
+    TEST_ASSERT_EQUAL_STRING(expected, text);
+    free(text);
+    calculator_value_destroy(&value);
+}
+
+void test_exact_named_functions_and_powers(void)
+{
+    assert_exact_calculator_value("(1/3)²", "1/9", false);
+    assert_exact_calculator_value("pow(2/3;-2)", "9/4", false);
+    assert_exact_calculator_value("sqrt(4/9)", "2/3", false);
+    assert_exact_calculator_value("cbrt(-8/27)", "-2/3", false);
+    assert_exact_calculator_value("root(16/81;4)", "2/3", false);
+    assert_exact_calculator_value("root(-8/27;3)", "-2/3", false);
+    assert_exact_calculator_value("abs(-1/3)", "1/3", false);
+    assert_exact_calculator_value("sign(-1/3)", "-1", true);
+    assert_exact_calculator_value("min(1/3;2/3)", "1/3", false);
+    assert_exact_calculator_value("max(1/3;2/3)", "2/3", false);
+    assert_exact_calculator_value("min(1;1+1/10^100)", "1", true);
+    assert_exact_calculator_value("max(1;1-1/10^100)", "1", true);
+    assert_exact_calculator_value("sum(1/3;2/3)", "1", true);
+    assert_exact_calculator_value("product(1/3;2/3)", "2/9", false);
+    assert_exact_calculator_value("mean(1/3;2/3)", "1/2", false);
+    assert_exact_calculator_value("median(1/3;2/3)", "1/2", false);
+    assert_exact_calculator_value("geomean(1/4;4)", "1", true);
+    assert_exact_calculator_value("geomean(0;4)", "0", true);
+    assert_exact_calculator_value("geomean(1/4)", "1/4", false);
+    assert_exact_calculator_value("harmean(1;2;4)", "12/7", false);
+    assert_exact_calculator_value("variance(1;2;3)", "2/3", false);
+    assert_exact_calculator_value("variance(1E50;1E50+1;1E50+2)", "2/3", false);
+    assert_exact_calculator_value("stdevp(1;3)", "1", true);
+    assert_exact_calculator_value("stdev(1;2;3)", "1", true);
+    assert_exact_calculator_value("5!", "120", true);
+    assert_exact_calculator_value("factorial(5)", "120", true);
+    assert_exact_calculator_value("isqrt(99)", "9", true);
+    assert_exact_calculator_value("gcd(-48;18)", "6", true);
+    assert_exact_calculator_value("lcm(-4;6)", "12", true);
+    assert_exact_calculator_value("mod(-7;3)", "-1", true);
+    assert_exact_calculator_value("npr(5;2)", "20", true);
+    assert_exact_calculator_value("ncr(5;2)", "10", true);
+    assert_exact_calculator_value("floor(1-1/10^100)", "0", true);
+    assert_exact_calculator_value("ceil(-1+1/10^100)", "0", true);
+    assert_exact_calculator_value("trunc(-1/3)", "0", true);
+    assert_exact_calculator_value("round(1/2)", "0", true);
+    assert_exact_calculator_value("round(3/2)", "2", true);
+    assert_exact_calculator_value("round(-3/2)", "-2", true);
+    assert_exact_calculator_value("round(1/3;2)", "33/100", false);
+    assert_exact_calculator_value("round(125/100;1)", "6/5", false);
+    assert_exact_calculator_value("round(-125/100;1)", "-6/5", false);
+    assert_exact_calculator_value("round(250;-2)", "200", true);
+    assert_exact_calculator_value("round(350;-2)", "400", true);
+    assert_exact_calculator_value("round(-250;-2)", "-200", true);
+}
+
+void test_fraction_notation_and_auto_choice(void)
+{
+    CalculatorContext context;
+    CalculatorError error;
+    char *text = NULL;
+
+    calculator_context_init(&context);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("1/3", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("1/3", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("3/10", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("0.3", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("3/8", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("3/8", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("1/9999", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("1/9999", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("123456789012/7", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("123456789012/7", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("100000000000001/3", &context, &text, &error));
+    TEST_ASSERT_NULL(strchr(text, '/'));
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("1/10001", &context, &text, &error));
+    TEST_ASSERT_NULL(strchr(text, '/'));
+    free(text);
+    text = NULL;
+
+    context.notation = CALCULATOR_NOTATION_FRACTION;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("1/10001", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("1/10001", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("12345678901235/7", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("12345678901235/7", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("-1234567890123/7", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("-1234567890123/7", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("123456789012345/7", &context, &text, &error));
+    TEST_ASSERT_NULL(strchr(text, '/'));
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("1/123456789012345", &context, &text, &error));
+    TEST_ASSERT_NULL(strchr(text, '/'));
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("0.1+0.2", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("3/10", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("(1/3)*3", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("1", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("sqrt(2)", &context, &text, &error));
+    TEST_ASSERT_NULL(strchr(text, '/'));
+    free(text);
+}
+
+void test_fraction_notation_respects_output_limit(void)
+{
+    CalculatorContext context;
+    CalculatorValue value = {0};
+    char *digits = malloc(CALCULATOR_MAX_OUTPUT_BYTES + 2U);
+    char *text = NULL;
+
+    TEST_ASSERT_NOT_NULL(digits);
+    digits[0] = '1';
+    memset(digits + 1U, '0', CALCULATOR_MAX_OUTPUT_BYTES);
+    digits[CALCULATOR_MAX_OUTPUT_BYTES + 1U] = '\0';
+    value.integer = bigint_create();
+    TEST_ASSERT_NOT_NULL(value.integer);
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(value.integer, digits));
+    value.kind = CALCULATOR_VALUE_INTEGER;
+    calculator_context_init(&context);
+    context.time_limit_ms = INT64_MAX;
+    context.notation = CALCULATOR_NOTATION_FRACTION;
+    TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE, calculator_format_value(&value, &context, &text));
+    TEST_ASSERT_NULL(text);
+
+    context.notation = CALCULATOR_NOTATION_AUTO;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_format_value(&value, &context, &text));
+    TEST_ASSERT_NOT_NULL(text);
+    free(text);
+    calculator_value_destroy(&value);
+    free(digits);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -834,6 +1081,10 @@ int main(void)
     RUN_TEST(test_significant_division_preserves_tiny_and_huge_values);
     RUN_TEST(test_complete_pipeline_limits_and_recovers);
     RUN_TEST(test_significant_division_rounds_both_signs_in_all_modes);
+    RUN_TEST(test_typed_exact_values_and_approximate_boundary);
+    RUN_TEST(test_exact_named_functions_and_powers);
+    RUN_TEST(test_fraction_notation_and_auto_choice);
+    RUN_TEST(test_fraction_notation_respects_output_limit);
     RUN_TEST(test_context_configures_output_precision);
     RUN_TEST(test_context_configures_angle_units);
     RUN_TEST(test_error_helpers);

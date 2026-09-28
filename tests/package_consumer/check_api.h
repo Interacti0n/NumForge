@@ -2,6 +2,7 @@
 #define NUMFORGE_CONSUMER_CHECK_API_H
 #include <numforge/bigint.h>
 #include <numforge/bigdecimal.h>
+#include <numforge/bigrational.h>
 #include <numforge/runtime.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,11 +12,12 @@ static int public_api_checks(void)
 {
     BigDecimal *a = bigdecimal_create(), *b = bigdecimal_create();
     BigInt *n = bigint_create(), *r = bigint_create();
+    BigRational *fraction = bigrational_create();
     char *text = NULL;
     const BigDecimal *values[2];
     bool integer = false;
     int sign = 0, result = 1;
-    if (a == NULL || b == NULL || n == NULL || r == NULL) goto cleanup;
+    if (a == NULL || b == NULL || n == NULL || r == NULL || fraction == NULL) goto cleanup;
     values[0] = a; values[1] = b;
     if (bigint_set_string(n, "3") != BIGINT_OK ||
         bigdecimal_set_string(a, "1.5") != BIGDECIMAL_OK ||
@@ -106,9 +108,19 @@ static int public_api_checks(void)
         goto cleanup;
     }
     numforge_budget_end();
+    if (bigint_set_string(n, "-6") != BIGINT_OK ||
+        bigint_set_string(r, "8") != BIGINT_OK ||
+        bigrational_set_fraction(fraction, n, r) != BIGRATIONAL_OK ||
+        bigrational_to_string(fraction, &text) != BIGRATIONAL_OK ||
+        strcmp(text, "-3/4") != 0) goto cleanup;
+    free(text); text = NULL;
+    if (bigrational_to_bigdecimal(a, fraction, 10, BIGDECIMAL_ROUND_HALF_EVEN) != BIGRATIONAL_OK ||
+        bigdecimal_to_string(a, &text) != BIGDECIMAL_OK || strcmp(text, "-0.75") != 0) goto cleanup;
+    free(text); text = NULL;
     result = 0;
 cleanup:
     free(text); bigint_destroy(n); bigint_destroy(r); bigdecimal_destroy(a); bigdecimal_destroy(b);
+    bigrational_destroy(fraction);
     return result;
 }
 #endif

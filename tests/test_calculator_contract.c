@@ -67,20 +67,20 @@ static void test_implicit_products_and_decimal_separators(void)
     assert_result("6/2(1+2)", "9", &context);
 }
 
-static void test_intermediate_rounding_is_not_final_rounding(void)
+static void test_exact_intermediates_are_not_rounded(void)
 {
     CalculatorContext context;
     calculator_context_init(&context);
-    assert_result("(1/3)*3-1", "-1E-34", &context);
+    assert_result("(1/3)*3-1", "0", &context);
     assert_result("1E34/1+1-1E34", "1", &context);
     assert_result("(1E34+1)/1-1E34", "1", &context);
     TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_context_set_output_scale(&context, 40));
     assert_result("(1E34+1)/1-1E34", "1", &context);
-    assert_result("(1/3)*3-1", "-1E-44", &context);
+    assert_result("(1/3)*3-1", "0", &context);
     TEST_ASSERT_EQUAL(CALCULATOR_OK,
         calculator_context_set_output_scale(&context, CALCULATOR_UNLIMITED_OUTPUT_SCALE));
-    assert_result("(1/3)*3-1", "-1E-34", &context);
-    assert_result("1/8", "0.125", &context);
+    assert_result("(1/3)*3-1", "0", &context);
+    assert_result("1/8", "1/8", &context);
 }
 
 static void test_constants_follow_working_precision_and_reuse(void)
@@ -106,7 +106,7 @@ static void test_finite_division_preserves_exact_intermediates(void)
     TEST_ASSERT_EQUAL(CALCULATOR_OK,
         calculator_context_set_output_scale(&context, CALCULATOR_UNLIMITED_OUTPUT_SCALE));
     context.division_scale = 2;
-    assert_result("1/128", "0.0078125", &context);
+    assert_result("1/128", "1/128", &context);
     assert_result("1/625", "0.0016", &context);
     assert_result("1/40", "0.025", &context);
     assert_result("1/6", "0.17", &context);
@@ -150,7 +150,7 @@ int main(void)
     UNITY_BEGIN();
     RUN_TEST(test_malformed_adjacent_numbers);
     RUN_TEST(test_implicit_products_and_decimal_separators);
-    RUN_TEST(test_intermediate_rounding_is_not_final_rounding);
+    RUN_TEST(test_exact_intermediates_are_not_rounded);
     RUN_TEST(test_constants_follow_working_precision_and_reuse);
     RUN_TEST(test_finite_division_preserves_exact_intermediates);
     RUN_TEST(test_exact_division_aliasing_and_scale_failure);

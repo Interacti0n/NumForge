@@ -1,5 +1,7 @@
 // Deterministic exact-rational reference; no NumForge arithmetic is used here.
 const {spawnSync} = require('child_process');
+const fs = require('node:fs');
+const path = require('node:path');
 if (!process.argv[2]) throw Error('Usage: node test_numeric_oracle.js <driver>');
 let seed = 0x12345678;
 function rnd(n) { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed % n; }
@@ -111,12 +113,48 @@ for(let i=0;i<80;i++) {
   for(let mode=0;mode<6;mode++)add('rroot',`${c}e${-s}`,k,p,mode,rootReference(c,s,k,p,mode));
   if(i<40){const r=BigInt(1+rnd(100000)),t=rnd(11)-5;add('rroot',`${r**BigInt(k)}e${-t*k}`,k,1,5,decimal(r,t));}
 }
+// Frozen high-precision references are generated independently by mpmath.
+const referenceFile = path.join(__dirname, 'transcendental_references.tsv');
+let referenceCases = 0;
+for (const line of fs.readFileSync(referenceFile, 'utf8').split(/\r?\n/)) {
+  if (!line || line.startsWith('#')) continue;
+  const fields = line.split('\t');
+  if (fields.length !== 6) throw Error(`Malformed reference row: ${line}`);
+  const [op, a, b, digits, mode, expected] = fields;
+  cases.push({input:`${op} ${a} ${b} ${digits} ${mode}`, expected, reference:true});
+  referenceCases++;
+}
+if (referenceCases !== 319) throw Error(`Expected 319 high-precision references, got ${referenceCases}`);
+function decimalParts(value) {
+  const match = /^(-?)(\d+)(?:\.(\d+))?$/.exec(value);
+  if (!match) return null;
+  return {coefficient: BigInt((match[1] || '') + match[2] + (match[3] || '')),
+    scale: (match[3] || '').length};
+}
+function withinOneUlp(expected, actual, digits) {
+  const reference = decimalParts(expected), observed = decimalParts(actual);
+  if (!reference || !observed || reference.coefficient === 0n) return false;
+  const magnitude = abs(reference.coefficient).toString().length - reference.scale - 1;
+  const ulpExponent = magnitude - digits + 1;
+  const scale = Math.max(reference.scale, observed.scale, -ulpExponent, 0);
+  const difference = abs(reference.coefficient * pow(scale - reference.scale) -
+    observed.coefficient * pow(scale - observed.scale));
+  return difference <= pow(scale + ulpExponent);
+}
 const result=spawnSync(process.argv[2],{input:cases.map(c=>c.input).join('\n')+'\n',encoding:'utf8',timeout:110000,windowsHide:true,maxBuffer:8*1024*1024});
 if(result.error)throw result.error;
 if(result.status!==0)throw Error(`Exit ${result.status}: ${result.stderr}`);
 const actual=result.stdout.trim().split(/\r?\n/);
 let failures=0;
-cases.forEach((c,i)=>{if(actual[i]!==c.expected){if(failures<8)console.log({case:c.input,expected:c.expected,actual:actual[i]});failures++;}});
+let boundedDirected=0;
+cases.forEach((c,i)=>{
+  if(actual[i]===c.expected)return;
+  const fields=c.input.split(' '), digits=Number(fields[3]), mode=Number(fields[4]);
+  if(c.reference && mode<4 && withinOneUlp(c.expected,actual[i],digits)) {boundedDirected++;return;}
+  if(failures<(process.env.NUMFORGE_ORACLE_VERBOSE ? 100 : 8))
+    console.log({case:c.input,expected:c.expected,actual:actual[i]});
+  failures++;
+});
 if(actual.length!==cases.length)throw Error(`Expected ${cases.length} outputs; got ${actual.length}`);
-console.log(JSON.stringify({seed:'0x12345678',cases:cases.length,failures}));
+console.log(JSON.stringify({seed:'0x12345678',cases:cases.length,boundedDirected,failures}));
 process.exitCode=failures?1:0;

@@ -4,6 +4,7 @@
 #include <unity.h>
 
 #include "session.h"
+#include "formatter.h"
 #include "random.h"
 #include "web_api.h"
 #include "numforge_alloc.h"
@@ -80,11 +81,15 @@ static void test_precision_is_a_snapshot_and_sessions_are_isolated(void)
     TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_context_set_output_scale(&context, 2));
     check_result(1U, true, "1/8", "0.12");
     TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_context_set_output_scale(&context, -1));
-    check_result(2U, false, "ans", "0.125");
-    check_result(3U, true, "1/3", "0.3333333333333333333333333333333333");
+    check_result(2U, false, "ans", "1/8");
+    check_result(3U, true, "1/3", "1/3");
+    check_result(4U, false, "ans*3-1", "0");
     TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_context_set_output_scale(&context, 100));
-    check_result(4U, false, "ans", "0.3333333333333333333333333333333333");
-    TEST_ASSERT_EQUAL(CALCULATOR_OK, numforge_web_evaluate_session(&session, 5U, false,
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("1/3", &context, &text, &error));
+    check_result(5U, false, "ans", text);
+    free(text);
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, numforge_web_evaluate_session(&session, 6U, false,
         "ans", 100, CALCULATOR_ANGLE_RADIANS, &text, &error, &reused));
     TEST_ASSERT_TRUE(reused);
     free(text);
@@ -108,6 +113,25 @@ static void test_bounded_history_and_context(void)
     TEST_ASSERT_EQUAL_UINT64(10U, session.history[0].revision);
     TEST_ASSERT_EQUAL(CALCULATOR_ANGLE_DEGREES, session.history[0].value.context.angle_unit);
     check_result(26U, false, "sin(ans*90)", "1");
+}
+
+static void test_approximate_answer_keeps_its_original_precision(void)
+{
+    CalculatorError error;
+    char *stored = NULL;
+    char *fresh = NULL;
+
+    check_result(1U, true, "sqrt(2)", "1.4142135624");
+    TEST_ASSERT_NULL(session.history[0].value.integer);
+    TEST_ASSERT_NULL(session.history[0].value.rational);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_context_set_output_scale(&context, 100));
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,
+        calculator_format_result(session.history[0].value.number, &context, &stored));
+    check_result(2U, false, "ans", stored);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("sqrt(2)", &context, &fresh, &error));
+    TEST_ASSERT_NOT_EQUAL(0, strcmp(stored, fresh));
+    free(stored);
+    free(fresh);
 }
 
 static void test_confirmation_is_atomic_on_every_allocation_failure(void)
@@ -236,14 +260,14 @@ static void test_notation_changes_only_display(void)
     char *text = NULL;
     CalculatorError error;
     check_result(1U, true, "1E20", "1E+20");
-    context.notation = BIGDECIMAL_FORMAT_PLAIN;
+    context.notation = CALCULATOR_NOTATION_PLAIN;
     TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_session_compute(&session, 2U, false,
         "1E20", &context, &text, &error, &reused));
     TEST_ASSERT_TRUE(reused);
     TEST_ASSERT_EQUAL_STRING("100000000000000000000", text);
     free(text);
     text = NULL;
-    context.notation = BIGDECIMAL_FORMAT_MATHEMATICAL;
+    context.notation = CALCULATOR_NOTATION_MATHEMATICAL;
     TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_session_compute(&session, 3U, false,
         "1E20", &context, &text, &error, &reused));
     TEST_ASSERT_TRUE(reused);
@@ -251,18 +275,40 @@ static void test_notation_changes_only_display(void)
     free(text);
     TEST_ASSERT_EQUAL_UINT(1U, session.count);
     check_result(4U, true, "ans", "1 × 10^20");
-    context.notation = BIGDECIMAL_FORMAT_AUTO;
+    context.notation = CALCULATOR_NOTATION_AUTO;
     check_result(5U, false, "ans", "1E+20");
     TEST_ASSERT_EQUAL_UINT(2U, session.count);
+}
+
+static void test_fraction_notation_reuses_exact_answer(void)
+{
+    CalculatorError error;
+    char *text = NULL;
+    bool reused = false;
+
+    check_result(1U, true, "1/3", "1/3");
+    context.notation = CALCULATOR_NOTATION_PLAIN;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_session_compute(&session, 2U, false,
+        "ans", &context, &text, &error, &reused));
+    TEST_ASSERT_EQUAL_STRING("0.3333333333", text);
+    free(text);
+    text = NULL;
+    context.notation = CALCULATOR_NOTATION_FRACTION;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_session_compute(&session, 3U, false,
+        "ans", &context, &text, &error, &reused));
+    TEST_ASSERT_TRUE(reused);
+    TEST_ASSERT_EQUAL_STRING("1/3", text);
+    free(text);
+    TEST_ASSERT_EQUAL_UINT(1U, session.count);
 }
 
 static void test_plain_output_limit_preserves_session(void)
 {
     check_result(1U, true, "7", "7");
-    context.notation = BIGDECIMAL_FORMAT_PLAIN;
+    context.notation = CALCULATOR_NOTATION_PLAIN;
     check_error(2U, true, "1E100000", CALCULATOR_VALUE_TOO_LARGE);
     TEST_ASSERT_EQUAL_UINT(1U, session.count);
-    context.notation = BIGDECIMAL_FORMAT_SCIENTIFIC;
+    context.notation = CALCULATOR_NOTATION_SCIENTIFIC;
     check_result(3U, false, "1E100000", "1E+100000");
     check_result(4U, false, "ans", "7E+0");
 }
@@ -273,11 +319,13 @@ int main(void)
     RUN_TEST(test_preview_confirmation_and_replay);
     RUN_TEST(test_precision_is_a_snapshot_and_sessions_are_isolated);
     RUN_TEST(test_bounded_history_and_context);
+    RUN_TEST(test_approximate_answer_keeps_its_original_precision);
     RUN_TEST(test_confirmation_is_atomic_on_every_allocation_failure);
     RUN_TEST(test_limits_preserve_confirmed_state);
     RUN_TEST(test_random_preview_commit_and_replay);
     RUN_TEST(test_random_range_multiple_calls_and_failure);
     RUN_TEST(test_notation_changes_only_display);
+    RUN_TEST(test_fraction_notation_reuses_exact_answer);
     RUN_TEST(test_plain_output_limit_preserves_session);
     return UNITY_END();
 }

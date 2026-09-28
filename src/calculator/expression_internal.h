@@ -14,7 +14,7 @@
     AST remains valid after the caller releases or replaces the original input
     string.
 
-    Implementation: src/calculator/parser.c and src/calculator/evaluator.c
+    Implementation: src/calculator/parser.c and evaluator modules
 ------------------------------------------------------------------------------------------------------------------------------
 */
 

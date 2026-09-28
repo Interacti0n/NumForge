@@ -24,11 +24,15 @@ assert.deepEqual(result.results, ['0.3', '8', '0', '0', '1000', '120', '1024']);
 assert.equal(result.stderr, '');
 
 result = run('precision\nprecision 2\n1/8\nprecision full\n1/8\nprecision\nprecision -1\nprecision 10001\nprecision\n');
-assert.deepEqual(result.results, ['0.12', '0.125']);
+assert.deepEqual(result.results, ['0.12', '1/8']);
 assert.match(result.stdout, /output precision: 10 decimal places/);
 assert.equal((result.stdout.match(/output precision: full/g) || []).length, 2);
 assert.match(result.stderr, /precision must be/);
 assert.match(result.stderr, /failed to set precision/);
+
+result = run('notation fraction\n0.1+0.2\nnotation plain\nans\nnotation\n');
+assert.deepEqual(result.results, ['3/10', '0.3']);
+assert.match(result.stdout, /output notation: plain/);
 
 result = run('angle\nangle deg\nsin(90)\natan(1)\nangle\nangle rad\nsin(π\/2)\nangle nope\n');
 assert.deepEqual(result.results, ['1', '45', '1']);

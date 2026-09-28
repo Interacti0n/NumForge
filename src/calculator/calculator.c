@@ -3,6 +3,8 @@
 #include "evaluator.h"
 #include "formatter.h"
 #include "expression_internal.h"
+#include "exact_evaluator.h"
+#include "value_internal.h"
 
 #include <numforge/runtime.h>
 
@@ -78,7 +80,7 @@ void calculator_context_init(
     context->output_scale = CALCULATOR_DEFAULT_OUTPUT_SCALE;
     context->time_limit_ms = CALCULATOR_DEFAULT_TIME_LIMIT_MS;
     context->rounding = BIGDECIMAL_ROUND_HALF_EVEN;
-    context->notation = BIGDECIMAL_FORMAT_AUTO;
+    context->notation = CALCULATOR_NOTATION_AUTO;
     context->angle_unit = CALCULATOR_ANGLE_RADIANS;
     context->significant_division = true;
 }
@@ -288,25 +290,6 @@ static bool calculator_expression_uses_random(const CalculatorExpression *expres
     }
 }
 
-void calculator_value_destroy(CalculatorValue *value)
-{
-    if (value != NULL)
-    {
-        bigdecimal_destroy(value->number);
-        memset(value, 0, sizeof(*value));
-    }
-}
-
-bool calculator_value_matches(const CalculatorValue *value, const CalculatorContext *context)
-{
-    return value != NULL && value->number != NULL && context != NULL &&
-           value->context.angle_unit == context->angle_unit &&
-           value->context.rounding == context->rounding &&
-           (value->independent ||
-            (value->context.division_scale == context->division_scale &&
-             value->context.significant_division == context->significant_division));
-}
-
 CalculatorStatus calculator_compute_value(
     const char *input,
     const CalculatorContext *context,
@@ -320,7 +303,7 @@ CalculatorStatus calculator_compute_value(
 CalculatorStatus calculator_compute_value_with_answer(
     const char *input,
     const CalculatorContext *context,
-    const BigDecimal *answer,
+    const CalculatorValue *answer,
     uint64_t *random_state,
     CalculatorValue *result,
     CalculatorError *error
@@ -328,8 +311,11 @@ CalculatorStatus calculator_compute_value_with_answer(
 {
     CalculatorExpression *expression = NULL;
     BigDecimal *value = NULL;
+    BigDecimal *answer_decimal = NULL;
+    BigRational *exact = NULL;
     CalculatorStatus status;
     bool owner;
+    bool exact_candidate = false;
     size_t length = 0U;
 
     if (result != NULL)
@@ -351,6 +337,20 @@ CalculatorStatus calculator_compute_value_with_answer(
         return CALCULATOR_INVALID_ARGUMENT;
     }
 
+    if (context->rounding < BIGDECIMAL_ROUND_TOWARD_ZERO ||
+        context->rounding > BIGDECIMAL_ROUND_HALF_EVEN ||
+        context->output_scale < CALCULATOR_UNLIMITED_OUTPUT_SCALE)
+    {
+        calculator_error_set(error, CALCULATOR_INVALID_ARGUMENT, 0U);
+        return CALCULATOR_INVALID_ARGUMENT;
+    }
+    if (context->output_scale > CALCULATOR_MAX_OUTPUT_SCALE ||
+        context->division_scale > CALCULATOR_MAX_OUTPUT_SCALE + CALCULATOR_DIVISION_GUARD_DIGITS)
+    {
+        calculator_error_set(error, CALCULATOR_VALUE_TOO_LARGE, 0U);
+        return CALCULATOR_VALUE_TOO_LARGE;
+    }
+
     owner = numforge_budget_begin(
         (uint64_t)context->time_limit_ms, CALCULATOR_ALLOCATION_BUDGET, CALCULATOR_SINGLE_ALLOCATION);
     calculator_error_clear(error);
@@ -370,23 +370,96 @@ CalculatorStatus calculator_compute_value_with_answer(
     if (status == CALCULATOR_OK)
     {
         value = bigdecimal_create();
-        status =
-            value == NULL ? CALCULATOR_OUT_OF_MEMORY :
-                calculator_evaluate_with_answer(value, expression, context, answer, random_state, error);
+        if (value == NULL)
+        {
+            status = CALCULATOR_OUT_OF_MEMORY;
+        }
+        else
+        {
+            exact_candidate = context->significant_division && calculator_exact_supported(expression, answer);
+        }
+        if (status == CALCULATOR_OK && exact_candidate)
+        {
+            BigInt *denominator = bigint_create();
+            status = denominator == NULL ? CALCULATOR_OUT_OF_MEMORY :
+                calculator_evaluate_exact(&exact, expression, answer, error);
+            if (status == CALCULATOR_NOT_IMPLEMENTED)
+            {
+                exact_candidate = false;
+                status = CALCULATOR_OK;
+                calculator_error_clear(error);
+            }
+            if (status == CALCULATOR_OK)
+            {
+                status = !exact_candidate ? CALCULATOR_OK :
+                    bigrational_get_denominator(denominator, exact) == BIGRATIONAL_OK
+                    ? CALCULATOR_OK : CALCULATOR_OUT_OF_MEMORY;
+            }
+            if (status == CALCULATOR_OK && exact_candidate && bigint_is_one(denominator))
+            {
+                result->integer = bigint_create();
+                status = result->integer != NULL &&
+                    bigrational_get_numerator(result->integer, exact) == BIGRATIONAL_OK
+                    ? CALCULATOR_OK : CALCULATOR_OUT_OF_MEMORY;
+                if (status == CALCULATOR_OK)
+                {
+                    result->kind = CALCULATOR_VALUE_INTEGER;
+                }
+            }
+            else if (status == CALCULATOR_OK && exact_candidate)
+            {
+                result->rational = exact;
+                result->kind = CALCULATOR_VALUE_RATIONAL;
+                exact = NULL;
+            }
+            bigint_destroy(denominator);
+            if (status == CALCULATOR_OK && exact_candidate)
+            {
+                CalculatorValue temporary = {0};
+                temporary.integer = result->integer;
+                temporary.rational = result->rational;
+                temporary.kind = result->kind;
+                temporary.number = value;
+                status = calculator_materialize_exact(value, &temporary, context);
+            }
+        }
+        if (status == CALCULATOR_OK && !exact_candidate)
+        {
+            if (answer != NULL && answer->kind != CALCULATOR_VALUE_DECIMAL)
+            {
+                answer_decimal = bigdecimal_create();
+                status = answer_decimal == NULL ? CALCULATOR_OUT_OF_MEMORY :
+                    calculator_materialize_exact(answer_decimal, answer, context);
+            }
+            else
+            {
+                status = CALCULATOR_OK;
+            }
+            if (status == CALCULATOR_OK)
+            {
+                status = calculator_evaluate_with_answer(value, expression, context,
+                    answer_decimal != NULL ? answer_decimal :
+                    answer == NULL ? NULL : answer->number, answer, random_state, error);
+            }
+        }
     }
 
     if (status == CALCULATOR_OK)
     {
-        result->independent = calculator_expression_independent(expression);
+        result->independent = result->kind != CALCULATOR_VALUE_DECIMAL ||
+            calculator_expression_independent(expression);
         result->uses_answer = calculator_expression_uses_answer(expression);
         result->uses_random = calculator_expression_uses_random(expression);
     }
     calculator_expression_destroy(expression);
+    bigdecimal_destroy(answer_decimal);
     status = calculator_budget_status(status);
 
     if (status != CALCULATOR_OK)
     {
         bigdecimal_destroy(value);
+        bigrational_destroy(exact);
+        calculator_value_destroy(result);
 
         if (error == NULL || error->status != status)
         {
@@ -395,6 +468,7 @@ CalculatorStatus calculator_compute_value_with_answer(
     }
     else
     {
+        bigrational_destroy(exact);
         result->number = value;
         result->context = *context;
         calculator_error_clear(error);
@@ -439,7 +513,13 @@ CalculatorStatus calculator_compute(
     status = calculator_compute_value(input, context, &value, error);
     if (status == CALCULATOR_OK)
     {
-        status = calculator_format_result(value.number, context, result);
+        status = calculator_format_value(&value, context, result);
+        status = calculator_budget_status(status);
+        if (status != CALCULATOR_OK)
+        {
+            free(*result);
+            *result = NULL;
+        }
         calculator_error_set(error, status, 0U);
     }
     calculator_value_destroy(&value);

@@ -37,6 +37,35 @@ static void test_registered_calls_and_arity(void)
     }
 }
 
+static void test_inverse_arc_aliases(void)
+{
+    static const char *const inputs[] = {
+        "arcsin(0)", "arcussin(0)", "arccos(1)", "arcuscos(1)",
+        "arctan(0)", "arcustan(0)", "arcsinh(0)", "arcussinh(0)",
+        "arccosh(1)", "arcuscosh(1)", "arctanh(0)", "arcustanh(0)"
+    };
+    CalculatorContext context;
+    CalculatorError error;
+    calculator_context_init(&context);
+    for (size_t i = 0; i < sizeof(inputs) / sizeof(inputs[0]); i++)
+    {
+        char *text = NULL;
+        TEST_ASSERT_EQUAL_MESSAGE(CALCULATOR_OK, calculator_compute(inputs[i], &context, &text, &error), inputs[i]);
+        TEST_ASSERT_EQUAL_STRING_MESSAGE("0", text, inputs[i]);
+        free(text);
+    }
+    char *text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_ARGUMENT_COUNT,
+                      calculator_compute("arctan(1;2)", &context, &text, &error));
+    TEST_ASSERT_NULL(text);
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,
+                      calculator_compute("arcsin(2)", &context, &text, &error));
+    TEST_ASSERT_NULL(text);
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,
+                      calculator_compute("arcuscosh(0)", &context, &text, &error));
+    TEST_ASSERT_NULL(text);
+}
+
 static void test_call_errors(void)
 {
     static const struct { const char *input; CalculatorStatus status; size_t offset; } cases[] = {
@@ -95,8 +124,8 @@ static void test_evaluation_and_implicit_products(void)
         { "1e3-1*e*3", "0" }, { "1E3", "1000" },
         { "πe-π*e", "0" }, { "e(2+2)-4*e", "0" }, { "2(2+2)", "8" },
         { "pow(0;0)", "1" },
-        { "2^-3", "0.125" }, { "pow(3;-1)", "0.3333333333" },
-        { "pow(-2;-3)", "-0.125" },
+        { "2^-3", "1/8" }, { "pow(3;-1)", "1/3" },
+        { "pow(-2;-3)", "-1/8" },
         { "sin(1E50*π)+sin(π)", "0" },
         { "abs(-1,25)", "1.25" }, { "abs(-0)", "0" },
         { "sign(-1E-100000)", "-1" }, { "sign(0)", "0" },
@@ -113,12 +142,12 @@ static void test_evaluation_and_implicit_products(void)
         { "round(1.234;1+1)", "1.23" },
         { "sum(1;2.5;-0.5)", "3" }, { "sum(7)", "7" },
         { "product(2;-3;0.5)", "-3" }, { "product(7)", "7" },
-        { "mean(1;2;3)", "2" }, { "mean(1;2;2)", "1.6666666667" },
+        { "mean(1;2;3)", "2" }, { "mean(1;2;2)", "5/3" },
         { "median(9;-1;2;4)", "3" }, { "geomean(1;4)", "2" },
-        { "harmean(1;2;4)", "1.7142857143" },
-        { "variance(1;2;3)", "0.6666666667" },
+        { "harmean(1;2;4)", "12/7" },
+        { "variance(1;2;3)", "2/3" },
         { "stdevp(1;2;3)", "0.8164965809" }, { "stdev(1;2;3)", "1" },
-        { "variance(1E50;1E50+1;1E50+2)", "0.6666666667" },
+        { "variance(1E50;1E50+1;1E50+2)", "2/3" },
         { "2sum(1;2)+product(2;3)", "12" }
     };
     CalculatorContext context;
@@ -383,6 +412,7 @@ int main(void)
 {
     UNITY_BEGIN();
     RUN_TEST(test_registered_calls_and_arity);
+    RUN_TEST(test_inverse_arc_aliases);
     RUN_TEST(test_call_errors);
     RUN_TEST(test_evaluation_and_implicit_products);
     RUN_TEST(test_call_limits);

@@ -1,4 +1,6 @@
 const { test, expect } = require('@playwright/test');
+const fs = require('node:fs');
+const path = require('node:path');
 
 test('HTTP sessions: confirmation replay, isolation and expiration', async ({ request }) => {
     const client = 'b'.repeat(32);
@@ -11,13 +13,13 @@ test('HTTP sessions: confirmation replay, isolation and expiration', async ({ re
     expect((await send(client, 1, 'start')).ok).toBe(true);
     expect((await send(client, 1, 'preview', 'ans')).status).toBe('ans is undefined');
     expect((await send(client, 2, 'commit', '1/8', 2)).result).toBe('0.12');
-    expect((await send(client, 3, 'preview', 'ans', 'full')).result).toBe('0.125');
-    expect((await send(client, 4, 'commit', 'ans+1', 'full')).result).toBe('1.125');
-    expect((await send(client, 4, 'commit', 'ans+1', 'full')).result).toBe('1.125');
+    expect((await send(client, 3, 'preview', 'ans', 'full')).result).toBe('1/8');
+    expect((await send(client, 4, 'commit', 'ans+1', 'full')).result).toBe('9/8');
+    expect((await send(client, 4, 'commit', 'ans+1', 'full')).result).toBe('9/8');
     expect((await send(client, 5, 'preview', 'ans+1', 'full')).result).toBe('2.125');
     expect((await send(client, 3, 'commit', 'ans+1')).status).toBe('stale session request');
     expect((await send(client, 6, 'commit', '1/0')).ok).toBe(false);
-    expect((await send(client, 7, 'preview', 'ans', 'full')).result).toBe('1.125');
+    expect((await send(client, 7, 'preview', 'ans', 'full')).result).toBe('9/8');
     for (let index = 20; index < 28; index++) {
         const other = index.toString(16).padStart(32, '0');
         expect((await send(other, 1, 'start')).ok).toBe(true);
@@ -87,6 +89,64 @@ test('HTTP cache validation, stale revisions and bounded eviction', async ({ req
 });
 
 
+test('pages stay hidden until their stylesheet is available', async ({ page }) => {
+    for (const path of ['/?lang=sk', '/api?lang=en']) {
+        let releaseStyles;
+        const stylesReleased = new Promise(resolve => { releaseStyles = resolve; });
+        let requestStyles;
+        const stylesRequested = new Promise(resolve => { requestStyles = resolve; });
+        await page.route('**/assets/*.css', async route => {
+            requestStyles();
+            await stylesReleased;
+            await route.continue();
+        });
+        try {
+            await page.goto(path, {waitUntil: 'commit'});
+            await stylesRequested;
+            await page.locator('body').waitFor({state: 'attached'});
+            await expect(page.locator('body')).toHaveCSS('visibility', 'hidden');
+        } finally {
+            releaseStyles();
+        }
+        await expect(page.locator('body')).toHaveCSS('visibility', 'visible');
+        await page.unroute('**/assets/*.css');
+    }
+});
+
+test('header logo and favicon use the same complete PNG', async ({ page, request }) => {
+    const original = fs.readFileSync(path.join(__dirname, '../../web/logo.png'));
+    const response = await request.get('/assets/logo.png');
+    expect(response.ok()).toBe(true);
+    expect(response.headers()['content-type']).toBe('image/png');
+    expect(Number(response.headers()['content-length'])).toBe(original.length);
+    expect((await response.body()).equals(original)).toBe(true);
+    for (const route of ['/?lang=sk', '/?lang=en', '/api?lang=sk', '/api?lang=en']) {
+        await page.goto(route);
+        await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', '/assets/logo.png');
+        await expect(page.locator('.brand-mark')).toHaveAttribute('src', '/assets/logo.png');
+        expect(await page.locator('.brand-mark').evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
+    }
+});
+
+test('both guide titles use the complete NumForge wordmark', async ({ page, request }) => {
+    const original = fs.readFileSync(path.join(__dirname, '../../web/wordmark.png'));
+    const response = await request.get('/assets/wordmark.png');
+    expect(response.ok()).toBe(true);
+    expect(response.headers()['content-type']).toBe('image/png');
+    expect(Number(response.headers()['content-length'])).toBe(original.length);
+    expect((await response.body()).equals(original)).toBe(true);
+    for (const [language, title] of [['sk', 'Použitie a API'], ['en', 'Usage and API']]) {
+        await page.goto(`/api?lang=${language}`);
+        const wordmark = page.locator('.guide-title .guide-wordmark');
+        await expect(wordmark).toHaveAttribute('alt', 'NumForge');
+        expect(await wordmark.evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
+        await expect(page.locator('.guide-title span')).toHaveText(title);
+        const image = await wordmark.boundingBox();
+        const content = await page.locator('.guide-content').boundingBox();
+        expect(image.width).toBeLessThan(content.width);
+    }
+});
+
 for (const lang of ['sk', 'en']) {
     test.describe(lang, () => {
         test.beforeEach(async ({ page }) => { await page.goto(`/?lang=${lang}`); });
@@ -95,6 +155,26 @@ for (const lang of ['sk', 'en']) {
             await page.locator('#expression').press('Enter');
             await expect(page.locator('#result')).toHaveText(expected);
         }
+        test('text and mathematical values use their respective font families', async ({ page }) => {
+            await calculate(page, '1/3', '1/3');
+            const fonts = await page.evaluate(() => {
+                const font = selector => getComputedStyle(document.querySelector(selector)).fontFamily;
+                return {
+                    ui: font('.header-actions'), settings: font('.precision'),
+                    category: font('#function-tab-0'), help: font('#function-help'),
+                    input: font('#expression'), result: font('#result'),
+                    historyText: font('#history-list button'), historyValue: font('#history-list .history-value'),
+                    numericKey: font('.number-keypad [data-insert="7"]'),
+                    actionKey: font('.edit-keypad [data-action="clear"]'),
+                    functionKey: font('.keypad.functions button')
+                };
+            });
+            for (const name of ['settings', 'category', 'help', 'historyText', 'actionKey'])
+                expect(fonts[name]).toBe(fonts.ui);
+            for (const name of ['result', 'historyValue', 'numericKey', 'functionKey'])
+                expect(fonts[name]).toBe(fonts.input);
+            expect(fonts.ui).not.toBe(fonts.input);
+        });
         test('notation selector changes display and mathematical copy', async ({ page }) => {
             await page.locator('#precision-mode').selectOption('custom');
             await page.locator('#precision').fill('2');
@@ -102,11 +182,23 @@ for (const lang of ['sk', 'en']) {
             await calculate(page, '123.456', '1.2346 × 10^2');
             await page.locator('#copy-result').click();
             expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('1.2346E+2');
+            await page.locator('#history-list .history-copy').click();
+            expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('1.2346E+2');
             await page.locator('#notation-mode').selectOption('plain');
             await expect(page.locator('#result')).toHaveText('123.46');
             await page.locator('#notation-mode').selectOption('scientific');
             await expect(page.locator('#result')).toHaveText('1.2346E+2');
             await expect(page.locator('#history-list li')).toHaveCount(1);
+        });
+        test('fraction notation changes only the display', async ({ page }) => {
+            await calculate(page, '1/3', '1/3');
+            await page.locator('#notation-mode').selectOption('plain');
+            await expect(page.locator('#result')).toHaveText('0.3333333333');
+            await page.locator('#notation-mode').selectOption('fraction');
+            await expect(page.locator('#result')).toHaveText('1/3');
+            await expect(page.locator('#history-list li')).toHaveCount(1);
+            await calculate(page, 'sqrt(2)', '1.4142135624');
+            await calculate(page, '123456789012345/7', '1.7636684145E+13');
         });
         test('ans changes only on confirmation; history and reload', async ({ page, context }) => {
             await calculate(page, '5', '5');
@@ -119,9 +211,16 @@ for (const lang of ['sk', 'en']) {
             await page.locator('#expression').press('Enter');
             await expect(page.locator('#result')).toHaveText('7');
             await expect(page.locator('#history-list li')).toHaveCount(3);
-            await page.locator('.session-panel summary').click();
-            await page.locator('#history-list button').first().click();
-            await expect(page.locator('#expression')).toHaveValue('5');
+            await page.locator('#expression').fill('2+3');
+            await page.locator('#expression').evaluate(input => input.setSelectionRange(2, 3));
+            await page.locator('#history-list .history-entry').first().click();
+            await expect(page.locator('#expression')).toHaveValue('2+5');
+            await page.locator('#history-list .history-copy').first().click();
+            expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('5');
+            await page.locator('#expression').fill('1+');
+            await page.locator('#session-title').click();
+            await page.locator('#history-list .history-entry').first().click();
+            await expect(page.locator('#expression')).toHaveValue('1+5');
             await expect(page.locator('#history-list li')).toHaveCount(3);
             await calculate(page, 'ans', '7');
             const other = await context.newPage();
@@ -136,6 +235,17 @@ for (const lang of ['sk', 'en']) {
             await page.locator('#expression').press('Enter');
             await expect(page.locator('#result')).toContainText(lang === 'sk' ? 'nemá potvrdenú' : 'undefined');
         });
+        test('long history stays on one line and marks the hidden end', async ({ page }) => {
+            const input = '1' + '+1'.repeat(80);
+            await calculate(page, input, '81');
+            const line = page.locator('#history-list .history-line');
+            await expect(line).toHaveClass(/is-truncated/);
+            const height = await line.evaluate(element => element.getBoundingClientRect().height);
+            const lineHeight = await line.evaluate(element => parseFloat(getComputedStyle(element).lineHeight));
+            expect(height).toBeLessThanOrEqual(lineHeight + 1);
+            await page.locator('#history-list .history-copy').click();
+            expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('81');
+        });
         test('real C calculation, precision, buttons and clipboard', async ({ page }) => {
             await calculate(page, '0,1+0.2', '0.3');
             await page.locator('#copy-result').click();
@@ -146,7 +256,7 @@ for (const lang of ['sk', 'en']) {
             await calculate(page, '1/8', '0.12');
             await page.locator('#precision-mode').selectOption('full');
             await expect(page.locator('#precision')).toBeDisabled();
-            await calculate(page, '1/8', '0.125');
+            await calculate(page, '1/8', '1/8');
             await calculate(page, '((1E80+1)/8)*8-1E80', '1');
             await page.locator('[data-action=clear]').click();
             await expect(page.locator('#expression')).toHaveValue('');
@@ -188,21 +298,54 @@ for (const lang of ['sk', 'en']) {
             const other = lang === 'sk' ? 'en' : 'sk';
             await page.locator(`a[href="/api?lang=${other}"]`).click();
             await expect(page.locator('html')).toHaveAttribute('lang', other);
-            await page.locator(`a[href="/?lang=${other}"]`).click();
+            await page.locator(`.back-link[href="/?lang=${other}"]`).click();
             await calculate(page, '2(2+2)', '8');
         });
+        test('page navigation fades while section links keep scrolling', async ({ page }) => {
+            const leavingCalculator = await page.evaluate(() => {
+                document.querySelector('.guide-link').click();
+                return document.querySelector('.calculator-shell').classList.contains('page-leaving');
+            });
+            expect(leavingCalculator).toBe(true);
+            await expect(page).toHaveURL(`/api?lang=${lang}`);
+            await page.locator('.guide-toc a[href="#http"]').click();
+            await expect(page).toHaveURL(/#http$/);
+            await expect(page.locator('.guide-shell')).not.toHaveClass(/page-leaving/);
+            const other = lang === 'sk' ? 'en' : 'sk';
+            const leavingGuide = await page.evaluate(other => {
+                document.querySelector(`.language-switch a[lang="${other}"]`).click();
+                return document.querySelector('.guide-shell').classList.contains('page-leaving');
+            }, other);
+            expect(leavingGuide).toBe(true);
+            await expect(page).toHaveURL(`/api?lang=${other}`);
+            await page.emulateMedia({reducedMotion: 'reduce'});
+            const reducedMotionLeavesImmediately = await page.evaluate(() => {
+                document.querySelector('.back-link').click();
+                return document.querySelector('.guide-shell').classList.contains('page-leaving');
+            });
+            expect(reducedMotionLeavesImmediately).toBe(false);
+            await expect(page).toHaveURL(`/?lang=${other}`);
+        });
         test('automatic calculation and precision above result', async ({ page }, testInfo) => {
+            await expect(page.locator('.page-footer')).toBeVisible();
+            await expect(page.locator('.page-footer')).toContainText('v1.0.0');
+            await expect(page.locator('.page-footer a[href$="/LICENSE"]')).toBeVisible();
+            await expect(page.locator('.page-footer a[href="https://github.com/Interacti0n/NumForge"]')).toBeVisible();
             const settings = await page.locator('.precision').boundingBox();
+            const input = await page.locator('.expression-card').boundingBox();
             const panel = await page.locator('.result-panel').boundingBox();
+            expect(settings.y + settings.height).toBeLessThan(input.y);
             expect(settings.y + settings.height).toBeLessThan(panel.y);
+            expect(settings.width).toBeGreaterThanOrEqual(input.width - 2);
+            await expect(page.locator('#settings-title')).toBeVisible();
             await page.locator('#expression').fill('1/8');
-            await expect(page.locator('#result')).toHaveText('0.125');
+            await expect(page.locator('#result')).toHaveText('1/8');
             if (await page.locator('#precision-mode').inputValue() !== 'custom')
                 await page.locator('#precision-mode').selectOption('custom');
             await page.locator('#precision').fill('2');
             await expect(page.locator('#result')).toHaveText('0.12');
             await page.locator('#precision-mode').selectOption('full');
-            await expect(page.locator('#result')).toHaveText('0.125');
+            await expect(page.locator('#result')).toHaveText('1/8');
             await page.locator('#expression').fill('2+');
             await page.locator('#expression').press('End');
             await page.locator('[data-insert="3"]').click();
@@ -218,6 +361,7 @@ for (const lang of ['sk', 'en']) {
             await expect(page.locator('#result')).toBeEmpty();
         });
         test('function groups, aliases and trigonometry', async ({ page }, testInfo) => {
+            test.setTimeout(30000);
             await expect(page.locator('details.function-group')).toHaveCount(6);
             await expect(page.locator('[data-function]')).toHaveCount(46);
             await expect(page.locator('[data-function]:disabled')).toHaveCount(0);
@@ -231,12 +375,12 @@ for (const lang of ['sk', 'en']) {
             await page.locator('#expression').fill('round(12.345;2)');
             await page.locator('#expression').press('Enter');
             await expect(page.locator('#result')).toHaveText('12.34');
-            await calculate(page, 'mean(1;2;2)', '1.6666666667');
+            await calculate(page, 'mean(1;2;2)', '5/3');
             await page.locator('[data-action="clear"]').click();
             await page.locator('#function-tab-1').click();
             await page.locator('[data-function="median"]').click();
             await expect(page.locator('#expression')).toHaveValue('median()');
-            await calculate(page, 'harmean(1;2;4)', '1.7142857143');
+            await calculate(page, 'harmean(1;2;4)', '12/7');
             await page.locator('[data-action="clear"]').click();
             await page.locator('[data-function="variance"]').click();
             await expect(page.locator('#expression')).toHaveValue('variance()');
@@ -255,7 +399,7 @@ for (const lang of ['sk', 'en']) {
             await expect(page.locator('#result')).toHaveText('8');
             await page.locator('#expression').press('Enter');
             expect(await page.locator('#expression').evaluate(el => el.selectionStart)).toBe(8);
-            await calculate(page, '2^-3', '0.125');
+            await calculate(page, '2^-3', '1/8');
             await calculate(page, 'factorial(5)', '120');
             await page.locator('[data-action="clear"]').click();
             await page.locator('[data-function="exp"]').click();
@@ -284,6 +428,9 @@ for (const lang of ['sk', 'en']) {
             await calculate(page, 'cos(180)', '-1');
             await calculate(page, 'tan(45)', '1');
             await calculate(page, 'asin(1)', '90');
+            await calculate(page, 'arcsin(1)', '90');
+            await calculate(page, 'arctan(1)', '45');
+            await calculate(page, 'arcustan(1)', '45');
             await calculate(page, 'degrees(π)', '180');
             await page.locator('#function-tab-5').click();
             await page.locator('[data-action="clear"]').click();
@@ -291,6 +438,7 @@ for (const lang of ['sk', 'en']) {
             await expect(page.locator('#expression')).toHaveValue('sinh()');
             await calculate(page, 'tanh(1)', '0.761594156');
             await calculate(page, 'acosh(2)', '1.3169578969');
+            await calculate(page, 'arcuscosh(1)', '0');
             await page.locator('#expression').fill('atan(1;2)');
             await page.locator('#expression').press('Enter');
             await expect(page.locator('#result')).toContainText(lang === 'sk' ? 'nesprávny počet argumentov' : 'wrong number of arguments');
@@ -348,43 +496,318 @@ for (const lang of ['sk', 'en']) {
             await page.locator('.guide-link').click();
             await expect(page.locator('body')).toContainText('root(x;n)');
         });
-        test('result keeps five lines and expansion resets', async ({ page }) => {
+        test('result uses available panel height and expansion resets', async ({ page }) => {
             const result = page.locator('#result');
-            const lineHeight = await result.evaluate(el => parseFloat(getComputedStyle(el).lineHeight) *
-                Number(getComputedStyle(el.closest('.calculator-shell')).zoom));
-            expect((await result.boundingBox()).height).toBeCloseTo(5 * lineHeight, 0);
+            await calculate(page, '42', '42');
+            const shortResult = await result.boundingBox();
+            const available = await page.locator('.result-body').boundingBox();
+            expect(Math.abs(shortResult.y - available.y)).toBeLessThan(3);
+            expect(shortResult.height).toBeLessThan(available.height);
+            expect(await result.evaluate(el => getComputedStyle(el).borderLeftColor)).not.toBe('rgba(0, 0, 0, 0)');
             await page.locator('#precision-mode').selectOption('full');
             await calculate(page, '2^2000', (2n ** 2000n).toString()[0] + '.' + (2n ** 2000n).toString().slice(1) + 'E+602');
+            expect((await result.boundingBox()).height).toBeGreaterThanOrEqual(
+                (await page.locator('.result-body').boundingBox()).height - 8);
             await expect(page.locator('#expand-result')).toBeVisible();
+            await expect(page.locator('#result-more-marker')).toHaveText('...');
+            await expect(page.locator('#result-more-marker')).toBeVisible();
             await page.locator('#expand-result').click();
-            expect((await result.boundingBox()).height).toBeGreaterThan(5 * lineHeight);
+            await expect(page.locator('#result-dialog')).toBeVisible();
+            await expect(page.locator('#result-full')).toHaveText((2n ** 2000n).toString()[0] + '.' + (2n ** 2000n).toString().slice(1) + 'E+602');
+            expect((await result.boundingBox()).height).toBeGreaterThanOrEqual(
+                (await page.locator('.result-body').boundingBox()).height - 8);
+            await page.locator('#copy-result-dialog').click();
+            await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe((2n ** 2000n).toString()[0] + '.' + (2n ** 2000n).toString().slice(1) + 'E+602');
+            await page.mouse.click(5, 5);
+            await expect(page.locator('#result-dialog')).toBeHidden();
+            await page.locator('#expand-result').click();
+            await expect(page.locator('#result-dialog')).toBeVisible();
+            await page.locator('#close-result-dialog').click();
+            await expect(page.locator('#result-dialog')).toBeHidden();
             await calculate(page, '2^2000', (2n ** 2000n).toString()[0] + '.' + (2n ** 2000n).toString().slice(1) + 'E+602');
-            await expect(page.locator('#expand-result')).toHaveText(lang === 'sk' ? 'Zobraziť všetko' : 'Show all');
+            await expect(page.locator('#expand-result')).toHaveText(lang === 'sk' ? 'Zobraziť všetko...' : 'Show all...');
         });
-        test('collapsed calculator fits the viewport in every category', async ({ page }) => {
+        test('long expression expands above a visible result while controls stay available', async ({ page }) => {
+            const oneLine = (await page.locator('#expression').boundingBox()).height;
+            expect(oneLine).toBeLessThan(50);
+            await page.locator('#expression').fill('1+'.repeat(80) + '1');
+            expect((await page.locator('#expression').boundingBox()).height).toBeGreaterThan(oneLine);
+            await expect(page.locator('#expand-expression')).toBeHidden();
+            const longExpression = '1+'.repeat(180) + '1';
+            await page.locator('#expression').fill(longExpression);
+            await expect(page.locator('#expand-expression')).toBeVisible();
+            const heightLimit = await page.locator('#expression').evaluate(el => {
+                const style = getComputedStyle(el);
+                return 5 * parseFloat(style.lineHeight) + parseFloat(style.paddingTop) +
+                    parseFloat(style.paddingBottom) + parseFloat(style.borderTopWidth) +
+                    parseFloat(style.borderBottomWidth);
+            });
+            expect((await page.locator('#expression').boundingBox()).height).toBeLessThanOrEqual(heightLimit + 2);
+            expect(await page.locator('#expression').evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
+            await page.locator('#expand-expression').click();
+            await expect(page.locator('.expression-card')).toHaveClass(/is-expanded/);
+            expect((await page.locator('#expression').boundingBox()).height).toBeGreaterThan(64);
+            await page.locator('#expression').fill(longExpression + '/');
+            await expect(page.locator('#result')).toContainText(lang === 'sk' ? 'Chyba' : 'Error');
+            const inputBox = await page.locator('#expression').boundingBox();
+            const resultText = await page.locator('#result').boundingBox();
+            expect(inputBox.y + inputBox.height).toBeLessThan(resultText.y);
+            expect(resultText.y + Math.min(resultText.height, 18)).toBeLessThanOrEqual(720);
+            await page.locator('#expression').fill(longExpression);
+            await page.locator('.number-keypad [data-insert="7"]').click();
+            await expect(page.locator('#expression')).toHaveValue(longExpression + '7');
+            await page.locator('#expression').fill('1+2');
+            await page.locator('#expression').press('Enter');
+            await expect(page.locator('.expression-card')).not.toHaveClass(/is-expanded/);
+            await expect(page.locator('#expression')).toHaveValue('1+2');
+            await expect(page.locator('#result')).toHaveText('3');
+            await expect(page.locator('#expand-expression')).toBeHidden();
+            expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(720);
+            await page.setViewportSize({width: 375, height: 667});
+            await page.locator('#expression').fill(longExpression);
+            await expect(page.locator('#expand-expression')).toBeVisible();
+            await page.locator('#expand-expression').click();
+            await expect(page.locator('.expression-card')).toHaveClass(/is-expanded/);
+            await page.locator('#expression').press('Escape');
+            await expect(page.locator('.expression-card')).not.toHaveClass(/is-expanded/);
+            expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+        });
+        test('session survives language and guide navigation in the same tab', async ({ page }) => {
+            await calculate(page, '1/3', '1/3');
+            await page.locator('#function-tab-4').click();
+            await page.locator('.constants [data-insert="π"]').click();
+            await page.locator('#expression').fill('ans+1');
+            await expect(page.locator('#result')).toHaveText('4/3');
+            await page.locator('#precision-mode').selectOption('full');
+            await page.locator('[data-angle="deg"]').click();
+            const other = lang === 'sk' ? 'en' : 'sk';
+            await page.locator(`.language-switch a[lang="${other}"]`).click();
+            await expect(page.locator('#expression')).toHaveValue('ans+1');
+            await expect(page.locator('#precision-mode')).toHaveValue('full');
+            await expect(page.locator('[data-angle="deg"]')).toHaveAttribute('aria-pressed', 'true');
+            await expect(page.locator('#history-list li')).toHaveCount(1);
+            await expect(page.locator('#recent-buttons button')).toHaveCount(1);
+            await expect(page.locator('#function-tab-4')).toHaveAttribute('aria-selected', 'true');
+            await page.locator('.guide-link').click();
+            await page.locator('.back-link').click();
+            await expect(page.locator('#history-list li')).toHaveCount(1);
+            await expect(page.locator('#expression')).toHaveValue('ans+1');
+            await expect(page.locator('#result')).toHaveText('4/3');
+            await page.locator('#expression').press('Enter');
+            await expect(page.locator('#history-list li')).toHaveCount(2);
+            await calculate(page, 'ans', '4/3');
+        });
+        test('header, footer and license match the guide', async ({ page }) => {
+            const calculatorHeader = await page.locator('.page-header').boundingBox();
+            const calculatorFooter = await page.locator('.page-footer').boundingBox();
+            await expect(page.locator('.page-footer a[href="https://github.com/Interacti0n/NumForge"]')).toHaveAttribute('target', '_blank');
+            await page.locator('[data-license]').click();
+            await expect(page.locator('.license-dialog')).toBeVisible();
+            await expect(page.locator('.license-dialog pre')).toContainText('Copyright (c) 2026 Interacti0n');
+            await page.locator('.license-heading button').click();
+            await page.locator('.guide-link').click();
+            const guideHeader = await page.locator('.page-header').boundingBox();
+            const guideFooter = await page.locator('.page-footer').boundingBox();
+            for (const key of ['x', 'width', 'height'])
+            {
+                expect(Math.abs(calculatorHeader[key] - guideHeader[key])).toBeLessThan(2);
+                expect(Math.abs(calculatorFooter[key] - guideFooter[key])).toBeLessThan(2);
+            }
+            await page.locator('[data-license]').click();
+            await expect(page.locator('.license-dialog')).toBeVisible();
+            await expect(page.locator('.license-dialog pre')).toContainText('Permission is hereby granted');
+            await expect(page.locator('.page-footer a[href="https://github.com/Interacti0n/NumForge"]')).toHaveAttribute('target', '_blank');
+            await page.locator('.license-heading button').click();
+            await page.setViewportSize({width: 375, height: 667});
+            const mobileGuideHeader = await page.locator('.page-header').boundingBox();
+            const mobileGuideFooter = await page.locator('.page-footer').boundingBox();
+            await page.locator('.back-link').click();
+            const mobileCalculatorHeader = await page.locator('.page-header').boundingBox();
+            const mobileCalculatorFooter = await page.locator('.page-footer').boundingBox();
+            for (const key of ['x', 'width', 'height'])
+            {
+                expect(Math.abs(mobileCalculatorHeader[key] - mobileGuideHeader[key])).toBeLessThan(2);
+                expect(Math.abs(mobileCalculatorFooter[key] - mobileGuideFooter[key])).toBeLessThan(2);
+            }
+        });
+        test('responsive layout scrolls naturally without shrinking controls', async ({ page }) => {
             for (const [width, height] of [[1280, 720], [1024, 600], [375, 667], [320, 568], [812, 375]]) {
                 await page.setViewportSize({width, height});
                 for (let index = 0; index < 6; index++) {
                     await page.locator(`#function-tab-${index}`).click();
                     await expect.poll(() => page.evaluate(() =>
-                        document.documentElement.scrollHeight <= window.innerHeight + 1)).toBe(true);
-                    await expect.poll(() => page.evaluate(() =>
                         document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+                    expect(await page.locator('.calculator-shell').evaluate(el =>
+                        getComputedStyle(el).zoom)).toBe('1');
                 }
             }
+            for (const [width, height] of [[1024, 768], [1280, 720], [1440, 900]]) {
+                await page.setViewportSize({width, height});
+                expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(height);
+                expect(await page.locator('.calculator-column').evaluate(el => el.scrollHeight <= el.clientHeight + 1)).toBe(true);
+            }
+            await page.setViewportSize({width: 1024, height: 768});
+            await page.locator('#precision-mode').selectOption('custom');
+            await expect(page.locator('#custom-precision')).toBeVisible();
+            expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+            expect(await page.locator('.calculator-column').evaluate(el => el.scrollHeight <= el.clientHeight + 1)).toBe(true);
+            await page.locator('#precision-mode').selectOption('auto');
             await page.setViewportSize({width: 375, height: 667});
+            expect(await page.locator('.number-keypad button').first().evaluate(el =>
+                el.getBoundingClientRect().height)).toBeGreaterThanOrEqual(45);
             await page.locator('#precision-mode').selectOption('full');
             await page.locator('#expression').fill('2^2000');
             await page.locator('#expression').press('Enter');
             await expect(page.locator('#expand-result')).toBeVisible();
-            await expect.poll(() => page.evaluate(() =>
-                document.documentElement.scrollHeight <= window.innerHeight + 1)).toBe(true);
-            await page.locator('#expand-result').click();
+            await expect(page.locator('#result-more-marker')).toBeVisible();
             await expect.poll(() => page.evaluate(() =>
                 document.documentElement.scrollHeight > window.innerHeight)).toBe(true);
             await page.locator('#expand-result').click();
+            await expect(page.locator('#result')).toHaveClass(/expanded/);
+            await expect(page.locator('#result-more-marker')).toBeHidden();
+            await page.locator('#expand-result').click();
+            await expect(page.locator('#result')).not.toHaveClass(/expanded/);
+            await expect(page.locator('#result-more-marker')).toBeVisible();
+        });
+        test('function search and category controls are easy to reach', async ({ page }) => {
+            await expect(page.locator('#example-options')).toHaveCount(0);
+            await page.locator('#function-search').fill('sqrt');
+            await expect(page.locator('[data-function="sqrt"]')).toBeVisible();
+            await expect(page.locator('[data-function="sin"]')).toBeHidden();
+            await page.locator('[data-function="sqrt"]').click();
+            await expect(page.locator('#expression')).toHaveValue('sqrt()');
+            await page.locator('#function-search').fill(lang === 'sk' ? 'odmocnina' : 'square root');
+            await expect(page.locator('[data-function="sqrt"]')).toBeVisible();
+            await page.locator('#function-search').fill('unlikely-function-name');
+            await expect(page.locator('#search-status')).toContainText(lang === 'sk' ? 'Žiadna' : 'No matching');
+            await page.locator('#function-search').press('Escape');
+            await expect(page.locator('#function-tab-0')).toBeVisible();
+            for (const prefix of ['arc', 'arcus']) {
+                await page.locator('#function-search').fill(prefix);
+                for (const name of ['asin', 'acos', 'atan', 'asinh', 'acosh', 'atanh'])
+                    await expect(page.locator(`[data-function="${name}"]`)).toBeVisible();
+            }
+            await page.locator('#function-search').fill('arcuscosh');
+            await expect(page.locator('[data-function="acosh"]')).toBeVisible();
+            await expect(page.locator('[data-function="asin"]')).toBeHidden();
+            await page.locator('#function-search').press('Escape');
+            if (lang === 'sk') {
+                await page.locator('#function-search').fill('sucet');
+                await expect(page.locator('[data-function="sum"]')).toBeVisible();
+                await page.locator('#function-search').fill('nahodna');
+                await expect(page.locator('[data-function="rand"]')).toBeVisible();
+                await page.locator('#function-search').press('Escape');
+            }
+            const first = await page.locator('#function-tab-0').boundingBox();
+            const second = await page.locator('#function-tab-1').boundingBox();
+            expect(second.y).toBeGreaterThan(first.y);
+            expect(Math.abs(second.x - first.x)).toBeLessThan(2);
+            const search = await page.locator('#function-search').boundingBox();
+            const categories = await page.locator('.function-tabs').boundingBox();
+            const functions = await page.locator('.function-group:not([hidden])').boundingBox();
+            expect(categories.y).toBeGreaterThan(search.y + search.height + 10);
+            expect(functions.x).toBeGreaterThan(categories.x + categories.width);
+            expect(await page.locator('.keypad.functions button:visible').first().evaluate(el =>
+                parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(14);
+            const helpPosition = await page.locator('#function-help').evaluate(el => ({
+                top: el.getBoundingClientRect().top,
+                bottom: el.getBoundingClientRect().bottom,
+                groupBottom: document.querySelector('.function-groups').getBoundingClientRect().bottom,
+                cardBottom: document.querySelector('.function-library').getBoundingClientRect().bottom
+            }));
+            expect(helpPosition.top).toBeGreaterThanOrEqual(helpPosition.groupBottom - 1);
+            expect(helpPosition.bottom).toBeLessThanOrEqual(helpPosition.cardBottom + 1);
+            const session = await page.locator('.session-panel').boundingBox();
+            const sidebar = await page.locator('.sidebar').boundingBox();
+            expect(Math.abs(session.y + session.height - (sidebar.y + sidebar.height))).toBeLessThan(2);
+        });
+        test('recent tools remain available below the keypad', async ({ page }) => {
+            await page.locator('.constants [data-insert="π"]').click();
+            await expect(page.locator('#recent-buttons button')).toHaveCount(1);
+            await expect(page.locator('#recent-buttons button').first()).toHaveText('π');
+            await page.locator('.operations [data-insert="^"]').click();
+            await expect(page.locator('#recent-buttons button').first()).toHaveText('xʸ');
+            await page.locator('#function-tab-3').click();
+            await page.locator('[data-function="sqrt"]').click();
+            await expect(page.locator('#recent-buttons button').first()).toHaveText('sqrt');
+            await page.locator('[data-action="clear"]').click();
+            await page.locator('#recent-buttons button').first().click();
+            await expect(page.locator('#expression')).toHaveValue('sqrt()');
+            for (const value of ['e', 'φ']) await page.locator(`.constants [data-insert="${value}"]`).click();
+            for (const value of ['²', '³']) await page.locator(`.operations [data-insert="${value}"]`).click();
+            await expect(page.locator('#recent-buttons button')).toHaveCount(7);
+            await page.locator('.constants [data-insert="π"]').click();
+            await expect(page.locator('#recent-buttons button').first()).toHaveText('π');
+            await expect(page.locator('#recent-buttons button')).toHaveCount(7);
+            await expect(page.locator('#recent-buttons button:visible')).toHaveCount(7);
+            expect(await page.locator('.calculator-column').evaluate(el => el.scrollHeight <= el.clientHeight + 1)).toBe(true);
+            const desktopRows = await page.locator('#recent-buttons button:visible').evaluateAll(buttons =>
+                buttons.map(button => button.getBoundingClientRect().y));
+            expect(Math.max(...desktopRows) - Math.min(...desktopRows)).toBeLessThan(2);
+            const desktopFit = await page.locator('#recent-buttons').evaluate(row => ({
+                right: row.getBoundingClientRect().right,
+                last: [...row.children].filter(button => !button.hidden).at(-1).getBoundingClientRect().right
+            }));
+            expect(desktopFit.right - desktopFit.last).toBeLessThan(2);
+            await page.setViewportSize({width: 375, height: 667});
+            await expect.poll(() => page.locator('#recent-buttons button:visible').count()).toBeLessThan(7);
+            expect(await page.locator('#recent-buttons button:visible').count()).toBeGreaterThan(0);
+            const mobileRows = await page.locator('#recent-buttons button:visible').evaluateAll(buttons =>
+                buttons.map(button => button.getBoundingClientRect().y));
+            expect(Math.max(...mobileRows) - Math.min(...mobileRows)).toBeLessThan(2);
+            const mobileFit = await page.locator('#recent-buttons').evaluate(row => ({
+                right: row.getBoundingClientRect().right,
+                last: [...row.children].filter(button => !button.hidden).at(-1).getBoundingClientRect().right
+            }));
+            expect(mobileFit.last).toBeLessThanOrEqual(mobileFit.right + 1);
+            expect(mobileFit.right - mobileFit.last).toBeLessThan(2);
+            expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+        });
+        test('function library gives unused sidebar height to the session', async ({ page }) => {
+            await page.setViewportSize({width: 1280, height: 720});
+            const before = {
+                library: await page.locator('.function-library').boundingBox(),
+                session: await page.locator('.session-panel').boundingBox()
+            };
+            await page.locator('#function-search').fill('no-such-function');
+            const after = {
+                library: await page.locator('.function-library').boundingBox(),
+                session: await page.locator('.session-panel').boundingBox()
+            };
+            expect(after.library.height).toBeLessThan(before.library.height);
+            expect(after.session.height).toBeGreaterThan(before.session.height);
+            expect(Math.abs(after.session.y + after.session.height -
+                (before.session.y + before.session.height))).toBeLessThan(2);
+        });
+        test('guide sections stay navigable on narrow screens', async ({ page }) => {
+            await page.locator('.guide-link').click();
+            await page.setViewportSize({width: 375, height: 812});
+            const headerY = (await page.locator('.page-header').boundingBox()).y;
+            const menuY = (await page.locator('.guide-toc').boundingBox()).y;
+            await page.locator('.guide-toc a[href="#http"]').click();
+            await expect(page).toHaveURL(/#http$/);
+            expect((await page.locator('.page-header').boundingBox()).y).toBe(headerY);
+            expect((await page.locator('.guide-toc').boundingBox()).y).toBe(menuY);
+            expect(await page.locator('.guide-content').evaluate(el => el.scrollTop)).toBeGreaterThan(0);
+            await expect(page.locator('#http')).toBeVisible();
             await expect.poll(() => page.evaluate(() =>
-                document.documentElement.scrollHeight <= window.innerHeight + 1)).toBe(true);
+                document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+        });
+        test('guide navigation remains visible while reading on desktop', async ({ page }) => {
+            await page.setViewportSize({width: 1280, height: 720});
+            await page.locator('.guide-link').click();
+            await expect(page.locator('.page-footer')).toContainText('v1.0.0');
+            await expect(page.locator('.page-footer a[href$="/LICENSE"]')).toBeVisible();
+            const headerY = (await page.locator('.page-header').boundingBox()).y;
+            const menuY = (await page.locator('.guide-toc').boundingBox()).y;
+            await page.locator('.guide-toc a[href="#http"]').click();
+            await expect(page).toHaveURL(/#http$/);
+            expect((await page.locator('.page-header').boundingBox()).y).toBe(headerY);
+            expect((await page.locator('.guide-toc').boundingBox()).y).toBe(menuY);
+            expect(await page.locator('.guide-content').evaluate(el => el.scrollTop)).toBeGreaterThan(0);
+            await page.locator('.guide-toc a[href="#library"]').click();
+            await expect(page).toHaveURL(/#library$/);
+            await expect(page.locator('.guide-toc a[href="#syntax"]')).toBeVisible();
         });
         test('cache reformats values, recomputes precision and isolates pages', async ({ page, context }) => {
             async function answer(expression, scale) {
@@ -401,8 +824,8 @@ for (const lang of ['sk', 'en']) {
             expect((await answer('100!', 80)).cached).toBe(true);
             expect((await answer('1/3', 10)).cached).toBe(false);
             expect((await answer('1/3', 20)).cached).toBe(true);
-            expect((await answer('1/3', 80)).cached).toBe(false);
-            expect((await answer('1/3', 10)).cached).toBe(false);
+            expect((await answer('1/3', 80)).cached).toBe(true);
+            expect((await answer('1/3', 10)).cached).toBe(true);
             const other = await context.newPage();
             await other.goto(`/?lang=${lang}`);
             const response = other.waitForResponse(r => r.url().includes('&action=commit'));
@@ -414,8 +837,10 @@ for (const lang of ['sk', 'en']) {
         test('angle selector placement, contrast and language state', async ({ page }) => {
             const settings = await page.locator('.precision-controls').boundingBox();
             const selector = await page.locator('.angle-switch').boundingBox();
-            expect(selector.x).toBeGreaterThanOrEqual(settings.x + settings.width);
-            expect(Math.abs(selector.y + selector.height / 2 - settings.y - settings.height / 2)).toBeLessThan(2);
+            expect(selector.x).toBeGreaterThanOrEqual(settings.x);
+            expect(selector.x + selector.width).toBeLessThanOrEqual(settings.x + settings.width + 1);
+            expect(selector.y).toBeGreaterThanOrEqual(settings.y);
+            expect(selector.y + selector.height).toBeLessThanOrEqual(settings.y + settings.height + 1);
             await expect(page.locator('#angle-indicator')).toHaveCount(0);
             await page.locator('[data-angle=deg]').click();
             const colors = await page.locator('[data-angle]').evaluateAll(buttons =>
@@ -442,6 +867,8 @@ for (const lang of ['sk', 'en']) {
         });
         test('function help, domains and shared angle selector', async ({ page }) => {
             await expect(page.locator('[data-angle=rad]')).toHaveAttribute('aria-pressed', 'true');
+            await page.locator('[data-function=rand]').focus();
+            await expect(page.locator('#function-help')).toContainText('rand(x;y)');
             await page.locator('#function-tab-4').click();
             await page.locator('[data-angle=deg]').press('Enter');
             await expect(page.locator('[data-angle=deg]')).toHaveAttribute('aria-pressed', 'true');

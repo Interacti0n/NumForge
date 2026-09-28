@@ -6,13 +6,14 @@
 #include <stdbool.h>
 
 #include <numforge/bigdecimal.h>
+#include <numforge/bigrational.h>
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
     Shared status model for the calculator application pipeline. These types
     belong to the private client layer over the public numeric library.
 
-    Implementation: src/calculator/calculator.c
+    Implementation: src/calculator/calculator.c and value.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
@@ -41,6 +42,15 @@ typedef enum CalculatorAngleUnit
     CALCULATOR_ANGLE_DEGREES
 } CalculatorAngleUnit;
 
+typedef enum CalculatorNotation
+{
+    CALCULATOR_NOTATION_AUTO = 0,
+    CALCULATOR_NOTATION_PLAIN,
+    CALCULATOR_NOTATION_SCIENTIFIC,
+    CALCULATOR_NOTATION_MATHEMATICAL,
+    CALCULATOR_NOTATION_FRACTION
+} CalculatorNotation;
+
 /*
 ------------------------------------------------------------------------------------------------------------------------------
     Evaluation policy. Division always receives explicit settings rather than
@@ -54,16 +64,28 @@ typedef struct CalculatorContext
     int64_t output_scale;
     int64_t time_limit_ms;
     BigDecimalRoundingMode rounding;
-    BigDecimalFormatMode notation;
+    CalculatorNotation notation;
     CalculatorAngleUnit angle_unit;
     bool significant_division;
 } CalculatorContext;
 
-/* Owned, unformatted value. independent is a conservative proof from the AST,
- * not a rounded/inexact flag. Initialize to zero and destroy before reuse. */
+typedef enum CalculatorValueKind
+{
+    CALCULATOR_VALUE_DECIMAL = 0,
+    CALCULATOR_VALUE_INTEGER,
+    CALCULATOR_VALUE_RATIONAL
+} CalculatorValueKind;
+
+/* Owned, unformatted value. number is a decimal projection for the established
+ * client path; kind identifies the authoritative value. Decimal is treated
+ * conservatively as approximate. independent is a separate cache property.
+ * Initialize to zero and destroy before reuse. */
 typedef struct CalculatorValue
 {
     BigDecimal *number;
+    BigInt *integer;
+    BigRational *rational;
+    CalculatorValueKind kind;
     CalculatorContext context;
     bool independent;
     bool uses_answer;
@@ -109,13 +131,16 @@ CalculatorStatus calculator_compute_value(
 CalculatorStatus calculator_compute_value_with_answer(
     const char *input,
     const CalculatorContext *context,
-    const BigDecimal *answer,
+    const CalculatorValue *answer,
     uint64_t *random_state,
     CalculatorValue *result,
     CalculatorError *error
 );
 void calculator_value_destroy(CalculatorValue *value);
+CalculatorStatus calculator_value_copy(CalculatorValue *result, const CalculatorValue *value);
 bool calculator_value_matches(const CalculatorValue *value, const CalculatorContext *context);
+CalculatorStatus calculator_format_value(
+    const CalculatorValue *value, const CalculatorContext *context, char **result);
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------

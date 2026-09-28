@@ -41,6 +41,7 @@ CalculatorStatus calculator_format_result(
 {
     bool owner;
     CalculatorStatus status;
+    BigDecimalFormatMode decimal_notation;
 
     if (result != NULL)
     {
@@ -57,6 +58,25 @@ CalculatorStatus calculator_format_result(
         return CALCULATOR_INVALID_ARGUMENT;
     }
 
+    switch (context->notation)
+    {
+        case CALCULATOR_NOTATION_AUTO:
+        case CALCULATOR_NOTATION_FRACTION:
+            decimal_notation = BIGDECIMAL_FORMAT_AUTO;
+            break;
+        case CALCULATOR_NOTATION_PLAIN:
+            decimal_notation = BIGDECIMAL_FORMAT_PLAIN;
+            break;
+        case CALCULATOR_NOTATION_SCIENTIFIC:
+            decimal_notation = BIGDECIMAL_FORMAT_SCIENTIFIC;
+            break;
+        case CALCULATOR_NOTATION_MATHEMATICAL:
+            decimal_notation = BIGDECIMAL_FORMAT_MATHEMATICAL;
+            break;
+        default:
+            return CALCULATOR_INVALID_ARGUMENT;
+    }
+
     owner = numforge_budget_begin(
         (uint64_t)context->time_limit_ms, CALCULATOR_ALLOCATION_BUDGET, CALCULATOR_SINGLE_ALLOCATION);
 
@@ -68,7 +88,7 @@ CalculatorStatus calculator_format_result(
     {
         status = calculator_from_bigdecimal_status(
             bigdecimal_format_mode(value, context->output_scale, context->rounding,
-                context->notation, CALCULATOR_MAX_OUTPUT_BYTES, result));
+                decimal_notation, CALCULATOR_MAX_OUTPUT_BYTES, result));
     }
 
     status = calculator_budget_status(status);

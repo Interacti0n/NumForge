@@ -149,7 +149,7 @@ CalculatorStatus calculator_session_compute(
         }
         if (hit && !commit)
         {
-            status = calculator_format_result(cached->number, context, result);
+            status = calculator_format_value(cached, context, result);
             status = calculator_budget_status(status);
             if (status != CALCULATOR_OK)
             {
@@ -169,15 +169,8 @@ CalculatorStatus calculator_session_compute(
         }
         if (hit)
         {
-            value.number = bigdecimal_create();
-            if (value.number == NULL || bigdecimal_copy(value.number, cached->number) != BIGDECIMAL_OK)
-            {
-                status = CALCULATOR_OUT_OF_MEMORY;
-            }
+            status = calculator_value_copy(&value, cached);
             value.context = *context;
-            value.independent = cached->independent;
-            value.uses_answer = cached->uses_answer;
-            value.uses_random = cached->uses_random;
             if (cached == &session->preview)
             {
                 random_next = session->preview_random_state;
@@ -186,11 +179,11 @@ CalculatorStatus calculator_session_compute(
         else
         {
             status = calculator_compute_value_with_answer(input, context,
-                last == NULL ? NULL : last->value.number, &random_next, &value, error);
+                last == NULL ? NULL : &last->value, &random_next, &value, error);
         }
         if (status == CALCULATOR_OK)
         {
-            status = calculator_format_result(value.number, context, result);
+            status = calculator_format_value(&value, context, result);
         }
         if (status == CALCULATOR_OK && commit)
         {
@@ -230,6 +223,8 @@ CalculatorStatus calculator_session_compute(
                 memcpy(session->preview_expression, input, length + 1U);
             }
             value.number = NULL;
+            value.integer = NULL;
+            value.rational = NULL;
             if (reused != NULL)
             {
                 *reused = hit;

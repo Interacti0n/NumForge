@@ -1,9 +1,10 @@
 # NumForge
 
 NumForge is a C17 mathematics library with CLI and web clients. It provides
-two public numeric types: signed arbitrary-precision `BigInt` and base-10
-`BigDecimal`. The command-line and local browser calculators share the same C
-tokenizer, parser, evaluator, and BigDecimal implementation.
+three public numeric types: signed arbitrary-precision `BigInt`, base-10
+`BigDecimal`, and exact `BigRational`. The command-line and local browser
+calculators share the same C tokenizer, parser, evaluator, and BigDecimal
+implementation.
 All implemented numeric operations are exposed by the public library; clients
 add expression syntax, presentation and application resource limits.
 
@@ -17,6 +18,8 @@ add expression syntax, presentation and application resource limits.
 - Perfect-square and Miller-Rabin probable-prime checks.
 - Exact decimal arithmetic with configurable rounding for division and
   rescaling.
+- Exact reduced rational arithmetic and explicit precision conversion to
+  BigDecimal. The calculator retains exact rational results where possible.
 - Arbitrary-precision real roots, exponential, natural logarithm, common
   logarithm, and logarithms with a caller-selected base.
 - Arbitrary-precision radian sine, cosine, tangent, and inverse trigonometric
@@ -33,8 +36,8 @@ add expression syntax, presentation and application resource limits.
   are evaluated by the same parser and `BigDecimal` core.
 - Output/input aliasing for arithmetic operations, including
   `bigint_add(x, x, y)` and `bigint_div_mod(q, r, q, r)`.
-- Unit tests, deterministic property tests, warnings-as-errors, and Linux and
-  Windows CI, including deterministic allocation-failure injection.
+- Unit tests, deterministic property tests, warnings-as-errors, and Linux,
+  Windows and ARM64 macOS CI, including deterministic allocation-failure injection.
 
 ## Requirements
 
@@ -50,7 +53,7 @@ add expression syntax, presentation and application resource limits.
 | Document | Purpose |
 | --- | --- |
 | [Library guide](docs/LIBRARY_GUIDE.md) | Standalone core builds and public C/C++ usage. |
-| [API overview](docs/API.md) | Public `BigInt` and `BigDecimal` API, ownership rules, calculator syntax, and local HTTP API. |
+| [API overview](docs/API.md) | Public numeric APIs, ownership rules, calculator syntax, and local HTTP API. |
 | [BigInt design](docs/BIGINT_DESIGN.md) | Limb representation, semantics, and optimization boundaries. |
 | [BigDecimal design](docs/BIGDECIMAL_DESIGN.md) | Exact-decimal representation, rounding, and future work. |
 | [Calculator design](docs/CALCULATOR_DESIGN.md) | Expression grammar, evaluation policy, and CLI/web integration. |
@@ -60,14 +63,16 @@ add expression syntax, presentation and application resource limits.
 
 ```text
 NumForge/
-├── include/numforge/   Public BigInt, BigDecimal, and runtime headers
+├── include/numforge/   Public BigInt, BigDecimal, BigRational, and runtime headers
 ├── src/
 │   ├── bigint/        Integer implementation and private helpers
 │   ├── bigdecimal/    Decimal implementation and private helpers
+│   ├── bigrational/   Exact rational implementation
 │   ├── internal/      Allocators, resource budgets, and test instrumentation
 │   ├── calculator/    Expression syntax and evaluation using the public library
-│   ├── web/           Local HTTP server, adapter, and embedded SK/EN pages
+│   ├── web/           Local HTTP server and adapter
 │   └── main.c         CLI entry point
+├── web/               Editable SK/EN HTML pages, shared CSS, and calculator JavaScript
 ├── tests/             Unit, property, and integration tests
 │   ├── browser/       Playwright browser scenarios and their npm dependencies
 │   ├── fuzz/          Fuzz harnesses, replay driver, and dictionaries
@@ -83,6 +88,11 @@ The private `numforge_client` target adds the calculator and HTTP adapters;
 the CLI and web executables use this client layer. Only `include/numforge/`
 is installed as public headers. Module-level source maps are in the design
 documents above and in the corresponding header comments.
+
+The web source lives in `web/`. CMake generates an ignored header from these
+assets when building `numforge_web`, so the executable remains self-contained.
+Edit the HTML, CSS, or JavaScript source files directly; the next build embeds
+the changes. No separate asset directory is needed at runtime.
 
 Local build trees, editor state, browser reports, and `PROJECT_REVIEW.md`
 are ignored by Git. Browser npm dependencies are test tooling; running the
@@ -172,42 +182,61 @@ and `stdevp` use population denominator `n`; `stdev` uses sample denominator
 `n−1`. Real roots `sqrt`/`√`, `cbrt` and `root(x;n)` preserve exact finite roots
 and otherwise use working precision (34 significant digits by default). Trigonometric and inverse
 trigonometric calls use the shared RAD/DEG selector; explicit `radians(x)` and
-`degrees(x)` conversions remain available. Hyperbolic calls are independent of
-RAD/DEG. Six horizontal tabs contain the
-function controls, with signatures and domain hints on hover, focus or touch.
-The RAD/DEG selector sits on the right beside the precision settings. Connection
+`degrees(x)` conversions remain available. Inverse trigonometric and hyperbolic
+calls also accept `arc` and `arcus` names (`arcsin`, `arcussin`, `arctanh`, etc.).
+Hyperbolic calls are independent of RAD/DEG. Six vertically listed categories and a search field expose the function
+controls. Search ignores Slovak diacritics; controls show signatures and domain
+hints on hover, focus or touch. The compact output settings sit above the
+expression. Recently used constants, operations and functions appear below
+the keypad, capped at five shortcuts. The page uses a two-column layout on wide screens and
+natural scrolling with touch-sized controls on narrow screens. Connection
 and unexpected-response errors offer retry with Enter.
 The page is available in Slovak and English, and the displayed
 result can be copied with one click. See the
 [API overview](docs/API.md) for exact syntax and the local HTTP API.
-Long results stay in a compact five-line panel and can be expanded with
-`Show all` when needed.
+Long results stay in a compact five-line panel. `Show all` opens a scrollable
+dialog on desktop and expands the panel on narrow screens. The expression wraps
+across two visible lines; longer expressions can be opened in an editable
+dialog. A clipped result shows `...` and a `Show all...` control.
 Working precision remains automatic; output precision and notation are user-configurable.
 Choose Auto (10 decimal places), Full (no final output rounding), or Custom
 (0–10000 places). The number field appears only in Custom mode.
-The separate notation selector offers Auto, plain, scientific (`1.23E+45`)
-and mathematical (`1.23 × 10^45`) output. Auto selects scientific when the
-rounded exponent is at least 10 in magnitude or plain output exceeds 80
-characters. Plain output is limited to 65536 UTF-8 bytes; an oversized result
+The separate notation selector offers Auto, plain, scientific (`1.23E+45`),
+mathematical (`1.23 × 10^45`) and fraction output. Auto uses a reduced exact
+fraction when its denominator is at most 10000, its text has at most 16
+characters, and it is at least two characters shorter than the decimal display;
+otherwise its decimal rules select plain or scientific notation. Fraction mode
+writes an exact non-integer as `a/b` when it fits in 16 characters; longer
+fractions and approximate values use Auto decimal notation. Exact integers
+remain integers. Plain and fraction output
+are limited to 65536 UTF-8 bytes; an oversized result
 reports an error. Mathematical output copies as parser-compatible `E` notation
 when it fits the input range and size limit. The CLI uses `notation auto`,
-`notation plain`, `notation scientific` or `notation math`.
+`notation plain`, `notation scientific`, `notation math` or `notation fraction`.
 Each page has an isolated in-memory session (up to eight pages on the server).
 Automatic previews do not change `ans`. Enter, Calculate or `=` confirms a
 successful result and appends it to the last 16 history entries. `ans` stores
 the internal value, so confirming `1/8` at two output places retains `0.125`.
+Literal arithmetic with `+`, `-`, `*` and `/` keeps an exact integer or reduced
+fraction internally: confirming `1/3` can therefore show more digits when the
+precision later increases, and `(1/3)*3` evaluates to `1`. Integer powers,
+perfect rational roots and named arithmetic and statistics functions keep exact values too:
+`sqrt(4/9)` is internally `2/3`. Irrational roots and constants are approximate;
+their results do not become exact merely because the display looks like an integer.
 Increasing precision cannot recover digits already lost in an approximation.
 History buttons restore only the expression; evaluation uses the current `ans`.
-New session, reload and language navigation start with undefined `ans` and empty
-history. FIFO session eviction or server restart requires reloading the page.
+Language changes and guide navigation in the same tab retain `ans`, history,
+input and settings while the local server keeps the session. New session and
+reload start with undefined `ans` and empty history. FIFO session eviction or
+server restart requires reloading the page.
 The CLI confirms each successful expression and supports `history` and `reset`.
 
 The web server also retains a preview value per session.
 Changing the display reuses it when safe; a changed working precision recomputes
 context-dependent expressions. Exact factorials can be reformatted without
 recalculating. Confirmations invalidate previews that depend on the previous `ans`.
-The collapsed calculator fits the viewport height, scaling down in short
-windows. Vertical page scrolling is needed only while a long result is expanded.
+The collapsed desktop calculator keeps its controls at normal scale within
+ordinary viewport heights; very short windows can scroll the calculator column.
 
 Both the interactive CLI and local HTTP adapter accept expressions up to 4096
 UTF-8 bytes. This is an application input limit rather than a limit of the
@@ -223,10 +252,11 @@ target name):
 ```c
 #include <numforge/bigint.h>
 #include <numforge/bigdecimal.h>
+#include <numforge/bigrational.h>
 ```
 
 The public API, ownership rules, arithmetic semantics, and concise function
-reference for both types are in [the API overview](docs/API.md).
+reference for all three types are in [the API overview](docs/API.md).
 
 To install the library, headers, applications, and CMake package into a chosen
 prefix:
@@ -247,7 +277,8 @@ target_link_libraries(my_target PRIVATE NumForge::numforge)
 ### Stable 1.x API scope
 
 The public API consists of `include/numforge/bigint.h`,
-`include/numforge/bigdecimal.h` and optional `include/numforge/runtime.h`.
+`include/numforge/bigdecimal.h`, `include/numforge/bigrational.h` and optional
+`include/numforge/runtime.h`.
 Existing 1.x numeric signatures remain compatible. Calculator modules and `src/web/` are
 application code, not public C library headers. The loopback HTTP endpoint is
 documented for local use, but is not an Internet-facing service or a separately
@@ -290,20 +321,20 @@ executables:
 - `web_api_tests`: confirms that the local web adapter evaluates expressions
   through the same exact C `BigDecimal` pipeline.
 - `web_server_smoke_tests`: starts the real server on a temporary loopback
-  port and verifies HTML, calculation, same-origin policy, and HTTP error
+  port and verifies HTML, embedded CSS/JS assets, calculation, same-origin policy, and HTTP error
   responses over sockets.
 - `allocation_failure_tests`: fails each internal allocation in turn and checks
   out-of-memory propagation, cleanup, and the strong destination-unchanged
   guarantee across BigInt, BigDecimal, and the calculator pipeline.
-- `web_ui_tests`: when Node.js is available, executes the actual embedded
-  SK/EN scripts with a controlled DOM/network to check stale responses,
+- `web_ui_tests`: when Node.js is available, executes the shared web source
+  script with a controlled SK/EN DOM/network to check stale responses,
   input changes, copying, UTF-8 limits and transport errors. No npm install
   or Node.js runtime dependency is added to the application.
 - `tests/package_consumer`: a separate project built by CI against the
   installed package through `find_package(NumForge)`, including a C++ linkage
   test when `NUMFORGE_TEST_CPP=ON`.
 
-CI also runs twenty SK/EN Chromium scenarios from `tests/browser`, using a
+CI also runs SK/EN Chromium scenarios from `tests/browser`, using a
 pinned Playwright dependency and the real C server, separately from CTest.
 Only this browser suite requires npm packages; the application does not.
 Reproduction commands, scope, direct arithmetic/conversion and calculator-phase benchmarks are in
@@ -312,10 +343,12 @@ Reproduction commands, scope, direct arithmetic/conversion and calculator-phase 
 The native and dependency-free Node.js suites run through CTest when
 `BUILD_TESTING=ON`; CI requires Node.js, while local builds can omit it.
 GitHub Actions builds and runs
-them on 64-bit Linux with warnings-as-errors and sanitizers, on 32-bit Linux,
-and on Windows with Visual Studio warnings-as-errors. CI also builds a clean
-Release package, installs it, and tests an external `find_package(NumForge)`
-consumer.
+them on x64 Linux with warnings-as-errors and sanitizers, on 32-bit Linux,
+on x64 Windows with Visual Studio warnings-as-errors, and on ARM64 Linux and
+macOS in Release mode with warnings-as-errors. The ARM64 jobs also run the CLI
+and local-server smoke tests. CI builds clean Release packages, installs them,
+and tests external C and C++ `find_package(NumForge)` consumers on x64 Linux,
+x64 Windows and both ARM64 platforms.
 
 Fault injection is internal test instrumentation, not public API. It is enabled
 only in test-enabled builds and remains inactive unless the dedicated test
@@ -327,7 +360,8 @@ numeric calls use the standard allocator without an application budget.
 ## Project status and roadmap
 
 NumForge 1.0 provides stable `BigInt` and `BigDecimal` library APIs plus the
-initial exact-decimal CLI and local browser calculator. Future work is mostly
+initial exact-decimal CLI and local browser calculator. The additive BigRational
+API is available in the current unreleased version. Future work is mostly
 additive: broader test coverage, performance optimization for very large
 operands, and calculator features. Planned work includes:
 

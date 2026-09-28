@@ -141,7 +141,7 @@ static bool calculator_handle_notation_command(const char *input, CalculatorCont
 {
     if (strcmp(input, "notation") == 0)
     {
-        static const char *names[] = {"auto", "plain", "scientific", "math"};
+        static const char *names[] = {"auto", "plain", "scientific", "math", "fraction"};
         printf("output notation: %s\n", names[context->notation]);
         return true;
     }
@@ -150,11 +150,12 @@ static bool calculator_handle_notation_command(const char *input, CalculatorCont
         return false;
     }
     const char *name = input + 9U;
-    if (strcmp(name, "auto") == 0) context->notation = BIGDECIMAL_FORMAT_AUTO;
-    else if (strcmp(name, "plain") == 0) context->notation = BIGDECIMAL_FORMAT_PLAIN;
-    else if (strcmp(name, "scientific") == 0) context->notation = BIGDECIMAL_FORMAT_SCIENTIFIC;
-    else if (strcmp(name, "math") == 0) context->notation = BIGDECIMAL_FORMAT_MATHEMATICAL;
-    else fputs("notation must be auto, plain, scientific, or math\n", stderr);
+    if (strcmp(name, "auto") == 0) context->notation = CALCULATOR_NOTATION_AUTO;
+    else if (strcmp(name, "plain") == 0) context->notation = CALCULATOR_NOTATION_PLAIN;
+    else if (strcmp(name, "scientific") == 0) context->notation = CALCULATOR_NOTATION_SCIENTIFIC;
+    else if (strcmp(name, "math") == 0) context->notation = CALCULATOR_NOTATION_MATHEMATICAL;
+    else if (strcmp(name, "fraction") == 0) context->notation = CALCULATOR_NOTATION_FRACTION;
+    else fputs("notation must be auto, plain, scientific, math, or fraction\n", stderr);
     return true;
 }
 
@@ -177,7 +178,7 @@ int main(void)
     puts("Type exit or quit to stop.");
     puts("Use 'precision N' or 'precision full' to set output formatting.");
     puts("Use 'angle rad' or 'angle deg' to select the trigonometric angle unit.");
-    puts("Use 'notation auto|plain|scientific|math' to select result notation.");
+    puts("Use 'notation auto|plain|scientific|math|fraction' to select result notation.");
     puts("ans holds the last successful result. Use 'history' to list results or 'reset' to clear the session.");
     puts("rand(), rand(x), and rand(x;y) draw independent random decimals in bounded ranges.");
 

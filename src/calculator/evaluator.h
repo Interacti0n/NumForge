@@ -11,7 +11,7 @@
     Evaluate a parsed expression to an owned BigDecimal destination. The result
     is not modified on failure.
 
-    Implementation: src/calculator/evaluator.c
+    Implementation: src/calculator/evaluator.c and evaluator_* modules
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
@@ -27,6 +27,7 @@ CalculatorStatus calculator_evaluate_with_answer(
     const CalculatorExpression *expression,
     const CalculatorContext *context,
     const BigDecimal *answer,
+    const CalculatorValue *typed_answer,
     uint64_t *random_state,
     CalculatorError *error
 );
