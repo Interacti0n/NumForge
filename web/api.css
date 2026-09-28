@@ -141,17 +141,22 @@ ul { margin: 10px 0 20px; padding-left: 24px; }
 @media (max-width: 600px)
 {
     .guide-shell { width: min(100% - 24px, 520px); }
-    .page-header { min-height: 76px; gap: 12px; }
+    .page-header { min-height: 76px; gap: 8px; }
+    .brand { gap: 8px; }
     .brand-mark { width: 39px; height: 39px; }
     .brand-text strong { font-size: 1rem; }
     .brand-text small { display: none; }
-    .header-actions { gap: 7px; }
+    .header-actions { gap: 5px; }
     .back-link { font-size: .75rem; }
     .language-switch a { padding: 6px; font-size: .7rem; }
     .guide-content { padding: 25px 17px 38px; border-radius: 15px; }
     h1 { font-size: 2rem; }
     h2 { font-size: 1.2rem; }
     p, li { font-size: .88rem; }
+}
+@media (max-width: 360px)
+{
+    .header-actions { flex-wrap: wrap-reverse; justify-content: flex-end; }
 }
 @media (prefers-reduced-motion: reduce)
 {

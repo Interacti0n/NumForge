@@ -461,11 +461,12 @@ html[lang="en"] .function-group:not(.search-results)::before { content: "Functio
 @media (max-width: 600px)
 {
     .app-shell { width: min(100% - 24px, 520px); }
-    .page-header { min-height: 76px; gap: 12px; }
+    .page-header { min-height: 76px; gap: 8px; }
+    .brand { gap: 8px; }
     .brand-mark { width: 39px; height: 39px; }
     .brand-text strong { font-size: 1rem; }
-    .brand-text small { font-size: .68rem; }
-    .header-actions { gap: 7px; }
+    .brand-text small { display: none; }
+    .header-actions { gap: 5px; }
     .guide-link { font-size: .75rem; }
     .language-switch a { padding: 6px; font-size: .7rem; }
     .workspace { gap: 16px; padding: 26px 0 38px; }
