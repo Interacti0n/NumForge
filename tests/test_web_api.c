@@ -145,6 +145,27 @@ void test_web_api_fraction_notation(void)
     free(result);
 }
 
+void test_web_fraction_approximation(void)
+{
+    char *approximation = numforge_web_fraction_approximation("1/3");
+    TEST_ASSERT_NOT_NULL(approximation);
+    TEST_ASSERT_EQUAL_STRING("0.3333333333", approximation);
+    free(approximation);
+
+    approximation = numforge_web_fraction_approximation("-7/2");
+    TEST_ASSERT_NOT_NULL(approximation);
+    TEST_ASSERT_EQUAL_STRING("-3.5", approximation);
+    free(approximation);
+
+    approximation = numforge_web_fraction_approximation("1/100000000000");
+    TEST_ASSERT_NOT_NULL(approximation);
+    TEST_ASSERT_EQUAL_STRING("1E-11", approximation);
+    free(approximation);
+
+    TEST_ASSERT_NULL(numforge_web_fraction_approximation("0.3"));
+    TEST_ASSERT_NULL(numforge_web_fraction_approximation("12345678901234567/3"));
+}
+
 void test_web_api_honors_angle_units(void)
 {
     CalculatorError error;
@@ -282,6 +303,7 @@ int main(void)
     RUN_TEST(test_web_api_evaluates_with_exact_c_bigdecimal);
     RUN_TEST(test_web_api_honors_output_precision);
     RUN_TEST(test_web_api_fraction_notation);
+    RUN_TEST(test_web_fraction_approximation);
     RUN_TEST(test_web_api_honors_angle_units);
     RUN_TEST(test_web_api_preserves_calculator_errors);
     RUN_TEST(test_web_api_rejects_empty_and_oversized_input);

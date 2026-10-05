@@ -4,30 +4,41 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#17002f">
-  <style>html { background: #17002f; } body { visibility: hidden; } html.css-error body { visibility: visible; }</style>
+  <style>html { background: #17002f; } html:not(.styles-ready) body { visibility: hidden; } html.css-error body { visibility: visible; }</style>
   <title>NumForge · Usage and API</title>
   <link rel="icon" type="image/png" href="/assets/logo.png">
   <link rel="stylesheet" href="/assets/api.css" onerror="document.documentElement.classList.add('css-error')">
+  <link rel="stylesheet" href="/assets/chrome.css" onload="document.documentElement.classList.add('styles-ready')" onerror="document.documentElement.classList.add('css-error','styles-ready')">
 </head>
 <body>
   <div class="guide-shell">
     <header class="page-header">
       <a class="brand" href="/?lang=en" aria-label="NumForge">
         <img class="brand-mark" src="/assets/logo.png" alt="" width="45" height="45">
-        <span class="brand-text"><strong>NumForge</strong><small>Guide</small></span>
+        <span class="brand-text"><strong>NumForge</strong><small>Precise computing</small></span>
       </a>
-      <nav class="header-actions" aria-label="Navigation">
-        <a class="back-link" href="/?lang=en">← Calculator</a>
-        <span class="language-switch" aria-label="Language selection">
-          <a href="/api?lang=sk" lang="sk"  title="Slovenčina">🇸🇰 SK</a>
-          <a href="/api?lang=en" lang="en" aria-current="true" title="English">🇬🇧 EN</a>
-        </span>
-      </nav>
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-navigation"><span class="menu-icon" aria-hidden="true"></span>Menu</button>
+      <div class="site-navigation" id="site-navigation">
+        <nav class="primary-nav" aria-label="Main navigation">
+          <a class="back-link" href="/?lang=en">Calculator</a>
+          <a href="/graph?lang=en">Graphs</a>
+          <a href="/solve?lang=en">Equations</a>
+          <a href="/units?lang=en">Units</a>
+          <a href="/api?lang=en" aria-current="page">Guide &amp; API</a>
+        </nav>
+        <div class="header-actions">
+          <span class="language-switch" aria-label="Language selection">
+            <a href="/api?lang=sk" lang="sk" title="Slovenčina">SK</a>
+            <a href="/api?lang=en" lang="en" aria-current="true" title="English">EN</a>
+          </span>
+          <a class="login-link" href="/login?lang=en">Sign in</a>
+          <a class="register-link" href="/register?lang=en">Sign up</a>
+        </div>
+      </div>
     </header>
     <div class="guide-layout">
       <aside class="guide-sidebar">
-        <nav class="guide-toc" aria-label="On this page">
-          <span class="toc-title">On this page</span>
+        <nav class="guide-toc" aria-label="Guide sections">
           <a href="#syntax">Expressions</a>
           <a href="#functions">Functions</a>
           <a href="#cache">Precision and cache</a>
@@ -39,7 +50,6 @@
         </nav>
       </aside>
       <main class="guide-content">
-<p class="eyebrow">DOCUMENTATION</p>
   <h1 class="guide-title"><img class="guide-wordmark" src="/assets/wordmark.png" alt="NumForge" width="2172" height="724"><span>Usage and API</span></h1>
   <p>JavaScript sends expressions to the local server. The C application parses and evaluates them with BigInt, BigRational or BigDecimal, then formats the result.</p>
   <p class="notice">Exact expressions retain integers and reduced fractions. Decimal output for a recurring fraction uses the current precision; the default display has 10 decimal places.</p>
@@ -76,9 +86,10 @@
 <p>The separate notation selector offers Auto, plain, scientific (<code>1.23E+45</code>), mathematical (<code>1.23 × 10^45</code>) and Fraction output. Auto shows an exact fraction when its denominator is at most 10000, its text is at most 16 characters, and it is at least two characters shorter than the decimal display. Otherwise, after rounding, Auto uses scientific when |exponent| ≥ 10 or plain output would exceed 80 characters. Fraction shows an exact non-integer as a/b up to 16 characters; longer fractions and approximate results use Auto decimal notation. Integers remain without /1. Output is limited to 65536 bytes. Mathematical output copies in parser-compatible E form when it fits the input limits. Changing notation does not change the stored value or ans.</p>
 <p>You choose output decimal places and notation. Working precision remains automatic: max(34, N+4) significant digits, or 34 for full output. The server retains the last successful numeric result per browser session, for up to eight clients. Matching working contexts only reformat; changes to working precision recompute the expression. Proven precision-independent expressions such as 10000! can be reformatted across precisions without evaluation. Reload or session eviction requires a new session. This does not certify every final digit under cancellation.</p>
 <p>Optional HTTP parameters after precision/angle: <code>&amp;client=32_hex_digits&amp;revision=N</code>. Before client, <code>&amp;notation=auto|plain|scientific|math|fraction</code> selects output notation; mathematical responses add <code>copy</code> in E form, or null when it exceeds limits. Client is exactly 32 lowercase hexadecimal digits; revision increases from 1 to 9007199254740991. Successful responses then also include the boolean <code>cached</code>. Without these parameters the API is stateless. The identifier is not authentication.</p>
+<p>When the result displays an exact fraction, a smaller line beneath it shows an approximate decimal value marked ≈, with up to 10 places. Very small values may use scientific notation. Copying and history keep only the exact fraction.</p>
 <h2 id="random">Random values</h2><p><code>rand()</code> draws in [0,1), <code>rand(x)</code> in [0,x) for x &gt; 0, and <code>rand(x;y)</code> in [x,y) for x &lt; y. Each occurrence draws separately from a 34-place decimal grid. Repeated previews keep their draws; a new Enter draws again. This is not cryptographically secure.</p>
 <h2 id="history">ans and history</h2><p>Preview does not change ans. Enter, Calculate or = confirms a successful result and appends history. ans holds the internal value, not the rounded display; higher precision cannot recover lost approximation digits. Before the first confirmation ans is undefined. Errors preserve state.</p>
-<p>History is always visible and retains the last 16 confirmations. Each entry stays on one line; a long preview ends with three dots, while the full result remains available for insertion or through its copy button. Clicking an entry inserts its result at the input cursor, or at the end when there is no cursor. Language changes and guide navigation in the same tab keep the session, history, input and settings. Reloading the calculator or choosing New session starts over. The server retains eight sessions, evicting the oldest; reload after expiration. Restarting the server also loses in-memory sessions. CLI commands are history and reset. C clears only input.</p>
+<p>History is always visible and retains the last 16 confirmations. Entries are numbered by confirmation order; the number keeps increasing as older entries leave the list. Each entry stays on one line; a long preview ends with three dots, while the full result remains available for insertion or through its copy button. Clicking an entry inserts its result at the input cursor, or at the end when there is no cursor. Language changes and guide navigation in the same tab keep the session, history, numbering, input and settings. Reloading the calculator or choosing New session starts over. The server retains eight sessions, evicting the oldest; reload after expiration. Restarting the server also loses in-memory sessions. CLI commands are history and reset. C clears only input.</p>
 <p>The browser appends <code>&amp;action=start</code> (empty body), followed by requests with <code>&amp;action=preview</code> or <code>&amp;action=commit</code>. Start performs no calculation. Repeating the latest successful confirmation with the same revision, expression and settings returns the original result. On an uncertain response Enter retries the same request; a new confirmation waits. Older or conflicting revisions are rejected. Requests without action keep the original behavior.</p>
   <p>Exact division retains a reduced fraction, including recurring quotients. Decimal display rounds according to the selected settings. <code>(1E34+1)/1-1E34 = 1</code>.</p>
   <p><code>1.2.3</code>, <code>1,2,3</code> and <code>2 3</code> are errors, not products. <code>(2)3</code>, <code>3!2</code> and <code>2²3</code> remain valid. Implicit multiplication has the same precedence as * and /: <code>6/2(1+2) = 9</code>.</p>

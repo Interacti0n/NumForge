@@ -41,13 +41,26 @@ remain in the calculator modules.
 
 ## Local web interface
 
-`numforge_web` serves four pages and their CSS/JavaScript/PNG assets from the C
+`numforge_web` serves Slovak and English calculator, guide and future-tool pages and their CSS/JavaScript/PNG assets from the C
 executable. CMake embeds the files from `web/` into a generated header; asset
-routes use `/assets/calculator.css`, `/assets/api.css` and
+routes use `/assets/calculator.css`, `/assets/api.css`, shared `/assets/chrome.css` and
 `/assets/calculator.js`; `/assets/logo.png` supplies the header mark and favicon,
 and `/assets/wordmark.png` supplies the guide introduction.
 Editing a source asset and rebuilding updates the
 executable without changing runtime file lookup or installation layout. Its active
+top menu links to the calculator (`/`), guide (`/api`), and future graph (`/graph`),
+equation solver (`/solve`) and unit converter (`/units`) areas. Sign-in (`/login`)
+and registration (`/register`)
+are separate header actions. These future routes share a localized informational
+page until their behavior is designed and implemented; there is no account,
+payment or registration backend. On wide screens the header uses one row across
+the page in the shared purple palette, with equally sized, individually marked
+links and no frame around the group. Switching language keeps their positions
+fixed. The desktop calculator remains fully in view at tested sizes. Internal
+links replace the main content while the header and
+footer remain mounted; Back and Forward use the same transition. On narrow
+screens the menu opens from a button
+with Escape and outside-click dismissal. The active
 keypad inserts digits, parentheses, `.`, `+`, `-`, `*`, `/`, `π`, `e`, `φ`,
 `^`, `²`, `³`, and `!`, then sends the complete expression to the same web
 adapter used by `POST /api/evaluate`. Typing `,` directly is also valid because
@@ -174,7 +187,8 @@ server holds eight sessions with FIFO eviction; session eviction is reported
 explicitly and never silently recreates a session on evaluation. Reload,
 language navigation and New session create a new random page ID. There is no
 disk persistence or TTL. Browser history is a bounded display mirror of
-confirmed entries; clicking an entry inserts its parser-compatible result at
+confirmed entries, numbered by successful confirmation even after older entries
+drop from the 16-entry view; clicking an entry inserts its parser-compatible result at
 the input cursor, and a separate button copies that result. CLI `history` lists
 entries and `reset` destroys the session while retaining precision, angle and
 notation settings.
@@ -420,6 +434,9 @@ stored result and does not advance `rand` or change `ans`. Plain output above
 the 65536-byte application limit fails without replacing the stored value.
 The web response supplies parser-compatible `E` copy text for mathematical
 notation, or disables copying when the parser range or input size is exceeded.
+For a displayed exact fraction, the local web adapter supplies a separate
+up-to-10-place half-even decimal hint. The browser presents it below the
+fraction without changing the primary result, copy text, history or stored value.
 
 For extreme positive or negative internal scales, such as `1E100000` or
 `1E-100000`, the formatter builds scientific notation directly from the

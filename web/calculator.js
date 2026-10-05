@@ -1,11 +1,16 @@
+function initCalculator()
+{
+const lifecycle = new AbortController();
 const form = document.querySelector('#calculator');
 const expression = document.querySelector('#expression');
 const expandExpression = document.querySelector('#expand-expression');
 const result = document.querySelector('#result');
+const resultApprox = document.querySelector('#result-approx');
 const resultMoreMarker = document.querySelector('#result-more-marker');
 const expandResult = document.querySelector('#expand-result');
 const resultDialog = document.querySelector('#result-dialog');
 const resultFull = document.querySelector('#result-full');
+const resultApproxDialog = document.querySelector('#result-approx-dialog');
 const closeResultDialog = document.querySelector('#close-result-dialog');
 const copyResult = document.querySelector('#copy-result');
 const copyResultDialog = document.querySelector('#copy-result-dialog');
@@ -22,7 +27,18 @@ let autoTimer = null;
 let resultExpanded = false;
 let expressionExpanded = false;
 let resultCopy = '';
+let resultApproxValue = '';
 let angleUnit = 'rad';
+
+function setResultApproximation(value)
+{
+    resultApproxValue = typeof value === 'string' ? value : '';
+    const display = resultApproxValue ? '≈ ' + resultApproxValue : '';
+    resultApprox.textContent = display;
+    resultApprox.hidden = !display;
+    resultApproxDialog.textContent = display;
+    resultApproxDialog.hidden = !display;
+}
 
 function updateResultExpansion()
 {
@@ -117,6 +133,7 @@ function invalidate()
     resultExpanded = false;
     expandResult.textContent = text.showAll;
     result.textContent = '';
+    setResultApproximation('');
     resultCopy = '';
     result.className = '';
     resultMoreMarker.hidden = true;
@@ -331,9 +348,11 @@ let sessionStarted = false;
 let pendingCommit = null;
 let commitInFlight = false;
 const historyEntries = [];
+let historySequence = 0;
 
 function appendHistory(request, display, copy)
 {
+    historySequence++;
     historyEntries.push({input: request.input, display,
         ...(copy && copy !== display ? {copy} : {}),
         precision: request.precision, angle: request.angle, notation: request.notation});
@@ -353,8 +372,12 @@ function renderHistory()
 {
     const list = document.querySelector('#history-list');
     list.replaceChildren();
-    historyEntries.forEach(entry => {
+    historyEntries.forEach((entry, index) => {
         const item = document.createElement('li');
+        const number = historySequence - historyEntries.length + index + 1;
+        const marker = document.createElement('span');
+        marker.className = 'history-index';
+        marker.textContent = '#' + number;
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'history-entry';
@@ -371,7 +394,7 @@ function renderHistory()
         result.textContent = entry.display;
         line.append(input, separator, result);
         button.append(line);
-        button.title = entry.input + ' → ' + entry.display;
+        button.title = '#' + number + ' · ' + entry.input + ' → ' + entry.display;
         let caret = null;
         button.addEventListener('pointerdown', () => {
             caret = document.activeElement === expression
@@ -398,7 +421,7 @@ function renderHistory()
             }
             catch (_) { copy.textContent = '⧉'; }
         });
-        item.append(button, copy);
+        item.append(marker, button, copy);
         list.append(item);
     });
     updateHistoryOverflow();
@@ -572,7 +595,7 @@ window.addEventListener?.('resize', () => {
     updateResultExpansion();
     updateHistoryOverflow();
     updateRecentLayout();
-});
+}, {signal: lifecycle.signal});
 updateExpressionOverflow();
 function insertText(text, isFunction = false)
 {
@@ -807,6 +830,7 @@ async function calculate(commit)
         if (commit) appendHistory(request, data.result, data.copy);
         if (id !== generation) return;
         result.textContent = data.result;
+        setResultApproximation(data.approx);
         resultCopy = typeof data.copy === 'string' ? data.copy :
             (request.notation === 'math' ? '' : data.result);
         copyButtons.forEach(button => { button.disabled = !resultCopy; });
@@ -816,6 +840,7 @@ async function calculate(commit)
     {
         if ((id !== generation && !pendingCommit) || error.name === 'AbortError') return;
         result.className = 'error';
+        setResultApproximation('');
         const uncertain = commit && sent && pendingCommit;
         result.textContent = text.error + (uncertain
             ? (english ? 'Confirmation uncertain. Press Enter to retry the same calculation, or start a new session.'
@@ -849,9 +874,9 @@ function saveNavigationState()
             pending: pendingCommit, expression: expression.value,
             precision: precision.value, mode: precisionMode.value,
             notation: notationMode.value, angle: angleUnit,
-            result: result.textContent, resultCopy,
+            result: result.textContent, resultCopy, resultApprox: resultApproxValue,
             resultError: result.classList.contains('error'),
-            history: historyEntries, recent: recentItems,
+            history: historyEntries, historySequence, recent: recentItems,
             category: document.querySelector('.function-tabs button[aria-selected="true"]')?.id,
             search: document.querySelector('#function-search').value
         }));
@@ -859,13 +884,13 @@ function saveNavigationState()
     catch (_) {}
 }
 
-window.addEventListener?.('numforge:navigate', saveNavigationState);
+window.addEventListener?.('numforge:navigate', saveNavigationState, {signal: lifecycle.signal});
 window.addEventListener?.('pageshow', event => {
     if (event.persisted)
     {
         try { sessionStorage.removeItem('numforge-navigation-state'); } catch (_) {}
     }
-});
+}, {signal: lifecycle.signal});
 try
 {
     const saved = sessionStorage.getItem('numforge-navigation-state');
@@ -897,6 +922,9 @@ try
                     entry && typeof entry.input === 'string' && typeof entry.display === 'string' &&
                     typeof entry.precision === 'string' && typeof entry.angle === 'string' &&
                     typeof entry.notation === 'string').slice(-16));
+                historySequence = Number.isSafeInteger(state.historySequence) &&
+                    state.historySequence >= historyEntries.length
+                    ? state.historySequence : historyEntries.length;
                 renderHistory();
             }
             if (Array.isArray(state.recent))
@@ -915,6 +943,7 @@ try
                 search.dispatchEvent(new Event('input'));
             }
             result.textContent = typeof state.result === 'string' ? state.result : '';
+            setResultApproximation(state.resultApprox);
             result.className = state.resultError === true ? 'error' : '';
             resultCopy = typeof state.resultCopy === 'string' ? state.resultCopy : '';
             copyButtons.forEach(button => { button.disabled = !resultCopy; });
@@ -930,3 +959,14 @@ try
     }
 }
 catch (_) {}
+return () => {
+    lifecycle.abort();
+    controller?.abort();
+    clearTimeout(autoTimer);
+    clearTimeout(copyTimer);
+};
+}
+
+window.numforgeInitCalculator = initCalculator;
+if (document.querySelector('#calculator'))
+    window.numforgeDisposeCalculator = initCalculator();

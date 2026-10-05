@@ -4,25 +4,37 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#17002f">
-  <style>html { background: #17002f; } body { visibility: hidden; } html.css-error body { visibility: visible; }</style>
+  <style>html { background: #17002f; } html:not(.styles-ready) body { visibility: hidden; } html.css-error body { visibility: visible; }</style>
   <title>NumForge · Presná kalkulačka</title>
   <link rel="icon" type="image/png" href="/assets/logo.png">
   <link rel="stylesheet" href="/assets/calculator.css" onerror="document.documentElement.classList.add('css-error')">
+  <link rel="stylesheet" href="/assets/chrome.css" onload="document.documentElement.classList.add('styles-ready')" onerror="document.documentElement.classList.add('css-error','styles-ready')">
 </head>
 <body>
   <div class="app-shell calculator-shell">
     <header class="page-header">
       <a class="brand" href="/?lang=sk" aria-label="NumForge">
         <img class="brand-mark" src="/assets/logo.png" alt="" width="45" height="45">
-        <span class="brand-text"><strong>NumForge</strong><small>Presná kalkulačka</small></span>
+        <span class="brand-text"><strong>NumForge</strong><small>Presné výpočty</small></span>
       </a>
-      <nav class="header-actions" aria-label="Navigácia">
-        <a class="guide-link" href="/api?lang=sk">Návod a API <span aria-hidden="true">↗</span></a>
-        <span class="language-switch" aria-label="Výber jazyka">
-          <a href="/?lang=sk" lang="sk" aria-current="true" title="Slovenčina">🇸🇰 SK</a>
-          <a href="/?lang=en" lang="en"  title="English">🇬🇧 EN</a>
-        </span>
-      </nav>
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-navigation"><span class="menu-icon" aria-hidden="true"></span>Menu</button>
+      <div class="site-navigation" id="site-navigation">
+        <nav class="primary-nav" aria-label="Hlavná navigácia">
+          <a href="/?lang=sk" aria-current="page">Kalkulačka</a>
+          <a href="/graph?lang=sk">Grafy</a>
+          <a href="/solve?lang=sk">Rovnice</a>
+          <a href="/units?lang=sk">Jednotky</a>
+          <a class="guide-link" href="/api?lang=sk">Návod / API</a>
+        </nav>
+        <div class="header-actions">
+          <span class="language-switch" aria-label="Výber jazyka">
+            <a href="/?lang=sk" lang="sk" aria-current="true" title="Slovenčina">SK</a>
+            <a href="/?lang=en" lang="en" title="English">EN</a>
+          </span>
+          <a class="login-link" href="/login?lang=sk">Prihlásiť sa</a>
+          <a class="register-link" href="/register?lang=sk">Registrácia</a>
+        </div>
+      </div>
     </header>
 
     <div class="workspace">
@@ -62,11 +74,13 @@
         <section class="card result-panel" aria-live="polite" aria-labelledby="result-title">
           <div class="result-heading"><div class="section-title"><span class="section-icon" aria-hidden="true">=</span><h2 id="result-title">Výsledok</h2></div><button id="copy-result" type="button" disabled title="Skopírovať výsledok" aria-label="Skopírovať výsledok">⧉ Kopírovať</button></div>
           <div class="result-body"><output id="result" data-placeholder="Sem príde náhľad výsledku"></output><span id="result-more-marker" aria-hidden="true" hidden>...</span></div>
+          <p id="result-approx" class="result-approx" hidden></p>
           <button id="expand-result" type="button" hidden>Zobraziť všetko...</button>
         </section>
         <dialog id="result-dialog" aria-labelledby="result-dialog-title">
           <div class="result-dialog-heading"><div class="section-title"><span class="section-icon" aria-hidden="true">=</span><h2 id="result-dialog-title">Celý výsledok</h2></div><div class="dialog-actions"><button id="copy-result-dialog" type="button" disabled aria-label="Skopírovať výsledok">⧉ Kopírovať</button><button id="close-result-dialog" type="button" aria-label="Zavrieť celý výsledok">✕</button></div></div>
           <pre id="result-full"></pre>
+          <p id="result-approx-dialog" class="result-dialog-approx" hidden></p>
         </dialog>
 
         <section class="card keypad-card" aria-labelledby="keypad-title">
@@ -130,7 +144,7 @@
 <button type="button" data-function="factorial" data-insert="factorial(" title="factorial(n)">factorial</button>
 <button type="button" data-function="isqrt" data-insert="isqrt(">isqrt</button>
 </div></details>
-<details class="function-group"><summary>Mocniny a logaritmy</summary><div class="keypad functions">
+<details class="function-group"><summary>Mocniny a logy</summary><div class="keypad functions">
 <button type="button" data-function="pow" data-insert="pow(" title="pow(x;y)">pow</button>
 <button type="button" data-function="sqrt" data-insert="sqrt(">sqrt</button>
 <button type="button" data-function="cbrt" data-insert="cbrt(">cbrt</button>
@@ -139,7 +153,7 @@
 <button type="button" data-function="ln" data-insert="ln(" title="Prirodzený logaritmus">ln</button>
 <button type="button" data-function="log" data-insert="log(" title="Dekadický alebo všeobecný logaritmus">log</button>
 </div></details>
-<details class="function-group"><summary>Uhly a goniometria</summary>
+<details class="function-group"><summary>Goniometria</summary>
 <div class="keypad functions">
 <button type="button" data-function="sin" data-insert="sin(">sin</button>
 <button type="button" data-function="cos" data-insert="cos(">cos</button>

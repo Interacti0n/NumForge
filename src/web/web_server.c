@@ -633,6 +633,7 @@ static void numforge_handle_evaluation(
     char *result = NULL;
     char *response;
     char *copy_text = NULL;
+    char *approximation = NULL;
     size_t response_capacity;
     bool reused = false;
 
@@ -666,11 +667,13 @@ static void numforge_handle_evaluation(
 
     if (status == CALCULATOR_OK)
     {
+        approximation = numforge_web_fraction_approximation(result);
         if (notation == CALCULATOR_NOTATION_MATHEMATICAL)
         {
             copy_text = numforge_math_copy_text(result);
         }
-        response_capacity = strlen(result) + (copy_text == NULL ? 0U : strlen(copy_text)) + 96U;
+        response_capacity = strlen(result) + (copy_text == NULL ? 0U : strlen(copy_text)) +
+            (approximation == NULL ? 0U : strlen(approximation)) + 128U;
         response = malloc(response_capacity);
 
         if (response != NULL)
@@ -702,6 +705,12 @@ static void numforge_handle_evaluation(
                 (void)snprintf(response, response_capacity, "{\"ok\":true,\"result\":\"%s\",\"cached\":%s}",
                                result, reused ? "true" : "false");
             }
+            if (approximation != NULL)
+            {
+                size_t used = strlen(response);
+                (void)snprintf(response + used - 1U, response_capacity - used + 1U,
+                    ",\"approx\":\"%s\"}", approximation);
+            }
             numforge_send_response(socket, 200, "OK", "application/json; charset=utf-8", response);
             free(response);
         }
@@ -716,6 +725,7 @@ static void numforge_handle_evaluation(
         }
 
         free(copy_text);
+        free(approximation);
 
         free(result);
 
@@ -837,6 +847,15 @@ void numforge_handle_connection(
     {
         numforge_send_page(socket, english ? NUMFORGE_API_PAGE_EN : NUMFORGE_API_PAGE);
     }
+    else if (strcmp(method, "GET") == 0 &&
+             (numforge_parse_page_language(target, "/graph", &english) ||
+              numforge_parse_page_language(target, "/solve", &english) ||
+              numforge_parse_page_language(target, "/units", &english) ||
+              numforge_parse_page_language(target, "/login", &english) ||
+              numforge_parse_page_language(target, "/register", &english)))
+    {
+        numforge_send_page(socket, english ? NUMFORGE_UPCOMING_PAGE_EN : NUMFORGE_UPCOMING_PAGE);
+    }
     else if (strcmp(method, "GET") == 0 && strcmp(target, "/assets/calculator.css") == 0)
     {
         numforge_send_response(socket, 200, "OK", "text/css; charset=utf-8", (const char *)NUMFORGE_CALCULATOR_CSS);
@@ -844,6 +863,10 @@ void numforge_handle_connection(
     else if (strcmp(method, "GET") == 0 && strcmp(target, "/assets/api.css") == 0)
     {
         numforge_send_response(socket, 200, "OK", "text/css; charset=utf-8", (const char *)NUMFORGE_API_CSS);
+    }
+    else if (strcmp(method, "GET") == 0 && strcmp(target, "/assets/chrome.css") == 0)
+    {
+        numforge_send_response(socket, 200, "OK", "text/css; charset=utf-8", (const char *)NUMFORGE_CHROME_CSS);
     }
     else if (strcmp(method, "GET") == 0 && strcmp(target, "/assets/calculator.js") == 0)
     {

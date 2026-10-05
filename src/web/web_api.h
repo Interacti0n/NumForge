@@ -33,6 +33,11 @@ CalculatorStatus numforge_web_evaluate_session_mode(
 
 #define NUMFORGE_WEB_MAX_EXPRESSION_LENGTH CALCULATOR_MAX_INPUT_BYTES
 
+/* Optional decimal hint for a short, already-formatted exact fraction.
+ * Returns owned text or NULL when the display is not a fraction or the hint
+ * cannot be produced. The primary result remains valid in either case. */
+char *numforge_web_fraction_approximation(const char *display);
+
 /* One owned successful value per client. Zero-initialize; clear on eviction.
  * Revision prevents an older queued request from replacing newer work.
  * No thread safety: the loopback server currently handles requests serially. */

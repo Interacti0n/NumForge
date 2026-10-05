@@ -2,6 +2,7 @@
 #include "formatter.h"
 
 #include <numforge/runtime.h>
+#include <stdlib.h>
 #include <string.h>
 
 /*
@@ -10,6 +11,55 @@
     platform code, so its exact C-core behaviour can be covered by unit tests.
 ------------------------------------------------------------------------------------------------------------------------------
 */
+
+char *numforge_web_fraction_approximation(const char *display)
+{
+    char fraction[17];
+    char *separator;
+    char *approximation = NULL;
+    BigInt *numerator = NULL;
+    BigInt *denominator = NULL;
+    BigRational *rational = NULL;
+    BigDecimal *decimal = NULL;
+    size_t length;
+
+    if (display == NULL || (length = strlen(display)) > 16U)
+    {
+        return NULL;
+    }
+    memcpy(fraction, display, length + 1U);
+    separator = strchr(fraction, '/');
+    if (separator == NULL || separator == fraction || separator[1] == '\0')
+    {
+        return NULL;
+    }
+    *separator = '\0';
+    numerator = bigint_create();
+    denominator = bigint_create();
+    rational = bigrational_create();
+    decimal = bigdecimal_create();
+    if (numerator != NULL && denominator != NULL && rational != NULL && decimal != NULL &&
+        bigint_set_string(numerator, fraction) == BIGINT_OK &&
+        bigint_set_string(denominator, separator + 1U) == BIGINT_OK &&
+        bigrational_set_fraction(rational, numerator, denominator) == BIGRATIONAL_OK &&
+        bigrational_to_bigdecimal(decimal, rational, 34, BIGDECIMAL_ROUND_HALF_EVEN) == BIGRATIONAL_OK)
+    {
+        (void)bigdecimal_format_mode(decimal, 10, BIGDECIMAL_ROUND_HALF_EVEN,
+            BIGDECIMAL_FORMAT_AUTO, 80U, &approximation);
+        if (approximation != NULL && strcmp(approximation, "0") == 0)
+        {
+            free(approximation);
+            approximation = NULL;
+            (void)bigdecimal_format_mode(decimal, 10, BIGDECIMAL_ROUND_HALF_EVEN,
+                BIGDECIMAL_FORMAT_SCIENTIFIC, 80U, &approximation);
+        }
+    }
+    bigdecimal_destroy(decimal);
+    bigrational_destroy(rational);
+    bigint_destroy(denominator);
+    bigint_destroy(numerator);
+    return approximation;
+}
 
 CalculatorStatus numforge_web_evaluate(
     const char *input,

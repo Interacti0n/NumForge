@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="sk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#17002f">
+  <style>html { background: #17002f; } html:not(.styles-ready) body { visibility: hidden; } html.css-error body { visibility: visible; }</style>
+  <title>Pripravujeme · NumForge</title>
+  <link rel="icon" type="image/png" href="/assets/logo.png">
+  <link rel="stylesheet" href="/assets/api.css" onerror="document.documentElement.classList.add('css-error')">
+  <link rel="stylesheet" href="/assets/chrome.css" onload="document.documentElement.classList.add('styles-ready')" onerror="document.documentElement.classList.add('css-error','styles-ready')">
+</head>
+<body>
+  <div class="guide-shell">
+    <header class="page-header">
+      <a class="brand" href="/?lang=sk" aria-label="NumForge">
+        <img class="brand-mark" src="/assets/logo.png" alt="" width="45" height="45">
+        <span class="brand-text"><strong>NumForge</strong><small>Presné výpočty</small></span>
+      </a>
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-navigation"><span class="menu-icon" aria-hidden="true"></span>Menu</button>
+      <div class="site-navigation" id="site-navigation">
+        <nav class="primary-nav" aria-label="Hlavná navigácia">
+          <a href="/?lang=sk">Kalkulačka</a>
+          <a href="/graph?lang=sk" data-nav="graph">Grafy</a>
+          <a href="/solve?lang=sk" data-nav="solve">Rovnice</a>
+          <a href="/units?lang=sk" data-nav="units">Jednotky</a>
+          <a href="/api?lang=sk">Návod / API</a>
+        </nav>
+        <div class="header-actions">
+          <span class="language-switch" aria-label="Výber jazyka">
+            <a href="/graph?lang=sk" data-page-language lang="sk" aria-current="true" title="Slovenčina">SK</a>
+            <a href="/graph?lang=en" data-page-language lang="en" title="English">EN</a>
+          </span>
+          <a class="login-link" href="/login?lang=sk" data-nav="login">Prihlásiť sa</a>
+          <a class="register-link" href="/register?lang=sk" data-nav="register">Registrácia</a>
+        </div>
+      </div>
+    </header>
+    <main class="upcoming-main" data-upcoming>
+      <div class="upcoming-card">
+        <div class="upcoming-symbol" id="upcoming-symbol" aria-hidden="true">✦</div>
+        <p class="upcoming-eyebrow">PRIPRAVUJEME</p>
+        <h1 id="upcoming-title">Nová časť NumForge</h1>
+        <p class="upcoming-lead" id="upcoming-lead">Na tejto časti práve pracujeme. Ďalšie informácie pribudnú neskôr.</p>
+        <div class="upcoming-details">
+          <h2 id="upcoming-detail-title">Čo bude ďalej</h2>
+          <p id="upcoming-detail">Kým ju pripravujeme, môžeš ďalej používať plnú kalkulačku a návod.</p>
+        </div>
+        <div class="upcoming-actions">
+          <a class="upcoming-primary" href="/?lang=sk">Otvoriť kalkulačku <span aria-hidden="true">→</span></a>
+          <a class="upcoming-secondary" id="upcoming-secondary" href="/api?lang=sk">Pozrieť návod a API</a>
+        </div>
+      </div>
+    </main>
+    <footer class="page-footer"><span>NumForge v@NUMFORGE_VERSION@ · © 2026 Interacti0n</span><nav class="footer-links" aria-label="Informácie o projekte"><a href="/LICENSE" data-license>MIT licencia</a><a href="https://github.com/Interacti0n/NumForge" target="_blank" rel="noopener noreferrer">GitHub</a></nav></footer>
+  </div>
+  <script src="/assets/navigation.js"></script>
+</body>
+</html>

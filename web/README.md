@@ -1,15 +1,19 @@
 # Local web source
 
-The calculator and API guide have separate Slovak and English HTML files.
-`calculator.css` and `api.css` are shared by their respective pages, and
-`calculator.js` implements calculator behavior, and `navigation.js` handles
-transitions between the calculator, guide and language versions. Change these source
+The calculator, API guide and upcoming-tools page have separate Slovak and English HTML files.
+`calculator.css` and `api.css` style their respective pages, while `chrome.css`
+styles the shared header. `calculator.js` implements calculator behavior, and
+`navigation.js` handles
+transitions between the calculator, guide, future-tool pages and language versions.
+It also fills the shared upcoming page with graph, equation, unit,
+sign-in or registration text based on the route. Change these source
 files directly; do not edit the generated `web_page.h` under the build tree.
 
-CMake embeds the ten web assets and the root `LICENSE` when building
-`numforge_web`. The C server serves the HTML routes (`/` and `/api`), six
+CMake embeds the thirteen web assets and the root `LICENSE` when building
+`numforge_web`. The C server serves the HTML routes (`/`, `/api`, `/graph`,
+`/solve`, `/units`, `/login`, and `/register`), seven
 `/assets/` routes and the license text at `/LICENSE` from the executable.
-The same `logo.png` is displayed in both page headers and linked as their
+The same `logo.png` is displayed in all page headers and linked as their
 PNG favicon. `wordmark.png` appears in the SK/EN guide introduction. The
 server sends both images with their exact binary lengths.
 The installed executable needs no asset directory, Node.js, or working-directory
@@ -25,13 +29,20 @@ The calculator HTML supplies the accessible structure and translated labels;
 previews, session state, function categories/search, recent shortcuts and keypad insertion. The guide
 pages use `api.css` and their own section links. Keep both language pages in
 sync when changing controls or navigation.
-Full-page local navigation fades briefly against the same purple background
-on both pages. Section links keep native scrolling, external links are unaffected,
-and reduced-motion preferences disable the animation.
+Internal navigation fetches the target HTML and replaces only the main content.
+The header and footer stay mounted; the target page stylesheet loads before the
+content is swapped, and the calculator initializes again when returning from
+another page. Browser Back and Forward use the same path. A failed fetch falls
+back to normal navigation. Section links keep native scrolling, external links
+are unaffected, and reduced-motion preferences disable the content animation.
+The shared header uses a spacious single-row horizontal menu with equally sized,
+subtle control surfaces. Their positions and widths remain stable when switching
+between Slovak and English. Narrow screens use an accessible
+drop-down menu on narrow screens. Escape or clicking outside closes it.
 The HTML keeps the content hidden until its stylesheet loads, so navigation does
 not briefly reveal unstyled text. A failed stylesheet request reveals the plain
 page instead of leaving it blank.
-Language changes and guide navigation in the same tab preserve the calculator
+Language changes and navigation among these pages in the same tab preserve the calculator
 session ID, revision, history, input, settings and recent tools in session
 storage. Reload and New session start fresh. Server restart or session eviction
 still loses the in-memory numeric state.

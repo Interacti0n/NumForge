@@ -147,6 +147,35 @@ test('both guide titles use the complete NumForge wordmark', async ({ page, requ
     }
 });
 
+test('header controls keep their size and position when changing language', async ({ page }) => {
+    for (const width of [1280, 1024]) {
+        await page.setViewportSize({width, height: 768});
+        await page.goto('/?lang=sk');
+        const geometry = () => page.evaluate(() => {
+            const controls = [...document.querySelectorAll('.brand, .primary-nav a, .language-switch, .header-actions > a')];
+            return {
+                boxes: controls.map(control => {
+                    const box = control.getBoundingClientRect();
+                    return {x: box.x, width: box.width, height: box.height,
+                        fits: control.scrollWidth <= control.clientWidth + 1};
+                }),
+                pageFits: document.documentElement.scrollWidth <= innerWidth + 1
+            };
+        });
+        const slovak = await geometry();
+        await page.locator('.language-switch a[lang="en"]').click();
+        await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+        const english = await geometry();
+        expect(slovak.pageFits && english.pageFits).toBe(true);
+        for (let index = 0; index < slovak.boxes.length; index++) {
+            expect(slovak.boxes[index].fits && english.boxes[index].fits,
+                `width ${width}, control ${index}: ${JSON.stringify([slovak.boxes[index], english.boxes[index]])}`).toBe(true);
+            for (const dimension of ['x', 'width', 'height'])
+                expect(Math.abs(slovak.boxes[index][dimension] - english.boxes[index][dimension])).toBeLessThan(1);
+        }
+    }
+});
+
 for (const lang of ['sk', 'en']) {
     test.describe(lang, () => {
         test.beforeEach(async ({ page }) => { await page.goto(`/?lang=${lang}`); });
@@ -160,7 +189,7 @@ for (const lang of ['sk', 'en']) {
             const fonts = await page.evaluate(() => {
                 const font = selector => getComputedStyle(document.querySelector(selector)).fontFamily;
                 return {
-                    ui: font('.header-actions'), settings: font('.precision'),
+                    ui: font('.primary-nav'), settings: font('.precision'),
                     category: font('#function-tab-0'), help: font('#function-help'),
                     input: font('#expression'), result: font('#result'),
                     historyText: font('#history-list button'), historyValue: font('#history-list .history-value'),
@@ -192,12 +221,16 @@ for (const lang of ['sk', 'en']) {
         });
         test('fraction notation changes only the display', async ({ page }) => {
             await calculate(page, '1/3', '1/3');
+            await expect(page.locator('#result-approx')).toHaveText('≈ 0.3333333333');
             await page.locator('#notation-mode').selectOption('plain');
             await expect(page.locator('#result')).toHaveText('0.3333333333');
+            await expect(page.locator('#result-approx')).toBeHidden();
             await page.locator('#notation-mode').selectOption('fraction');
             await expect(page.locator('#result')).toHaveText('1/3');
+            await expect(page.locator('#result-approx')).toHaveText('≈ 0.3333333333');
             await expect(page.locator('#history-list li')).toHaveCount(1);
             await calculate(page, 'sqrt(2)', '1.4142135624');
+            await expect(page.locator('#result-approx')).toBeHidden();
             await calculate(page, '123456789012345/7', '1.7636684145E+13');
         });
         test('ans changes only on confirmation; history and reload', async ({ page, context }) => {
@@ -234,6 +267,8 @@ for (const lang of ['sk', 'en']) {
             await page.locator('#expression').fill('ans');
             await page.locator('#expression').press('Enter');
             await expect(page.locator('#result')).toContainText(lang === 'sk' ? 'nemá potvrdenú' : 'undefined');
+            await calculate(page, '1', '1');
+            await expect(page.locator('#history-list .history-index')).toHaveText(['#1']);
         });
         test('long history stays on one line and marks the hidden end', async ({ page }) => {
             const input = '1' + '+1'.repeat(80);
@@ -301,30 +336,42 @@ for (const lang of ['sk', 'en']) {
             await page.locator(`.back-link[href="/?lang=${other}"]`).click();
             await calculate(page, '2(2+2)', '8');
         });
-        test('page navigation fades while section links keep scrolling', async ({ page }) => {
-            const leavingCalculator = await page.evaluate(() => {
-                document.querySelector('.guide-link').click();
-                return document.querySelector('.calculator-shell').classList.contains('page-leaving');
+        test('page navigation keeps the header and footer mounted', async ({ page }) => {
+            await page.evaluate(() => {
+                window.originalHeader = document.querySelector('.page-header');
+                window.originalFooter = document.querySelector('.page-footer');
+                window.originalMenu = document.querySelector('.primary-nav');
             });
-            expect(leavingCalculator).toBe(true);
+            await page.locator('.guide-link').click();
             await expect(page).toHaveURL(`/api?lang=${lang}`);
+            expect(await page.evaluate(() => document.querySelector('.page-header') === window.originalHeader &&
+                document.querySelector('.page-footer') === window.originalFooter &&
+                document.querySelector('.primary-nav') === window.originalMenu)).toBe(true);
             await page.locator('.guide-toc a[href="#http"]').click();
             await expect(page).toHaveURL(/#http$/);
-            await expect(page.locator('.guide-shell')).not.toHaveClass(/page-leaving/);
             const other = lang === 'sk' ? 'en' : 'sk';
-            const leavingGuide = await page.evaluate(other => {
-                document.querySelector(`.language-switch a[lang="${other}"]`).click();
-                return document.querySelector('.guide-shell').classList.contains('page-leaving');
-            }, other);
-            expect(leavingGuide).toBe(true);
+            await page.locator(`.language-switch a[lang="${other}"]`).click();
             await expect(page).toHaveURL(`/api?lang=${other}`);
+            expect(await page.evaluate(() => document.querySelector('.page-header') === window.originalHeader &&
+                document.querySelector('.page-footer') === window.originalFooter &&
+                document.querySelector('.primary-nav') === window.originalMenu)).toBe(true);
             await page.emulateMedia({reducedMotion: 'reduce'});
-            const reducedMotionLeavesImmediately = await page.evaluate(() => {
-                document.querySelector('.back-link').click();
-                return document.querySelector('.guide-shell').classList.contains('page-leaving');
-            });
-            expect(reducedMotionLeavesImmediately).toBe(false);
+            await page.locator('.back-link').click();
             await expect(page).toHaveURL(`/?lang=${other}`);
+            expect(await page.evaluate(() => document.querySelector('.page-header') === window.originalHeader &&
+                document.querySelector('.page-footer') === window.originalFooter &&
+                document.querySelector('.primary-nav') === window.originalMenu)).toBe(true);
+            await page.goBack();
+            await expect(page).toHaveURL(`/api?lang=${other}`);
+            await expect(page.locator('.guide-content')).toBeVisible();
+            await page.locator(`.primary-nav a[href="/graph?lang=${other}"]`).click();
+            await expect(page).toHaveURL(`/graph?lang=${other}`);
+            await expect(page.locator('#upcoming-title')).toBeVisible();
+            await page.locator('.register-link').click();
+            await expect(page).toHaveURL(`/register?lang=${other}`);
+            expect(await page.evaluate(() => document.querySelector('.page-header') === window.originalHeader &&
+                document.querySelector('.page-footer') === window.originalFooter &&
+                document.querySelector('.primary-nav') === window.originalMenu)).toBe(true);
         });
         test('automatic calculation and precision above result', async ({ page }, testInfo) => {
             await expect(page.locator('.page-footer')).toBeVisible();
@@ -448,6 +495,7 @@ for (const lang of ['sk', 'en']) {
             await expect.poll(() => page.evaluate(() =>
                 document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
             await page.screenshot({ path: testInfo.outputPath('functions-mobile.png'), fullPage: true });
+            await page.locator('.nav-toggle').click();
             await page.locator('.guide-link').click();
             await expect(page.locator('body')).toContainText('log(x;b)');
         });
@@ -583,20 +631,78 @@ for (const lang of ['sk', 'en']) {
             await page.locator('[data-angle="deg"]').click();
             const other = lang === 'sk' ? 'en' : 'sk';
             await page.locator(`.language-switch a[lang="${other}"]`).click();
+            await expect(page.locator('html')).toHaveAttribute('lang', other);
             await expect(page.locator('#expression')).toHaveValue('ans+1');
             await expect(page.locator('#precision-mode')).toHaveValue('full');
             await expect(page.locator('[data-angle="deg"]')).toHaveAttribute('aria-pressed', 'true');
             await expect(page.locator('#history-list li')).toHaveCount(1);
+            await expect(page.locator('#history-list .history-index')).toHaveText(['#1']);
             await expect(page.locator('#recent-buttons button')).toHaveCount(1);
             await expect(page.locator('#function-tab-4')).toHaveAttribute('aria-selected', 'true');
             await page.locator('.guide-link').click();
             await page.locator('.back-link').click();
             await expect(page.locator('#history-list li')).toHaveCount(1);
+            await expect(page.locator('#history-list .history-index')).toHaveText(['#1']);
             await expect(page.locator('#expression')).toHaveValue('ans+1');
             await expect(page.locator('#result')).toHaveText('4/3');
+            await expect(page.locator('html')).toHaveAttribute('lang', other);
+            await expect(page.locator('.primary-nav a[href^="/graph"]'))
+                .toHaveAttribute('href', `/graph?lang=${other}`);
+            await page.locator('.primary-nav a[href^="/graph"]').click();
+            await expect(page.locator('#upcoming-title')).toHaveText(other === 'sk' ? 'Grafická kalkulačka' : 'Graphing calculator');
+            await page.locator('.primary-nav a[href^="/solve"]').click();
+            await expect(page.locator('#upcoming-title')).toHaveText(other === 'sk' ? 'Riešenie rovníc' : 'Equation solver');
+            await page.locator('.primary-nav a[href^="/units"]').click();
+            await expect(page.locator('#upcoming-title')).toHaveText(other === 'sk' ? 'Prevod jednotiek' : 'Unit converter');
+            await page.locator('.primary-nav a[href^="/?lang="]').click();
+            await expect(page.locator('#history-list .history-index')).toHaveText(['#1']);
+            await expect(page.locator('#expression')).toHaveValue('ans+1');
             await page.locator('#expression').press('Enter');
             await expect(page.locator('#history-list li')).toHaveCount(2);
+            await expect(page.locator('#history-list .history-index')).toHaveText(['#1', '#2']);
             await calculate(page, 'ans', '4/3');
+        });
+        test('future tools have localized pages and the menu remains usable on mobile', async ({ page, request }) => {
+            for (const tool of ['graph', 'solve', 'units', 'login', 'register']) {
+                const response = await request.get(`/${tool}?lang=${lang}`);
+                expect(response.ok()).toBe(true);
+                await page.goto(`/${tool}?lang=${lang}`);
+                await expect(page.locator(`[data-nav="${tool}"]`)).toHaveAttribute('aria-current', 'page');
+                await expect(page.locator('#upcoming-title')).not.toBeEmpty();
+                const other = lang === 'sk' ? 'en' : 'sk';
+                await expect(page.locator(`.language-switch a[lang="${other}"]`))
+                    .toHaveAttribute('href', `/${tool}?lang=${other}`);
+            }
+            expect((await request.get(`/account?lang=${lang}`)).status()).toBe(404);
+            expect((await request.get(`/premium?lang=${lang}`)).status()).toBe(404);
+            await expect(page.locator('a[href^="/premium"]')).toHaveCount(0);
+            await page.setViewportSize({width: 1024, height: 768});
+            await expect(page.locator('.nav-toggle')).toBeHidden();
+            expect(await page.evaluate(() => {
+                const menu = document.querySelector('.primary-nav');
+                const links = [...menu.querySelectorAll('a')];
+                const firstLine = links[0].getBoundingClientRect().top;
+                return links.every(link => Math.abs(link.getBoundingClientRect().top - firstLine) < 1) &&
+                    menu.scrollWidth <= menu.clientWidth + 1 &&
+                    document.documentElement.scrollWidth <= innerWidth + 1;
+            })).toBe(true);
+            await page.setViewportSize({width: 375, height: 667});
+            expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+            await expect(page.locator('.nav-toggle')).toHaveAttribute('aria-expanded', 'false');
+            await page.locator('.nav-toggle').click();
+            await expect(page.locator('.nav-toggle')).toHaveAttribute('aria-expanded', 'true');
+            await expect(page.locator('[data-nav="units"]')).toBeVisible();
+            await expect(page.locator('[data-nav="login"]')).toBeVisible();
+            await expect(page.locator('[data-nav="register"]')).toBeVisible();
+            await page.keyboard.press('Escape');
+            await expect(page.locator('.nav-toggle')).toHaveAttribute('aria-expanded', 'false');
+            await page.locator('.nav-toggle').click();
+            await page.locator('[data-nav="graph"]').click();
+            await expect(page.locator('#upcoming-title')).toHaveText(lang === 'sk' ? 'Grafická kalkulačka' : 'Graphing calculator');
+            await page.setViewportSize({width: 320, height: 667});
+            expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+            await page.locator('.nav-toggle').click();
+            await expect(page.locator('[data-nav="register"]')).toBeVisible();
         });
         test('header, footer and license match the guide', async ({ page }) => {
             const calculatorHeader = await page.locator('.page-header').boundingBox();
@@ -622,6 +728,7 @@ for (const lang of ['sk', 'en']) {
             await page.setViewportSize({width: 375, height: 667});
             const mobileGuideHeader = await page.locator('.page-header').boundingBox();
             const mobileGuideFooter = await page.locator('.page-footer').boundingBox();
+            await page.locator('.nav-toggle').click();
             await page.locator('.back-link').click();
             const mobileCalculatorHeader = await page.locator('.page-header').boundingBox();
             const mobileCalculatorFooter = await page.locator('.page-footer').boundingBox();
@@ -672,6 +779,15 @@ for (const lang of ['sk', 'en']) {
         });
         test('function search and category controls are easy to reach', async ({ page }) => {
             await expect(page.locator('#example-options')).toHaveCount(0);
+            const categoryLabels = lang === 'sk' ? ['Mocniny a logy', 'Goniometria']
+                : ['Powers & logs', 'Trigonometry'];
+            await expect(page.locator('#function-tab-3')).toHaveText(categoryLabels[0]);
+            await expect(page.locator('#function-tab-4')).toHaveText(categoryLabels[1]);
+            await page.setViewportSize({width: 1024, height: 768});
+            const categoryFits = await page.locator('.function-tabs button').evaluateAll(buttons =>
+                buttons.every(button => button.scrollWidth <= button.clientWidth + 1 &&
+                    button.scrollHeight <= button.clientHeight + 1));
+            expect(categoryFits).toBe(true);
             await page.locator('#function-search').fill('sqrt');
             await expect(page.locator('[data-function="sqrt"]')).toBeVisible();
             await expect(page.locator('[data-function="sin"]')).toBeHidden();

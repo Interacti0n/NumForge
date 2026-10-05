@@ -4,30 +4,41 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#17002f">
-  <style>html { background: #17002f; } body { visibility: hidden; } html.css-error body { visibility: visible; }</style>
+  <style>html { background: #17002f; } html:not(.styles-ready) body { visibility: hidden; } html.css-error body { visibility: visible; }</style>
   <title>NumForge · Použitie a API</title>
   <link rel="icon" type="image/png" href="/assets/logo.png">
   <link rel="stylesheet" href="/assets/api.css" onerror="document.documentElement.classList.add('css-error')">
+  <link rel="stylesheet" href="/assets/chrome.css" onload="document.documentElement.classList.add('styles-ready')" onerror="document.documentElement.classList.add('css-error','styles-ready')">
 </head>
 <body>
   <div class="guide-shell">
     <header class="page-header">
       <a class="brand" href="/?lang=sk" aria-label="NumForge">
         <img class="brand-mark" src="/assets/logo.png" alt="" width="45" height="45">
-        <span class="brand-text"><strong>NumForge</strong><small>Príručka</small></span>
+        <span class="brand-text"><strong>NumForge</strong><small>Presné výpočty</small></span>
       </a>
-      <nav class="header-actions" aria-label="Navigácia">
-        <a class="back-link" href="/?lang=sk">← Kalkulačka</a>
-        <span class="language-switch" aria-label="Výber jazyka">
-          <a href="/api?lang=sk" lang="sk" aria-current="true" title="Slovenčina">🇸🇰 SK</a>
-          <a href="/api?lang=en" lang="en"  title="English">🇬🇧 EN</a>
-        </span>
-      </nav>
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-navigation"><span class="menu-icon" aria-hidden="true"></span>Menu</button>
+      <div class="site-navigation" id="site-navigation">
+        <nav class="primary-nav" aria-label="Hlavná navigácia">
+          <a class="back-link" href="/?lang=sk">Kalkulačka</a>
+          <a href="/graph?lang=sk">Grafy</a>
+          <a href="/solve?lang=sk">Rovnice</a>
+          <a href="/units?lang=sk">Jednotky</a>
+          <a href="/api?lang=sk" aria-current="page">Návod / API</a>
+        </nav>
+        <div class="header-actions">
+          <span class="language-switch" aria-label="Výber jazyka">
+            <a href="/api?lang=sk" lang="sk" aria-current="true" title="Slovenčina">SK</a>
+            <a href="/api?lang=en" lang="en" title="English">EN</a>
+          </span>
+          <a class="login-link" href="/login?lang=sk">Prihlásiť sa</a>
+          <a class="register-link" href="/register?lang=sk">Registrácia</a>
+        </div>
+      </div>
     </header>
     <div class="guide-layout">
       <aside class="guide-sidebar">
-        <nav class="guide-toc" aria-label="Na tejto stránke">
-          <span class="toc-title">Na tejto stránke</span>
+        <nav class="guide-toc" aria-label="Sekcie príručky">
           <a href="#syntax">Zápis výrazov</a>
           <a href="#precision">Výstupná presnosť</a>
           <a href="#functions">Funkcie</a>
@@ -39,7 +50,6 @@
         </nav>
       </aside>
       <main class="guide-content">
-<p class="eyebrow">DOKUMENTÁCIA</p>
   <h1 class="guide-title"><img class="guide-wordmark" src="/assets/wordmark.png" alt="NumForge" width="2172" height="724"><span>Použitie a API</span></h1>
   <p>JavaScript iba odošle výraz lokálnemu serveru; samotný výpočet vykoná C aplikácia: tokenizer → parser → evaluator → presný zlomok alebo BigDecimal → formatter.</p>
   <p class="notice">Aritmetika presných vstupov uchová celé čísla a zlomky bez zaokrúhlenia. Desatinný výpis periodického zlomku používa najmenej 34 významných číslic; výstup má predvolene 10 desatinných miest.</p>
@@ -78,9 +88,10 @@
 <p>Samostatný prepínač zápisu ponúka Auto, bežný, vedecký (<code>1.23E+45</code>), matematický (<code>1.23 × 10^45</code>) a Zlomok. Auto ukáže presný zlomok, ak má menovateľ najviac 10000, zápis najviac 16 znakov a je aspoň o dva znaky kratší než desatinný výpis. Inak po zaokrúhlení použije vedecký výpis pri |exponente| ≥ 10 alebo keď by bežný výpis presiahol 80 znakov. Zlomok ukáže presný necelý výsledok ako a/b do 16 znakov; dlhšie zlomky a približné výsledky použijú desatinný Auto zápis. Celé výsledky zostanú bez /1. Výpis má limit 65536 bajtov. Matematický výpis sa kopíruje ako vstup pre parser vo forme E, ak sa zmestí do vstupných limitov. Prepnutie zápisu nemení uloženú hodnotu ani ans.</p>
 <p>Nastavuješ výstupné desatinné miesta a zápis. Pracovná presnosť zostáva automatická: max(34, N+4) významných číslic, pri plnom výstupe 34. Server uchováva posledný úspešný číselný výsledok každého sedenia prehliadača, najviac pre osem klientov. Pri rovnakom pracovnom kontexte iba zmení výpis; pri zmene pracovnej presnosti výraz prepočíta. Preukázateľne presné výrazy ako 10000! možno znovu vypísať aj pri inej presnosti bez výpočtu. Obnovenie kalkulačky alebo vyradenie sedenia vyžaduje nové sedenie. Toto nie je záruka správnosti každej poslednej číslice pri rušení číslic v medzivýsledkoch.</p>
 <p>Voliteľné HTTP parametre za precision/angle: <code>&amp;client=32_hex_znakov&amp;revision=N</code>. Pred client možno uviesť <code>&amp;notation=auto|plain|scientific|math|fraction</code>; matematická odpoveď pridá <code>copy</code> s E zápisom alebo null pri prekročení limitu. Client má presne 32 malých hexadecimálnych znakov; revision rastie od 1 do 9007199254740991. Úspešná odpoveď potom obsahuje aj boolean <code>cached</code>. Bez týchto parametrov je API bezstavové. Identifikátor nie je autentifikácia.</p>
+<p>Ak výsledok zobrazí presný zlomok, pod ním sa ukáže menším písmom približný desatinný výpis so symbolom ≈, najviac na 10 miest. Pri veľmi malej hodnote môže použiť vedecký zápis. Kopírovanie a história používajú iba presný zlomok.</p>
 <h2 id="random">Náhodné čísla</h2><p><code>rand()</code> dá hodnotu v [0,1), <code>rand(x)</code> v [0,x) pre x &gt; 0 a <code>rand(x;y)</code> v [x,y) pre x &lt; y. Každé volanie žrebuje zvlášť z 34-miestnej desatinnej mriežky. Opakovaný náhľad drží tie isté hody; nový Enter žrebuje znova. Nejde o kryptografický generátor.</p>
 <h2 id="history">ans a história</h2><p>Náhľad nemení ans. Enter, Vypočítať alebo = potvrdí úspešný výsledok a pridá históriu. ans uchová internú hodnotu, nie zaokrúhlený výpis; vyššia presnosť neobnoví stratené cifry aproximácie. Pred prvým potvrdením je ans nedefinované. Chyba stav nemení.</p>
-<p>História je stále viditeľná a uchová posledných 16 potvrdení. Každý záznam je v jednom riadku; dlhý náhľad končí tromi bodkami, celý výsledok zostáva dostupný na vloženie alebo cez tlačidlo kopírovania. Kliknutie na riadok vloží výsledok na pozíciu kurzora vo vstupe, prípadne na koniec. Zmena jazyka a prechod na návod a späť v tej istej karte zachovajú sedenie, históriu, vstup aj nastavenia. Obnovenie kalkulačky alebo Nové sedenie začnú odznova. Server uchová najviac osem sedení, staršie vyradí; vtedy treba obnoviť stránku. Reštart servera tiež stratí pamäťové sedenia. CLI má príkazy history a reset. C vymaže iba vstup.</p>
+<p>História je stále viditeľná a uchová posledných 16 potvrdení. Záznamy sú očíslované podľa poradia potvrdenia; čísla rastú aj po vyradení starších záznamov. Každý záznam je v jednom riadku; dlhý náhľad končí tromi bodkami, celý výsledok zostáva dostupný na vloženie alebo cez tlačidlo kopírovania. Kliknutie na riadok vloží výsledok na pozíciu kurzora vo vstupe, prípadne na koniec. Zmena jazyka a prechod na návod a späť v tej istej karte zachovajú sedenie, históriu, číslovanie, vstup aj nastavenia. Obnovenie kalkulačky alebo Nové sedenie začnú odznova. Server uchová najviac osem sedení, staršie vyradí; vtedy treba obnoviť stránku. Reštart servera tiež stratí pamäťové sedenia. CLI má príkazy history a reset. C vymaže iba vstup.</p>
 <p>Web pridáva na koniec HTTP parametrov <code>&amp;action=start</code> (prázdne telo), potom <code>&amp;action=preview</code> alebo <code>&amp;action=commit</code>. Start nevykoná výpočet. Opakovanie posledného úspešného potvrdenia s rovnakým revision, výrazom a nastaveniami vráti pôvodný výsledok. Pri neistej odpovedi Enter zopakuje tú istú požiadavku; nové potvrdenie počká. Staršie alebo konfliktné revízie sa odmietnu. API bez action si zachováva pôvodné správanie.</p>
   <p>Presné delenie uchová skrátený zlomok vrátane periodických výsledkov. Desatinný výpis sa zaokrúhli podľa nastavení. <code>(1E34+1)/1-1E34 = 1</code>.</p>
   <p><code>1.2.3</code>, <code>1,2,3</code> a <code>2 3</code> sú chyby, nie násobenie. Platí <code>(2)3</code>, <code>3!2</code> aj <code>2²3</code>. Násobenie bez znamienka má rovnakú prioritu ako * a /: <code>6/2(1+2) = 9</code>.</p>

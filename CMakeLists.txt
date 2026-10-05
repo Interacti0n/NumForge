@@ -184,8 +184,11 @@ set(NUMFORGE_WEB_ASSETS
     web/calculator.en.html
     web/api.sk.html
     web/api.en.html
+    web/upcoming.sk.html
+    web/upcoming.en.html
     web/calculator.css
     web/api.css
+    web/chrome.css
     web/navigation.js
     web/calculator.js
     web/logo.png

@@ -7,6 +7,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../web/calculator.js'), 'utf8');
+const instrumentedSource = source.replace('return () => {\n    lifecycle.abort();',
+    'window.__numforgeTest = {ensureSession, calculate, appendHistory};\nreturn () => {\n    lifecycle.abort();');
+assert.notEqual(instrumentedSource, source, 'calculator test hooks must be installed');
 
 async function createUI(english) {
     const elements = new Map();
@@ -56,7 +59,8 @@ async function createUI(english) {
             ? Promise.resolve({ok: true, headers: {get: () => 'application/json'}, json: async () => ({ok: true, result: ''})})
             : new Promise((resolve, reject) => pending.push({url, options, resolve, reject}))
     };
-    vm.runInNewContext(source, runtime);
+    vm.runInNewContext(instrumentedSource, runtime);
+    Object.assign(runtime, runtime.window.__numforgeTest);
     await runtime.ensureSession();
     const preview = value => {
         element('#expression').value = value;
@@ -66,10 +70,10 @@ async function createUI(english) {
         element('#expression').value = value;
         return element('#calculator').listeners.submit({preventDefault() {}});
     };
-    const respond = (index, result) => pending[index].resolve({
-        ok: true, headers: {get: () => 'application/json'}, json: async () => ({ok: true, result})
+    const respond = (index, result, extra = {}) => pending[index].resolve({
+        ok: true, headers: {get: () => 'application/json'}, json: async () => ({ok: true, result, ...extra})
     });
-    return {element, pending, preview, confirm, respond, clear, insert, timers, copied};
+    return {element, pending, preview, confirm, respond, clear, insert, timers, copied, runtime};
 }
 
 async function test(english) {
@@ -123,6 +127,14 @@ async function test(english) {
     assert.equal(ui.element('#result').textContent, '9');
     ui.insert.listeners.click();
     assert.equal(ui.element('#result').textContent, '');
+    const fraction = ui.preview('1/3');
+    ui.respond(8, '1/3', {approx: '0.3333333333'}); await fraction;
+    assert.equal(ui.element('#result-approx').textContent, '≈ 0.3333333333');
+    assert.equal(ui.element('#result-approx').hidden, false);
+    await ui.element('#copy-result').listeners.click();
+    assert.equal(ui.copied.at(-1), '1/3', 'copy remains the exact result');
+    ui.clear.listeners.click();
+    assert.equal(ui.element('#result-approx').hidden, true);
 }
 
 async function testAutomaticCalculation(english) {
@@ -204,12 +216,13 @@ async function testConfirmation(english) {
     assert.equal(ui.element('#expression').value, 'ans+1', 'retry restores the captured expression');
     ui.respond(2, '6'); await retry;
     assert.equal(ui.element('#history-list').children.length, 1);
-    const item = ui.element('#history-list').children[0].children[0];
+    assert.equal(ui.element('#history-list').children[0].children[0].textContent, '#1');
+    const item = ui.element('#history-list').children[0].children[1];
     assert.deepEqual(item.children[0].children.map(child => child.textContent), ['ans+1', ' → ', '6']);
     item.listeners.click();
     assert.equal(ui.element('#expression').value, 'ans+16');
     assert.equal(ui.pending.length, 3, 'history inserts the result without confirming');
-    await ui.element('#history-list').children[0].children[1].listeners.click();
+    await ui.element('#history-list').children[0].children[2].listeners.click();
     assert.deepEqual(ui.copied, ['6']);
 
     const next = ui.confirm('ans+1');
@@ -217,11 +230,23 @@ async function testConfirmation(english) {
     ui.element('#expression').listeners.input();
     ui.respond(3, '7'); await next;
     assert.equal(ui.element('#history-list').children.length, 2, 'late confirmation still enters history');
+    assert.equal(ui.element('#history-list').children[1].children[0].textContent, '#2');
     assert.equal(ui.element('#result').textContent, '', 'late result does not replace newer input preview');
+}
+
+async function testHistoryNumbering(english) {
+    const ui = await createUI(english);
+    for (let number = 1; number <= 18; number++)
+        ui.runtime.appendHistory({input: String(number), precision: '10', angle: 'rad', notation: 'auto'}, String(number));
+    const rows = ui.element('#history-list').children;
+    assert.equal(rows.length, 16);
+    assert.equal(rows[0].children[0].textContent, '#3');
+    assert.equal(rows.at(-1).children[0].textContent, '#18');
 }
 
 (async () => {
     for (const english of [false, true]) {
+        await testHistoryNumbering(english);
         for (const data of [null, {ok: true}, {ok: true, result: 42}, {ok: 'true'}]) {
             const ui = await createUI(english);
             const request = ui.preview('1');

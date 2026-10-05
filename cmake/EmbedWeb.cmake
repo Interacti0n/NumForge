@@ -25,8 +25,11 @@ numforge_embed_web_file(NUMFORGE_CALCULATOR_SK_HTML calculator.sk.html)
 numforge_embed_web_file(NUMFORGE_CALCULATOR_EN_HTML calculator.en.html)
 numforge_embed_web_file(NUMFORGE_API_SK_HTML api.sk.html)
 numforge_embed_web_file(NUMFORGE_API_EN_HTML api.en.html)
+numforge_embed_web_file(NUMFORGE_UPCOMING_SK_HTML upcoming.sk.html)
+numforge_embed_web_file(NUMFORGE_UPCOMING_EN_HTML upcoming.en.html)
 numforge_embed_web_file(NUMFORGE_CALCULATOR_CSS calculator.css)
 numforge_embed_web_file(NUMFORGE_API_CSS api.css)
+numforge_embed_web_file(NUMFORGE_CHROME_CSS chrome.css)
 numforge_embed_web_file(NUMFORGE_NAVIGATION_JS navigation.js)
 numforge_embed_web_file(NUMFORGE_CALCULATOR_JS calculator.js)
 numforge_embed_web_file(NUMFORGE_LICENSE_TEXT ../LICENSE)
@@ -47,7 +50,9 @@ string(APPEND numforge_web_generated
     "static const char *const NUMFORGE_WEB_PAGE[] = {(const char *)NUMFORGE_CALCULATOR_SK_HTML, NULL};\n"
     "static const char *const NUMFORGE_WEB_PAGE_EN[] = {(const char *)NUMFORGE_CALCULATOR_EN_HTML, NULL};\n"
     "static const char *const NUMFORGE_API_PAGE[] = {(const char *)NUMFORGE_API_SK_HTML, NULL};\n"
-    "static const char *const NUMFORGE_API_PAGE_EN[] = {(const char *)NUMFORGE_API_EN_HTML, NULL};\n\n"
+    "static const char *const NUMFORGE_API_PAGE_EN[] = {(const char *)NUMFORGE_API_EN_HTML, NULL};\n"
+    "static const char *const NUMFORGE_UPCOMING_PAGE[] = {(const char *)NUMFORGE_UPCOMING_SK_HTML, NULL};\n"
+    "static const char *const NUMFORGE_UPCOMING_PAGE_EN[] = {(const char *)NUMFORGE_UPCOMING_EN_HTML, NULL};\n\n"
     "#endif\n")
 
 string(RANDOM LENGTH 12 ALPHABET 0123456789abcdef numforge_web_suffix)

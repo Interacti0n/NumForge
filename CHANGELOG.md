@@ -3,6 +3,24 @@
 All notable changes to NumForge are documented in this file. The project uses
 [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+- Remove the Premium navigation and page; refresh sign-in and sign-up buttons.
+- Add a subtle purple gradient with mathematical sketches and forge details
+  around the page edges, softened on mobile.
+
+- Keep the web header and footer mounted while internal navigation replaces the
+  center content; remove the enclosing menu frame and distinguish each link.
+  Keep header control positions and widths stable across Slovak and English.
+- Add a shared single-row top menu for the calculator, guide and future graphs,
+  equations and unit conversion. Sign-in and registration remain separate
+  actions with localized informational pages until those features exist.
+- Keep function category labels on one line and number confirmed web history
+  entries in order, including after the 16-entry window rolls over.
+- Show an approximate decimal hint beneath exact fractions in the local web
+  calculator while preserving the exact result for copying and history.
+- Remove redundant section labels from both language versions of the web guide.
+
 ## [2.0.0] - 2026-09-28
 
 This release greatly expands the numeric library and refreshes its optional CLI

@@ -285,6 +285,11 @@ shorter than the rounded decimal display. Fraction mode shows exact non-integers
 as `a/b` up to 16 characters; longer fractions and approximate results use Auto
 decimal notation. Exact integers have no `/1`. Decimal output alone does not prove
 mathematical exactness.
+When the local HTTP result is a displayed exact fraction, its optional
+`approx` field contains a separate half-even decimal hint with up to 10
+decimal places. It uses scientific notation when a very small nonzero value
+would otherwise round to zero. The browser shows this beneath the fraction;
+copying and history still use only the exact `result`.
 
 Repeated decimal separators (`1.2.3`, `1,2,3`) and adjacent numeric tokens
 (`2 3`, `2 .3`) are errors. Delimited products like `(2)3`, `3!2` and `2²3`
@@ -377,10 +382,14 @@ names, not products. Numeric suffixes such as `log2` are not supported.
 
 ### Browser interface
 
+The shared header links the calculator and guide and previews future graph,
+equation and unit-conversion areas. Sign-in and registration
+currently show informational pages; there is no authentication or payment API.
+
 The local browser page has active keypad buttons for this grammar, including
 power, square, cube, factorial and an argument separator. Named functions are
-organized in six horizontal tabs with one active panel: Basic, Statistics,
-Integers, Powers and logarithms, Trigonometry, and Hyperbolic. Function buttons insert
+organized in six categories with one active panel: Basic, Statistics,
+Integers, Powers & logs, Trigonometry, and Hyperbolic. Function buttons insert
 both parentheses and place the caret inside; Enter calculates and moves the
 caret to the end of the expression. Root, logarithmic and exponential
 and trigonometric controls are active. A RAD/DEG selector on the right beside precision settings
@@ -391,6 +400,8 @@ Switching language or visiting the guide and returning in the same tab keeps
 the server session, confirmed `ans`, history, expression, output settings and
 recent tools through session storage when available. A normal reload or New
 session starts fresh. Server restart or eviction still loses the in-memory value.
+Web history numbers successful confirmations in order, retains the last 16
+entries, and keeps the sequence when navigating within the same tab.
 Function buttons show mathematical labels where useful and expose signatures
 and domain hints on hover, keyboard focus and activation (including touch).
 The keypad inserts `.`, while directly typed `,` is accepted as the
@@ -411,6 +422,8 @@ is outside -9..9 or plain output would exceed 80 characters. Scientific uses
 mathematical notation to parser-compatible `E` form when possible. A plain
 result over the 65536-byte application output limit returns an error. Language
 switching preserves both selectors and the custom precision value.
+When the primary result is a fraction, a smaller `≈` line shows a decimal
+hint at up to 10 places, independently of the selected output precision.
 
 A caller can request a
 non-negative output scale from 0 through 10000,
@@ -478,6 +491,10 @@ A successful response is HTTP 200:
 {"ok":true,"result":"1.5707963268"}
 ```
 
+A short exact fraction can additionally return
+`{"ok":true,"result":"1/3","approx":"0.3333333333"}`. The `approx` field is
+only a display hint; `result` remains the exact value.
+
 Invalid expressions, unsupported precision values, and arithmetic errors
 return HTTP 400. Calculator errors use this JSON shape:
 
@@ -494,7 +511,8 @@ accepts a non-negative whole number or `full`; if omitted, it defaults to `10`.
 `precision` in the query string. Optional `notation=auto|plain|scientific|math|fraction`
 follows `angle` and defaults to `auto`. A successful mathematical response adds
 `"copy":"1.23E+45"` (or `"copy":null` if the result cannot fit the parser's
-input range or size limit). Other modes retain the existing response fields.
+input range or size limit). Fraction results may add `approx` in any notation
+that displays the exact fraction; other responses retain the existing fields.
 Legacy clients may append `&client=<32 lowercase hex digits>&revision=<N>`
 after the normal options. `N` is a positive increasing integer up to
 9007199254740991. These parameters opt into a bounded per-client cache;
