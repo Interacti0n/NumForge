@@ -8,6 +8,32 @@ permissions:
   contents: read
 
 jobs:
+  bigint-benchmark-smoke:
+    name: BigInt benchmark checks (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-15]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Configure opt-in benchmark checks
+        run: >-
+          cmake -S . -B build-bigint-bench
+          -DCMAKE_BUILD_TYPE=Release
+          -DBUILD_TESTING=ON
+          -DNUMFORGE_BUILD_APPS=OFF
+          -DNUMFORGE_BUILD_BENCHMARKS=ON
+          -DNUMFORGE_REQUIRE_NODE_TESTS=ON
+          -DNUMFORGE_WARNINGS_AS_ERRORS=ON
+      - name: Build arithmetic harness
+        run: cmake --build build-bigint-bench --config Release --target bigint_arithmetic_benchmark --parallel 2
+      - name: Check exact references and failure contracts
+        run: ctest --test-dir build-bigint-bench -C Release -R "^bigint_arithmetic_benchmark_smoke$" --output-on-failure --no-tests=error
+
   linux:
     runs-on: ubuntu-latest
     steps:

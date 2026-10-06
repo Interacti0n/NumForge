@@ -263,6 +263,11 @@ definitions and three-run baseline recorder are documented in
 [Benchmark methodology](BENCHMARKS.md). Use a separate opt-in build;
 production builds have no live tracker or HTTP timing trace.
 
+The exact-reference BigInt arithmetic suite, dense sizes, alias/copy cases,
+factorial/power experiments and isolated three-run recorder are described in
+[BigInt measurements](BIGINT_BENCHMARKS.md). Build the additional
+`bigint_arithmetic_benchmark` target; use `run_baseline.js --bigint` to record it.
+
 ```sh
 cmake -S . -B build-bench -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DNUMFORGE_BUILD_APPS=OFF -DNUMFORGE_ENABLE_SANITIZERS=OFF -DNUMFORGE_ENABLE_COVERAGE=OFF -DNUMFORGE_BUILD_BENCHMARKS=ON
 cmake --build build-bench --config Release --target bigint_multiply_benchmark decimal_format_benchmark calculator_benchmark --parallel 2

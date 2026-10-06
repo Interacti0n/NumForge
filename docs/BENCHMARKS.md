@@ -1,5 +1,8 @@
 # Formatting, cache and memory benchmarks
 
+For the arithmetic suite, exact references, factorial/square experiments and
+three-run recording, see [BigInt benchmarks](BIGINT_BENCHMARKS.md).
+
 These opt-in diagnostics measure the real numeric/client code. They do not
 change numeric algorithms, release versions, public ownership contracts or
 production cache behavior. Timing results are diagnostic, without CI limits.

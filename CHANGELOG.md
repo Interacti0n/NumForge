@@ -5,6 +5,11 @@ All notable changes to NumForge are documented in this file. The project uses
 
 ## Unreleased
 
+- Add independently checked BigInt arithmetic measurements for dense operand
+  sizes, signs/aliasing, fresh outputs, copies, division/modulo/GCD, factorial
+  and powers. Compare private product-tree and symmetric-square experiments
+  without changing production algorithms; record three isolated baseline runs.
+
 - Extend opt-in formatting benchmarks with explicit Auto/scientific notation,
   full precision, extreme scales and independently checked rounding edges.
 - Add cache/session, destination-reuse and real loopback HTTP benchmarks,

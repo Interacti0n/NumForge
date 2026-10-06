@@ -7,8 +7,9 @@ const args = process.argv.slice(2);
 const binaryDirectory = args.shift();
 const outputDirectory = args.shift();
 const quick = args.includes('--quick');
-if (!binaryDirectory || !outputDirectory || args.some(v => v !== '--quick'))
-    throw Error('Usage: node benchmarks/run_baseline.js binary-directory output-directory [--quick]');
+const bigintSuite = args.includes('--bigint');
+if (!binaryDirectory || !outputDirectory || args.some(v => v !== '--quick' && v !== '--bigint'))
+    throw Error('Usage: node benchmarks/run_baseline.js binary-directory output-directory [--quick] [--bigint]');
 const binaries = path.resolve(binaryDirectory);
 const output = path.resolve(outputDirectory);
 fs.mkdirSync(output, { recursive: true });
@@ -37,7 +38,7 @@ const manifest = {
     cpus: os.cpus().map(cpu => ({ model: cpu.model, reportedMHz: cpu.speed })),
     totalSystemMemoryBytes: os.totalmem(), node: process.version,
     powerScheme: process.platform === 'win32' ? optional('powercfg', ['/getactivescheme']) : 'record externally',
-    mode: quick ? 'quick harness smoke' : 'full diagnostic baseline', repetitions: 3,
+    mode: quick ? 'quick harness smoke' : 'full diagnostic baseline', suite: bigintSuite ? 'bigint arithmetic' : 'format/cache/http', repetitions: 3,
     instrumentation: 'requested allocations always on; live ledger in separate diagnostic samples; exclusive phase hooks',
     processPeak: process.platform === 'win32' ? 'peak_working_set_bytes' : 'peak_rss_bytes',
     commands: [], note: 'No CPU affinity or frequency locking; repeated runs do not imply an idle machine.'
@@ -52,6 +53,15 @@ if (untracked !== 'unavailable') for (const file of untracked.split(/\r?\n/).fil
 }
 const cache = [path.join(binaries, '..', 'CMakeCache.txt'), path.join(binaries, 'CMakeCache.txt')].find(fs.existsSync);
 if (cache) fs.copyFileSync(cache, path.join(output, 'CMakeCache.txt'));
+// The generated compiler description contains the compiler version, target
+// architecture and toolchain identity, beyond the executable path in the cache.
+if (cache) {
+    const files = path.join(path.dirname(cache), 'CMakeFiles');
+    if (fs.existsSync(files)) for (const entry of fs.readdirSync(files)) {
+        const compiler = path.join(files, entry, 'CMakeCCompiler.cmake');
+        if (fs.existsSync(compiler)) fs.copyFileSync(compiler, path.join(output, 'CMakeCCompiler.cmake'));
+    }
+}
 function save(name, command, parameters) {
     console.error(name);
     const begin = Date.now();
@@ -62,6 +72,19 @@ function save(name, command, parameters) {
     fs.writeFileSync(path.join(output, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
 }
 save('allocation-check', binary('allocation_stats_check'), []);
+if (bigintSuite) {
+    const { makeCases } = require('./bigint_cases');
+    const rows = makeCases(quick);
+    const fixtures = path.join(output, 'bigint-cases.tsv');
+    fs.writeFileSync(fixtures, rows.join('\n') + '\n');
+    for (let run = 1; run <= 3; run++) for (const row of rows) {
+        const name = row.split('\t')[0];
+        save(`bigint-${name}-run${run}`, binary('bigint_arithmetic_benchmark'),
+            [fixtures, ...(quick ? ['--quick'] : []), '--case', name]);
+    }
+    console.error('BigInt baseline saved to ' + output);
+    process.exit(0);
+}
 const cacheCases = ['legacy_cold', 'legacy_hit', 'legacy_precision', 'legacy_notation', 'legacy_angle',
     'legacy_expression', 'legacy_stale', 'legacy_approx_precision', 'session_cold', 'session_hit',
     'session_commit', 'session_random', 'rescale_fresh', 'rescale_reused'];
