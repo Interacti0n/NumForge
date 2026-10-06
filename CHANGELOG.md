@@ -5,6 +5,16 @@ All notable changes to NumForge are documented in this file. The project uses
 
 ## Unreleased
 
+- Prepare portable Windows x64/Linux x64 application archives with launch
+  instructions, build provenance, SHA-256 checksums and extracted-package smoke
+  checks. Automatically build exact release tags and attach verified binaries
+  when a GitHub release is published; retain manual dry runs and backfills
+  without overwriting existing assets.
+
+- Expand the README with status badges, verified examples, real desktop/mobile
+  screenshots, architecture and benchmark highlights. Add contributor,
+  architecture, roadmap and presentation-maintenance documentation.
+
 - Add independently checked BigInt arithmetic measurements for dense operand
   sizes, signs/aliasing, fresh outputs, copies, division/modulo/GCD, factorial
   and powers. Compare private product-tree and symmetric-square experiments
