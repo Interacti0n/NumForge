@@ -1,3 +1,4 @@
+#include "../internal/benchmark_profile.h"
 #include "value_internal.h"
 #include "formatter.h"
 
@@ -178,7 +179,7 @@ static CalculatorStatus calculator_fraction_candidate(
     return status;
 }
 
-CalculatorStatus calculator_format_value(
+static CalculatorStatus calculator_format_value_profile_impl(
     const CalculatorValue *value, const CalculatorContext *context, char **result)
 {
     BigDecimal *temporary;
@@ -288,6 +289,15 @@ CalculatorStatus calculator_format_value(
         }
     }
     return status;
+}
+
+CalculatorStatus calculator_format_value(
+    const CalculatorValue *value, const CalculatorContext *context, char **result)
+{
+    NumForgeProfilePhase previous = numforge_profile_enter(NUMFORGE_PHASE_FORMAT);
+    CalculatorStatus result_status = calculator_format_value_profile_impl(value, context, result);
+    numforge_profile_leave(previous);
+    return result_status;
 }
 
 bool calculator_value_matches(const CalculatorValue *value, const CalculatorContext *context)

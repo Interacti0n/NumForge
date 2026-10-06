@@ -50,6 +50,18 @@ if(NUMFORGE_BUILD_FUZZERS AND (NOT CMAKE_C_COMPILER_ID STREQUAL "Clang" OR WIN32
 endif()
 
 function(numforge_enable_diagnostics target)
+    if(NUMFORGE_BUILD_BENCHMARKS AND NOT "${target}" STREQUAL "web_server_smoke_tests")
+        target_compile_definitions(${target} PRIVATE NUMFORGE_ENABLE_ALLOC_STATS)
+        if(MSVC)
+            # The forced include loads stdlib before source-local CRT defines.
+            target_compile_definitions(${target} PRIVATE "_CRT_SECURE_NO_WARNINGS=")
+            target_compile_options(${target} PRIVATE
+                "/FI${PROJECT_SOURCE_DIR}/src/internal/benchmark_redirect.h")
+        else()
+            target_compile_options(${target} PRIVATE -include
+                "${PROJECT_SOURCE_DIR}/src/internal/benchmark_redirect.h")
+        endif()
+    endif()
     if(NUMFORGE_ENABLE_COVERAGE)
         target_compile_options(${target} PRIVATE --coverage -fprofile-abs-path -O0 -g)
         target_link_options(${target} PRIVATE --coverage)
@@ -307,6 +319,23 @@ install(
 # ============================================================
 
 if(NUMFORGE_BUILD_BENCHMARKS)
+    target_sources(numforge PRIVATE src/internal/benchmark_profile.c)
+    if(WIN32)
+        target_link_libraries(numforge PRIVATE psapi)
+    else()
+        target_compile_definitions(numforge PRIVATE _POSIX_C_SOURCE=200809L)
+    endif()
+    add_executable(allocation_stats_check benchmarks/allocation_stats_check.c)
+    target_link_libraries(allocation_stats_check PRIVATE numforge)
+    numforge_enable_diagnostics(allocation_stats_check)
+    add_executable(cache_memory_benchmark benchmarks/cache_memory_benchmark.c benchmarks/benchmark_clock.c)
+    target_link_libraries(cache_memory_benchmark PRIVATE numforge_client)
+    numforge_enable_diagnostics(cache_memory_benchmark)
+    if(BUILD_TESTING)
+        add_test(NAME allocation_stats_check COMMAND allocation_stats_check)
+        add_test(NAME cache_memory_benchmark_smoke COMMAND cache_memory_benchmark --quick)
+        add_test(NAME decimal_format_benchmark_smoke COMMAND decimal_format_benchmark --quick)
+    endif()
     target_compile_definitions(numforge PRIVATE NUMFORGE_ENABLE_ALLOC_STATS)
     add_executable(calculator_benchmark benchmarks/calculator_benchmark.c benchmarks/benchmark_clock.c)
     target_compile_definitions(calculator_benchmark PRIVATE NUMFORGE_ENABLE_ALLOC_STATS)

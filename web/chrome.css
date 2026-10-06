@@ -3,10 +3,9 @@ body
 {
     isolation: isolate;
     background:
-        radial-gradient(ellipse 75% 65% at 0% 15%, #7134a633, transparent 75%),
-        radial-gradient(ellipse 65% 75% at 100% 65%, #5f28a633, transparent 75%),
-        radial-gradient(ellipse 50% 40% at 12% 100%, #bd744512, transparent 80%),
-        linear-gradient(135deg, #20053d 0%, #17002f 48%, #21073e 100%);
+        radial-gradient(ellipse 90% 70% at 0% 0%, #67527f12, transparent 75%),
+        radial-gradient(ellipse 70% 80% at 100% 100%, #67527f0c, transparent 75%),
+        linear-gradient(135deg, #190332 0%, #17002f 55%, #1a0434 100%);
 }
 body::before
 {
@@ -14,12 +13,13 @@ body::before
     inset: 0;
     z-index: -1;
     background: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%271600%27%20height%3D%271000%27%20viewBox%3D%270%200%201600%201000%27%20fill%3D%27none%27%3E%3Cg%20stroke%3D%27%23c997f0%27%20stroke-width%3D%271.5%27%20opacity%3D%27.13%27%3E%3Cpath%20d%3D%27M-30%20290H240M70%20180V420M-15%20365C35%20360%2048%20305%2075%20290S130%20210%20210%20215%27%2F%3E%3Ccircle%20cx%3D%2775%27%20cy%3D%27290%27%20r%3D%275%27%2F%3E%3Cpath%20d%3D%27M1380%20530H1660M1500%20415V690M1395%20630Q1500%20365%201610%20630%27%2F%3E%3Cpath%20d%3D%27M40%20780H195L170%20815H135V850L160%20870H65L90%20850V815H60Z%27%2F%3E%3Cpath%20d%3D%27M145%20732L178%20699L196%20717L163%20750ZM165%20748L135%20778M205%20765L219%20759M196%20781L208%20790M181%20774L184%20789%27%2F%3E%3Cpath%20d%3D%27M1410%20170L1460%20140L1510%20170L1460%20200ZM1460%20140V90M1510%20170H1560M1460%20200V250%27%2F%3E%3C%2Fg%3E%3Cg%20fill%3D%27%23d8b3f5%27%20opacity%3D%27.12%27%20font-family%3D%27Georgia%2Cserif%27%20font-style%3D%27italic%27%3E%3Ctext%20x%3D%2718%27%20y%3D%27155%27%20font-size%3D%2736%27%3Ef(x)%20%3D%20x%C2%B2%3C%2Ftext%3E%3Ctext%20x%3D%271365%27%20y%3D%27340%27%20font-size%3D%2746%27%3E%E2%88%91%3C%2Ftext%3E%3Ctext%20x%3D%271430%27%20y%3D%27360%27%20font-size%3D%2728%27%3E1%2Fn%C2%B2%3C%2Ftext%3E%3Ctext%20x%3D%27-15%27%20y%3D%27575%27%20font-size%3D%2730%27%3E%CF%80%20%E2%89%88%203.14159%3C%2Ftext%3E%3Ctext%20x%3D%271380%27%20y%3D%27810%27%20font-size%3D%2734%27%3Ee%E2%81%B1%CF%80%20%2B%201%20%3D%200%3C%2Ftext%3E%3Ctext%20x%3D%2785%27%20y%3D%27945%27%20font-size%3D%2736%27%3E%E2%88%AB%20f(x)%20dx%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fsvg%3E") center / cover no-repeat;
+    opacity: .18;
     pointer-events: none;
     content: '';
 }
 @media (max-width: 980px)
 {
-    body::before { opacity: .45; }
+    body::before { display: none; }
 }
 
 /* Shared site header for calculator, guide and future-tool pages. */
@@ -46,7 +46,8 @@ body::before
     left: calc(50% - 50vw);
     width: 100vw;
     border-bottom: 1px solid var(--border-soft);
-    background: linear-gradient(110deg, #1a0036f5, #1d003df2 58%, #24004bf5);
+    /* Let the page background continue through the navigation. */
+    background: #17002f40;
     content: '';
 }
 .brand { display: inline-flex; flex: 0 0 184px; align-items: center; gap: 13px; color: var(--text); text-decoration: none; }

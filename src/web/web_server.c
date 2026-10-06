@@ -1,3 +1,5 @@
+#include "../internal/benchmark_profile.h"
+#include "../internal/numforge_alloc.h"
 #include <errno.h>
 #include <limits.h>
 #include <stdbool.h>
@@ -165,7 +167,9 @@ static void numforge_send_response(
     const char *body
 )
 {
+    NumForgeProfilePhase previous = numforge_profile_enter(NUMFORGE_PHASE_SEND);
     numforge_send_bytes_response(socket, status, status_text, content_type, body, strlen(body));
+    numforge_profile_leave(previous);
 }
 
 static void numforge_send_page(
@@ -617,7 +621,7 @@ static char *numforge_math_copy_text(const char *display)
     return copy;
 }
 
-static void numforge_handle_evaluation(
+static void numforge_handle_evaluation_impl(
     NumForgeSocket socket,
     const char *body,
     int64_t output_scale,
@@ -665,6 +669,7 @@ static void numforge_handle_evaluation(
             notation, &result, &error, &reused);
     }
 
+    NumForgeProfilePhase serial_previous = numforge_profile_enter(NUMFORGE_PHASE_SERIALIZE);
     if (status == CALCULATOR_OK)
     {
         approximation = numforge_web_fraction_approximation(result);
@@ -728,6 +733,7 @@ static void numforge_handle_evaluation(
         free(approximation);
 
         free(result);
+        numforge_profile_leave(serial_previous);
 
         return;
     }
@@ -763,6 +769,49 @@ static void numforge_handle_evaluation(
                 "{\"ok\":false,\"error\":\"failed to format error response\",\"status\":\"out of memory\",\"column\":1}");
         }
     }
+    numforge_profile_leave(serial_previous);
+}
+
+static void numforge_handle_evaluation(
+    NumForgeSocket socket,
+    const char *body,
+    int64_t output_scale,
+    CalculatorAngleUnit angle_unit,
+    CalculatorNotation notation,
+    const char *client,
+    uint64_t revision,
+    const char *action
+)
+{
+#ifdef NUMFORGE_ENABLE_ALLOC_STATS
+    const char *trace = getenv("NUMFORGE_BENCH_TRACE");
+    bool measure = trace != NULL && strcmp(trace, "1") == 0;
+    if (measure)
+    {
+        const char *memory = getenv("NUMFORGE_BENCH_MEMORY");
+        if (memory != NULL && strcmp(memory, "1") == 0)
+            (void)numforge_alloc_stats_track(true);
+        numforge_alloc_stats_reset();
+        numforge_profile_reset();
+    }
+#endif
+    numforge_handle_evaluation_impl(socket, body, output_scale, angle_unit,
+                                   notation, client, revision, action);
+#ifdef NUMFORGE_ENABLE_ALLOC_STATS
+    if (measure)
+    {
+        numforge_profile_stop();
+        fprintf(stderr, "BENCH,%d,%zu,%zu,%zu,%zu,%llu",
+            numforge_profile_complete() && numforge_alloc_stats_complete(),
+            numforge_alloc_stats_calls(), numforge_alloc_stats_bytes(),
+            numforge_alloc_stats_live(), numforge_alloc_stats_peak(),
+            numforge_profile_process_peak());
+        for (int phase = 0; phase < NUMFORGE_PHASE_COUNT; phase++)
+            fprintf(stderr, ",%.9f", numforge_profile_seconds((NumForgeProfilePhase)phase));
+        fputc('\n', stderr);
+        fflush(stderr);
+    }
+#endif
 }
 
 void numforge_handle_connection(

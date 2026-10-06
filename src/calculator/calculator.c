@@ -1,3 +1,4 @@
+#include "../internal/benchmark_profile.h"
 #include "calculator_internal.h"
 #include "parser.h"
 #include "evaluator.h"
@@ -300,7 +301,7 @@ CalculatorStatus calculator_compute_value(
     return calculator_compute_value_with_answer(input, context, NULL, NULL, result, error);
 }
 
-CalculatorStatus calculator_compute_value_with_answer(
+static CalculatorStatus calculator_compute_value_with_answer_profile_impl(
     const char *input,
     const CalculatorContext *context,
     const CalculatorValue *answer,
@@ -479,6 +480,21 @@ CalculatorStatus calculator_compute_value_with_answer(
         numforge_budget_end();
     }
 
+    return status;
+}
+
+CalculatorStatus calculator_compute_value_with_answer(
+    const char *input,
+    const CalculatorContext *context,
+    const CalculatorValue *answer,
+    uint64_t *random_state,
+    CalculatorValue *result,
+    CalculatorError *error
+)
+{
+    NumForgeProfilePhase previous = numforge_profile_enter(NUMFORGE_PHASE_EVALUATE);
+    CalculatorStatus status = calculator_compute_value_with_answer_profile_impl(input, context, answer, random_state, result, error);
+    numforge_profile_leave(previous);
     return status;
 }
 

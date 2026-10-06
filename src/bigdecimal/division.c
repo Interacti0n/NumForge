@@ -1,3 +1,4 @@
+#include "../internal/benchmark_profile.h"
 #include "bigdecimal_internal.h"
 #include "../internal/numforge_alloc.h"
 
@@ -370,7 +371,7 @@ BigDecimalStatus bigdecimal_div_significant(
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
-BigDecimalStatus bigdecimal_rescale(
+static BigDecimalStatus bigdecimal_rescale_profile_impl(
     BigDecimal *result,
     const BigDecimal *value,
     int64_t target_scale,
@@ -451,6 +452,19 @@ BigDecimalStatus bigdecimal_rescale(
     }
 
     bigdecimal_destroy(temporary);
+    return status;
+}
+
+BigDecimalStatus bigdecimal_rescale(
+    BigDecimal *result,
+    const BigDecimal *value,
+    int64_t target_scale,
+    BigDecimalRoundingMode rounding
+)
+{
+    NumForgeProfilePhase previous = numforge_profile_enter(NUMFORGE_PHASE_ROUND);
+    BigDecimalStatus status = bigdecimal_rescale_profile_impl(result, value, target_scale, rounding);
+    numforge_profile_leave(previous);
     return status;
 }
 

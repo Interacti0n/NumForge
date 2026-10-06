@@ -19,7 +19,18 @@
 */
 
 #ifdef NUMFORGE_ENABLE_ALLOC_STATS
-/* Benchmark-only requested allocation volume; not live memory or RSS. */
+/* Benchmark-only counters. Live tracking is opt-in, same-thread, and covers
+ * redirected allocation/free calls, not allocator overhead or process RSS.
+ * Reset preserves live allocations and sets the peak to the current live size.
+ * Tracking may only be disabled after all tracked allocations are released. */
+void *numforge_stats_malloc(size_t size);
+void *numforge_stats_calloc(size_t count, size_t size);
+void *numforge_stats_realloc(void *memory, size_t size);
+void numforge_stats_free(void *memory);
+bool numforge_alloc_stats_track(bool enabled);
+bool numforge_alloc_stats_complete(void);
+size_t numforge_alloc_stats_live(void);
+size_t numforge_alloc_stats_peak(void);
 
 void numforge_alloc_stats_reset(
     void

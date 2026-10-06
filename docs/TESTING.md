@@ -258,6 +258,11 @@ The ordinary library build still requires only a C compiler.
 
 ## Optional performance benchmarks
 
+The expanded formatting/cache/HTTP scenarios, live-memory tracker, phase
+definitions and three-run baseline recorder are documented in
+[Benchmark methodology](BENCHMARKS.md). Use a separate opt-in build;
+production builds have no live tracker or HTTP timing trace.
+
 ```sh
 cmake -S . -B build-bench -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DNUMFORGE_BUILD_APPS=OFF -DNUMFORGE_ENABLE_SANITIZERS=OFF -DNUMFORGE_ENABLE_COVERAGE=OFF -DNUMFORGE_BUILD_BENCHMARKS=ON
 cmake --build build-bench --config Release --target bigint_multiply_benchmark decimal_format_benchmark calculator_benchmark --parallel 2
@@ -273,7 +278,10 @@ AST cleanup and initial result creation are outside the measured phases;
 each iteration starts with a fresh AST and result. Allocation volume includes
 the full size of realloc requests, not live/peak memory or RSS. Counters are
 thread-local, saturate at `SIZE_MAX`, and are compiled only when benchmarks
-are enabled. Use a separate benchmark build, not an instrumented release package.
+are enabled. The expanded harnesses additionally offer explicit live/peak
+payload tracking in separate memory samples; see BENCHMARKS.md for its
+coverage and ownership boundaries. Use a separate benchmark build, not an
+instrumented release package.
 
 Both executables use monotonic elapsed time: QueryPerformanceCounter on Windows
 and CLOCK_MONOTONIC on POSIX. Phase totals remain diagnostic, not isolated

@@ -1,3 +1,4 @@
+#include "../internal/benchmark_profile.h"
 #include <numforge/bigdecimal.h>
 
 #include "../internal/numforge_alloc.h"
@@ -222,7 +223,7 @@ static BigDecimalStatus decimal_notation_plain(
     return BIGDECIMAL_OK;
 }
 
-BigDecimalStatus bigdecimal_format_mode(
+static BigDecimalStatus bigdecimal_format_mode_profile_impl(
     const BigDecimal *value, int64_t places, BigDecimalRoundingMode rounding,
     BigDecimalFormatMode mode, size_t max_output_bytes, char **result)
 {
@@ -287,4 +288,14 @@ BigDecimalStatus bigdecimal_format_mode(
         free(formatted);
     }
     return status;
+}
+
+BigDecimalStatus bigdecimal_format_mode(
+    const BigDecimal *value, int64_t places, BigDecimalRoundingMode rounding,
+    BigDecimalFormatMode mode, size_t max_output_bytes, char **result)
+{
+    NumForgeProfilePhase previous = numforge_profile_enter(NUMFORGE_PHASE_COMPOSE);
+    BigDecimalStatus result_status = bigdecimal_format_mode_profile_impl(value, places, rounding, mode, max_output_bytes, result);
+    numforge_profile_leave(previous);
+    return result_status;
 }

@@ -1,3 +1,4 @@
+#include "../internal/benchmark_profile.h"
 #include <numforge/bigdecimal.h>
 
 #include "bigdecimal_internal.h"
@@ -216,7 +217,7 @@ static bool decimal_increment_scientific_exponent(DecimalScientificExponent *exp
     return true;
 }
 
-static BigDecimalStatus decimal_compose_scientific(
+static BigDecimalStatus decimal_compose_scientific_profile_impl(
     char *significand,
     size_t digit_count,
     bool negative,
@@ -230,6 +231,7 @@ static BigDecimalStatus decimal_compose_scientific(
     size_t formatted_length;
     size_t offset = 0U;
     int exponent_length;
+    NumForgeProfilePhase round_previous = numforge_profile_enter(NUMFORGE_PHASE_ROUND);
 
     if (output_scale != (-1) &&
         (uint64_t)output_scale < (uint64_t)(digit_count - 1U))
@@ -258,6 +260,7 @@ static BigDecimalStatus decimal_compose_scientific(
                 memset(significand + 1U, '0', wanted - 1U);
                 if (!decimal_increment_scientific_exponent(&exponent))
                 {
+                    numforge_profile_leave(round_previous);
                     free(significand);
                     return BIGDECIMAL_VALUE_TOO_LARGE;
                 }
@@ -272,6 +275,7 @@ static BigDecimalStatus decimal_compose_scientific(
     }
 
     significand[digit_count] = '\0';
+    numforge_profile_leave(round_previous);
 
     exponent_length = snprintf(
         NULL,
@@ -341,6 +345,22 @@ static BigDecimalStatus decimal_compose_scientific(
     *result = formatted;
 
     return BIGDECIMAL_OK;
+}
+
+static BigDecimalStatus decimal_compose_scientific(
+    char *significand,
+    size_t digit_count,
+    bool negative,
+    DecimalScientificExponent exponent,
+    int64_t output_scale,
+    BigDecimalRoundingMode rounding,
+    char **result
+)
+{
+    NumForgeProfilePhase previous = numforge_profile_enter(NUMFORGE_PHASE_COMPOSE);
+    BigDecimalStatus status = decimal_compose_scientific_profile_impl(significand, digit_count, negative, exponent, output_scale, rounding, result);
+    numforge_profile_leave(previous);
+    return status;
 }
 
 static BigDecimalStatus decimal_try_format_scientific(
@@ -458,6 +478,7 @@ static BigDecimalStatus decimal_format_result_impl(
         return BIGDECIMAL_OUT_OF_MEMORY;
     }
 
+    NumForgeProfilePhase round_previous = numforge_profile_enter(NUMFORGE_PHASE_ROUND);
     if (places == (-1))
     {
         decimal_status = bigdecimal_copy(formatted_value, value);
@@ -467,6 +488,7 @@ static BigDecimalStatus decimal_format_result_impl(
         decimal_status = bigdecimal_rescale(formatted_value, value, places, rounding);
     }
 
+    numforge_profile_leave(round_previous);
     status = decimal_from_bigdecimal_status(decimal_status);
     if (status == BIGDECIMAL_OK)
     {

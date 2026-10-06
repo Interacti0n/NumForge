@@ -4,6 +4,14 @@
 
 #include "numforge_alloc.h"
 #include <stdlib.h>
+#ifdef NUMFORGE_ENABLE_ALLOC_STATS
+/* The forced benchmark include redirects other translation units. Ledger
+ * metadata and allocator implementation must use the real C allocator. */
+#undef malloc
+#undef calloc
+#undef realloc
+#undef free
+#endif
 #ifdef _WIN32
 #include <windows.h>
 #else
@@ -32,12 +40,163 @@ static NUMFORGE_THREAD_LOCAL NumForgeBudgetFailure budget_failure;
 #ifdef NUMFORGE_ENABLE_ALLOC_STATS
 static NUMFORGE_THREAD_LOCAL size_t stats_calls;
 static NUMFORGE_THREAD_LOCAL size_t stats_bytes;
+typedef struct AllocationRecord
+{
+    void *memory;
+    size_t size;
+    struct AllocationRecord *next;
+} AllocationRecord;
+static NUMFORGE_THREAD_LOCAL AllocationRecord *stats_records;
+static NUMFORGE_THREAD_LOCAL bool stats_tracking;
+static NUMFORGE_THREAD_LOCAL bool stats_complete = true;
+static NUMFORGE_THREAD_LOCAL size_t stats_live;
+static NUMFORGE_THREAD_LOCAL size_t stats_peak;
+
+static AllocationRecord **stats_find(void *memory)
+{
+    AllocationRecord **entry = &stats_records;
+    while (*entry != NULL && (*entry)->memory != memory)
+    {
+        entry = &(*entry)->next;
+    }
+    return entry;
+}
+
+static void stats_record(void *memory, size_t size)
+{
+    AllocationRecord *record;
+    if (!stats_tracking || memory == NULL)
+    {
+        return;
+    }
+    record = malloc(sizeof(*record));
+    if (record == NULL || size > SIZE_MAX - stats_live)
+    {
+        free(record);
+        stats_complete = false;
+        return;
+    }
+    record->memory = memory;
+    record->size = size;
+    record->next = stats_records;
+    stats_records = record;
+    stats_live += size;
+    if (stats_live > stats_peak)
+    {
+        stats_peak = stats_live;
+    }
+}
+
+static void stats_request(size_t size)
+{
+    if (stats_calls < SIZE_MAX)
+    {
+        stats_calls++;
+    }
+    stats_bytes = size > SIZE_MAX - stats_bytes ? SIZE_MAX : stats_bytes + size;
+}
+
+bool numforge_alloc_stats_track(bool enabled)
+{
+    if (!enabled && stats_records != NULL)
+    {
+        return false;
+    }
+    if (enabled && !stats_tracking)
+    {
+        stats_complete = true;
+    }
+    stats_tracking = enabled;
+    return true;
+}
+bool numforge_alloc_stats_complete(void) { return stats_complete; }
+size_t numforge_alloc_stats_live(void) { return stats_live; }
+size_t numforge_alloc_stats_peak(void) { return stats_peak; }
+
+void *numforge_stats_malloc(size_t size)
+{
+    void *memory;
+    stats_request(size);
+    memory = malloc(size);
+    stats_record(memory, size);
+    return memory;
+}
+void *numforge_stats_calloc(size_t count, size_t size)
+{
+    void *memory;
+    if (size != 0U && count > SIZE_MAX / size)
+    {
+        return NULL;
+    }
+    stats_request(count * size);
+    memory = calloc(count, size);
+    stats_record(memory, count * size);
+    return memory;
+}
+static void *stats_resize(void *memory, size_t size)
+{
+    AllocationRecord **entry = stats_find(memory);
+    AllocationRecord *record = *entry;
+    void *replacement;
+    /* realloc(p, 0) has implementation-dependent ownership. The private
+     * benchmark wrapper explicitly frees it; production realloc is unchanged. */
+    if (size == 0U)
+    {
+        numforge_stats_free(memory);
+        return NULL;
+    }
+    replacement = realloc(memory, size);
+    if (replacement == NULL)
+    {
+        return NULL;
+    }
+    if (record != NULL)
+    {
+        stats_live -= record->size;
+        if (size > SIZE_MAX - stats_live)
+        {
+            stats_complete = false;
+            *entry = record->next;
+            free(record);
+        }
+        else
+        {
+            record->memory = replacement;
+            record->size = size;
+            stats_live += size;
+            if (stats_live > stats_peak) stats_peak = stats_live;
+        }
+    }
+    else
+    {
+        stats_record(replacement, size);
+    }
+    return replacement;
+}
+void *numforge_stats_realloc(void *memory, size_t size)
+{
+    stats_request(size);
+    return stats_resize(memory, size);
+}
+void numforge_stats_free(void *memory)
+{
+    AllocationRecord **entry = stats_find(memory);
+    if (*entry != NULL)
+    {
+        AllocationRecord *record = *entry;
+        stats_live -= record->size;
+        *entry = record->next;
+        free(record);
+    }
+    free(memory);
+}
 
 void numforge_alloc_stats_reset(
     void
 )
 {
     stats_calls = stats_bytes = 0U;
+    stats_peak = stats_live;
 }
 
 size_t numforge_alloc_stats_calls(
@@ -273,12 +432,7 @@ static bool numforge_allocation_allowed(
 )
 {
 #ifdef NUMFORGE_ENABLE_ALLOC_STATS
-    if (stats_calls < SIZE_MAX)
-    {
-        stats_calls++;
-    }
-
-    stats_bytes = size > SIZE_MAX - stats_bytes ? SIZE_MAX : stats_bytes + size;
+    stats_request(size);
 #endif
     if (!numforge_budget_allocate(size))
     {
@@ -297,7 +451,11 @@ void *numforge_malloc(
     size_t size
 )
 {
-    return numforge_allocation_allowed(size) ? malloc(size) : NULL;
+    void *memory = numforge_allocation_allowed(size) ? malloc(size) : NULL;
+#ifdef NUMFORGE_ENABLE_ALLOC_STATS
+    stats_record(memory, size);
+#endif
+    return memory;
 }
 
 void *numforge_calloc(
@@ -310,7 +468,11 @@ void *numforge_calloc(
         return NULL;
     }
 
-    return numforge_allocation_allowed(count * size) ? calloc(count, size) : NULL;
+    void *memory = numforge_allocation_allowed(count * size) ? calloc(count, size) : NULL;
+#ifdef NUMFORGE_ENABLE_ALLOC_STATS
+    stats_record(memory, count * size);
+#endif
+    return memory;
 }
 
 void *numforge_realloc(
@@ -318,5 +480,9 @@ void *numforge_realloc(
     size_t size
 )
 {
+#ifdef NUMFORGE_ENABLE_ALLOC_STATS
+    return numforge_allocation_allowed(size) ? stats_resize(memory, size) : NULL;
+#else
     return numforge_allocation_allowed(size) ? realloc(memory, size) : NULL;
+#endif
 }

@@ -1,3 +1,4 @@
+#include "../internal/benchmark_profile.h"
 #include "expression_internal.h"
 #include "tokenizer.h"
 #include <numforge/runtime.h>
@@ -877,7 +878,7 @@ static CalculatorStatus calculator_parse_expression(
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
-CalculatorStatus calculator_parse(
+static CalculatorStatus calculator_parse_profile_impl(
     const char *input,
     CalculatorExpression **result,
     CalculatorError *error
@@ -930,6 +931,18 @@ CalculatorStatus calculator_parse(
     calculator_error_clear(error);
 
     return CALCULATOR_OK;
+}
+
+CalculatorStatus calculator_parse(
+    const char *input,
+    CalculatorExpression **result,
+    CalculatorError *error
+)
+{
+    NumForgeProfilePhase previous = numforge_profile_enter(NUMFORGE_PHASE_PARSE);
+    CalculatorStatus result_status = calculator_parse_profile_impl(input, result, error);
+    numforge_profile_leave(previous);
+    return result_status;
 }
 
 void calculator_expression_destroy(

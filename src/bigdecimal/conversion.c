@@ -1,3 +1,4 @@
+#include "../internal/benchmark_profile.h"
 #include "bigdecimal_internal.h"
 #include "../internal/numforge_alloc.h"
 
@@ -145,7 +146,7 @@ BigDecimalStatus bigdecimal_set_string(
     return status;
 }
 
-BigDecimalStatus bigdecimal_to_string(
+static BigDecimalStatus bigdecimal_to_string_profile_impl(
     const BigDecimal *value,
     char **result
 )
@@ -282,4 +283,15 @@ BigDecimalStatus bigdecimal_to_string(
 
     *result = formatted;
     return BIGDECIMAL_OK;
+}
+
+BigDecimalStatus bigdecimal_to_string(
+    const BigDecimal *value,
+    char **result
+)
+{
+    NumForgeProfilePhase previous = numforge_profile_enter(NUMFORGE_PHASE_COMPOSE);
+    BigDecimalStatus result_status = bigdecimal_to_string_profile_impl(value, result);
+    numforge_profile_leave(previous);
+    return result_status;
 }

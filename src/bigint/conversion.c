@@ -1,3 +1,4 @@
+#include "../internal/benchmark_profile.h"
 #include "bigint_internal.h"
 #include "../internal/numforge_alloc.h"
 #include <numforge/bigint.h>
@@ -109,7 +110,7 @@ BigIntStatus bigint_set_string( /*Transform string to BigInt*/
     return BIGINT_OK;
 }
 
-char *bigint_to_string( /*Transform BigInt to string*/
+static char *bigint_to_string_profile_impl( /*Transform BigInt to string*/
     const BigInt *value
 )
 {
@@ -251,4 +252,14 @@ char *bigint_to_string( /*Transform BigInt to string*/
     free(chunks);
 
     return string;
+}
+
+char *bigint_to_string( /*Transform BigInt to string*/
+    const BigInt *value
+)
+{
+    NumForgeProfilePhase previous = numforge_profile_enter(NUMFORGE_PHASE_CONVERT);
+    char * result_status = bigint_to_string_profile_impl(value);
+    numforge_profile_leave(previous);
+    return result_status;
 }

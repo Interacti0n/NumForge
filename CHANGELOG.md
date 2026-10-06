@@ -5,6 +5,14 @@ All notable changes to NumForge are documented in this file. The project uses
 
 ## Unreleased
 
+- Extend opt-in formatting benchmarks with explicit Auto/scientific notation,
+  full precision, extreme scales and independently checked rounding edges.
+- Add cache/session, destination-reuse and real loopback HTTP benchmarks,
+  with exclusive phase timing and separate live/peak payload and process-peak
+  memory measurements. Keep production numeric behavior and ownership intact.
+- Add a three-run baseline recorder with compiler/build/machine metadata,
+  source snapshots and CSV output, without CI timing thresholds.
+
 - Remove the Premium navigation and page; refresh sign-in and sign-up buttons.
 - Add a subtle purple gradient with mathematical sketches and forge details
   around the page edges, softened on mobile.
