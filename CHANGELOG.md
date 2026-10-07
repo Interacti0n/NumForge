@@ -5,6 +5,16 @@ All notable changes to NumForge are documented in this file. The project uses
 
 ## Unreleased
 
+- Add `convert(value; "from"; "to")` to CLI and web calculator expressions.
+  Return numbers, preserve exact fractions, validate case-sensitive catalogue
+  IDs and compatibility, and report errors at the offending unit argument.
+
+- Add independent browser conversion history with value/unit snapshots,
+  original expressions/settings and approximation metadata. Preserve exact
+  values independently of display rounding; restore without reevaluation.
+  Bound tab history to 16 entries/1 MiB, support clear/copy and confirmation retry,
+  and leave calculator ans, variables and history unchanged.
+
 - Add the SK/EN browser unit converter with ten quantity categories, compatible
   selectors, live preview/confirmation, swap/copy, precision controls, sourced
   definitions and responsive keyboard-accessible controls. Preserve calculator

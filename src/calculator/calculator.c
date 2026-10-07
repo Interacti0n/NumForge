@@ -59,6 +59,10 @@ const char *calculator_status_to_string(
             return "wrong number of arguments";
         case CALCULATOR_UNDEFINED_ANSWER:
             return "ans is undefined";
+        case CALCULATOR_UNKNOWN_UNIT:
+            return "unknown unit";
+        case CALCULATOR_INCOMPATIBLE_UNITS:
+            return "incompatible units";
         case CALCULATOR_UNDEFINED_VARIABLE:
             return "variable is undefined";
         case CALCULATOR_STALE_REQUEST:

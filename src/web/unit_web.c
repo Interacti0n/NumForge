@@ -84,7 +84,7 @@ static bool number(const char *text, int64_t minimum, int64_t *result)
 bool numforge_web_parse_conversion_options(const char *target, NumForgeConversionOptions *options)
 {
     static const char prefix[] = "/api/convert?";
-    static const char *keys[] = { "from", "to", "precision", "places", "rounding", "angle", "notation", "client" };
+    static const char *keys[] = { "from", "to", "precision", "places", "rounding", "angle", "notation", "client", "snapshot" };
     static const char *roundings[] = { "toward_zero", "away_from_zero", "floor", "ceiling", "half_up", "half_even" };
     static const char *notations[] = { "auto", "plain", "scientific", "math", "fraction" };
     unsigned int seen = 0;
@@ -143,6 +143,10 @@ bool numforge_web_parse_conversion_options(const char *target, NumForgeConversio
                 for (size_t i=0; i<32; ++i)
                     if (!((value[i]>='0' && value[i]<='9') || (value[i]>='a' && value[i]<='f'))) return false;
                 memcpy(options->client, value, sizeof(options->client));
+                break;
+            case 8:
+                if (strcmp(value, "1") != 0) return false;
+                options->snapshot = true;
                 break;
         }
         if (*end == '\0') break;
@@ -208,7 +212,7 @@ CalculatorStatus numforge_web_convert(const CalculatorSession *session,
 {
     CalculatorValue source = {0}, converted = {0};
     BigRational *exact = NULL;
-    char *display = NULL;
+    char *display = NULL, *snapshot = NULL;
     CalculatorStatus status = CALCULATOR_OK;
     bool owner = false;
     if (response != NULL) *response = NULL;
@@ -282,13 +286,38 @@ CalculatorStatus numforge_web_convert(const CalculatorSession *session,
     converted.context = *context;
     status = calculator_format_value(&converted, context, &display);
     if (status != CALCULATOR_OK) goto cleanup;
+    if (options->snapshot)
+    {
+        /* Serialize the authoritative value, never its rounded display. A
+         * decimal approximation is a finite rational snapshot with provenance. */
+        if (converted.kind == CALCULATOR_VALUE_DECIMAL)
+        {
+            if (exact == NULL) exact = bigrational_create();
+            if (exact == NULL) { status = CALCULATOR_OUT_OF_MEMORY; goto cleanup; }
+            status = rational_status(bigrational_from_bigdecimal(exact, converted.number));
+        }
+        if (status == CALCULATOR_OK) status = rational_status(bigrational_to_string(
+            converted.kind == CALCULATOR_VALUE_DECIMAL ? exact : converted.rational, &snapshot));
+        if (status != CALCULATOR_OK) goto cleanup;
+        if (strlen(snapshot) > CALCULATOR_MAX_OUTPUT_BYTES)
+        { status = CALCULATOR_VALUE_TOO_LARGE; goto cleanup; }
+    }
     JsonBuffer buffer = { numforge_malloc(UNIT_JSON_CAPACITY), 0, true };
     if (buffer.data == NULL) { status = CALCULATOR_OUT_OF_MEMORY; goto cleanup; }
     json_append(&buffer, "{\"ok\":true,\"result\":"); json_string(&buffer, display);
     json_append(&buffer, ",\"unit\":"); json_string(&buffer, to->id);
     json_append(&buffer, ",\"symbol\":"); json_string(&buffer, to->symbol);
-    json_append(&buffer, ",\"input_approximate\":%s,\"factor_approximate\":%s}",
+    json_append(&buffer, ",\"input_approximate\":%s,\"factor_approximate\":%s",
         source.kind == CALCULATOR_VALUE_DECIMAL ? "true" : "false", factor_approximate ? "true" : "false");
+    if (snapshot != NULL)
+    {
+        json_append(&buffer, ",\"value\":{\"kind\":\"%s\",\"text\":",
+            converted.kind == CALCULATOR_VALUE_DECIMAL ? "decimal_approximation" : "rational");
+        json_string(&buffer, snapshot);
+        json_append(&buffer, ",\"unit\":"); json_string(&buffer, to->id);
+        json_append(&buffer, ",\"precision\":%lld}", (long long)options->precision);
+    }
+    json_append(&buffer, "}");
     if (buffer.valid) *response = buffer.data;
     else { free(buffer.data); status = CALCULATOR_VALUE_TOO_LARGE; }
 cleanup:
@@ -303,6 +332,7 @@ cleanup:
         else if (status == CALCULATOR_OUT_OF_MEMORY) *code = "out_of_memory";
     }
     free(display);
+    free(snapshot);
     bigrational_destroy(exact);
     calculator_value_destroy(&source);
     calculator_value_destroy(&converted);

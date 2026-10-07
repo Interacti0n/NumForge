@@ -49,14 +49,25 @@ body { height: auto; min-height: 100dvh; overflow: auto; }
 .unit-info summary { cursor: pointer; color: var(--muted); font-size: .8rem; }
 .unit-info a { overflow-wrap: anywhere; }
 .unit-retry { margin-top: 12px; }
+.unit-example-card > summary { cursor: pointer; margin-bottom: 0; }
+.unit-example-card[open] > summary { margin-bottom: 10px; }
+.unit-history-card { min-height: 0; display: flex; flex-direction: column; }
+.unit-history-card h2 { margin: 0; font-size: .95rem; }
+.unit-history-help { margin: 9px 0; color: var(--quiet); font-size: .73rem; line-height: 1.45; }
+#unit-history-list { margin: 0; padding: 0; list-style: none; min-height: 0; max-height: 350px; overflow: auto; scrollbar-width: thin; }
+#unit-history-list li { display: flex; align-items: center; gap: 5px; margin-top: 5px; }
+.unit-history-restore { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+.unit-history-restore, .unit-history-copy { min-height: 40px; padding: 8px; border: 1px solid var(--border-soft); border-radius: 8px; background: var(--surface-input); color: var(--muted); font: .76rem var(--font-math); }
+.unit-history-restore:hover, .unit-history-copy:hover { border-color: var(--accent); }
 @media (min-width: 1200px) and (min-height: 740px) {
     body { height: 100dvh; overflow: hidden; }
     .units-shell { height: 100dvh; min-height: 0; }
     .units-workspace { min-height: 0; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; padding: 8px 0; align-items: stretch; }
-    .units-column { min-height: 0; grid-template-rows: minmax(0, 1fr) 160px; gap: 10px; }
+    .units-column { min-height: 0; grid-template-rows: auto minmax(160px, 1fr); gap: 10px; }
     .units-column .intro { display: none; }
     .units-column .card, .units-sidebar .card { padding: 12px 16px; }
     .units-column > .card:first-of-type { overflow: auto; scrollbar-width: thin; }
+    .units-column > .card:last-of-type { display: flex; flex-direction: column; min-height: 0; overflow: auto; scrollbar-width: thin; }
     .unit-heading { margin-bottom: 10px; }
     #unit-converter { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 20px; align-content: start; }
     .unit-value, #unit-input, .unit-pair, .unit-submit-row { grid-column: 1; }
@@ -73,19 +84,24 @@ body { height: auto; min-height: 100dvh; overflow: auto; }
     .unit-settings .field select, .unit-settings .field input { height: 36px; padding: 0 8px; font-size: .77rem; }
     .unit-settings p, .unit-info p { font-size: .73rem; line-height: 1.45; margin: 9px 0 0; }
     .unit-info { margin-top: 12px; padding-top: 10px; }
-    .unit-result-line { margin: 10px 0 6px; min-height: 0; }
-    #unit-result { max-height: 52px; font-size: 1.6rem; }
+    .unit-result-line { flex: 1; align-items: flex-start; margin: 10px 0 6px; min-height: 0; }
+    #unit-result { height: 100%; max-height: 100%; font-size: 1.6rem; }
     .unit-meta { margin-top: 5px; font-size: .73rem; line-height: 1.4; }
     .unit-status { font-size: .75rem; line-height: 1.4; }
-    .units-sidebar { min-height: 0; align-content: start; gap: 10px; overflow: auto; scrollbar-width: thin; }
+    .units-sidebar { min-height: 0; grid-template-rows: max-content max-content minmax(0, 1fr); gap: 10px; overflow: auto; scrollbar-width: thin; }
+    #unit-history-list { flex: 1; max-height: none; }
+    .unit-history-card .unit-copy { font-size: .68rem; padding: 6px; }
+    .unit-history-help { font-size: .68rem; }
     .unit-categories { gap: 7px; }
-    .unit-categories button { min-height: 48px; padding: 9px; gap: 4px; }
+    .unit-categories button { min-height: 44px; padding: 8px; gap: 4px; flex-direction: row; align-items: center; justify-content: space-between; }
+    .unit-categories button span { flex: none; font-size: .73rem; }
     .unit-examples button { min-height: 40px; padding: 10px; }
 }
 @media (max-width: 980px) {
     .units-workspace { grid-template-columns: minmax(0, 1fr); padding-top: 24px; }
     .units-sidebar { grid-row: 1; }
     .units-sidebar .unit-example-card { display: none; }
+    .units-sidebar .unit-history-card { grid-row: 2; }
     .unit-categories { grid-template-columns: repeat(5, minmax(0, 1fr)); }
     .units-sidebar .sidebar-heading { margin-bottom: 14px; }
 }

@@ -346,6 +346,14 @@ A repeated decimal separator (`1.2.3`, `1,2,3`, `1E3.4`) is a lexical error.
 Whitespace does not make an operator. Delimited factors such as `(2)3`,
 `3!2` and `2²3` remain valid. Implicit products have the same left-associative
 precedence as explicit multiplication/division: `6/2(1+2)` is `9`.
+`convert(value; "from"; "to")` uses one numeric child plus two owned,
+case-sensitive catalogue IDs in the call AST. Quoted IDs are restricted tokens,
+accepted only in the two unit positions, and introduce no string value type.
+Exact evaluation delegates to the rational unit API; approximate evaluation
+delegates to the decimal unit API. Function registration reserves `convert`,
+while existing call visitors track variables, ans and randomness in its numeric
+child. See [unit expression contract](UNITS.md#calculator-expressions).
+
 Multi-argument calls use semicolons, e.g. `gcd(12;18)`, avoiding conflict with
 decimal commas. `exp` is one identifier, not `e*x*p`; `e(2)` is still a
 constant times a parenthesized expression. Adjacent ASCII names require `*`

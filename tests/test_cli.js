@@ -65,3 +65,7 @@ assert.match(result.stderr, /division by zero/);
 result = run('precision 10\nx=2/3\nx*3\nx=x+1\nnotation fraction\nx\nreset\nx\n');
 assert.deepEqual(result.results, ['2/3','2','5/3','5/3']);
 assert.match(result.stderr, /variable is undefined/);
+
+result = run('notation fraction\nm=1/3\nx=convert(m;"km";"m")\nans*3\nconvert(1;"m";"s")\nans\n');
+assert.deepEqual(result.results, ['1/3','1000/3','1000','1000']);
+assert.match(result.stderr, /error at column 15: incompatible units/);

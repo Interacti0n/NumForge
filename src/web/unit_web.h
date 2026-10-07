@@ -8,6 +8,7 @@ typedef struct NumForgeConversionOptions
 {
     char from[32], to[32], client[33];
     int64_t precision;
+    bool snapshot;
     CalculatorContext context;
 } NumForgeConversionOptions;
 

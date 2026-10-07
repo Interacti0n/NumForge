@@ -1486,6 +1486,31 @@ void test_calculator_pipeline_reports_every_injected_allocation_failure(void)
     TEST_ASSERT_TRUE(completed);
 }
 
+void test_convert_every_allocation_failure(void)
+{
+    const char *inputs[] = {"convert(1/3;\"km\";\"m\")", "convert(sqrt(2);\"m\";\"cm\")", "convert(180;\"deg\";\"rad\")"};
+    CalculatorContext context;
+    calculator_context_init(&context);
+    for (size_t i=0; i<sizeof(inputs)/sizeof(inputs[0]); i++)
+    {
+        bool completed=false;
+        for (size_t n=1; n<=ALLOCATION_TEST_MAX_FAILURE_INDEX; n++)
+        {
+            char *text=NULL;
+            CalculatorError error;
+            numforge_test_allocator_begin(n);
+            CalculatorStatus status=calculator_compute(inputs[i], &context, &text, &error);
+            bool injected=numforge_test_allocator_did_fail();
+            numforge_test_allocator_end();
+            if (injected) { TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY, status); TEST_ASSERT_NULL(text); }
+            else { TEST_ASSERT_EQUAL(CALCULATOR_OK, status); completed=true; }
+            free(text);
+            if (completed) break;
+        }
+        TEST_ASSERT_TRUE(completed);
+    }
+}
+
 void test_application_budget_is_cumulative_and_scoped(void)
 {
     void *first;
@@ -1754,6 +1779,7 @@ static void test_base_conversion_and_prefix_failure_safety(void)
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_convert_every_allocation_failure);
     RUN_TEST(test_base_conversion_and_prefix_failure_safety);
     RUN_TEST(test_application_budget_is_cumulative_and_scoped);
     RUN_TEST(test_numeric_loops_cancel_without_changing_destinations);

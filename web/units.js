@@ -20,7 +20,7 @@ function initUnits() {
         volume:'US and UK liquid measures have different definitions; their IDs distinguish them.',
         defaultNote:'Names and symbols are display labels; conversion uses the catalogue definitions.',
         errors:{unknown_unit:'Unknown unit.',incompatible_units:'These units are not compatible.',assignment_not_allowed:'Assignments are not allowed here. Define variables in the calculator.',random_not_allowed:'Random calls are not available in conversions.',session_expired:'The calculator session has expired. Return to the calculator to start a new session.',invalid_options:'Check the conversion settings.',time_limit:'The calculation took too long. Try a simpler expression.',value_too_large:'The value exceeds the calculation limits.',out_of_memory:'Not enough memory for this calculation.'},
-        expressionErrors:{'division by zero':'Division by zero.','variable is undefined':'This variable is not defined in the calculator session.','ans is undefined':'Confirm a result in the calculator before using ans.','invalid argument':'Invalid argument.','domain error':'The expression is outside the function domain.'},
+        expressionErrors:{'unknown unit':'Unknown unit.','incompatible units':'These units are not compatible.','division by zero':'Division by zero.','variable is undefined':'This variable is not defined in the calculator session.','ans is undefined':'Confirm a result in the calculator before using ans.','invalid argument':'Invalid argument.','domain error':'The expression is outside the function domain.'},
         expression:'Check the expression.', column:'Column'
     } : {
         preview:'Náhľad · Enter potvrdí prevod',confirmed:'Prevod potvrdený',empty:'Zadaj hodnotu alebo výraz.',
@@ -36,7 +36,7 @@ function initUnits() {
         volume:'Americké a britské objemové miery majú odlišné definície; rozlišujú ich ID.',
         defaultNote:'Názvy a symboly sú popisky; prevod používa definície katalógu.',
         errors:{unknown_unit:'Neznáma jednotka.',incompatible_units:'Tieto jednotky nie sú kompatibilné.',assignment_not_allowed:'Priradenia sem nepatria. Premenné definuj v kalkulačke.',random_not_allowed:'Náhodné výpočty nie sú pri prevode dostupné.',session_expired:'Sedenie kalkulačky už nie je dostupné. Vráť sa do kalkulačky a začni nové sedenie.',invalid_options:'Skontroluj nastavenia prevodu.',time_limit:'Výpočet trval príliš dlho. Skús jednoduchší výraz.',value_too_large:'Hodnota presahuje limity výpočtu.',out_of_memory:'Na výpočet nie je dostatok pamäte.'},
-        expressionErrors:{'division by zero':'Delenie nulou.','variable is undefined':'Táto premenná nie je definovaná v sedení kalkulačky.','ans is undefined':'Pred použitím ans potvrď výsledok v kalkulačke.','invalid argument':'Neplatný argument.','domain error':'Výraz je mimo definičného oboru funkcie.'},
+        expressionErrors:{'unknown unit':'Neznáma jednotka.','incompatible units':'Tieto jednotky nie sú kompatibilné.','division by zero':'Delenie nulou.','variable is undefined':'Táto premenná nie je definovaná v sedení kalkulačky.','ans is undefined':'Pred použitím ans potvrď výsledok v kalkulačke.','invalid argument':'Neplatný argument.','domain error':'Výraz je mimo definičného oboru funkcie.'},
         expression:'Skontroluj výraz.',column:'Stĺpec'
     };
     const categories = [
@@ -54,6 +54,26 @@ function initUnits() {
     let catalogue = [], category = 'length', generation = 0, timer = null;
     let conversion = null, catalogRequest = null, copyValue = '', disposed = false;
     let client = '';
+    let confirming = false, retryConfirmation = false;
+    const history = window.numforgeUnitHistory || {entries:[],sequence:0};
+    window.numforgeUnitHistory = history;
+    if (!history.entries.length) {
+        try {
+            const saved=JSON.parse(sessionStorage.getItem('numforge-units-history') || 'null');
+            if (Array.isArray(saved?.entries) && Number.isSafeInteger(saved.sequence) && saved.sequence>=0 &&
+                new TextEncoder().encode(JSON.stringify(saved)).length<=1024*1024) {
+                history.entries=saved.entries.slice(-16).filter(e=>e && typeof e.expression==='string' && e.expression.length<=4096 &&
+                    typeof e.category==='string' && typeof e.from==='string' && typeof e.to==='string' &&
+                    Number.isSafeInteger(e.number) && e.number>0 && e.number<=saved.sequence &&
+                    e.body?.ok===true && typeof e.body.result==='string' && typeof e.body.symbol==='string' &&
+                    e.body.unit===e.to && e.body.value?.unit===e.to &&
+                    ['rational','decimal_approximation'].includes(e.body.value.kind) &&
+                    typeof e.body.value.text==='string' && /^-?\d+(?:\/[1-9]\d*)?$/.test(e.body.value.text) &&
+                    typeof e.settings==='object' && e.settings!==null);
+                history.sequence=saved.sequence;
+            }
+        } catch (_) {}
+    }
     const input = $('unit-input'), from = $('unit-from'), to = $('unit-to');
     const status = $('unit-status'), result = $('unit-result'), meta = $('unit-result-meta');
     const fields = ['unit-precision','unit-places-mode','unit-places','unit-notation','unit-rounding','unit-angle'];
@@ -78,6 +98,46 @@ function initUnits() {
     function save() {
         try { sessionStorage.setItem('numforge-units-state',JSON.stringify({input:input.value,category,from:from.value,to:to.value,...Object.fromEntries(fields.map(id=>[id,$(id).value]))})); } catch (_) {}
     }
+    function saveHistory() {
+        try { sessionStorage.setItem('numforge-units-history',JSON.stringify(history)); } catch (_) {}
+    }
+    function showResult(body, message) {
+        result.textContent=body.result; $('unit-result-symbol').textContent=body.symbol;
+        copyValue=body.result; $('unit-copy').disabled=false; setStatus(message);
+        meta.textContent=(body.input_approximate || body.factor_approximate?text.approximate+'. ':text.exact+'. ')+
+            (body.input_approximate?text.inputApprox+' ':'')+(body.factor_approximate?text.pi+' ':'')+text.display;
+        meta.hidden=false;
+    }
+    function renderHistory() {
+        $('unit-history-list').replaceChildren();
+        $('unit-history-empty').textContent=english?'Confirmed conversions appear here.':'Sem sa uložia potvrdené prevody.';
+        $('unit-history-empty').hidden=history.entries.length!==0;
+        $('unit-history-clear').disabled=history.entries.length===0;
+        for (const entry of [...history.entries].reverse()) {
+            const item=document.createElement('li');
+            const restore=document.createElement('button');restore.type='button';restore.className='unit-history-restore';
+            restore.textContent=`${entry.number}. ${entry.expression.slice(0,80)} ${entry.from} → ${entry.body.result.slice(0,80)} ${entry.body.symbol}`;
+            restore.title=english?'Restore stored conversion':'Obnoviť uložený prevod';
+            restore.addEventListener('click',()=>{
+                input.value=entry.expression;
+                for (const id of fields) {
+                    const value=entry.settings[id];
+                    if (allowed[id]?.includes(value) || (!allowed[id] && typeof value==='string' && /^\d+$/.test(value) && Number(value)<=10000 && (id==='unit-places' || Number(value)>=1))) $(id).value=value;
+                }
+                updatePlaces(); chooseCategory(entry.category,[entry.from,entry.to]);
+                invalidate();root.removeAttribute('aria-busy');save();
+                showResult(entry.body,english?'Stored conversion · original value':'Uložený prevod · pôvodná hodnota');
+            },{signal:lifecycle.signal});
+            const copy=document.createElement('button');copy.type='button';copy.className='unit-history-copy';copy.textContent='⧉';
+            copy.setAttribute('aria-label',english?'Copy stored numeric value':'Skopírovať uloženú číselnú hodnotu');
+            copy.addEventListener('click',async()=>{
+                try {await navigator.clipboard.writeText(entry.body.value.text);if(!disposed)setStatus(text.copied);}
+                catch(_){if(!disposed)setStatus(text.copyFailed,true);}
+            },{signal:lifecycle.signal});
+            item.append(restore,copy);$('unit-history-list').append(item);
+        }
+    }
+    $('unit-history-clear').addEventListener('click',()=>{history.entries=[];history.sequence=0;saveHistory();renderHistory();},{signal:lifecycle.signal});
     function setStatus(message, error=false) { status.textContent=message; status.classList.toggle('error',error); }
     function invalidate() {
         ++generation; clearTimeout(timer); conversion?.abort();
@@ -147,6 +207,9 @@ function initUnits() {
             (places!=='full' && (!/^\d+$/.test(places) || Number(places)>10000))) { setStatus(text.settings,true); return; }
         conversion=new AbortController();
         const query=new URLSearchParams({from:from.value,to:to.value,precision,places,rounding:$('unit-rounding').value,notation:$('unit-notation').value,angle:$('unit-angle').value});
+        if (confirm) query.set('snapshot','1');
+        const entry={expression,category,from:from.value,to:to.value,settings:Object.fromEntries(fields.map(id=>[id,$(id).value]))};
+        if (confirm) {confirming=true;$('unit-submit').disabled=true;}
         if (client) query.set('client',client);
         setStatus(text.calculating); root.setAttribute('aria-busy','true');
         try {
@@ -159,24 +222,31 @@ function initUnits() {
                 return;
             }
             if (typeof body.result!=='string' || body.unit!==to.value || typeof body.symbol!=='string') throw Error('Invalid result');
-            result.textContent=body.result; $('unit-result-symbol').textContent=body.symbol;
-            copyValue=body.result; $('unit-copy').disabled=false;
-            setStatus(confirm?text.confirmed:text.preview);
-            meta.textContent=(body.input_approximate || body.factor_approximate?text.approximate+'. ':text.exact+'. ')+
-                (body.input_approximate?text.inputApprox+' ':'')+(body.factor_approximate?text.pi+' ':'')+text.display;
-            meta.hidden=false;
+            if(confirm) {
+                if (!body.value || body.value.unit!==entry.to || typeof body.value.text!=='string' ||
+                    !['rational','decimal_approximation'].includes(body.value.kind) || !/^-?\d+(?:\/[1-9]\d*)?$/.test(body.value.text)) throw Error('Invalid snapshot');
+                history.entries.push({...entry,body,number:++history.sequence});
+                history.entries=history.entries.slice(-16);
+                while(new TextEncoder().encode(JSON.stringify(history)).length>1024*1024 && history.entries.length>1) history.entries.shift();
+                saveHistory();renderHistory();retryConfirmation=false;
+            }
+            showResult(body,confirm?text.confirmed:text.preview);
         } catch (error) {
             if (id!==generation || disposed || error.name==='AbortError') return;
-            setStatus(text.network,true); $('unit-retry').hidden=false;
-        } finally { if (id===generation) root.removeAttribute('aria-busy'); }
+            retryConfirmation=confirm;setStatus(text.network,true); $('unit-retry').hidden=false;
+        } finally {
+            if(confirm){confirming=false;if(!disposed)$('unit-submit').disabled=false;}
+            if (id===generation) root.removeAttribute('aria-busy');
+        }
     }
     function schedule(delay=250) {
+        retryConfirmation=false;
         const id=invalidate(); root.removeAttribute('aria-busy'); save();
         if (!input.value.trim()) { setStatus(text.empty); return; }
         setStatus(catalogue.length?text.calculating:text.loading);
         timer=setTimeout(()=>calculate(false,id),delay);
     }
-    $('unit-converter').addEventListener('submit',event=>{event.preventDefault(); const id=invalidate(); save(); calculate(true,id);},{signal:lifecycle.signal});
+    $('unit-converter').addEventListener('submit',event=>{event.preventDefault();if(confirming)return; const id=invalidate(); save(); calculate(true,id);},{signal:lifecycle.signal});
     input.addEventListener('keydown',event=>{if(event.key==='Enter' && !event.shiftKey && !event.isComposing){event.preventDefault();$('unit-converter').requestSubmit();}},{signal:lifecycle.signal});
     input.addEventListener('input',()=>schedule(),{signal:lifecycle.signal});
     for (const id of [...fields,'unit-from','unit-to']) $(id).addEventListener('change',()=>{updatePlaces();info();schedule(0);},{signal:lifecycle.signal});
@@ -186,7 +256,11 @@ function initUnits() {
         try { await navigator.clipboard.writeText(value); if(id===generation && !disposed)setStatus(text.copied); }
         catch (_) { if(id===generation && !disposed)setStatus(text.copyFailed,true); }
     },{signal:lifecycle.signal});
-    $('unit-retry').addEventListener('click',()=>catalogue.length?schedule(0):loadCatalogue(),{signal:lifecycle.signal});
+    $('unit-retry').addEventListener('click',()=>{
+        if(!catalogue.length)loadCatalogue();
+        else if(retryConfirmation){const id=invalidate();calculate(true,id);}
+        else schedule(0);
+    },{signal:lifecycle.signal});
     window.addEventListener('numforge:navigate',save,{signal:lifecycle.signal});
     async function loadCatalogue() {
         catalogRequest?.abort(); catalogRequest=new AbortController();
@@ -199,6 +273,9 @@ function initUnits() {
                 !body.units.every(u=>typeof u.id==='string' && typeof u.symbol==='string' && typeof u.name_sk==='string' && typeof u.name_en==='string' && /^https:\/\//.test(u.source_url) && categories.some(c=>c[0]===u.quantity)) ||
                 categories.some(c=>!body.units.some(u=>u.quantity===c[0]))) throw Error('Invalid catalogue');
             catalogue=body.units;
+            history.entries=history.entries.filter(e=>categories.some(c=>c[0]===e.category) &&
+                catalogue.some(u=>u.id===e.from && u.quantity===e.category) && catalogue.some(u=>u.id===e.to && u.quantity===e.category));
+            renderHistory();
             $('unit-categories').replaceChildren();
             for (const c of categories) {
                 const button=document.createElement('button'); button.type='button'; button.dataset.quantity=c[0];

@@ -261,6 +261,26 @@ CalculatorStatus calculator_tokenizer_next(
             return calculator_read_identifier(tokenizer, token, error);
         }
 
+        if (character == '"')
+        {
+            size_t cursor = offset + 1U;
+            while (tokenizer->input[cursor] != '"')
+            {
+                char c = tokenizer->input[cursor];
+                if (!calculator_is_identifier_start(c) && !calculator_is_digit(c) && c != '/' && c != '_')
+                {
+                    calculator_error_set(error, CALCULATOR_INVALID_TOKEN, cursor);
+                    return CALCULATOR_INVALID_TOKEN;
+                }
+                cursor++;
+            }
+            calculator_set_token(token, CALCULATOR_TOKEN_UNIT, tokenizer->input + offset + 1U,
+                                 cursor - offset - 1U, offset);
+            tokenizer->offset = cursor + 1U;
+            calculator_error_clear(error);
+            return CALCULATOR_OK;
+        }
+
         switch (character)
         {
             case ';':

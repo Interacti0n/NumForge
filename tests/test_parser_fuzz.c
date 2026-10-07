@@ -13,7 +13,7 @@ void tearDown(void) {}
 static void test_random_bytes_have_repeatable_parse_results(void)
 {
     uint32_t state = UINT32_C(0x6e756d66);
-    static const unsigned char alphabet[] = "0123eE+−-*/^!().,; \t\nπφ²³_ab\xff";
+    static const unsigned char alphabet[] = "0123eE+−-*/^!().,; \t\nπφ²³_ab\"\\\xff";
     for (size_t trial = 0; trial < 3000; trial++)
     {
         char input[65];

@@ -37,6 +37,7 @@ Percent-encode IDs containing `/`, for example `from=km%2Fh`.
 | `notation` | `auto` (default), `plain`, `scientific`, `math`, `fraction`. |
 | `angle` | `rad` (default) or `deg`, for functions in the input expression. |
 | `client` | Optional existing calculator session ID: 32 lowercase hexadecimal characters. |
+| `snapshot` | Optional `1`: include the authoritative value for a history record. |
 
 Unknown, duplicate, empty or malformed query parameters are rejected. The
 `precision` parameter here controls working precision; `/api/evaluate` has its
@@ -58,7 +59,18 @@ expression may read stored variables and confirmed `ans`. Conversion never
 changes variables, `ans`, history, the random generator, pending preview or
 session revision, including on failure. An expired/missing session is not created
 or reset. Assignments and `rand()` are rejected. There is no `action` or
-`revision` parameter; confirmation/history integration is a later feature.
+`revision` parameter; history is maintained by the browser, independently of
+calculator sessions.
+
+With `snapshot=1`, success additionally includes
+`"value":{"kind":"rational","text":"1000/3","unit":"m","precision":34}`.
+`text` is the reduced rational encoding of the authoritative converted value,
+independent of display notation/rounding. For decimal approximations, `kind` is
+`decimal_approximation`: the encoding retains the finite computed approximation
+and its requested working precision. It does not imply exact mathematics.
+Serialization shares the request budget and is limited to 65536 numeric bytes
+and the bounded JSON response. Oversized snapshots fail without session mutation.
+Omitting `snapshot` keeps the original lightweight preview contract.
 
 Conversion failures normally return HTTP 400 with `ok: false`, `code`, `error`,
 calculator `status` and one-based `column`. Codes include `invalid_options`,

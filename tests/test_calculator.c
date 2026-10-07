@@ -1073,9 +1073,83 @@ void test_fraction_notation_respects_output_limit(void)
     free(digits);
 }
 
+static void test_convert_numeric_values_and_diagnostics(void)
+{
+    /* IDs and numeric text are owned by the AST after the source is released. */
+    char source[] = "convert(1;\"m\";\"cm\")";
+    CalculatorExpression *expression = NULL;
+    CalculatorError parse_error;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_parse(source, &expression, &parse_error));
+    memset(source, 'x', sizeof(source) - 1U);
+    TEST_ASSERT_EQUAL_STRING("m", expression->data.call.from_unit);
+    TEST_ASSERT_EQUAL_STRING("cm", expression->data.call.to_unit);
+    calculator_expression_destroy(expression);
+    static const struct { const char *input; const char *expected; } cases[] = {
+        {"convert(90;\"km/h\";\"m/s\")", "25"},
+        {"convert(1/3;\"km\";\"m\")", "1000/3"},
+        {"convert(100;\"degC\";\"degF\")", "212"},
+        {"convert(-40;\"degC\";\"degF\")", "-40"},
+        {"convert(1;\"deltaF\";\"deltaC\")", "5/9"},
+        {"convert(1;\"m2\";\"cm2\")", "10000"},
+        {"convert(1;\"MiB\";\"B\")", "1048576"},
+        {"convert(1;\"MB\";\"B\")", "1000000"},
+        {"convert(1;\"B\";\"bit\")", "8"},
+        {"convert(1;\"deg\";\"arcmin\")", "60"},
+        {"convert(convert(1/3;\"km\";\"m\");\"m\";\"km\")*3", "1"},
+        {"sum(convert(1/3;\"m\";\"cm\");2/3)", "34"}
+    };
+    CalculatorContext context;
+    CalculatorError error;
+    calculator_context_init(&context);
+    context.notation = CALCULATOR_NOTATION_FRACTION;
+    for (size_t i = 0; i < sizeof(cases)/sizeof(cases[0]); i++)
+    {
+        char *text = NULL;
+        TEST_ASSERT_EQUAL_MESSAGE(CALCULATOR_OK, calculator_compute(cases[i].input, &context, &text, &error), cases[i].input);
+        TEST_ASSERT_EQUAL_STRING(cases[i].expected, text);
+        free(text);
+    }
+    static const struct { const char *input; CalculatorStatus status; size_t offset; } errors[] = {
+        {"convert(1;\"bad\";\"m\")", CALCULATOR_UNKNOWN_UNIT, 10},
+        {"convert(1;\"m\";\"bad\")", CALCULATOR_UNKNOWN_UNIT, 14},
+        {"convert(1;\"m\";\"s\")", CALCULATOR_INCOMPATIBLE_UNITS, 14},
+        {"convert(1;\"degC\";\"deltaC\")", CALCULATOR_INCOMPATIBLE_UNITS, 17},
+        {"convert(1;\"mb\";\"B\")", CALCULATOR_UNKNOWN_UNIT, 10},
+        {"convert(1;m;\"cm\")", CALCULATOR_SYNTAX_ERROR, 10},
+        {"convert(1;\"m^2\";\"cm2\")", CALCULATOR_INVALID_TOKEN, 12},
+        {"convert(1;\"m\\\";\"cm\")", CALCULATOR_INVALID_TOKEN, 12},
+        {"convert(1;\"m", CALCULATOR_INVALID_TOKEN, 12},
+        {"convert(1;\"\";\"m\")", CALCULATOR_UNKNOWN_UNIT, 10},
+        {"convert(1;\"m\";\"cm\";2)", CALCULATOR_SYNTAX_ERROR, 18},
+        {"abs(\"m\")", CALCULATOR_SYNTAX_ERROR, 4},
+        {"convert(1/0;\"m\";\"cm\")", CALCULATOR_DIVISION_BY_ZERO, 9}
+    };
+    for (size_t i = 0; i < sizeof(errors)/sizeof(errors[0]); i++)
+    {
+        char *text = NULL;
+        TEST_ASSERT_EQUAL_MESSAGE(errors[i].status, calculator_compute(errors[i].input, &context, &text, &error), errors[i].input);
+        TEST_ASSERT_EQUAL_UINT_MESSAGE(errors[i].offset, error.offset, errors[i].input);
+        TEST_ASSERT_NULL(text);
+    }
+    context.notation = CALCULATOR_NOTATION_PLAIN;
+    context.output_scale = 10;
+    char *text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("convert(180;\"deg\";\"rad\")", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("3.1415926536", text);
+    free(text); text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("convert(sqrt(2);\"m\";\"cm\")", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("141.4213562373", text);
+    free(text);
+    context.time_limit_ms = 0;
+    text = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT, calculator_compute("convert(1;\"m\";\"cm\")", &context, &text, &error));
+    TEST_ASSERT_NULL(text);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_convert_numeric_values_and_diagnostics);
 
     RUN_TEST(test_context_defaults_and_status_strings);
     RUN_TEST(test_significant_division_preserves_tiny_and_huge_values);

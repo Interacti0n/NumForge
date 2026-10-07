@@ -393,3 +393,20 @@ session isolation and preservation of random previews and calculator revisions.
 compatible menus, preview/confirmation, swap/copy, settings, keyboard/mobile
 controls, source links, calculator session preservation and recovery from failed
 or out-of-order network responses.
+
+History tests verify authoritative values independent of display rounding,
+frozen variable/ans-dependent results, non-mutating restores, tab/language/reload
+lifetime, clearing, last-16 eviction, duplicate in-flight confirmation protection
+and retry after a lost HTTP response. Unit adapter tests inject allocation
+failures through snapshot serialization and distinguish exact values from finite
+decimal approximations.
+
+Calculator conversion coverage includes exact fractions, nested calls, area,
+speed, temperature points/intervals, information units, case-sensitive IDs,
+unknown/incompatible argument positions, restricted literal grammar and AST
+ownership. Session tests cover numeric ans, assignment confirmation, preview
+isolation and reserved names. Allocation-failure tests inject every allocation
+in rational, approximate-input and pi-based conversions. Parser fuzzing includes
+quotes and backslashes. CLI process and SK/EN Playwright tests exercise real
+expressions; HTTP tests also cover convert inside /api/convert and read-only
+rejection of nested rand calls.

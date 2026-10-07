@@ -97,7 +97,7 @@ static void test_read_only_session_and_errors(void)
 static void test_failures_and_limits(void)
 {
     CalculatorSession session = {0};
-    NumForgeConversionOptions opts = options("/api/convert?from=deg&to=rad");
+    NumForgeConversionOptions opts = options("/api/convert?from=deg&to=rad&snapshot=1");
     CalculatorError error;
     const char *code;
     char *response = NULL;
@@ -143,6 +143,22 @@ static void test_catalog(void)
     numforge_test_allocator_end();
     TEST_ASSERT_NULL(response);
 }
+static void test_authoritative_snapshot(void)
+{
+    NumForgeConversionOptions opts = options("/api/convert?from=m&to=m&notation=plain&places=2&snapshot=1");
+    char *response = NULL;
+    CalculatorError error;
+    const char *code;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, numforge_web_convert(NULL, "1/3", &opts, &response, &error, &code));
+    TEST_ASSERT_NOT_NULL(strstr(response, "\"result\":\"0.33\""));
+    TEST_ASSERT_NOT_NULL(strstr(response, "\"value\":{\"kind\":\"rational\",\"text\":\"1/3\",\"unit\":\"m\",\"precision\":34}"));
+    free(response);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, numforge_web_convert(NULL, "sqrt(2)", &opts, &response, &error, &code));
+    TEST_ASSERT_NOT_NULL(strstr(response, "\"kind\":\"decimal_approximation\""));
+    TEST_ASSERT_NULL(strstr(response, "\"text\":\"1.41\""));
+    free(response);
+    TEST_ASSERT_FALSE(numforge_web_parse_conversion_options("/api/convert?from=m&to=m&snapshot=0", &opts));
+}
 int main(void)
 {
     UNITY_BEGIN();
@@ -151,5 +167,6 @@ int main(void)
     RUN_TEST(test_read_only_session_and_errors);
     RUN_TEST(test_failures_and_limits);
     RUN_TEST(test_catalog);
+    RUN_TEST(test_authoritative_snapshot);
     return UNITY_END();
 }

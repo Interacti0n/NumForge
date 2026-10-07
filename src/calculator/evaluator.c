@@ -1,5 +1,6 @@
 #include "evaluator_internal.h"
 #include "expression_internal.h"
+#include "unit_status.h"
 #include "random.h"
 #include "exact_evaluator.h"
 #include "value_internal.h"
@@ -595,6 +596,27 @@ CalculatorStatus calculator_evaluate_expression(
 
         switch (expression->data.call.function->implementation)
         {
+            case CALCULATOR_FUNCTION_CONVERT:
+            {
+                BigDecimal *input = NULL;
+                value = bigdecimal_create();
+                status = value == NULL ? CALCULATOR_OUT_OF_MEMORY :
+                    calculator_evaluate_expression(&input, expression->data.call.arguments[0], evaluation, error);
+                if (status == CALCULATOR_OK)
+                    status = calculator_from_unit_status(numforge_unit_convert_decimal(value, input,
+                        expression->data.call.from_unit, expression->data.call.to_unit,
+                        evaluation->context->division_scale, evaluation->context->rounding));
+                bigdecimal_destroy(input);
+                if (status != CALCULATOR_OK)
+                {
+                    bigdecimal_destroy(value);
+                    if (error == NULL || error->status != status)
+                        calculator_error_set(error, status, expression->offset);
+                    return status;
+                }
+                *result = value;
+                return CALCULATOR_OK;
+            }
             case CALCULATOR_FUNCTION_RANDOM:
                 return calculator_evaluate_random_call(result, expression, evaluation, error);
             case CALCULATOR_FUNCTION_SQRT:

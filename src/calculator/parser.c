@@ -1,6 +1,7 @@
 #include "../internal/benchmark_profile.h"
 #include "expression_internal.h"
 #include "tokenizer.h"
+#include <numforge/units.h>
 #include <numforge/runtime.h>
 
 #include <stdlib.h>
@@ -306,6 +307,51 @@ static CalculatorStatus calculator_parse_call(
             call->depth = argument->depth + 1U;
         }
 
+        if (function->implementation == CALCULATOR_FUNCTION_CONVERT)
+        {
+            for (size_t index = 0U; index < 2U; index++)
+            {
+                char *id = index == 0U ? call->data.call.from_unit : call->data.call.to_unit;
+                if (parser->current.type != CALCULATOR_TOKEN_SEMICOLON)
+                {
+                    status = calculator_parser_syntax_error(parser);
+                    goto failure;
+                }
+                status = calculator_parser_advance(parser);
+                if (status != CALCULATOR_OK) goto failure;
+                if (parser->current.type != CALCULATOR_TOKEN_UNIT)
+                {
+                    status = calculator_parser_syntax_error(parser);
+                    goto failure;
+                }
+                size_t unit_offset = parser->current.offset;
+                size_t length = parser->current.length;
+                if (length == 0U || length >= sizeof(call->data.call.from_unit))
+                {
+                    status = CALCULATOR_UNKNOWN_UNIT;
+                    calculator_error_set(parser->error, status, unit_offset);
+                    goto failure;
+                }
+                memcpy(id, parser->current.text, length);
+                id[length] = '\0';
+                if (numforge_unit_find(id) == NULL)
+                {
+                    status = CALCULATOR_UNKNOWN_UNIT;
+                    calculator_error_set(parser->error, status, unit_offset);
+                    goto failure;
+                }
+                if (index == 1U && !numforge_units_compatible(call->data.call.from_unit, id))
+                {
+                    status = CALCULATOR_INCOMPATIBLE_UNITS;
+                    calculator_error_set(parser->error, status, unit_offset);
+                    goto failure;
+                }
+                status = calculator_parser_advance(parser);
+                if (status != CALCULATOR_OK) goto failure;
+            }
+            break;
+        }
+
         if (parser->current.type != CALCULATOR_TOKEN_SEMICOLON)
         {
             break;
@@ -331,8 +377,9 @@ static CalculatorStatus calculator_parse_call(
         goto failure;
     }
 
-    if (call->data.call.count < function->minimum_arguments ||
-        (function->maximum_arguments != 0 && call->data.call.count > function->maximum_arguments))
+    size_t supplied = call->data.call.count + (function->implementation == CALCULATOR_FUNCTION_CONVERT ? 2U : 0U);
+    if (supplied < function->minimum_arguments ||
+        (function->maximum_arguments != 0 && supplied > function->maximum_arguments))
     {
         status = CALCULATOR_ARGUMENT_COUNT;
         calculator_error_set(parser->error, status, offset);

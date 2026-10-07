@@ -1,6 +1,7 @@
 #include "exact_evaluator.h"
 #include "exact_functions.h"
 #include "expression_internal.h"
+#include "unit_status.h"
 
 #include <numforge/runtime.h>
 
@@ -53,6 +54,10 @@ bool calculator_exact_supported(const CalculatorExpression *expression, const Ca
         case CALCULATOR_EXPRESSION_CALL:
             switch (expression->data.call.function->implementation)
             {
+                case CALCULATOR_FUNCTION_CONVERT:
+                    if (!numforge_unit_conversion_is_exact(expression->data.call.from_unit,
+                                                           expression->data.call.to_unit)) return false;
+                    break;
                 case CALCULATOR_FUNCTION_SQRT:
                 case CALCULATOR_FUNCTION_CBRT:
                 case CALCULATOR_FUNCTION_ROOT:
@@ -621,7 +626,14 @@ static CalculatorStatus calculator_exact_recursive(BigRational **result, const C
             }
             break;
         case CALCULATOR_EXPRESSION_CALL:
-            status = calculator_exact_call(value, expression, answer, error);
+            if (expression->data.call.function->implementation == CALCULATOR_FUNCTION_CONVERT)
+            {
+                status = calculator_exact_recursive(&left, expression->data.call.arguments[0], answer, error);
+                if (status == CALCULATOR_OK)
+                    status = calculator_from_unit_status(numforge_unit_convert_rational(value, left,
+                        expression->data.call.from_unit, expression->data.call.to_unit));
+            }
+            else status = calculator_exact_call(value, expression, answer, error);
             if (status != CALCULATOR_OK)
             {
                 goto done;

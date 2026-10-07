@@ -389,9 +389,27 @@ static void test_variable_limit_and_original_error_offsets(void)
     check_result(revision++,false,"vaa","3");
 }
 
+static void test_convert_session_values_are_numeric_and_preview_is_read_only(void)
+{
+    context.notation = CALCULATOR_NOTATION_FRACTION;
+    check_result(1, true, "m=1/3", "1/3");
+    check_result(2, true, "s=2", "2");
+    check_result(3, false, "x=convert(m;\"km\";\"m\")", "1000/3");
+    check_error(4, false, "x", CALCULATOR_UNDEFINED_VARIABLE);
+    check_result(5, false, "ans", "2");
+    check_result(6, true, "x=convert(m;\"km\";\"m\")", "1000/3");
+    check_result(7, false, "ans*3+s", "1002");
+    check_result(8, true, "m=2", "2");
+    check_result(9, false, "x", "1000/3");
+    check_error(10, true, "convert=3", CALCULATOR_INVALID_ARGUMENT);
+    check_error(11, true, "convert(1;\"m\";\"s\")", CALCULATOR_INCOMPATIBLE_UNITS);
+    check_result(12, false, "ans", "2");
+}
+
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_convert_session_values_are_numeric_and_preview_is_read_only);
     RUN_TEST(test_variables_preview_precision_replay_and_isolation);
     RUN_TEST(test_variable_confirmation_allocation_failures_are_atomic);
     RUN_TEST(test_variable_limit_and_original_error_offsets);

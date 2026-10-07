@@ -1,9 +1,46 @@
 # Unit conversion foundation
 
 The additive public C API in [units.h](../include/numforge/units.h) provides a
-static registry, compatibility checks and rational/decimal conversion. The
-Calculator convert syntax and arithmetic on
-quantities are not implemented yet.
+static registry, compatibility checks and rational/decimal conversion.
+The calculator exposes these conversions through `convert(...)` expressions.
+Arithmetic on typed quantities is a future step.
+
+## Calculator expressions
+
+`convert(value; "from"; "to")` is available in CLI, web calculator and numeric
+expressions passed to `/api/evaluate` and `/api/convert`. It returns an ordinary
+number, so `x = convert(1; "km"; "m")` stores numeric `1000`. Confirmation has
+the usual calculator history/ans behavior; preview does not change session state.
+The separate Units page keeps its own conversion snapshots.
+
+The first argument is any numeric expression, including variables, `ans` and
+nested calls. The other two arguments must be double-quoted catalogue IDs,
+with case preserved, 1–31 ASCII characters. No escapes, localized names,
+Unicode symbols, variable unit names or general-purpose strings are accepted.
+Use `"m/s"`, `"m2"`, `"m3"`, `"um"` and `"degC"`; no implicit parsing of
+`"m^2"` or arbitrary compound units. `MB`, `MiB`, `B` and `bit` stay distinct.
+The built-in name `convert` is reserved; variables named `m`, `s` or `kg` remain
+ordinary numeric variables and never collide with quoted IDs.
+
+Unknown IDs report `unknown unit` at the opening quote of that argument.
+Incompatible categories report `incompatible units` at the target argument.
+Temperature points and intervals are separate categories. Malformed literals
+report lexical errors at the invalid character or end of an unclosed quote;
+missing quotes/separators/arguments report syntax errors at the unexpected token.
+Unit identity and compatibility are checked before numeric evaluation.
+
+Exact numeric operands and rational conversion factors retain reduced fractions:
+`convert(1/3; "km"; "m") = 1000/3` and
+`convert(100; "degC"; "degF") = 212`.
+Approximate operands and angle factors requiring pi use the existing decimal
+evaluation policy and working precision/rounding. RAD/DEG affects functions
+inside the first argument, not the explicit conversion units. Approximation
+is not certified correctly rounded, and returning a number does not establish
+quantity arithmetic or dimensional checking of surrounding expressions.
+
+The call uses the ordinary input, AST depth, allocation, output and cooperative
+time budgets; it cannot start a fresh budget inside a nested expression.
+The catalogue and conversion implementations are shared with the public C API.
 
 ## Catalogue and identity
 
@@ -85,7 +122,7 @@ precision validation). The public registry exposes source_url for every entry;
 The local server exposes the catalogue and read-only expression conversion via
 [`/api/units` and `/api/convert`](UNIT_HTTP_API.md). The SK/EN browser converter
 is available at `/units`; see [the user guide](UNIT_CONVERTER.md).
-Calculator `convert(...)` syntax remains planned.
+Calculator `convert(...)` uses the same catalogue and conversion implementation.
 
 ~~~c
 #include <numforge/units.h>
