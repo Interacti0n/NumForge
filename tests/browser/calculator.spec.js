@@ -653,7 +653,8 @@ for (const lang of ['sk', 'en']) {
             await page.locator('.primary-nav a[href^="/solve"]').click();
             await expect(page.locator('#upcoming-title')).toHaveText(other === 'sk' ? 'Riešenie rovníc' : 'Equation solver');
             await page.locator('.primary-nav a[href^="/units"]').click();
-            await expect(page.locator('#upcoming-title')).toHaveText(other === 'sk' ? 'Prevod jednotiek' : 'Unit converter');
+            await expect(page.locator('#unit-converter')).toBeVisible();
+            await expect(page.locator('#unit-result')).toHaveText('1000');
             await page.locator('.primary-nav a[href^="/?lang="]').click();
             await expect(page.locator('#history-list .history-index')).toHaveText(['#1']);
             await expect(page.locator('#expression')).toHaveValue('ans+1');
@@ -663,7 +664,7 @@ for (const lang of ['sk', 'en']) {
             await calculate(page, 'ans', '4/3');
         });
         test('future tools have localized pages and the menu remains usable on mobile', async ({ page, request }) => {
-            for (const tool of ['graph', 'solve', 'units', 'login', 'register']) {
+            for (const tool of ['graph', 'solve', 'login', 'register']) {
                 const response = await request.get(`/${tool}?lang=${lang}`);
                 expect(response.ok()).toBe(true);
                 await page.goto(`/${tool}?lang=${lang}`);
@@ -1053,3 +1054,39 @@ for (const lang of ['sk', 'en']) {
         });
     });
 }
+
+
+test('session variables: preview, exact values, replay and client isolation', async ({request}) => {
+    async function send(client, revision, action, input='') {
+        const response=await request.post('/api/evaluate?precision=full&angle=rad&client='+client+'&revision='+revision+'&action='+action,{data:input});
+        return response.json();
+    }
+    const client='e'.repeat(32),other='f'.repeat(32);
+    expect((await send(client,1,'start')).ok).toBe(true);
+    expect((await send(client,1,'preview','x=2/3')).result).toBe('2/3');
+    expect((await send(client,2,'preview','x')).status).toBe('variable is undefined');
+    expect((await send(client,3,'commit','x=2/3')).result).toBe('2/3');
+    expect((await send(client,4,'commit','x=x+1')).result).toBe('5/3');
+    expect((await send(client,4,'commit','x=x+1')).result).toBe('5/3');
+    expect((await send(client,5,'preview','x*3')).result).toBe('5');
+    expect((await send(client,6,'commit','x=1/0')).ok).toBe(false);
+    expect((await send(client,7,'preview','x*3')).result).toBe('5');
+    expect((await send(other,1,'start')).ok).toBe(true);
+    expect((await send(other,1,'preview','x')).status).toBe('variable is undefined');
+});
+
+test('variable assignments can be typed and confirmed in both languages', async ({page}) => {
+    for(const language of ['en','sk']) {
+        await page.goto('/?lang='+language);
+        await page.locator('#expression').fill('x=2/3');
+        await page.locator('#expression').press('Enter');
+        await expect(page.locator('#result')).toHaveText('2/3');
+        await page.locator('#expression').fill('x*3');
+        await page.locator('#expression').press('Enter');
+        await expect(page.locator('#result')).toHaveText('2');
+        await page.locator('#reset-session').click();
+        await page.locator('#expression').fill('x');
+        await page.locator('#expression').press('Enter');
+        await expect(page.locator('#result')).toContainText(language==='en'?'variable is undefined':'premenná nie je definovaná');
+    }
+});

@@ -39,14 +39,13 @@ try {
     const result = invoke(['--quick']);
     if (result.error || result.status !== 0) throw result.error || Error(result.stderr);
     const bounded = checkRows(result.stdout, rows);
-    // Keep the discovered extreme-pole limitation visible without accepting
-    // its numerical result. If fixed later, it must satisfy the same oracle.
+    // The extreme pole regression must now satisfy the strict oracle.
     const pole = makeCases(false).find(row => row.startsWith('tan_near_pole_p10\t'));
     fs.writeFileSync(fixtures, pole + '\n');
     const diagnostic = invoke(['--validate']);
     if (diagnostic.error) throw diagnostic.error;
-    if (diagnostic.status === 0) checkRows(diagnostic.stdout, [pole]);
-    else { assert.equal(diagnostic.status, 1); assert.match(diagnostic.stderr, /^Reference mismatch: tan_near_pole_p10 status=0 actual=/); }
+    assert.equal(diagnostic.status, 0, diagnostic.stderr);
+    checkRows(diagnostic.stdout, [pole]);
     // Assertions remain effective in Release builds. Both nearest and exact
     // arithmetic must reject a wrong oracle rather than producing a timing row.
     for (const row of ['bad\tadd\treuse\t12\t13\t0\t5\t0\t0\t26',

@@ -1,6 +1,8 @@
 #include "session.h"
 #include "formatter.h"
 #include "random.h"
+#include "constants.h"
+#include "functions.h"
 
 #include <numforge/runtime.h>
 #include <stdlib.h>
@@ -36,6 +38,8 @@ void calculator_session_destroy(CalculatorSession *session)
         calculator_value_destroy(&session->history[index].value);
         free(session->history[index].display);
     }
+    for(size_t i=0;i<session->variable_count;i++)
+        calculator_value_destroy(&session->variables[i].value);
     memset(session, 0, sizeof(*session));
 }
 
@@ -51,6 +55,41 @@ static char *calculator_session_copy_text(const char *text)
     return copy;
 }
 
+static bool session_space(char byte)
+{
+    return byte==' ' || byte=='\t' || byte=='\r' || byte=='\n';
+}
+
+/* Assignment is one top-level statement. The ordinary parser handles the RHS
+ * and rejects nested/chained assignments. Names follow the existing ASCII
+ * identifier grammar; constants/functions and ans remain reserved. */
+static CalculatorStatus session_assignment(const char *input, char *name,
+    const char **expression, CalculatorError *error)
+{
+    const char *equal=strchr(input,'=');
+    const char *start=input, *end;
+    CalculatorConstant constant;
+    size_t length;
+    name[0]='\0'; *expression=input;
+    if(equal==NULL) return CALCULATOR_OK;
+    while(session_space(*start)) start++;
+    end=equal;
+    while(end>start && session_space(end[-1])) end--;
+    length=(size_t)(end-start);
+    if(length==0U || length>CALCULATOR_VARIABLE_NAME_BYTES) goto invalid;
+    for(size_t i=0;i<length;i++)
+        if(!((start[i]>='a' && start[i]<='z') || (start[i]>='A' && start[i]<='Z'))) goto invalid;
+    if((length==3U && memcmp(start,"ans",3U)==0) ||
+        calculator_function_find(start,length)!=NULL ||
+        calculator_constant_from_text(start,length,&constant)) goto invalid;
+    memcpy(name,start,length);name[length]='\0';
+    *expression=equal+1;
+    return CALCULATOR_OK;
+invalid:
+    calculator_error_set(error,CALCULATOR_INVALID_ARGUMENT,(size_t)(start-input));
+    return CALCULATOR_INVALID_ARGUMENT;
+}
+
 CalculatorStatus calculator_session_compute(
     CalculatorSession *session,
     uint64_t revision,
@@ -63,6 +102,10 @@ CalculatorStatus calculator_session_compute(
 )
 {
     CalculatorValue value = {0};
+    CalculatorValue assigned = {0};
+    char assignment[CALCULATOR_VARIABLE_NAME_BYTES + 1U];
+    const char *expression = input;
+    size_t variable_slot = 0U;
     CalculatorHistoryEntry *last;
     const CalculatorValue *cached;
     CalculatorStatus status = CALCULATOR_OK;
@@ -129,6 +172,18 @@ CalculatorStatus calculator_session_compute(
     else
     {
         session->revision = revision;
+        status = session_assignment(input, assignment, &expression, error);
+        if (status != CALCULATOR_OK) goto cleanup;
+        if (assignment[0] != '\0')
+        {
+            for(variable_slot=0;variable_slot<session->variable_count;variable_slot++)
+                if(strcmp(assignment,session->variables[variable_slot].name)==0) break;
+            if(variable_slot==CALCULATOR_VARIABLE_CAPACITY)
+            {
+                status=CALCULATOR_VALUE_TOO_LARGE;
+                goto cleanup;
+            }
+        }
         if (!session->random_initialized)
         {
             session->random_state = calculator_random_seed();
@@ -141,7 +196,7 @@ CalculatorStatus calculator_session_compute(
         hit = strcmp(input, session->preview_expression) == 0 &&
             calculator_value_matches(&session->preview, context);
         cached = &session->preview;
-        if (!hit && last != NULL && !last->value.uses_answer && !last->value.uses_random &&
+        if (!hit && last != NULL && !last->value.uses_answer && !last->value.uses_random && !last->value.uses_variables &&
             strcmp(input, last->expression) == 0 && calculator_value_matches(&last->value, context))
         {
             cached = &last->value;
@@ -178,8 +233,11 @@ CalculatorStatus calculator_session_compute(
         }
         else
         {
-            status = calculator_compute_value_with_answer(input, context,
-                last == NULL ? NULL : &last->value, &random_next, &value, error);
+            status = calculator_compute_value_with_variables(expression, context,
+                last == NULL ? NULL : &last->value, &random_next,
+                session->variables, session->variable_count, &value, error);
+            if (status != CALCULATOR_OK && error != NULL)
+                error->offset += (size_t)(expression - input);
         }
         if (status == CALCULATOR_OK)
         {
@@ -193,6 +251,8 @@ CalculatorStatus calculator_session_compute(
                 status = CALCULATOR_OUT_OF_MEMORY;
             }
         }
+        if (status == CALCULATOR_OK && commit && assignment[0] != '\0')
+            status = calculator_value_copy(&assigned, &value);
         status = calculator_budget_status(status);
         if (status == CALCULATOR_OK)
         {
@@ -200,6 +260,14 @@ CalculatorStatus calculator_session_compute(
             if (commit)
             {
                 session->random_state = random_next;
+                if (assignment[0] != '\0')
+                {
+                    calculator_value_destroy(&session->variables[variable_slot].value);
+                    session->variables[variable_slot].value=assigned;
+                    memset(&assigned,0,sizeof(assigned));
+                    memcpy(session->variables[variable_slot].name,assignment,strlen(assignment)+1U);
+                    if(variable_slot==session->variable_count) session->variable_count++;
+                }
                 if (session->count == CALCULATOR_HISTORY_CAPACITY)
                 {
                     calculator_value_destroy(&session->history[0].value);
@@ -232,7 +300,9 @@ CalculatorStatus calculator_session_compute(
         }
     }
 
+cleanup:
     calculator_value_destroy(&value);
+    calculator_value_destroy(&assigned);
     free(display);
     if (status != CALCULATOR_OK)
     {

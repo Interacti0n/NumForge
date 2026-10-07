@@ -13,7 +13,7 @@
 
 int main(void)
 {
-    char op[16], a[2048], b[2048];
+    char op[16], a[20000], b[20000];
     int scale, rounding;
     BigInt *ia = bigint_create(), *ib = bigint_create(), *ir = bigint_create();
     BigDecimal *da = bigdecimal_create(), *db = bigdecimal_create(), *dr = bigdecimal_create();
@@ -23,11 +23,20 @@ int main(void)
         bigdecimal_destroy(da); bigdecimal_destroy(db); bigdecimal_destroy(dr);
         return 2;
     }
-    while (scanf("%15s %2047s %2047s %d %d", op, a, b, &scale, &rounding) == 5)
+    while (scanf("%15s %19999s %19999s %d %d", op, a, b, &scale, &rounding) == 5)
     {
         int status;
         char *text = NULL;
-        if (!strcmp(op, "calc"))
+        if (!strcmp(op, "ibase") || !strcmp(op, "iparse"))
+        {
+            status = !strcmp(op, "iparse") ? bigint_set_string_base(ia, a, (unsigned)scale) : bigint_set_string(ia, a);
+            if (!status)
+            {
+                if (!strcmp(op, "ibase")) status = bigint_to_string_base(ia, (unsigned)scale, rounding != 0, &text);
+                else text = bigint_to_string(ia);
+            }
+        }
+        else if (!strcmp(op, "calc"))
         {
             CalculatorExpression *expression = NULL;
             CalculatorContext context;
@@ -61,7 +70,8 @@ int main(void)
             if (!status) status = bigdecimal_set_string(db, b);
             if (!status)
             {
-                if (!strcmp(op, "dadd")) status = bigdecimal_add(dr, da, db);
+                if (!strcmp(op, "dfmt")) status = bigdecimal_format(da, scale, (BigDecimalRoundingMode)rounding, &text);
+                else if (!strcmp(op, "dadd")) status = bigdecimal_add(dr, da, db);
                 else if (!strcmp(op, "dsub")) status = bigdecimal_sub(dr, da, db);
                 else if (!strcmp(op, "dmul")) status = bigdecimal_mul(dr, da, db);
                 else if (!strcmp(op, "ddiv")) status = bigdecimal_div(dr, da, db, scale, (BigDecimalRoundingMode)rounding);
@@ -87,7 +97,7 @@ int main(void)
                 else if (!strcmp(op, "atanh")) status = bigdecimal_atanh(dr, da, scale, (BigDecimalRoundingMode)rounding);
                 else status = 99;
             }
-            if (!status) status = bigdecimal_to_string(dr, &text);
+            if (!status && strcmp(op, "dfmt")) status = bigdecimal_to_string(dr, &text);
         }
         if (status || !text) printf("ERROR %d\n", status);
         else puts(text);

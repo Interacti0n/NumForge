@@ -2,6 +2,7 @@
 #include "expression_internal.h"
 #include "random.h"
 #include "exact_evaluator.h"
+#include "value_internal.h"
 
 #include <numforge/bigint.h>
 #include <numforge/runtime.h>
@@ -537,6 +538,29 @@ CalculatorStatus calculator_evaluate_expression(
             calculator_error_set(error, status, expression->offset);
             return status;
         }
+    }
+
+    if (expression->type == CALCULATOR_EXPRESSION_VARIABLE)
+    {
+        const CalculatorValue *stored = expression->data.variable.value;
+        if (stored == NULL)
+        {
+            calculator_error_set(error, CALCULATOR_UNDEFINED_VARIABLE, expression->offset);
+            return CALCULATOR_UNDEFINED_VARIABLE;
+        }
+        value = bigdecimal_create();
+        status = value == NULL ? CALCULATOR_OUT_OF_MEMORY :
+            stored->kind == CALCULATOR_VALUE_DECIMAL
+                ? calculator_from_bigdecimal_status(bigdecimal_copy(value, stored->number))
+                : calculator_materialize_exact(value, stored, evaluation->context);
+        if (status != CALCULATOR_OK)
+        {
+            bigdecimal_destroy(value);
+            calculator_error_set(error, status, expression->offset);
+            return status;
+        }
+        *result = value;
+        return CALCULATOR_OK;
     }
 
     if (expression->type == CALCULATOR_EXPRESSION_ANSWER)

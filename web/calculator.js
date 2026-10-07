@@ -165,6 +165,7 @@ const text = english ? {
     showLess : 'Zobraziť menej'
 };
 const slovakStatus = {
+    'variable is undefined' : 'premenná nie je definovaná',
     'ans is undefined' : 'ans ešte nemá potvrdenú hodnotu',
     'stale session request' : 'zastaraná požiadavka sedenia',
     'session expired; reload the page' : 'sedenie skončilo; obnov stránku',
@@ -205,7 +206,7 @@ function responseError(data)
         return data.error || text.failure;
     }
     const status = english ? data.status : (slovakStatus[data.status] || data.status);
-    const located = ['invalid argument', 'invalid token', 'syntax error',
+    const located = ['invalid argument', 'invalid token', 'syntax error', 'variable is undefined',
                      'division by zero', 'wrong number of arguments'];
     const chars = [...expression.value];
     if (!located.includes(data.status) || !Number.isInteger(data.column) ||

@@ -30,5 +30,8 @@ CalculatorStatus calculator_parse( /*Parse one input expression into an owned AS
 void calculator_expression_destroy(
     CalculatorExpression *expression
 );
+/* Session parsing permits identifiers resolved against session values. */
+CalculatorStatus calculator_parse_variables(const char *input,
+    CalculatorExpression **result, CalculatorError *error);
 
 #endif

@@ -5,6 +5,35 @@ All notable changes to NumForge are documented in this file. The project uses
 
 ## Unreleased
 
+- Add the SK/EN browser unit converter with ten quantity categories, compatible
+  selectors, live preview/confirmation, swap/copy, precision controls, sourced
+  definitions and responsive keyboard-accessible controls. Preserve calculator
+  sessions and converter fields during tool/language navigation. Fit expanded
+  conversion settings into the desktop viewport and allow natural page scrolling
+  in narrower or shorter windows.
+
+- Add local HTTP unit catalogue and expression conversion routes, with separate
+  working/display precision, exact rational input, validated compatibility and
+  read-only access to session variables/ans; reject assignments and random input.
+
+- Add a public unit-conversion foundation with a sourced 233-unit SK/EN catalogue, exact
+  rational and decimal conversion, SI/imperial/information/angle units,
+  guarded pi projection, separate temperature points/intervals,
+  compatibility errors and unchanged outputs on failure.
+  Calculator conversion syntax remains future work.
+
+- Refine tangent argument reduction when cancellation near pi/2 loses digits;
+  add strict independent pole references for all six rounding modes and keep
+  the benchmark smoke check strict. Other trigonometric behavior is unchanged.
+- Accelerate short scientific/Auto formatting of large coefficients using
+  outward-rounded bounds from leading limbs; preserve exact fallback at
+  rounding/exponent boundaries, full output and all rounding modes.
+- Add BigInt input/output APIs for explicit bases 2–36, ASCII case selection,
+  canonical signed output and unchanged destinations/output pointers on failure.
+- Add confirmed session variables to CLI/web: `x=2/3`, exact typed snapshots,
+  read-only previews, atomic reassignment, retry protection and isolated/reset
+  lifetime. Add bilingual instructions and located undefined-variable errors.
+
 - Add documentation and benchmark navigation guides, a repository source map,
   and group high-precision benchmark references with their generator.
 
@@ -37,7 +66,6 @@ All notable changes to NumForge are documented in this file. The project uses
 - Add a three-run baseline recorder with compiler/build/machine metadata,
   source snapshots and CSV output, without CI timing thresholds.
 
-- Remove the Premium navigation and page; refresh sign-in and sign-up buttons.
 - Add a subtle purple gradient with mathematical sketches and forge details
   around the page edges, softened on mobile.
 

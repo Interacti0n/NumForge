@@ -31,7 +31,7 @@ typedef struct NumForgeHttpFrame
     bool has_content_length;
     bool origin_allowed;
     char method[16];
-    char target[128];
+    char target[512];
 } NumForgeHttpFrame;
 
 NumForgeHttpStatus numforge_http_probe(

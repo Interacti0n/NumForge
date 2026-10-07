@@ -3,12 +3,13 @@
 This is the short reference for the public C library and the local calculator
 HTTP endpoint. Function signatures and all edge-case constraints remain in
 the public headers: `include/numforge/bigint.h`,
-`include/numforge/bigdecimal.h`, `include/numforge/bigrational.h` and optional
+`include/numforge/bigdecimal.h`, `include/numforge/bigrational.h`,
+`include/numforge/units.h` and optional
 `include/numforge/runtime.h`.
 
 ## Public C API scope
 
-The public API consists of these four headers. Existing 1.x numeric signatures
+The public API consists of these five headers. Existing 1.x numeric signatures
 remain source compatible in 2.0, and the new operations are additive.
 The calculator implementation and `src/web/web_api.h` are private application
 code, not headers for library consumers. `numforge_web` and its loopback HTTP
@@ -50,7 +51,7 @@ optional leading sign and digits only.
 
 | Area | Functions |
 | --- | --- |
-| Lifecycle and conversion | `bigint_create`, `bigint_destroy`, `bigint_copy`, `bigint_set_string`, `bigint_to_string` |
+| Lifecycle and conversion | `bigint_create`, `bigint_destroy`, `bigint_copy`, `bigint_set_string`, `bigint_to_string`, `bigint_set_string_base`, `bigint_to_string_base` |
 | Status text | `bigint_status_to_string` |
 | Comparison and predicates | `bigint_compare`, `bigint_is_zero`, `bigint_is_one`, `bigint_is_negative`, `bigint_is_even`, `bigint_is_odd` |
 | Arithmetic | `bigint_abs`, `bigint_negate`, `bigint_add`, `bigint_sub`, `bigint_mul`, `bigint_div`, `bigint_mod`, `bigint_div_mod`, `bigint_pow` |
@@ -72,6 +73,22 @@ preserve the destination on failure.
 
 `bigint_isqrt` computes floor(sqrt(value)), accepts zero and rejects negative
 input with `BIGINT_NEGATIVE_ARGUMENT`. Output/input aliasing is supported.
+
+### Numeral bases 2–36
+
+`bigint_set_string_base(value, "FF", 16)` reads 255;
+`bigint_to_string_base(value, 2, false, &text)` returns owned `"11111111"`.
+Use `free(text)` after success. Both functions return `BigIntStatus`; the value
+and output pointer remain unchanged on failure. A successful formatter does not
+free the previous pointer, so manage its ownership before reusing it.
+
+The base is explicit, from 2 through 36. Input accepts ASCII `0–9`, `A–Z` and
+`a–z` case-insensitively, an optional sign and leading zeros. It rejects invalid
+base/digits, whitespace and separators. No prefix is recognized: `0xFF` is invalid
+in base 16, but `x` is an ordinary digit if valid in the chosen base. Output has
+no prefix or leading zeros, uses `-` for negatives and `"0"` for zero. The
+`uppercase` argument selects uppercase or lowercase letters. These are integer
+library APIs; the calculator grammar still uses decimal numeric literals.
 
 ## BigDecimal
 
@@ -260,7 +277,7 @@ when the exponent is a whole number. The typed calculator keeps rational bases
 and integer exponents exact, including negative exponents; an approximate base
 uses a reciprocal at working precision. `2^3^2` means
 `2^(3^2)`; `0^0` is `1`, and zero to a negative exponent is a division-by-zero
-error. Decimal exponents and variables are not implemented. Integer functions
+error. Decimal exponents are not implemented. Session variables are described below. Integer functions
 use the public BigInt core. Exact rational powers and proven roots use BigInt
 and BigRational operations; approximate roots use the public BigDecimal core.
 
@@ -382,8 +399,8 @@ names, not products. Numeric suffixes such as `log2` are not supported.
 
 ### Browser interface
 
-The shared header links the calculator and guide and previews future graph,
-equation and unit-conversion areas. Sign-in and registration
+The shared header links the calculator, unit converter and guide and previews
+future graph and equation areas. Sign-in and registration
 currently show informational pages; there is no authentication or payment API.
 
 The local browser page has active keypad buttons for this grammar, including
@@ -596,3 +613,19 @@ selected loopback port.
 Error columns are one-based Unicode character positions; the calculator
 internals retain zero-based UTF-8 byte offsets so source tokens remain lossless.
 The example body above is exactly six UTF-8 bytes and has no trailing newline.
+
+
+## Session variables
+
+CLI and web sessions accept `x = 2/3`, followed by `x*3` (exactly `2`).
+Only successful confirmation stores a value. Previewing an assignment leaves
+variables, `ans` and history unchanged. See [Variables](VARIABLES.md) for the
+syntax, snapshot semantics, limits, cache behavior and examples.
+
+## Unit conversion
+
+[Unit conversion](UNITS.md) documents the static compatible-unit registry and
+exact rational/decimal C conversion APIs. The local server also provides
+[`GET /api/units` and `POST /api/convert`](UNIT_HTTP_API.md), with read-only
+session access. The [browser converter](UNIT_CONVERTER.md) is available in SK/EN
+at `/units`. Calculator `convert(...)` syntax is not yet implemented.

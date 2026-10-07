@@ -54,11 +54,14 @@ It is not a production public-hosting architecture.
 | --- | --- |
 | `include/numforge/` | Installed public API contracts. |
 | `src/bigint/`, `src/bigdecimal/`, `src/bigrational/` | Numeric implementations. |
+| `src/units/` | Static unit registry and exact compatible-unit conversion over public BigRational API. |
+| `src/web/unit_web.c` | Local HTTP unit catalogue and conversion adapter; borrows session values, preserves typed exact input and shares calculator budgets. |
 | `src/internal/` | Private allocation boundaries and optional benchmark instrumentation. |
 | `src/calculator/` | Tokenizer, AST, typed evaluator, values, formatting and sessions. |
 | `src/main.c` | Interactive CLI. |
 | `src/web/` | Local server, HTTP framing and evaluation adapter. |
 | `web/` | Editable English/Slovak browser assets. |
+| `web/units.*` | Responsive unit-converter pages, calculator component styles and cancellable read-only conversion requests. |
 | `cmake/EmbedWeb.cmake` | Generates the embedded assets in the build tree. |
 | `tests/`, `benchmarks/` | Correctness checks and opt-in performance measurements. |
 

@@ -33,7 +33,8 @@ typedef enum CalculatorStatus
     CALCULATOR_ARGUMENT_COUNT,
     CALCULATOR_UNDEFINED_ANSWER,
     CALCULATOR_STALE_REQUEST,
-    CALCULATOR_SESSION_EXPIRED
+    CALCULATOR_SESSION_EXPIRED,
+    CALCULATOR_UNDEFINED_VARIABLE
 } CalculatorStatus;
 
 typedef enum CalculatorAngleUnit
@@ -90,7 +91,18 @@ typedef struct CalculatorValue
     bool independent;
     bool uses_answer;
     bool uses_random;
+    bool uses_variables;
 } CalculatorValue;
+
+#define CALCULATOR_VARIABLE_CAPACITY 32U
+#define CALCULATOR_VARIABLE_NAME_BYTES 31U
+typedef struct CalculatorVariable
+{
+    char name[CALCULATOR_VARIABLE_NAME_BYTES + 1U];
+    CalculatorValue value;
+} CalculatorVariable;
+
+
 
 
 #define CALCULATOR_DEFAULT_OUTPUT_SCALE 10
@@ -121,6 +133,11 @@ typedef struct CalculatorError
     CalculatorStatus status;
     size_t offset;
 } CalculatorError;
+
+CalculatorStatus calculator_compute_value_with_variables(const char *input,
+    const CalculatorContext *context, const CalculatorValue *answer,
+    uint64_t *random_state, const CalculatorVariable *variables, size_t count,
+    CalculatorValue *result, CalculatorError *error);
 
 CalculatorStatus calculator_compute_value(
     const char *input,

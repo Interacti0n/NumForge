@@ -17,6 +17,7 @@
 
 #include "web_server.h"
 #include "web_api.h"
+#include "unit_web.h"
 #include "http_request.h"
 #include "web_page.h"
 #include <numforge/runtime.h>
@@ -814,6 +815,57 @@ static void numforge_handle_evaluation(
 #endif
 }
 
+/* Read-only conversion never creates or mutates calculator sessions. */
+static void numforge_handle_unit_catalog(NumForgeSocket socket)
+{
+    char *response = NULL;
+    CalculatorStatus status = numforge_web_unit_catalog(&response);
+    if (status == CALCULATOR_OK)
+        numforge_send_response(socket, 200, "OK", "application/json; charset=utf-8", response);
+    else numforge_send_response(socket, 500, "Internal Server Error", "application/json; charset=utf-8",
+        "{\"ok\":false,\"code\":\"catalog_unavailable\",\"status\":\"out of memory\"}");
+    free(response);
+}
+static void numforge_handle_conversion(NumForgeSocket socket, const char *target,
+    const char *body, size_t body_length)
+{
+    NumForgeConversionOptions options;
+    CalculatorError error;
+    calculator_error_clear(&error);
+    const char *code = "invalid_options";
+    CalculatorStatus status = CALCULATOR_INVALID_ARGUMENT;
+    char *response = NULL;
+    if (memchr(body, '\0', body_length) != NULL) code = "invalid_body";
+    else if (numforge_web_parse_conversion_options(target, &options))
+    {
+        CalculatorSession *session = options.client[0] ? numforge_client_session(options.client, false) : NULL;
+        if (options.client[0] && session == NULL)
+        {
+            status = CALCULATOR_SESSION_EXPIRED;
+            code = "session_expired";
+        }
+        else status = numforge_web_convert(session, body, &options, &response, &error, &code);
+    }
+    if (status == CALCULATOR_OK)
+        numforge_send_response(socket, 200, "OK", "application/json; charset=utf-8", response);
+    else
+    {
+        char failure[320];
+        const char *message = strcmp(code, "unknown_unit") == 0 ? "unknown unit" :
+            strcmp(code, "incompatible_units") == 0 ? "incompatible units" :
+            strcmp(code, "assignment_not_allowed") == 0 ? "assignments are not allowed in conversion" :
+            strcmp(code, "random_not_allowed") == 0 ? "random calls are not allowed in conversion" :
+            calculator_status_to_string(status);
+        snprintf(failure, sizeof(failure),
+            "{\"ok\":false,\"code\":\"%s\",\"error\":\"%s\",\"status\":\"%s\",\"column\":%zu}",
+            code, message, calculator_status_to_string(status), calculator_error_column(body, error.offset));
+        int http_status = status == CALCULATOR_OUT_OF_MEMORY ? 500 : 400;
+        numforge_send_response(socket, http_status, http_status == 500 ? "Internal Server Error" : "Bad Request",
+            "application/json; charset=utf-8", failure);
+    }
+    free(response);
+}
+
 void numforge_handle_connection(
     NumForgeSocket socket,
     uint16_t port
@@ -821,7 +873,7 @@ void numforge_handle_connection(
 {
     char request[NUMFORGE_WEB_REQUEST_CAPACITY];
     char method[16];
-    char target[192];
+    char target[512];
     char client[33];
     uint64_t revision;
     const char *action;
@@ -888,7 +940,11 @@ void numforge_handle_connection(
         body_length = length - (size_t)(body - request);
     }
 
-    if (strcmp(method, "GET") == 0 && numforge_parse_page_language(target, "/", &english))
+    if (strcmp(method, "GET") == 0 && strcmp(target, "/api/units") == 0)
+    {
+        numforge_handle_unit_catalog(socket);
+    }
+    else if (strcmp(method, "GET") == 0 && numforge_parse_page_language(target, "/", &english))
     {
         numforge_send_page(socket, english ? NUMFORGE_WEB_PAGE_EN : NUMFORGE_WEB_PAGE);
     }
@@ -896,14 +952,25 @@ void numforge_handle_connection(
     {
         numforge_send_page(socket, english ? NUMFORGE_API_PAGE_EN : NUMFORGE_API_PAGE);
     }
+    else if (strcmp(method, "GET") == 0 && numforge_parse_page_language(target, "/units", &english))
+    {
+        numforge_send_page(socket, english ? NUMFORGE_UNITS_PAGE_EN : NUMFORGE_UNITS_PAGE);
+    }
     else if (strcmp(method, "GET") == 0 &&
              (numforge_parse_page_language(target, "/graph", &english) ||
               numforge_parse_page_language(target, "/solve", &english) ||
-              numforge_parse_page_language(target, "/units", &english) ||
               numforge_parse_page_language(target, "/login", &english) ||
               numforge_parse_page_language(target, "/register", &english)))
     {
         numforge_send_page(socket, english ? NUMFORGE_UPCOMING_PAGE_EN : NUMFORGE_UPCOMING_PAGE);
+    }
+    else if (strcmp(method, "GET") == 0 && strcmp(target, "/assets/units.css") == 0)
+    {
+        numforge_send_response(socket, 200, "OK", "text/css; charset=utf-8", (const char *)NUMFORGE_UNITS_CSS);
+    }
+    else if (strcmp(method, "GET") == 0 && strcmp(target, "/assets/units.js") == 0)
+    {
+        numforge_send_response(socket, 200, "OK", "text/javascript; charset=utf-8", (const char *)NUMFORGE_UNITS_JS);
     }
     else if (strcmp(method, "GET") == 0 && strcmp(target, "/assets/calculator.css") == 0)
     {
@@ -952,6 +1019,11 @@ void numforge_handle_connection(
     {
         numforge_send_response(
             socket, 411, "Length Required", "text/plain; charset=utf-8", "Content-Length is required.\n");
+    }
+    else if (strcmp(method, "POST") == 0 && body != NULL &&
+             (strcmp(target, "/api/convert") == 0 || strncmp(target, "/api/convert?", 13) == 0))
+    {
+        numforge_handle_conversion(socket, target, body, body_length);
     }
     else if (strcmp(method, "POST") == 0 && body != NULL && numforge_is_evaluation_target(target))
     {

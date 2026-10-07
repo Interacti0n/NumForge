@@ -6,6 +6,8 @@
 *.h text eol=lf
 *.cpp text eol=lf
 *.js text eol=lf
+*.cjs text eol=lf
+*.inc text eol=lf
 *.json text eol=lf
 *.dict text eol=lf
 *.cmake text eol=lf

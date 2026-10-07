@@ -263,3 +263,117 @@ char *bigint_to_string( /*Transform BigInt to string*/
     numforge_profile_leave(previous);
     return result_status;
 }
+
+/* Largest complete radix chunk representable in uint64_t. */
+static uint64_t bigint_radix_chunk(unsigned base, size_t *digits)
+{
+    uint64_t multiplier = 1U;
+    *digits = 0U;
+    while (multiplier <= UINT64_MAX / base)
+    {
+        multiplier *= base;
+        (*digits)++;
+    }
+    return multiplier;
+}
+
+static unsigned bigint_ascii_digit(unsigned char byte)
+{
+    if (byte >= '0' && byte <= '9') return byte - '0';
+    if (byte >= 'a' && byte <= 'z') return byte - 'a' + 10U;
+    if (byte >= 'A' && byte <= 'Z') return byte - 'A' + 10U;
+    return 36U;
+}
+
+BigIntStatus bigint_set_string_base(BigInt *value, const char *text, unsigned base)
+{
+    BigInt parsed = {0};
+    BigIntStatus status = BIGINT_OK;
+    size_t start = 0U, length, chunk_digits;
+    bool negative;
+    if (!value || !text) return BIGINT_NULL_ARGUMENT;
+    if (base < 2U || base > 36U) return BIGINT_INVALID_ARGUMENT;
+    if (base == 10U) return bigint_set_string(value, text);
+    length = strlen(text);
+    negative = text[0] == '-';
+    if (text[0] == '+' || negative) start++;
+    if (start >= length) return BIGINT_INVALID_ARGUMENT;
+    for (size_t i = start; i < length; i++)
+        if (bigint_ascii_digit((unsigned char)text[i]) >= base) return BIGINT_INVALID_ARGUMENT;
+    (void)bigint_radix_chunk(base, &chunk_digits);
+    while (start < length)
+    {
+        size_t count = length - start < chunk_digits ? length - start : chunk_digits;
+        uint64_t multiplier = 1U, chunk = 0U;
+        if (!numforge_budget_check()) { status = BIGINT_OUT_OF_MEMORY; break; }
+        for (size_t i = 0; i < count; i++)
+        {
+            multiplier *= base;
+            chunk = chunk * base + bigint_ascii_digit((unsigned char)text[start + i]);
+        }
+        status = bigint_multiply_by_uint64(&parsed, multiplier);
+        if (status == BIGINT_OK) status = bigint_add_uint64(&parsed, chunk);
+        if (status != BIGINT_OK) break;
+        start += count;
+    }
+    if (status == BIGINT_OK)
+    {
+        parsed.is_negative = negative;
+        bigint_normalize(&parsed);
+        bigint_commit(value, &parsed);
+    }
+    free(parsed.limbs);
+    return status;
+}
+
+BigIntStatus bigint_to_string_base(const BigInt *value, unsigned base,
+    bool uppercase, char **result)
+{
+    BigInt scratch = {0};
+    BigIntStatus status;
+    char *text = NULL;
+    const char *alphabet = uppercase ? "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ" : "0123456789abcdefghijklmnopqrstuvwxyz";
+    size_t bits, capacity, chunk_digits, length = 0U;
+    uint64_t divisor;
+    if (!value || !result) return BIGINT_NULL_ARGUMENT;
+    if (base < 2U || base > 36U) return BIGINT_INVALID_ARGUMENT;
+    if (base == 10U)
+    {
+        text = bigint_to_string(value);
+        if (!text) return BIGINT_OUT_OF_MEMORY;
+        *result = text;
+        return BIGINT_OK;
+    }
+    if (bigint_size_mul(value->size, 64U, &bits) != BIGINT_OK ||
+        bigint_size_add(bits, 3U, &capacity) != BIGINT_OK) return BIGINT_VALUE_TOO_LARGE;
+    text = numforge_malloc(capacity);
+    if (!text) return BIGINT_OUT_OF_MEMORY;
+    status = bigint_copy(&scratch, value);
+    if (status != BIGINT_OK) goto cleanup;
+    divisor = bigint_radix_chunk(base, &chunk_digits);
+    do
+    {
+        uint64_t chunk;
+        size_t written = 0U;
+        if (!numforge_budget_check()) { status = BIGINT_OUT_OF_MEMORY; goto cleanup; }
+        chunk = bigint_divide_by_uint64(&scratch, divisor);
+        do
+        {
+            text[length++] = alphabet[chunk % base];
+            chunk /= base;
+            written++;
+        } while (chunk != 0U || (scratch.size != 0U && written < chunk_digits));
+    } while (scratch.size != 0U);
+    if (value->is_negative) text[length++] = '-';
+    for (size_t i = 0U; i < length / 2U; i++)
+    {
+        char byte = text[i]; text[i] = text[length - i - 1U]; text[length - i - 1U] = byte;
+    }
+    text[length] = '\0';
+    *result = text;
+    text = NULL;
+cleanup:
+    free(scratch.limbs);
+    free(text);
+    return status;
+}

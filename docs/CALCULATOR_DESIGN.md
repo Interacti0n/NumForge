@@ -238,7 +238,8 @@ sign is always a separate `PLUS` or `MINUS` token, which keeps unary and binary
 operators unambiguous. The evaluator normalizes a comma to a point before
 calling the public BigDecimal API.
 
-User-defined variables remain outside the grammar. The function registry recognizes the
+Session parsing resolves user-defined identifiers to borrowed typed values;
+one-shot parsing retains its existing grammar. See [Variables](VARIABLES.md). The function registry recognizes the
 names and arities listed in [API.md](API.md#named-calls). `pow` and `factorial` reuse existing operator paths.
 `abs`, `sign`, `min` and `max` use decimal operations directly. Min/max retain
 only the selected and current values, evaluating arguments left to right.
@@ -338,7 +339,7 @@ precedence. This covers `πe`, `10π`, `5e`, `2(2 + 2)`, and `(1 + 2)(3 + 4)`.
 The tokenizer keeps scientific notation unambiguous: `5E-1` and `1E3` remain
 one numeric token, while `5e` becomes `5 * e` and `1e3` becomes `1 * e * 3`.
 Only the exact UTF-8 symbols `π`, `e`, and `φ` are constants; ASCII `pi` and
-`phi` remain available for future variable names.
+`phi` are available as session variable names.
 
 Two numeric tokens without an operator (`2 3`, `2 .3`) are syntax errors.
 A repeated decimal separator (`1.2.3`, `1,2,3`, `1E3.4`) is a lexical error.
@@ -468,3 +469,21 @@ described above.
 The initial pipeline is complete end to end: tokenizer, owned AST, evaluator,
 formatter, CLI, local web adapter, and bilingual browser interface. The browser
 uses JavaScript only for UI and transport; arithmetic remains in the C process.
+
+
+## Confirmed session variables
+
+`CalculatorSession` owns up to 32 named `CalculatorValue` snapshots. Assignment
+is a single top-level statement handled before parsing its RHS. Session parsing
+creates variable nodes, then resolves names before either exact or approximate
+evaluation. Nodes own names and borrow values for the duration of computation.
+Exact integers/rationals retain their type; approximate values retain the saved
+number and are not reevaluated at a new precision.
+
+Confirmation prepares the result, history display and independent variable copy
+before any state change. Failures preserve variable values, history, `ans` and
+confirmed random state. Request revisions still advance on attempted evaluation.
+Identical confirmation replays return the saved display without repeating an
+assignment. Successful confirmations clear preview state; history cache reuse
+is disabled for expressions that use variables. Context changes rematerialize
+exact values when needed. Destroy/reset releases every owned variable.

@@ -4,6 +4,7 @@
 #include <numforge/bigdecimal.h>
 #include <numforge/bigrational.h>
 #include <numforge/runtime.h>
+#include <numforge/units.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -19,6 +20,10 @@ static int public_api_checks(void)
     int sign = 0, result = 1;
     if (a == NULL || b == NULL || n == NULL || r == NULL || fraction == NULL) goto cleanup;
     values[0] = a; values[1] = b;
+    if (bigint_set_string_base(n, "-fF", 16) != BIGINT_OK ||
+        bigint_to_string_base(n, 2, false, &text) != BIGINT_OK ||
+        strcmp(text, "-11111111") != 0) goto cleanup;
+    free(text); text = NULL;
     if (bigint_set_string(n, "3") != BIGINT_OK ||
         bigdecimal_set_string(a, "1.5") != BIGDECIMAL_OK ||
         bigdecimal_pow(a, a, n) != BIGDECIMAL_OK ||
@@ -116,6 +121,21 @@ static int public_api_checks(void)
     free(text); text = NULL;
     if (bigrational_to_bigdecimal(a, fraction, 10, BIGDECIMAL_ROUND_HALF_EVEN) != BIGRATIONAL_OK ||
         bigdecimal_to_string(a, &text) != BIGDECIMAL_OK || strcmp(text, "-0.75") != 0) goto cleanup;
+    free(text); text = NULL;
+    if (bigdecimal_set_string(a, "90") != BIGDECIMAL_OK ||
+        !numforge_units_compatible("km/h", "m/s") ||
+        numforge_unit_convert_decimal(a, a, "km/h", "m/s", 20,
+            BIGDECIMAL_ROUND_HALF_EVEN) != NUMFORGE_UNIT_OK ||
+        bigdecimal_to_string(a, &text) != BIGDECIMAL_OK || strcmp(text, "25") != 0) goto cleanup;
+    free(text); text = NULL;
+    if (!numforge_unit_conversion_is_exact("MiB", "B") ||
+        numforge_unit_conversion_is_exact("deg", "rad") ||
+        numforge_unit_find("um") == NULL ||
+        strcmp(numforge_unit_find("um")->name_sk, "mikrometer") != 0 ||
+        bigdecimal_set_string(a, "180") != BIGDECIMAL_OK ||
+        numforge_unit_convert_decimal(a, a, "deg", "rad", 10,
+            BIGDECIMAL_ROUND_HALF_EVEN) != NUMFORGE_UNIT_OK ||
+        bigdecimal_to_string(a, &text) != BIGDECIMAL_OK || strcmp(text, "3.141592654") != 0) goto cleanup;
     free(text); text = NULL;
     result = 0;
 cleanup:

@@ -70,6 +70,8 @@ earlier layout. The calculator is available in English and Slovak.
   results that cannot be represented exactly.
 - A Slovak/English browser calculator served by a self-contained local
   executable. Running it requires no Node.js, database, or external service.
+- [Unit conversion](docs/UNIT_CONVERTER.md) in the SK/EN browser, C and [local HTTP APIs](docs/UNIT_HTTP_API.md),
+  with a sourced 233-unit catalogue and compatibility checks.
 - Unit, property, integration, browser, fuzz, and package-consumer checks.
 
 The numeric library is available through the public headers in
@@ -188,15 +190,21 @@ accuracy limitation; those cases are excluded from successful timing claims.
 
 ## Current scope and roadmap
 
+Development updates: tangent pole regressions now pass strict references
+through 2,000 digits. Short scientific formatting uses outward-rounded bounds
+with exact fallback. Benchmark reports preserve the historical failures and
+record the subsequent fixes separately.
+
 **Available:** the numeric C library, CLI and local bilingual browser calculator,
 exact rational arithmetic, configurable precision/rounding, scientific functions,
-session history, and opt-in benchmarks.
+session variables/history, BigInt bases 2–36, unit-conversion C/HTTP APIs,
+and opt-in benchmarks.
 
 **Next:** Accuracy follow-ups and optimizations supported by the collected data.
 Direct [BigDecimal and higher-function measurements](docs/DECIMAL_MATH_BENCHMARKS.md)
 include strict references and explicit stress-case limitations.
-Variables, user functions, additional numeral
-systems and bindings are future work. Graphs, equations, unit conversion and
+Session variables and BigInt conversion in bases 2–36 are implemented.
+User functions and language bindings are future work. Graphs, equations and
 account links currently lead to informational pages. See the
 [roadmap](docs/ROADMAP.md) for scope and prerequisites; no delivery dates are promised.
 
@@ -226,6 +234,7 @@ Browse the [documentation guide](docs/README.md) by task or the
 
 | Document | Contents |
 | --- | --- |
+| [Variables](docs/VARIABLES.md) | Session assignments, exact snapshots and lifetime. |
 | [Library guide](docs/LIBRARY_GUIDE.md) | Build, install, and consume the C library. |
 | [API overview](docs/API.md) | Public types, ownership, calculator syntax, and local HTTP API. |
 | [Architecture overview](docs/ARCHITECTURE.md) | Numeric layers, clients, ownership and project boundaries. |

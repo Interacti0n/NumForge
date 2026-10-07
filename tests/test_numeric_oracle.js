@@ -30,6 +30,39 @@ function round(n,d,mode) {
 }
 const cases=[];
 function add(op,a,b,s,m,expected){cases.push({input:`${op} ${a} ${b} ${s} ${m}`,expected:String(expected)});}
+
+// Independent standard BigInt base conversion, including signs and chunk edges.
+for (let base=2; base<=36; base++) {
+  for (const n of [0n, -255n, 1n<<64n, (1n<<1024n)+123456789n]) {
+    add('ibase',n,0,base,0,n.toString(base));
+    add('ibase',n,0,base,1,n.toString(base).toUpperCase());
+    add('iparse',n.toString(base),0,base,0,n);
+    add('iparse',n.toString(base).toUpperCase(),0,base,0,n);
+  }
+}
+function scientific(n, places, mode, shift=0) {
+  let length=abs(n).toString().length, exponent=length-1+shift;
+  let coefficient=round(n,10n**BigInt(length-places-1),mode);
+  let text=abs(coefficient).toString();
+  if(text.length>places+1) exponent++;
+  text=text.replace(/0+$/,'');
+  return (coefficient<0n?'-':'')+text[0]+(text.length>1?'.'+text.slice(1):'')+'E'+(exponent<0?'-':'+')+Math.abs(exponent);
+}
+// Large coefficients exercise the bounded-prefix path and ambiguous sticky tails.
+for (let i=0;i<8;i++) {
+  let text=String(1+rnd(9));
+  for(let j=1;j<(i<4 ? 2000+i*200 : 12000+(i-4)*1000);j++) text+=rnd(10);
+  text=text.slice(0,-1)+'1';
+  const n=BigInt((i%2?'-':'')+text);
+  for(const places of [0,10,100,128,129]) for(let mode=0;mode<6;mode++)
+    for(const shift of [0,-10000]) add('dfmt',`${n}e${shift}`,0,places,mode,scientific(n,places,mode,shift));
+}
+for (const text of ['123456789005'+'0'.repeat(1987)+'1','999999999995'+'0'.repeat(1987)+'1']) {
+  for(const sign of [1n,-1n]) for(let mode=0;mode<6;mode++) {
+    const n=sign*BigInt(text);add('dfmt',n,0,10,mode,scientific(n,10,mode));
+  }
+}
+
 for(let i=0;i<180;i++) {
   const a=integer(),b=integer();
   add('iadd',a,b,0,0,a+b);add('isub',a,b,0,0,a-b);add('imul',a,b,0,0,a*b);

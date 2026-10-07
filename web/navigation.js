@@ -44,8 +44,6 @@ function setupUpcoming()
                 'Čo plánujeme', 'Zadanie funkcie, prehľadný graf a ovládanie rozsahu. Presné správanie ešte navrhneme.', '∿'],
             solve: ['Riešenie rovníc', 'Samostatný nástroj na hľadanie riešení rovníc je v príprave.',
                 'Čo plánujeme', 'Najprv určíme podporované typy rovníc, presnosť a spôsob zobrazenia riešení.', 'x='],
-            units: ['Prevod jednotiek', 'Prevod medzi jednotkami pripravujeme ako samostatný nástroj.',
-                'Čo plánujeme', 'Začneme jasne definovanými veličinami, jednotkami a pravidlami presnosti.', '↔'],
             login: ['Prihlásenie', 'Prihlasovanie zatiaľ nie je dostupné.',
                 'Čo bude ďalej', 'Po zavedení účtov sa tu bude dať bezpečne prihlásiť a pracovať s vlastným priestorom.', '→', 'Registrácia', '/register?lang=sk'],
             register: ['Vytvoriť účet', 'Registráciu pripravujeme spolu s vlastným priestorom používateľa.',
@@ -56,8 +54,6 @@ function setupUpcoming()
                 'What we plan', 'Function input, a clear plot and range controls. We still need to design the exact behavior.', '∿'],
             solve: ['Equation solver', 'A dedicated tool for finding solutions to equations is in development.',
                 'What we plan', 'First we will define supported equation types, precision and how solutions are shown.', 'x='],
-            units: ['Unit converter', 'We are preparing unit conversion as a separate tool.',
-                'What we plan', 'We will start with clearly defined quantities, units and precision rules.', '↔'],
             login: ['Sign in', 'Sign-in is not available yet.',
                 'What comes next', 'Once accounts are available, you will be able to sign in securely and use your own workspace.', '→', 'Sign up', '/register?lang=en'],
             register: ['Create an account', 'Registration is planned alongside a personal workspace.',
@@ -129,7 +125,7 @@ async function openLicense()
 
 function pageContent(shell)
 {
-    return shell?.querySelector(':scope > .workspace, :scope > .guide-layout, :scope > .upcoming-main');
+    return shell?.querySelector(':scope > .workspace, :scope > .guide-layout, :scope > .upcoming-main, :scope > .units-workspace');
 }
 
 function scrollToDestination(hash)
@@ -175,11 +171,11 @@ async function navigate(destination, addHistory = true)
         if (!response.ok || !response.headers.get('content-type')?.includes('text/html'))
             throw new Error('Page unavailable');
         const incoming = new DOMParser().parseFromString(await response.text(), 'text/html');
-        const incomingShell = incoming.querySelector('.calculator-shell, .guide-shell');
+        const incomingShell = incoming.querySelector('.calculator-shell, .guide-shell, .units-shell');
         const incomingContent = pageContent(incomingShell);
         const incomingHeader = incomingShell?.querySelector(':scope > .page-header');
         const incomingFooter = incomingShell?.querySelector(':scope > .page-footer');
-        const shell = document.querySelector('.calculator-shell, .guide-shell');
+        const shell = document.querySelector('.calculator-shell, .guide-shell, .units-shell');
         const currentContent = pageContent(shell);
         const currentStyle = document.querySelector('link[rel="stylesheet"]:not([href$="chrome.css"])');
         const incomingStyle = incoming.querySelector('link[rel="stylesheet"]:not([href$="chrome.css"])');
@@ -210,6 +206,8 @@ async function navigate(destination, addHistory = true)
         window.dispatchEvent(new Event('numforge:navigate'));
         window.numforgeDisposeCalculator?.();
         window.numforgeDisposeCalculator = null;
+        window.numforgeDisposeUnits?.();
+        window.numforgeDisposeUnits = null;
 
         const replacement = document.importNode(incomingContent, true);
         if (stagedStyle)
@@ -227,6 +225,18 @@ async function navigate(destination, addHistory = true)
         if (addHistory) history.pushState(null, '', destination.href);
         activePageKey = destination.pathname + destination.search;
         setupUpcoming();
+        if (replacement.querySelector('#unit-converter'))
+        {
+            if (window.numforgeInitUnits)
+                window.numforgeDisposeUnits = window.numforgeInitUnits();
+            else await new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = '/assets/units.js';
+                script.onload = resolve;
+                script.onerror = reject;
+                document.body.append(script);
+            });
+        }
         if (replacement.querySelector('#calculator'))
         {
             if (window.numforgeInitCalculator)

@@ -3,6 +3,7 @@
 
 #include <unity.h>
 #include <numforge/bigint.h>
+#include "bigint_base_references.h"
 
 
 /* ============================================================
@@ -2383,9 +2384,47 @@ void test_arithmetic_null_arguments(void)
    Main
    ============================================================ */
 
+
+static void test_base_conversion_contract(void)
+{
+    BigInt *value = make_bigint(base_reference_decimal);
+    BigInt *parsed = make_bigint("777");
+    char *text = NULL;
+    char marker[] = "unchanged";
+    for (size_t i=0; i<sizeof(base_references)/sizeof(base_references[0]); i++)
+    {
+        unsigned base = base_references[i].base;
+        TEST_ASSERT_EQUAL(BIGINT_OK, bigint_to_string_base(value, base, false, &text));
+        TEST_ASSERT_EQUAL_STRING(base_references[i].text, text);
+        TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string_base(parsed, text, base));
+        assert_bigint_string(parsed, base_reference_decimal);
+        free(text); text = NULL;
+    }
+    const char *invalid[] = {"", "+", "-", " 12", "12 ", "0xFF", "1_0", "G"};
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(parsed, "777"));
+    for(size_t i=0;i<sizeof(invalid)/sizeof(invalid[0]);i++)
+    {
+        TEST_ASSERT_EQUAL(BIGINT_INVALID_ARGUMENT, bigint_set_string_base(parsed, invalid[i], 16));
+        assert_bigint_string(parsed,"777");
+    }
+    text=marker;
+    TEST_ASSERT_EQUAL(BIGINT_INVALID_ARGUMENT,bigint_to_string_base(value,1,true,&text));
+    TEST_ASSERT_EQUAL_PTR(marker,text);
+    TEST_ASSERT_EQUAL(BIGINT_INVALID_ARGUMENT,bigint_set_string_base(parsed,"10",37));
+    TEST_ASSERT_EQUAL(BIGINT_NULL_ARGUMENT,bigint_set_string_base(NULL,"10",2));
+    TEST_ASSERT_EQUAL(BIGINT_NULL_ARGUMENT,bigint_to_string_base(value,2,false,NULL));
+    TEST_ASSERT_EQUAL(BIGINT_OK,bigint_set_string_base(parsed,"-000",36));
+    TEST_ASSERT_EQUAL(BIGINT_OK,bigint_to_string_base(parsed,36,true,&text));
+    TEST_ASSERT_EQUAL_STRING("0",text); free(text);
+    TEST_ASSERT_EQUAL(BIGINT_OK,bigint_set_string_base(parsed,"+000fF",16));
+    assert_bigint_string(parsed,"255");
+    bigint_destroy(value);bigint_destroy(parsed);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_base_conversion_contract);
 
     /* Status */
     RUN_TEST(test_status_to_string);

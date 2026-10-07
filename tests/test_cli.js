@@ -61,3 +61,7 @@ assert.match(result.stdout, /1: 1\/8 -> 0.12/);
 assert.match(result.stdout, /3: ans\+1 -> 2/);
 assert.equal((result.stderr.match(/ans is undefined/g) || []).length, 2);
 assert.match(result.stderr, /division by zero/);
+
+result = run('precision 10\nx=2/3\nx*3\nx=x+1\nnotation fraction\nx\nreset\nx\n');
+assert.deepEqual(result.results, ['2/3','2','5/3','5/3']);
+assert.match(result.stderr, /variable is undefined/);

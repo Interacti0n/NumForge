@@ -137,3 +137,16 @@ are:
 - cached powers used repeatedly by higher-level decimal operations.
 
 These must preserve the representation and public semantic contracts above.
+
+
+## Explicit numeral bases
+
+`bigint_set_string_base` and `bigint_to_string_base` support bases 2–36 using
+ASCII digits and explicit output case. The parser validates the entire input
+before computing into a temporary. Parsing uses maximal uint64 radix chunks;
+formatting repeatedly divides a scratch magnitude by the corresponding chunk
+power, pads internal chunks, then reverses the digits. Overflow checks bound
+buffer sizes; budgets are checked between chunks. Existing decimal entry points
+retain their optimized 19-digit conversion. See [API](API.md)
+for ownership and syntax. Independent Node BigInt references and injected
+allocation failures cover both directions.

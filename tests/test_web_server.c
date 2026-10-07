@@ -33,7 +33,7 @@ typedef socklen_t SmokeSocketLength;
 #define smoke_close_socket close
 #endif
 
-#define SMOKE_RESPONSE_CAPACITY 65536U
+#define SMOKE_RESPONSE_CAPACITY 131072U
 #define SMOKE_START_ATTEMPTS 200U
 #define SMOKE_RETRY_DELAY_MS 25U
 #define SMOKE_LOOPBACK_IPV4 0x7f000001UL
@@ -482,6 +482,24 @@ int main(int argc, char **argv)
         const char *status;
         const char *body;
     } extra_cases[] = {
+        { "GET /units?lang=sk HTTP/1.1\r\nHost: localhost\r\n\r\n",
+          "HTTP/1.1 200 OK", "id=\"unit-converter\"" },
+        { "GET /units?lang=en HTTP/1.1\r\nHost: localhost\r\n\r\n",
+          "HTTP/1.1 200 OK", "Same value." },
+        { "GET /assets/units.js HTTP/1.1\r\nHost: localhost\r\n\r\n",
+          "HTTP/1.1 200 OK", "window.numforgeInitUnits" },
+        { "GET /assets/units.css HTTP/1.1\r\nHost: localhost\r\n\r\n",
+          "HTTP/1.1 200 OK", ".units-workspace" },
+        { "GET /api/units HTTP/1.1\r\nHost: localhost\r\n\r\n",
+          "HTTP/1.1 200 OK", "\"name_sk\":\"mikrometer\"" },
+        { "POST /api/convert?from=km&to=m HTTP/1.1\r\nHost: localhost\r\nContent-Length: 3\r\n\r\n1/3",
+          "HTTP/1.1 200 OK", "\"result\":\"1000/3\"" },
+        { "POST /api/convert?from=kg&to=m HTTP/1.1\r\nHost: localhost\r\nContent-Length: 1\r\n\r\n1",
+          "HTTP/1.1 400 Bad Request", "\"code\":\"incompatible_units\"" },
+        { "POST /api/convert?from=m&to=cm HTTP/1.1\r\nHost: localhost\r\nContent-Length: 3\r\n\r\nx=5",
+          "HTTP/1.1 400 Bad Request", "\"code\":\"assignment_not_allowed\"" },
+        { "POST /api/convert?from=m&to=cm HTTP/1.1\r\nHost: localhost\r\nContent-Length: 6\r\n\r\nrand()",
+          "HTTP/1.1 400 Bad Request", "\"code\":\"random_not_allowed\"" },
         { "POST /api/evaluate HTTP/1.1\r\nHost: localhost\r\nContent-Length: 7\r\n\r\n1E-40/1",
           "HTTP/1.1 200 OK", "\"result\":\"1E-40\"" },
         { "POST /api/evaluate HTTP/1.1\r\nHost: localhost\r\nContent-Length: 13\r\n\r\n1E100000000+1",

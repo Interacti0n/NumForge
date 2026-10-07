@@ -363,6 +363,123 @@ static BigDecimalStatus decimal_compose_scientific(
     return status;
 }
 
+/* Propagate outward-rounded bounds from the leading binary limbs. If both
+ * endpoints round to the same requested decimal, all omitted bits are proven
+ * irrelevant to that result. Boundary/tie cases fall back to exact conversion.
+ * Powers and products retain only places+13 digits, not the full coefficient. */
+static BigDecimalStatus decimal_prefix_product(BigDecimal *result,
+    const BigDecimal *a, const BigDecimal *b, int64_t digits,
+    BigDecimalRoundingMode rounding)
+{
+    BigDecimalStatus status = bigdecimal_mul(result, a, b);
+    if (status == BIGDECIMAL_OK)
+        status = bigdecimal_round_significant(result, result, digits, rounding);
+    return status;
+}
+
+static bool decimal_prefix_exponent(const BigDecimal *prefix, int64_t scale,
+    size_t length, DecimalScientificExponent *exponent)
+{
+    uint64_t omitted = bigdecimal_abs_i64(prefix->scale);
+    if (prefix->scale > 0 || omitted > SIZE_MAX - length) return false;
+    return decimal_scientific_exponent(length + (size_t)omitted, scale, exponent);
+}
+
+static BigDecimalStatus decimal_try_prefix(const BigDecimal *value,
+    int64_t places, BigDecimalRoundingMode rounding, char **result, bool *formatted)
+{
+    BigDecimal *low = NULL, *high = NULL, *factor_low = NULL, *factor_high = NULL;
+    BigDecimalStatus status = BIGDECIMAL_OUT_OF_MEMORY;
+    DecimalScientificExponent low_exponent, high_exponent;
+    BigInt prefix;
+    char *low_text = NULL, *high_text = NULL;
+    int comparison;
+    int64_t work_digits;
+    size_t kept_limbs;
+    size_t omitted_limbs;
+    uint64_t power;
+
+    if (places < 0 || places > 128) return BIGDECIMAL_OK;
+    /* Larger retained prefixes need more work. A conservative crossover
+     * keeps ordinary inputs on the cheaper established conversion path. */
+    if (value->coefficient->size < 64U + (size_t)(places * places) / 32U)
+        return BIGDECIMAL_OK;
+    work_digits = places + 13;
+    kept_limbs = ((size_t)work_digits * 4U + 63U) / 64U;
+    if (kept_limbs >= value->coefficient->size) return BIGDECIMAL_OK;
+    omitted_limbs = value->coefficient->size - kept_limbs;
+    if ((uint64_t)omitted_limbs > UINT64_MAX / 64U) return BIGDECIMAL_OK;
+    power = (uint64_t)omitted_limbs * 64U;
+    prefix = *value->coefficient;
+    prefix.limbs += omitted_limbs;
+    prefix.size = kept_limbs;
+    prefix.capacity = kept_limbs;
+    prefix.is_negative = false;
+    low = bigdecimal_create(); high = bigdecimal_create();
+    factor_low = bigdecimal_create(); factor_high = bigdecimal_create();
+    if (!low || !high || !factor_low || !factor_high) goto cleanup;
+#define PREFIX_TRY(call) do { status = (call); if (status != BIGDECIMAL_OK) goto cleanup; } while (0)
+    PREFIX_TRY(bigdecimal_from_bigint(low, &prefix));
+    PREFIX_TRY(bigdecimal_copy(high, low));
+    PREFIX_TRY(bigdecimal_set_string(factor_low, "1"));
+    PREFIX_TRY(bigdecimal_add(high, high, factor_low));
+    PREFIX_TRY(bigdecimal_set_string(factor_low, "2"));
+    PREFIX_TRY(bigdecimal_set_string(factor_high, "2"));
+    while (power != 0U)
+    {
+        if (power & 1U)
+        {
+            PREFIX_TRY(decimal_prefix_product(low, low, factor_low, work_digits, BIGDECIMAL_ROUND_FLOOR));
+            PREFIX_TRY(decimal_prefix_product(high, high, factor_high, work_digits, BIGDECIMAL_ROUND_CEILING));
+        }
+        power >>= 1U;
+        if (power != 0U)
+        {
+            PREFIX_TRY(decimal_prefix_product(factor_low, factor_low, factor_low, work_digits, BIGDECIMAL_ROUND_FLOOR));
+            PREFIX_TRY(decimal_prefix_product(factor_high, factor_high, factor_high, work_digits, BIGDECIMAL_ROUND_CEILING));
+        }
+    }
+    low_text = bigint_to_string(low->coefficient);
+    high_text = bigint_to_string(high->coefficient);
+    if (!low_text || !high_text) { status = BIGDECIMAL_OUT_OF_MEMORY; goto cleanup; }
+    if (!decimal_prefix_exponent(low, value->scale, strlen(low_text), &low_exponent) ||
+        !decimal_prefix_exponent(high, value->scale, strlen(high_text), &high_exponent) ||
+        low_exponent.magnitude < BIGDECIMAL_SCIENTIFIC_EXPONENT_THRESHOLD ||
+        low_exponent.negative != high_exponent.negative ||
+        low_exponent.magnitude != high_exponent.magnitude) goto cleanup;
+    free(low_text); low_text = NULL;
+    free(high_text); high_text = NULL;
+    if (value->coefficient->is_negative)
+    {
+        PREFIX_TRY(bigdecimal_negate(low, low));
+        PREFIX_TRY(bigdecimal_negate(high, high));
+    }
+    PREFIX_TRY(bigdecimal_round_significant(low, low, places + 1, rounding));
+    PREFIX_TRY(bigdecimal_round_significant(high, high, places + 1, rounding));
+    PREFIX_TRY(bigdecimal_compare(&comparison, low, high));
+    if (comparison != 0) goto cleanup;
+    low_text = bigint_to_string(low->coefficient);
+    if (!low_text) { status = BIGDECIMAL_OUT_OF_MEMORY; goto cleanup; }
+    {
+        bool negative = low_text[0] == '-';
+        size_t length = strlen(low_text + negative);
+        if (!decimal_prefix_exponent(low, value->scale, length, &low_exponent)) goto cleanup;
+        if (negative) memmove(low_text, low_text + 1, length + 1U);
+        *formatted = true;
+        status = decimal_compose_scientific(low_text, length, negative,
+            low_exponent, places, rounding, result);
+        low_text = NULL;
+    }
+cleanup:
+    free(low_text); free(high_text);
+    bigdecimal_destroy(low); bigdecimal_destroy(high);
+    bigdecimal_destroy(factor_low); bigdecimal_destroy(factor_high);
+    /* Extreme scales retain the established full-conversion path. */
+    if (status == BIGDECIMAL_SCALE_OVERFLOW) status = BIGDECIMAL_OK;
+    return status;
+#undef PREFIX_TRY
+}
+
 static BigDecimalStatus decimal_try_format_scientific(
     const BigDecimal *value,
     int64_t output_scale,
@@ -386,6 +503,10 @@ static BigDecimalStatus decimal_try_format_scientific(
         return BIGDECIMAL_OK;
     }
 
+    {
+        BigDecimalStatus status = decimal_try_prefix(value, output_scale, rounding, result, formatted);
+        if (status != BIGDECIMAL_OK || *formatted) return status;
+    }
     coefficient = bigint_to_string(value->coefficient);
     if (coefficient == NULL)
     {

@@ -1707,9 +1707,54 @@ void test_bigrational_conversion_preserves_outputs_on_allocation_failure(void)
     }
 }
 
+
+static void test_base_conversion_and_prefix_failure_safety(void)
+{
+    char hexadecimal[1001], decimal[4097];
+    memset(hexadecimal,'f',1000);hexadecimal[1000]='\0';
+    memset(decimal,'7',4096);decimal[4096]='\0';
+    BigInt *value=make_bigint("777");
+    BigDecimal *large=make_bigdecimal(decimal);
+    char marker_text[]="unchanged";
+    char *text=marker_text;
+    size_t parse_calls, format_calls;
+    numforge_test_allocator_begin(0);
+    TEST_ASSERT_EQUAL(BIGINT_OK,bigint_set_string_base(value,hexadecimal,16));
+    parse_calls=numforge_test_allocator_call_count();numforge_test_allocator_end();
+    for(size_t failure=1;failure<=parse_calls;failure++)
+    {
+        TEST_ASSERT_EQUAL(BIGINT_OK,bigint_set_string(value,"777"));
+        numforge_test_allocator_begin(failure);
+        BigIntStatus status=bigint_set_string_base(value,hexadecimal,16);
+        TEST_ASSERT_TRUE(numforge_test_allocator_did_fail());numforge_test_allocator_end();
+        TEST_ASSERT_EQUAL(BIGINT_OUT_OF_MEMORY,status);assert_bigint_text("777",value);
+    }
+    for(size_t failure=1;failure<=2;failure++)
+    {
+        text=marker_text;
+        numforge_test_allocator_begin(failure);
+        BigIntStatus status=bigint_to_string_base(value,2,false,&text);
+        TEST_ASSERT_TRUE(numforge_test_allocator_did_fail());numforge_test_allocator_end();
+        TEST_ASSERT_EQUAL(BIGINT_OUT_OF_MEMORY,status);TEST_ASSERT_EQUAL_PTR(marker_text,text);
+    }
+    text=NULL;numforge_test_allocator_begin(0);
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK,bigdecimal_format(large,10,BIGDECIMAL_ROUND_HALF_EVEN,&text));
+    format_calls=numforge_test_allocator_call_count();numforge_test_allocator_end();free(text);
+    for(size_t failure=1;failure<=format_calls;failure++)
+    {
+        text=marker_text;
+        numforge_test_allocator_begin(failure);
+        BigDecimalStatus status=bigdecimal_format(large,10,BIGDECIMAL_ROUND_HALF_EVEN,&text);
+        TEST_ASSERT_TRUE(numforge_test_allocator_did_fail());numforge_test_allocator_end();
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OUT_OF_MEMORY,status);TEST_ASSERT_EQUAL_PTR(marker_text,text);
+    }
+    bigint_destroy(value);bigdecimal_destroy(large);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_base_conversion_and_prefix_failure_safety);
     RUN_TEST(test_application_budget_is_cumulative_and_scoped);
     RUN_TEST(test_numeric_loops_cancel_without_changing_destinations);
     RUN_TEST(test_pipeline_deadline_covers_all_checkpoints);

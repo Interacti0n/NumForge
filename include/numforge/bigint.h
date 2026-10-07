@@ -78,6 +78,19 @@ char *bigint_to_string( /*Return an owned decimal string released with free(), o
     const BigInt *value
 );
 
+/* Explicit numeral bases 2..36. ASCII digits 0..9, A..Z/a..z; parsing is
+ * case-insensitive. Optional leading +/- and leading zeros are accepted.
+ * Whitespace, separators and implicit prefixes (e.g. 0x) are not supported.
+ * A prefix-like string is interpreted as ordinary digits if valid in base.
+ * Zero is canonical "0"; negative zero normalizes to zero. No output prefix.
+ * Invalid base/digit/text returns BIGINT_INVALID_ARGUMENT; required NULL
+ * pointers return BIGINT_NULL_ARGUMENT. On failure destination and *result
+ * remain unchanged. On success *result owns new text released with free().
+ * Decimal-only legacy entry points above retain their existing behavior. */
+BigIntStatus bigint_set_string_base(BigInt *value, const char *text, unsigned base);
+BigIntStatus bigint_to_string_base(const BigInt *value, unsigned base,
+    bool uppercase, char **result);
+
 /*
 ------------------------------------------------------------------------------------------------------------------------------
     Comparison and inspection functions for BigInt.

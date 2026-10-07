@@ -196,3 +196,17 @@ The reports verified all 3,201 scheduled attempts and metric/artifact consistenc
 GCC here targets Windows; Linux/macOS execution remains for the pushed CI
 matrix. POSIX timer feature selection is defined before forced benchmark
 includes, but those Unix builds have not run locally.
+
+
+## Tangent accuracy follow-up
+
+The tables above are preserved historical measurements, including the failed
+pole outcomes. Subsequent development refines pi/2 reduction to cover the
+significant digits lost through cancellation for tangent. All five original
+pole cases now match the unchanged independent references exactly at
+10/100/500/1,000/2,000 digits in MSVC validation. Ninety additional frozen
+references cover both sides, signs, odd multiples, aliasing and all six rounding
+modes at 10/30/100 digits (mpmath 1.3.0, requested+240/+400 dps). The smoke check
+now requires the formerly failing 10-digit pole to pass. This fixes the observed
+cancellation defect; it is not a proof of universal correct rounding, and the
+historical timeout cases still require their own investigation.

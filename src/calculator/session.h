@@ -10,6 +10,8 @@
     Each retained coefficient was allocated under the 128 KiB single-allocation
     bound. Sixteen entries (value, <=64 KiB display, <=4096-byte input) retain
     less than 4 MiB including object overhead. Preview has one separate value.
+    Up to 32 variable snapshots add their separately owned typed values; the
+    history estimate does not include them. The same per-allocation bound applies.
     No persistence or thread safety. Revisions identify requests, not values.
 
     Implementation: src/calculator/session.c
@@ -37,6 +39,8 @@ typedef struct CalculatorSession
     uint64_t preview_random_start;
     uint64_t preview_random_state;
     bool random_initialized;
+    CalculatorVariable variables[CALCULATOR_VARIABLE_CAPACITY];
+    size_t variable_count;
 } CalculatorSession;
 
 void calculator_session_destroy(CalculatorSession *session);

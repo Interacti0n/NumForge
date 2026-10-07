@@ -3,6 +3,11 @@
 ## Build and use
 
 - [Library guide](LIBRARY_GUIDE.md): build, install and consume the C library.
+- [Units](UNITS.md): public conversion foundation, compatibility and precision.
+- [Unit catalogue](UNIT_CATALOG.md): SK/EN names, factors and primary-source provenance.
+- [Unit HTTP API](UNIT_HTTP_API.md): catalogue, expression conversion and read-only session access.
+- [Browser unit converter](UNIT_CONVERTER.md): categories, precision, preview/confirmation and session behavior.
+- [Variables](VARIABLES.md): session assignments, exact values and lifetime.
 - [API overview](API.md): numeric contracts, calculator syntax and local HTTP API.
 - [Testing](TESTING.md): regression checks, sanitizers, fuzzing and browser tests.
 - [Release packaging](RELEASE_PACKAGING.md): portable archives and release automation.

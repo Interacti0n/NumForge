@@ -124,6 +124,7 @@ add_library(numforge STATIC
     src/bigdecimal/format_mode.c
     src/bigdecimal/constants.c
     src/bigrational/bigrational.c
+    src/units/units.c
     src/internal/numforge_alloc.c
 )
 
@@ -145,6 +146,7 @@ if(NUMFORGE_BUILD_APPS OR BUILD_TESTING OR NUMFORGE_BUILD_FUZZERS OR NUMFORGE_BU
         src/calculator/functions.c
         src/calculator/formatter.c
         src/web/web_api.c
+        src/web/unit_web.c
         src/web/http_request.c
     )
     target_link_libraries(numforge_client PUBLIC numforge)
@@ -210,6 +212,10 @@ set(NUMFORGE_WEB_ASSETS
     web/chrome.css
     web/navigation.js
     web/calculator.js
+    web/units.sk.html
+    web/units.en.html
+    web/units.css
+    web/units.js
     web/logo.png
     web/wordmark.png
 )
@@ -465,6 +471,13 @@ if(BUILD_TESTING)
     numforge_enable_diagnostics(bigrational_tests)
     add_test(NAME bigrational_tests COMMAND bigrational_tests)
 
+    add_executable(units_tests tests/test_units.c)
+    target_link_libraries(units_tests PRIVATE numforge unity)
+    target_include_directories(units_tests PRIVATE src/internal)
+    target_compile_definitions(units_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
+    numforge_enable_diagnostics(units_tests)
+    add_test(NAME units_tests COMMAND units_tests)
+
     target_link_libraries(bigdecimal_tests
         PRIVATE
         numforge
@@ -522,6 +535,13 @@ if(BUILD_TESTING)
         add_test(NAME ${suite}_tests COMMAND ${suite}_tests)
         set_tests_properties(${suite}_tests PROPERTIES TIMEOUT 60)
     endforeach()
+
+    add_executable(unit_web_tests tests/test_unit_web.c)
+    target_link_libraries(unit_web_tests PRIVATE numforge_client unity)
+    target_include_directories(unit_web_tests PRIVATE src/internal)
+    target_compile_definitions(unit_web_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
+    numforge_enable_diagnostics(unit_web_tests)
+    add_test(NAME unit_web_tests COMMAND unit_web_tests)
 
     add_executable(web_api_tests
         tests/test_web_api.c
@@ -613,6 +633,8 @@ if(BUILD_TESTING)
 
     find_program(NUMFORGE_NODE_EXECUTABLE NAMES node nodejs HINTS "C:/Program Files/nodejs")
     if(NUMFORGE_NODE_EXECUTABLE)
+        add_test(NAME unit_catalog_check COMMAND "${NUMFORGE_NODE_EXECUTABLE}"
+            "${PROJECT_SOURCE_DIR}/scripts/generate_unit_catalog.cjs" --check)
         if(NUMFORGE_BUILD_APPS)
         add_test(NAME cli_tests COMMAND "${NUMFORGE_NODE_EXECUTABLE}"
             "${PROJECT_SOURCE_DIR}/tests/test_cli.js" $<TARGET_FILE:calculator>)

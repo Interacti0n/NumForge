@@ -179,6 +179,7 @@ int main(void)
     puts("Use 'precision N' or 'precision full' to set output formatting.");
     puts("Use 'angle rad' or 'angle deg' to select the trigonometric angle unit.");
     puts("Use 'notation auto|plain|scientific|math|fraction' to select result notation.");
+    puts("Variables: x=2/3 stores a value; x*3 uses it. Names: ASCII letters, case-sensitive.");
     puts("ans holds the last successful result. Use 'history' to list results or 'reset' to clear the session.");
     puts("rand(), rand(x), and rand(x;y) draw independent random decimals in bounded ranges.");
 

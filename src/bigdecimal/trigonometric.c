@@ -233,7 +233,8 @@ static BigDecimalStatus trig_reduce(
     BigDecimal *remainder,
     unsigned *quadrant,
     const BigDecimal *value,
-    int64_t work_digits
+    int64_t work_digits,
+    bool adaptive
 )
 {
     BigDecimal *pi = bigdecimal_create();
@@ -244,6 +245,7 @@ static BigDecimalStatus trig_reduce(
     BigDecimal *difference = bigdecimal_create();
     BigDecimalStatus status = BIGDECIMAL_OUT_OF_MEMORY;
     int64_t reduction_digits;
+    int64_t base_reduction_digits;
 
     if (pi == NULL || two == NULL || half_pi == NULL || quotient == NULL ||
         product == NULL || difference == NULL)
@@ -252,16 +254,68 @@ static BigDecimalStatus trig_reduce(
     }
 
     TRIG_TRY(trig_reduction_digits(value, work_digits, &reduction_digits));
-    TRIG_TRY(bigdecimal_set_constant_significant(
-        pi, BIGDECIMAL_CONSTANT_PI, reduction_digits, BIGDECIMAL_ROUND_HALF_EVEN));
+    base_reduction_digits = reduction_digits;
     TRIG_TRY(bigdecimal_set_string(two, "2"));
-    TRIG_TRY(bigdecimal_div_exact_or_significant(
-        half_pi, pi, two, reduction_digits, BIGDECIMAL_ROUND_HALF_EVEN));
-    TRIG_TRY(bigdecimal_div(
-        quotient, value, half_pi, 0, BIGDECIMAL_ROUND_HALF_EVEN));
+    for (;;)
+    {
+        int64_t required_digits;
+        int64_t lost_digits;
+        char *coefficient;
+        size_t length;
+
+        TRIG_TRY(bigdecimal_set_constant_significant(
+            pi, BIGDECIMAL_CONSTANT_PI, reduction_digits, BIGDECIMAL_ROUND_HALF_EVEN));
+        TRIG_TRY(bigdecimal_div_exact_or_significant(
+            half_pi, pi, two, reduction_digits, BIGDECIMAL_ROUND_HALF_EVEN));
+        TRIG_TRY(bigdecimal_div(
+            quotient, value, half_pi, 0, BIGDECIMAL_ROUND_HALF_EVEN));
+        TRIG_TRY(bigdecimal_mul(product, quotient, half_pi));
+        TRIG_TRY(bigdecimal_sub(difference, value, product));
+
+        /* A zero quotient introduces no pi error (including tiny inputs).
+         * Otherwise cancellation needs additional absolute pi precision so
+         * the reduced angle retains work_digits significant digits. This
+         * protects tangent near odd multiples of pi/2. */
+        if (!adaptive || bigint_is_zero(quotient->coefficient))
+        {
+            break;
+        }
+        if (bigint_is_zero(difference->coefficient))
+        {
+            /* A finite decimal cannot equal a nonzero irrational multiple
+             * of pi/2. Refine instead of treating rounded pi as a pole. */
+            if (!bigdecimal_i64_add(reduction_digits, reduction_digits, &required_digits))
+            {
+                status = BIGDECIMAL_VALUE_TOO_LARGE;
+                goto cleanup;
+            }
+        }
+        else
+        {
+            coefficient = bigint_to_string(difference->coefficient);
+            if (coefficient == NULL)
+            {
+                status = BIGDECIMAL_OUT_OF_MEMORY;
+                goto cleanup;
+            }
+            length = strlen(coefficient + (coefficient[0] == '-'));
+            free(coefficient);
+            if ((uint64_t)length > (uint64_t)INT64_MAX ||
+                !bigdecimal_i64_sub(difference->scale, (int64_t)length, &lost_digits) ||
+                !bigdecimal_i64_add(base_reduction_digits,
+                    lost_digits > 0 ? lost_digits : 0, &required_digits))
+            {
+                status = BIGDECIMAL_VALUE_TOO_LARGE;
+                goto cleanup;
+            }
+        }
+        if (required_digits <= reduction_digits)
+        {
+            break;
+        }
+        reduction_digits = required_digits;
+    }
     TRIG_TRY(trig_quadrant(quotient, quadrant));
-    TRIG_TRY(bigdecimal_mul(product, quotient, half_pi));
-    TRIG_TRY(bigdecimal_sub(difference, value, product));
     TRIG_TRY(bigdecimal_round_significant(
         remainder, difference, work_digits, BIGDECIMAL_ROUND_HALF_EVEN));
 
@@ -381,7 +435,8 @@ static BigDecimalStatus calculate_sin_cos(
     BigDecimal *sine,
     BigDecimal *cosine,
     const BigDecimal *value,
-    int64_t digits
+    int64_t digits,
+    bool adaptive
 )
 {
     BigDecimal *remainder = bigdecimal_create();
@@ -395,7 +450,7 @@ static BigDecimalStatus calculate_sin_cos(
         goto cleanup;
     }
 
-    TRIG_TRY(trig_reduce(remainder, &quadrant, value, digits));
+    TRIG_TRY(trig_reduce(remainder, &quadrant, value, digits, adaptive));
     TRIG_TRY(trig_series(reduced_sine, reduced_cosine, remainder, digits));
 
     switch (quadrant)
@@ -471,7 +526,7 @@ static BigDecimalStatus trig_forward(
         goto cleanup;
     }
 
-    TRIG_TRY(calculate_sin_cos(sine, cosine, value, work_digits));
+    TRIG_TRY(calculate_sin_cos(sine, cosine, value, work_digits, operation == 2U));
 
     if (operation == 0U)
     {

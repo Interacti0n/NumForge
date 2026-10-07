@@ -3,6 +3,7 @@
 #include <unity.h>
 
 #include <numforge/bigdecimal.h>
+#include "tangent_references.h"
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
@@ -190,6 +191,19 @@ static void test_rounding_and_invalid_arguments(void)
     bigdecimal_destroy(result);
 }
 
+static void test_tangent_poles_independent_rounding_and_aliasing(void)
+{
+    for (size_t index = 0; index < sizeof(tangent_references) / sizeof(tangent_references[0]); index++)
+    {
+        BigDecimal *value = make_decimal(tangent_references[index].input);
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_tan(value, value,
+            tangent_references[index].digits,
+            (BigDecimalRoundingMode)tangent_references[index].rounding));
+        assert_text(tangent_references[index].expected, value);
+        bigdecimal_destroy(value);
+    }
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -198,5 +212,6 @@ int main(void)
     RUN_TEST(test_large_argument_uses_extended_pi_reduction);
     RUN_TEST(test_inverse_known_values_and_domains);
     RUN_TEST(test_rounding_and_invalid_arguments);
+    RUN_TEST(test_tangent_poles_independent_rounding_and_aliasing);
     return UNITY_END();
 }

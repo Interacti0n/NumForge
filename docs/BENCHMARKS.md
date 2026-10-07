@@ -235,3 +235,44 @@ See [BigDecimal and higher-function measurements](DECIMAL_MATH_BENCHMARKS.md)
 for direct arithmetic, scale/normalization diagnostics, independently checked
 high-precision math, constant factory boundaries and time-bounded three-run
 recording. That suite keeps numerical mismatches separate from valid timings.
+
+
+## Bounded-prefix formatting follow-up
+
+Short scientific output now forms positive lower/upper bounds from the leading
+binary limbs and omitted-bit interval. Powers of two and products use outward
+FLOOR/CEILING rounding at a bounded working precision. Only when both endpoints
+produce the same requested result and agree on the scientific exponent is that
+text accepted. Ambiguous sticky/tie/exponent boundaries use the full conversion.
+No floating-point digit estimate decides a result; full output retains its path.
+
+The fast path currently accepts 0–128 mantissa places and a conservative size
+threshold of `64 + places*places/32` coefficient limbs. The threshold avoids a
+measured regression for 100-place output on 4,096-digit inputs. It is a local
+selection policy, not a universal crossover claim.
+
+Three matching before/after runs on the same Windows x64/Ryzen 7 7435HS/MSVC
+19.51 Release setup are preserved in `build/format-prefix-comparison/`, including
+CSV, compiler diagnostics, source patch and machine metadata. The before
+executable contains the unchanged formatter from `fd248fc`; after is the current
+development snapshot. No CPU affinity/frequency locking was used.
+
+| Case | Before median range | After median range |
+| --- | ---: | ---: |
+| Auto, 10 places, 4,096 digits | 170–176 µs | 105–135 µs |
+| Auto, 10 places, 16,384 digits | 2.894–3.066 ms | 0.124–0.193 ms |
+| Scientific, 100 places, 4,096 digits (fallback) | 171–183 µs | 172–176 µs |
+| Scientific, 100 places, 16,384 digits | 2.884–2.920 ms | 0.602–0.645 ms |
+| Full scientific, 16,384 digits | 2.841–2.914 ms | 2.847–2.878 ms |
+
+The 16,384-digit Auto result remains 19 bytes. Peak tracked payload in the
+operation probe drops from 32,784 to 632 bytes; cumulative requested bytes drop
+from 47,957 to 17,382, while allocation calls increase from 7 to 702. The method
+trades many small temporary allocations for less conversion work and lower
+peak payload; these figures are not process RSS or a general allocator claim.
+
+Independent Node exact-integer rounding checks cover both signs, all six modes,
+0/10/100/128 places, large exponents, carry/sticky tails and the 129-place fallback.
+Every allocation in an exercised prefix path is failed in turn to verify output
+preservation. GCC and MSVC correctness checks pass; comparable performance on
+other compilers/platforms remains future measurement work.

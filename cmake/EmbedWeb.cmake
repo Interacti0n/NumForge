@@ -32,6 +32,10 @@ numforge_embed_web_file(NUMFORGE_API_CSS api.css)
 numforge_embed_web_file(NUMFORGE_CHROME_CSS chrome.css)
 numforge_embed_web_file(NUMFORGE_NAVIGATION_JS navigation.js)
 numforge_embed_web_file(NUMFORGE_CALCULATOR_JS calculator.js)
+numforge_embed_web_file(NUMFORGE_UNITS_SK_HTML units.sk.html)
+numforge_embed_web_file(NUMFORGE_UNITS_EN_HTML units.en.html)
+numforge_embed_web_file(NUMFORGE_UNITS_CSS units.css)
+numforge_embed_web_file(NUMFORGE_UNITS_JS units.js)
 numforge_embed_web_file(NUMFORGE_LICENSE_TEXT ../LICENSE)
 
 # CMake strings cannot hold NUL bytes, so read PNG assets directly as hex.
@@ -47,6 +51,8 @@ numforge_embed_web_binary(NUMFORGE_LOGO_PNG logo.png)
 numforge_embed_web_binary(NUMFORGE_WORDMARK_PNG wordmark.png)
 
 string(APPEND numforge_web_generated
+    "static const char *const NUMFORGE_UNITS_PAGE[] = {(const char *)NUMFORGE_UNITS_SK_HTML, NULL};\n"
+    "static const char *const NUMFORGE_UNITS_PAGE_EN[] = {(const char *)NUMFORGE_UNITS_EN_HTML, NULL};\n"
     "static const char *const NUMFORGE_WEB_PAGE[] = {(const char *)NUMFORGE_CALCULATOR_SK_HTML, NULL};\n"
     "static const char *const NUMFORGE_WEB_PAGE_EN[] = {(const char *)NUMFORGE_CALCULATOR_EN_HTML, NULL};\n"
     "static const char *const NUMFORGE_API_PAGE[] = {(const char *)NUMFORGE_API_SK_HTML, NULL};\n"

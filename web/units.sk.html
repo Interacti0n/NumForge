@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="sk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#17002f">
+  <style>html { background: #17002f; } html:not(.styles-ready) body { visibility: hidden; } html.css-error body { visibility: visible; }</style>
+  <title>Prevod jednotiek · NumForge</title>
+  <link rel="icon" type="image/png" href="/assets/logo.png">
+  <link rel="stylesheet" href="/assets/units.css" onerror="document.documentElement.classList.add('css-error')">
+  <link rel="stylesheet" href="/assets/chrome.css" onload="document.documentElement.classList.add('styles-ready')" onerror="document.documentElement.classList.add('css-error','styles-ready')">
+</head>
+<body>
+  <div class="app-shell units-shell">
+    <header class="page-header">
+      <a class="brand" href="/?lang=sk" aria-label="NumForge">
+        <img class="brand-mark" src="/assets/logo.png" alt="" width="45" height="45">
+        <span class="brand-text"><strong>NumForge</strong><small>Presné výpočty</small></span>
+      </a>
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-navigation"><span class="menu-icon" aria-hidden="true"></span>Menu</button>
+      <div class="site-navigation" id="site-navigation">
+        <nav class="primary-nav" aria-label="Hlavná navigácia">
+          <a href="/?lang=sk">Kalkulačka</a>
+          <a href="/graph?lang=sk">Grafy</a>
+          <a href="/solve?lang=sk">Rovnice</a>
+          <a href="/units?lang=sk" data-nav="units" aria-current="page">Jednotky</a>
+          <a class="guide-link" href="/api?lang=sk">Návod / API</a>
+        </nav>
+        <div class="header-actions">
+          <span class="language-switch" aria-label="Výber jazyka">
+            <a href="/units?lang=sk" lang="sk" aria-current="true" title="Slovenčina">SK</a>
+            <a href="/units?lang=en" lang="en" title="English">EN</a>
+          </span>
+          <a class="login-link" href="/login?lang=sk">Prihlásiť sa</a>
+          <a class="register-link" href="/register?lang=sk">Registrácia</a>
+        </div>
+      </div>
+    </header>
+
+
+    <div class="units-workspace">
+      <main class="units-column">
+        <div class="intro"><p class="eyebrow">PREVOD JEDNOTIEK</p><h1>Iné jednotky. Rovnaká hodnota.</h1><p>Vyber veličinu, zadaj číslo alebo výraz a preveď ho do jednotky, ktorú potrebuješ.</p></div>
+        <section class="card" aria-labelledby="converter-title">
+          <div class="unit-heading"><div class="section-title"><span class="section-icon" aria-hidden="true">↔</span><h2 id="converter-title">Prevodník</h2></div><span id="unit-category-label" class="unit-category-label"></span></div>
+          <form id="unit-converter">
+            <label class="unit-value" for="unit-input">Hodnota alebo výraz</label>
+            <textarea id="unit-input" rows="1" maxlength="4096" spellcheck="false" placeholder="Napr. 1/3 alebo sqrt(2)" aria-describedby="unit-input-help"></textarea>
+            <div class="unit-pair">
+              <label class="field">Z jednotky<select id="unit-from" disabled></select></label>
+              <button id="unit-swap" type="button" disabled aria-label="Vymeniť jednotky" title="Vymeniť jednotky">⇄</button>
+              <label class="field">Do jednotky<select id="unit-to" disabled></select></label>
+            </div>
+            <div class="unit-submit-row"><p id="unit-input-help">Náhľad priebežne · Enter potvrdí prevod</p><button id="unit-submit" class="primary-button" type="submit" disabled>Previesť <span aria-hidden="true">→</span></button></div>
+            <details class="unit-settings"><summary>Presnosť a zobrazenie</summary>
+              <div class="unit-settings-grid">
+                <label class="field">Výpočtová presnosť<input id="unit-precision" type="number" min="1" max="10000" step="1" value="34" inputmode="numeric"></label>
+                <label class="field">Výpis výsledku<select id="unit-places-mode"><option value="auto">Auto · 10 miest</option><option value="full">Plný výpis</option><option value="custom">Vlastný</option></select></label>
+                <label class="field" id="unit-custom-places" hidden>Desatinné miesta<input id="unit-places" type="number" min="0" max="10000" step="1" value="10" inputmode="numeric" disabled></label>
+                <label class="field">Zápis<select id="unit-notation"><option value="auto">Auto</option><option value="plain">Bežný</option><option value="scientific">Vedecký</option><option value="fraction">Zlomok</option></select></label>
+                <label class="field">Zaokrúhľovanie<select id="unit-rounding"><option value="half_even">Najbližšie · k párnej</option><option value="half_up">Najbližšie · od nuly</option><option value="toward_zero">K nule</option><option value="away_from_zero">Od nuly</option><option value="floor">Nadol</option><option value="ceiling">Nahor</option></select></label>
+                <label class="field">Uhol vo výraze<select id="unit-angle"><option value="rad">RAD</option><option value="deg">DEG</option></select></label>
+              </div><p>Výpočtová presnosť určuje významné číslice približných výpočtov. Výpis určuje desatinné miesta. RAD/DEG platí pre funkcie vo výraze, nie pre výber jednotiek.</p>
+            </details>
+          </form>
+          <details class="unit-info"><summary>O jednotkách a zdrojoch</summary><p id="unit-source-links"></p><p id="unit-category-note"></p></details>
+        </section>
+        <section class="card" aria-labelledby="unit-result-title">
+          <div class="unit-result-heading"><div class="section-title"><span class="section-icon" aria-hidden="true">=</span><h2 id="unit-result-title">Výsledok</h2></div><button id="unit-copy" class="unit-copy" type="button" disabled>⧉ Kopírovať</button></div>
+          <div class="unit-result-line"><output id="unit-result" tabindex="0" data-placeholder="Sem príde náhľad prevodu" aria-labelledby="unit-result-title"></output><span id="unit-result-symbol"></span></div>
+          <p id="unit-status" class="unit-status" role="status" aria-live="polite">Načítavam jednotky…</p>
+          <p id="unit-result-meta" class="unit-meta" hidden></p>
+          <button id="unit-retry" class="unit-copy unit-retry" type="button" hidden>Skúsiť znova</button>
+        </section>
+        <noscript><p>Prevodník potrebuje zapnutý JavaScript.</p></noscript>
+      </main>
+      <aside class="units-sidebar" aria-label="Veličiny">
+        <section class="card" aria-labelledby="unit-categories-title"><div class="sidebar-heading"><span class="sidebar-icon" aria-hidden="true">⌗</span><div><h2 id="unit-categories-title">Veličiny</h2><p>Vyber kategóriu. Prevádzať sa dajú iba kompatibilné jednotky.</p></div></div><button id="unit-category-toggle" class="unit-copy" type="button" aria-expanded="false" aria-controls="unit-categories" aria-label="Vybrať veličinu">Vybrať veličinu ▾</button><div id="unit-categories" class="unit-categories" role="group" aria-labelledby="unit-categories-title"></div></section>
+        <section class="card unit-example-card" aria-labelledby="unit-examples-title"><div class="sidebar-heading"><span class="sidebar-icon" aria-hidden="true">↗</span><div><h2 id="unit-examples-title">Vyskúšaj</h2><p>Kliknutím doplníš ukážkový prevod.</p></div></div><div id="unit-examples" class="unit-examples"></div></section>
+      </aside>
+    </div>
+    <footer class="page-footer"><span>NumForge v@NUMFORGE_VERSION@ · © 2026 Interacti0n</span><nav class="footer-links" aria-label="Informácie o projekte"><a href="/LICENSE" data-license>MIT licencia</a><a href="https://github.com/Interacti0n/NumForge" target="_blank" rel="noopener noreferrer">GitHub</a></nav></footer>
+  </div>
+  <script src="/assets/navigation.js"></script>
+  <script src="/assets/units.js"></script>
+</body>
+</html>

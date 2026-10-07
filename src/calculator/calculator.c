@@ -59,6 +59,8 @@ const char *calculator_status_to_string(
             return "wrong number of arguments";
         case CALCULATOR_UNDEFINED_ANSWER:
             return "ans is undefined";
+        case CALCULATOR_UNDEFINED_VARIABLE:
+            return "variable is undefined";
         case CALCULATOR_STALE_REQUEST:
             return "stale session request";
         case CALCULATOR_SESSION_EXPIRED:
@@ -182,6 +184,7 @@ static bool calculator_expression_independent(const CalculatorExpression *expres
 {
     switch (expression->type)
     {
+        case CALCULATOR_EXPRESSION_VARIABLE:
         case CALCULATOR_EXPRESSION_NUMBER:
             return true;
         case CALCULATOR_EXPRESSION_UNARY:
@@ -301,11 +304,49 @@ CalculatorStatus calculator_compute_value(
     return calculator_compute_value_with_answer(input, context, NULL, NULL, result, error);
 }
 
+/* Resolve names once, before evaluation; ASTs borrow immutable stored values.
+ * A failed lookup keeps its original expression byte offset. */
+static CalculatorStatus calculator_bind_variables(CalculatorExpression *expression,
+    const CalculatorVariable *variables, size_t count, bool *used, CalculatorError *error)
+{
+    CalculatorStatus status;
+    switch (expression->type)
+    {
+        case CALCULATOR_EXPRESSION_VARIABLE:
+            *used = true;
+            for (size_t i=0;i<count;i++)
+                if (strcmp(expression->data.variable.name, variables[i].name)==0)
+                {
+                    expression->data.variable.value=&variables[i].value;
+                    return CALCULATOR_OK;
+                }
+            calculator_error_set(error,CALCULATOR_UNDEFINED_VARIABLE,expression->offset);
+            return CALCULATOR_UNDEFINED_VARIABLE;
+        case CALCULATOR_EXPRESSION_UNARY:
+            return calculator_bind_variables(expression->data.unary.operand,variables,count,used,error);
+        case CALCULATOR_EXPRESSION_POSTFIX:
+            return calculator_bind_variables(expression->data.postfix.operand,variables,count,used,error);
+        case CALCULATOR_EXPRESSION_BINARY:
+            status=calculator_bind_variables(expression->data.binary.left,variables,count,used,error);
+            return status!=CALCULATOR_OK ? status : calculator_bind_variables(expression->data.binary.right,variables,count,used,error);
+        case CALCULATOR_EXPRESSION_CALL:
+            for(size_t i=0;i<expression->data.call.count;i++)
+            {
+                status=calculator_bind_variables(expression->data.call.arguments[i],variables,count,used,error);
+                if(status!=CALCULATOR_OK) return status;
+            }
+            break;
+        default: break;
+    }
+    return CALCULATOR_OK;
+}
+
 static CalculatorStatus calculator_compute_value_with_answer_profile_impl(
     const char *input,
     const CalculatorContext *context,
     const CalculatorValue *answer,
     uint64_t *random_state,
+    const CalculatorVariable *variables, size_t variable_count,
     CalculatorValue *result,
     CalculatorError *error
 )
@@ -365,7 +406,10 @@ static CalculatorStatus calculator_compute_value_with_answer_profile_impl(
 
     if (status == CALCULATOR_OK)
     {
-        status = calculator_parse(input, &expression, error);
+        status = variables != NULL ? calculator_parse_variables(input, &expression, error)
+            : calculator_parse(input, &expression, error);
+        if (status == CALCULATOR_OK && variables != NULL)
+            status = calculator_bind_variables(expression, variables, variable_count, &result->uses_variables, error);
     }
 
     if (status == CALCULATOR_OK)
@@ -493,7 +537,19 @@ CalculatorStatus calculator_compute_value_with_answer(
 )
 {
     NumForgeProfilePhase previous = numforge_profile_enter(NUMFORGE_PHASE_EVALUATE);
-    CalculatorStatus status = calculator_compute_value_with_answer_profile_impl(input, context, answer, random_state, result, error);
+    CalculatorStatus status = calculator_compute_value_with_answer_profile_impl(input, context, answer, random_state, NULL, 0U, result, error);
+    numforge_profile_leave(previous);
+    return status;
+}
+
+CalculatorStatus calculator_compute_value_with_variables(const char *input,
+    const CalculatorContext *context, const CalculatorValue *answer,
+    uint64_t *random_state, const CalculatorVariable *variables, size_t count,
+    CalculatorValue *result, CalculatorError *error)
+{
+    NumForgeProfilePhase previous = numforge_profile_enter(NUMFORGE_PHASE_EVALUATE);
+    CalculatorStatus status = calculator_compute_value_with_answer_profile_impl(
+        input, context, answer, random_state, variables, count, result, error);
     numforge_profile_leave(previous);
     return status;
 }

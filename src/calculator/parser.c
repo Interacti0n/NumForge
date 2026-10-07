@@ -21,6 +21,7 @@ typedef struct CalculatorParser
     CalculatorToken current;
     CalculatorError *error;
     size_t recursion_depth;
+    bool allow_variables;
 } CalculatorParser;
 
 /*
@@ -426,6 +427,17 @@ static CalculatorStatus calculator_parse_primary(
         else if (calculator_constant_from_text(parser->current.text, parser->current.length, &constant))
         {
             expression = calculator_expression_create_constant(&parser->current, constant);
+        }
+        else if (parser->allow_variables)
+        {
+            expression = calculator_expression_create_number(&parser->current);
+            if (expression != NULL)
+            {
+                char *name = expression->data.number.text;
+                expression->type = CALCULATOR_EXPRESSION_VARIABLE;
+                expression->data.variable.name = name;
+                expression->data.variable.value = NULL;
+            }
         }
         else
         {
@@ -880,6 +892,7 @@ static CalculatorStatus calculator_parse_expression(
 
 static CalculatorStatus calculator_parse_profile_impl(
     const char *input,
+    bool allow_variables,
     CalculatorExpression **result,
     CalculatorError *error
 )
@@ -904,6 +917,7 @@ static CalculatorStatus calculator_parse_profile_impl(
         return status;
     }
 
+    parser.allow_variables = allow_variables;
     parser.error = error;
     parser.recursion_depth = 0U;
     status = calculator_parser_advance(&parser);
@@ -940,9 +954,17 @@ CalculatorStatus calculator_parse(
 )
 {
     NumForgeProfilePhase previous = numforge_profile_enter(NUMFORGE_PHASE_PARSE);
-    CalculatorStatus result_status = calculator_parse_profile_impl(input, result, error);
+    CalculatorStatus result_status = calculator_parse_profile_impl(input, false, result, error);
     numforge_profile_leave(previous);
     return result_status;
+}
+
+CalculatorStatus calculator_parse_variables(const char *input, CalculatorExpression **result, CalculatorError *error)
+{
+    NumForgeProfilePhase previous = numforge_profile_enter(NUMFORGE_PHASE_PARSE);
+    CalculatorStatus status = calculator_parse_profile_impl(input, true, result, error);
+    numforge_profile_leave(previous);
+    return status;
 }
 
 void calculator_expression_destroy(
@@ -966,6 +988,9 @@ void calculator_expression_destroy(
             break;
         case CALCULATOR_EXPRESSION_NUMBER:
             free(expression->data.number.text);
+            break;
+        case CALCULATOR_EXPRESSION_VARIABLE:
+            free(expression->data.variable.name);
             break;
         case CALCULATOR_EXPRESSION_CONSTANT:
             break;

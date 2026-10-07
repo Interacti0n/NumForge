@@ -36,6 +36,8 @@ bool calculator_exact_supported(const CalculatorExpression *expression, const Ca
                 }
             }
             return true;
+        case CALCULATOR_EXPRESSION_VARIABLE:
+            return expression->data.variable.value != NULL && expression->data.variable.value->kind != CALCULATOR_VALUE_DECIMAL;
         case CALCULATOR_EXPRESSION_ANSWER:
             return answer != NULL && answer->kind != CALCULATOR_VALUE_DECIMAL;
         case CALCULATOR_EXPRESSION_UNARY:
@@ -519,6 +521,11 @@ static CalculatorStatus calculator_exact_recursive(BigRational **result, const C
                 }
             }
             rational_status = bigrational_from_bigdecimal(value, decimal);
+            break;
+        case CALCULATOR_EXPRESSION_VARIABLE:
+            rational_status = expression->data.variable.value->integer != NULL
+                ? bigrational_from_bigint(value, expression->data.variable.value->integer)
+                : bigrational_copy(value, expression->data.variable.value->rational);
             break;
         case CALCULATOR_EXPRESSION_ANSWER:
             rational_status = answer->integer != NULL ? bigrational_from_bigint(value, answer->integer)

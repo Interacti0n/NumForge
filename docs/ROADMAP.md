@@ -11,7 +11,13 @@ of development, not a schedule or promise of a particular release.
   approximations; roots, logarithms, trigonometric/hyperbolic functions,
   constants, statistics and selected integer operations.
 - Shared CLI/local browser calculator with English/Slovak UI, confirmed `ans`,
+  [session variables](VARIABLES.md),
   session history, stable random previews and a bounded loopback HTTP API.
+- [Unit-conversion C foundation](UNITS.md): a sourced 233-unit catalogue,
+  compatibility checks, exact rational factors and guarded angle projection.
+  [Local HTTP catalogue and conversion](UNIT_HTTP_API.md) with read-only session
+  access and a [SK/EN browser converter](UNIT_CONVERTER.md) are available.
+  Quantity arithmetic remains future work.
 - CMake installation and C/C++ consumer support; numerical, property,
   allocation-failure, integration, browser and fuzz-smoke checks.
 - Formatting/cache/HTTP/memory, BigInt and BigDecimal/math benchmarks with independent
@@ -24,29 +30,29 @@ the README show development code and may be newer than a published release.
 
 Direct BigDecimal arithmetic and higher-function/constant measurements are
 implemented with independent references through 2,000 significant digits;
-see [Decimal/math measurements](DECIMAL_MATH_BENCHMARKS.md). The stress matrix
-exposes an existing accuracy limitation extremely close to tangent poles.
-Investigate sufficient working precision or adaptive guards before treating
-those values as correctly rounded. Some high-precision cases exceed the chosen
-collection deadline and need dedicated longer measurements.
+see [Decimal/math measurements](DECIMAL_MATH_BENCHMARKS.md). The historical stress matrix
+exposed tangent-pole cancellation, now addressed by adaptive reduction and
+strict independent regressions through 2,000 digits. General correctly rounded
+approximate functions remain a separate goal. Some high-precision cases exceed
+the collection deadline and need dedicated longer measurements.
 
-Use those measurements with the completed suites to select optimizations.
-Prefix formatting, buffer reuse, product-tree factorial, specialized squaring,
-normalized division and Karatsuba are candidates, not implemented promises.
+Short scientific formatting now uses bounded prefix conversion with exact
+fallback. Buffer reuse, product-tree factorial, normalized division and
+Karatsuba remain candidates for measured follow-ups.
 Existing experiments are described with their measured tradeoffs in
 [BIGINT_BENCHMARKS.md](BIGINT_BENCHMARKS.md).
 
 ## Later, according to use cases
 
-- Input/output in numeral bases 2–36, stable serialization and language bindings.
-- Session variables and user functions, followed by equation solving, numerical
+- Stable serialization and language bindings; BigInt numeral bases 2–36 are implemented.
+- User functions (session variables are implemented), followed by equation solving, numerical
   analysis and graphing once their semantics and resource limits are defined.
 - Improvements to directed rounding of approximate functions, supported by
   rigorous error bounds or adaptive precision and independent references.
 - Additional constants and mathematical types/functions where there is a
   concrete application need.
 
-Graph, equation, unit-conversion, sign-in and sign-up navigation entries currently
+Graph, equation, sign-in and sign-up navigation entries currently
 open informational pages. Accounts, synchronization and those tools are not
 implemented. The app has no Premium feature or subscription system.
 

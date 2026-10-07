@@ -54,6 +54,7 @@ CalculatorStatus calculator_value_copy(CalculatorValue *result, const Calculator
     temporary.independent = value->independent;
     temporary.uses_answer = value->uses_answer;
     temporary.uses_random = value->uses_random;
+    temporary.uses_variables = value->uses_variables;
     calculator_value_destroy(result);
     *result = temporary;
     return CALCULATOR_OK;
