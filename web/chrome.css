@@ -114,7 +114,7 @@ body::before
     .page-header { gap: 12px; }
     .site-navigation { gap: 9px; }
     .primary-nav a { padding-inline: 3px; font-size: .83rem; }
-    .header-actions { grid-template-columns: 66px 96px 96px; gap: 5px; }
+    .header-actions { grid-template-columns: 74px 96px 96px; gap: 5px; }
     .header-actions > a { padding-inline: 3px; font-size: .78rem; }
     .language-switch a { padding-inline: 7px; font-size: .75rem; }
 }
