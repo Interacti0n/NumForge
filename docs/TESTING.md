@@ -268,6 +268,11 @@ factorial/power experiments and isolated three-run recorder are described in
 [BigInt measurements](BIGINT_BENCHMARKS.md). Build the additional
 `bigint_arithmetic_benchmark` target; use `run_baseline.js --bigint` to record it.
 
+Direct BigDecimal arithmetic, normalization, division, higher functions and
+constants are covered in [Decimal/math measurements](DECIMAL_MATH_BENCHMARKS.md).
+Build `decimal_math_benchmark`; use `run_baseline.js --decimal` for three isolated
+runs, including explicit timeout and numerical-mismatch outcomes.
+
 ```sh
 cmake -S . -B build-bench -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DNUMFORGE_BUILD_APPS=OFF -DNUMFORGE_ENABLE_SANITIZERS=OFF -DNUMFORGE_ENABLE_COVERAGE=OFF -DNUMFORGE_BUILD_BENCHMARKS=ON
 cmake --build build-bench --config Release --target bigint_multiply_benchmark decimal_format_benchmark calculator_benchmark --parallel 2

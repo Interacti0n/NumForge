@@ -173,6 +173,8 @@ formatting are excluded from direct arithmetic timings.
 | BigInt multiplication | Two 65536-bit integers | 6.67–7.14 ms |
 | Public factorial | `10000!` | 31.82–32.50 ms |
 | Auto scientific formatting | 16384 decimal digits, 10 output places | 2.951–2.975 ms |
+| BigDecimal addition, equal scales | Two 2000-digit coefficients | 1.357–1.456 µs |
+| Square root | `sqrt(2)`, 1000 significant digits | 11.928–12.698 ms |
 
 These instrumented measurements describe one machine, not universal speed
 guarantees. The arithmetic suite checks 1084 scenarios against independent exact
@@ -180,6 +182,9 @@ references. Private optimization experiments are reported separately and are
 not production features. See [BigInt measurements](docs/BIGINT_BENCHMARKS.md) and
 [formatting/cache/memory methodology](docs/BENCHMARKS.md) to reproduce the runs,
 inspect allocation costs and understand their limits.
+The [decimal/math measurements](docs/DECIMAL_MATH_BENCHMARKS.md) document the
+new suite, including high-precision timeouts and the extreme tangent-pole
+accuracy limitation; those cases are excluded from successful timing claims.
 
 ## Current scope and roadmap
 
@@ -187,8 +192,10 @@ inspect allocation costs and understand their limits.
 exact rational arithmetic, configurable precision/rounding, scientific functions,
 session history, and opt-in benchmarks.
 
-**Next:** BigDecimal and higher-function measurements, followed by optimizations
-supported by the collected data. Variables, user functions, additional numeral
+**Next:** Accuracy follow-ups and optimizations supported by the collected data.
+Direct [BigDecimal and higher-function measurements](docs/DECIMAL_MATH_BENCHMARKS.md)
+include strict references and explicit stress-case limitations.
+Variables, user functions, additional numeral
 systems and bindings are future work. Graphs, equations, unit conversion and
 account links currently lead to informational pages. See the
 [roadmap](docs/ROADMAP.md) for scope and prerequisites; no delivery dates are promised.
@@ -214,6 +221,9 @@ expression or API call, precision, rounding mode, expected value and reference.
 
 ## Documentation
 
+Browse the [documentation guide](docs/README.md) by task or the
+[benchmark tools](benchmarks/README.md) by purpose.
+
 | Document | Contents |
 | --- | --- |
 | [Library guide](docs/LIBRARY_GUIDE.md) | Build, install, and consume the C library. |
@@ -229,10 +239,33 @@ expression or API call, precision, rounding mode, expected value and reference.
 | [Roadmap](docs/ROADMAP.md) | Available capabilities, planned work and prerequisites. |
 | [Project presentation](docs/PROJECT_PRESENTATION.md) | README assets, screenshot capture and presentation maintenance. |
 | [Release packaging](docs/RELEASE_PACKAGING.md) | Portable Windows/Linux archives, verification and publishing. |
+| [Decimal/math measurements](docs/DECIMAL_MATH_BENCHMARKS.md) | Direct BigDecimal and high-precision math benchmarks, independent references and limitations. |
 
-The library lives in `src/bigint/`, `src/bigdecimal/`, and
-`src/bigrational/`. The calculator and HTTP adapters live in
-`src/calculator/` and `src/web/`; editable browser assets live in `web/`.
+## Repository layout
+
+```text
+include/numforge/     Public C library headers
+src/
+  bigint/            Integer arithmetic
+  bigdecimal/        Decimal arithmetic and scientific functions
+  bigrational/       Exact rational arithmetic
+  calculator/        Parsing, evaluation, formatting and sessions
+  web/               Local HTTP server and API
+  internal/          Private allocation and diagnostic support
+  main.c             CLI entry point
+web/                 Editable browser assets
+tests/               Regression suites, browser checks and package consumers
+benchmarks/          Opt-in measurement tools
+  references/        Frozen math references and their generator
+docs/                Guides, design notes and measurement reports
+  images/            README screenshots
+cmake/               Build, embedding and package helpers
+scripts/             Release packaging tools
+.github/workflows/   CI and release automation
+```
+
+Generated builds, installed staging files and raw benchmark recordings are
+ignored local outputs; they are not part of the source tree.
 
 ## License
 

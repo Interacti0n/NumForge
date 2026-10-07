@@ -52,6 +52,11 @@ endif()
 function(numforge_enable_diagnostics target)
     if(NUMFORGE_BUILD_BENCHMARKS AND NOT "${target}" STREQUAL "web_server_smoke_tests")
         target_compile_definitions(${target} PRIVATE NUMFORGE_ENABLE_ALLOC_STATS)
+        if(NOT WIN32)
+            # Forced stdlib includes can lock libc feature selection before
+            # source-local clock_gettime declarations request POSIX support.
+            target_compile_definitions(${target} PRIVATE _POSIX_C_SOURCE=200809L)
+        endif()
         if(MSVC)
             # The forced include loads stdlib before source-local CRT defines.
             target_compile_definitions(${target} PRIVATE "_CRT_SECURE_NO_WARNINGS=")
@@ -319,7 +324,7 @@ install(
 # ============================================================
 
 if(NUMFORGE_BUILD_BENCHMARKS)
-    target_sources(numforge PRIVATE src/internal/benchmark_profile.c)
+    target_sources(numforge PRIVATE src/internal/benchmark_profile.c src/internal/decimal_profile.c)
     if(WIN32)
         target_link_libraries(numforge PRIVATE psapi)
     else()
@@ -349,12 +354,18 @@ if(NUMFORGE_BUILD_BENCHMARKS)
     add_executable(bigint_arithmetic_benchmark benchmarks/bigint_arithmetic_benchmark.c benchmarks/benchmark_clock.c)
     target_link_libraries(bigint_arithmetic_benchmark PRIVATE numforge)
     numforge_enable_diagnostics(bigint_arithmetic_benchmark)
+    add_executable(decimal_math_benchmark benchmarks/decimal_math_benchmark.c benchmarks/benchmark_clock.c)
+    target_link_libraries(decimal_math_benchmark PRIVATE numforge)
+    numforge_enable_diagnostics(decimal_math_benchmark)
     if(BUILD_TESTING)
         target_compile_definitions(bigint_arithmetic_benchmark PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
         find_program(NUMFORGE_BIGINT_BENCH_NODE NAMES node nodejs)
         if(NUMFORGE_BIGINT_BENCH_NODE)
             add_test(NAME bigint_arithmetic_benchmark_smoke
                 COMMAND ${NUMFORGE_BIGINT_BENCH_NODE} ${PROJECT_SOURCE_DIR}/benchmarks/check_bigint_benchmark.js $<TARGET_FILE:bigint_arithmetic_benchmark>)
+            add_test(NAME decimal_math_benchmark_smoke
+                COMMAND ${NUMFORGE_BIGINT_BENCH_NODE} ${PROJECT_SOURCE_DIR}/benchmarks/check_decimal_math_benchmark.js $<TARGET_FILE:decimal_math_benchmark>)
+            set_tests_properties(decimal_math_benchmark_smoke PROPERTIES TIMEOUT 120)
         elseif(NUMFORGE_REQUIRE_NODE_TESTS)
             message(FATAL_ERROR "BigInt benchmark validation requires Node.js")
         endif()

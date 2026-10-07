@@ -84,4 +84,6 @@ BigDecimalStatus bigdecimal_round_significant(
     BigDecimalRoundingMode rounding
 );
 
+#include "../internal/decimal_profile.h"
+
 #endif

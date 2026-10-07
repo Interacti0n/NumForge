@@ -8,8 +8,18 @@ const binaryDirectory = args.shift();
 const outputDirectory = args.shift();
 const quick = args.includes('--quick');
 const bigintSuite = args.includes('--bigint');
-if (!binaryDirectory || !outputDirectory || args.some(v => v !== '--quick' && v !== '--bigint'))
-    throw Error('Usage: node benchmarks/run_baseline.js binary-directory output-directory [--quick] [--bigint]');
+const decimalSuite = args.includes('--decimal');
+const timeoutIndex = args.indexOf('--case-timeout-ms');
+const caseTimeout = timeoutIndex < 0 ? 15000 : Number(args[timeoutIndex + 1]);
+if (timeoutIndex >= 0) args.splice(timeoutIndex, 2);
+const prefixIndex = args.indexOf('--case-prefix');
+const casePrefix = prefixIndex < 0 ? null : args[prefixIndex + 1];
+if (prefixIndex >= 0) args.splice(prefixIndex, 2);
+if (!binaryDirectory || !outputDirectory || (bigintSuite && decimalSuite) ||
+    !Number.isInteger(caseTimeout) || caseTimeout < 1 ||
+    (prefixIndex >= 0 && (!decimalSuite || !casePrefix || !/^[A-Za-z0-9_-]+$/.test(casePrefix))) ||
+    args.some(v => v !== '--quick' && v !== '--bigint' && v !== '--decimal'))
+    throw Error('Usage: node benchmarks/run_baseline.js binary-directory output-directory [--quick] [--bigint|--decimal] [--case-timeout-ms N] [--case-prefix name]');
 const binaries = path.resolve(binaryDirectory);
 const output = path.resolve(outputDirectory);
 fs.mkdirSync(output, { recursive: true });
@@ -38,7 +48,7 @@ const manifest = {
     cpus: os.cpus().map(cpu => ({ model: cpu.model, reportedMHz: cpu.speed })),
     totalSystemMemoryBytes: os.totalmem(), node: process.version,
     powerScheme: process.platform === 'win32' ? optional('powercfg', ['/getactivescheme']) : 'record externally',
-    mode: quick ? 'quick harness smoke' : 'full diagnostic baseline', suite: bigintSuite ? 'bigint arithmetic' : 'format/cache/http', repetitions: 3,
+    mode: quick ? 'quick harness smoke' : 'full diagnostic baseline', suite: decimalSuite ? 'decimal/math' : bigintSuite ? 'bigint arithmetic' : 'format/cache/http', repetitions: 3,
     instrumentation: 'requested allocations always on; live ledger in separate diagnostic samples; exclusive phase hooks',
     processPeak: process.platform === 'win32' ? 'peak_working_set_bytes' : 'peak_rss_bytes',
     commands: [], note: 'No CPU affinity or frequency locking; repeated runs do not imply an idle machine.'
@@ -72,6 +82,59 @@ function save(name, command, parameters) {
     fs.writeFileSync(path.join(output, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
 }
 save('allocation-check', binary('allocation_stats_check'), []);
+if (decimalSuite) {
+    const {makeCases} = require('./decimal_math_cases');
+    const rows = makeCases(quick).filter(row => !casePrefix || row.startsWith(casePrefix));
+    if (!rows.length) throw Error('No decimal cases match --case-prefix');
+    const fixtures = path.join(output, 'decimal-cases.tsv');
+    fs.writeFileSync(fixtures, rows.join('\n') + '\n');
+    manifest.caseTimeoutMs = caseTimeout;
+    manifest.casePrefix = casePrefix;
+    manifest.fixtureCount = rows.length;
+    manifest.outcomes = {verified: 0, boundedDirected: 0, referenceMismatch: 0, timedOut: 0};
+    for (let run = 1; run <= 3; run++) {
+        for (const row of rows) {
+            const name = row.split('\t')[0];
+            const parameters = [fixtures, ...(quick ? ['--quick'] : []), '--case', name];
+            const begin = Date.now();
+            const result = spawnSync(binary('decimal_math_benchmark'), parameters, {
+                cwd: root, env, encoding: 'utf8', windowsHide: true,
+                timeout: caseTimeout, maxBuffer: 1024 * 1024});
+            const timedOut = result.error?.code === 'ETIMEDOUT';
+            const entry = {name, run, command: binary('decimal_math_benchmark'), parameters,
+                elapsedMs: Date.now() - begin, status: timedOut ? 'timeout' : 'verified'};
+            if (timedOut) {
+                manifest.outcomes.timedOut++;
+                fs.writeFileSync(path.join(output, `decimal-${name}-run${run}.timeout.txt`),
+                    `Timed out after ${caseTimeout} ms. No verified timing or memory metrics.\n`);
+            } else if (!result.error && result.status === 1 && result.stderr.startsWith('Reference mismatch: ')) {
+                entry.status = 'reference_mismatch';
+                entry.stderr = result.stderr;
+                manifest.outcomes.referenceMismatch++;
+                fs.writeFileSync(path.join(output, `decimal-${name}-run${run}.reference-mismatch.txt`), result.stderr);
+            } else if (result.error || result.status !== 0) {
+                entry.status = 'failed'; entry.stderr = result.stderr;
+                manifest.commands.push(entry);
+                fs.writeFileSync(path.join(output, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
+                throw result.error || Error(result.stderr || `Exit ${result.status}`);
+            } else {
+                const lines = result.stdout.trim().split(/\r?\n/);
+                if (lines.length !== 2 || lines[1].split(',')[0] !== name)
+                    throw Error('Missing isolated measurement: ' + name);
+                fs.writeFileSync(path.join(output, `decimal-${name}-run${run}.csv`), result.stdout);
+                fs.writeFileSync(path.join(output, `decimal-${name}-run${run}.stderr.txt`), result.stderr);
+                manifest.outcomes.verified++;
+                if (lines[1].split(',')[6] === 'bounded_directed') manifest.outcomes.boundedDirected++;
+            }
+            manifest.commands.push(entry);
+            fs.writeFileSync(path.join(output, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
+            if (manifest.commands.length % 100 === 0) console.error(JSON.stringify(manifest.outcomes));
+        }
+        console.error(`Decimal/math run ${run} complete: ${JSON.stringify(manifest.outcomes)}`);
+    }
+    console.error('Decimal/math baseline saved to ' + output);
+    process.exit(0);
+}
 if (bigintSuite) {
     const { makeCases } = require('./bigint_cases');
     const rows = makeCases(quick);

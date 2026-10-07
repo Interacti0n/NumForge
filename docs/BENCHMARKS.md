@@ -228,3 +228,10 @@ CTests, 31 GCC 16.2 Release CTests, 66 SK/EN browser tests, installed C and
 C++ consumers, and all full benchmark scenarios. Linux/macOS runtime and
 other architectures were not exercised locally; the existing CI matrix
 remains the place to validate those platforms.
+
+## Direct decimal and mathematical functions
+
+See [BigDecimal and higher-function measurements](DECIMAL_MATH_BENCHMARKS.md)
+for direct arithmetic, scale/normalization diagnostics, independently checked
+high-precision math, constant factory boundaries and time-bounded three-run
+recording. That suite keeps numerical mismatches separate from valid timings.

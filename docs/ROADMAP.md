@@ -14,19 +14,21 @@ of development, not a schedule or promise of a particular release.
   session history, stable random previews and a bounded loopback HTTP API.
 - CMake installation and C/C++ consumer support; numerical, property,
   allocation-failure, integration, browser and fuzz-smoke checks.
-- Formatting/cache/HTTP/memory and BigInt arithmetic benchmarks with independent
+- Formatting/cache/HTTP/memory, BigInt and BigDecimal/math benchmarks with independent
   result checks and repeated local Release baselines.
 
 For exact supported functions and limits, use [API.md](API.md). Screenshots in
 the README show development code and may be newer than a published release.
 
-## Next measurement work
+## Next accuracy and optimization work
 
-Measure BigDecimal scale alignment, normalization and finite/recurring division
-separately from the BigInt core. Expand direct higher-function and constant
-measurements to hundreds/thousands of digits, including large angles and
-difficult domains. These scenarios need new independently generated, sufficiently
-precise references. This block is prepared but not implemented yet.
+Direct BigDecimal arithmetic and higher-function/constant measurements are
+implemented with independent references through 2,000 significant digits;
+see [Decimal/math measurements](DECIMAL_MATH_BENCHMARKS.md). The stress matrix
+exposes an existing accuracy limitation extremely close to tangent poles.
+Investigate sufficient working precision or adaptive guards before treating
+those values as correctly rounded. Some high-precision cases exceed the chosen
+collection deadline and need dedicated longer measurements.
 
 Use those measurements with the completed suites to select optimizations.
 Prefix formatting, buffer reuse, product-tree factorial, specialized squaring,

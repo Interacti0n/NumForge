@@ -5,6 +5,15 @@ All notable changes to NumForge are documented in this file. The project uses
 
 ## Unreleased
 
+- Add documentation and benchmark navigation guides, a repository source map,
+  and group high-precision benchmark references with their generator.
+
+- Add direct BigDecimal scale/normalization/division and higher-function/constant
+  benchmarks with independently checked high-precision references, isolated
+  three-run recording, separate memory/phase probes and platform smoke checks.
+  Report extreme tangent-pole accuracy mismatches and timeouts explicitly;
+  preserve existing production algorithms and numerical tolerance policy.
+
 - Prepare portable Windows x64/Linux x64 application archives with launch
   instructions, build provenance, SHA-256 checksums and extracted-package smoke
   checks. Automatically build exact release tags and attach verified binaries

@@ -164,7 +164,7 @@ BigDecimalStatus bigdecimal_set_power_of_ten(
     return status;
 }
 
-BigDecimalStatus bigdecimal_multiply_power_of_ten(
+static BigDecimalStatus multiply_power_of_ten_unprofiled(
     BigInt *result,
     const BigInt *value,
     uint64_t exponent
@@ -194,7 +194,15 @@ BigDecimalStatus bigdecimal_multiply_power_of_ten(
     return status;
 }
 
-BigDecimalStatus bigdecimal_normalize(BigDecimal *value)
+BigDecimalStatus bigdecimal_multiply_power_of_ten(BigInt *result, const BigInt *value, uint64_t exponent)
+{
+    NumForgeDecimalPhase previous = numforge_decimal_enter(NUMFORGE_DECIMAL_ALIGNMENT);
+    BigDecimalStatus status = multiply_power_of_ten_unprofiled(result, value, exponent);
+    numforge_decimal_leave(previous);
+    return status;
+}
+
+static BigDecimalStatus normalize_unprofiled(BigDecimal *value)
 {
     uint64_t removed;
     BigDecimalStatus status;
@@ -230,6 +238,14 @@ BigDecimalStatus bigdecimal_normalize(BigDecimal *value)
     }
 
     return BIGDECIMAL_OK;
+}
+
+BigDecimalStatus bigdecimal_normalize(BigDecimal *value)
+{
+    NumForgeDecimalPhase previous = numforge_decimal_enter(NUMFORGE_DECIMAL_NORMALIZE);
+    BigDecimalStatus status = normalize_unprofiled(value);
+    numforge_decimal_leave(previous);
+    return status;
 }
 
 // Normalize a temporary result before atomically replacing destination.

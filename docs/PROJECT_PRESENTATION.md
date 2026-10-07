@@ -71,8 +71,10 @@ development version shown.
   downloads are not published yet.
 - Hosted demo: local build-and-run path exists; deployment and isolation design
   are still needed before offering a public calculator.
-- More benchmark highlights: add BigDecimal/higher-function results only after
-  that measurement block is complete and checked.
+- More benchmark highlights: direct BigDecimal/higher-function measurements are
+  implemented in [DECIMAL_MATH_BENCHMARKS.md](DECIMAL_MATH_BENCHMARKS.md). Add only
+  verified results with their recorded machine/range context; retain the stress
+  matrix's explicit timeouts and tangent-pole accuracy limitation.
 - Portfolio connection: deliberately deferred at the owner's request. No
   portfolio links, deployment or integration were added.
 

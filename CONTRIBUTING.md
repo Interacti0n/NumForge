@@ -31,7 +31,10 @@ Windows, use Visual Studio's C++ build tools or a supported GCC setup. Consult
 - Local HTTP transport: `src/web/`.
 - Browser UI: `web/`. Keep English and Slovak behavior aligned; rebuild the
   server after editing assets. Never edit the generated embedded-asset header.
-- Tests: `tests/`; opt-in measurement harnesses: `benchmarks/`.
+- Tests: `tests/`; opt-in measurement harnesses: `benchmarks/`. See the
+  [benchmark tools guide](benchmarks/README.md); frozen math references and their
+  generator belong in `benchmarks/references/`.
+- Guides and reports: `docs/`; start with the [documentation guide](docs/README.md).
 
 The [architecture overview](docs/ARCHITECTURE.md) explains the boundaries.
 Calculators compose the numeric API rather than duplicating its algorithms.
