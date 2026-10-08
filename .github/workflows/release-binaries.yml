@@ -108,6 +108,10 @@ jobs:
           cmake --build build-sdk --config Release --parallel 2
           python packaging/scripts/package_sdk.py --source source --build build-sdk --support packaging --output sdk-dist \
             --version "${RELEASE_TAG#v}" --commit "$(git -C source rev-parse HEAD)" --platform "$PACKAGE_PLATFORM"
+          mkdir -p dist
+          shopt -s nullglob
+          sdk_files=(sdk-dist/*.zip sdk-dist/*.tar.gz sdk-dist/*.sha256)
+          cp "${sdk_files[@]}" dist/
       - uses: actions/upload-artifact@v7
         with:
           name: packages-${{ matrix.platform }}
@@ -115,9 +119,6 @@ jobs:
             dist/*.zip
             dist/*.tar.gz
             dist/*.sha256
-            sdk-dist/*.zip
-            sdk-dist/*.tar.gz
-            sdk-dist/*.sha256
           if-no-files-found: error
           retention-days: 14
 
