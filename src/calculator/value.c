@@ -1,6 +1,7 @@
 #include "../internal/benchmark_profile.h"
 #include "value_internal.h"
 #include "formatter.h"
+#include "quantity.h"
 
 #include <numforge/runtime.h>
 
@@ -51,6 +52,10 @@ CalculatorStatus calculator_value_copy(CalculatorValue *result, const Calculator
     }
     temporary.context = value->context;
     temporary.kind = value->kind;
+    temporary.quantity = value->quantity;
+    temporary.temperature_point = value->temperature_point;
+    memcpy(temporary.dimensions, value->dimensions, sizeof(temporary.dimensions));
+    memcpy(temporary.unit, value->unit, sizeof(temporary.unit));
     temporary.independent = value->independent;
     temporary.uses_answer = value->uses_answer;
     temporary.uses_random = value->uses_random;
@@ -296,7 +301,34 @@ CalculatorStatus calculator_format_value(
     const CalculatorValue *value, const CalculatorContext *context, char **result)
 {
     NumForgeProfilePhase previous = numforge_profile_enter(NUMFORGE_PHASE_FORMAT);
+    bool owner = context != NULL && context->time_limit_ms >= 0 && numforge_budget_begin(
+        (uint64_t)context->time_limit_ms, CALCULATOR_ALLOCATION_BUDGET, CALCULATOR_SINGLE_ALLOCATION);
     CalculatorStatus result_status = calculator_format_value_profile_impl(value, context, result);
+    if (result_status == CALCULATOR_OK && value->quantity)
+    {
+        char symbol[192] = {0};
+        result_status = calculator_quantity_symbol(value, symbol, sizeof(symbol));
+        size_t length = strlen(*result), unit_length = strlen(symbol);
+        if (result_status == CALCULATOR_OK && length + unit_length + 1U > CALCULATOR_MAX_OUTPUT_BYTES)
+            result_status = CALCULATOR_VALUE_TOO_LARGE;
+        if (result_status == CALCULATOR_OK)
+        {
+            char *joined = numforge_malloc(length + unit_length + 2U);
+            if (joined == NULL) result_status = CALCULATOR_OUT_OF_MEMORY;
+            else
+            {
+                memcpy(joined, *result, length);
+                joined[length] = ' ';
+                memcpy(joined + length + 1U, symbol, unit_length + 1U);
+                free(*result);
+                *result = joined;
+            }
+        }
+        if (result_status != CALCULATOR_OK) { free(*result); *result = NULL; }
+    }
+    result_status = calculator_budget_status(result_status);
+    if (result_status != CALCULATOR_OK && result != NULL) { free(*result); *result = NULL; }
+    if (owner) numforge_budget_end();
     numforge_profile_leave(previous);
     return result_status;
 }

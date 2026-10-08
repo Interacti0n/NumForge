@@ -152,7 +152,7 @@ test('header controls keep their size and position when changing language', asyn
         await page.setViewportSize({width, height: 768});
         await page.goto('/?lang=sk');
         const geometry = () => page.evaluate(() => {
-            const controls = [...document.querySelectorAll('.brand, .primary-nav a, .language-switch, .header-actions > a')];
+            const controls = [...document.querySelectorAll('.brand, .header-guide, .primary-nav a, .language-switch, .header-actions > a')];
             return {
                 boxes: controls.map(control => {
                     const box = control.getBoundingClientRect();
@@ -173,6 +173,39 @@ test('header controls keep their size and position when changing language', asyn
             for (const dimension of ['x', 'width', 'height'])
                 expect(Math.abs(slovak.boxes[index][dimension] - english.boxes[index][dimension])).toBeLessThan(1);
         }
+    }
+});
+
+test('guide stays separate from tools and accessible with the mobile menu closed', async ({ page }) => {
+    for (const lang of ['sk', 'en']) {
+        for (const route of ['/', '/api', '/units', '/graph', '/solve']) {
+            await page.setViewportSize({width: 320, height: 812});
+            await page.goto(`${route}?lang=${lang}`);
+            const guide = page.locator('.header-guide');
+            await expect(guide).toBeVisible();
+            await expect(guide).toHaveAttribute('href', `/api?lang=${lang}`);
+            await expect(page.locator('.primary-nav a')).toHaveCount(4);
+            expect(await guide.evaluate(link => link.closest('.site-navigation') === null)).toBe(true);
+            const boxes = await page.locator('.brand, .header-guide, .nav-toggle').evaluateAll(controls =>
+                controls.map(control => {
+                    const box = control.getBoundingClientRect();
+                    return {left: box.left, right: box.right, fits: control.scrollWidth <= control.clientWidth + 1};
+                }).sort((a, b) => a.left - b.left));
+            for (const box of boxes) {
+                expect(box.fits).toBe(true);
+                expect(box.left).toBeGreaterThanOrEqual(0);
+                expect(box.right).toBeLessThanOrEqual(320);
+            }
+            for (let index = 1; index < boxes.length; index++)
+                expect(boxes[index].left).toBeGreaterThanOrEqual(boxes[index - 1].right);
+            if (route === '/api') await expect(guide).toHaveAttribute('aria-current', 'page');
+            else await expect(guide).not.toHaveAttribute('aria-current', 'page');
+        }
+        await page.locator('.header-guide').click();
+        await expect(page).toHaveURL(new RegExp(`/api\\?lang=${lang}$`));
+        await expect(page.locator('.header-guide')).toHaveAttribute('aria-current', 'page');
+        await page.locator('.nav-toggle').click();
+        await expect(page.locator('.header-guide')).toBeVisible();
     }
 });
 

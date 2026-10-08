@@ -247,6 +247,12 @@ CalculatorStatus numforge_web_convert(const CalculatorSession *session,
         session == NULL ? empty : session->variables, session == NULL ? 0 : session->variable_count,
         &source, error);
     if (status != CALCULATOR_OK) goto cleanup;
+    if (source.quantity)
+    {
+        *code = "quantity_not_allowed";
+        status = CALCULATOR_DIMENSION_ERROR;
+        goto cleanup;
+    }
     exact = bigrational_create();
     converted.number = bigdecimal_create();
     if (exact == NULL || converted.number == NULL) { status = CALCULATOR_OUT_OF_MEMORY; goto cleanup; }

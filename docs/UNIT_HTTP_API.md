@@ -22,6 +22,9 @@ compatibility. Temperature points and temperature intervals are distinct.
 Send `POST /api/convert?from=km&to=m` with a plain UTF-8 expression body,
 for example `1/3`. Supply `Content-Length` as for `/api/evaluate`.
 Units are separate query parameters; `2 km` is not calculator syntax.
+Quantity-valued expressions are rejected with `quantity_not_allowed`.
+Use `convert(qty(1; "km"); "km"; "m")` for an explicit numeric coordinate,
+or use `/api/evaluate` for [Quantity arithmetic](QUANTITIES.md).
 Percent-encode IDs containing `/`, for example `from=km%2Fh`.
 
 ```json

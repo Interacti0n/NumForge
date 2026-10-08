@@ -410,3 +410,11 @@ in rational, approximate-input and pi-based conversions. Parser fuzzing includes
 quotes and backslashes. CLI process and SK/EN Playwright tests exercise real
 expressions; HTTP tests also cover convert inside /api/convert and read-only
 rejection of nested rand calls.
+
+Quantity tests cover dimensional sums/products/quotients, cancellation,
+canonical derived units, powers/roots, affine temperature points/intervals,
+selected functions, unit-aware variables/ans and original operator positions.
+Exact angle-ratio cancellation avoids introducing a pi approximation. Injected
+allocation failures also cover typed evaluation and atomic quantity assignment,
+including retention of the previous variable/ans dimensions. CLI and SK/EN
+Playwright tests exercise the real typed expression pipeline and HTTP errors.

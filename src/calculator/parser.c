@@ -307,9 +307,11 @@ static CalculatorStatus calculator_parse_call(
             call->depth = argument->depth + 1U;
         }
 
-        if (function->implementation == CALCULATOR_FUNCTION_CONVERT)
+        if (function->implementation == CALCULATOR_FUNCTION_CONVERT ||
+            function->implementation == CALCULATOR_FUNCTION_QUANTITY)
         {
-            for (size_t index = 0U; index < 2U; index++)
+            size_t units = function->implementation == CALCULATOR_FUNCTION_QUANTITY ? 1U : 2U;
+            for (size_t index = 0U; index < units; index++)
             {
                 char *id = index == 0U ? call->data.call.from_unit : call->data.call.to_unit;
                 if (parser->current.type != CALCULATOR_TOKEN_SEMICOLON)
@@ -377,7 +379,8 @@ static CalculatorStatus calculator_parse_call(
         goto failure;
     }
 
-    size_t supplied = call->data.call.count + (function->implementation == CALCULATOR_FUNCTION_CONVERT ? 2U : 0U);
+    size_t supplied = call->data.call.count + (function->implementation == CALCULATOR_FUNCTION_CONVERT ? 2U :
+        function->implementation == CALCULATOR_FUNCTION_QUANTITY ? 1U : 0U);
     if (supplied < function->minimum_arguments ||
         (function->maximum_arguments != 0 && supplied > function->maximum_arguments))
     {

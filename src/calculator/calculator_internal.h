@@ -36,7 +36,8 @@ typedef enum CalculatorStatus
     CALCULATOR_SESSION_EXPIRED,
     CALCULATOR_UNDEFINED_VARIABLE,
     CALCULATOR_UNKNOWN_UNIT,
-    CALCULATOR_INCOMPATIBLE_UNITS
+    CALCULATOR_INCOMPATIBLE_UNITS,
+    CALCULATOR_DIMENSION_ERROR
 } CalculatorStatus;
 
 typedef enum CalculatorAngleUnit
@@ -82,6 +83,8 @@ typedef enum CalculatorValueKind
 /* Owned, unformatted value. number is a decimal projection for the established
  * client path; kind identifies the authoritative value. Decimal is treated
  * conservatively as approximate. independent is a separate cache property.
+ * Quantity metadata describes the numeric coordinate's dimensions and unit;
+ * temperature_point distinguishes affine coordinates from linear intervals.
  * Initialize to zero and destroy before reuse. */
 typedef struct CalculatorValue
 {
@@ -89,6 +92,10 @@ typedef struct CalculatorValue
     BigInt *integer;
     BigRational *rational;
     CalculatorValueKind kind;
+    bool quantity;
+    bool temperature_point;
+    int dimensions[6]; /* length, mass, time, temperature interval, information, angle */
+    char unit[32]; /* empty for unnamed canonical composites */
     CalculatorContext context;
     bool independent;
     bool uses_answer;

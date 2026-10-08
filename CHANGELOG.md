@@ -5,6 +5,14 @@ All notable changes to NumForge are documented in this file. The project uses
 
 ## Unreleased
 
+- Separate the SK/EN Guide/API link from mathematical tool tabs. Keep it visible
+  in the header when the mobile navigation menu is closed.
+
+- Add `qty(value; "unit")` expressions, dimension-checked arithmetic, derived
+  units, powers/roots, affine temperature rules and selected quantity-aware
+  functions. Preserve quantities in variables, ans, history and previews across
+  CLI/web/API; keep `convert` numeric and reject conflicting converter inputs.
+
 - Add `convert(value; "from"; "to")` to CLI and web calculator expressions.
   Return numbers, preserve exact fractions, validate case-sensitive catalogue
   IDs and compatibility, and report errors at the offending unit argument.

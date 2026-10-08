@@ -3,7 +3,22 @@
 The additive public C API in [units.h](../include/numforge/units.h) provides a
 static registry, compatibility checks and rational/decimal conversion.
 The calculator exposes these conversions through `convert(...)` expressions.
-Arithmetic on typed quantities is a future step.
+The client calculator also supports [typed Quantity expressions](QUANTITIES.md),
+including compatible sums, products, quotients and integer powers.
+
+## Related documentation
+
+This document is the entry point for the implemented unit-conversion contracts.
+Detailed contracts are maintained in:
+
+- [Quantity expressions](QUANTITIES.md): typed arithmetic, dimensions, temperature
+  semantics, session behavior and current limitations.
+- [Unit catalogue](UNIT_CATALOG.md): factors, SK/EN names and provenance.
+- [Unit HTTP API](UNIT_HTTP_API.md): requests, errors, limits and snapshots.
+- [Browser converter](UNIT_CONVERTER.md): interaction, layout and conversion history.
+- [Testing](TESTING.md): regression coverage and verification workflows.
+
+Future implementation work is tracked in the local project review.
 
 ## Calculator expressions
 
@@ -12,6 +27,8 @@ expressions passed to `/api/evaluate` and `/api/convert`. It returns an ordinary
 number, so `x = convert(1; "km"; "m")` stores numeric `1000`. Confirmation has
 the usual calculator history/ans behavior; preview does not change session state.
 The separate Units page keeps its own conversion snapshots.
+With a Quantity operand, `convert` validates the declared source dimensions
+and returns the coordinate in the target unit. See [Quantity conversion](QUANTITIES.md#conversion-api-and-limits).
 
 The first argument is any numeric expression, including variables, `ans` and
 nested calls. The other two arguments must be double-quoted catalogue IDs,

@@ -406,9 +406,55 @@ static void test_convert_session_values_are_numeric_and_preview_is_read_only(voi
     check_result(12, false, "ans", "2");
 }
 
+static void test_quantity_sessions_keep_dimensions_and_confirmation_atomic(void)
+{
+    check_result(1, true, "x=qty(3;\"m\")", "3 m");
+    check_result(2, false, "x*x", "9 m²");
+    check_result(3, false, "ans+qty(2;\"m\")", "5 m");
+    check_error(4, true, "x=qty(1;\"m\")+qty(2;\"s\")", CALCULATOR_DIMENSION_ERROR);
+    check_result(5, false, "x", "3 m");
+    check_result(6, true, "x*x", "9 m²");
+    check_result(7, false, "ans/qty(3;\"m\")", "3 m");
+    check_error(8, true, "qty=2", CALCULATOR_INVALID_ARGUMENT);
+    check_result(9, true, "x=4", "4");
+    check_result(10, false, "x", "4");
+    check_result(11, false, "qty(1;\"km\")", "1 km");
+    check_error(12, false, "ans+qty(1;\"m\")", CALCULATOR_DIMENSION_ERROR);
+}
+
+static void test_quantity_assignment_allocation_failures_preserve_typed_state(void)
+{
+    char *text = NULL;
+    CalculatorError error;
+    check_result(1, true, "x=qty(3;\"m\")", "3 m");
+    numforge_test_allocator_begin(0);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_session_compute(&session, 2, true,
+        "x=x*qty(2;\"m\")", &context, &text, &error, NULL));
+    size_t calls = numforge_test_allocator_call_count();
+    numforge_test_allocator_end();
+    free(text);
+    for (size_t failure=1; failure<=calls; failure++)
+    {
+        calculator_session_destroy(&session);
+        check_result(1, true, "x=qty(3;\"m\")", "3 m");
+        numforge_test_allocator_begin(failure);
+        CalculatorStatus status = calculator_session_compute(&session, 2, true,
+            "x=x*qty(2;\"m\")", &context, &text, &error, NULL);
+        TEST_ASSERT_TRUE(numforge_test_allocator_did_fail());
+        numforge_test_allocator_end();
+        TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY, status);
+        TEST_ASSERT_NULL(text);
+        TEST_ASSERT_EQUAL_UINT(1, session.count);
+        check_result(3, false, "x+qty(1;\"m\")", "4 m");
+        check_result(4, false, "ans", "3 m");
+    }
+}
+
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_quantity_assignment_allocation_failures_preserve_typed_state);
+    RUN_TEST(test_quantity_sessions_keep_dimensions_and_confirmation_atomic);
     RUN_TEST(test_convert_session_values_are_numeric_and_preview_is_read_only);
     RUN_TEST(test_variables_preview_precision_replay_and_isolation);
     RUN_TEST(test_variable_confirmation_allocation_failures_are_atomic);

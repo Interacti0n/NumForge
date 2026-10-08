@@ -69,7 +69,7 @@ struct CalculatorExpression
         {
             const CalculatorFunction *function;
             struct CalculatorExpression **arguments;
-            size_t count; /* Numeric children; convert has one plus two literal IDs. */
+            size_t count; /* Numeric children; qty/convert store unit IDs separately. */
             char from_unit[32];
             char to_unit[32];
         } call;

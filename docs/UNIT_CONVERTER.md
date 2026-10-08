@@ -4,6 +4,9 @@ Calculator expressions also accept `convert(value; "from"; "to")`.
 For example, `convert(90; "km/h"; "m/s")` returns `25`, and
 `convert(1/3; "km"; "m")` returns the exact number `1000/3`.
 See [expression syntax and limits](UNITS.md#calculator-expressions).
+Typed [Quantity expressions](QUANTITIES.md) are available in the calculator.
+This converter still expects a numeric coordinate; use explicit `convert(...)`
+to extract a number from a quantity variable or quantity-valued `ans` first.
 
 Open **Units / Jednotky** in the local application, or `/units?lang=en` /
 `/units?lang=sk`. The page shares the calculator's purple workbench, navigation,

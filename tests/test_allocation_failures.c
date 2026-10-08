@@ -1488,7 +1488,7 @@ void test_calculator_pipeline_reports_every_injected_allocation_failure(void)
 
 void test_convert_every_allocation_failure(void)
 {
-    const char *inputs[] = {"convert(1/3;\"km\";\"m\")", "convert(sqrt(2);\"m\";\"cm\")", "convert(180;\"deg\";\"rad\")"};
+    const char *inputs[] = {"qty(5;\"m\")*qty(5;\"cm\")", "qty(20;\"degC\")-qty(10;\"degF\")", "sqrt(qty(2;\"m2\"))", "convert(qty(1;\"km\");\"m\";\"cm\")", "convert(1/3;\"km\";\"m\")", "convert(sqrt(2);\"m\";\"cm\")", "convert(180;\"deg\";\"rad\")"};
     CalculatorContext context;
     calculator_context_init(&context);
     for (size_t i=0; i<sizeof(inputs)/sizeof(inputs[0]); i++)

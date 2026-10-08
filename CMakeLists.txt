@@ -133,6 +133,7 @@ if(NUMFORGE_BUILD_APPS OR BUILD_TESTING OR NUMFORGE_BUILD_FUZZERS OR NUMFORGE_BU
     add_library(numforge_client STATIC
         src/calculator/calculator.c
         src/calculator/value.c
+        src/calculator/quantity.c
         src/calculator/session.c
         src/calculator/random.c
         src/calculator/constants.c

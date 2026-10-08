@@ -1146,9 +1146,89 @@ static void test_convert_numeric_values_and_diagnostics(void)
     TEST_ASSERT_NULL(text);
 }
 
+static void test_quantity_arithmetic_dimensions_and_temperature(void)
+{
+    static const struct { const char *input; const char *expected; } cases[] = {
+        {"qty(5;\"m\")*qty(5;\"m\")", "25 m²"},
+        {"qty(5;\"cm\")*qty(5;\"cm\")", "0.0025 m²"},
+        {"qty(1;\"km\")+qty(500;\"m\")", "1.5 km"},
+        {"qty(1/3;\"m\")+qty(1/6;\"m\")", "0.5 m"},
+        {"qty(3;\"m\")*qty(2;\"m\")*qty(4;\"m\")", "24 m³"},
+        {"qty(36;\"km/h\")*qty(10;\"s\")", "100 m"},
+        {"qty(1;\"km\")/qty(2;\"h\")", "5/36 m/s"},
+        {"qty(1;\"m\")/qty(100;\"cm\")", "1"},
+        {"2/qty(4;\"s\")", "0.5 s^-1"},
+        {"qty(2;\"kg\")*qty(3;\"m\")/qty(2;\"s\")^2", "1.5 m*kg*s^-2"},
+        {"qty(2;\"m\")^0", "1"},
+        {"qty(2;\"m\")^-2", "0.25 m^-2"},
+        {"qty(3;\"m\")²", "9 m²"},
+        {"pow(qty(3;\"m\");2)", "9 m²"},
+        {"sqrt(qty(9;\"m2\"))", "3 m"},
+        {"cbrt(qty(8;\"m3\"))", "2 m"},
+        {"root(qty(16;\"m2\");2)", "4 m"},
+        {"abs(qty(-2;\"km\"))", "2 km"},
+        {"min(qty(1;\"km\");qty(500;\"m\"))", "0.5 km"},
+        {"sum(qty(1;\"km\");qty(500;\"m\"))", "1.5 km"},
+        {"round(qty(1.234;\"m\");2)", "1.23 m"},
+        {"qty(20;\"degC\")-qty(10;\"degC\")", "10 Δ°C"},
+        {"qty(68;\"degF\")-qty(10;\"degC\")", "18 Δ°F"},
+        {"qty(20;\"degC\")+qty(18;\"deltaF\")", "30 °C"},
+        {"qty(18;\"deltaF\")+qty(20;\"degC\")", "30 °C"},
+        {"qty(20;\"degC\")-qty(18;\"deltaF\")", "10 °C"},
+        {"qty(1;\"MiB\")+qty(8;\"bit\")", "1.0000009537 MiB"},
+        {"qty(1;\"deg\")+qty(60;\"arcmin\")", "2 °"},
+        {"qty(1;\"deg\")/qty(3;\"deg\")", "1/3"},
+        {"convert(qty(1;\"deg\");\"rad\";\"arcmin\")", "60"},
+        {"convert(qty(1;\"km\");\"m\";\"cm\")", "100000"},
+        {"ln(qty(1;\"m\")/qty(1;\"m\"))", "0"}
+    };
+    CalculatorContext context;
+    CalculatorError error;
+    calculator_context_init(&context);
+    for (size_t i=0; i<sizeof(cases)/sizeof(cases[0]); i++)
+    {
+        char *text=NULL;
+        TEST_ASSERT_EQUAL_MESSAGE(CALCULATOR_OK, calculator_compute(cases[i].input, &context, &text, &error), cases[i].input);
+        TEST_ASSERT_EQUAL_STRING_MESSAGE(cases[i].expected, text, cases[i].input);
+        free(text);
+    }
+    const char *invalid[] = {
+        "qty(1;\"m\")+qty(1;\"s\")", "qty(1;\"m\")+0", "qty(1;\"degC\")+qty(2;\"degC\")",
+        "qty(1;\"deltaC\")-qty(2;\"degC\")", "qty(1;\"degC\")*2", "-qty(1;\"degC\")",
+        "qty(1;\"m\")!", "sqrt(qty(1;\"m\"))", "qty(1;\"m\")^qty(2;\"s\")",
+        "qty(1;\"m\")^33", "qty(qty(1;\"m\");\"s\")", "ln(qty(1;\"m\"))",
+        "sin(qty(1;\"m\"))", "convert(qty(1;\"m\");\"s\";\"h\")", "sum(qty(1;\"m\");1)"
+    };
+    for (size_t i=0; i<sizeof(invalid)/sizeof(invalid[0]); i++)
+    {
+        char *text=NULL;
+        TEST_ASSERT_EQUAL_MESSAGE(CALCULATOR_DIMENSION_ERROR, calculator_compute(invalid[i], &context, &text, &error), invalid[i]);
+        TEST_ASSERT_NULL(text);
+    }
+    char *text=NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_DIVISION_BY_ZERO, calculator_compute("qty(1;\"m\")/0", &context, &text, &error));
+    TEST_ASSERT_NULL(text);
+    context.notation=CALCULATOR_NOTATION_PLAIN;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute("sin(qty(90;\"deg\"))", &context, &text, &error));
+    TEST_ASSERT_EQUAL_STRING("1", text);
+    free(text);
+    CalculatorValue value = {0}, copy = {0};
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute_value("qty(1/3;\"m\")", &context, &value, &error));
+    TEST_ASSERT_TRUE(value.quantity);
+    TEST_ASSERT_EQUAL(CALCULATOR_VALUE_RATIONAL, value.kind);
+    TEST_ASSERT_EQUAL_INT(1, value.dimensions[0]);
+    TEST_ASSERT_EQUAL_STRING("m", value.unit);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_value_copy(&copy, &value));
+    calculator_value_destroy(&value);
+    TEST_ASSERT_TRUE(copy.quantity);
+    TEST_ASSERT_EQUAL_STRING("m", copy.unit);
+    calculator_value_destroy(&copy);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_quantity_arithmetic_dimensions_and_temperature);
     RUN_TEST(test_convert_numeric_values_and_diagnostics);
 
     RUN_TEST(test_context_defaults_and_status_strings);

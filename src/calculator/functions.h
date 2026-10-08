@@ -7,6 +7,7 @@
 ------------------------------------------------------------------------------------------------------------------------------
     Internal function registry. Names are lowercase ASCII letters only.
     A zero maximum denotes variadic arity, bounded by input/allocation limits.
+    Arity counts literal units too; qty/convert AST children are numeric only.
     Recognized calls need not have a numerical implementation yet.
 
     Implementation: src/calculator/functions.c
@@ -61,6 +62,7 @@ typedef enum CalculatorFunctionImplementation
     CALCULATOR_FUNCTION_ATANH,
     CALCULATOR_FUNCTION_RADIANS,
     CALCULATOR_FUNCTION_DEGREES,
+    CALCULATOR_FUNCTION_QUANTITY,
     CALCULATOR_FUNCTION_CONVERT,
     CALCULATOR_FUNCTION_RANDOM
 } CalculatorFunctionImplementation;

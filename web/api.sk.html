@@ -17,6 +17,7 @@
         <img class="brand-mark" src="/assets/logo.png" alt="" width="45" height="45">
         <span class="brand-text"><strong>NumForge</strong><small>Presné výpočty</small></span>
       </a>
+      <a class="guide-link header-guide" href="/api?lang=sk" aria-current="page">Návod / API</a>
       <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-navigation"><span class="menu-icon" aria-hidden="true"></span>Menu</button>
       <div class="site-navigation" id="site-navigation">
         <nav class="primary-nav" aria-label="Hlavná navigácia">
@@ -24,7 +25,6 @@
           <a href="/graph?lang=sk">Grafy</a>
           <a href="/solve?lang=sk">Rovnice</a>
           <a href="/units?lang=sk">Jednotky</a>
-          <a href="/api?lang=sk" aria-current="page">Návod / API</a>
         </nav>
         <div class="header-actions">
           <span class="language-switch" aria-label="Výber jazyka">
@@ -68,6 +68,7 @@
   <p><strong>Desatinné miesta</strong>: 0–10000, predvolene 10; vo vedeckom zápise platia pre mantisu. Desatinný výpis presného periodického zlomku používa max(34, N+4) významných číslic. <strong>Plný výstup</strong> vypne finálne zaokrúhlenie, nie pracovnú presnosť približných výsledkov. <code>1E-40 / 1</code> zostane <code>1E-40</code>. Konštanty používajú rovnakú pracovnú presnosť; medzivýsledky sa stále môžu zaokrúhliť.</p>
 <p>Prepínač RAD/DEG je v nastaveniach výstupu. Opis funkcie a jej argumentov sa zobrazí po prejdení myšou, zameraní klávesnicou alebo dotyku tlačidla. Pri chybe spojenia či neočakávanej odpovedi servera môžeš výpočet zopakovať cez Enter; tieto chyby nie sú chybami výrazu.</p>
 <h2 id="functions">Volania funkcií</h2>
+<p><code>qty(hodnota; "jednotka")</code> vytvorí hodnotu s jednotkou. Napríklad <code>qty(5; "m") * qty(5; "m") = 25 m²</code> a <code>qty(1; "km") + qty(500; "m") = 1.5 km</code>. Premenné a <code>ans</code> jednotku zachovajú; nekompatibilné súčty skončia chybou. Násobenie, delenie a celočíselné mocniny skladajú rozmery. Rozdiel dvoch teplôt je interval; súčet dvoch teplôt je chyba. Použi explicitné <code>qty()</code>; zápis <code>5m</code> nie je jednotkový literál.</p>
 <p><code>convert(hodnota; "od"; "do")</code> vracia číslo: <code>convert(90; "km/h"; "m/s") = 25</code>. Použi ID z katalógu v úvodzovkách, napríklad <code>m2</code>, <code>degC</code>, <code>MB</code> alebo <code>MiB</code>; veľkosť písmen je dôležitá. Previesť možno iba kompatibilné jednotky; presné prevody zachovajú zlomky. Katalóg nájdeš na stránke <a href="/units?lang=sk">Jednotky</a>. Výsledok v premennej alebo <code>ans</code> nemá jednotku.</p>
 <p><code>sqrt(x)</code> alebo <code>√(x)</code> je druhá odmocnina pre x ≥ 0; <code>cbrt(x)</code> aj pre záporné x. <code>root(x;n)</code> je n-tá odmocnina, celé n od 1 do 10000; záporné x iba pri nepárnom n. Presné konečné odmocniny zostávajú presné, ostatné používajú max(34, N+4) platných číslic (plný výpis: 34), potom sa formátujú. Platia časové a pamäťové limity.</p>
 <p><code>gcd(a;b)</code> a <code>lcm(a;b)</code> vracajú nezáporný najväčší spoločný deliteľ a najmenší spoločný násobok celých čísel. <code>gcd(0;0)=0</code>; lcm s nulou je 0. <code>mod(a;b)</code> je celočíselný zvyšok so znamienkom delenca: <code>mod(-7;3)=-1</code>; deliteľ nesmie byť 0. <code>isqrt(n)</code> je dolná celá odmocnina nezáporného celého čísla: <code>isqrt(15)=3</code>. Desatinné zápisy celých hodnôt, napr. 4.00, sú povolené.</p>

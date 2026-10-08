@@ -69,3 +69,7 @@ assert.match(result.stderr, /variable is undefined/);
 result = run('notation fraction\nm=1/3\nx=convert(m;"km";"m")\nans*3\nconvert(1;"m";"s")\nans\n');
 assert.deepEqual(result.results, ['1/3','1000/3','1000','1000']);
 assert.match(result.stderr, /error at column 15: incompatible units/);
+
+result = run('x=qty(5;"m")\nx*x\nans/qty(5;"m")\nqty(1;"m")+qty(1;"s")\nans\n');
+assert.deepEqual(result.results, ['5 m','25 m²','5 m','5 m']);
+assert.match(result.stderr, /invalid quantity operation/);

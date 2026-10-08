@@ -165,6 +165,7 @@ const text = english ? {
     showLess : 'Zobraziť menej'
 };
 const slovakStatus = {
+    'invalid quantity operation' : 'neplatná operácia s veličinami',
     'unknown unit' : 'neznáma jednotka',
     'incompatible units' : 'nekompatibilné jednotky',
     'variable is undefined' : 'premenná nie je definovaná',
@@ -208,7 +209,7 @@ function responseError(data)
         return data.error || text.failure;
     }
     const status = english ? data.status : (slovakStatus[data.status] || data.status);
-    const located = ['unknown unit', 'incompatible units', 'invalid argument', 'invalid token', 'syntax error', 'variable is undefined',
+    const located = ['invalid quantity operation', 'unknown unit', 'incompatible units', 'invalid argument', 'invalid token', 'syntax error', 'variable is undefined',
                      'division by zero', 'wrong number of arguments'];
     const chars = [...expression.value];
     if (!located.includes(data.status) || !Number.isInteger(data.column) ||

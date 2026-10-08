@@ -4,6 +4,11 @@ Variables live in the current CLI or browser session. Type `x = 2/3` and confirm
 with Enter or the calculate button (`=`), then use `x*3` to get exactly `2`.
 A live preview shows the prospective result without saving the variable.
 
+Variables and `ans` also retain [Quantity](QUANTITIES.md) values and dimensions:
+`x = qty(3; "m")` followed by `x*x` gives `9 m²`. A later scalar assignment
+replaces the unit metadata as well as the number. `qty` and `convert` are
+reserved function names.
+
 ## Syntax and lifetime
 
 - One top-level assignment: `name = expression`. Reassignment is allowed.

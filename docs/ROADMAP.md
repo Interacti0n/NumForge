@@ -17,7 +17,8 @@ of development, not a schedule or promise of a particular release.
   compatibility checks, exact rational factors and guarded angle projection.
   [Local HTTP catalogue and conversion](UNIT_HTTP_API.md) with read-only session
   access and a [SK/EN browser converter](UNIT_CONVERTER.md) are available.
-  Quantity arithmetic remains future work.
+  [Quantity expressions](QUANTITIES.md) support dimension-checked arithmetic,
+  powers/roots, temperature points/intervals and selected functions.
 - CMake installation and C/C++ consumer support; numerical, property,
   allocation-failure, integration, browser and fuzz-smoke checks.
 - Formatting/cache/HTTP/memory, BigInt and BigDecimal/math benchmarks with independent
@@ -42,11 +43,29 @@ Karatsuba remain candidates for measured follow-ups.
 Existing experiments are described with their measured tradeoffs in
 [BIGINT_BENCHMARKS.md](BIGINT_BENCHMARKS.md).
 
+## Planned tool development
+
+1. Share a parameterized expression evaluator between graphs and solvers: parse
+   once, bind a local variable, snapshot session values and bound the total work.
+   Sampling and solving must leave calculator state unchanged.
+2. Add basic 2D `y = f(x)` graphs with ranges, axes, discontinuity handling,
+   accessible point data and responsive controls.
+3. Add real linear/quadratic equation solving, then bounded numerical root
+   finding on a specified interval, with residuals and clear convergence limits.
+4. Add session user functions, local parameters and definition management,
+   followed by their integration with graphs and solvers.
+5. Extend Quantity with general compound unit strings, named derived units,
+   further functions, structured HTTP snapshots and a possible public C API.
+   Dimensional equations and graph axes need explicit unit contracts first.
+
+These stages are a proposed order, not implemented features or release dates.
+Matrices/vectors and dataset statistics follow once their initial scope is set.
+Measured arithmetic optimizations can proceed independently of these tools.
+
 ## Later, according to use cases
 
 - Stable serialization and language bindings; BigInt numeral bases 2–36 are implemented.
-- User functions (session variables are implemented), followed by equation solving, numerical
-  analysis and graphing once their semantics and resource limits are defined.
+- Further numerical analysis and graphing beyond the basic tools above.
 - Improvements to directed rounding of approximate functions, supported by
   rigorous error bounds or adaptive precision and independent references.
 - Additional constants and mathematical types/functions where there is a

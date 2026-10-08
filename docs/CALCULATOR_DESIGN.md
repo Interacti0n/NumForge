@@ -48,8 +48,10 @@ routes use `/assets/calculator.css`, `/assets/api.css`, shared `/assets/chrome.c
 and `/assets/wordmark.png` supplies the guide introduction.
 Editing a source asset and rebuilding updates the
 executable without changing runtime file lookup or installation layout. Its active
-top menu links to the calculator (`/`), guide (`/api`), and future graph (`/graph`),
-equation solver (`/solve`) and unit converter (`/units`) areas. Sign-in (`/login`)
+tool menu links to the calculator (`/`), unit converter (`/units`) and future
+graph (`/graph`) and equation solver (`/solve`) areas. Guide/API (`/api`) is a
+separate header utility link, visible even when the mobile menu is closed.
+Sign-in (`/login`)
 and registration (`/register`)
 are separate header actions. These future routes share a localized informational
 page until their behavior is designed and implemented; there is no account,
@@ -353,6 +355,14 @@ Exact evaluation delegates to the rational unit API; approximate evaluation
 delegates to the decimal unit API. Function registration reserves `convert`,
 while existing call visitors track variables, ans and randomness in its numeric
 child. See [unit expression contract](UNITS.md#calculator-expressions).
+
+`qty(value; "unit")` shares the restricted literal parser. Expressions containing
+quantities enter the typed dimension evaluator; numeric-only subtrees and
+dimension-validated operations delegate to the established exact/decimal
+evaluators without reparsing text or resetting the runtime budget. Values retain
+six dimension exponents, affine temperature semantics and an optional display
+unit. Copying, session storage, caching and formatting preserve this metadata.
+See [Quantity contracts and current scope](QUANTITIES.md).
 
 Multi-argument calls use semicolons, e.g. `gcd(12;18)`, avoiding conflict with
 decimal commas. `exp` is one identifier, not `e*x*p`; `e(2)` is still a

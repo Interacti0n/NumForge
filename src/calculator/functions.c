@@ -12,6 +12,7 @@
 
 static const CalculatorFunction calculator_functions[] =
 {
+    { "qty", 2, 2, CALCULATOR_FUNCTION_QUANTITY },
     { "convert", 3, 3, CALCULATOR_FUNCTION_CONVERT },
     { "abs", 1, 1, CALCULATOR_FUNCTION_ABS },
     { "rand", 0, 2, CALCULATOR_FUNCTION_RANDOM },

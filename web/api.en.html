@@ -17,6 +17,7 @@
         <img class="brand-mark" src="/assets/logo.png" alt="" width="45" height="45">
         <span class="brand-text"><strong>NumForge</strong><small>Precise computing</small></span>
       </a>
+      <a class="guide-link header-guide" href="/api?lang=en" aria-current="page">Guide &amp; API</a>
       <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-navigation"><span class="menu-icon" aria-hidden="true"></span>Menu</button>
       <div class="site-navigation" id="site-navigation">
         <nav class="primary-nav" aria-label="Main navigation">
@@ -24,7 +25,6 @@
           <a href="/graph?lang=en">Graphs</a>
           <a href="/solve?lang=en">Equations</a>
           <a href="/units?lang=en">Units</a>
-          <a href="/api?lang=en" aria-current="page">Guide &amp; API</a>
         </nav>
         <div class="header-actions">
           <span class="language-switch" aria-label="Language selection">
@@ -66,6 +66,7 @@
   <p>Constants use stored 500-decimal-place values at ordinary precision and are calculated dynamically for larger requests. Standalone lowercase <code>e</code> means Euler's number: <code>5e</code> means <code>5 * e</code> and <code>1e3</code> means <code>1 * e * 3</code>. Scientific notation always uses uppercase <code>E</code>: <code>5E-1</code> is <code>0.5</code> and <code>1E3</code> is <code>1000</code>. Trigonometry uses one RAD/DEG selector whose choice is remembered by the browser.</p>
 <p>The RAD/DEG selector is on the right beside precision settings. Function signatures and argument hints appear on hover, keyboard focus or touch. Connection failures and unexpected server responses can be retried with Enter; these are distinct from expression errors.</p>
 <h2 id="functions">Function calls</h2>
+<p><code>qty(value; "unit")</code> creates a value carrying a unit. For example, <code>qty(5; "m") * qty(5; "m") = 25 m²</code> and <code>qty(1; "km") + qty(500; "m") = 1.5 km</code>. Variables and <code>ans</code> retain units; incompatible sums fail. Products, quotients and integer powers compose dimensions. A temperature minus another temperature gives an interval; adding two temperature points is an error. Use explicit <code>qty()</code> calls; <code>5m</code> is not a unit literal.</p>
 <p><code>convert(value; "from"; "to")</code> returns a number: <code>convert(90; "km/h"; "m/s") = 25</code>. Use quoted, case-sensitive catalogue IDs such as <code>m2</code>, <code>degC</code>, <code>MB</code> or <code>MiB</code>. Only compatible units can be converted; exact conversions retain fractions. The <a href="/units?lang=en">Units</a> page lists the catalogue. Results in variables and <code>ans</code> carry no unit.</p>
 <p><code>sqrt(x)</code> or <code>√(x)</code> is the square root for x ≥ 0; <code>cbrt(x)</code> also accepts negative x. <code>root(x;n)</code> takes an integer degree from 1 to 10000; negative x requires odd n. Exact finite roots remain exact; other roots use max(34, N+4) significant digits (full output: 34), then output formatting. Time and memory limits still apply.</p>
 <p><code>gcd(a;b)</code> and <code>lcm(a;b)</code> return the non-negative greatest common divisor and least common multiple of integers. <code>gcd(0;0)=0</code>; lcm with zero is 0. <code>mod(a;b)</code> is the integer remainder with the dividend's sign: <code>mod(-7;3)=-1</code>; a zero divisor is an error. <code>isqrt(n)</code> is the floor square root of a non-negative integer: <code>isqrt(15)=3</code>. Decimal spellings of whole values, such as 4.00, are accepted.</p>

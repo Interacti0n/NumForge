@@ -6,6 +6,7 @@
 #include "expression_internal.h"
 #include "exact_evaluator.h"
 #include "value_internal.h"
+#include "quantity.h"
 
 #include <numforge/runtime.h>
 
@@ -59,6 +60,8 @@ const char *calculator_status_to_string(
             return "wrong number of arguments";
         case CALCULATOR_UNDEFINED_ANSWER:
             return "ans is undefined";
+        case CALCULATOR_DIMENSION_ERROR:
+            return "invalid quantity operation";
         case CALCULATOR_UNKNOWN_UNIT:
             return "unknown unit";
         case CALCULATOR_INCOMPATIBLE_UNITS:
@@ -416,7 +419,15 @@ static CalculatorStatus calculator_compute_value_with_answer_profile_impl(
             status = calculator_bind_variables(expression, variables, variable_count, &result->uses_variables, error);
     }
 
-    if (status == CALCULATOR_OK)
+    if (status == CALCULATOR_OK && calculator_expression_has_quantity(expression, answer))
+    {
+        bool uses_variables = result->uses_variables;
+        status = calculator_evaluate_quantity(result, expression, context, answer, random_state, error);
+        result->uses_variables = uses_variables;
+        value = result->number;
+        result->number = NULL;
+    }
+    else if (status == CALCULATOR_OK)
     {
         value = bigdecimal_create();
         if (value == NULL)
