@@ -119,12 +119,16 @@ On Windows with Visual Studio, run either application from PowerShell:
 
 In the CLI, use `precision full` and `notation plain` for the exact decimal and
 integer examples above, or `notation fraction` for exact fractions. Use
-`precision 40` for the illustrated square root, and `quit` to exit. The latest
-published release currently contains source archives. Portable Windows/Linux
-binary packaging is prepared to run automatically when a release is published;
-see [release packaging](docs/project/RELEASE_PACKAGING.md)
-for the build, verification and publication process. A hosted demo remains future
-distribution work.
+`precision 40` for the illustrated square root, and `quit` to exit.
+
+To run without a compiler, download the portable Windows x64 ZIP or Linux x64
+tar.gz from the [2.1.0 release](https://github.com/Interacti0n/NumForge/releases/tag/v2.1.0).
+Verify its SHA-256, extract the entire archive and launch `numforge_web.exe`
+(Windows) or `./numforge_web` (Linux); the browser opens automatically on Windows.
+Both archives also include the CLI. Windows binaries are unsigned; Linux requires
+glibc. No Node.js, Python or database is needed. See
+[release packaging](docs/project/RELEASE_PACKAGING.md) for compatibility and
+verification. A hosted demo remains future distribution work.
 
 For a library-only build and installation, see the [library guide](docs/guides/LIBRARY_GUIDE.md).
 An installed CMake consumer links `NumForge::numforge`:

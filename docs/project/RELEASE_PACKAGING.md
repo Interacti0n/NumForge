@@ -8,11 +8,10 @@ existing release after platform tests and extracted-archive checks succeed:
 - `NumForge-X.Y.Z-linux-x64.tar.gz`
 - A `.sha256` checksum file beside each archive.
 
-The workflow is prepared in `.github/workflows/release-binaries.yml`; creating
-the workflow locally does not publish any downloads. It must be committed and
-pushed before it can run on GitHub. New release tags must include the workflow
-and helper; manual dispatch is available from the default branch. Existing
-release assets are not overwritten and existing tags are not moved.
+The workflow is defined in `.github/workflows/release-binaries.yml`. New release
+tags include the workflow and helper; manual dispatch is available from the
+default branch. Existing release assets are not overwritten and existing tags
+are not moved.
 
 ## What users download
 

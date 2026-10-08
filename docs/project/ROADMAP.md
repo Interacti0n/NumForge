@@ -82,10 +82,10 @@ implemented. The app has no Premium feature or subscription system.
 
 ## Distribution and project presentation
 
-The published release currently provides source archives. Portable Windows/Linux
-archive packaging and automatic uploads on release publication are prepared in
-[RELEASE_PACKAGING.md](RELEASE_PACKAGING.md); archives still need validation on
-both platforms and publication. A hosted interactive demo needs a hosting plan.
+Releases provide source archives for library developers and portable Windows/Linux
+x64 application archives through the verified binary workflow in
+[RELEASE_PACKAGING.md](RELEASE_PACKAGING.md). The [2.1 release record](RELEASE_2_1.md)
+documents scope and verification. A hosted interactive demo needs a hosting plan.
 Publishing the current loopback server directly is insufficient: public service
 work requires worker isolation, queues, rate limiting and hard resource limits.
 
