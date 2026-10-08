@@ -191,7 +191,8 @@ def main():
             bundle.extractall(extracted, filter="data")
     smoke(extracted / name, windows)
     checksum = hashlib.sha256(archive.read_bytes()).hexdigest()
-    (output / (archive.name + ".sha256")).write_text(f"{checksum}  {archive.name}\n", encoding="ascii")
+    (output / (archive.name + ".sha256")).write_text(
+        f"{checksum}  {archive.name}\n", encoding="ascii", newline="\n")
     print(f"Created and verified {archive.name}\nSHA256: {checksum}")
     print("Build verification: " + json.dumps(info, sort_keys=True))
 
