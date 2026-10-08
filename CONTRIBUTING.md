@@ -36,7 +36,7 @@ Windows, use Visual Studio's C++ build tools or a supported GCC setup. Consult
   generator belong in `benchmarks/references/`.
 - Guides and reports: `docs/`; start with the [documentation guide](docs/README.md).
 
-The [architecture overview](docs/ARCHITECTURE.md) explains the boundaries.
+The [architecture overview](docs/design/ARCHITECTURE.md) explains the boundaries.
 Calculators compose the numeric API rather than duplicating its algorithms.
 
 ## Numerical changes

@@ -19,7 +19,7 @@ text according to each API's contract. Mutating public operations preserve the
 destination on failure and support documented output/input aliasing. Exact
 operations stay exact; approximate functions take precision and rounding
 explicitly. Guard digits do not by themselves prove correct rounding in every
-case; the [roadmap](ROADMAP.md) records that remaining work.
+case; the [roadmap](../project/ROADMAP.md) records that remaining work.
 
 ## Client dependency flow
 
@@ -28,6 +28,8 @@ flowchart LR
     CLI[CLI] --> Session[Shared calculator session]
     Browser[Browser UI] --> HTTP[Loopback HTTP adapter]
     HTTP --> Session
+    HTTP --> Store[Application client/cache store]
+    Store --> Session
     Session --> Parser[Tokenizer and parser / AST]
     Parser --> Evaluator[Typed evaluator]
     Evaluator --> Library[Public numeric library]
@@ -57,7 +59,8 @@ It is not a production public-hosting architecture.
 | `src/units/` | Static unit registry and exact compatible-unit conversion over public BigRational API. |
 | `src/web/unit_web.c` | Local HTTP unit catalogue and conversion adapter; borrows session values, preserves typed exact input and shares calculator budgets. |
 | `src/internal/` | Private allocation boundaries and optional benchmark instrumentation. |
-| `src/calculator/` | Tokenizer, AST, typed evaluator, values, formatting and sessions. |
+| `src/calculator/` | Expression engine: tokenizer, AST, typed evaluator, values and numerical formatting. |
+| `src/application/` | Session ownership, variables/ans/history/replay and bounded client/cache pools. |
 | `src/main.c` | Interactive CLI. |
 | `src/web/` | Local server, HTTP framing and evaluation adapter. |
 | `web/` | Editable English/Slovak browser assets. |
@@ -69,6 +72,11 @@ Benchmark diagnostics are opt-in and are not part of the public API or ordinary
 release package. Phase timing and live-allocation tracking are separate probes.
 Private product-tree/square experiments do not change production arithmetic.
 
-Read [the API overview](API.md), [BigInt design](BIGINT_DESIGN.md),
+Read [the API overview](../API.md), [BigInt design](BIGINT_DESIGN.md),
 [BigDecimal design](BIGDECIMAL_DESIGN.md) and
 [calculator design](CALCULATOR_DESIGN.md) for the detailed contracts and modules.
+
+The private targets enforce the boundaries: `numforge_calculator` links the
+numeric library, `numforge_application` links the expression engine, and
+`numforge_client` contains HTTP adapters and links the application. CLI links
+the application directly. See [Application design](APPLICATION_DESIGN.md).

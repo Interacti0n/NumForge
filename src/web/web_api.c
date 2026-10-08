@@ -144,11 +144,7 @@ CalculatorStatus numforge_web_evaluate_with_options(
 
 void numforge_web_cache_clear(NumForgeWebCache *cache)
 {
-    if (cache != NULL)
-    {
-        calculator_value_destroy(&cache->value);
-        memset(cache, 0, sizeof(*cache));
-    }
+    application_evaluation_cache_clear(cache);
 }
 
 CalculatorStatus numforge_web_evaluate_cached(

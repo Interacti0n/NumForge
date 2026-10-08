@@ -17,6 +17,7 @@
 
 #include "web_server.h"
 #include "web_api.h"
+#include "client_store.h"
 #include "unit_web.h"
 #include "http_request.h"
 #include "web_page.h"
@@ -434,53 +435,14 @@ static bool numforge_parse_page_language(
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
-    Bounded per-page cache. Eight clients, one value each, FIFO eviction.
+    Application-owned session/cache pools. HTTP borrows values; creation and FIFO eviction live in src/application/.
     Values were allocated under the calculator's single-allocation bound;
     numeric limb storage per retained value is at most 128 KiB. No cookies or
     cross-tab storage: each page creates a fresh random identifier.
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
-#define NUMFORGE_WEB_CACHE_CLIENTS 8U
-static struct
-{
-    char client[33];
-    NumForgeWebCache cache;
-} numforge_clients[NUMFORGE_WEB_CACHE_CLIENTS];
-static size_t numforge_next_client;
-
-/* Sessions are separate from the optional legacy preview cache. A missing
- * session is only created by an explicit start; stale requests cannot revive
- * an evicted session and apply an old confirmation to fresh state. */
-static struct
-{
-    char client[33];
-    CalculatorSession session;
-} numforge_sessions[NUMFORGE_WEB_CACHE_CLIENTS];
-static size_t numforge_next_session;
-
-static CalculatorSession *numforge_client_session(const char *client, bool create)
-{
-    size_t index;
-
-    for (index = 0U; index < NUMFORGE_WEB_CACHE_CLIENTS; index++)
-    {
-        if (strcmp(numforge_sessions[index].client, client) == 0)
-        {
-            return &numforge_sessions[index].session;
-        }
-    }
-    if (!create)
-    {
-        return NULL;
-    }
-
-    index = numforge_next_session;
-    numforge_next_session = (index + 1U) % NUMFORGE_WEB_CACHE_CLIENTS;
-    calculator_session_destroy(&numforge_sessions[index].session);
-    memcpy(numforge_sessions[index].client, client, 33U);
-    return &numforge_sessions[index].session;
-}
+static ApplicationClientStore numforge_application_clients;
 
 static bool numforge_parse_session_action(char *target, const char **action)
 {
@@ -550,28 +512,6 @@ static bool numforge_parse_cache_options(char *target, char client[33], uint64_t
     *revision = parsed;
     *suffix = '\0';
     return true;
-}
-
-static NumForgeWebCache *numforge_client_cache(const char *client)
-{
-    size_t index;
-
-    if (*client == '\0')
-    {
-        return NULL;
-    }
-    for (index = 0U; index < NUMFORGE_WEB_CACHE_CLIENTS; index++)
-    {
-        if (strcmp(numforge_clients[index].client, client) == 0)
-        {
-            return &numforge_clients[index].cache;
-        }
-    }
-    index = numforge_next_client;
-    numforge_next_client = (index + 1U) % NUMFORGE_WEB_CACHE_CLIENTS;
-    numforge_web_cache_clear(&numforge_clients[index].cache);
-    memcpy(numforge_clients[index].client, client, 33U);
-    return &numforge_clients[index].cache;
 }
 
 static char *numforge_math_copy_text(const char *display)
@@ -644,7 +584,7 @@ static void numforge_handle_evaluation_impl(
 
     if (action != NULL)
     {
-        CalculatorSession *session = numforge_client_session(client, strcmp(action, "start") == 0);
+        CalculatorSession *session = application_client_session(&numforge_application_clients, client, strcmp(action, "start") == 0);
 
         if (strcmp(action, "start") == 0)
         {
@@ -675,7 +615,7 @@ static void numforge_handle_evaluation_impl(
     else
     {
         status = numforge_web_evaluate_cached_mode(
-            numforge_client_cache(client), revision, body, output_scale, angle_unit,
+            application_client_cache(&numforge_application_clients, client), revision, body, output_scale, angle_unit,
             notation, &result, &error, &reused);
     }
 
@@ -847,7 +787,7 @@ static void numforge_handle_conversion(NumForgeSocket socket, const char *target
     if (memchr(body, '\0', body_length) != NULL) code = "invalid_body";
     else if (numforge_web_parse_conversion_options(target, &options))
     {
-        CalculatorSession *session = options.client[0] ? numforge_client_session(options.client, false) : NULL;
+        CalculatorSession *session = options.client[0] ? application_client_session(&numforge_application_clients, options.client, false) : NULL;
         if (options.client[0] && session == NULL)
         {
             status = CALCULATOR_SESSION_EXPIRED;

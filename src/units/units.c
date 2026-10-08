@@ -3,7 +3,7 @@
 
 /* Canonical value = value * scale + offset, all coefficients exact.
  * Angle scales include symbolic pi. Factor provenance and local names are
- * generated from scripts/generate_unit_catalog.cjs; see docs/UNIT_CATALOG.md. */
+ * generated from scripts/generate_unit_catalog.cjs; see docs/reference/UNIT_CATALOG.md. */
 typedef struct UnitDefinition
 {
     NumForgeUnitInfo info;

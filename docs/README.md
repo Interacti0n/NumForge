@@ -1,35 +1,60 @@
 # Documentation guide
 
-## Build and use
+Start with your task. Folders follow the same categories as this page; API and
+testing entry points remain directly under `docs/`.
 
-- [Library guide](LIBRARY_GUIDE.md): build, install and consume the C library.
-- [Units](UNITS.md): public conversion foundation, compatibility and precision.
-- [Quantity expressions](QUANTITIES.md): typed arithmetic, dimensions, temperatures and session values.
-- [Unit catalogue](UNIT_CATALOG.md): SK/EN names, factors and primary-source provenance.
-- [Unit HTTP API](UNIT_HTTP_API.md): catalogue, expression conversion and read-only session access.
-- [Browser unit converter](UNIT_CONVERTER.md): categories, precision, preview/confirmation and session behavior.
-- [Variables](VARIABLES.md): session assignments, exact values and lifetime.
-- [API overview](API.md): numeric contracts, calculator syntax and local HTTP API.
-- [Testing](TESTING.md): regression checks, sanitizers, fuzzing and browser tests.
-- [Release packaging](RELEASE_PACKAGING.md): portable archives and release automation.
+## Use NumForge — `guides/`
 
-## Understand the implementation
+- [Browser calculator](guides/CALCULATOR_WEB.md): controls, results and precision.
+- [Variables](guides/VARIABLES.md): assignments, deletion, snapshots and lifetime.
+- [Unit converter](guides/UNIT_CONVERTER.md): categories, preview, swap and history.
+- [C library guide](guides/LIBRARY_GUIDE.md): build, install and consume the library.
 
-- [Architecture](ARCHITECTURE.md): dependency boundaries and source map.
-- [BigInt design](BIGINT_DESIGN.md): integer representation and algorithms.
-- [BigDecimal design](BIGDECIMAL_DESIGN.md): scales, precision and rounding.
-- [Calculator design](CALCULATOR_DESIGN.md): parsing, evaluation and sessions.
-- [Browser assets](../web/README.md): editable UI and embedded-asset generation.
+## Look up a contract — `reference/`
 
-## Measure and plan
+Start with the [API guide](API.md), or open a specific reference:
 
-- [Benchmark tools](../benchmarks/README.md): harnesses, reference data and recording.
-- [Formatting/cache measurements](BENCHMARKS.md): display costs, cache and memory.
-- [BigInt measurements](BIGINT_BENCHMARKS.md): arithmetic and algorithm experiments.
-- [Decimal/math measurements](DECIMAL_MATH_BENCHMARKS.md): decimal operations,
-  scientific functions, independent references and known limitations.
-- [Roadmap](ROADMAP.md): planned work and prerequisites.
-- [Project presentation](PROJECT_PRESENTATION.md): screenshots and README maintenance.
+- [Public C API](reference/C_API.md): numeric types, functions and ownership.
+- [Calculator expressions](reference/CALCULATOR_EXPRESSIONS.md): syntax and calls.
+- [Local HTTP API](reference/HTTP_API.md): evaluation, sessions, revisions and errors.
+- [Units](reference/UNITS.md) and [Quantity](reference/QUANTITIES.md): conversion and dimensions.
+- [Unit catalogue](reference/UNIT_CATALOG.md): 233 units, localized names and sources.
+- [Unit HTTP API](reference/UNIT_HTTP_API.md): catalogue and conversion routes.
+- [Web/API coverage](reference/WEB_API_PARITY.md): implemented calls and remaining gaps.
 
-Screenshots used by the README live in `images/`. Recorded benchmark output and
-generated build files belong in ignored build directories, outside these docs.
+## Understand the code — `design/`
+
+- [Architecture](design/ARCHITECTURE.md): dependency flow and source map.
+- [Application design](design/APPLICATION_DESIGN.md): sessions, adapters and future storage.
+- [BigInt](design/BIGINT_DESIGN.md) and [BigDecimal](design/BIGDECIMAL_DESIGN.md): representation and arithmetic.
+- [Calculator](design/CALCULATOR_DESIGN.md): modules, evaluation and budgets.
+- [Expression parser](design/EXPRESSION_PARSER.md): grammar and name resolution.
+- [Browser/result design](design/WEB_DESIGN.md): layout, precision, caches and history.
+- [Web assets](../web/README.md): editable assets and embedding.
+
+## Verify a change — `testing/`
+
+The [testing guide](TESTING.md) gives the complete local command and links to
+numerical references, session/unit regressions, browser/CI checks and profiling.
+
+## Investigate performance — `benchmarks/`
+
+- [Harnesses and reference data](../benchmarks/README.md).
+- [Formatting/cache measurements](benchmarks/BENCHMARKS.md).
+- [BigInt measurements](benchmarks/BIGINT_BENCHMARKS.md).
+- [Decimal/math measurements](benchmarks/DECIMAL_MATH_BENCHMARKS.md).
+
+Measurements retain their dates, environments and limitations. They are evidence
+for specific source snapshots, not promises about every machine.
+
+## Plan and maintain — `project/`
+
+- [Roadmap](project/ROADMAP.md): available features and future work.
+- [Presentation](project/PROJECT_PRESENTATION.md): README assets and screenshots.
+- [Release packaging](project/RELEASE_PACKAGING.md): archives and automation.
+- [Release 2.1 preparation](project/RELEASE_2_1.md): scope, checks and publication.
+- [Short changelog](../CHANGELOG_SHORT.md) or [full changelog](../CHANGELOG.md).
+
+Screenshots live in `images/`. Generated output and benchmark runs stay in
+ignored build directories. Run documented shell commands from the repository
+root unless a guide explicitly says otherwise.

@@ -5,13 +5,13 @@ The calculator, API guide and upcoming-tools page have separate Slovak and Engli
 styles the shared header. `calculator.js` implements calculator behavior, and
 `navigation.js` handles
 transitions between the calculator, guide, future-tool pages and language versions.
-It also fills the shared upcoming page with graph, equation, unit,
+It also fills the shared upcoming page with graph, equation,
 sign-in or registration text based on the route. Change these source
 files directly; do not edit the generated `web_page.h` under the build tree.
 
-CMake embeds the thirteen web assets and the root `LICENSE` when building
+CMake embeds the web assets and the root `LICENSE` when building
 `numforge_web`. The C server serves the HTML routes (`/`, `/api`, `/graph`,
-`/solve`, `/units`, `/login`, and `/register`), seven
+`/solve`, `/units`, `/login`, and `/register`), the registered
 `/assets/` routes and the license text at `/LICENSE` from the executable.
 The same `logo.png` is displayed in all page headers and linked as their
 PNG favicon. `wordmark.png` appears in the SK/EN guide introduction. The
@@ -69,14 +69,15 @@ field; Esc only collapses it. Clipped results show a visible `...` marker and a
 The full-width settings bar sits above the expression and stays compact in
 height. The calculator and guide use colors based on Melanie Brown's Deep Purple
 VS Code theme. Each calculator card has a title and icon. On desktop, the
-function library takes only the height needed for its controls, leaving the
-remaining sidebar space for the session and history. Function categories and function buttons have
+function library and session take natural heights inside one scrollable right
+column, keeping session/history reachable in short windows. The left calculator
+column scrolls when needed. Function categories and function buttons have
 separate labelled panels, divided from the search field. Categories form a
 vertical list beside their controls on wide screens, and search matches Slovak
 descriptions with or without diacritics. The recent row remembers up to twelve
 distinct constants, operations or functions and shows as many as fit in one row;
 visible buttons share the available width without extending past the card. The function
-help remains outside the scrolling list so its text stays visible.
+help appears after the active function group within the same scrollable column.
 Inverse trigonometric and hyperbolic functions can also be found by their
 `arc` and `arcus` names, including prefix-only searches.
 

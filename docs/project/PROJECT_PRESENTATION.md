@@ -13,14 +13,14 @@ that roadmap items already work.
 | Quick demo | README's verified exact decimal, integer, fraction/root and high-precision examples. |
 | Status badges | Live GitHub CI and latest-release badges; MIT/C17/CMake requirements verified from the repo. |
 | Screenshots | `docs/images/calculator-desktop.png` and `calculator-mobile.png`, captured from the real local Release server. |
-| Architecture | README Mermaid diagram and `ARCHITECTURE.md` with ownership and client/library boundaries. |
+| Architecture | README Mermaid diagram and `docs/design/ARCHITECTURE.md` with ownership and client/library boundaries. |
 | Benchmarks | README excerpt of recorded results; detailed methodology and experiments remain in the benchmark docs. |
 | Getting started | Source release/clone links, CMake build and platform-specific application launch commands. |
 | Contribution path | Root `CONTRIBUTING.md`, testing guide and GitHub issue link. |
 | Capability/roadmap distinction | `ROADMAP.md` names implemented functionality and informational UI routes. |
 | GitHub metadata | Description and topics were updated separately on GitHub; Git commits do not set these fields. |
 
-Screenshots show development code based on `ab9743f`, captured on 7 October 2026
+Screenshots show the 2.1.0 preparation build, captured on 8 October 2026
 in English with Full precision and Fraction notation. The capture records four
 confirmed expressions: `0.1+0.2`, `2^128`, `sqrt(4/9)` and `1/3+1/6`. The large
 integer history entry uses full Auto scientific output before switching to
@@ -29,7 +29,7 @@ Fraction. The last result is exactly `1/2` with a separate `≈ 0.5` hint.
 ## Refresh screenshots
 
 Build the server after web changes. Install the browser-test dependencies and
-Chromium using the process in [TESTING.md](TESTING.md), then run:
+Chromium using the process in [TESTING.md](../TESTING.md), then run:
 
 ```sh
 node tests/browser/capture_showcase.js build/Release/numforge_web.exe
@@ -72,7 +72,7 @@ development version shown.
 - Hosted demo: local build-and-run path exists; deployment and isolation design
   are still needed before offering a public calculator.
 - More benchmark highlights: direct BigDecimal/higher-function measurements are
-  implemented in [DECIMAL_MATH_BENCHMARKS.md](DECIMAL_MATH_BENCHMARKS.md). Add only
+  implemented in [DECIMAL_MATH_BENCHMARKS.md](../benchmarks/DECIMAL_MATH_BENCHMARKS.md). Add only
   verified results with their recorded machine/range context; retain the stress
   matrix's explicit timeouts and tangent-pole accuracy limitation.
 - Portfolio connection: deliberately deferred at the owner's request. No

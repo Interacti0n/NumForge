@@ -18,6 +18,10 @@ The installed package exports `NumForge::numforge`. It contains BigInt,
 BigDecimal, BigRational and optional runtime-budget support; parser,
 evaluator and HTTP code are not part of the installed numeric target.
 
+Session ownership is a separate private target and is also absent from the
+installed package. Standalone consumers need no client state, browser assets
+or database. See [Application design](../design/APPLICATION_DESIGN.md).
+
 ## CMake consumer
 
 ```cmake
@@ -71,7 +75,7 @@ int main(void)
 ```
 
 For complete signatures, domains, rounding, runtime budgets and threading
-guidance see [API.md](API.md). The installed package is exercised by the
+guidance see [API.md](../API.md). The installed package is exercised by the
 repository's C and C++ package-consumer tests.
 
 Real roots and the `bigdecimal_exp`, `bigdecimal_ln`, `bigdecimal_log10` and

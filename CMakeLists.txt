@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(NumForge
-    VERSION 2.0.0
+    VERSION 2.1.0
     DESCRIPTION "Arbitrary-precision mathematics library and exact-decimal calculator written in C"
     LANGUAGES C
 )
@@ -128,13 +128,13 @@ add_library(numforge STATIC
     src/internal/numforge_alloc.c
 )
 
-# Private application support; never exported or installed as numeric API.
+# Private expression engine, application state and HTTP adapters. None are
+# exported or installed as the public numeric API.
 if(NUMFORGE_BUILD_APPS OR BUILD_TESTING OR NUMFORGE_BUILD_FUZZERS OR NUMFORGE_BUILD_BENCHMARKS)
-    add_library(numforge_client STATIC
+    add_library(numforge_calculator STATIC
         src/calculator/calculator.c
         src/calculator/value.c
         src/calculator/quantity.c
-        src/calculator/session.c
         src/calculator/random.c
         src/calculator/constants.c
         src/calculator/tokenizer.c
@@ -146,16 +146,27 @@ if(NUMFORGE_BUILD_APPS OR BUILD_TESTING OR NUMFORGE_BUILD_FUZZERS OR NUMFORGE_BU
         src/calculator/exact_functions.c
         src/calculator/functions.c
         src/calculator/formatter.c
+    )
+    target_link_libraries(numforge_calculator PUBLIC numforge)
+    if(WIN32)
+        target_link_libraries(numforge_calculator PRIVATE bcrypt)
+    endif()
+    target_include_directories(numforge_calculator PUBLIC ${PROJECT_SOURCE_DIR}/src/calculator)
+    numforge_enable_diagnostics(numforge_calculator)
+
+    add_library(numforge_application STATIC
+        src/application/session.c
+        src/application/client_store.c)
+    target_link_libraries(numforge_application PUBLIC numforge_calculator)
+    target_include_directories(numforge_application PUBLIC ${PROJECT_SOURCE_DIR}/src/application)
+    numforge_enable_diagnostics(numforge_application)
+
+    add_library(numforge_client STATIC
         src/web/web_api.c
         src/web/unit_web.c
-        src/web/http_request.c
-    )
-    target_link_libraries(numforge_client PUBLIC numforge)
-    if(WIN32)
-        target_link_libraries(numforge_client PRIVATE bcrypt)
-    endif()
+        src/web/http_request.c)
+    target_link_libraries(numforge_client PUBLIC numforge_application)
     target_include_directories(numforge_client PUBLIC
-        ${PROJECT_SOURCE_DIR}/src/calculator
         ${PROJECT_SOURCE_DIR}/src/web)
     numforge_enable_diagnostics(numforge_client)
 endif()
@@ -192,7 +203,7 @@ target_include_directories(calculator
 
 target_link_libraries(calculator
     PRIVATE
-        numforge_client
+        numforge_application
 )
 numforge_enable_diagnostics(calculator)
 
@@ -292,14 +303,14 @@ install(
 )
 
 install(
-    FILES README.md CHANGELOG.md LICENSE
+    FILES README.md CHANGELOG.md CHANGELOG_SHORT.md LICENSE
     DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/NumForge"
 )
 
 install(
     DIRECTORY docs/
     DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/NumForge/docs"
-    FILES_MATCHING PATTERN "*.md"
+    FILES_MATCHING PATTERN "*.md" PATTERN "*.png"
 )
 
 configure_package_config_file(
@@ -591,6 +602,10 @@ if(BUILD_TESTING)
     )
 
     add_executable(session_tests tests/test_session.c)
+    add_executable(application_tests tests/test_application.c)
+    target_link_libraries(application_tests PRIVATE numforge_application unity)
+    numforge_enable_diagnostics(application_tests)
+    add_test(NAME application_tests COMMAND application_tests)
     target_include_directories(session_tests PRIVATE ${PROJECT_SOURCE_DIR}/src/internal)
     target_compile_definitions(session_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
     target_link_libraries(session_tests PRIVATE numforge_client unity)

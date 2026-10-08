@@ -147,6 +147,6 @@ before computing into a temporary. Parsing uses maximal uint64 radix chunks;
 formatting repeatedly divides a scratch magnitude by the corresponding chunk
 power, pads internal chunks, then reverses the digits. Overflow checks bound
 buffer sizes; budgets are checked between chunks. Existing decimal entry points
-retain their optimized 19-digit conversion. See [API](API.md)
+retain their optimized 19-digit conversion. See [API](../API.md)
 for ownership and syntax. Independent Node BigInt references and injected
 allocation failures cover both directions.

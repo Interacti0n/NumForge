@@ -2,7 +2,7 @@
 
 These opt-in tools measure the production library and calculator. Build with
 `NUMFORGE_BUILD_BENCHMARKS=ON`; ordinary builds omit the private instrumentation.
-See [the benchmark guide](../docs/BENCHMARKS.md) for setup and recording commands.
+See [the benchmark guide](../docs/benchmarks/BENCHMARKS.md) for setup and recording commands.
 
 | Files | Purpose |
 | --- | --- |
@@ -18,11 +18,11 @@ See [the benchmark guide](../docs/BENCHMARKS.md) for setup and recording command
 
 The reference generator requires mpmath 1.3.0; running the benchmarks consumes
 the checked-in TSV and does not require Python or mpmath. Regeneration instructions
-and strict comparison rules are in [the decimal/math report](../docs/DECIMAL_MATH_BENCHMARKS.md).
+and strict comparison rules are in [the decimal/math report](../docs/benchmarks/DECIMAL_MATH_BENCHMARKS.md).
 
 Save raw recordings under ignored `build/` directories. Keep timing, allocation
 and phase probes separate, and validate results before drawing performance
 conclusions. Timeouts and reference mismatches remain explicit outcomes.
 
-Read the [BigInt report](../docs/BIGINT_BENCHMARKS.md) and
-[formatting/cache report](../docs/BENCHMARKS.md) for existing measurements.
+Read the [BigInt report](../docs/benchmarks/BIGINT_BENCHMARKS.md) and
+[formatting/cache report](../docs/benchmarks/BENCHMARKS.md) for existing measurements.

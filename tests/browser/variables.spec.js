@@ -30,7 +30,7 @@ for (const language of ['sk', 'en']) {
         await expect(entries).toHaveCount(32);
         await expect(page.locator('#variable-count')).toHaveText('32 / 32');
         await expect(page.locator('#history-list li')).toHaveCount(16);
-        const dimensions = await page.locator('#variable-list').evaluate(list =>
+        const dimensions = await page.locator('.sidebar').evaluate(list =>
             ({height: list.clientHeight, content: list.scrollHeight}));
         expect(dimensions.height).toBeGreaterThan(34);
         expect(dimensions.content).toBeGreaterThan(dimensions.height);

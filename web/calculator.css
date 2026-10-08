@@ -248,6 +248,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .recent-buttons button:hover { border-color: var(--accent); color: var(--accent); }
 
 .sidebar { gap: 18px; }
+.sidebar:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 13px; }
 .sidebar-heading { display: flex; align-items: flex-start; gap: 11px; margin-bottom: 18px; }
 .sidebar-heading p { margin: 5px 0 0; color: var(--muted); font-size: .8rem; line-height: 1.45; }
 .sidebar-icon { display: grid; flex: 0 0 34px; place-items: center; width: 34px; height: 34px; border-radius: 9px; background: #3f007f; color: var(--accent); font-size: 1.35rem; font-weight: 700; }
@@ -366,7 +367,7 @@ html[lang="en"] .function-group:not(.search-results)::before { content: "Functio
     .calculator-shell { display: flex; flex-direction: column; height: 100dvh; }
     .workspace { flex: 1; min-height: 0; grid-template-columns: minmax(0, 1.65fr) minmax(310px, 1fr); align-items: stretch; gap: 14px; padding: 8px 0; }
     .calculator-column { min-height: 0; grid-template-rows: auto auto minmax(95px, 1fr) auto; gap: 6px; overflow: auto; scrollbar-width: thin; }
-    .sidebar { min-height: 0; grid-template-rows: max-content minmax(0, 1fr); gap: 8px; }
+    .sidebar { min-height: 0; grid-template-rows: max-content max-content; align-content: start; gap: 8px; overflow-y: auto; scrollbar-width: thin; padding-right: 4px; }
     .intro { display: none; }
     .card { padding: 8px 12px; border-radius: 13px; }
     .section-heading { margin-bottom: 6px; }
@@ -403,20 +404,22 @@ html[lang="en"] .function-group:not(.search-results)::before { content: "Functio
     .keypad-bottom .keypad button { min-height: 32px; font-size: 1.08rem; }
     .recent-row { min-height: 37px; margin-top: 6px; padding-top: 5px; }
     .recent-buttons button { min-height: 33px; font-size: 1.02rem; }
-    .function-library { display: flex; flex-direction: column; min-height: 0; max-height: min(45dvh, calc(100dvh - 380px)); overflow: hidden; }
+    .function-library { display: flex; flex-direction: column; min-height: 0; max-height: none; overflow: visible; }
     .sidebar-heading { margin-bottom: 9px; }
     .sidebar-heading p { margin-top: 2px; font-size: .72rem; }
     .sidebar-icon { width: 27px; height: 27px; flex-basis: 27px; font-size: 1.05rem; }
     .search-field { gap: 4px; font-size: .7rem; }
     .search-field input { height: 33px; font-size: .79rem; }
     .function-tabs button { min-height: 31px; padding: 4px 8px; font-size: .76rem; }
-    .function-groups { min-height: 0; overflow: auto; scrollbar-width: thin; }
+    .function-groups { min-height: 0; overflow: visible; }
     .keypad.functions { grid-template-columns: repeat(auto-fit, minmax(72px, 1fr)); }
     .keypad.functions button { min-height: 39px; font-size: .9rem; }
     #function-help { min-height: 2.8em; margin-top: 8px; font-size: .72rem; }
-    .session-panel { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+    .session-panel { display: flex; flex-direction: column; min-height: 0; overflow: visible; }
     .session-panel > .sidebar-heading, .session-actions { flex-shrink: 0; }
-    .session-panel .variables-section { flex: 1; min-height: 0; }
+    .session-panel .variables-section { flex: none; min-height: 0; }
+    .session-panel .history-section { flex: none; }
+    .session-panel #history-list, .session-panel #variable-list { flex: none; max-height: none; overflow: visible; }
     .session-actions button { min-height: 33px; }
     .history-section { margin-top: 9px; padding-top: 8px; }
 }

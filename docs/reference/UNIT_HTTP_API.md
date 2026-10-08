@@ -1,9 +1,13 @@
 # Local unit-conversion HTTP API
 
 The loopback `numforge_web` server exposes the same sourced unit registry and
-conversion core as the [C API](UNITS.md). The [SK/EN browser page](UNIT_CONVERTER.md)
+conversion core as the [C API](UNITS.md). The [SK/EN browser page](../guides/UNIT_CONVERTER.md)
 uses these routes. They are intended for the local application, with the existing
 request framing, origin checks and calculator resource limits.
+
+The conversion core belongs to the standalone numeric library. The HTTP adapter
+borrows session values from the private application layer; it does not own
+client pools or persistence. See [Application design](../design/APPLICATION_DESIGN.md).
 
 ## Catalogue
 
@@ -87,4 +91,4 @@ Existing HTTP framing errors keep their existing response schema: for example
 missing Content-Length is 411, foreign Origin is 403 and a body exceeding 4096
 bytes is 413. Embedded NUL bytes are rejected. Evaluation, conversion and result
 formatting share the calculator's cooperative time/allocation budget. This is
-not a public hosted-service isolation model; see [the roadmap](ROADMAP.md).
+not a public hosted-service isolation model; see [the roadmap](../project/ROADMAP.md).

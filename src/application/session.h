@@ -14,7 +14,7 @@
     history estimate does not include them. The same per-allocation bound applies.
     No persistence or thread safety. Revisions identify requests, not values.
 
-    Implementation: src/calculator/session.c
+    Implementation: src/application/session.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 

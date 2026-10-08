@@ -57,13 +57,14 @@ only those legacy rows can differ by up to one output ULP. Such rows report
 `bounded_directed` separately. The smoke matrix currently encounters 16 of these
 rows. No new high-precision mismatch receives that allowance.
 
-The strict references expose an existing limitation at
+The original baseline's strict references exposed a limitation at
 `tan(1.5707963267948966192313216916397514420985)`, extremely close to pi/2.
-All five requested precisions produced a mismatch in local diagnostic validation.
-At 10 digits, the independent result rounds to `1.180641900E40`; NumForge returns
+All five requested precisions produced a mismatch in that diagnostic validation.
+At 10 digits, the independent result rounds to `1.180641900E40`; the baseline returned
 `1.183431953E40`. Fixed internal guards lose accuracy in this ill-conditioned
-division. This is an accuracy follow-up, not a benchmark success or an optimization
-implemented here. The better-resolved `tan(1.570796326794)` case is also measured.
+division. The [tangent follow-up](#tangent-accuracy-follow-up) documents the
+implemented fix. Historical mismatches remain part of the original measurement
+record. The better-resolved `tan(1.570796326794)` case is also measured.
 
 The C harness exits unsuccessfully on any mismatched reference. The full baseline
 collector records a `reference_mismatch` outcome and preserves the diagnostic;

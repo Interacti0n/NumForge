@@ -2,6 +2,7 @@
 const { chromium, expect } = require('@playwright/test');
 const { spawn } = require('node:child_process');
 const net = require('node:net');
+const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const executable = process.argv[2];
@@ -35,7 +36,19 @@ async function confirm(page, expression, expected) {
         const deadline = Date.now() + 15000;
         while (true) {
             if (server.exitCode !== null || serverError) throw Error(serverError || 'Server exited');
-            try { if ((await fetch(url)).ok) break; } catch {}
+            // Drain readiness responses; do not depend on Node's fetch parser.
+            try {
+                const ready = await new Promise((resolve, reject) => {
+                    const request = http.get(url, { agent: false }, response => {
+                        response.on('error', reject);
+                        response.on('end', () => resolve(response.statusCode === 200));
+                        response.resume();
+                    });
+                    request.on('error', reject);
+                    request.setTimeout(1000, () => request.destroy(Error('Startup probe timed out')));
+                });
+                if (ready) break;
+            } catch {}
             if (Date.now() > deadline) throw Error('Local server did not start');
             await new Promise(resolve => setTimeout(resolve, 100));
         }

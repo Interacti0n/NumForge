@@ -51,7 +51,7 @@ after an error.
 Additive APIs also provide exact integer conversions, sign/integer predicates,
 min/max, sequence aggregates, floor/ceil/trunc/half-even round, integer powers,
 population/sample statistics, real roots, significant and exact-first division,
-constants and readable formatting; see [API.md](API.md#additional-numeric-operations).
+constants and readable formatting; see [Public C API](../reference/C_API.md#additional-numeric-operations).
 The calculator calls public APIs without accessing the representation.
 
 Roots preserve exact finite results. For canonical `C * 10^-s`, a finite kth

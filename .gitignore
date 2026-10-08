@@ -14,6 +14,8 @@ cmake_install.cmake
 Makefile
 CTestTestfile.cmake
 Testing/
+!/docs/testing/
+!/docs/testing/**
 
 # Compiler output
 *.exe

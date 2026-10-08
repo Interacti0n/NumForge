@@ -1,6 +1,8 @@
 const { test, expect } = require('@playwright/test');
 const fs = require('node:fs');
 const path = require('node:path');
+const projectVersion = fs.readFileSync(path.resolve(__dirname, '../../CMakeLists.txt'), 'utf8')
+    .match(/project\(NumForge\s+VERSION\s+(\d+\.\d+\.\d+)/)[1];
 
 test('HTTP sessions: confirmation replay, isolation and expiration', async ({ request }) => {
     const client = 'b'.repeat(32);
@@ -408,7 +410,7 @@ for (const lang of ['sk', 'en']) {
         });
         test('automatic calculation and precision above result', async ({ page }, testInfo) => {
             await expect(page.locator('.page-footer')).toBeVisible();
-            await expect(page.locator('.page-footer')).toContainText('v2.0.0');
+            await expect(page.locator('.page-footer')).toContainText('v' + projectVersion);
             await expect(page.locator('.page-footer a[href$="/LICENSE"]')).toBeVisible();
             await expect(page.locator('.page-footer a[href="https://github.com/Interacti0n/NumForge"]')).toBeVisible();
             const settings = await page.locator('.precision').boundingBox();
@@ -868,9 +870,8 @@ for (const lang of ['sk', 'en']) {
             }));
             expect(helpPosition.top).toBeGreaterThanOrEqual(helpPosition.groupBottom - 1);
             expect(helpPosition.bottom).toBeLessThanOrEqual(helpPosition.cardBottom + 1);
-            const session = await page.locator('.session-panel').boundingBox();
-            const sidebar = await page.locator('.sidebar').boundingBox();
-            expect(Math.abs(session.y + session.height - (sidebar.y + sidebar.height))).toBeLessThan(2);
+            await page.locator('#session-title').scrollIntoViewIfNeeded();
+            await expect(page.locator('#session-title')).toBeInViewport();
         });
         test('recent tools remain available below the keypad', async ({ page }) => {
             await page.locator('.constants [data-insert="π"]').click();
@@ -914,7 +915,7 @@ for (const lang of ['sk', 'en']) {
             expect(mobileFit.right - mobileFit.last).toBeLessThan(2);
             expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
         });
-        test('function library gives unused sidebar height to the session', async ({ page }) => {
+        test('whole sidebar scroll keeps session and history reachable in short windows', async ({ page }) => {
             await page.setViewportSize({width: 1280, height: 720});
             const before = {
                 library: await page.locator('.function-library').boundingBox(),
@@ -926,9 +927,24 @@ for (const lang of ['sk', 'en']) {
                 session: await page.locator('.session-panel').boundingBox()
             };
             expect(after.library.height).toBeLessThan(before.library.height);
-            expect(after.session.height).toBeGreaterThan(before.session.height);
-            expect(Math.abs(after.session.y + after.session.height -
-                (before.session.y + before.session.height))).toBeLessThan(2);
+            expect(after.session.y).toBeLessThan(before.session.y);
+            await page.locator('#function-search').fill('');
+            for (const height of [600, 420]) {
+                await page.setViewportSize({width: 1280, height});
+                await calculate(page, '5', '5');
+                await page.locator('#history-list .history-copy').last().click();
+                await expect(page.locator('#history-list .history-copy').last()).toBeInViewport();
+                await expect(page.locator('#session-history-tab')).toBeInViewport();
+                await page.locator('#reset-session').scrollIntoViewIfNeeded();
+                await expect(page.locator('#reset-session')).toBeInViewport();
+                expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(height);
+                await page.locator('#function-search').scrollIntoViewIfNeeded();
+                await expect(page.locator('#function-search')).toBeInViewport();
+                await page.locator('.sidebar').focus();
+                await page.keyboard.press('End');
+                await expect.poll(() => page.locator('.sidebar').evaluate(el => el.scrollTop)).toBeGreaterThan(0);
+                await expect(page.locator('#history-list .history-copy').last()).toBeInViewport();
+            }
         });
         test('guide sections stay navigable on narrow screens', async ({ page }) => {
             await page.locator('.guide-link').click();
@@ -947,7 +963,7 @@ for (const lang of ['sk', 'en']) {
         test('guide navigation remains visible while reading on desktop', async ({ page }) => {
             await page.setViewportSize({width: 1280, height: 720});
             await page.locator('.guide-link').click();
-            await expect(page.locator('.page-footer')).toContainText('v2.0.0');
+            await expect(page.locator('.page-footer')).toContainText('v' + projectVersion);
             await expect(page.locator('.page-footer a[href$="/LICENSE"]')).toBeVisible();
             const headerY = (await page.locator('.page-header').boundingBox()).y;
             const menuY = (await page.locator('.guide-toc').boundingBox()).y;

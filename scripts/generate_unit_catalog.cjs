@@ -112,7 +112,7 @@ for(const [key,url] of Object.entries(sources)) doc+='- ['+key+']('+url+')\n';
 doc+='\n| ID | English | Slovak | Quantity | Scale | Offset | Source / derivation |\n| --- | --- | --- | --- | --- | --- | --- |\n';
 for(const r of rows) doc+='| '+[r.id,r.en,r.sk,r.q,r.scale.join('/')+(r.pi?' * pi':''),r.offset.join('/'),'['+r.source+']('+sources[r.source]+'): '+r.derivation].join(' | ')+' |\n';
 let changed=false;
-for(const [file,content] of [['src/units/unit_catalog.inc',inc],['docs/UNIT_CATALOG.md',doc]]) {
+for(const [file,content] of [['src/units/unit_catalog.inc',inc],['docs/reference/UNIT_CATALOG.md',doc]]) {
  const destination=path.join(root,file);
  if(process.argv.includes('--check')) { if(!fs.existsSync(destination)||fs.readFileSync(destination,'utf8')!==content) { console.error('Out of date: '+file); changed=true; } }
  else fs.writeFileSync(destination,content);

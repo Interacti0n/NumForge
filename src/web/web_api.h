@@ -3,6 +3,7 @@
 
 #include "calculator_internal.h"
 #include "session.h"
+#include "client_store.h"
 
 CalculatorStatus numforge_web_evaluate_session(
     CalculatorSession *session,
@@ -41,12 +42,7 @@ char *numforge_web_fraction_approximation(const char *display);
 /* One owned successful value per client. Zero-initialize; clear on eviction.
  * Revision prevents an older queued request from replacing newer work.
  * No thread safety: the loopback server currently handles requests serially. */
-typedef struct NumForgeWebCache
-{
-    CalculatorValue value;
-    char expression[NUMFORGE_WEB_MAX_EXPRESSION_LENGTH + 1U];
-    uint64_t revision;
-} NumForgeWebCache;
+typedef ApplicationEvaluationCache NumForgeWebCache;
 
 void numforge_web_cache_clear(NumForgeWebCache *cache);
 CalculatorStatus numforge_web_evaluate_cached(

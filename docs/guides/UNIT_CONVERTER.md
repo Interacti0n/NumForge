@@ -3,8 +3,8 @@
 Calculator expressions also accept `convert(value; "from"; "to")`.
 For example, `convert(90; "km/h"; "m/s")` returns `25`, and
 `convert(1/3; "km"; "m")` returns the exact number `1000/3`.
-See [expression syntax and limits](UNITS.md#calculator-expressions).
-Typed [Quantity expressions](QUANTITIES.md) are available in the calculator.
+See [expression syntax and limits](../reference/UNITS.md#calculator-expressions).
+Typed [Quantity expressions](../reference/QUANTITIES.md) are available in the calculator.
 This converter still expects a numeric coordinate; use explicit `convert(...)`
 to extract a number from a quantity variable or quantity-valued `ans` first.
 
@@ -58,7 +58,7 @@ without a calculator session. Selections/settings/input survive language and
 tool navigation in the same tab; each result is recomputed. A page reload can
 restore converter fields, while calculator sessions follow their own lifecycle.
 
-Requests use the [unit HTTP API](UNIT_HTTP_API.md). Editing input/settings or
+Requests use the [unit HTTP API](../reference/UNIT_HTTP_API.md). Editing input/settings or
 changing category cancels the pending request and clears the old copy value.
 Outdated responses cannot overwrite a newer result. Network/catalogue failures
 offer retry without changing calculator state. This stage adds no

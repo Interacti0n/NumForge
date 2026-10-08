@@ -1,6 +1,6 @@
 # Unit conversion foundation
 
-The additive public C API in [units.h](../include/numforge/units.h) provides a
+The additive public C API in [units.h](../../include/numforge/units.h) provides a
 static registry, compatibility checks and rational/decimal conversion.
 The calculator exposes these conversions through `convert(...)` expressions.
 The client calculator also supports [typed Quantity expressions](QUANTITIES.md),
@@ -15,8 +15,8 @@ Detailed contracts are maintained in:
   semantics, session behavior and current limitations.
 - [Unit catalogue](UNIT_CATALOG.md): factors, SK/EN names and provenance.
 - [Unit HTTP API](UNIT_HTTP_API.md): requests, errors, limits and snapshots.
-- [Browser converter](UNIT_CONVERTER.md): interaction, layout and conversion history.
-- [Testing](TESTING.md): regression coverage and verification workflows.
+- [Browser converter](../guides/UNIT_CONVERTER.md): interaction, layout and conversion history.
+- [Testing](../TESTING.md): regression coverage and verification workflows.
 
 Future implementation work is tracked in the local project review.
 
@@ -64,7 +64,7 @@ The catalogue and conversion implementations are shared with the public C API.
 The [full catalogue](UNIT_CATALOG.md) lists all **233 entries**, their English
 and Slovak display names, exact factors/offsets and primary-source provenance.
 It is generated with the C registry by
-[scripts/generate_unit_catalog.cjs](../scripts/generate_unit_catalog.cjs).
+[scripts/generate_unit_catalog.cjs](../../scripts/generate_unit_catalog.cjs).
 Run the generator with --check to verify that checked-in data match the source.
 No generator or network access is needed by library users.
 
@@ -138,7 +138,7 @@ precision validation). The public registry exposes source_url for every entry;
 
 The local server exposes the catalogue and read-only expression conversion via
 [`/api/units` and `/api/convert`](UNIT_HTTP_API.md). The SK/EN browser converter
-is available at `/units`; see [the user guide](UNIT_CONVERTER.md).
+is available at `/units`; see [the user guide](../guides/UNIT_CONVERTER.md).
 Calculator `convert(...)` uses the same catalogue and conversion implementation.
 
 ~~~c
@@ -156,7 +156,7 @@ Tests cover independent known conversions, extreme prefixes, large values,
 all registry pairs and exact round trips. In-place rational, decimal and both
 pi-direction paths undergo allocation-failure injection. Frozen angle references
 use mpmath 1.3.0 at requested +240/+400 digits, with Decimal rounding; see
-[the generator](../tests/generate_unit_angle_references.py). These finite cases
+[the generator](../../tests/generate_unit_angle_references.py). These finite cases
 support regression testing, not a proof of rounding for arbitrary inputs.
 
 SI powers and prefix rules follow

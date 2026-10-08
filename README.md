@@ -7,7 +7,7 @@
 [![CI](https://github.com/Interacti0n/NumForge/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Interacti0n/NumForge/actions/workflows/ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/Interacti0n/NumForge)](https://github.com/Interacti0n/NumForge/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![C17](https://img.shields.io/badge/C-17-00599C.svg)](docs/LIBRARY_GUIDE.md)
+[![C17](https://img.shields.io/badge/C-17-00599C.svg)](docs/guides/LIBRARY_GUIDE.md)
 [![CMake 3.20+](https://img.shields.io/badge/CMake-3.20%2B-064F8C.svg)](CMakeLists.txt)
 
 NumForge 2.0 is a C17 mathematics library for arbitrary-precision integers
@@ -70,12 +70,12 @@ earlier layout. The calculator is available in English and Slovak.
   results that cannot be represented exactly.
 - A Slovak/English browser calculator served by a self-contained local
   executable. Running it requires no Node.js, database, or external service.
-- [Unit conversion](docs/UNIT_CONVERTER.md) in the SK/EN browser, C and [local HTTP APIs](docs/UNIT_HTTP_API.md),
+- [Unit conversion](docs/guides/UNIT_CONVERTER.md) in the SK/EN browser, C and [local HTTP APIs](docs/reference/UNIT_HTTP_API.md),
   with a sourced 233-unit catalogue and compatibility checks.
 - Unit, property, integration, browser, fuzz, and package-consumer checks.
 
 The numeric library is available through the public headers in
-[`include/numforge/`](include/numforge/). Calculator syntax, the local HTTP
+[`include/numforge/`](include/numforge). Calculator syntax, the local HTTP
 endpoint, and application limits are documented in the [API overview](docs/API.md).
 
 ## Get started
@@ -122,11 +122,11 @@ integer examples above, or `notation fraction` for exact fractions. Use
 `precision 40` for the illustrated square root, and `quit` to exit. The latest
 published release currently contains source archives. Portable Windows/Linux
 binary packaging is prepared to run automatically when a release is published;
-see [release packaging](docs/RELEASE_PACKAGING.md)
+see [release packaging](docs/project/RELEASE_PACKAGING.md)
 for the build, verification and publication process. A hosted demo remains future
 distribution work.
 
-For a library-only build and installation, see the [library guide](docs/LIBRARY_GUIDE.md).
+For a library-only build and installation, see the [library guide](docs/guides/LIBRARY_GUIDE.md).
 An installed CMake consumer links `NumForge::numforge`:
 
 ```cmake
@@ -147,9 +147,10 @@ interface while the numerical work stays in C.
 
 ```mermaid
 flowchart TD
-    CLI[Command-line calculator] --> Calculator
+    CLI[Command-line calculator] --> Application
     Web[Browser interface] --> HTTP[Local HTTP server and embedded assets]
-    HTTP --> Calculator[Shared parser, typed evaluator and sessions]
+    HTTP --> Application[Application sessions, variables, history and cache]
+    Application --> Calculator[Shared expression parser and typed evaluator]
     Calculator --> BI[BigInt: arbitrary-precision integers]
     Calculator --> BD[BigDecimal: exact base-10 values and approximate functions]
     Calculator --> BR[BigRational: exact reduced fractions]
@@ -161,7 +162,7 @@ flowchart TD
 Applications can also link the numeric library directly, without either
 calculator. Public types are opaque; mutating operations preserve the destination
 on failure and support the documented aliasing cases. Read the
-[architecture overview](docs/ARCHITECTURE.md) for boundaries and ownership.
+[architecture overview](docs/design/ARCHITECTURE.md) for boundaries and ownership.
 
 ## Measured performance
 
@@ -181,10 +182,10 @@ formatting are excluded from direct arithmetic timings.
 These instrumented measurements describe one machine, not universal speed
 guarantees. The arithmetic suite checks 1084 scenarios against independent exact
 references. Private optimization experiments are reported separately and are
-not production features. See [BigInt measurements](docs/BIGINT_BENCHMARKS.md) and
-[formatting/cache/memory methodology](docs/BENCHMARKS.md) to reproduce the runs,
+not production features. See [BigInt measurements](docs/benchmarks/BIGINT_BENCHMARKS.md) and
+[formatting/cache/memory methodology](docs/benchmarks/BENCHMARKS.md) to reproduce the runs,
 inspect allocation costs and understand their limits.
-The [decimal/math measurements](docs/DECIMAL_MATH_BENCHMARKS.md) document the
+The [decimal/math measurements](docs/benchmarks/DECIMAL_MATH_BENCHMARKS.md) document the
 new suite, including high-precision timeouts and the extreme tangent-pole
 accuracy limitation; those cases are excluded from successful timing claims.
 
@@ -201,12 +202,12 @@ session variables/history, BigInt bases 2–36, unit-conversion C/HTTP APIs,
 and opt-in benchmarks.
 
 **Next:** Accuracy follow-ups and optimizations supported by the collected data.
-Direct [BigDecimal and higher-function measurements](docs/DECIMAL_MATH_BENCHMARKS.md)
+Direct [BigDecimal and higher-function measurements](docs/benchmarks/DECIMAL_MATH_BENCHMARKS.md)
 include strict references and explicit stress-case limitations.
 Session variables and BigInt conversion in bases 2–36 are implemented.
 User functions and language bindings are future work. Graphs, equations and
 account links currently lead to informational pages. See the
-[roadmap](docs/ROADMAP.md) for scope and prerequisites; no delivery dates are promised.
+[roadmap](docs/project/ROADMAP.md) for scope and prerequisites; no delivery dates are promised.
 
 ## Test
 
@@ -229,26 +230,27 @@ expression or API call, precision, rounding mode, expected value and reference.
 
 ## Documentation
 
+Read the [short changelog](CHANGELOG_SHORT.md) for release highlights.
 Browse the [documentation guide](docs/README.md) by task or the
 [benchmark tools](benchmarks/README.md) by purpose.
 
 | Document | Contents |
 | --- | --- |
-| [Variables](docs/VARIABLES.md) | Session assignments, exact snapshots and lifetime. |
-| [Library guide](docs/LIBRARY_GUIDE.md) | Build, install, and consume the C library. |
+| [Variables](docs/guides/VARIABLES.md) | Session assignments, exact snapshots and lifetime. |
+| [Library guide](docs/guides/LIBRARY_GUIDE.md) | Build, install, and consume the C library. |
 | [API overview](docs/API.md) | Public types, ownership, calculator syntax, and local HTTP API. |
-| [Architecture overview](docs/ARCHITECTURE.md) | Numeric layers, clients, ownership and project boundaries. |
-| [BigInt design](docs/BIGINT_DESIGN.md) | Representation, semantics, and implementation. |
-| [BigDecimal design](docs/BIGDECIMAL_DESIGN.md) | Decimal representation, rounding, and future work. |
-| [Calculator design](docs/CALCULATOR_DESIGN.md) | Parser, evaluation, CLI/web behavior, and limits. |
+| [Architecture overview](docs/design/ARCHITECTURE.md) | Numeric layers, clients, ownership and project boundaries. |
+| [BigInt design](docs/design/BIGINT_DESIGN.md) | Representation, semantics, and implementation. |
+| [BigDecimal design](docs/design/BIGDECIMAL_DESIGN.md) | Decimal representation, rounding, and future work. |
+| [Calculator design](docs/design/CALCULATOR_DESIGN.md) | Parser, evaluation, CLI/web behavior, and limits. |
 | [Web source](web/README.md) | Editable HTML, CSS, JavaScript, and embedded asset build. |
 | [Testing guide](docs/TESTING.md) | Test suites, CI, fuzzing, and performance checks. |
-| [BigInt measurements](docs/BIGINT_BENCHMARKS.md) | Arithmetic baseline, exact references and private experiments. |
-| [Formatting/cache measurements](docs/BENCHMARKS.md) | Timing phases, memory measurements and reproduction. |
-| [Roadmap](docs/ROADMAP.md) | Available capabilities, planned work and prerequisites. |
-| [Project presentation](docs/PROJECT_PRESENTATION.md) | README assets, screenshot capture and presentation maintenance. |
-| [Release packaging](docs/RELEASE_PACKAGING.md) | Portable Windows/Linux archives, verification and publishing. |
-| [Decimal/math measurements](docs/DECIMAL_MATH_BENCHMARKS.md) | Direct BigDecimal and high-precision math benchmarks, independent references and limitations. |
+| [BigInt measurements](docs/benchmarks/BIGINT_BENCHMARKS.md) | Arithmetic baseline, exact references and private experiments. |
+| [Formatting/cache measurements](docs/benchmarks/BENCHMARKS.md) | Timing phases, memory measurements and reproduction. |
+| [Roadmap](docs/project/ROADMAP.md) | Available capabilities, planned work and prerequisites. |
+| [Project presentation](docs/project/PROJECT_PRESENTATION.md) | README assets, screenshot capture and presentation maintenance. |
+| [Release packaging](docs/project/RELEASE_PACKAGING.md) | Portable Windows/Linux archives, verification and publishing. |
+| [Decimal/math measurements](docs/benchmarks/DECIMAL_MATH_BENCHMARKS.md) | Direct BigDecimal and high-precision math benchmarks, independent references and limitations. |
 
 ## Repository layout
 
@@ -258,7 +260,9 @@ src/
   bigint/            Integer arithmetic
   bigdecimal/        Decimal arithmetic and scientific functions
   bigrational/       Exact rational arithmetic
-  calculator/        Parsing, evaluation, formatting and sessions
+  units/             Unit catalogue and compatible numeric conversion
+  calculator/        Expression parsing, evaluation and numeric formatting
+  application/       Sessions, variables, history and client/cache ownership
   web/               Local HTTP server and API
   internal/          Private allocation and diagnostic support
   main.c             CLI entry point
@@ -266,7 +270,7 @@ web/                 Editable browser assets
 tests/               Regression suites, browser checks and package consumers
 benchmarks/          Opt-in measurement tools
   references/        Frozen math references and their generator
-docs/                Guides, design notes and measurement reports
+docs/                Categorized guides, reference, design, tests and reports
   images/            README screenshots
 cmake/               Build, embedding and package helpers
 scripts/             Release packaging tools

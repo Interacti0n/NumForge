@@ -4,7 +4,8 @@ Variables live in the current CLI or browser session. Type `x = 2/3` and confirm
 with Enter or the calculate button (`=`), then use `x*3` to get exactly `2`.
 A live preview shows the prospective result without saving the variable.
 
-The browser Session panel has History and Variables tabs. Its scrollable list
+The browser Session panel has History and Variables tabs inside the scrollable
+right sidebar; functions and session controls scroll together on desktop. The list
 shows all 32 supported variables independently of the last 16 history entries. Clicking a
 variable inserts its name at the input caret. Each displayed value is a snapshot
 of its last confirmed assignment using that assignment's display settings;
@@ -28,7 +29,7 @@ revisions and expired sessions use the ordinary calculator error schema.
 Deletion invalidates previews and prevents replay of older assignments from
 restoring the deleted variable. This command is not an expression function.
 
-Variables and `ans` also retain [Quantity](QUANTITIES.md) values and dimensions:
+Variables and `ans` also retain [Quantity](../reference/QUANTITIES.md) values and dimensions:
 `x = qty(3; "m")` followed by `x*x` gives `9 m²`. A later scalar assignment
 replaces the unit metadata as well as the number. `qty` and `convert` are
 reserved function names.

@@ -17,7 +17,7 @@ typedef struct CalculatorExpression CalculatorExpression;
 /*
 ------------------------------------------------------------------------------------------------------------------------------
     Parser operation functions. Parsing accepts the grammar in
-    docs/CALCULATOR_DESIGN.md and creates an owned AST. On failure, result is
+    docs/design/CALCULATOR_DESIGN.md and creates an owned AST. On failure, result is
     unchanged and error identifies the unexpected token or character.
 ------------------------------------------------------------------------------------------------------------------------------
 */

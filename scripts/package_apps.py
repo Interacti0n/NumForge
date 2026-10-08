@@ -159,6 +159,9 @@ def main():
         shutil.copy2(binary, directory / filename)
     for filename in ["LICENSE", "CHANGELOG.md"]:
         shutil.copy2(source / filename, directory / filename)
+    # Older release tags do not have the short changelog; backfills still work.
+    if (source / "CHANGELOG_SHORT.md").exists():
+        shutil.copy2(source / "CHANGELOG_SHORT.md", directory / "CHANGELOG_SHORT.md")
     (directory / "BUILDINFO.json").write_text(json.dumps(info, indent=2) + "\n", encoding="utf-8")
     launch = "Double-click numforge_web.exe, or run .\\numforge_web.exe from PowerShell." if windows else "Run ./numforge_web from a terminal."
     cli = ".\\calculator.exe" if windows else "./calculator"

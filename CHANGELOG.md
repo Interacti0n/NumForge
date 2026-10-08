@@ -3,7 +3,23 @@
 All notable changes to NumForge are documented in this file. The project uses
 [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
+
+## Unreleased — 2.1.0
+
+- Organize documentation into user guides, API references, design, testing,
+  benchmarks and project maintenance. Split long mixed-topic documents, add
+  concise release highlights and prepare version 2.1.0 packaging.
+
+- Separate private expression evaluation, application sessions/client storage
+  and HTTP adapters into build targets. Move session/cache ownership into
+  `src/application`; CLI no longer depends on HTTP adapters. Document boundaries
+  for future persistence without introducing a database.
+- Scroll the full right calculator sidebar so functions, session controls,
+  history and all variables remain reachable in short desktop windows.
+
+- Document web/HTTP API coverage and remaining session/history gaps. Correct
+  SK/EN guide variable support and explain the existing delete-variable call.
 
 - Show all session variables in a scrollable SK/EN list, with
   confirmed value previews, a capacity counter and click-to-insert names.
@@ -43,7 +59,7 @@ All notable changes to NumForge are documented in this file. The project uses
   rational and decimal conversion, SI/imperial/information/angle units,
   guarded pi projection, separate temperature points/intervals,
   compatibility errors and unchanged outputs on failure.
-  Calculator conversion syntax remains future work.
+  Calculator conversion syntax is described in the later `convert` entry above.
 
 - Refine tangent argument reduction when cancellation near pi/2 loses digits;
   add strict independent pole references for all six rounding modes and keep

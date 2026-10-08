@@ -11,27 +11,27 @@ of development, not a schedule or promise of a particular release.
   approximations; roots, logarithms, trigonometric/hyperbolic functions,
   constants, statistics and selected integer operations.
 - Shared CLI/local browser calculator with English/Slovak UI, confirmed `ans`,
-  [session variables](VARIABLES.md),
+  [session variables](../guides/VARIABLES.md),
   session history, stable random previews and a bounded loopback HTTP API.
-- [Unit-conversion C foundation](UNITS.md): a sourced 233-unit catalogue,
+- [Unit-conversion C foundation](../reference/UNITS.md): a sourced 233-unit catalogue,
   compatibility checks, exact rational factors and guarded angle projection.
-  [Local HTTP catalogue and conversion](UNIT_HTTP_API.md) with read-only session
-  access and a [SK/EN browser converter](UNIT_CONVERTER.md) are available.
-  [Quantity expressions](QUANTITIES.md) support dimension-checked arithmetic,
+  [Local HTTP catalogue and conversion](../reference/UNIT_HTTP_API.md) with read-only session
+  access and a [SK/EN browser converter](../guides/UNIT_CONVERTER.md) are available.
+  [Quantity expressions](../reference/QUANTITIES.md) support dimension-checked arithmetic,
   powers/roots, temperature points/intervals and selected functions.
 - CMake installation and C/C++ consumer support; numerical, property,
   allocation-failure, integration, browser and fuzz-smoke checks.
 - Formatting/cache/HTTP/memory, BigInt and BigDecimal/math benchmarks with independent
   result checks and repeated local Release baselines.
 
-For exact supported functions and limits, use [API.md](API.md). Screenshots in
+For exact supported functions and limits, use [API.md](../API.md). Screenshots in
 the README show development code and may be newer than a published release.
 
 ## Next accuracy and optimization work
 
 Direct BigDecimal arithmetic and higher-function/constant measurements are
 implemented with independent references through 2,000 significant digits;
-see [Decimal/math measurements](DECIMAL_MATH_BENCHMARKS.md). The historical stress matrix
+see [Decimal/math measurements](../benchmarks/DECIMAL_MATH_BENCHMARKS.md). The historical stress matrix
 exposed tangent-pole cancellation, now addressed by adaptive reduction and
 strict independent regressions through 2,000 digits. General correctly rounded
 approximate functions remain a separate goal. Some high-precision cases exceed
@@ -41,9 +41,14 @@ Short scientific formatting now uses bounded prefix conversion with exact
 fallback. Buffer reuse, product-tree factorial, normalized division and
 Karatsuba remain candidates for measured follow-ups.
 Existing experiments are described with their measured tradeoffs in
-[BIGINT_BENCHMARKS.md](BIGINT_BENCHMARKS.md).
+[BIGINT_BENCHMARKS.md](../benchmarks/BIGINT_BENCHMARKS.md).
 
 ## Planned tool development
+
+First close the [web/API coverage gaps](../reference/WEB_API_PARITY.md): session variable and
+history lists, explicit lifecycle commands, discoverable functions and converter
+history operations. New mathematical/session features should expose their HTTP
+contract alongside the web implementation.
 
 1. Share a parameterized expression evaluator between graphs and solvers: parse
    once, bind a local variable, snapshot session values and bound the total work.

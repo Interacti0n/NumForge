@@ -25,6 +25,7 @@ NumForge-X.Y.Z-win-x64/
   START_HERE.txt
   LICENSE
   CHANGELOG.md
+  CHANGELOG_SHORT.md
   BUILDINFO.json
 ```
 
@@ -41,11 +42,10 @@ Library consumers continue to use the source release and CMake install workflow.
 
 ## Version identity
 
-Always build the exact release tag. `NumForge-2.0.0-*` must be produced from
-`v2.0.0`, not today's development branch, even though that branch still declares
-version 2.0.0 in CMake. Otherwise binary downloads would not match GitHub's source
-archives. For changes after that tag, make a new release/version according to
-the project's release plan.
+Always build the exact release tag. `NumForge-2.1.0-*` must be produced from
+`v2.1.0`, and a 2.0.0 backfill must still use `v2.0.0`. Binary downloads must
+match GitHub's source archives. The development tree declares 2.1.0; that does
+not mean the release has been published. See the [2.1 checklist](RELEASE_2_1.md).
 
 Packaging automation is checked out separately from release source. This permits
 backfilling binary assets for an older tag without changing that tag. The helper
@@ -85,7 +85,7 @@ Actions logs before retrying. Existing files are never silently replaced.
 ### Manual dry runs, backfills and retries
 
 In GitHub Actions, choose **Release application binaries**, enter an existing
-tag (for example `v2.0.0`) and leave **publish** unchecked for a dry run. Archives
+tag (for example `v2.1.0`) and leave **publish** unchecked for a dry run. Archives
 and checksums are saved as Actions artifacts. Run with **publish** checked to
 attach both packages to the existing release. This also supports older tags
 that predate the workflow. Duplicate asset names fail; if an upload partially
@@ -118,6 +118,9 @@ code signing can follow later. Portable archives are the first distribution path
 
 ## Local packaging
 
+For current 2.1 verification, see [Release 2.1 preparation](RELEASE_2_1.md).
+The following 2.0 validation is historical, not evidence for a new release.
+
 Local validation on 2026-10-07 built the exact `v2.0.0` source with MSVC
 19.51 and a static Release runtime: all 28 CTest tests passed. The Windows
 archive passed extracted CLI/HTTP/embedded-asset checks and imported only Windows
@@ -137,8 +140,8 @@ on Windows. Then run, substituting the actual source/build/commit paths:
 
 ```sh
 python scripts/package_apps.py --source release-source --build build-apps \
-  --output build/portable-output --version 2.0.0 \
-  --commit ac49d7af071702c7d918bc49143b665369dcbdfe --platform win-x64
+  --output build/portable-output --version 2.1.0 \
+  --commit FULL_SOURCE_COMMIT_SHA --platform win-x64
 ```
 
 Use `--platform linux-x64` on Linux and include a Release build type. Existing
