@@ -800,11 +800,7 @@ static void numforge_handle_conversion(NumForgeSocket socket, const char *target
     else
     {
         char failure[320];
-        const char *message = strcmp(code, "unknown_unit") == 0 ? "unknown unit" :
-            strcmp(code, "incompatible_units") == 0 ? "incompatible units" :
-            strcmp(code, "assignment_not_allowed") == 0 ? "assignments are not allowed in conversion" :
-            strcmp(code, "random_not_allowed") == 0 ? "random calls are not allowed in conversion" :
-            calculator_status_to_string(status);
+        const char *message = numforge_web_conversion_error_message(code, status);
         snprintf(failure, sizeof(failure),
             "{\"ok\":false,\"code\":\"%s\",\"error\":\"%s\",\"status\":\"%s\",\"column\":%zu}",
             code, message, calculator_status_to_string(status), calculator_error_column(body, error.offset));

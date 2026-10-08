@@ -300,8 +300,14 @@ static BigDecimalStatus trig_reduce(
             }
             length = strlen(coefficient + (coefficient[0] == '-'));
             free(coefficient);
-            if ((uint64_t)length > (uint64_t)INT64_MAX ||
-                !bigdecimal_i64_sub(difference->scale, (int64_t)length, &lost_digits) ||
+#if SIZE_MAX > INT64_MAX
+            if (length > (size_t)INT64_MAX)
+            {
+                status = BIGDECIMAL_VALUE_TOO_LARGE;
+                goto cleanup;
+            }
+#endif
+            if (!bigdecimal_i64_sub(difference->scale, (int64_t)length, &lost_digits) ||
                 !bigdecimal_i64_add(base_reduction_digits,
                     lost_digits > 0 ? lost_digits : 0, &required_digits))
             {

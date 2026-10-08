@@ -9,6 +9,18 @@
 
 #define UNIT_JSON_CAPACITY (128U * 1024U)
 
+const char *numforge_web_conversion_error_message(const char *code, CalculatorStatus status)
+{
+    if (code != NULL)
+    {
+        if (strcmp(code, "unknown_unit") == 0) return "unknown unit";
+        if (strcmp(code, "incompatible_units") == 0) return "incompatible units";
+        if (strcmp(code, "assignment_not_allowed") == 0) return "assignments are not allowed in conversion";
+        if (strcmp(code, "random_not_allowed") == 0) return "random calls are not allowed in conversion";
+    }
+    return calculator_status_to_string(status);
+}
+
 typedef struct JsonBuffer
 {
     char *data;

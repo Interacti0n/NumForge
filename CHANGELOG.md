@@ -9,6 +9,9 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## [2.1.0] - 2026-10-08
 
+- Keep overflow checks portable on 32-bit GCC and centralize conversion error
+  diagnostics in the HTTP unit adapter for Linux warnings-as-errors builds.
+
 - Organize documentation into user guides, API references, design, testing,
   benchmarks and project maintenance. Split long mixed-topic documents, add
   concise release highlights and prepare version 2.1.0 packaging.

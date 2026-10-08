@@ -408,7 +408,9 @@ static BigDecimalStatus decimal_try_prefix(const BigDecimal *value,
     kept_limbs = ((size_t)work_digits * 4U + 63U) / 64U;
     if (kept_limbs >= value->coefficient->size) return BIGDECIMAL_OK;
     omitted_limbs = value->coefficient->size - kept_limbs;
-    if ((uint64_t)omitted_limbs > UINT64_MAX / 64U) return BIGDECIMAL_OK;
+#if SIZE_MAX > UINT64_MAX / 64U
+    if (omitted_limbs > UINT64_MAX / 64U) return BIGDECIMAL_OK;
+#endif
     power = (uint64_t)omitted_limbs * 64U;
     prefix = *value->coefficient;
     prefix.limbs += omitted_limbs;

@@ -23,5 +23,7 @@ CalculatorStatus numforge_web_convert(const CalculatorSession *session,
     const char *input, const NumForgeConversionOptions *options,
     char **response, CalculatorError *error, const char **code);
 CalculatorStatus numforge_web_unit_catalog(char **response);
+/* Borrowed diagnostic text for the conversion JSON error vocabulary. */
+const char *numforge_web_conversion_error_message(const char *code, CalculatorStatus status);
 
 #endif
