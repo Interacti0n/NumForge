@@ -157,26 +157,25 @@ def main():
                 previous = info.get("minimum_glibc", "0.0")
                 info["minimum_glibc"] = max([required, previous], key=lambda value: tuple(map(int, value.split("."))))
         shutil.copy2(binary, directory / filename)
-    for filename in ["LICENSE", "CHANGELOG.md"]:
-        shutil.copy2(source / filename, directory / filename)
-    # Older release tags do not have the short changelog; backfills still work.
-    if (source / "CHANGELOG_SHORT.md").exists():
-        shutil.copy2(source / "CHANGELOG_SHORT.md", directory / "CHANGELOG_SHORT.md")
-    (directory / "BUILDINFO.json").write_text(json.dumps(info, indent=2) + "\n", encoding="utf-8")
+    shutil.copy2(source / "LICENSE", directory / "LICENSE")
     launch = "Double-click numforge_web.exe, or run .\\numforge_web.exe from PowerShell." if windows else "Run ./numforge_web from a terminal."
     cli = ".\\calculator.exe" if windows else "./calculator"
     compatibility = "Windows x64; C runtime linked statically. Standard Windows system DLLs are required." if windows else f"Linux x64 with glibc {info.get('minimum_glibc', 'unknown')} or newer; not an Alpine/musl build."
     (directory / "START_HERE.txt").write_text(
         f"NumForge {args.version} ({args.platform})\n\nExtract the entire archive before running.\n"
-        f"{launch}\nThe browser opens the local calculator at http://127.0.0.1:8765.\n"
-        "The executable embeds its web assets. No Node.js, Python, compiler or database is needed.\n"
+        f"{launch}\nBrowser: http://127.0.0.1:8765\n"
+        "No compiler, Node.js, Python or database is needed.\n"
         "Keep the server running while using the calculator; close its terminal to stop it.\n"
         "If the port is busy, use --port 8766. Use --no-browser to launch without opening a browser.\n\n"
-        f"CLI: {cli}\nTry precision full, notation fraction, and 1/3+1/6. Type quit to exit.\n\n"
+        f"CLI: {cli} (type quit to exit).\n\n"
         f"Compatibility: {compatibility}\nSource commit: {args.commit}\n"
-        "Unsigned binaries; Windows may show a reputation warning for new downloads.\n"
+        + ("Unsigned binaries; Windows may show a reputation warning.\n" if windows else "") +
         "Source, documentation and issues: https://github.com/Interacti0n/NumForge\n",
         encoding="utf-8")
+    expected_files = {"numforge_web" + (".exe" if windows else ""),
+                      "calculator" + (".exe" if windows else ""), "LICENSE", "START_HERE.txt"}
+    if {file.name for file in directory.iterdir()} != expected_files:
+        raise RuntimeError("Portable archive contains unexpected files")
     if windows:
         with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as bundle:
             for file in sorted(directory.iterdir()):
@@ -194,6 +193,7 @@ def main():
     checksum = hashlib.sha256(archive.read_bytes()).hexdigest()
     (output / (archive.name + ".sha256")).write_text(f"{checksum}  {archive.name}\n", encoding="ascii")
     print(f"Created and verified {archive.name}\nSHA256: {checksum}")
+    print("Build verification: " + json.dumps(info, sort_keys=True))
 
 
 if __name__ == "__main__":

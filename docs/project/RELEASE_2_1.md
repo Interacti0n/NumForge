@@ -34,7 +34,8 @@ in this release. The latter navigation entries are informational placeholders.
 The local Windows archive from preparation commit `25f6954` passed extracted
 CLI/HTTP/embedded-asset checks, static runtime dependency checks and SHA-256
 verification. Official assets are rebuilt from the final release tag; they
-record that source commit in `BUILDINFO.json`.
+record that source commit in `START_HERE.txt`. Each archive contains only the
+two applications, MIT license and short launch instructions.
 
 Local checks do not substitute for GitHub CI on the final pushed commit or Linux
 archive verification. Benchmark reports retain their measured source snapshots;
@@ -55,7 +56,7 @@ Publishing triggers packaging and attachment of:
 
 Both platforms must pass before upload. Extracted-package smoke checks cover
 the CLI, HTTP evaluation and embedded assets. Download checksums and build
-metadata identify the actual published artifacts.
+instructions identify the actual published artifacts.
 
 See [packaging](RELEASE_PACKAGING.md) for commands, runtimes and triggers.
 

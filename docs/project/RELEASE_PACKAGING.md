@@ -23,9 +23,6 @@ NumForge-X.Y.Z-win-x64/
   calculator.exe
   START_HERE.txt
   LICENSE
-  CHANGELOG.md
-  CHANGELOG_SHORT.md
-  BUILDINFO.json
 ```
 
 The Linux folder contains `numforge_web` and `calculator` without `.exe`.
@@ -38,6 +35,9 @@ database are not needed on the user's machine. Web assets are embedded.
 The application archive is separate from the source/library distribution: it
 does not ship headers, compiler-specific static libraries or developer builds.
 Library consumers continue to use the source release and CMake install workflow.
+Only the two applications, license and short launch instructions are bundled.
+Changelogs and developer documentation remain in the source repository and
+GitHub release notes. Packaging rejects unexpected archive files.
 
 ## Version identity
 
@@ -48,8 +48,9 @@ match GitHub's source archives. See the [2.1 release record](RELEASE_2_1.md).
 Packaging automation is checked out separately from release source. This permits
 backfilling binary assets for an older tag without changing that tag. The helper
 validates the CMake source version, build source path, production configuration
-and binary architecture; `BUILDINFO.json` records the exact commit, compiler,
-configuration and runtime dependencies. Builds are reproducible procedures, not
+and binary architecture. `START_HERE.txt` records version, source commit and
+runtime compatibility; the packaging log records compiler, configuration and
+verified runtime dependencies. Builds are reproducible procedures, not
 a guarantee of byte-identical archives across toolchain versions and timestamps.
 
 Tags use `vX.Y.Z`, optionally with a prerelease suffix such as `v2.1.0-rc.1`.
@@ -105,7 +106,7 @@ are separate future distribution improvements.
 Linux x64 is built on the pinned Ubuntu 22.04 runner, rather than whichever
 distribution `ubuntu-latest` selects in the future. The helper checks `ldd`,
 records imported libraries and extracts the highest required GLIBC symbol version
-into `BUILDINFO.json` and `START_HERE.txt`. Users need a compatible glibc system
+into the packaging log and `START_HERE.txt`. Users need a compatible glibc system
 at or above that recorded version; this is not an Alpine/musl archive or a fully
 static Linux build. Binary checks run on the build runner; broader distro testing
 can be added as compatibility requirements develop.

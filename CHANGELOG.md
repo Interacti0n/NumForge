@@ -11,6 +11,10 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 - Keep overflow checks portable on 32-bit GCC and centralize conversion error
   diagnostics in the HTTP unit adapter for Linux warnings-as-errors builds.
+- Fit the mobile header at 320 pixels with Linux font metrics and keep guide
+  control geometry stable across Slovak and English.
+- Keep portable archives minimal: two applications, MIT license and short
+  launch instructions with version, source commit and runtime requirements.
 
 - Organize documentation into user guides, API references, design, testing,
   benchmarks and project maintenance. Split long mixed-topic documents, add
