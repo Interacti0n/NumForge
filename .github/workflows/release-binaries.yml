@@ -1,4 +1,4 @@
-name: Release application binaries
+name: Release applications and SDKs
 
 on:
   release:
@@ -14,6 +14,11 @@ on:
         description: Attach verified archives to the existing GitHub release
         default: false
         type: boolean
+      packages:
+        description: Package selection (choose sdk to backfill developer assets)
+        type: choice
+        options: [all, apps, sdk]
+        default: all
 
 permissions:
   contents: read
@@ -69,6 +74,7 @@ jobs:
           cmake --build build-release --config Release --parallel 2
           ctest --test-dir build-release -C Release --output-on-failure --no-tests=error
       - name: Package and verify extracted applications
+        if: ${{ github.event_name == 'release' || inputs.packages != 'sdk' }}
         shell: bash
         env:
           PACKAGE_PLATFORM: ${{ matrix.platform }}
@@ -84,13 +90,34 @@ jobs:
           cmake --build build-apps --config Release --parallel 2
           python packaging/scripts/package_apps.py --source source --build build-apps --output dist \
             --version "${RELEASE_TAG#v}" --commit "$(git -C source rev-parse HEAD)" --platform "$PACKAGE_PLATFORM"
+      - name: Package and verify relocated SDK
+        if: ${{ github.event_name == 'release' || inputs.packages != 'apps' }}
+        shell: bash
+        env:
+          PACKAGE_PLATFORM: ${{ matrix.platform }}
+        run: |
+          set -euo pipefail
+          args=(-S source -B build-sdk -DCMAKE_BUILD_TYPE=Release
+            -DBUILD_TESTING=OFF -DNUMFORGE_BUILD_APPS=OFF
+            -DNUMFORGE_BUILD_BENCHMARKS=OFF -DNUMFORGE_WARNINGS_AS_ERRORS=ON
+            -DCMAKE_INSTALL_LIBDIR=lib)
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            args+=(-G "Visual Studio 17 2022" -A x64 -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL)
+          fi
+          cmake "${args[@]}"
+          cmake --build build-sdk --config Release --parallel 2
+          python packaging/scripts/package_sdk.py --source source --build build-sdk --support packaging --output sdk-dist \
+            --version "${RELEASE_TAG#v}" --commit "$(git -C source rev-parse HEAD)" --platform "$PACKAGE_PLATFORM"
       - uses: actions/upload-artifact@v7
         with:
-          name: apps-${{ matrix.platform }}
+          name: packages-${{ matrix.platform }}
           path: |
             dist/*.zip
             dist/*.tar.gz
             dist/*.sha256
+            sdk-dist/*.zip
+            sdk-dist/*.tar.gz
+            sdk-dist/*.sha256
           if-no-files-found: error
           retention-days: 14
 
@@ -103,7 +130,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v8
         with:
-          pattern: apps-*
+          pattern: packages-*
           merge-multiple: true
           path: dist
       - name: Verify checksums and attach to existing release

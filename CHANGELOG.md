@@ -7,6 +7,12 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Add automated Windows/Linux developer SDK packaging and SDK-only backfills
+  for existing release tags. Ship public headers, a Release static library,
+  relocatable CMake exports, compiler/runtime metadata and a verified C example;
+  check extracted archives with external C/C++ consumers. The 2.1 SDK backfill
+  uses the unchanged `v2.1.0` numeric source.
+
 ## [2.1.0] - 2026-10-08
 
 - Keep overflow checks portable on 32-bit GCC and centralize conversion error

@@ -1,4 +1,4 @@
-# Portable application releases
+# Application and developer SDK releases
 
 GitHub's automatic source ZIP/tar.gz downloads contain code, not runnable
 applications. The portable binary workflow adds these separate assets to an
@@ -6,6 +6,8 @@ existing release after platform tests and extracted-archive checks succeed:
 
 - `NumForge-X.Y.Z-win-x64.zip`
 - `NumForge-X.Y.Z-linux-x64.tar.gz`
+- `NumForge-X.Y.Z-sdk-win-x64.zip`
+- `NumForge-X.Y.Z-sdk-linux-x64.tar.gz`
 - A `.sha256` checksum file beside each archive.
 
 The workflow is defined in `.github/workflows/release-binaries.yml`. New release
@@ -34,10 +36,31 @@ database are not needed on the user's machine. Web assets are embedded.
 
 The application archive is separate from the source/library distribution: it
 does not ship headers, compiler-specific static libraries or developer builds.
-Library consumers continue to use the source release and CMake install workflow.
+Library consumers can use a separate SDK or the source CMake install workflow.
 Only the two applications, license and short launch instructions are bundled.
 Changelogs and developer documentation remain in the source repository and
 GitHub release notes. Packaging rejects unexpected archive files.
+
+## Developer SDK contents and verification
+
+SDKs contain only public headers, the Release static numeric library, relocatable
+CMake exports, an exact-decimal C example, a short README, license and compiler/
+runtime provenance in `BUILDINFO.json`. See the [SDK guide](../guides/SDK.md).
+Windows SDKs use MSVC x64 `/MD`, separately from the self-contained `/MT`
+application build. Linux SDKs use GCC x64/glibc. No calculator/session/HTTP
+internals, test frameworks, screenshots or full source documentation are shipped.
+
+`scripts/package_sdk.py` validates the source version/build configuration,
+allowlists installed headers/library/exports, extracts the final archive into
+a new location and removes staging copies. It then builds and runs both the
+bundled example and external C/C++ API consumers against the extracted prefix.
+Checksums are written with LF on both platforms only after verification passes.
+
+Each new published release builds applications and SDKs automatically. Manual
+dispatch selects `all`, `apps` or `sdk`; to add SDKs to an existing release, select
+`sdk` and `publish=true`. This avoids reuploading its existing application assets.
+Uploads never clobber existing files. The packaging checkout supplies automation
+and examples, while the library and its headers always come from the exact tag.
 
 ## Version identity
 

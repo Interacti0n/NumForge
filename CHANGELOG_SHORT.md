@@ -17,6 +17,7 @@ details and the [2.1 release record](docs/project/RELEASE_2_1.md) for validation
 - Independent arithmetic and math benchmarks.
 - Separate calculation, application and HTTP layers.
 - Portable Windows/Linux release automation.
+- Separate C/C++ SDK downloads (added after publication).
 - Refreshed README, UI and documentation.
 
 ## 2.0.0 — 28 September 2026

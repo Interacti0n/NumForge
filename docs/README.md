@@ -9,6 +9,7 @@ testing entry points remain directly under `docs/`.
 - [Variables](guides/VARIABLES.md): assignments, deletion, snapshots and lifetime.
 - [Unit converter](guides/UNIT_CONVERTER.md): categories, preview, swap and history.
 - [C library guide](guides/LIBRARY_GUIDE.md): build, install and consume the library.
+- [Developer SDK](guides/SDK.md): prebuilt C/C++ library, toolchains and quick start.
 
 ## Look up a contract — `reference/`
 

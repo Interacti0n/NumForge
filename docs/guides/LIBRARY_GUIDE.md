@@ -4,6 +4,11 @@ NumForge installs a standalone C library. The calculator and local web server
 are optional clients; applications that only need arbitrary-precision numbers
 link `NumForge::numforge` and include the public headers.
 
+To use a prebuilt library, see the [developer SDK quick start](SDK.md).
+The release SDK supplies headers, the static library and CMake exports for
+MSVC x64 Release `/MD` or Linux GCC x64/glibc. Build from source below when
+your compiler, runtime, architecture or configuration differs.
+
 ## Build and install
 
 ```sh

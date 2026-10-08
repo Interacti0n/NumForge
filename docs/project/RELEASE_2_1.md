@@ -52,11 +52,18 @@ Publishing triggers packaging and attachment of:
 
 - `NumForge-2.1.0-win-x64.zip`.
 - `NumForge-2.1.0-linux-x64.tar.gz`.
+- `NumForge-2.1.0-sdk-win-x64.zip` (MSVC Release `/MD`).
+- `NumForge-2.1.0-sdk-linux-x64.tar.gz` (GCC/glibc).
 - A SHA-256 file for each archive.
 
 Both platforms must pass before upload. Extracted-package smoke checks cover
 the CLI, HTTP evaluation and embedded assets. Download checksums and build
 instructions identify the actual published artifacts.
+
+SDK assets were added after initial publication without moving `v2.1.0`.
+Their numeric library and headers come from the same tag; updated packaging
+automation adds a minimal example and verifies relocated C/C++ consumers.
+The [SDK guide](../guides/SDK.md) explains compatibility and integration.
 
 See [packaging](RELEASE_PACKAGING.md) for commands, runtimes and triggers.
 

@@ -130,11 +130,16 @@ glibc. No Node.js, Python or database is needed. See
 [release packaging](docs/project/RELEASE_PACKAGING.md) for compatibility and
 verification. A hosted demo remains future distribution work.
 
-For a library-only build and installation, see the [library guide](docs/guides/LIBRARY_GUIDE.md).
+For C/C++ development, download the separate `sdk-win-x64` or `sdk-linux-x64`
+asset and follow the [SDK quick start](docs/guides/SDK.md). SDKs include public
+headers, the static library, CMake exports and a working example. Windows uses
+MSVC Release `/MD`; Linux uses GCC/glibc. Check `BUILDINFO.json` for the compiler
+and runtime baseline. For other toolchains or a library-only source build, see
+the [library guide](docs/guides/LIBRARY_GUIDE.md).
 An installed CMake consumer links `NumForge::numforge`:
 
 ```cmake
-find_package(NumForge 2.0 CONFIG REQUIRED)
+find_package(NumForge 2.1 CONFIG REQUIRED)
 target_link_libraries(my_target PRIVATE NumForge::numforge)
 ```
 
