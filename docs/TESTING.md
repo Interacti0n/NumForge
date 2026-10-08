@@ -36,5 +36,5 @@ and C++ package consumers compile and call the public rational API.
 | [Browser tests and CI](testing/WEB_AND_CI.md) | Playwright setup, browsers, sanitizers, coverage and installed C/C++ consumers. |
 | [Performance checks](testing/PERFORMANCE.md) | Opt-in benchmark builds, profiling and narrow timing probes. |
 
-See [release preparation](project/RELEASE_2_1.md) for the 2.1 checks and
+See [release record](project/RELEASE_2_1.md) for the 2.1 checks and
 [packaging](project/RELEASE_PACKAGING.md) for extracted binary verification.

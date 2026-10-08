@@ -5,7 +5,9 @@ All notable changes to NumForge are documented in this file. The project uses
 
 For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
-## Unreleased — 2.1.0
+## Unreleased
+
+## [2.1.0] - 2026-10-08
 
 - Organize documentation into user guides, API references, design, testing,
   benchmarks and project maintenance. Split long mixed-topic documents, add
@@ -427,4 +429,5 @@ that request NumForge 1.x through `find_package` must update that requirement.
 - Released under the MIT License, copyright 2026 Interacti0n.
 
 [2.0.0]: https://github.com/Interacti0n/NumForge/releases/tag/v2.0.0
+[2.1.0]: https://github.com/Interacti0n/NumForge/releases/tag/v2.1.0
 [1.0.0]: https://github.com/Interacti0n/NumForge/releases/tag/v1.0.0

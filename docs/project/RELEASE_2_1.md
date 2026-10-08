@@ -1,8 +1,12 @@
-# Release 2.1 preparation
+# Release 2.1 record
 
-Version 2.1.0 is prepared in CMake but is **not published**. The changelogs
-remain marked unreleased until publication. See [highlights](../../CHANGELOG_SHORT.md)
+NumForge 2.1.0 — 8 October 2026. See the
+[GitHub release](https://github.com/Interacti0n/NumForge/releases/tag/v2.1.0)
+for publication status and downloads, [highlights](../../CHANGELOG_SHORT.md)
 for the short feature list and [full changelog](../../CHANGELOG.md) for details.
+
+This file preserves release scope, validation and limitations. Future work
+belongs in the roadmap; packaging instructions live in their separate guide.
 
 ## Scope
 
@@ -27,31 +31,33 @@ in this release. The latter navigation entries are informational placeholders.
 - Production MSVC x64 build passed with warnings as errors and static runtime.
 - Current desktop/mobile screenshots were captured and inspected at version 2.1.
 
-The Windows archive is checked after committing preparation, so its provenance
-can name an actual source commit. It remains a local build artifact until the
-tagged release workflow is run. Linux archives still require that workflow.
+The local Windows archive from preparation commit `25f6954` passed extracted
+CLI/HTTP/embedded-asset checks, static runtime dependency checks and SHA-256
+verification. Official assets are rebuilt from the final release tag; they
+record that source commit in `BUILDINFO.json`.
 
 Local checks do not substitute for GitHub CI on the final pushed commit or Linux
 archive verification. Benchmark reports retain their measured source snapshots;
 no new timing claims are made for this release.
 
-## Before publication
+## Distribution and hosted verification
 
-1. Push the reviewed commit and wait for all CI jobs, including Linux/macOS,
-   installed consumers, sanitizers and browser tests. Fix failures first.
-2. Review notes and screenshots. Replace the unreleased headings with the actual
-   publication date when releasing.
-3. Create `v2.1.0` on the checked commit. A tagged prerelease such as
-   `v2.1.0-rc.1` can be used first; its numeric version still matches CMake.
-4. Run **Release application binaries** on that tag with **publish unchecked**
-   to verify Windows and Linux archives before publishing the release.
-5. Publish the GitHub release with the highlights. Automatic packaging attaches
-   archives and SHA-256 files once both platform jobs succeed.
-6. Download the attached archives, check checksums, extract and launch both
-   apps. Confirm filenames and `BUILDINFO.json` match the tag/commit.
+The release gate is successful CI on the final source commit plus a manual
+**Release application binaries** dry run of `v2.1.0` on Windows and Linux.
+The [Actions history](https://github.com/Interacti0n/NumForge/actions) records
+platform tests, installed consumers, sanitizers, browsers and archive checks.
+
+Publishing triggers packaging and attachment of:
+
+- `NumForge-2.1.0-win-x64.zip`.
+- `NumForge-2.1.0-linux-x64.tar.gz`.
+- A SHA-256 file for each archive.
+
+Both platforms must pass before upload. Extracted-package smoke checks cover
+the CLI, HTTP evaluation and embedded assets. Download checksums and build
+metadata identify the actual published artifacts.
 
 See [packaging](RELEASE_PACKAGING.md) for commands, runtimes and triggers.
-Tagging, pushing and publication are separate actions from local preparation.
 
 ## Known boundaries
 
