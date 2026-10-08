@@ -60,6 +60,45 @@ static bool session_space(char byte)
     return byte==' ' || byte=='\t' || byte=='\r' || byte=='\n';
 }
 
+CalculatorStatus calculator_session_delete_variable(CalculatorSession *session,
+    uint64_t revision, const char *name, CalculatorError *error)
+{
+    CalculatorStatus status = CALCULATOR_OK;
+    size_t length = name == NULL ? 0U : strlen(name);
+    if (session == NULL || name == NULL) status = CALCULATOR_NULL_ARGUMENT;
+    else if (revision == 0U || length == 0U || length > CALCULATOR_VARIABLE_NAME_BYTES)
+        status = CALCULATOR_INVALID_ARGUMENT;
+    else {
+        for (size_t i = 0; i < length; i++)
+            if (!((name[i] >= 'a' && name[i] <= 'z') || (name[i] >= 'A' && name[i] <= 'Z')))
+                status = CALCULATOR_INVALID_ARGUMENT;
+    }
+    if (status != CALCULATOR_OK) goto done;
+    if (revision == session->revision && revision == session->deletion_revision &&
+        strcmp(name, session->deleted_variable) == 0)
+        goto done;
+    if (revision <= session->revision) {
+        status = CALCULATOR_STALE_REQUEST;
+        goto done;
+    }
+    for (size_t i = 0; i < session->variable_count; i++) {
+        if (strcmp(name, session->variables[i].name) != 0) continue;
+        calculator_value_destroy(&session->variables[i].value);
+        memmove(session->variables + i, session->variables + i + 1U,
+            (session->variable_count - i - 1U) * sizeof(*session->variables));
+        session->variable_count--;
+        memset(session->variables + session->variable_count, 0, sizeof(*session->variables));
+        break;
+    }
+    session->revision = revision;
+    session->deletion_revision = revision;
+    memcpy(session->deleted_variable, name, length + 1U);
+    calculator_session_clear_preview(session);
+done:
+    calculator_error_set(error, status, 0U);
+    return status;
+}
+
 /* Assignment is one top-level statement. The ordinary parser handles the RHS
  * and rejects nested/chained assignments. Names follow the existing ASCII
  * identifier grammar; constants/functions and ans remain reserved. */
@@ -152,7 +191,7 @@ CalculatorStatus calculator_session_compute(
 
     /* Replay the latest successful confirmation verbatim, even after previews.
      * A reused identifier with different input/settings is always rejected. */
-    if (commit && last != NULL && revision == last->revision &&
+    if (commit && last != NULL && last->revision > session->deletion_revision && revision == last->revision &&
         strcmp(input, last->expression) == 0 &&
         context->division_scale == last->value.context.division_scale &&
         context->output_scale == last->value.context.output_scale &&

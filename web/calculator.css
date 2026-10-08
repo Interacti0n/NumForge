@@ -313,6 +313,26 @@ html[lang="en"] .function-group:not(.search-results)::before { content: "Functio
 .session-actions button:hover { border-color: var(--accent); }
 .session-actions [data-insert] { color: var(--accent); font: 800 1rem var(--font-math); }
 .session-actions [data-insert] span { margin-left: 4px; color: var(--muted); font: 600 .7rem var(--font-ui); }
+.session-tabs { display: flex; flex: 0 0 auto; gap: 6px; margin-top: 10px; }
+.session-tabs button { flex: 1; min-height: 34px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 7px; background: #2f005f; color: var(--muted); font: 700 .8rem var(--font-ui); }
+.session-tabs button[aria-selected="true"] { border-color: var(--accent); background: #4f009f; color: var(--text); }
+.variables-section[hidden], .history-section[hidden] { display: none; }
+.variables-section { display: flex; flex: 1; flex-direction: column; min-height: 0; margin-top: 9px; padding-top: 0; }
+.variables-section summary { cursor: pointer; font-size: .84rem; font-weight: 750; }
+#variable-count { margin-left: 6px; color: var(--quiet); font-size: .75rem; font-weight: 600; }
+.variables-hint, #variables-empty { margin: 6px 0; color: var(--muted); font-size: .7rem; line-height: 1.4; }
+#variable-list { flex: 1; min-height: 40px; max-height: 65dvh; margin: 7px 0 0; padding: 0; overflow-y: auto; scrollbar-width: thin; list-style: none; }
+#variable-list:empty { display: none; }
+#variable-list li { display: flex; gap: 6px; }
+#variable-list li + li { margin-top: 5px; }
+#variable-list button { display: flex; flex: 1; min-width: 0; align-items: baseline; gap: 8px; min-height: 34px; padding: 7px 8px; border: 1px solid var(--border); border-radius: 7px; background: #2f005f; color: var(--text); text-align: left; font: .8rem var(--font-math); }
+#variable-list .variable-delete { flex: 0 0 34px; justify-content: center; color: var(--muted); font-size: 1.15rem; }
+#variable-list .variable-delete:hover { color: #ffd1e7; border-color: #ed77ab; }
+#variable-status { margin: 5px 0 0; color: var(--muted); font-size: .72rem; }
+#variable-status:empty { display: none; }
+#variable-list button:hover { border-color: var(--mint); }
+.variable-name { flex: 0 0 auto; max-width: 45%; overflow: hidden; text-overflow: ellipsis; color: var(--accent); }
+.variable-value { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .history-section { display: flex; flex: 1; flex-direction: column; min-height: 0; margin-top: 17px; border-top: 1px solid var(--border-soft); padding-top: 13px; }
 .history-section h3 { flex: 0 0 auto; margin: 0 0 9px; color: var(--text); font-size: .84rem; font-weight: 750; }
 .history-section h3 span { color: var(--quiet); font-weight: 600; }
@@ -383,7 +403,7 @@ html[lang="en"] .function-group:not(.search-results)::before { content: "Functio
     .keypad-bottom .keypad button { min-height: 32px; font-size: 1.08rem; }
     .recent-row { min-height: 37px; margin-top: 6px; padding-top: 5px; }
     .recent-buttons button { min-height: 33px; font-size: 1.02rem; }
-    .function-library { display: flex; flex-direction: column; min-height: 0; max-height: min(52dvh, calc(100dvh - 260px)); overflow: hidden; }
+    .function-library { display: flex; flex-direction: column; min-height: 0; max-height: min(45dvh, calc(100dvh - 380px)); overflow: hidden; }
     .sidebar-heading { margin-bottom: 9px; }
     .sidebar-heading p { margin-top: 2px; font-size: .72rem; }
     .sidebar-icon { width: 27px; height: 27px; flex-basis: 27px; font-size: 1.05rem; }
@@ -395,6 +415,8 @@ html[lang="en"] .function-group:not(.search-results)::before { content: "Functio
     .keypad.functions button { min-height: 39px; font-size: .9rem; }
     #function-help { min-height: 2.8em; margin-top: 8px; font-size: .72rem; }
     .session-panel { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+    .session-panel > .sidebar-heading, .session-actions { flex-shrink: 0; }
+    .session-panel .variables-section { flex: 1; min-height: 0; }
     .session-actions button { min-height: 33px; }
     .history-section { margin-top: 9px; padding-top: 8px; }
 }

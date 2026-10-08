@@ -352,7 +352,129 @@ let sessionStarted = false;
 let pendingCommit = null;
 let commitInFlight = false;
 const historyEntries = [];
+const storedVariables = new Map();
 let historySequence = 0;
+let variableDeletionInFlight = false;
+let pendingVariableDeletion = null;
+let activeSessionTab = 'history';
+const variableStatus = document.createElement('p');
+variableStatus.id = 'variable-status';
+variableStatus.setAttribute('role', 'status');
+document.querySelector('.variables-section').append(variableStatus);
+
+function selectSessionTab(name, focus = false)
+{
+    activeSessionTab = name;
+    for (const section of ['history', 'variables']) {
+        const selected = section === name;
+        const tab = document.querySelector('#session-' + section + '-tab');
+        tab.setAttribute('aria-selected', String(selected));
+        tab.tabIndex = selected ? 0 : -1;
+        document.querySelector('#session-' + section + '-panel').hidden = !selected;
+        if (selected && focus) tab.focus();
+    }
+    updateHistoryOverflow();
+}
+document.querySelectorAll('.session-tabs [role="tab"]').forEach(tab => {
+    tab.addEventListener('click', () => selectSessionTab(tab.id.includes('variables') ? 'variables' : 'history'));
+    tab.addEventListener('keydown', event => {
+        if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+            event.preventDefault();
+            selectSessionTab(event.key === 'Home' ? 'history' : event.key === 'End' ? 'variables'
+                : activeSessionTab === 'history' ? 'variables' : 'history', true);
+        }
+    });
+});
+
+async function deleteVariable(name)
+{
+    if (commitInFlight || pendingCommit || variableDeletionInFlight) return;
+    if (pendingVariableDeletion && pendingVariableDeletion.name !== name) return;
+    variableDeletionInFlight = true;
+    let finishDeletion;
+    const deletionFinished = new Promise(resolve => { finishDeletion = resolve; });
+    window.numforgePendingVariableDeletion = deletionFinished;
+    clearTimeout(autoTimer);
+    controller?.abort();
+    const deletion = pendingVariableDeletion || {name, id: ++generation};
+    pendingVariableDeletion = deletion;
+    try {
+        if (!sessionStarted) await ensureSession();
+        const {response, data} = await requestEvaluation('/api/evaluate?precision=10&angle=rad', {
+            method: 'POST', headers: {'Content-Type': 'text/plain; charset=utf-8'}, body: name,
+            signal: AbortSignal.timeout(10000)
+        }, 'delete-variable', deletion.id);
+        if (!response.ok || !data.ok) {
+            pendingVariableDeletion = null;
+            throw new Error(responseError(data));
+        }
+        storedVariables.delete(name);
+        pendingVariableDeletion = null;
+        renderVariables();
+        document.querySelector('#variable-status').textContent = english ? 'Variable deleted.' : 'Premenná odstránená.';
+        document.querySelector('#session-variables-tab').focus();
+    } catch (error) {
+        document.querySelector('#variable-status').textContent = error.message + (pendingVariableDeletion
+            ? (english ? ' Click delete again to retry, or start a new session.' : ' Opakuj kliknutie na odstránenie alebo začni nové sedenie.') : '');
+    } finally {
+        variableDeletionInFlight = false;
+        if (window.numforgePendingVariableDeletion === deletionFinished)
+            window.numforgePendingVariableDeletion = null;
+        finishDeletion();
+        if (!pendingVariableDeletion && expression.value.trim()) scheduleCalculation(0);
+    }
+}
+
+function renderVariables()
+{
+    const list = document.querySelector('#variable-list');
+    list.replaceChildren();
+    document.querySelector('#variable-count').textContent = storedVariables.size + ' / 32';
+    document.querySelector('#variables-empty').hidden = storedVariables.size > 0;
+    [...storedVariables].sort(([a], [b]) => a.localeCompare(b)).forEach(([name, value]) => {
+        const item = document.createElement('li');
+        const button = document.createElement('button');
+        button.type = 'button';
+        const label = document.createElement('strong');
+        label.className = 'variable-name';
+        label.textContent = name;
+        const display = document.createElement('span');
+        display.className = 'variable-value';
+        display.textContent = '= ' + value;
+        button.title = name + ' = ' + value;
+        button.setAttribute('aria-label', (english ? 'Insert variable ' : 'Vložiť premennú ') + name);
+        let caret = null;
+        button.addEventListener('pointerdown', () => {
+            caret = document.activeElement === expression
+                ? {start: expression.selectionStart, end: expression.selectionEnd} : null;
+        });
+        button.addEventListener('click', () => {
+            const position = caret || {start: expression.value.length, end: expression.value.length};
+            expression.setSelectionRange(position.start, position.end);
+            insertText(name);
+            caret = null;
+        });
+        button.append(label, display);
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'variable-delete';
+        remove.textContent = '×';
+        remove.title = (english ? 'Delete variable ' : 'Odstrániť premennú ') + name;
+        remove.setAttribute('aria-label', remove.title);
+        remove.addEventListener('click', () => deleteVariable(name));
+        item.append(button, remove);
+        list.append(item);
+    });
+}
+
+function updateVariables(input, display)
+{
+    const assignment = /^\s*([A-Za-z]{1,31})\s*=/.exec(input);
+    if (!assignment) return;
+    // Display snapshots only; evaluation always uses the server-owned typed value.
+    storedVariables.set(assignment[1], display.length > 256 ? display.slice(0, 256) + '…' : display);
+    renderVariables();
+}
 
 function appendHistory(request, display, copy)
 {
@@ -789,7 +911,7 @@ notationMode.addEventListener('change', () => scheduleCalculation(0));
 
 async function calculate(commit)
 {
-    if (commitInFlight || (!commit && pendingCommit)) return;
+    if (variableDeletionInFlight || pendingVariableDeletion || commitInFlight || (!commit && pendingCommit)) return;
     invalidate();
     if (!expression.value.trim() && !pendingCommit) return;
     const id = generation;
@@ -831,7 +953,10 @@ async function calculate(commit)
             }, commit ? 'commit' : 'preview', request.id);
         if (commit) pendingCommit = null;
         if (!response.ok || !data.ok) throw new Error(responseError(data));
-        if (commit) appendHistory(request, data.result, data.copy);
+        if (commit) {
+            appendHistory(request, data.result, data.copy);
+            updateVariables(request.input, data.result);
+        }
         if (id !== generation) return;
         result.textContent = data.result;
         setResultApproximation(data.approx);
@@ -880,7 +1005,8 @@ function saveNavigationState()
             notation: notationMode.value, angle: angleUnit,
             result: result.textContent, resultCopy, resultApprox: resultApproxValue,
             resultError: result.classList.contains('error'),
-            history: historyEntries, historySequence, recent: recentItems,
+            history: historyEntries, historySequence, variables: [...storedVariables],
+            sessionTab: activeSessionTab, pendingVariableDeletion, recent: recentItems,
             category: document.querySelector('.function-tabs button[aria-selected="true"]')?.id,
             search: document.querySelector('#function-search').value
         }));
@@ -931,6 +1057,17 @@ try
                     ? state.historySequence : historyEntries.length;
                 renderHistory();
             }
+            if (Array.isArray(state.variables)) {
+                for (const entry of state.variables.slice(0, 32)) {
+                    if (Array.isArray(entry) && /^[A-Za-z]{1,31}$/.test(entry[0]) &&
+                        typeof entry[1] === 'string') storedVariables.set(entry[0], entry[1].slice(0, 257));
+                }
+                renderVariables();
+            }
+            selectSessionTab(state.sessionTab === 'variables' ? 'variables' : 'history');
+            if (state.pendingVariableDeletion && typeof state.pendingVariableDeletion.name === 'string' &&
+                Number.isSafeInteger(state.pendingVariableDeletion.id))
+                pendingVariableDeletion = state.pendingVariableDeletion;
             if (Array.isArray(state.recent))
             {
                 recentItems = state.recent.filter(item => item &&

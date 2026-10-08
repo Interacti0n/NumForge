@@ -542,12 +542,17 @@ duplicate revisions may compute a response but cannot replace the stored value.
 Errors preserve the last successful value. This is not authentication or a
 public multiuser service.
 
-The browser adds a final `&action=start|preview|commit` after client/revision.
+The browser adds a final `&action=start|preview|commit|delete-variable` after client/revision.
 For example, start a page session with a POST to
 `/api/evaluate?precision=10&angle=rad&client=<32 lowercase hex digits>&revision=1&action=start`
 and an empty body. Start returns `{"ok":true,"result":""}` and is idempotent
 for an existing ID. Then send expressions with action `preview` or `commit` and
 increasing revisions. Start does not consume an evaluation revision.
+
+`delete-variable` accepts a case-sensitive variable name as the plain-text body,
+reclaims its slot and preserves ans/history/RNG. It requires an existing session
+and a fresh revision; the same successful name/revision can be retried before
+another request. See [Variables](VARIABLES.md) for deletion and UI semantics.
 
 Preview does not change `ans` or history. Commit confirms a successful internal
 value and adds history atomically; failed calculations preserve both. `ans` is

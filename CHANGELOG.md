@@ -5,6 +5,11 @@ All notable changes to NumForge are documented in this file. The project uses
 
 ## Unreleased
 
+- Show all session variables in a scrollable SK/EN list, with
+  confirmed value previews, a capacity counter and click-to-insert names.
+  Switch between History and Variables tabs; delete individual variables from
+  the list or the revision-checked HTTP session command without changing ans.
+
 - Separate the SK/EN Guide/API link from mathematical tool tabs. Keep it visible
   in the header when the mobile navigation menu is closed.
 

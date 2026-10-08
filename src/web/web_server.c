@@ -493,7 +493,7 @@ static bool numforge_parse_session_action(char *target, const char **action)
     }
     *action = suffix + strlen("&action=");
     if (strcmp(*action, "start") != 0 && strcmp(*action, "preview") != 0 &&
-        strcmp(*action, "commit") != 0)
+        strcmp(*action, "commit") != 0 && strcmp(*action, "delete-variable") != 0)
     {
         return false;
     }
@@ -656,6 +656,15 @@ static void numforge_handle_evaluation_impl(
         {
             status = CALCULATOR_SESSION_EXPIRED;
             calculator_error_set(&error, status, 0U);
+        }
+        else if (strcmp(action, "delete-variable") == 0)
+        {
+            status = calculator_session_delete_variable(session, revision, body, &error);
+            if (status == CALCULATOR_OK) {
+                numforge_send_response(socket, 200, "OK", "application/json; charset=utf-8",
+                    "{\"ok\":true,\"result\":\"\"}");
+                return;
+            }
         }
         else
         {

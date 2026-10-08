@@ -41,10 +41,15 @@ typedef struct CalculatorSession
     bool random_initialized;
     CalculatorVariable variables[CALCULATOR_VARIABLE_CAPACITY];
     size_t variable_count;
+    uint64_t deletion_revision;
+    char deleted_variable[CALCULATOR_VARIABLE_NAME_BYTES + 1U];
 } CalculatorSession;
 
 void calculator_session_destroy(CalculatorSession *session);
 void calculator_session_clear_preview(CalculatorSession *session);
+/* Idempotent deletion at one revision; preserves ans, history and RNG. */
+CalculatorStatus calculator_session_delete_variable(CalculatorSession *session,
+    uint64_t revision, const char *name, CalculatorError *error);
 CalculatorStatus calculator_session_compute(
     CalculatorSession *session,
     uint64_t revision,

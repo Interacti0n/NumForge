@@ -106,7 +106,7 @@ confirms the calculation; Esc only collapses it. A truncated result uses a visib
 ellipsis and an explicit expansion button.
 On desktop, the result uses the height available above the keypad before
 offering full-result expansion. The calculator shell fits the viewport at ordinary window heights;
-function lists and the always-visible history use internal scrolling. Opening a long
+function lists and the selected History/Variables tab use internal scrolling. Opening a long
 result shows a centered modal with its own scroll area, copy control and
 outside-click dismissal, leaving the calculator in place. The API guide scrolls
 only its text while the header and section menu remain fixed; at narrow widths

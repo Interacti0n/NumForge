@@ -450,9 +450,41 @@ static void test_quantity_assignment_allocation_failures_preserve_typed_state(vo
     }
 }
 
+static void test_delete_variable_preserves_ans_and_reclaims_capacity(void)
+{
+    CalculatorError error;
+    char name[3] = {'v', 'A', '\0'};
+    char assignment[8];
+    for (size_t i = 0; i < CALCULATOR_VARIABLE_CAPACITY; i++) {
+        name[1] = (char)('A' + (int)i);
+        /* Only letters are valid, so use lowercase for the last six slots. */
+        if (i >= 26U) name[1] = (char)('a' + (int)(i - 26U));
+        (void)snprintf(assignment, sizeof(assignment), "%s=7", name);
+        check_result(i + 1U, true, assignment, "7");
+    }
+    TEST_ASSERT_EQUAL_UINT(32, session.variable_count);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_session_delete_variable(&session, 33U, "vA", &error));
+    TEST_ASSERT_EQUAL_UINT(31, session.variable_count);
+    TEST_ASSERT_EQUAL_UINT(16, session.count);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_session_delete_variable(&session, 33U, "vA", &error));
+    check_error(32U, true, assignment, CALCULATOR_STALE_REQUEST);
+    check_result(34U, false, "ans", "7");
+    check_error(35U, false, "vA", CALCULATOR_UNDEFINED_VARIABLE);
+    check_result(36U, true, "new=qty(2;\"m\")", "2 m");
+    TEST_ASSERT_EQUAL_UINT(32, session.variable_count);
+    TEST_ASSERT_EQUAL(CALCULATOR_STALE_REQUEST, calculator_session_delete_variable(&session, 33U, "vA", &error));
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, calculator_session_delete_variable(&session, 37U, "x=3", &error));
+    TEST_ASSERT_EQUAL_UINT(32, session.variable_count);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_session_delete_variable(&session, 37U, "new", &error));
+    check_result(38U, false, "ans", "2 m");
+    check_error(39U, false, "new", CALCULATOR_UNDEFINED_VARIABLE);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_session_delete_variable(&session, 40U, "missing", &error));
+}
+
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_delete_variable_preserves_ans_and_reclaims_capacity);
     RUN_TEST(test_quantity_assignment_allocation_failures_preserve_typed_state);
     RUN_TEST(test_quantity_sessions_keep_dimensions_and_confirmation_atomic);
     RUN_TEST(test_convert_session_values_are_numeric_and_preview_is_read_only);

@@ -4,6 +4,30 @@ Variables live in the current CLI or browser session. Type `x = 2/3` and confirm
 with Enter or the calculate button (`=`), then use `x*3` to get exactly `2`.
 A live preview shows the prospective result without saving the variable.
 
+The browser Session panel has History and Variables tabs. Its scrollable list
+shows all 32 supported variables independently of the last 16 history entries. Clicking a
+variable inserts its name at the input caret. Each displayed value is a snapshot
+of its last confirmed assignment using that assignment's display settings;
+very long text is shortened. The server retains the full typed value and clicking
+the name uses that value, including exact fractions and units. Preview or failed
+assignments leave the list unchanged. Tool/language navigation keeps the list;
+New session or reload clears it together with the calculator session.
+
+Use the × button beside a variable to delete it and reclaim one slot. Deletion
+leaves `ans`, history and random state unchanged; other variables retain their
+copied values. A deleted name becomes undefined until assigned again. The UI
+removes the row only after the server confirms deletion. An uncertain response
+can be retried with the same button and revision before further calculations.
+
+HTTP clients can send `POST /api/evaluate?precision=10&angle=rad&client=…&revision=N&action=delete-variable`
+with a plain-text body containing the case-sensitive name (without whitespace).
+An existing session and a newer positive revision are required. Success returns
+`{"ok":true,"result":""}`. Repeating the same deletion revision/name immediately
+is safe; missing valid names are a successful no-op. Invalid names, stale
+revisions and expired sessions use the ordinary calculator error schema.
+Deletion invalidates previews and prevents replay of older assignments from
+restoring the deleted variable. This command is not an expression function.
+
 Variables and `ans` also retain [Quantity](QUANTITIES.md) values and dimensions:
 `x = qty(3; "m")` followed by `x*x` gives `9 m²`. A later scalar assignment
 replaces the unit metadata as well as the number. `qty` and `convert` are
