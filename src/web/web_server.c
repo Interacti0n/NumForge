@@ -28,7 +28,7 @@
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
-    Minimal loopback-only HTTP server for local NumForge demonstrations. It is
+    Minimal loopback HTTP backend for local or proxied NumForge demonstrations. It is
     intentionally not an Internet-facing server: it accepts one request at a
     time, serves build-embedded calculator/help assets, and sends expressions to the C
     parser and typed evaluator through web_api.c.
@@ -234,6 +234,7 @@ static bool numforge_read_request(
     bool *has_content_length,
     bool *origin_allowed,
     uint16_t port,
+    const char *public_origin,
     int *http_error
 )
 {
@@ -244,7 +245,7 @@ static bool numforge_read_request(
     for (;;)
     {
         NumForgeHttpFrame frame;
-        NumForgeHttpStatus status = numforge_http_probe(buffer, used, capacity, port, &frame);
+        NumForgeHttpStatus status = numforge_http_probe_with_origin(buffer, used, capacity, port, public_origin, &frame);
 
         if (status == NUMFORGE_HTTP_READY)
         {
@@ -817,9 +818,10 @@ static void numforge_handle_conversion(NumForgeSocket socket, const char *target
     free(response);
 }
 
-void numforge_handle_connection(
+void numforge_handle_connection_with_origin(
     NumForgeSocket socket,
-    uint16_t port
+    uint16_t port,
+    const char *public_origin
 )
 {
     char request[NUMFORGE_WEB_REQUEST_CAPACITY];
@@ -846,6 +848,7 @@ void numforge_handle_connection(
                                &has_content_length,
                                &origin_allowed,
                                port,
+                               public_origin,
                                &http_error) ||
         !numforge_request_target(request, method, sizeof(method), target, sizeof(target)))
     {
@@ -1041,4 +1044,9 @@ void numforge_handle_connection(
     {
         numforge_send_response(socket, 404, "Not Found", "text/plain; charset=utf-8", "Not found.\n");
     }
+}
+
+void numforge_handle_connection(NumForgeSocket socket, uint16_t port)
+{
+    numforge_handle_connection_with_origin(socket, port, NULL);
 }

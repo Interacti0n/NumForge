@@ -43,10 +43,42 @@ static void test_bad_and_oversized_headers(void)
     TEST_ASSERT_EQUAL(NUMFORGE_HTTP_BAD, numforge_http_probe(NULL, 0, 8192, 8765, &frame));
 }
 
+static void test_public_origin_is_explicit_and_exact(void)
+{
+    NumForgeHttpFrame frame;
+    const char *origin = "https://calculator.example.com";
+    const char *allowed = "POST /api/evaluate HTTP/1.1\r\nContent-Length: 3\r\nOrigin: https://calculator.example.com\r\n\r\n2+2";
+    const char *foreign = "POST /api/evaluate HTTP/1.1\r\nContent-Length: 3\r\nOrigin: https://calculator.example.com.evil.test\r\n\r\n2+2";
+    TEST_ASSERT_EQUAL(NUMFORGE_HTTP_READY, numforge_http_probe(allowed, strlen(allowed), 8192, 8765, &frame));
+    TEST_ASSERT_FALSE(frame.origin_allowed);
+    TEST_ASSERT_EQUAL(NUMFORGE_HTTP_READY, numforge_http_probe_with_origin(allowed, strlen(allowed), 8192, 8765, origin, &frame));
+    TEST_ASSERT_TRUE(frame.origin_allowed);
+    TEST_ASSERT_EQUAL(NUMFORGE_HTTP_READY, numforge_http_probe_with_origin(foreign, strlen(foreign), 8192, 8765, origin, &frame));
+    TEST_ASSERT_FALSE(frame.origin_allowed);
+}
+
+static void test_public_origin_configuration(void)
+{
+    TEST_ASSERT_TRUE(numforge_http_valid_origin("https://calculator.example.com"));
+    TEST_ASSERT_TRUE(numforge_http_valid_origin("http://192.168.1.4:8765"));
+    TEST_ASSERT_TRUE(numforge_http_valid_origin("https://calculator.example.com:8443"));
+    const char *bad[] = { NULL, "", "*", "null", "https://", "ftp://example.com",
+        "https://EXAMPLE.com", "https://user@example.com", "https://example.com/",
+        "https://example.com?x", "https://example.com#x", "https://example.com\r\nX: y",
+        "https://example.com:0", "https://example.com:65536", "https://example.com:443",
+        "http://example.com:80", "https://example.com:0443" };
+    for (size_t index = 0U; index < sizeof(bad) / sizeof(bad[0]); index++)
+    {
+        TEST_ASSERT_FALSE(numforge_http_valid_origin(bad[index]));
+    }
+}
+
 int main(void)
 {
     UNITY_BEGIN();
     RUN_TEST(test_fragmentation_and_metadata);
     RUN_TEST(test_bad_and_oversized_headers);
+    RUN_TEST(test_public_origin_is_explicit_and_exact);
+    RUN_TEST(test_public_origin_configuration);
     return UNITY_END();
 }

@@ -114,6 +114,9 @@ only on the local machine. Use `--port N` to choose a port or `--no-browser`
 to suppress automatic browser opening. Run `calculator` for the interactive
 command-line calculator.
 
+For access from phones or remote browsers, use an HTTPS tunnel or reverse proxy
+and an explicit `--origin`; see the [hosting guide](docs/guides/HOSTING.md).
+
 For example, with a single-configuration build on Linux/macOS:
 
 ```sh

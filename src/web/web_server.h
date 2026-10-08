@@ -6,5 +6,6 @@
 #include <stdint.h>
 
 void numforge_handle_connection(NumForgeSocket socket, uint16_t port);
+void numforge_handle_connection_with_origin(NumForgeSocket socket, uint16_t port, const char *public_origin);
 
 #endif

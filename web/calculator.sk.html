@@ -18,7 +18,7 @@
         <span class="brand-text"><strong>NumForge</strong><small>Presné výpočty</small></span>
       </a>
       <a class="guide-link header-guide" href="/api?lang=sk">Návod / API</a>
-      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-navigation"><span class="menu-icon" aria-hidden="true"></span>Menu</button>
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-navigation" aria-label="Otvoriť navigáciu"><span class="menu-icon" aria-hidden="true"></span><span class="menu-label">Menu</span></button>
       <div class="site-navigation" id="site-navigation">
         <nav class="primary-nav" aria-label="Hlavná navigácia">
           <a href="/?lang=sk" aria-current="page">Kalkulačka</a>
@@ -39,15 +39,9 @@
 
     <div class="workspace">
       <main class="calculator-column">
-        <div class="intro">
-          <p class="eyebrow">VÝPOČTOVÝ PRIESTOR</p>
-          <h1>Presné výrazy. Jasné výsledky.</h1>
-          <p>Píš prirodzene, používaj klávesnicu alebo vyber funkciu. Výsledok sa ukáže priebežne; Enter ho uloží do histórie.</p>
-        </div>
-
         <section class="card precision" aria-labelledby="settings-title">
-          <div class="section-title settings-title"><span class="section-icon" aria-hidden="true">⚙</span><h2 id="settings-title">Nastavenia</h2></div>
-          <div class="precision-controls">
+          <div class="section-title settings-title"><span class="section-icon" aria-hidden="true">⚙</span><h2 id="settings-title">Nastavenia</h2><span id="settings-overview">Auto · RAD</span></div>
+          <div class="precision-controls" id="settings-controls">
             <label class="field">Presnosť
               <select id="precision-mode"><option value="auto">Auto · 10 miest</option><option value="full">Plný výpis</option><option value="custom">Vlastná</option></select>
             </label>
@@ -66,10 +60,10 @@
         <section class="card expression-card" aria-labelledby="expression-title">
           <div class="section-heading"><div class="section-title"><span class="section-icon" aria-hidden="true">∑</span><h2 id="expression-title">Matematický výraz</h2></div><div class="expression-actions"><button id="expand-expression" class="expand-expression" type="button" aria-expanded="false" hidden>Zobraziť celý výraz...</button></div></div>
           <form id="calculator">
-            <textarea id="expression" aria-label="Matematický výraz" placeholder="Napr. (1/3)*3 alebo sin(π/2)" rows="1" spellcheck="false" autofocus></textarea>
-            <button class="primary-button" type="submit">Vypočítať <span aria-hidden="true">→</span></button>
+            <textarea id="expression" aria-label="Matematický výraz" placeholder="Napr. (1/3)*3 alebo sin(π/2)" rows="1" spellcheck="false" inputmode="text" autocapitalize="off" autocorrect="off" enterkeyhint="go" autofocus></textarea>
+            <div class="input-actions"><button class="primary-button" type="submit">Vypočítať <span aria-hidden="true">→</span></button><a class="function-shortcut" href="#functions-title" aria-label="Prejsť na knižnicu funkcií"><span class="shortcut-full">Prejsť na knižnicu funkcií ↓</span><span class="shortcut-compact">Funkcie ↓</span></a><button id="clear-expression" class="clear-expression" type="button" data-action="clear" aria-label="Vymazať zadanie">Vymazať</button></div>
           </form>
-          <a class="function-shortcut" href="#functions-title">Prejsť na knižnicu funkcií ↓</a>
+
         </section>
         <section class="card result-panel" aria-live="polite" aria-labelledby="result-title">
           <div class="result-heading"><div class="section-title"><span class="section-icon" aria-hidden="true">=</span><h2 id="result-title">Výsledok</h2></div><button id="copy-result" type="button" disabled title="Skopírovať výsledok" aria-label="Skopírovať výsledok">⧉ Kopírovať</button></div>
@@ -172,6 +166,12 @@
 <button type="button" data-function="acosh" data-insert="acosh(">acosh</button>
 <button type="button" data-function="atanh" data-insert="atanh(">atanh</button>
 </div></details>
+<details class="function-group"><summary>Konštanty</summary><div class="keypad functions constants-library">
+<button type="button" data-insert="π" title="Ludolfovo číslo" aria-label="Ludolfovo číslo">π<span>Ludolfovo číslo</span></button>
+<button type="button" data-insert="e" title="Eulerovo číslo" aria-label="Eulerovo číslo">e<span>Eulerovo číslo</span></button>
+<button type="button" data-insert="φ" title="Zlatý rez" aria-label="Zlatý rez">φ<span>Zlatý rez</span></button>
+</div></details>
+
           </div>
         </section>
         <section class="card session-panel" aria-labelledby="session-title">

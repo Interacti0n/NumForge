@@ -29,6 +29,26 @@ let expressionExpanded = false;
 let resultCopy = '';
 let resultApproxValue = '';
 let angleUnit = 'rad';
+const settingsOverview = document.querySelector('#settings-overview');
+const mobileSettings = window.matchMedia('(max-width: 600px), (max-width: 960px) and (max-height: 500px) and (orientation: landscape)');
+function syncSettingsPlacement()
+{
+    const settings = document.querySelector('.precision');
+    const parent = document.querySelector(mobileSettings.matches ? '.sidebar' : '.calculator-column');
+    if (settings.parentElement && settings.parentElement !== parent)
+    {
+        if (mobileSettings.matches) parent.append(settings);
+        else parent.prepend(settings);
+    }
+}
+function updateSettingsOverview()
+{
+    const label = precisionMode.value === 'custom' ? precision.value
+        : precisionMode.value === 'full' ? (english ? 'Full' : 'Plný') : 'Auto';
+    settingsOverview.textContent = label + ' · ' + angleUnit.toUpperCase();
+}
+mobileSettings.addEventListener?.('change', syncSettingsPlacement, {signal: lifecycle.signal});
+syncSettingsPlacement();
 
 function setResultApproximation(value)
 {
@@ -102,9 +122,9 @@ function updateExpandedExpressionSize()
     const button = form.querySelector('.primary-button');
     const keypad = document.querySelector('.keypad-card');
     const bottom = Math.min(result.getBoundingClientRect().top - 6,
-        keypad.getBoundingClientRect().top - 8, window.innerHeight - 8);
+        keypad.offsetHeight ? keypad.getBoundingClientRect().top - 8 : Infinity, window.innerHeight - 8);
     form.style.setProperty('--expanded-height', Math.max(64, bottom - formRect.top) + 'px');
-    form.style.setProperty('--expanded-width', Math.max(80, formRect.width - button.offsetWidth - 10) + 'px');
+    form.style.setProperty('--expanded-width', Math.max(80, mobileSettings.matches ? formRect.width : formRect.width - button.offsetWidth - 10) + 'px');
 }
 
 function setExpressionExpanded(expanded)
@@ -188,6 +208,7 @@ const slovakStatus = {
 function selectAngleUnit(unit, recalculate)
 {
     angleUnit = unit === 'deg' ? 'deg' : 'rad';
+    updateSettingsOverview();
     angleButtons.forEach((button) => {
         const selected = button.dataset.angle === angleUnit;
         button.classList.toggle('active', selected);
@@ -248,11 +269,60 @@ function scheduleCalculation(delay = 300)
 
 expression.addEventListener('input', () => scheduleCalculation());
 
-precision.addEventListener('input', () => scheduleCalculation());
+precision.addEventListener('input', () => { updateSettingsOverview(); scheduleCalculation(); });
 const inverseFunctionAliases = {
     asin: ['arcsin', 'arcussin'], acos: ['arccos', 'arcuscos'],
     atan: ['arctan', 'arcustan'], asinh: ['arcsinh', 'arcussinh'],
     acosh: ['arccosh', 'arcuscosh'], atanh: ['arctanh', 'arcustanh']
+};
+// Library search terms; insertion always uses the supported canonical function.
+const functionSearchAliases = {
+    abs: ['absolute', 'modulus', 'magnitude', 'absolútna hodnota'],
+    sign: ['sgn', 'signum', 'znamienko'],
+    min: ['minimum', 'smallest', 'najmenšia hodnota'],
+    max: ['maximum', 'largest', 'najväčšia hodnota'],
+    sum: ['summation', 'total', 'suma', 'súčet'],
+    product: ['prod', 'multiplication', 'súčin', 'násobenie'],
+    mean: ['avg', 'average', 'arithmetic mean', 'priemer', 'aritmetický priemer'],
+    floor: ['round down', 'dolná celá časť', 'zaokrúhliť nadol'],
+    ceil: ['ceiling', 'round up', 'horná celá časť', 'zaokrúhliť nahor'],
+    trunc: ['truncate', 'truncation', 'integer part', 'odrezanie', 'celá časť'],
+    round: ['rounding', 'half even', 'bankers rounding', 'zaokrúhlenie', 'bankové zaokrúhľovanie'],
+    gcd: ['gcf', 'hcf', 'greatest common factor', 'highest common factor', 'NSD', 'najväčší spoločný deliteľ'],
+    lcm: ['least common multiple', 'lowest common multiple', 'NSN', 'najmenší spoločný násobok'],
+    mod: ['modulo', 'remainder', 'zvyšok po delení'],
+    npr: ['permutation', 'permutations', 'variation', 'variations', 'permutácie', 'variácie bez opakovania'],
+    ncr: ['combination', 'combinations', 'binomial coefficient', 'choose', 'kombinácie', 'binomický koeficient', 'kombinačné číslo'],
+    factorial: ['fact', 'factorial', 'faktoriál'],
+    isqrt: ['integer square root', 'celočíselná odmocnina'],
+    rand: ['random', 'rng', 'random number', 'náhodné číslo', 'náhodná hodnota'],
+    pow: ['power', 'exponentiation', 'mocnina', 'umocnenie'],
+    sqrt: ['square root', 'druhá odmocnina', 'kvadratická odmocnina'],
+    cbrt: ['cube root', 'cubic root', 'tretia odmocnina', 'kubická odmocnina'],
+    root: ['nth root', 'n-th root', 'n-tá odmocnina', 'všeobecná odmocnina'],
+    exp: ['exponential', 'exponential function', 'exponenciálna funkcia'],
+    ln: ['natural logarithm', 'loge', 'prirodzený logaritmus'],
+    log: ['logarithm', 'log10', 'common logarithm', 'decimal logarithm', 'dekadický logaritmus', 'desiatkový logaritmus'],
+    median: ['med', 'middle value', 'medián', 'prostredná hodnota'],
+    geomean: ['gmean', 'geometric mean', 'geometric average', 'geometrický priemer'],
+    harmean: ['hmean', 'harmonic mean', 'harmonic average', 'harmonický priemer'],
+    variance: ['var', 'varp', 'population variance', 'populačný rozptyl'],
+    stdevp: ['stdp', 'stddevp', 'population standard deviation', 'populačná smerodajná odchýlka'],
+    stdev: ['std', 'stddev', 'sd', 'sample standard deviation', 'výberová smerodajná odchýlka', 'štandardná odchýlka'],
+    sin: ['sine', 'sínus'],
+    cos: ['cosine', 'kosínus'],
+    tan: ['tg', 'tangent', 'tangens'],
+    asin: ['arcsine', 'inverse sine', 'arc sine', 'arcus sínus', 'arkus sínus'],
+    acos: ['arccosine', 'inverse cosine', 'arc cosine', 'arcus kosínus', 'arkus kosínus'],
+    atan: ['arctg', 'arctangent', 'inverse tangent', 'arc tangent', 'arcus tangens', 'arkus tangens'],
+    sinh: ['sh', 'hyperbolic sine', 'hyperbolický sínus'],
+    cosh: ['ch', 'hyperbolic cosine', 'hyperbolický kosínus'],
+    tanh: ['th', 'tgh', 'hyperbolic tangent', 'hyperbolický tangens'],
+    asinh: ['arsinh', 'arsh', 'inverse hyperbolic sine', 'area hyperbolic sine', 'inverzný hyperbolický sínus', 'area sínus'],
+    acosh: ['arcosh', 'arch', 'inverse hyperbolic cosine', 'area hyperbolic cosine', 'inverzný hyperbolický kosínus', 'area kosínus'],
+    atanh: ['artanh', 'arth', 'artgh', 'inverse hyperbolic tangent', 'area hyperbolic tangent', 'inverzný hyperbolický tangens', 'area tangens'],
+    radians: ['deg2rad', 'degrees to radians', 'stupne na radiány'],
+    degrees: ['rad2deg', 'radians to degrees', 'radiány na stupne']
 };
 const functionHelp = {
     abs: ["|x|","abs(x)","Absolútna hodnota.","Absolute value."],
@@ -708,7 +778,27 @@ if (groups.length)
     const search = document.querySelector('#function-search');
     const searchStatus = document.querySelector('#search-status');
     const functionGroups = document.querySelector('.function-groups');
-    const normalizeSearch = value => value.toLocaleLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const normalizeSearch = value => value.toLocaleLowerCase().normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '').replace(/[’']/g, '');
+    const constantAliases = {
+        'π': ['pi', 'constant', 'constants', 'Archimedes constant', "Archimedes' constant",
+            "Ludolph's number", 'Ludolph number', 'Ludolf number', 'circular constant'],
+        'e': ['e', 'constant', 'constants', 'Euler number', "Euler's number",
+            'Napier constant', "Napier's constant",
+            'Napier number', "Napier's number", 'natural logarithm base', 'base of natural logarithms'],
+        'φ': ['phi', 'φ', 'ϕ', 'constant', 'constants', 'golden ratio', 'golden number',
+            'golden mean', 'golden section', 'divine proportion']
+    };
+    if (!english)
+    {
+        constantAliases['π'].push('pí', 'konštanta', 'konštanty', 'Archimedova konštanta',
+            'Archimedovo číslo', 'Ludolfovo číslo', 'Ludolphovo číslo', 'kruhová konštanta');
+        constantAliases.e.push('konštanta', 'konštanty', 'Eulerovo číslo',
+            'Napierovo číslo', 'Napierova konštanta', 'základ prirodzeného logaritmu',
+            'základ prirodzených logaritmov');
+        constantAliases['φ'].push('fí', 'fi', 'konštanta', 'konštanty', 'zlatý rez',
+            'zlaté číslo', 'zlatý pomer', 'zlatá konštanta', 'božský pomer');
+    }
     const tabs = document.createElement('div');
     tabs.className = 'function-tabs';
     tabs.setAttribute('role', 'tablist');
@@ -725,7 +815,7 @@ if (groups.length)
         groups.forEach((group, i) => {
             group.hidden = i !== index;
             group.classList.remove('search-results');
-            group.querySelectorAll('[data-function]').forEach(button => { button.hidden = false; });
+            group.querySelectorAll('[data-insert]').forEach(button => { button.hidden = false; });
             tabs.children[i].setAttribute('aria-selected', String(i === index));
             tabs.children[i].tabIndex = i === index ? 0 : -1;
         });
@@ -743,10 +833,16 @@ if (groups.length)
         let matches = 0;
         groups.forEach(group => {
             let groupMatches = 0;
-            group.querySelectorAll('[data-function]').forEach(button => {
+            group.querySelectorAll('[data-insert]').forEach(button => {
                 const info = functionHelp[button.dataset.function];
-                const aliases = inverseFunctionAliases[button.dataset.function] || [];
-                const searchable = normalizeSearch([button.dataset.function, ...aliases, ...(info || [])].join(' '));
+                const aliases = [...(inverseFunctionAliases[button.dataset.function] || []),
+                    ...(functionSearchAliases[button.dataset.function] || []),
+                    ...[...functionRegistry.values()].filter(entry => entry.canonical === button.dataset.function)
+                        .map(entry => entry.name)];
+                const constants = button.closest('.constants-library')
+                    ? constantAliases[button.dataset.insert] || [] : [];
+                const searchable = normalizeSearch([button.dataset.function, button.dataset.insert,
+                    button.title, button.textContent, ...aliases, ...constants, ...(info || [])].join(' '));
                 button.hidden = !searchable.includes(query);
                 if (!button.hidden) groupMatches++;
             });
@@ -1000,6 +1096,7 @@ function updatePrecisionMode()
     const custom = precisionMode.value === 'custom';
     precision.disabled = !custom;
     document.querySelector('#custom-precision').hidden = !custom;
+    updateSettingsOverview();
 }
 updatePrecisionMode();
 precisionMode.addEventListener('change', () => {
@@ -1086,11 +1183,15 @@ async function calculate(commit)
             commitInFlight = false;
             if (!pendingCommit && id !== generation) scheduleCalculation(0);
         }
+        if (commit && id === generation && !lifecycle.signal.aborted && mobileSettings.matches)
+            document.querySelector('.result-panel').scrollIntoView({block: 'start',
+                behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
     }
 }
 
 form.addEventListener('submit', event => {
     event.preventDefault();
+    if (mobileSettings.matches) expression.blur();
     if (expressionExpanded) setExpressionExpanded(false);
     return calculate(true);
 });

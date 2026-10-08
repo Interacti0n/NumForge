@@ -34,6 +34,22 @@ panel, and the same control collapses it again.
 Results default to 10 decimal places, rounded half-even.
 The browser offers Auto (10 places), Full, and Custom; only Custom shows a
 numeric field. Full skips final output rounding, not working-precision limits.
+On phones, the expression fills the row; Calculate, Clear and the library
+shortcut share one row below it. Input requests a text virtual keyboard so
+variables and separators such as semicolons remain available. Automatic
+capitalization and correction are disabled for expressions;
+the operating system and browser determine its layout and whether autofocus opens it.
+On phones, Calculate or Enter dismisses the input keyboard and reveals the result;
+live previews do not move the page.
+The on-screen keypad is hidden. The library includes a
+searchable Constants category with pi, Euler's number and the golden ratio.
+Function search also accepts common English and Slovak names and abbreviations
+(for example avg/average/priemer, NSD/GCD, tg/tangent and deg2rad).
+These are library search terms: clicking a result inserts the supported function name.
+In landscape on phones, Session and Settings share two equal-width columns,
+with Session on the left and Settings always expanded on the right.
+In portrait, Settings sit below history and variables. Precision, notation and
+angle controls are always visible in every layout; the panel cannot be collapsed.
 Separately, the notation selector offers Auto, plain, scientific,
 mathematical and fraction output. Auto first chooses a short exact fraction
 under the rule above; otherwise it selects scientific when the rounded exponent

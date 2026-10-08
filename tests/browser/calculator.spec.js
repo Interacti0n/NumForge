@@ -1,4 +1,101 @@
 const { test, expect } = require('@playwright/test');
+
+test('mobile text input supports variables and semicolon-separated arguments', async ({page}) => {
+    await page.setViewportSize({width:390,height:844});
+    for (const lang of ['sk','en']) {
+        await page.goto('/?lang='+lang);
+        const input=page.locator('#expression');
+        await expect(input).toHaveAttribute('inputmode','text');
+        await expect(input).toHaveAttribute('autocapitalize','off');
+        await expect(input).toHaveAttribute('autocorrect','off');
+        await input.fill('');
+        await input.pressSequentially('x=mean(2;4)');
+        await expect(input).toHaveValue('x=mean(2;4)');
+        await input.press('Enter');
+        await expect(page.locator('#result')).toHaveText('3');
+        await input.fill('x+1');
+        await page.locator('.primary-button').click();
+        await expect(page.locator('#result')).toHaveText('4');
+    }
+});
+
+test('every library function has English and Slovak search names', async ({page}) => {
+    const names = {
+        abs: ['modulus', 'absolútna hodnota'], sign: ['sgn', 'znamienko'],
+        min: ['smallest', 'najmenšia hodnota'], max: ['largest', 'najväčšia hodnota'],
+        sum: ['summation', 'súčet'], product: ['prod', 'súčin'], mean: ['avg', 'aritmetický priemer'],
+        floor: ['round down', 'dolná celá časť'], ceil: ['ceiling', 'horná celá časť'],
+        trunc: ['truncate', 'odrezanie'], round: ['bankers rounding', 'zaokrúhlenie'],
+        gcd: ['hcf', 'NSD'], lcm: ['lowest common multiple', 'NSN'], mod: ['remainder', 'zvyšok po delení'],
+        npr: ['permutations', 'variácie bez opakovania'], ncr: ['choose', 'kombinačné číslo'],
+        factorial: ['fact', 'faktoriál'], isqrt: ['integer square root', 'celočíselná odmocnina'],
+        rand: ['rng', 'náhodné číslo'], pow: ['exponentiation', 'umocnenie'],
+        sqrt: ['square root', 'kvadratická odmocnina'], cbrt: ['cube root', 'kubická odmocnina'],
+        root: ['nth root', 'n-tá odmocnina'], exp: ['exponential function', 'exponenciálna funkcia'],
+        ln: ['loge', 'prirodzený logaritmus'], log: ['log10', 'dekadický logaritmus'],
+        median: ['middle value', 'medián'], geomean: ['gmean', 'geometrický priemer'],
+        harmean: ['hmean', 'harmonický priemer'], variance: ['varp', 'populačný rozptyl'],
+        stdevp: ['stddevp', 'populačná smerodajná odchýlka'], stdev: ['stddev', 'výberová smerodajná odchýlka'],
+        sin: ['sine', 'sínus'], cos: ['cosine', 'kosínus'], tan: ['tg', 'tangens'],
+        asin: ['arc sine', 'arkus sínus'], acos: ['arc cosine', 'arkus kosínus'],
+        atan: ['arctg', 'arkus tangens'], sinh: ['hyperbolic sine', 'hyperbolický sínus'],
+        cosh: ['hyperbolic cosine', 'hyperbolický kosínus'], tanh: ['tgh', 'hyperbolický tangens'],
+        asinh: ['arsinh', 'area sínus'], acosh: ['arcosh', 'area kosínus'],
+        atanh: ['artanh', 'area tangens'], radians: ['deg2rad', 'stupne na radiány'],
+        degrees: ['rad2deg', 'radiány na stupne']
+    };
+    for (const lang of ['sk', 'en']) {
+        await page.goto('/?lang=' + lang);
+        const actual = await page.locator('[data-function]').evaluateAll(nodes => nodes.map(n => n.dataset.function).sort());
+        expect(Object.keys(names).sort()).toEqual(actual);
+        for (const [name, aliases] of Object.entries(names)) {
+            for (const alias of aliases) {
+                await page.locator('#function-search').fill(alias.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
+                await expect(page.locator(`[data-function="${name}"]`)).toBeVisible();
+            }
+        }
+        await page.locator('#expression').fill('');
+        await page.locator('#function-search').fill('average');
+        await page.locator('[data-function="mean"]').click();
+        await expect(page.locator('#expression')).toHaveValue('mean()');
+        await page.locator('#expression').fill('mean(2;4)');
+        await page.locator('#expression').press('Enter');
+        await expect(page.locator('#result')).toHaveText('3');
+    }
+});
+
+test('constant search accepts localized aliases, symbols and case', async ({page}) => {
+    for (const lang of ['sk', 'en']) {
+        await page.goto('/?lang=' + lang);
+        const search = page.locator('#function-search');
+        const aliases = {
+            'π': ['Pi', 'PI', 'π', 'Archimedes Constant', "Ludolph's Number", 'Circular Constant'],
+            'e': ["Euler's Number", 'EULER NUMBER', "Napier’s Constant", 'Natural Logarithm Base'],
+            'φ': ['Phi', 'PHI', 'φ', 'ϕ', 'Golden Ratio', 'Golden Number', 'Divine Proportion']
+        };
+        if (lang === 'sk') {
+            aliases['π'].push('PÍ', 'Archimedova konštanta', 'LUDOLFOVO CISLO', 'kruhová konštanta');
+            aliases.e.push('Eulerovo číslo', 'NAPIEROVA KONSTANTA', 'základ prirodzeného logaritmu');
+            aliases['φ'].push('FÍ', 'ZLATY REZ', 'zlaté číslo', 'zlatý pomer');
+        }
+        for (const [symbol, names] of Object.entries(aliases)) {
+            for (const name of names) {
+                await search.fill(name);
+                await expect(page.locator(`.constants-library [data-insert="${symbol}"]`)).toBeVisible();
+            }
+        }
+        for (const name of ['constant', 'CONSTANT', ...(lang === 'sk' ? ['konštanta', 'KONSTANTY'] : [])]) {
+            await search.fill(name);
+            await expect(page.locator('.constants-library button:visible')).toHaveCount(3);
+        }
+        await search.fill('unknown constant name');
+        await expect(page.locator('.constants-library')).toBeHidden();
+        await search.fill('Pi');
+        await search.press('Escape');
+        await page.locator('#function-tab-6').click();
+        await expect(page.locator('.constants-library button:visible')).toHaveCount(3);
+    }
+});
 const fs = require('node:fs');
 const path = require('node:path');
 const projectVersion = fs.readFileSync(path.resolve(__dirname, '../../CMakeLists.txt'), 'utf8')
@@ -149,6 +246,31 @@ test('both guide titles use the complete NumForge wordmark', async ({ page, requ
     }
 });
 
+test('settings remain visible and retain values across layouts', async ({ page }) => {
+    await page.setViewportSize({width: 390, height: 844});
+    for (const lang of ['sk', 'en']) {
+        await page.goto(`/?lang=${lang}`);
+        await expect(page.locator('.calculator-column > .intro')).toHaveCount(0);
+        await expect(page.locator('#settings-controls')).toBeVisible();
+        await expect(page.locator('.precision .settings-title')).not.toHaveAttribute('role', 'button');
+        await expect(page.locator('.precision #settings-title')).toHaveJSProperty('tagName', 'H2');
+        await page.locator('#precision-mode').selectOption('custom');
+        await page.locator('#precision').fill('2');
+        await page.locator('[data-angle="deg"]').click();
+        await expect(page.locator('#settings-overview')).toHaveText('2 · DEG');
+        await expect(page.locator('#settings-controls')).toBeVisible();
+        await page.locator('#expression').fill('1/8');
+        await page.locator('#expression').press('Enter');
+        await expect(page.locator('#result')).toHaveText('0.12');
+        await page.setViewportSize({width: 1280, height: 800});
+        await expect(page.locator('#settings-controls')).toBeVisible();
+        await expect(page.locator('#settings-toggle')).toHaveCount(0);
+        await expect(page.locator('#precision')).toHaveValue('2');
+        await page.setViewportSize({width: 390, height: 844});
+        await expect(page.locator('#settings-controls')).toBeVisible();
+    }
+});
+
 test('header controls keep their size and position when changing language', async ({ page }) => {
     for (const width of [1280, 1024]) {
         await page.setViewportSize({width, height: 768});
@@ -208,6 +330,13 @@ test('guide stays separate from tools and accessible with the mobile menu closed
         await expect(page.locator('.header-guide')).toHaveAttribute('aria-current', 'page');
         await page.locator('.nav-toggle').click();
         await expect(page.locator('.header-guide')).toBeVisible();
+        await expect(page.locator('.nav-toggle')).toHaveAccessibleName(
+            lang === 'sk' ? 'Zavrieť navigáciu' : 'Close navigation');
+        await page.keyboard.press('Escape');
+        await expect(page.locator('.nav-toggle')).toBeFocused();
+        await expect(page.locator('.nav-toggle')).toHaveAttribute('aria-expanded', 'false');
+        await expect(page.locator('.nav-toggle')).toHaveAccessibleName(
+            lang === 'sk' ? 'Otvoriť navigáciu' : 'Open navigation');
     }
 });
 
@@ -328,7 +457,7 @@ for (const lang of ['sk', 'en']) {
             await expect(page.locator('#precision')).toBeDisabled();
             await calculate(page, '1/8', '1/8');
             await calculate(page, '((1E80+1)/8)*8-1E80', '1');
-            await page.locator('[data-action=clear]').click();
+            await page.locator('[data-action=clear]:visible').click();
             await expect(page.locator('#expression')).toHaveValue('');
             await expect(page.locator('#copy-result')).toBeDisabled();
             for (const value of ['2', '+', '3']) await page.locator(`[data-insert="${value}"]`).click();
@@ -336,7 +465,7 @@ for (const lang of ['sk', 'en']) {
             await expect(page.locator('#result')).toHaveText('5');
             await page.locator('[data-action=backspace]').click();
             await expect(page.locator('#expression')).toHaveValue('2+');
-            await page.locator('[data-insert="π"]').click();
+            await page.locator('.constants [data-insert="π"]').click();
             await expect(page.locator('#expression')).toHaveValue('2+π');
         });
         test('lost confirmation response retries the original committed value', async ({ page }) => {
@@ -439,35 +568,35 @@ for (const lang of ['sk', 'en']) {
             await page.screenshot({path: testInfo.outputPath('automatic-desktop.png'), fullPage: true});
             await page.setViewportSize({width: 375, height: 812});
             await page.screenshot({path: testInfo.outputPath('automatic-mobile.png'), fullPage: true});
-            await page.locator('[data-action=clear]').click();
+            await page.locator('[data-action=clear]:visible').click();
             await expect(page.locator('#result')).toBeEmpty();
         });
         test('function groups, aliases and trigonometry', async ({ page }, testInfo) => {
             test.setTimeout(30000);
-            await expect(page.locator('details.function-group')).toHaveCount(6);
+            await expect(page.locator('details.function-group')).toHaveCount(7);
             await expect(page.locator('[data-function]')).toHaveCount(46);
             await expect(page.locator('[data-function]:disabled')).toHaveCount(0);
             await page.locator('#function-tab-0').click();
             await page.locator('[data-function="rand"]').click();
             await expect(page.locator('#expression')).toHaveValue('rand()');
             await expect(page.locator('#expression')).toHaveJSProperty('selectionStart', 6);
-            await page.locator('[data-action="clear"]').click();
+            await page.locator('[data-action="clear"]:visible').click();
             await page.locator('[data-function="round"]').click();
             await expect(page.locator('#expression')).toHaveValue('round()');
             await page.locator('#expression').fill('round(12.345;2)');
             await page.locator('#expression').press('Enter');
             await expect(page.locator('#result')).toHaveText('12.34');
             await calculate(page, 'mean(1;2;2)', '5/3');
-            await page.locator('[data-action="clear"]').click();
+            await page.locator('[data-action="clear"]:visible').click();
             await page.locator('#function-tab-1').click();
             await page.locator('[data-function="median"]').click();
             await expect(page.locator('#expression')).toHaveValue('median()');
             await calculate(page, 'harmean(1;2;4)', '12/7');
-            await page.locator('[data-action="clear"]').click();
+            await page.locator('[data-action="clear"]:visible').click();
             await page.locator('[data-function="variance"]').click();
             await expect(page.locator('#expression')).toHaveValue('variance()');
             await calculate(page, 'stdev(1;2;3)', '1');
-            await page.locator('[data-action="clear"]').click();
+            await page.locator('[data-action="clear"]:visible').click();
             const powers = page.locator('details').filter({ has: page.locator('[data-function="pow"]') });
             await page.locator('#function-tab-3').focus();
             await page.keyboard.press('Enter');
@@ -483,7 +612,7 @@ for (const lang of ['sk', 'en']) {
             expect(await page.locator('#expression').evaluate(el => el.selectionStart)).toBe(8);
             await calculate(page, '2^-3', '1/8');
             await calculate(page, 'factorial(5)', '120');
-            await page.locator('[data-action="clear"]').click();
+            await page.locator('[data-action="clear"]:visible').click();
             await page.locator('[data-function="exp"]').click();
             await expect(page.locator('#expression')).toHaveValue('exp()');
             await page.locator('#expression').fill('exp(0)');
@@ -496,7 +625,7 @@ for (const lang of ['sk', 'en']) {
             await page.locator('#function-tab-4').click();
             await expect(page.locator('details.function-group:visible')).toHaveCount(1);
             await expect(page.locator('[data-angle="rad"]')).toHaveClass(/active/);
-            await page.locator('[data-action="clear"]').click();
+            await page.locator('[data-action="clear"]:visible').click();
             await page.locator('[data-function="sin"]').click();
             await page.locator('#function-tab-3').click();
             await page.locator('[data-function="sqrt"]').click();
@@ -515,7 +644,7 @@ for (const lang of ['sk', 'en']) {
             await calculate(page, 'arcustan(1)', '45');
             await calculate(page, 'degrees(π)', '180');
             await page.locator('#function-tab-5').click();
-            await page.locator('[data-action="clear"]').click();
+            await page.locator('[data-action="clear"]:visible').click();
             await page.locator('[data-function="sinh"]').click();
             await expect(page.locator('#expression')).toHaveValue('sinh()');
             await calculate(page, 'tanh(1)', '0.761594156');
@@ -542,7 +671,7 @@ for (const lang of ['sk', 'en']) {
                 ['mod', '-7;3)', '-1'], ['npr', '5;2)', '20'], ['ncr', '5;2)', '10'],
                 ['isqrt', '18446744073709551616)', '4294967296']
             ]) {
-                await page.locator('[data-action=clear]').click();
+                await page.locator('[data-action=clear]:visible').click();
                 await page.locator(`[data-function="${name}"]`).click();
                 await expect(page.locator('#expression')).toHaveValue(`${name}()`);
                 await page.locator('#expression').pressSequentially(args.slice(0, -1));
@@ -560,7 +689,7 @@ for (const lang of ['sk', 'en']) {
             for (const [name, args, expected] of [
                 ['sqrt', '2)', '1.4142135624'], ['cbrt', '-8)', '-2'], ['root', '-32;5)', '-2']
             ]) {
-                await page.locator('[data-action=clear]').click();
+                await page.locator('[data-action=clear]:visible').click();
                 await page.locator(`[data-function="${name}"]`).click();
                 await expect(page.locator('#expression')).toHaveValue(`${name}()`);
                 await page.locator('#expression').pressSequentially(args.slice(0, -1));
@@ -797,8 +926,8 @@ for (const lang of ['sk', 'en']) {
             expect(await page.locator('.calculator-column').evaluate(el => el.scrollHeight <= el.clientHeight + 1)).toBe(true);
             await page.locator('#precision-mode').selectOption('auto');
             await page.setViewportSize({width: 375, height: 667});
-            expect(await page.locator('.number-keypad button').first().evaluate(el =>
-                el.getBoundingClientRect().height)).toBeGreaterThanOrEqual(45);
+            await expect(page.locator('.keypad-card')).toBeHidden();
+            expect(await page.locator('.primary-button').evaluate(el => el.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
             await page.locator('#precision-mode').selectOption('full');
             await page.locator('#expression').fill('2^2000');
             await page.locator('#expression').press('Enter');
@@ -882,7 +1011,7 @@ for (const lang of ['sk', 'en']) {
             await page.locator('#function-tab-3').click();
             await page.locator('[data-function="sqrt"]').click();
             await expect(page.locator('#recent-buttons button').first()).toHaveText('sqrt');
-            await page.locator('[data-action="clear"]').click();
+            await page.locator('[data-action="clear"]:visible').click();
             await page.locator('#recent-buttons button').first().click();
             await expect(page.locator('#expression')).toHaveValue('sqrt()');
             for (const value of ['e', 'φ']) await page.locator(`.constants [data-insert="${value}"]`).click();
@@ -902,17 +1031,8 @@ for (const lang of ['sk', 'en']) {
             }));
             expect(desktopFit.right - desktopFit.last).toBeLessThan(2);
             await page.setViewportSize({width: 375, height: 667});
-            await expect.poll(() => page.locator('#recent-buttons button:visible').count()).toBeLessThan(7);
-            expect(await page.locator('#recent-buttons button:visible').count()).toBeGreaterThan(0);
-            const mobileRows = await page.locator('#recent-buttons button:visible').evaluateAll(buttons =>
-                buttons.map(button => button.getBoundingClientRect().y));
-            expect(Math.max(...mobileRows) - Math.min(...mobileRows)).toBeLessThan(2);
-            const mobileFit = await page.locator('#recent-buttons').evaluate(row => ({
-                right: row.getBoundingClientRect().right,
-                last: [...row.children].filter(button => !button.hidden).at(-1).getBoundingClientRect().right
-            }));
-            expect(mobileFit.last).toBeLessThanOrEqual(mobileFit.right + 1);
-            expect(mobileFit.right - mobileFit.last).toBeLessThan(2);
+            await expect(page.locator('.keypad-card')).toBeHidden();
+            await expect(page.locator('#recent-buttons button:visible')).toHaveCount(0);
             expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
         });
         test('whole sidebar scroll keeps session and history reachable in short windows', async ({ page }) => {
@@ -1050,7 +1170,7 @@ for (const lang of ['sk', 'en']) {
             await expect(page.locator('#result')).toContainText('-1 ≤ x ≤ 1');
             await expect(page.locator('#result')).toContainText('⟦asin⟧');
             await page.locator('#function-tab-3').click();
-            await page.locator('[data-action=clear]').click();
+            await page.locator('[data-action=clear]:visible').click();
             await page.locator('[data-function=log]').dispatchEvent('click');
             await expect(page.locator('#function-help')).toContainText('y ≠ 1');
             await expect(page.locator('#expression')).toHaveValue('log()');
@@ -1087,7 +1207,7 @@ for (const lang of ['sk', 'en']) {
             });
             await page.locator('#expression').fill('1+1');
             await seen;
-            await page.locator('[data-action=clear]').click();
+            await page.locator('[data-action=clear]:visible').click();
             await expect(page.locator('#copy-result')).toBeDisabled();
             await calculate(page, '2+2', '4');
             release();
@@ -1138,4 +1258,70 @@ test('variable assignments can be typed and confirmed in both languages', async 
         await page.locator('#expression').press('Enter');
         await expect(page.locator('#result')).toContainText(language==='en'?'variable is undefined':'premenná nie je definovaná');
     }
+});
+
+test('mobile input actions, constants and bottom settings survive rotation', async ({page}) => {
+ for (const lang of ['sk','en']) {
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/?lang='+lang);
+  await expect(page.locator('#expression')).toHaveAttribute('inputmode','text');
+  await expect(page.locator('#expression')).toHaveAttribute('enterkeyhint','go');
+  for (const width of [320,375,390]) {
+   await page.setViewportSize({width,height:844});
+   const actions=await page.locator('.input-actions > *').evaluateAll(nodes=>nodes.map(n=>n.getBoundingClientRect().toJSON()));
+   expect(Math.max(...actions.map(n=>n.y))-Math.min(...actions.map(n=>n.y))).toBeLessThan(1);
+   expect(actions.every(n=>n.height>=44)).toBe(true);
+   expect(await page.locator('.input-actions > *').evaluateAll(nodes=>nodes.every(n=>n.scrollWidth<=n.clientWidth+1))).toBe(true);
+  }
+  await page.setViewportSize({width:390,height:844});
+  await expect(page.locator('.keypad-card')).toBeHidden();
+  await expect(page.locator('.sidebar > .precision')).toBeVisible();
+  const box=await page.locator('#expression').boundingBox(), form=await page.locator('#calculator').boundingBox();
+  expect(Math.abs(box.width-form.width)).toBeLessThan(1);
+  expect((await page.locator('.primary-button').boundingBox()).y).toBeGreaterThanOrEqual(box.y+box.height);
+  const historyCount = await page.locator('#history-list li').count();
+  await page.locator('#expression').fill('2+3');
+  await page.locator('.primary-button').click();
+  await expect(page.locator('#result')).toHaveText('5');
+  await page.locator('#clear-expression').click();
+  await expect(page.locator('#expression')).toHaveValue('');
+  await expect(page.locator('#history-list li')).toHaveCount(historyCount + 1);
+  await page.locator('#function-tab-6').click();
+  await page.locator('.constants-library [data-insert="π"]').click();
+  await expect(page.locator('#expression')).toHaveValue('π');
+  await page.locator('#expression').press('Enter');
+  await expect(page.locator('#result')).toContainText('3.14');
+  await page.locator('#function-search').fill(lang==='sk'?'zlaty':'golden');
+  await expect(page.locator('.constants-library [data-insert="φ"]')).toBeVisible();
+  await expect(page.locator('.constants-library [data-insert="π"]')).toBeHidden();
+  await page.setViewportSize({width:812,height:375});
+  await expect(page.locator('.keypad-card')).toBeHidden();
+  await expect(page.locator('#settings-controls')).toBeVisible();
+  await expect(page.locator('#settings-toggle')).toHaveCount(0);
+  await expect(page.locator('.settings-chevron')).toHaveCount(0);
+  for (const [width,height] of [[812,375],[667,375],[568,320]]) {
+   await page.setViewportSize({width,height});
+   const [session,settings]=await page.evaluate(() =>
+    ['.session-panel','.precision'].map(selector => document.querySelector(selector).getBoundingClientRect().toJSON()));
+   expect(Math.abs(session.width-settings.width)).toBeLessThan(1);
+   expect(Math.abs(session.y-settings.y)).toBeLessThan(1);
+   expect(settings.x).toBeGreaterThan(session.x+session.width);
+   await expect(page.locator('#settings-controls')).toBeVisible();
+   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+  }
+  await page.locator('#precision-mode').selectOption('custom');
+  await page.locator('#precision').fill('2');
+  await page.setViewportSize({width:390,height:844});
+  await expect(page.locator('#settings-controls')).toBeVisible();
+  await expect(page.locator('#settings-toggle')).toHaveCount(0);
+  await expect(page.locator('#precision')).toHaveValue('2');
+  await page.setViewportSize({width:812,height:375});
+  await expect(page.locator('#settings-controls')).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+  await page.setViewportSize({width:1280,height:720});
+  await expect(page.locator('.calculator-column > .precision')).toBeVisible();
+  await expect(page.locator('.keypad-card')).toBeVisible();
+  await expect(page.locator('#clear-expression')).toBeHidden();
+  await page.locator('#precision-mode').selectOption('auto');
+ }
 });

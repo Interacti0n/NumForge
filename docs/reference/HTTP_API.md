@@ -45,7 +45,9 @@ return HTTP 400. Calculator errors use this JSON shape:
 `Content-Length` is required for `POST` requests; omitting it returns HTTP 411.
 Browser requests that include `Origin` must come from this server's own
 `http://127.0.0.1:8765` or `http://localhost:8765` origin; other origins return
-HTTP 403. Native local clients may omit `Origin`. `precision` is optional: it
+HTTP 403. `--origin https://host` explicitly allows one additional origin for
+an HTTPS tunnel/reverse proxy; see [hosting](../guides/HOSTING.md).
+Native clients may omit `Origin`. `precision` is optional: it
 accepts a non-negative whole number or `full`; if omitted, it defaults to `10`.
 `angle` accepts `rad` or `deg` and defaults to `rad`; when supplied it follows
 `precision` in the query string. Optional `notation=auto|plain|scientific|math|fraction`
@@ -137,7 +139,8 @@ loopback, using port 8765 by default. `numforge_web --port N` selects another
 port from 1 through 65535, and `--no-browser` suppresses automatic browser
 launching on Windows. The `NUMFORGE_WEB_NO_BROWSER=1` environment setting
 also suppresses launching for headless runs. Browser origins must match the
-selected loopback port.
+selected loopback port or the exact additional origin configured with `--origin`.
+Socket binding remains loopback-only. Forwarding headers do not grant origin access.
 Error columns are one-based Unicode character positions; the calculator
 internals retain zero-based UTF-8 byte offsets so source tokens remain lossless.
 The example body above is exactly six UTF-8 bytes and has no trailing newline.

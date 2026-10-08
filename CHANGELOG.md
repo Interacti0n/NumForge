@@ -7,6 +7,39 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Reveal the result after explicit calculator/converter confirmation on phones,
+  without moving live previews; simplify mobile converter copy and place history
+  below its result while retaining errors and unit-source information.
+
+- Hide the lengthy Session introduction on phones in portrait and landscape;
+  keep its controls and the full guide available.
+
+- Keep mobile input actions in one row with compact labels and request a text
+  virtual keyboard with capitalization/correction disabled and a Go enter key,
+  allowing variables and punctuation in expressions.
+
+- Place Session and always-expanded Settings in equal-width columns on phones
+  in landscape; keep portrait settings open and preserve desktop layout.
+
+- Extend library search across all 46 functions with English/Slovak names,
+  familiar abbreviations and server-registered aliases; keep canonical insertion.
+
+- Search library constants by English aliases and localized Slovak names,
+  ignoring case, accents and straight/curly apostrophe differences.
+
+- Give mobile input a full-width row with calculate, clear and library actions;
+  hide its keypad, move settings below the session, and support landscape.
+  Add searchable pi, Euler and golden-ratio constants to the library in both languages.
+
+- Remove the calculator's introductory copy; keep mobile settings visible below
+  the session with a summary of current precision and angle mode.
+
+- Refine shared navigation with compact tool links, grouped account/language
+  controls and a mobile menu with localized open/close labels and Escape focus return.
+
+- Add an explicit `numforge_web --origin` option for browser requests through
+  an HTTPS reverse proxy or tunnel; preserve loopback binding and default origin checks.
+
 - Complete HTTP coverage for existing web state: authoritative paginated
   variables/history, versioned exact/approximate/Quantity snapshots, ordered
   reset/release/history clearing and a function/alias/arity registry. Clearing

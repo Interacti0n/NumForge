@@ -74,6 +74,7 @@ async function createUI(english) {
                 : new Promise((resolve,reject)=>pending.push({url,options,resolve,reject}));
         }
     };
+    runtime.window.matchMedia = () => ({matches: false, addEventListener() {}});
     vm.runInNewContext(instrumentedSource, runtime);
     Object.assign(runtime, runtime.window.__numforgeTest);
     await runtime.ensureSession();

@@ -18,7 +18,7 @@
         <span class="brand-text"><strong>NumForge</strong><small>Precise computing</small></span>
       </a>
       <a class="guide-link header-guide" href="/api?lang=en">Guide &amp; API</a>
-      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-navigation"><span class="menu-icon" aria-hidden="true"></span>Menu</button>
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-navigation" aria-label="Open navigation"><span class="menu-icon" aria-hidden="true"></span><span class="menu-label">Menu</span></button>
       <div class="site-navigation" id="site-navigation">
         <nav class="primary-nav" aria-label="Main navigation">
           <a href="/?lang=en" aria-current="page">Calculator</a>
@@ -39,15 +39,9 @@
 
     <div class="workspace">
       <main class="calculator-column">
-        <div class="intro">
-          <p class="eyebrow">CALCULATION WORKSPACE</p>
-          <h1>Exact expressions. Clear results.</h1>
-          <p>Type naturally, use the keypad, or pick a function. Results preview as you type; Enter saves them to history.</p>
-        </div>
-
         <section class="card precision" aria-labelledby="settings-title">
-          <div class="section-title settings-title"><span class="section-icon" aria-hidden="true">⚙</span><h2 id="settings-title">Settings</h2></div>
-          <div class="precision-controls">
+          <div class="section-title settings-title"><span class="section-icon" aria-hidden="true">⚙</span><h2 id="settings-title">Settings</h2><span id="settings-overview">Auto · RAD</span></div>
+          <div class="precision-controls" id="settings-controls">
             <label class="field">Precision
               <select id="precision-mode"><option value="auto">Auto · 10 places</option><option value="full">Full output</option><option value="custom">Custom</option></select>
             </label>
@@ -66,10 +60,10 @@
         <section class="card expression-card" aria-labelledby="expression-title">
           <div class="section-heading"><div class="section-title"><span class="section-icon" aria-hidden="true">∑</span><h2 id="expression-title">Mathematical expression</h2></div><div class="expression-actions"><button id="expand-expression" class="expand-expression" type="button" aria-expanded="false" hidden>Show full expression...</button></div></div>
           <form id="calculator">
-            <textarea id="expression" aria-label="Mathematical expression" placeholder="Try (1/3)*3 or sin(π/2)" rows="1" spellcheck="false" autofocus></textarea>
-            <button class="primary-button" type="submit">Calculate <span aria-hidden="true">→</span></button>
+            <textarea id="expression" aria-label="Mathematical expression" placeholder="Try (1/3)*3 or sin(π/2)" rows="1" spellcheck="false" inputmode="text" autocapitalize="off" autocorrect="off" enterkeyhint="go" autofocus></textarea>
+            <div class="input-actions"><button class="primary-button" type="submit">Calculate <span aria-hidden="true">→</span></button><a class="function-shortcut" href="#functions-title" aria-label="Browse the function library"><span class="shortcut-full">Browse the function library ↓</span><span class="shortcut-compact">Functions ↓</span></a><button id="clear-expression" class="clear-expression" type="button" data-action="clear" aria-label="Clear input">Clear</button></div>
           </form>
-          <a class="function-shortcut" href="#functions-title">Browse the function library ↓</a>
+
         </section>
         <section class="card result-panel" aria-live="polite" aria-labelledby="result-title">
           <div class="result-heading"><div class="section-title"><span class="section-icon" aria-hidden="true">=</span><h2 id="result-title">Result</h2></div><button id="copy-result" type="button" disabled title="Copy result" aria-label="Copy result">⧉ Copy</button></div>
@@ -172,6 +166,12 @@
 <button type="button" data-function="acosh" data-insert="acosh(">acosh</button>
 <button type="button" data-function="atanh" data-insert="atanh(">atanh</button>
 </div></details>
+<details class="function-group"><summary>Constants</summary><div class="keypad functions constants-library">
+<button type="button" data-insert="π" title="Pi" aria-label="Pi">π<span>Pi</span></button>
+<button type="button" data-insert="e" title="Euler’s number" aria-label="Euler’s number">e<span>Euler’s number</span></button>
+<button type="button" data-insert="φ" title="Golden ratio" aria-label="Golden ratio">φ<span>Golden ratio</span></button>
+</div></details>
+
           </div>
         </section>
         <section class="card session-panel" aria-labelledby="session-title">

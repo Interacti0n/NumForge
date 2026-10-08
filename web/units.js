@@ -63,6 +63,19 @@ function initUnits() {
     const fields = ['unit-precision','unit-places-mode','unit-places','unit-notation','unit-rounding','unit-angle'];
     let restored = null;
     const compact = window.matchMedia('(max-width: 620px)');
+    const mobileLayout = window.matchMedia('(max-width: 620px), (max-width: 980px) and (max-height: 500px) and (orientation: landscape)');
+    function placeHistory() {
+        const card = root.querySelector('.unit-history-card');
+        const parent = root.querySelector(mobileLayout.matches ? '.units-column' : '.units-sidebar');
+        if (card.parentElement !== parent) parent.append(card);
+    }
+    mobileLayout.addEventListener('change', placeHistory, {signal:lifecycle.signal});
+    placeHistory();
+    function revealResult() {
+        if (mobileLayout.matches && !disposed)
+            result.closest('.card').scrollIntoView({block:'start',
+                behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
+    }
     try {
         const session = JSON.parse(sessionStorage.getItem('numforge-navigation-state') || 'null');
         if (session?.started === true && /^[0-9a-f]{32}$/.test(session.client)) client = session.client;
@@ -149,7 +162,8 @@ function initUnits() {
         result.textContent=body.result; $('unit-result-symbol').textContent=body.symbol;
         copyValue=body.result; $('unit-copy').disabled=false; setStatus(message);
         meta.textContent=(body.input_approximate || body.factor_approximate?text.approximate+'. ':text.exact+'. ')+
-            (body.input_approximate?text.inputApprox+' ':'')+(body.factor_approximate?text.pi+' ':'')+text.display;
+            (body.input_approximate?text.inputApprox+' ':'')+(body.factor_approximate?text.pi+' ':'')+
+            (mobileLayout.matches?'':text.display);
         meta.hidden=false;
     }
     function renderHistory() {
@@ -259,10 +273,10 @@ function initUnits() {
     async function calculate(confirm=false, id=generation) {
         if (disposed || !catalogue.length || id!==generation) return;
         let expression=input.value.trim();
-        if (!expression) { setStatus(text.empty); return; }
+        if (!expression) { setStatus(text.empty); if(confirm)revealResult(); return; }
         const precision=$('unit-precision').value, places=$('unit-places-mode').value==='full'?'full':$('unit-places-mode').value==='custom'?$('unit-places').value:'10';
         if (!/^\d+$/.test(precision) || Number(precision)<1 || Number(precision)>10000 ||
-            (places!=='full' && (!/^\d+$/.test(places) || Number(places)>10000))) { setStatus(text.settings,true); return; }
+            (places!=='full' && (!/^\d+$/.test(places) || Number(places)>10000))) { setStatus(text.settings,true); if(confirm)revealResult(); return; }
         conversion=new AbortController();
         const confirmation=confirm?++confirmationRequest:0;
         const query=new URLSearchParams({from:from.value,to:to.value,precision,places,rounding:$('unit-rounding').value,notation:$('unit-notation').value,angle:$('unit-angle').value});
@@ -320,6 +334,7 @@ function initUnits() {
         } finally {
             if(confirm && confirmation===confirmationRequest){confirming=false;if(!disposed)$('unit-submit').disabled=false;}
             if (id===generation) root.removeAttribute('aria-busy');
+            if (confirm && id===generation) revealResult();
         }
     }
     function schedule(delay=250) {
@@ -329,7 +344,7 @@ function initUnits() {
         setStatus(catalogue.length?text.calculating:text.loading);
         timer=setTimeout(()=>calculate(false,id),delay);
     }
-    $('unit-converter').addEventListener('submit',event=>{event.preventDefault();if(confirming)return; const id=invalidate(); save(); calculate(true,id);},{signal:lifecycle.signal});
+    $('unit-converter').addEventListener('submit',event=>{event.preventDefault();if(confirming)return; if(mobileLayout.matches)input.blur(); const id=invalidate(); save(); calculate(true,id);},{signal:lifecycle.signal});
     input.addEventListener('keydown',event=>{if(event.key==='Enter' && !event.shiftKey && !event.isComposing){event.preventDefault();$('unit-converter').requestSubmit();}},{signal:lifecycle.signal});
     input.addEventListener('input',()=>schedule(),{signal:lifecycle.signal});
     for (const id of [...fields,'unit-from','unit-to']) $(id).addEventListener('change',()=>{updatePlaces();info();schedule(0);},{signal:lifecycle.signal});

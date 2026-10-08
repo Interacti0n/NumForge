@@ -39,6 +39,11 @@ Windows, use Visual Studio's C++ build tools or a supported GCC setup. Consult
 The [architecture overview](docs/design/ARCHITECTURE.md) explains the boundaries.
 Calculators compose the numeric API rather than duplicating its algorithms.
 
+Keep disposable builds, package staging and local measurements under `build/`.
+Reusable developer tools belong in `scripts/`; one-time source rewrite scripts
+should not be kept as build tooling. Check documentation links with
+`node scripts/check_docs.cjs`.
+
 ## Numerical changes
 
 Preserve documented aliasing and unchanged-output-on-failure guarantees. A new

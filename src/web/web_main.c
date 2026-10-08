@@ -1,4 +1,5 @@
 #include "web_server.h"
+#include "http_request.h"
 
 #include <errno.h>
 #include <stdbool.h>
@@ -124,18 +125,20 @@ static bool numforge_parse_options(
     int argc,
     char **argv,
     uint16_t *port,
-    bool *open_browser
+    bool *open_browser,
+    const char **public_origin
 )
 {
     int index;
 
-    if (port == NULL || open_browser == NULL)
+    if (port == NULL || open_browser == NULL || public_origin == NULL)
     {
         return false;
     }
 
     *port = NUMFORGE_WEB_PORT;
     *open_browser = true;
+    *public_origin = NULL;
 
     for (index = 1; index < argc; index++)
     {
@@ -148,6 +151,14 @@ static bool numforge_parse_options(
             index++;
 
             if (!numforge_parse_port(argv[index], port))
+            {
+                return false;
+            }
+        }
+        else if (strcmp(argv[index], "--origin") == 0 && index + 1 < argc && *public_origin == NULL)
+        {
+            *public_origin = argv[++index];
+            if (!numforge_http_valid_origin(*public_origin))
             {
                 return false;
             }
@@ -171,10 +182,11 @@ int main(
     int reuse_address = 1;
     uint16_t port;
     bool open_browser;
+    const char *public_origin;
 
-    if (!numforge_parse_options(argc, argv, &port, &open_browser))
+    if (!numforge_parse_options(argc, argv, &port, &open_browser, &public_origin))
     {
-        fputs("Usage: numforge_web [--port 1-65535] [--no-browser]\n", stderr);
+        fputs("Usage: numforge_web [--port 1-65535] [--no-browser] [--origin https://host[:port]]\n", stderr);
 
         return 2;
     }
@@ -227,6 +239,10 @@ int main(
     }
 
     printf("NumForge web is running at http://127.0.0.1:%u\n", (unsigned int)port);
+    if (public_origin != NULL)
+    {
+        printf("Trusted public browser origin: %s (requires a reverse proxy or tunnel)\n", public_origin);
+    }
     puts("Press Ctrl+C to stop the local server.");
     numforge_open_browser(port, open_browser);
 
@@ -238,7 +254,7 @@ int main(
         {
             if (numforge_configure_client_socket(client))
             {
-                numforge_handle_connection(client, port);
+                numforge_handle_connection_with_origin(client, port, public_origin);
             }
 
             numforge_close_socket(client);

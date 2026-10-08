@@ -6,6 +6,7 @@ testing entry points remain directly under `docs/`.
 ## Use NumForge — `guides/`
 
 - [Browser calculator](guides/CALCULATOR_WEB.md): controls, results and precision.
+- [Remote hosting](guides/HOSTING.md): HTTPS tunnels, reverse proxies and capacity.
 - [Variables](guides/VARIABLES.md): assignments, deletion, snapshots and lifetime.
 - [Unit converter](guides/UNIT_CONVERTER.md): categories, preview, swap and history.
 - [C library guide](guides/LIBRARY_GUIDE.md): build, install and consume the library.

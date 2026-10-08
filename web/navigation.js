@@ -12,6 +12,10 @@ function setMenuOpen(open)
 {
     pageHeader?.classList.toggle('menu-open', open);
     navToggle?.setAttribute('aria-expanded', String(open));
+    const slovak = document.documentElement.lang === 'sk';
+    navToggle?.setAttribute('aria-label', open
+        ? (slovak ? 'Zavrieť navigáciu' : 'Close navigation')
+        : (slovak ? 'Otvoriť navigáciu' : 'Open navigation'));
 }
 
 pageHeader?.addEventListener('click', event => {
@@ -222,8 +226,8 @@ async function navigate(destination, addHistory = true)
         currentContent.replaceWith(replacement);
         syncChrome(pageHeader, incomingHeader);
         syncChrome(pageFooter, incomingFooter);
-        setMenuOpen(false);
         document.documentElement.lang = incoming.documentElement.lang;
+        setMenuOpen(false);
         document.title = incoming.title;
         if (addHistory) history.pushState(null, '', destination.href);
         activePageKey = destination.pathname + destination.search;

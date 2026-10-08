@@ -77,7 +77,8 @@ static bool numforge_parse_request_headers(
     unsigned long long *body_length,
     bool *content_length_present,
     bool *origin_allowed,
-    uint16_t port
+    uint16_t port,
+    const char *public_origin
 )
 {
     const char *line = strstr(request, "\r\n");
@@ -193,7 +194,9 @@ static bool numforge_parse_request_headers(
 
             value_length = (size_t)(value_end - value);
             *origin_allowed = numforge_origin_matches(value, value_length, "127.0.0.1", port) ||
-                              numforge_origin_matches(value, value_length, "localhost", port);
+                              numforge_origin_matches(value, value_length, "localhost", port) ||
+                              (public_origin != NULL && strlen(public_origin) == value_length &&
+                               memcmp(value, public_origin, value_length) == 0);
         }
 
         if (line_end == header_end)
@@ -281,11 +284,12 @@ bool numforge_request_target(
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
-NumForgeHttpStatus numforge_http_probe(
+NumForgeHttpStatus numforge_http_probe_with_origin(
     const char *data,
     size_t used,
     size_t capacity,
     uint16_t port,
+    const char *public_origin,
     NumForgeHttpFrame *frame
 )
 {
@@ -314,7 +318,7 @@ NumForgeHttpStatus numforge_http_probe(
     if (!numforge_request_target(
             request, frame->method, sizeof(frame->method), frame->target, sizeof(frame->target)) ||
         !numforge_parse_request_headers(
-            request, end, &body_length, &frame->has_content_length, &frame->origin_allowed, port))
+            request, end, &body_length, &frame->has_content_length, &frame->origin_allowed, port, public_origin))
     {
         return NUMFORGE_HTTP_BAD;
     }
@@ -328,4 +332,69 @@ NumForgeHttpStatus numforge_http_probe(
     frame->length = frame->header_length + (size_t)body_length;
 
     return used < frame->length ? NUMFORGE_HTTP_MORE : NUMFORGE_HTTP_READY;
+}
+
+NumForgeHttpStatus numforge_http_probe(
+    const char *data, size_t used, size_t capacity, uint16_t port, NumForgeHttpFrame *frame
+)
+{
+    return numforge_http_probe_with_origin(data, used, capacity, port, NULL, frame);
+}
+
+bool numforge_http_valid_origin(const char *origin)
+{
+    const char *host;
+    const char *cursor;
+
+    if (origin == NULL || strlen(origin) > 255U)
+    {
+        return false;
+    }
+    if (strncmp(origin, "https://", 8U) == 0)
+    {
+        host = origin + 8;
+    }
+    else if (strncmp(origin, "http://", 7U) == 0)
+    {
+        host = origin + 7;
+    }
+    else
+    {
+        return false;
+    }
+    cursor = host;
+    while ((*cursor >= 'a' && *cursor <= 'z') || (*cursor >= '0' && *cursor <= '9') ||
+           *cursor == '-' || *cursor == '.')
+    {
+        cursor++;
+    }
+    if (cursor == host || *host == '.' || *host == '-' || cursor[-1] == '.' || cursor[-1] == '-')
+    {
+        return false;
+    }
+    if (*cursor == ':')
+    {
+        unsigned int port = 0U;
+        cursor++;
+        if (*cursor < '1' || *cursor > '9')
+        {
+            return false;
+        }
+        while (*cursor >= '0' && *cursor <= '9')
+        {
+            port = port * 10U + (unsigned int)(*cursor - '0');
+            if (port > 65535U)
+            {
+                return false;
+            }
+            cursor++;
+        }
+        /* Use the browser's canonical Origin spelling for default ports. */
+        if ((strncmp(origin, "http://", 7U) == 0 && port == 80U) ||
+            (strncmp(origin, "https://", 8U) == 0 && port == 443U))
+        {
+            return false;
+        }
+    }
+    return *cursor == '\0';
 }

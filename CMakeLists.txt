@@ -657,6 +657,9 @@ if(BUILD_TESTING)
         add_test(NAME cli_tests COMMAND "${NUMFORGE_NODE_EXECUTABLE}"
             "${PROJECT_SOURCE_DIR}/tests/test_cli.js" $<TARGET_FILE:calculator>)
         set_tests_properties(cli_tests PROPERTIES TIMEOUT 60)
+        add_test(NAME web_remote_tests COMMAND "${NUMFORGE_NODE_EXECUTABLE}"
+            "${PROJECT_SOURCE_DIR}/tests/test_web_remote.js" $<TARGET_FILE:numforge_web>)
+        set_tests_properties(web_remote_tests PROPERTIES TIMEOUT 60)
         endif()
         add_executable(numeric_oracle_driver tests/numeric_oracle_driver.c)
         target_include_directories(numeric_oracle_driver PRIVATE ${PROJECT_SOURCE_DIR}/src/bigdecimal)

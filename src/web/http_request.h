@@ -41,6 +41,13 @@ NumForgeHttpStatus numforge_http_probe(
     uint16_t port,
     NumForgeHttpFrame *frame
 );
+/* Additional exact browser origin for a trusted HTTPS reverse proxy.
+ * NULL retains the loopback-only origin policy. */
+NumForgeHttpStatus numforge_http_probe_with_origin(
+    const char *data, size_t used, size_t capacity, uint16_t port,
+    const char *public_origin, NumForgeHttpFrame *frame
+);
+bool numforge_http_valid_origin(const char *origin);
 bool numforge_request_target(
     const char *request,
     char *method,

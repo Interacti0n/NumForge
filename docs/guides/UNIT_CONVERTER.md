@@ -28,6 +28,11 @@ and returns keyboard focus to that button. Native selects, visible focus,
 labelled controls and live status messages support keyboard/screen-reader use.
 Shift+Enter inserts a line break; Enter converts.
 
+On phones, confirming a conversion dismisses the input keyboard and reveals the
+result below the fixed header. Live previews keep the page position. History
+sits below the result in portrait and landscape, and introductory/help paragraphs
+are hidden; error messages and unit-source information remain available.
+
 On desktop viewports at least 1200 pixels wide and 740 pixels high, the page
 uses one screen: expanded settings sit beside the input, with the result and
 footer remaining visible. The converter uses only its content height; remaining

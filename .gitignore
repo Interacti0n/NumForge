@@ -1,5 +1,10 @@
 # Local working roadmap (not part of published documentation)
 /PROJECT_REVIEW.md
+/PROJECT_CONTEXT.md
+
+# Reversible local cleanup snapshots (never publish)
+/.local-backups/
+/.codex-remote-attachments/
 
 # CMake build trees
 /build/
@@ -11,7 +16,6 @@
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
-Makefile
 CTestTestfile.cmake
 Testing/
 !/docs/testing/
@@ -23,6 +27,10 @@ Testing/
 *.obj
 *.pdb
 *.ilk
+
+# Python developer tools
+__pycache__/
+*.py[cod]
 
 # Editor and IDE state
 /.vscode/
