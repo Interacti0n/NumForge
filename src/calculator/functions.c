@@ -96,3 +96,13 @@ const CalculatorFunction *calculator_function_find(
 
     return NULL;
 }
+
+size_t calculator_function_count(void)
+{
+    return sizeof(calculator_functions) / sizeof(calculator_functions[0]);
+}
+
+const CalculatorFunction *calculator_function_at(size_t index)
+{
+    return index < calculator_function_count() ? &calculator_functions[index] : NULL;
+}

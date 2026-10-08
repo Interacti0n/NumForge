@@ -8,6 +8,7 @@ have different ownership and compatibility contracts.
 | [Public C API](reference/C_API.md) | BigInt, BigDecimal, BigRational, units, runtime scopes and ownership. |
 | [Calculator expressions](reference/CALCULATOR_EXPRESSIONS.md) | Operators, named calls, precision, syntax and limits. |
 | [Local HTTP API](reference/HTTP_API.md) | Evaluation, preview/confirmation, client IDs, revisions and errors. |
+| [Session HTTP API](reference/SESSION_HTTP_API.md) | Authoritative variables/history, typed snapshots, reset/release, functions and conversion history. |
 | [Unit HTTP API](reference/UNIT_HTTP_API.md) | Catalogue and compatible expression conversions. |
 | [Web/API coverage](reference/WEB_API_PARITY.md) | Supported web actions and application API gaps. |
 

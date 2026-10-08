@@ -163,6 +163,9 @@ CalculatorStatus calculator_compute_value_with_answer(
     CalculatorError *error
 );
 void calculator_value_destroy(CalculatorValue *value);
+/* Lossless numeric coordinate text; decimal kinds preserve the finite
+ * approximation in scientific notation, without units or display rounding. */
+CalculatorStatus calculator_value_snapshot_text(const CalculatorValue *value, char **result);
 CalculatorStatus calculator_value_copy(CalculatorValue *result, const CalculatorValue *value);
 bool calculator_value_matches(const CalculatorValue *value, const CalculatorContext *context);
 CalculatorStatus calculator_format_value(

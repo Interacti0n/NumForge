@@ -7,6 +7,15 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Complete HTTP coverage for existing web state: authoritative paginated
+  variables/history, versioned exact/approximate/Quantity snapshots, ordered
+  reset/release/history clearing and a function/alias/arity registry. Clearing
+  history preserves owned ans; reads preserve preview, revisions and RNG.
+- Store confirmed unit conversions in bounded application sessions with
+  separate revisions and identical-request replay. The web reads/restores
+  snapshots through the same API; it retains tab IDs through reload/navigation
+  instead of treating browser storage as authoritative mathematical state.
+
 - Add automated Windows/Linux developer SDK packaging and SDK-only backfills
   for existing release tags. Ship public headers, a Release static library,
   relocatable CMake exports, compiler/runtime metadata and a verified C example;

@@ -304,13 +304,15 @@ Object.assign(functionHelp, {
     radians: ["° → rad","radians(x)","Prevod stupňov na radiány nezávisle od režimu.","Convert degrees to radians regardless of mode."],
     degrees: ["rad → °","degrees(x)","Prevod radiánov na stupne nezávisle od režimu.","Convert radians to degrees regardless of mode."]
 });
+let functionRegistry = new Map();
 function describeFunction(name)
 {
-    const canonical = Object.keys(inverseFunctionAliases).find(key =>
+    const canonical = functionRegistry.get(name)?.canonical || Object.keys(inverseFunctionAliases).find(key =>
         inverseFunctionAliases[key].includes(name)) || name;
     const info = functionHelp[canonical];
     if (!info) return '';
-    const aliases = inverseFunctionAliases[canonical];
+    const registeredAliases = [...functionRegistry.values()].filter(entry => entry.canonical === canonical && entry.name !== canonical).map(entry => entry.name);
+    const aliases = registeredAliases.length ? registeredAliases : inverseFunctionAliases[canonical];
     return info[1] + (aliases ? ' · ' + aliases.map(alias => alias + '(x)').join(', ') : '') +
         ': ' + info[english ? 3 : 2];
 }
@@ -346,6 +348,11 @@ if (typeof crypto !== 'undefined' && crypto.getRandomValues)
 {
     const bytes = crypto.getRandomValues(new Uint8Array(16));
     cacheClient = [...bytes].map(value => value.toString(16).padStart(2, '0')).join('');
+    try {
+        const saved=sessionStorage.getItem('numforge-client-id');
+        if (/^[0-9a-f]{32}$/.test(saved)) cacheClient=saved;
+        sessionStorage.setItem('numforge-client-id',cacheClient);
+    } catch (_) {}
 }
 let sessionReady = null;
 let sessionStarted = false;
@@ -360,7 +367,7 @@ let activeSessionTab = 'history';
 const variableStatus = document.createElement('p');
 variableStatus.id = 'variable-status';
 variableStatus.setAttribute('role', 'status');
-document.querySelector('.variables-section').append(variableStatus);
+document.querySelector('.session-panel').append(variableStatus);
 
 function selectSessionTab(name, focus = false)
 {
@@ -408,7 +415,7 @@ async function deleteVariable(name)
             pendingVariableDeletion = null;
             throw new Error(responseError(data));
         }
-        storedVariables.delete(name);
+        await refreshSession();
         pendingVariableDeletion = null;
         renderVariables();
         document.querySelector('#variable-status').textContent = english ? 'Variable deleted.' : 'Premenná odstránená.';
@@ -465,25 +472,6 @@ function renderVariables()
         item.append(button, remove);
         list.append(item);
     });
-}
-
-function updateVariables(input, display)
-{
-    const assignment = /^\s*([A-Za-z]{1,31})\s*=/.exec(input);
-    if (!assignment) return;
-    // Display snapshots only; evaluation always uses the server-owned typed value.
-    storedVariables.set(assignment[1], display.length > 256 ? display.slice(0, 256) + '…' : display);
-    renderVariables();
-}
-
-function appendHistory(request, display, copy)
-{
-    historySequence++;
-    historyEntries.push({input: request.input, display,
-        ...(copy && copy !== display ? {copy} : {}),
-        precision: request.precision, angle: request.angle, notation: request.notation});
-    if (historyEntries.length > 16) historyEntries.shift();
-    renderHistory();
 }
 
 function updateHistoryOverflow()
@@ -554,10 +542,122 @@ function renderHistory()
     list.scrollTop = list.scrollHeight;
 }
 
-document.querySelector('#reset-session').addEventListener('click', () => {
-    try { sessionStorage.removeItem('numforge-navigation-state'); } catch (_) {}
-    window.location.reload();
-});
+let pendingReset = null, lifecycleInFlight = false;
+async function mutateSession(action)
+{
+    if (commitInFlight || variableDeletionInFlight || lifecycleInFlight) return;
+    if (pendingReset && pendingReset.action !== action) return;
+    clearTimeout(autoTimer); controller?.abort();
+    lifecycleInFlight = true;
+    let settleLifecycle;
+    const lifecycleFinished = new Promise(resolve => { settleLifecycle = resolve; });
+    window.numforgePendingLifecycle = lifecycleFinished;
+    try {
+        if (action !== 'reset') await ensureSession();
+        pendingReset ||= {action, id: ++generation};
+        const response = await fetch('/api/session?client=' + cacheClient + '&revision=' + pendingReset.id + '&action=' + pendingReset.action, {
+            method: 'POST', body: '', signal: AbortSignal.timeout(10000)
+        });
+        const data = await response.json();
+        if (!response.ok || !data.ok) {
+            pendingReset = null;
+            if (action === 'reset' && data.status === 'session expired; reload the page') {
+                sessionStorage.removeItem('numforge-client-id');
+                sessionStorage.removeItem('numforge-navigation-state');
+                window.location.reload();return;
+            }
+            throw new Error(responseError(data));
+        }
+        pendingReset = null; pendingCommit = null; pendingVariableDeletion = null;
+        if (action === 'reset') {
+            try {
+                for (const key of ['numforge-navigation-state','numforge-units-state','numforge-units-pending']) sessionStorage.removeItem(key);
+            } catch (_) {}
+            window.location.reload();
+        } else {
+            await refreshSession();
+            variableStatus.textContent = english ? 'History cleared; ans and variables preserved.' : 'História vymazaná; ans a premenné zostali zachované.';
+        }
+    } catch (error) {
+        variableStatus.textContent = error.message + (pendingReset ? (english ? ' Click the same action again to retry.' : ' Opakuj tú istú akciu kliknutím.') : '');
+    } finally {
+        lifecycleInFlight = false; settleLifecycle();
+        if (window.numforgePendingLifecycle === lifecycleFinished) window.numforgePendingLifecycle = null;
+    }
+}
+document.querySelector('#reset-session').addEventListener('click', () => mutateSession('reset'));
+document.querySelector('#clear-history').addEventListener('click', () => mutateSession('clear-history'));
+
+let refreshGeneration = 0;
+async function refreshSession()
+{
+    const refresh = ++refreshGeneration;
+    for (let attempt = 0; attempt < 3; attempt++) {
+        const read = async path => {
+            const response = await fetch(path, {signal: lifecycle.signal});
+            const data = await response.json();
+            if (response.status === 409) throw new Error('snapshot_changed');
+            if (!response.ok || !data.ok) throw new Error(responseError(data));
+            return data;
+        };
+        try {
+            const state = await read('/api/session?client=' + cacheClient);
+            const revision = Number(state.revision);
+            if (!Number.isSafeInteger(revision)) throw new Error('Invalid session revision');
+            const lists = {};
+            for (const kind of ['variables', 'history']) {
+                const entries = []; let offset = 0;
+                do {
+                    const page = await read('/api/session/' + kind + '?client=' + cacheClient + '&limit=1&offset=' + offset + '&at=' + state.revision);
+                    if (!Array.isArray(page.items)) throw new Error('Invalid session snapshot');
+                    entries.push(...page.items); offset = page.next_offset;
+                    if (refresh !== refreshGeneration || lifecycle.signal.aborted) return;
+                } while (offset !== null);
+                lists[kind] = entries;
+            }
+            if (refresh !== refreshGeneration || lifecycle.signal.aborted) return;
+            generation = Math.max(generation, revision);
+            document.querySelector('#clear-history').disabled = state.history_count === 0;
+            storedVariables.clear();
+            lists.variables.forEach(entry => storedVariables.set(entry.name, entry.display));
+            historyEntries.splice(0, historyEntries.length, ...lists.history.map(entry => ({
+                input: entry.expression, display: entry.display,
+                copy: entry.display.replace(/ × 10\^([+-]?\d+)/g, (_, exponent) =>
+                    'E' + (/^[+-]/.test(exponent) ? exponent : '+' + exponent)),
+                precision: String(entry.value.context.places === -1 ? 'full' : entry.value.context.places),
+                angle: entry.value.context.angle, notation: entry.value.context.notation
+            })));
+            historySequence = Number(state.history_sequence);
+            renderVariables(); renderHistory();
+            return;
+        } catch (error) {
+            if (error.message === 'snapshot_changed' && attempt < 2) continue;
+            throw error;
+        }
+    }
+}
+
+async function loadFunctionRegistry()
+{
+    try {
+        const response = await fetch('/api/functions', {signal: lifecycle.signal});
+        const data = await response.json();
+        if (!response.ok || !data.ok || !Array.isArray(data.functions)) throw new Error('Invalid function catalogue');
+        const registry = new Map(data.functions.map(entry => [entry.name, entry]));
+        functionRegistry = registry;
+        for (const button of helpButtons) {
+            const entry = registry.get(button.dataset.function);
+            button.disabled = !entry?.implemented;
+            if (entry) {
+                button.dataset.minimumArguments = entry.minimum_arguments;
+                button.dataset.maximumArguments = entry.maximum_arguments;
+                button.dataset.canonical = entry.canonical;
+            }
+        }
+    } catch (error) {
+        if (!lifecycle.signal.aborted) variableStatus.textContent = english ? 'Function catalogue unavailable.' : 'Katalóg funkcií nie je dostupný.';
+    }
+}
 
 async function ensureSession()
 {
@@ -911,7 +1011,7 @@ notationMode.addEventListener('change', () => scheduleCalculation(0));
 
 async function calculate(commit)
 {
-    if (variableDeletionInFlight || pendingVariableDeletion || commitInFlight || (!commit && pendingCommit)) return;
+    if (lifecycleInFlight || pendingReset || variableDeletionInFlight || pendingVariableDeletion || commitInFlight || (!commit && pendingCommit)) return;
     invalidate();
     if (!expression.value.trim() && !pendingCommit) return;
     const id = generation;
@@ -954,8 +1054,9 @@ async function calculate(commit)
         if (commit) pendingCommit = null;
         if (!response.ok || !data.ok) throw new Error(responseError(data));
         if (commit) {
-            appendHistory(request, data.result, data.copy);
-            updateVariables(request.input, data.result);
+            refreshSession().catch(error => {
+                if (!lifecycle.signal.aborted) variableStatus.textContent = error.message;
+            });
         }
         if (id !== generation) return;
         result.textContent = data.result;
@@ -972,8 +1073,8 @@ async function calculate(commit)
         setResultApproximation('');
         const uncertain = commit && sent && pendingCommit;
         result.textContent = text.error + (uncertain
-            ? (english ? 'Confirmation uncertain. Press Enter to retry the same calculation, or start a new session.'
-                       : 'Potvrdenie je neisté. Enter zopakuje tú istú požiadavku, alebo začni nové sedenie.')
+            ? (english ? 'Confirmation uncertain. Press Enter to retry the same calculation, or start a new session. '
+                       : 'Potvrdenie je neisté. Enter zopakuje tú istú požiadavku, alebo začni nové sedenie. ') + error.message
             : ((error instanceof TypeError || error instanceof SyntaxError) ? text.failure : error.message));
         copyButtons.forEach(button => { button.disabled = true; });
         updateResultExpansion();
@@ -1005,8 +1106,7 @@ function saveNavigationState()
             notation: notationMode.value, angle: angleUnit,
             result: result.textContent, resultCopy, resultApprox: resultApproxValue,
             resultError: result.classList.contains('error'),
-            history: historyEntries, historySequence, variables: [...storedVariables],
-            sessionTab: activeSessionTab, pendingVariableDeletion, recent: recentItems,
+            sessionTab: activeSessionTab, pendingVariableDeletion, pendingLifecycle: pendingReset, recent: recentItems,
             category: document.querySelector('.function-tabs button[aria-selected="true"]')?.id,
             search: document.querySelector('#function-search').value
         }));
@@ -1046,25 +1146,9 @@ try
             selectAngleUnit(state.angle, false);
             updatePrecisionMode();
             updateExpressionOverflow();
-            if (Array.isArray(state.history))
-            {
-                historyEntries.push(...state.history.filter(entry =>
-                    entry && typeof entry.input === 'string' && typeof entry.display === 'string' &&
-                    typeof entry.precision === 'string' && typeof entry.angle === 'string' &&
-                    typeof entry.notation === 'string').slice(-16));
-                historySequence = Number.isSafeInteger(state.historySequence) &&
-                    state.historySequence >= historyEntries.length
-                    ? state.historySequence : historyEntries.length;
-                renderHistory();
-            }
-            if (Array.isArray(state.variables)) {
-                for (const entry of state.variables.slice(0, 32)) {
-                    if (Array.isArray(entry) && /^[A-Za-z]{1,31}$/.test(entry[0]) &&
-                        typeof entry[1] === 'string') storedVariables.set(entry[0], entry[1].slice(0, 257));
-                }
-                renderVariables();
-            }
             selectSessionTab(state.sessionTab === 'variables' ? 'variables' : 'history');
+            if (state.pendingLifecycle && ['reset','clear-history'].includes(state.pendingLifecycle.action) &&
+                Number.isSafeInteger(state.pendingLifecycle.id)) pendingReset=state.pendingLifecycle;
             if (state.pendingVariableDeletion && typeof state.pendingVariableDeletion.name === 'string' &&
                 Number.isSafeInteger(state.pendingVariableDeletion.id))
                 pendingVariableDeletion = state.pendingVariableDeletion;
@@ -1100,6 +1184,14 @@ try
     }
 }
 catch (_) {}
+loadFunctionRegistry();
+ensureSession().then(() => refreshSession()).catch(error => {
+    if (!lifecycle.signal.aborted) variableStatus.textContent = error.message;
+});
+window.addEventListener?.('focus', () => {
+    if (sessionStarted && !commitInFlight && !variableDeletionInFlight)
+        refreshSession().catch(error => { variableStatus.textContent = error.message; });
+}, {signal: lifecycle.signal});
 return () => {
     lifecycle.abort();
     controller?.abort();

@@ -66,8 +66,9 @@ expression may read stored variables and confirmed `ans`. Conversion never
 changes variables, `ans`, history, the random generator, pending preview or
 session revision, including on failure. An expired/missing session is not created
 or reset. Assignments and `rand()` are rejected. There is no `action` or
-`revision` parameter; history is maintained by the browser, independently of
-calculator sessions.
+`revision` parameter on this read-only endpoint. Confirmed conversion history
+is handled by the separate [session/conversion API](SESSION_HTTP_API.md),
+independently of calculator ans/history and with its own revision ordering.
 
 With `snapshot=1`, success additionally includes
 `"value":{"kind":"rational","text":"1000/3","unit":"m","precision":34}`.

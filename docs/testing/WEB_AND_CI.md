@@ -26,6 +26,11 @@ Chromium scenarios cover both languages: real C calculations, precision and
 notation changes, keypad entry, clipboard, help/navigation, arithmetic errors,
 transport failures and stale-response protection. Network-failure and delayed
 response cases use controlled interception; ordinary calculations reach C.
+Session API scenarios cover lossless typed snapshots, pinned pagination,
+read-only RNG/preview preservation, reset/release and FIFO expiration,
+independent conversion revisions and retry without reevaluation. Application
+tests verify owned ans after clearing history; allocation fault injection checks
+conversion preparation and serialization preflight before state changes.
 Function-group tests also cover keyboard expansion, arity errors, the RAD/DEG
 selector, active integer/root/exponential/logarithmic/trigonometric/hyperbolic functions, five-line result
 expansion and mobile layout.

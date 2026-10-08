@@ -1,13 +1,13 @@
 # Web actions and HTTP API coverage
 
 Audited against the current implementation on 8 October 2026. This page records
-implemented calls separately from proposed endpoints. A mathematical or session
+the implemented HTTP contract. A mathematical or session
 operation exposed by the web should also have a documented HTTP contract usable
 by another client. The web should consume that same contract.
 
 The implemented [application boundaries](../design/APPLICATION_DESIGN.md) separate
 expression evaluation, session/client ownership and HTTP adapters. No database
-is added; missing routes below remain separate implementation work.
+is added; saved values remain bounded application-owned memory.
 
 ## Available calls
 
@@ -17,17 +17,17 @@ is added; missing routes below remain separate implementation work.
 | Read-only calculator preview | `action=preview` with session ID and revision | Available |
 | Confirm result, update ans/history | `action=commit` | Available |
 | Create or replace a variable | Commit `x=2/3` | Available |
-| Read one variable or ans | Preview `x` or `ans` | Available as expression evaluation |
+| Read one variable or ans | `GET /api/session/value?client=…&name=x` (or `ans`) | Available, typed snapshot |
 | Delete one variable, reclaim capacity | `action=delete-variable`, name body | Available |
 | Start a new empty session | `action=start` with a fresh client ID | Available; start on an existing ID preserves it |
-| Show all variables and their values | Web retains confirmed display snapshots | Missing a server list endpoint |
-| Show/retrieve calculator history | Web retains display entries; C session owns confirmed values | Missing a server history endpoint |
-| Reset/release the existing session | Web reload creates a fresh ID | Missing an explicit reset/release endpoint |
-| Discover supported functions, aliases and arities | Function buttons/help are defined in web assets | Missing a machine-readable function catalogue |
+| Show all variables and their values | `GET /api/session/variables` | Available, paginated authoritative values |
+| Show/retrieve calculator history | `GET /api/session/history`, optional saved `id` | Available, original values/settings |
+| Reset/release/clear history | `POST /api/session`, `action=reset`, `release` or `clear-history` | Available; clearing history preserves ans |
+| Discover functions, aliases and arities | `GET /api/functions` | Available; web consumes the registry |
 | List unit catalogue and sources | `GET /api/units` | Available |
 | Validate compatibility, preview a conversion | `POST /api/convert` | Available |
-| Confirm a conversion and obtain an authoritative value | `POST /api/convert` with `snapshot=1` | Available; conversion does not mutate calculator state |
-| List, restore or clear confirmed conversion history | Tab-local browser state, including original snapshot/settings | Missing server history operations |
+| Confirm a conversion | `POST /api/conversions?action=commit` | Available, independent ordered history |
+| List/restore/clear conversion history | `GET /api/conversions`, optional saved `id`; `POST` with `action=clear` | Available, no reevaluation |
 
 See [API](../API.md), [Variables](../guides/VARIABLES.md) and [Unit HTTP API](UNIT_HTTP_API.md)
 for the implemented parameter grammar, limits and errors. Graphs, equation
@@ -67,39 +67,15 @@ An uncertain deletion retries the same name/revision before another session
 request. Older assignments cannot be replayed to undo deletion. A valid missing
 name is a successful no-op. Deletion preserves ans, history and random state.
 
-## Proposed implementation order
+## Contract for future tools
 
-These are design tasks, not currently supported routes.
+Every new mathematical or state operation must ship with its application-layer
+operation, documented HTTP contract and web integration in the same feature.
+Use the versioned [session API](SESSION_HTTP_API.md) for saved values and contexts.
+Tests must cover independent clients, expiration, capacity, retry/stale mutations,
+failed operations, exact/approximate/Quantity values and read-only preservation.
+Graphs and solvers must share the C evaluator rather than implement mathematics
+again in JavaScript. Presentation remains a client responsibility.
 
-1. Add a read-only session API for listing variables and calculator history,
-   including current revision, capacity and ans availability. Web lists must
-   use the server response rather than infer state from a bounded local history.
-   Reading must not consume revisions, draw random numbers or change previews.
-2. Define a versioned value representation before exposing full saved values:
-   exact integers/rationals, finite approximations, dimensions, selected unit,
-   temperature point/interval semantics and original computation settings.
-   Display text is not the stored mathematical value. Bound aggregate output,
-   paginate lists and allow separately requested full values; never silently
-   omit entries or round exact values because the response is large.
-3. Add explicit session reset/release operations with ordered, retryable
-   mutations. Separate clearing calculator history from clearing ans; today ans
-   borrows the newest history value, so deleting history needs an ownership
-   change or an explicitly documented reset contract first.
-4. Expose the function registry as a machine-readable catalogue and let the web
-   use it for discoverable names/aliases/arities. Keep domain/help metadata
-   synchronized without moving mathematical rules to JavaScript.
-5. Move confirmed conversion history behind a separate session API: confirm,
-   list/get and clear, using authoritative value snapshots and original settings.
-   Restore must not reevaluate old expressions against changed variables.
-   Keep converter history independent from calculator ans/history and preserve
-   current tab isolation, capacity limits and retry guarantees.
-
-Choose final route names, response schema and versioning before implementation.
-Every new web tool should add its underlying API and integration tests in the
-same feature. Tests should cover independent clients, expiration, capacity,
-replay/stale mutations, failed operations, exact/approximate/Quantity values and
-the absence of state changes during read-only access.
-
-HTTP API coverage is distinct from a public C calculator/session API. The
-calculator is currently an application layer with private headers; publishing
-its C ABI needs its own ownership, lifecycle and compatibility contract.
+HTTP coverage is distinct from a public C calculator/session ABI. The installed
+SDK contains the numerical library; private application headers are not exported.

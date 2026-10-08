@@ -331,6 +331,9 @@ html[lang="en"] .function-group:not(.search-results)::before { content: "Functio
 #variable-list .variable-delete:hover { color: #ffd1e7; border-color: #ed77ab; }
 #variable-status { margin: 5px 0 0; color: var(--muted); font-size: .72rem; }
 #variable-status:empty { display: none; }
+.history-clear { align-self: flex-start; margin: 0 0 8px; padding: 4px 8px; color: var(--muted); border: 1px solid var(--border); border-radius: 7px; background: transparent; font-size: .72rem; }
+.history-clear:hover { color: var(--text); border-color: var(--accent); }
+.history-clear:disabled { opacity: .45; }
 #variable-list button:hover { border-color: var(--mint); }
 .variable-name { flex: 0 0 auto; max-width: 45%; overflow: hidden; text-overflow: ellipsis; color: var(--accent); }
 .variable-value { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

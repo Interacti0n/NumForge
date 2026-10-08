@@ -162,8 +162,9 @@ test('history keeps exact values, restores snapshots and ignores previews/errors
     await expect(page.locator('#unit-result')).toHaveText('333.33');
     await page.locator('#unit-input').press('Enter');
     await expect(page.locator('#unit-history-list li')).toHaveCount(1);
-    expect(await page.evaluate(()=>window.numforgeUnitHistory.entries[0].body.value))
-        .toMatchObject({kind:'rational',text:'1000/3',unit:'m',precision:34});
+    const client=await page.evaluate(()=>sessionStorage.getItem('numforge-client-id'));
+    const saved=await (await page.request.get('/api/conversions?client='+client+'&full=1')).json();
+    expect(saved.items[0].value).toMatchObject({kind:'rational',text:'1000/3',unit:'m',context:{precision:34}});
     await page.locator('#unit-history-list .unit-history-copy').click();
     expect(await page.evaluate(()=>navigator.clipboard.readText())).toBe('1000/3');
     await page.locator('#unit-input').fill('1/0');
@@ -199,32 +200,42 @@ test('history freezes calculator-dependent values and bounds confirmations witho
     await expect(page.locator('#unit-result')).toHaveText('4000');
     await expect(page.locator('#unit-history-list li')).toHaveCount(1);
     let release;
-    await page.route('**/api/convert?**snapshot=1**',async route=>{
+    await page.route('**/api/conversions?**action=commit**',async route=>{
         await new Promise(resolve=>release=resolve);await route.continue();
     });
     await page.locator('#unit-input').fill('1');await page.locator('#unit-input').press('Enter');
     await expect.poll(()=>!!release).toBe(true);
     await page.locator('#unit-input').press('Enter');release();
     await expect(page.locator('#unit-history-list li')).toHaveCount(2);
-    await page.unroute('**/api/convert?**snapshot=1**');
+    await page.unroute('**/api/conversions?**action=commit**');
     for(let i=0;i<16;i++) {
         await page.locator('#unit-input').fill(String(i+2));await page.locator('#unit-input').press('Enter');
-        await expect.poll(()=>page.evaluate(()=>window.numforgeUnitHistory.sequence)).toBe(i+3);
+        await expect.poll(async()=>{
+            const client=await page.evaluate(()=>sessionStorage.getItem('numforge-client-id'));
+            return (await (await page.request.get('/api/session?client='+client)).json()).conversion_sequence;
+        }).toBe(String(i+3));
     }
     await expect(page.locator('#unit-history-list li')).toHaveCount(16);
-    expect(await page.evaluate(()=>window.numforgeUnitHistory.entries[0].number)).toBe(3);
+    await expect(page.locator('.unit-history-restore').last()).toHaveText(/^3\./);
 });
 
 test('a lost confirmation response can be retried without duplicate history',async({page})=>{
     await page.goto('/units?lang=en');await expect(page.locator('#unit-result')).toHaveText('1000');
     let fail=true;
-    await page.route('**/api/convert?**snapshot=1**',async route=>{
+    await page.route('**/api/conversions?**action=commit**',async route=>{
         if(fail){fail=false;await route.fetch();await route.abort('failed');}
         else await route.continue();
     });
     await page.locator('#unit-input').press('Enter');
     await expect(page.locator('#unit-retry')).toBeVisible();
     await expect(page.locator('#unit-history-list li')).toHaveCount(0);
-    await page.locator('#unit-retry').click();
+    await page.locator('#unit-input').fill('2');
+    await page.locator('#unit-from').selectOption('m');
+    await page.locator('#unit-to').selectOption('km');
+    await page.locator('#unit-input').press('Enter');
     await expect(page.locator('#unit-history-list li')).toHaveCount(1);
+    await expect(page.locator('#unit-input')).toHaveValue('1');
+    await expect(page.locator('#unit-from')).toHaveValue('km');
+    await expect(page.locator('#unit-to')).toHaveValue('m');
+    await expect(page.locator('#unit-result')).toHaveText('1000');
 });

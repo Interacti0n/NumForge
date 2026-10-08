@@ -3,6 +3,12 @@
 The main changes in a few words. See the [full changelog](CHANGELOG.md) for
 details and the [2.1 release record](docs/project/RELEASE_2_1.md) for validation.
 
+## Unreleased
+
+- Authoritative session/history HTTP API.
+- Typed values, function catalogue and explicit lifecycle.
+- Server-owned conversion history with safe retries.
+
 ## 2.1.0 — 8 October 2026
 
 - Unit converter in Slovak and English.

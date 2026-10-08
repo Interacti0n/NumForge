@@ -43,9 +43,16 @@ The HTML keeps the content hidden until its stylesheet loads, so navigation does
 not briefly reveal unstyled text. A failed stylesheet request reveals the plain
 page instead of leaving it blank.
 Language changes and navigation among these pages in the same tab preserve the calculator
-session ID, revision, history, input, settings and recent tools in session
-storage. Reload and New session start fresh. Server restart or session eviction
+session ID, input, settings and recent tools in session storage. Variables and
+both histories are read from authoritative application-owned server values.
+Reload retains the ID; New session explicitly resets all saved values. Server restart or session eviction
 still loses the in-memory numeric state.
+
+The [session HTTP API](../docs/reference/SESSION_HTTP_API.md) exposes paginated
+variables/history, typed values, clear/reset/release, function discovery and
+independent converter confirmation/history. Clear calculator history preserves
+ans and variables. Future mathematical tools must add their application and HTTP
+contract alongside the web feature; JavaScript handles presentation.
 
 On desktop, the calculator shell uses the viewport height and keeps the main
 controls in view. The result fills the available space above the keypad before

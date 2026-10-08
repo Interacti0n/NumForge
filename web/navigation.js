@@ -167,8 +167,9 @@ async function navigate(destination, addHistory = true)
     let stagedStyle = null;
     try
     {
-        // Save session UI only after an in-flight deletion has settled.
+        // Save session UI after in-flight state mutations have settled.
         await window.numforgePendingVariableDeletion;
+        await window.numforgePendingLifecycle;
         const response = await fetch(destination.href, {headers: {Accept: 'text/html'}});
         if (!response.ok || !response.headers.get('content-type')?.includes('text/html'))
             throw new Error('Page unavailable');

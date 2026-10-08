@@ -45,10 +45,11 @@ Existing experiments are described with their measured tradeoffs in
 
 ## Planned tool development
 
-First close the [web/API coverage gaps](../reference/WEB_API_PARITY.md): session variable and
-history lists, explicit lifecycle commands, discoverable functions and converter
-history operations. New mathematical/session features should expose their HTTP
-contract alongside the web implementation.
+The [web/API contract](../reference/WEB_API_PARITY.md) now covers session lists,
+lifecycle commands, function discovery and saved conversion history. New
+mathematical/session features must expose their application operation and
+documented HTTP contract alongside the web implementation, using the versioned
+[session value schema](../reference/SESSION_HTTP_API.md) where appropriate.
 
 1. Share a parameterized expression evaluator between graphs and solvers: parse
    once, bind a local variable, snapshot session values and bound the total work.
@@ -60,7 +61,7 @@ contract alongside the web implementation.
 4. Add session user functions, local parameters and definition management,
    followed by their integration with graphs and solvers.
 5. Extend Quantity with general compound unit strings, named derived units,
-   further functions, structured HTTP snapshots and a possible public C API.
+   further functions and a possible public C API.
    Dimensional equations and graph axes need explicit unit contracts first.
 
 These stages are a proposed order, not implemented features or release dates.

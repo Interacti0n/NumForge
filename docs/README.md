@@ -18,6 +18,7 @@ Start with the [API guide](API.md), or open a specific reference:
 - [Public C API](reference/C_API.md): numeric types, functions and ownership.
 - [Calculator expressions](reference/CALCULATOR_EXPRESSIONS.md): syntax and calls.
 - [Local HTTP API](reference/HTTP_API.md): evaluation, sessions, revisions and errors.
+- [Session HTTP API](reference/SESSION_HTTP_API.md): saved values, pagination, lifecycle and conversion history.
 - [Units](reference/UNITS.md) and [Quantity](reference/QUANTITIES.md): conversion and dimensions.
 - [Unit catalogue](reference/UNIT_CATALOG.md): 233 units, localized names and sources.
 - [Unit HTTP API](reference/UNIT_HTTP_API.md): catalogue and conversion routes.

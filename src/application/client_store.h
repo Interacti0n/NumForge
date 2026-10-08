@@ -34,6 +34,8 @@ typedef struct ApplicationClientStore
  * Lookup with create=false is read-only and never revives an expired session. */
 CalculatorSession *application_client_session(ApplicationClientStore *store,
     const char *id, bool create);
+/* Includes a bounded release tombstone, solely for retrying lifecycle calls. */
+CalculatorSession *application_client_retained_session(ApplicationClientStore *store, const char *id);
 ApplicationEvaluationCache *application_client_cache(ApplicationClientStore *store,
     const char *id);
 void application_evaluation_cache_clear(ApplicationEvaluationCache *cache);

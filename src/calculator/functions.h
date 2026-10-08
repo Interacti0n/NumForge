@@ -81,5 +81,7 @@ const CalculatorFunction *calculator_function_find(
     const char *text,
     size_t length
 );
+size_t calculator_function_count(void);
+const CalculatorFunction *calculator_function_at(size_t index);
 
 #endif

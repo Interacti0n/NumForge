@@ -86,11 +86,66 @@ static void test_invalid_ids_do_not_allocate_or_replace_sessions(void)
     compute(first, 2U, false, "x", "7");
 }
 
+static void test_lifecycle_preserves_typed_ans_and_rejects_old_mutations(void)
+{
+    CalculatorSession *session = application_client_session(&store, client, true);
+    compute(session, 1U, true, "x=qty(5;\"m\")", "5 m");
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_session_mutate(session, 2U, CALCULATOR_SESSION_CLEAR_HISTORY));
+    TEST_ASSERT_EQUAL_UINT(0U, session->count);
+    TEST_ASSERT_NOT_NULL(calculator_session_answer(session));
+    TEST_ASSERT_TRUE(calculator_session_answer(session)->quantity);
+    TEST_ASSERT_EQUAL_UINT(1U, session->variable_count);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_session_mutate(session, 2U, CALCULATOR_SESSION_CLEAR_HISTORY));
+    TEST_ASSERT_EQUAL(CALCULATOR_STALE_REQUEST, calculator_session_mutate(session, 2U, CALCULATOR_SESSION_RESET));
+    compute(session, 3U, true, "ans+x", "10 m");
+    TEST_ASSERT_NULL(session->detached_answer.number);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_session_mutate(session, 4U, CALCULATOR_SESSION_RESET));
+    TEST_ASSERT_NULL(calculator_session_answer(session));
+    TEST_ASSERT_EQUAL_UINT(0U, session->variable_count);
+    TEST_ASSERT_EQUAL_UINT64(4U, session->revision);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_session_mutate(session, 5U, CALCULATOR_SESSION_RELEASE));
+    TEST_ASSERT_NULL(application_client_session(&store, client, false));
+    TEST_ASSERT_NULL(application_client_session(&store, client, true));
+    TEST_ASSERT_EQUAL_PTR(session, application_client_retained_session(&store, client));
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_session_mutate(session, 5U, CALCULATOR_SESSION_RELEASE));
+    TEST_ASSERT_EQUAL(CALCULATOR_SESSION_EXPIRED, calculator_session_mutate(session, 6U, CALCULATOR_SESSION_RESET));
+}
+
+static void test_conversion_history_is_independent_and_replay_uses_saved_value(void)
+{
+    CalculatorSession *session = application_client_session(&store, client, true);
+    CalculatorContext context; calculator_context_init(&context);
+    CalculatorError error; const char *code = NULL;
+    const ApplicationConversion *entry = NULL;
+    compute(session, 1U, true, "x=1/3", "1/3");
+    uint64_t random_state = session->random_state;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_conversion_confirm(session, 1U, "x", "km", "m", &context, &entry, &error, &code));
+    TEST_ASSERT_EQUAL_STRING("1000/3", entry->display);
+    TEST_ASSERT_TRUE(entry->value.quantity);
+    TEST_ASSERT_EQUAL_INT(1, entry->value.dimensions[0]);
+    TEST_ASSERT_EQUAL_UINT64(1U, session->revision);
+    TEST_ASSERT_EQUAL_UINT64(random_state, session->random_state);
+    compute(session, 2U, true, "x=9", "9");
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_conversion_confirm(session, 1U, "x", "km", "m", &context, &entry, &error, &code));
+    TEST_ASSERT_EQUAL_STRING("1000/3", entry->display);
+    TEST_ASSERT_EQUAL(CALCULATOR_STALE_REQUEST, application_conversion_confirm(session, 1U, "x+1", "km", "m", &context, &entry, &error, &code));
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, application_conversion_confirm(session, 2U, "rand()", "km", "m", &context, &entry, &error, &code));
+    TEST_ASSERT_EQUAL_UINT(1U, session->conversion_count);
+    TEST_ASSERT_EQUAL_UINT64(1U, session->conversion_revision);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_conversion_clear(session, 2U));
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_conversion_clear(session, 2U));
+    TEST_ASSERT_EQUAL_UINT(0U, session->conversion_count);
+    TEST_ASSERT_EQUAL_UINT(2U, session->count);
+    TEST_ASSERT_EQUAL(CALCULATOR_STALE_REQUEST, application_conversion_confirm(session, 1U, "x", "km", "m", &context, &entry, &error, &code));
+}
+
 int main(void)
 {
     UNITY_BEGIN();
     RUN_TEST(test_stores_own_isolated_sessions_without_transport);
     RUN_TEST(test_session_eviction_is_fifo_and_independent_of_legacy_cache);
     RUN_TEST(test_invalid_ids_do_not_allocate_or_replace_sessions);
+    RUN_TEST(test_lifecycle_preserves_typed_ans_and_rejects_old_mutations);
+    RUN_TEST(test_conversion_history_is_independent_and_replay_uses_saved_value);
     return UNITY_END();
 }

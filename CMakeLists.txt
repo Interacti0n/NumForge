@@ -155,6 +155,7 @@ if(NUMFORGE_BUILD_APPS OR BUILD_TESTING OR NUMFORGE_BUILD_FUZZERS OR NUMFORGE_BU
     numforge_enable_diagnostics(numforge_calculator)
 
     add_library(numforge_application STATIC
+        src/application/conversion.c
         src/application/session.c
         src/application/client_store.c)
     target_link_libraries(numforge_application PUBLIC numforge_calculator)
@@ -162,6 +163,7 @@ if(NUMFORGE_BUILD_APPS OR BUILD_TESTING OR NUMFORGE_BUILD_FUZZERS OR NUMFORGE_BU
     numforge_enable_diagnostics(numforge_application)
 
     add_library(numforge_client STATIC
+        src/web/session_api.c
         src/web/web_api.c
         src/web/unit_web.c
         src/web/http_request.c)

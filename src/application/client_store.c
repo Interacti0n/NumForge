@@ -21,13 +21,22 @@ CalculatorSession *application_client_session(ApplicationClientStore *store,
 {
     if (store == NULL || !valid_client_id(id)) return NULL;
     for (size_t i = 0U; i < NUMFORGE_APPLICATION_CLIENT_CAPACITY; i++)
-        if (strcmp(store->sessions[i].id, id) == 0) return &store->sessions[i].session;
+        if (strcmp(store->sessions[i].id, id) == 0)
+            return store->sessions[i].session.released ? NULL : &store->sessions[i].session;
     if (!create) return NULL;
     size_t slot = store->next_session;
     store->next_session = (slot + 1U) % NUMFORGE_APPLICATION_CLIENT_CAPACITY;
     calculator_session_destroy(&store->sessions[slot].session);
     memcpy(store->sessions[slot].id, id, NUMFORGE_APPLICATION_CLIENT_ID_BYTES + 1U);
     return &store->sessions[slot].session;
+}
+
+CalculatorSession *application_client_retained_session(ApplicationClientStore *store, const char *id)
+{
+    if (store == NULL || !valid_client_id(id)) return NULL;
+    for (size_t i = 0; i < NUMFORGE_APPLICATION_CLIENT_CAPACITY; i++)
+        if (strcmp(store->sessions[i].id, id) == 0) return &store->sessions[i].session;
+    return NULL;
 }
 
 ApplicationEvaluationCache *application_client_cache(ApplicationClientStore *store,

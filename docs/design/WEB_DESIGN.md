@@ -141,7 +141,8 @@ numeric state or alternate arithmetic path is involved.
 flag. Preview computes/formats without changing history. Confirmation prepares
 the value, display and expression before changing state, including on allocation,
 deadline or output-limit errors. A successful commit owns one history entry;
-ans borrows the newest value. Each entry retains its evaluation context and
+ans borrows the newest value; clearing history transfers it into owned
+standalone storage so ans and variables remain available. Each entry retains its evaluation context and
 original display. A changed output precision never recomputes stored ans.
 
 History holds 16 entries, evicting the oldest. Each retained coefficient is
@@ -149,10 +150,10 @@ bounded by the pipeline's 128 KiB allocation limit, each display by 64 KiB and
 each expression by 4096 bytes: history retains less than 4 MiB per session,
 including fixed metadata. The preview owns one separate bounded value. The
 server holds eight sessions with FIFO eviction; session eviction is reported
-explicitly and never silently recreates a session on evaluation. Reload
-and New session create a new random page ID; internal tool/language navigation
-preserves it. There is no
-disk persistence or TTL. Browser history is a bounded display mirror of
+explicitly and never silently recreates a session on evaluation. Reload and
+internal tool/language navigation preserve the tab ID. New session resets the
+existing session explicitly. There is no disk persistence or TTL. Browser
+history is an authoritative HTTP read projected into a bounded display mirror of
 confirmed entries, numbered by successful confirmation even after older entries
 drop from the 16-entry view; clicking an entry inserts its parser-compatible result at
 the input cursor, and a separate button copies that result. CLI `history` lists

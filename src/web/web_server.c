@@ -19,6 +19,7 @@
 #include "web_api.h"
 #include "client_store.h"
 #include "unit_web.h"
+#include "session_api.h"
 #include "http_request.h"
 #include "web_page.h"
 #include <numforge/runtime.h>
@@ -588,6 +589,11 @@ static void numforge_handle_evaluation_impl(
 
         if (strcmp(action, "start") == 0)
         {
+            if (session == NULL) {
+                numforge_send_response(socket, 400, "Bad Request", "application/json; charset=utf-8",
+                    "{\"ok\":false,\"status\":\"session expired; reload the page\",\"error\":\"session expired; reload the page\"}");
+                return;
+            }
             numforge_send_response(socket, 200, "OK", "application/json; charset=utf-8",
                 "{\"ok\":true,\"result\":\"\"}");
             return;
@@ -885,7 +891,23 @@ void numforge_handle_connection(
         body_length = length - (size_t)(body - request);
     }
 
-    if (strcmp(method, "GET") == 0 && strcmp(target, "/api/units") == 0)
+    if (strcmp(method, "GET") == 0 && numforge_web_is_session_target(target))
+    {
+        char *response = NULL;
+        CalculatorStatus status = body_length != 0U ? CALCULATOR_INVALID_ARGUMENT :
+            numforge_web_session_request(&numforge_application_clients, method, target, "", &response);
+        if (status == CALCULATOR_OK)
+            numforge_send_response(socket, 200, "OK", "application/json; charset=utf-8", response);
+        else {
+            char failure[512];
+            snprintf(failure, sizeof(failure), "{\"ok\":false,\"status\":\"%s\",\"error\":\"%s\",\"column\":1}",
+                calculator_status_to_string(status), calculator_status_to_string(status));
+            numforge_send_response(socket, status == CALCULATOR_STALE_REQUEST ? 409 : 400,
+                status == CALCULATOR_STALE_REQUEST ? "Conflict" : "Bad Request", "application/json; charset=utf-8", response != NULL ? response : failure);
+        }
+        free(response);
+    }
+    else if (strcmp(method, "GET") == 0 && strcmp(target, "/api/units") == 0)
     {
         numforge_handle_unit_catalog(socket);
     }
@@ -964,6 +986,23 @@ void numforge_handle_connection(
     {
         numforge_send_response(
             socket, 411, "Length Required", "text/plain; charset=utf-8", "Content-Length is required.\n");
+    }
+    else if (strcmp(method, "POST") == 0 && body != NULL &&
+             numforge_web_is_session_target(target))
+    {
+        char *response = NULL;
+        CalculatorStatus status = memchr(body, '\0', body_length) != NULL ? CALCULATOR_INVALID_ARGUMENT :
+            numforge_web_session_request(&numforge_application_clients, method, target, body, &response);
+        if (status == CALCULATOR_OK)
+            numforge_send_response(socket, 200, "OK", "application/json; charset=utf-8", response);
+        else {
+            char failure[512];
+            snprintf(failure, sizeof(failure), "{\"ok\":false,\"status\":\"%s\",\"error\":\"%s\",\"column\":1}",
+                calculator_status_to_string(status), calculator_status_to_string(status));
+            numforge_send_response(socket, status == CALCULATOR_STALE_REQUEST ? 409 : 400,
+                status == CALCULATOR_STALE_REQUEST ? "Conflict" : "Bad Request", "application/json; charset=utf-8", response != NULL ? response : failure);
+        }
+        free(response);
     }
     else if (strcmp(method, "POST") == 0 && body != NULL &&
              (strcmp(target, "/api/convert") == 0 || strncmp(target, "/api/convert?", 13) == 0))

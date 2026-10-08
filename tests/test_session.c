@@ -481,9 +481,45 @@ static void test_delete_variable_preserves_ans_and_reclaims_capacity(void)
     TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_session_delete_variable(&session, 40U, "missing", &error));
 }
 
+static void test_conversion_confirmation_allocation_failures_preserve_history(void)
+{
+    CalculatorError error;
+    const char *code = NULL;
+    const ApplicationConversion *entry = NULL;
+    check_result(1U, true, "x=1/3", "1/3");
+    numforge_test_allocator_begin(0U);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_conversion_confirm(&session, 1U,
+        "x", "km", "m", &context, &entry, &error, &code));
+    size_t calls = numforge_test_allocator_call_count();
+    numforge_test_allocator_end();
+    for (size_t failure = 1U; failure <= calls; failure++) {
+        calculator_session_destroy(&session);
+        check_result(1U, true, "x=1/3", "1/3");
+        TEST_ASSERT_EQUAL(CALCULATOR_OK, application_conversion_confirm(&session, 1U,
+            "2", "km", "m", &context, &entry, &error, &code));
+        uint64_t random_state = session.random_state;
+        numforge_test_allocator_begin(failure);
+        CalculatorStatus status = application_conversion_confirm(&session, 2U,
+            "x", "km", "m", &context, &entry, &error, &code);
+        TEST_ASSERT_TRUE(numforge_test_allocator_did_fail());
+        numforge_test_allocator_end();
+        TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY, status);
+        TEST_ASSERT_NULL(entry);
+        TEST_ASSERT_EQUAL_UINT(1U, session.conversion_count);
+        TEST_ASSERT_EQUAL_UINT64(1U, session.conversion_revision);
+        TEST_ASSERT_EQUAL_UINT64(random_state, session.random_state);
+        TEST_ASSERT_EQUAL_STRING("2000", session.conversions[0].display);
+        check_result(2U, false, "ans", "1/3");
+        TEST_ASSERT_EQUAL(CALCULATOR_OK, application_conversion_confirm(&session, 2U,
+            "x", "km", "m", &context, &entry, &error, &code));
+        TEST_ASSERT_EQUAL_STRING("1000/3", entry->display);
+    }
+}
+
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_conversion_confirmation_allocation_failures_preserve_history);
     RUN_TEST(test_delete_variable_preserves_ans_and_reclaims_capacity);
     RUN_TEST(test_quantity_assignment_allocation_failures_preserve_typed_state);
     RUN_TEST(test_quantity_sessions_keep_dimensions_and_confirmation_atomic);

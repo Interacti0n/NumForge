@@ -80,8 +80,8 @@ value, preventing accidental relabelling of an existing quantity.
 
 `POST /api/evaluate` continues to return the formatted `result` string, including
 the unit for quantities. Authoritative quantity metadata stays in the internal
-typed calculator value/session; this does not introduce a public C Quantity ABI
-or a machine-readable quantity snapshot endpoint. Display text is not a
+typed calculator value/session and versioned HTTP snapshots. This does not
+introduce a public C Quantity ABI. Display text is not a
 round-trip expression format, and copy text may contain display unit symbols.
 
 The dedicated `/api/convert` route still takes a numeric coordinate plus source
@@ -99,5 +99,8 @@ pi-based angle conversions retain the established working-precision policy;
 this is not a certified correctly-rounded API.
 
 General compound unit-string parsing, aliases for derived units such as newton,
-direct `5 m` literals, fractional dimensions, quantity snapshots for HTTP,
+direct `5 m` literals, fractional dimensions,
 unit-aware equations and further function contracts remain separate work.
+Versioned HTTP Quantity snapshots are available through the
+[session API](SESSION_HTTP_API.md), including dimensions, selected unit,
+temperature point/interval semantics and original context.

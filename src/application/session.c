@@ -33,6 +33,9 @@ void calculator_session_destroy(CalculatorSession *session)
     }
 
     calculator_session_clear_preview(session);
+    calculator_value_destroy(&session->detached_answer);
+    for (size_t i = 0; i < session->conversion_count; i++)
+        application_conversion_destroy(&session->conversions[i]);
     for (size_t index = 0U; index < session->count; index++)
     {
         calculator_value_destroy(&session->history[index].value);
@@ -41,6 +44,49 @@ void calculator_session_destroy(CalculatorSession *session)
     for(size_t i=0;i<session->variable_count;i++)
         calculator_value_destroy(&session->variables[i].value);
     memset(session, 0, sizeof(*session));
+}
+
+const CalculatorValue *calculator_session_answer(const CalculatorSession *session)
+{
+    if (session == NULL || session->released) return NULL;
+    if (session->count != 0U) return &session->history[session->count - 1U].value;
+    return session->detached_answer.number != NULL ? &session->detached_answer : NULL;
+}
+
+CalculatorStatus calculator_session_mutate(CalculatorSession *session,
+    uint64_t revision, CalculatorSessionAction action)
+{
+    if (session == NULL) return CALCULATOR_NULL_ARGUMENT;
+    if (revision == 0U || action < CALCULATOR_SESSION_RESET || action > CALCULATOR_SESSION_RELEASE)
+        return CALCULATOR_INVALID_ARGUMENT;
+    if (revision == session->revision && revision == session->lifecycle_revision &&
+        (unsigned int)action == session->lifecycle_action) return CALCULATOR_OK;
+    if (session->released) return CALCULATOR_SESSION_EXPIRED;
+    if (revision <= session->revision) return CALCULATOR_STALE_REQUEST;
+    if (action == CALCULATOR_SESSION_CLEAR_HISTORY) {
+        if (session->count != 0U) {
+            calculator_value_destroy(&session->detached_answer);
+            session->detached_answer = session->history[session->count - 1U].value;
+            memset(&session->history[session->count - 1U].value, 0, sizeof(CalculatorValue));
+        }
+        for (size_t i = 0; i < session->count; i++) {
+            calculator_value_destroy(&session->history[i].value);
+            free(session->history[i].display);
+        }
+        memset(session->history, 0, sizeof(session->history));
+        session->count = 0U;
+        calculator_session_clear_preview(session);
+    } else {
+        uint64_t conversion_revision = session->conversion_revision;
+        calculator_session_destroy(session);
+        session->conversion_revision = conversion_revision == UINT64_MAX ? UINT64_MAX : conversion_revision + 1U;
+        session->conversion_clear_revision = session->conversion_revision;
+        session->released = action == CALCULATOR_SESSION_RELEASE;
+    }
+    session->revision = revision;
+    session->lifecycle_revision = revision;
+    session->lifecycle_action = (unsigned int)action;
+    return CALCULATOR_OK;
 }
 
 static char *calculator_session_copy_text(const char *text)
@@ -66,6 +112,7 @@ CalculatorStatus calculator_session_delete_variable(CalculatorSession *session,
     CalculatorStatus status = CALCULATOR_OK;
     size_t length = name == NULL ? 0U : strlen(name);
     if (session == NULL || name == NULL) status = CALCULATOR_NULL_ARGUMENT;
+    else if (session->released) status = CALCULATOR_SESSION_EXPIRED;
     else if (revision == 0U || length == 0U || length > CALCULATOR_VARIABLE_NAME_BYTES)
         status = CALCULATOR_INVALID_ARGUMENT;
     else {
@@ -169,6 +216,10 @@ CalculatorStatus calculator_session_compute(
         calculator_error_set(error, CALCULATOR_NULL_ARGUMENT, 0U);
         return CALCULATOR_NULL_ARGUMENT;
     }
+    if (session->released) {
+        calculator_error_set(error, CALCULATOR_SESSION_EXPIRED, 0U);
+        return CALCULATOR_SESSION_EXPIRED;
+    }
     if (context->time_limit_ms < 0 || revision == 0U)
     {
         calculator_error_set(error, CALCULATOR_INVALID_ARGUMENT, 0U);
@@ -191,7 +242,8 @@ CalculatorStatus calculator_session_compute(
 
     /* Replay the latest successful confirmation verbatim, even after previews.
      * A reused identifier with different input/settings is always rejected. */
-    if (commit && last != NULL && last->revision > session->deletion_revision && revision == last->revision &&
+    if (commit && last != NULL && last->revision > session->deletion_revision &&
+        last->revision > session->lifecycle_revision && revision == last->revision &&
         strcmp(input, last->expression) == 0 &&
         context->division_scale == last->value.context.division_scale &&
         context->output_scale == last->value.context.output_scale &&
@@ -273,7 +325,7 @@ CalculatorStatus calculator_session_compute(
         else
         {
             status = calculator_compute_value_with_variables(expression, context,
-                last == NULL ? NULL : &last->value, &random_next,
+                calculator_session_answer(session), &random_next,
                 session->variables, session->variable_count, &value, error);
             if (status != CALCULATOR_OK && error != NULL)
                 error->offset += (size_t)(expression - input);
@@ -298,6 +350,7 @@ CalculatorStatus calculator_session_compute(
             calculator_session_clear_preview(session);
             if (commit)
             {
+                calculator_value_destroy(&session->detached_answer);
                 session->random_state = random_next;
                 if (assignment[0] != '\0')
                 {
@@ -316,6 +369,7 @@ CalculatorStatus calculator_session_compute(
                     session->count--;
                 }
                 last = &session->history[session->count++];
+                session->history_sequence++;
                 last->value = value;
                 last->display = display;
                 display = NULL;

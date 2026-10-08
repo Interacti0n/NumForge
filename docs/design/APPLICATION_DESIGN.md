@@ -7,8 +7,8 @@ The public numeric library can still be built and installed alone.
 | --- | --- | --- |
 | `numforge` / installed `NumForge::numforge` | Numeric source directories | Numeric types, algorithms, unit conversion and optional caller-owned budgets. |
 | `numforge_calculator` (private) | `src/calculator` | Tokenizer/AST, expression evaluation, Quantity arithmetic, owned values and numerical formatting. |
-| `numforge_application` (private) | `src/application` | Session lifecycle, variables, ans/history, preview/replay, random-state ownership and bounded client/cache storage. |
-| `numforge_client` (private HTTP adapters) | `src/web/web_api.c`, `unit_web.c`, `http_request.c` | Translate HTTP-oriented options into shared calls; frame requests and serialize unit responses. |
+| `numforge_application` (private) | `src/application` | Session lifecycle, variables, ans/history, preview/replay, random-state ownership, confirmed conversions and bounded client/cache storage. |
+| `numforge_client` (private HTTP adapters) | `src/web/web_api.c`, `unit_web.c`, `session_api.c`, `http_request.c` | Translate HTTP-oriented options into shared calls; frame requests and serialize unit responses. |
 | `calculator` / `numforge_web` | CLI / server entry points | CLI interaction / sockets, route dispatch, JSON and embedded assets. |
 | Browser | `web` | Input/caret, navigation, language, categories, tabs, clipboard and display mirrors. |
 
@@ -26,7 +26,9 @@ expressions the caller supplies state; the application decides whether preview
 draws become confirmed state.
 
 `CalculatorSession`, in `src/application/session.h`, owns variable/history
-values and one preview. Confirmation, deletion and revision handling remain
+values, confirmed conversions and one preview. Clearing calculator history moves
+its latest typed value into separately owned ans storage. Reset destroys values;
+release retains a bounded tombstone until FIFO eviction. Confirmation, deletion and revision handling remain
 shared by CLI and HTTP. UI summaries do not replace full stored values.
 Formatting projects values without overwriting their exact/approximate/Quantity
 representation.
@@ -42,16 +44,18 @@ thread-safe public multiuser backend.
 ## Presentation and future storage
 
 The engine has no database dependency and receives no DOM/layout state.
-Conversion history remains tab-local; its numerical results and authoritative
-snapshots come from C. Session history, response serialization and future
-persistence are application responsibilities.
+Confirmed conversion history belongs to the application session, independently
+of calculator ans/history and RNG. The browser retains presentation fields and
+the session ID, then reads authoritative saved values from the server.
 
-The [HTTP coverage audit](../reference/WEB_API_PARITY.md) records missing read/list, lifecycle
-and converter-history operations. This separation adds no new HTTP routes and
-does not publish a C calculator/session ABI.
+The [HTTP coverage](../reference/WEB_API_PARITY.md) and
+[session API](../reference/SESSION_HTTP_API.md) document list/read, lifecycle,
+function registry and converter-history routes. Snapshot schema version 1
+represents exact values, approximations, Quantity dimensions/units, temperature
+semantics and original context. Responses are bounded and paginated; full values
+are requested explicitly without silently rounding exact values.
 
-Before durable saving, define versioned snapshots for exact values,
-approximations, Quantity dimensions/units and original context. A future storage
+A future storage
 adapter/database belongs behind the application layer, independent of math
 algorithms. Accounts, ownership and authorization also belong there.
 

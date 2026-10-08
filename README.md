@@ -10,13 +10,17 @@
 [![C17](https://img.shields.io/badge/C-17-00599C.svg)](docs/guides/LIBRARY_GUIDE.md)
 [![CMake 3.20+](https://img.shields.io/badge/CMake-3.20%2B-064F8C.svg)](CMakeLists.txt)
 
-NumForge 2.0 is a C17 mathematics library for arbitrary-precision integers
+NumForge is a C17 mathematics library for arbitrary-precision integers
 (`BigInt`), exact decimals (`BigDecimal`), and reduced fractions
 (`BigRational`). It also includes optional command-line and local browser
 calculators. Both calculators use the same C expression parser and numeric
 library.
 
+**Released in 2.1.0:** unit conversion, dimensional arithmetic with `qty(...)`,
+session variables and ready-to-use application and C/C++ SDK downloads.
+
 [Try it locally](#get-started) · [See the calculator](#in-the-browser) ·
+[Use the C/C++ SDK](#cc-sdk) ·
 [Explore the architecture](#architecture) · [Browse the API](docs/API.md) ·
 [Latest release](https://github.com/Interacti0n/NumForge/releases/latest)
 
@@ -32,6 +36,13 @@ notation for fractions:
 | `2^128` | `340282366920938463463374607431768211456` |
 | `1/3 + 1/6` | `1/2` — an exact, reduced fraction |
 | `sqrt(4/9)` | `2/3` — an exact rational root |
+| `convert(90; "km/h"; "m/s")` | `25` — compatible unit conversion |
+| `qty(5; "m") * qty(5; "m")` | `25 m²` — dimensional arithmetic |
+
+Conversions with exact factors preserve fractions too:
+`convert(1/3; "km"; "m")` returns `1000/3`. The bilingual
+[unit converter](docs/guides/UNIT_CONVERTER.md) offers a sourced catalogue of
+233 units and checks compatibility before converting.
 
 For an irrational result, choose **Plain** notation and **40** output places:
 
@@ -130,20 +141,72 @@ glibc. No Node.js, Python or database is needed. See
 [release packaging](docs/project/RELEASE_PACKAGING.md) for compatibility and
 verification. A hosted demo remains future distribution work.
 
-For C/C++ development, download the separate `sdk-win-x64` or `sdk-linux-x64`
-asset and follow the [SDK quick start](docs/guides/SDK.md). SDKs include public
-headers, the static library, CMake exports and a working example. Windows uses
-MSVC Release `/MD`; Linux uses GCC/glibc. Check `BUILDINFO.json` for the compiler
-and runtime baseline. For other toolchains or a library-only source build, see
-the [library guide](docs/guides/LIBRARY_GUIDE.md).
-An installed CMake consumer links `NumForge::numforge`:
+## C/C++ SDK
+
+Use NumForge in your own application **without compiling the NumForge source
+tree**. Download a prebuilt SDK and its matching SHA-256 file from the
+[2.1.0 release](https://github.com/Interacti0n/NumForge/releases/tag/v2.1.0):
+
+| Platform | SDK archive | Toolchain |
+| --- | --- | --- |
+| Windows x64 | `NumForge-2.1.0-sdk-win-x64.zip` | MSVC, Release `/MD` |
+| Linux x64 | `NumForge-2.1.0-sdk-linux-x64.tar.gz` | GCC, glibc |
+
+Each SDK contains the public headers, a static library, relocatable CMake
+exports and a working example. It exposes BigInt, BigDecimal, BigRational,
+units and runtime APIs. C++ can use the same headers with automatic C linkage.
+The calculator parser, sessions and HTTP server belong to the application
+download, outside this numeric SDK.
+
+For example, exact decimal addition in C:
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <numforge/bigdecimal.h>
+
+int main(void)
+{
+    BigDecimal *a = bigdecimal_create(), *b = bigdecimal_create();
+    char *text = NULL;
+    int result = 1;
+    if (a == NULL || b == NULL) goto cleanup;
+    if (bigdecimal_set_string(a, "0.1") != BIGDECIMAL_OK ||
+        bigdecimal_set_string(b, "0.2") != BIGDECIMAL_OK ||
+        bigdecimal_add(a, a, b) != BIGDECIMAL_OK ||
+        bigdecimal_to_string(a, &text) != BIGDECIMAL_OK) goto cleanup;
+    printf("0.1 + 0.2 = %s\n", text); /* 0.1 + 0.2 = 0.3 */
+    result = 0;
+cleanup:
+    free(text);
+    bigdecimal_destroy(a);
+    bigdecimal_destroy(b);
+    return result;
+}
+```
+
+Link your C or C++ target through CMake:
 
 ```cmake
 find_package(NumForge 2.1 CONFIG REQUIRED)
 target_link_libraries(my_target PRIVATE NumForge::numforge)
 ```
 
-Existing 1.x numeric C signatures remain source compatible in 2.0. CMake
+Configure with `-DCMAKE_PREFIX_PATH=/absolute/path/to/extracted-sdk`. To try the
+included example, run these commands from the extracted SDK directory:
+
+```sh
+cmake -S example -B example-build -DCMAKE_BUILD_TYPE=Release
+cmake --build example-build --config Release
+```
+
+You need CMake and a compatible C/C++ compiler for your application. Check
+`BUILDINFO.json` for the compiler/runtime baseline; Windows requires a compatible
+x64 MSVC toolchain and `/MD`. The [SDK quick start](docs/guides/SDK.md) covers
+verification and platform setup. For other toolchains or a library-only source
+build, see the [library guide](docs/guides/LIBRARY_GUIDE.md).
+
+Existing 1.x numeric C signatures remain source compatible in 2.1. CMake
 consumers that explicitly requested package major version 1 must update their
 `find_package` requirement. The calculator and local HTTP server are optional
 clients, outside the public numeric C API.
@@ -246,7 +309,9 @@ Browse the [documentation guide](docs/README.md) by task or the
 | Document | Contents |
 | --- | --- |
 | [Variables](docs/guides/VARIABLES.md) | Session assignments, exact snapshots and lifetime. |
+| [Session HTTP API](docs/reference/SESSION_HTTP_API.md) | Typed values, saved histories, lifecycle and function discovery. |
 | [Library guide](docs/guides/LIBRARY_GUIDE.md) | Build, install, and consume the C library. |
+| [SDK quick start](docs/guides/SDK.md) | Download a prebuilt C/C++ library, choose a toolchain and link your application. |
 | [API overview](docs/API.md) | Public types, ownership, calculator syntax, and local HTTP API. |
 | [Architecture overview](docs/design/ARCHITECTURE.md) | Numeric layers, clients, ownership and project boundaries. |
 | [BigInt design](docs/design/BIGINT_DESIGN.md) | Representation, semantics, and implementation. |

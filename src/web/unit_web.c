@@ -179,181 +179,69 @@ static CalculatorStatus rational_status(BigRationalStatus status)
         default: return CALCULATOR_INVALID_ARGUMENT;
     }
 }
-static CalculatorStatus unit_status(NumForgeUnitStatus status)
+CalculatorStatus numforge_web_conversion_response(const ApplicationConversion *entry,
+    bool include_snapshot, char **response)
 {
-    switch (status)
-    {
-        case NUMFORGE_UNIT_OK: return CALCULATOR_OK;
-        case NUMFORGE_UNIT_OUT_OF_MEMORY: return CALCULATOR_OUT_OF_MEMORY;
-        case NUMFORGE_UNIT_VALUE_TOO_LARGE: return CALCULATOR_VALUE_TOO_LARGE;
-        case NUMFORGE_UNIT_SCALE_OVERFLOW: return CALCULATOR_SCALE_OVERFLOW;
-        default: return CALCULATOR_INVALID_ARGUMENT;
-    }
-}
-static CalculatorStatus read_only_input(const char *input, CalculatorError *error, const char **code)
-{
-    size_t length = 0;
-    while (length <= CALCULATOR_MAX_INPUT_BYTES && input[length]) ++length;
-    if (length > CALCULATOR_MAX_INPUT_BYTES) return CALCULATOR_VALUE_TOO_LARGE;
-    const char *assignment = memchr(input, '=', length);
-    if (assignment != NULL)
-    {
-        *code = "assignment_not_allowed";
-        calculator_error_set(error, CALCULATOR_INVALID_ARGUMENT, (size_t)(assignment-input));
-        return CALCULATOR_INVALID_ARGUMENT;
-    }
-    CalculatorTokenizer tokenizer;
-    CalculatorToken token;
-    CalculatorStatus status = calculator_tokenizer_init(&tokenizer, input);
-    while (status == CALCULATOR_OK)
-    {
-        status = calculator_tokenizer_next(&tokenizer, &token, error);
-        if (status != CALCULATOR_OK || token.type == CALCULATOR_TOKEN_END) break;
-        if (token.type == CALCULATOR_TOKEN_IDENTIFIER && token.length == 4 && memcmp(token.text, "rand", 4) == 0)
-        {
-            *code = "random_not_allowed";
-            calculator_error_set(error, CALCULATOR_INVALID_ARGUMENT, token.offset);
-            return CALCULATOR_INVALID_ARGUMENT;
+    if (entry == NULL || response == NULL) return CALCULATOR_NULL_ARGUMENT;
+    *response = NULL;
+    char *snapshot = NULL;
+    BigRational *exact = NULL;
+    CalculatorStatus status = CALCULATOR_OK;
+    if (include_snapshot) {
+        if (entry->value.kind == CALCULATOR_VALUE_DECIMAL) {
+            exact = bigrational_create();
+            if (exact == NULL) return CALCULATOR_OUT_OF_MEMORY;
+            status = rational_status(bigrational_from_bigdecimal(exact, entry->value.number));
         }
+        if (status == CALCULATOR_OK)
+            status = rational_status(bigrational_to_string(exact != NULL ? exact : entry->value.rational, &snapshot));
+        bigrational_destroy(exact);
+        if (status != CALCULATOR_OK) return status;
+        if (strlen(snapshot) > CALCULATOR_MAX_OUTPUT_BYTES) { free(snapshot); return CALCULATOR_VALUE_TOO_LARGE; }
     }
-    return status;
+    const NumForgeUnitInfo *to = numforge_unit_find(entry->to);
+    JsonBuffer buffer = { numforge_malloc(UNIT_JSON_CAPACITY), 0, true };
+    if (buffer.data == NULL) { free(snapshot); return CALCULATOR_OUT_OF_MEMORY; }
+    json_append(&buffer, "{\"ok\":true,\"result\":"); json_string(&buffer, entry->display);
+    json_append(&buffer, ",\"unit\":"); json_string(&buffer, entry->to);
+    json_append(&buffer, ",\"symbol\":"); json_string(&buffer, to->symbol);
+    json_append(&buffer, ",\"input_approximate\":%s,\"factor_approximate\":%s",
+        entry->input_approximate ? "true" : "false", entry->factor_approximate ? "true" : "false");
+    if (snapshot != NULL) {
+        json_append(&buffer, ",\"value\":{\"kind\":\"%s\",\"text\":",
+            entry->value.kind == CALCULATOR_VALUE_DECIMAL ? "decimal_approximation" : "rational");
+        json_string(&buffer, snapshot);
+        json_append(&buffer, ",\"unit\":"); json_string(&buffer, entry->to);
+        json_append(&buffer, ",\"precision\":%lld}", (long long)entry->value.context.division_scale);
+    }
+    json_append(&buffer, "}");
+    free(snapshot);
+    if (!buffer.valid) { free(buffer.data); return CALCULATOR_VALUE_TOO_LARGE; }
+    *response = buffer.data;
+    return CALCULATOR_OK;
 }
 CalculatorStatus numforge_web_convert(const CalculatorSession *session,
     const char *input, const NumForgeConversionOptions *options,
     char **response, CalculatorError *error, const char **code)
 {
-    CalculatorValue source = {0}, converted = {0};
-    BigRational *exact = NULL;
-    char *display = NULL, *snapshot = NULL;
-    CalculatorStatus status = CALCULATOR_OK;
-    bool owner = false;
     if (response != NULL) *response = NULL;
-    if (code != NULL) *code = "expression_error";
-    calculator_error_clear(error);
-    if (input == NULL || options == NULL || response == NULL || code == NULL)
-    {
-        calculator_error_set(error, CALCULATOR_NULL_ARGUMENT, 0);
-        return CALCULATOR_NULL_ARGUMENT;
+    if (options == NULL || response == NULL || code == NULL) return CALCULATOR_NULL_ARGUMENT;
+    if (options->precision != options->context.division_scale) {
+        *code = "invalid_options";
+        calculator_error_set(error, CALCULATOR_INVALID_ARGUMENT, 0);
+        return CALCULATOR_INVALID_ARGUMENT;
     }
-    const CalculatorContext *context = &options->context;
-    if (options->precision < 1 || options->precision > CALCULATOR_MAX_OUTPUT_SCALE ||
-        context->output_scale < -1 || context->output_scale > CALCULATOR_MAX_OUTPUT_SCALE ||
-        context->rounding < BIGDECIMAL_ROUND_TOWARD_ZERO || context->rounding > BIGDECIMAL_ROUND_HALF_EVEN ||
-        context->notation < CALCULATOR_NOTATION_AUTO || context->notation > CALCULATOR_NOTATION_FRACTION ||
-        context->angle_unit < CALCULATOR_ANGLE_RADIANS || context->angle_unit > CALCULATOR_ANGLE_DEGREES ||
-        context->time_limit_ms < 0 || context->division_scale != options->precision)
-    { *code = "invalid_options"; status = CALCULATOR_INVALID_ARGUMENT; goto cleanup; }
-    const NumForgeUnitInfo *from = numforge_unit_find(options->from), *to = numforge_unit_find(options->to);
-    if (from == NULL || to == NULL)
-    { *code = "unknown_unit"; status = CALCULATOR_INVALID_ARGUMENT; goto cleanup; }
-    if (!numforge_units_compatible(options->from, options->to))
-    { *code = "incompatible_units"; status = CALCULATOR_INVALID_ARGUMENT; goto cleanup; }
-    owner = numforge_budget_begin((uint64_t)context->time_limit_ms,
+    ApplicationConversion entry = {0};
+    bool owner = numforge_budget_begin((uint64_t)options->context.time_limit_ms,
         CALCULATOR_ALLOCATION_BUDGET, CALCULATOR_SINGLE_ALLOCATION);
-    status = read_only_input(input, error, code);
-    if (status != CALCULATOR_OK) goto cleanup;
-    const CalculatorValue *answer = session != NULL && session->count != 0 ?
-        &session->history[session->count-1].value : NULL;
-    CalculatorVariable empty[1] = {0};
-    status = calculator_compute_value_with_variables(input, context, answer, NULL,
-        session == NULL ? empty : session->variables, session == NULL ? 0 : session->variable_count,
-        &source, error);
-    if (status != CALCULATOR_OK) goto cleanup;
-    if (source.quantity)
-    {
-        *code = "quantity_not_allowed";
-        status = CALCULATOR_DIMENSION_ERROR;
-        goto cleanup;
-    }
-    exact = bigrational_create();
-    converted.number = bigdecimal_create();
-    if (exact == NULL || converted.number == NULL) { status = CALCULATOR_OUT_OF_MEMORY; goto cleanup; }
-    if (source.kind == CALCULATOR_VALUE_INTEGER)
-        status = rational_status(bigrational_from_bigint(exact, source.integer));
-    else if (source.kind == CALCULATOR_VALUE_RATIONAL)
-        status = rational_status(bigrational_copy(exact, source.rational));
-    else status = rational_status(bigrational_from_bigdecimal(exact, source.number));
-    if (status != CALCULATOR_OK) goto cleanup;
-    bool factor_approximate = !numforge_unit_conversion_is_exact(options->from, options->to);
-    if (!factor_approximate)
-    {
-        status = unit_status(numforge_unit_convert_rational(exact, exact, options->from, options->to));
-        if (status != CALCULATOR_OK) goto cleanup;
-        converted.rational = exact; exact = NULL;
-        converted.kind = CALCULATOR_VALUE_RATIONAL;
-        if (source.kind == CALCULATOR_VALUE_DECIMAL)
-        {
-            status = rational_status(bigrational_to_bigdecimal(converted.number, converted.rational,
-                options->precision, context->rounding));
-            if (status != CALCULATOR_OK) goto cleanup;
-            converted.kind = CALCULATOR_VALUE_DECIMAL;
-        }
-    }
-    else
-    {
-        /* Project at working precision only on the approximate angle branch.
-         * Exact conversions never pass through source.number. */
-        status = rational_status(bigrational_to_bigdecimal(converted.number, exact,
-            options->precision + CALCULATOR_ANGLE_GUARD_DIGITS, context->rounding));
-        if (status == CALCULATOR_OK) status = unit_status(numforge_unit_convert_decimal(
-            converted.number, converted.number, options->from, options->to,
-            options->precision, context->rounding));
-        if (status != CALCULATOR_OK) goto cleanup;
-        converted.kind = CALCULATOR_VALUE_DECIMAL;
-    }
-    converted.context = *context;
-    status = calculator_format_value(&converted, context, &display);
-    if (status != CALCULATOR_OK) goto cleanup;
-    if (options->snapshot)
-    {
-        /* Serialize the authoritative value, never its rounded display. A
-         * decimal approximation is a finite rational snapshot with provenance. */
-        if (converted.kind == CALCULATOR_VALUE_DECIMAL)
-        {
-            if (exact == NULL) exact = bigrational_create();
-            if (exact == NULL) { status = CALCULATOR_OUT_OF_MEMORY; goto cleanup; }
-            status = rational_status(bigrational_from_bigdecimal(exact, converted.number));
-        }
-        if (status == CALCULATOR_OK) status = rational_status(bigrational_to_string(
-            converted.kind == CALCULATOR_VALUE_DECIMAL ? exact : converted.rational, &snapshot));
-        if (status != CALCULATOR_OK) goto cleanup;
-        if (strlen(snapshot) > CALCULATOR_MAX_OUTPUT_BYTES)
-        { status = CALCULATOR_VALUE_TOO_LARGE; goto cleanup; }
-    }
-    JsonBuffer buffer = { numforge_malloc(UNIT_JSON_CAPACITY), 0, true };
-    if (buffer.data == NULL) { status = CALCULATOR_OUT_OF_MEMORY; goto cleanup; }
-    json_append(&buffer, "{\"ok\":true,\"result\":"); json_string(&buffer, display);
-    json_append(&buffer, ",\"unit\":"); json_string(&buffer, to->id);
-    json_append(&buffer, ",\"symbol\":"); json_string(&buffer, to->symbol);
-    json_append(&buffer, ",\"input_approximate\":%s,\"factor_approximate\":%s",
-        source.kind == CALCULATOR_VALUE_DECIMAL ? "true" : "false", factor_approximate ? "true" : "false");
-    if (snapshot != NULL)
-    {
-        json_append(&buffer, ",\"value\":{\"kind\":\"%s\",\"text\":",
-            converted.kind == CALCULATOR_VALUE_DECIMAL ? "decimal_approximation" : "rational");
-        json_string(&buffer, snapshot);
-        json_append(&buffer, ",\"unit\":"); json_string(&buffer, to->id);
-        json_append(&buffer, ",\"precision\":%lld}", (long long)options->precision);
-    }
-    json_append(&buffer, "}");
-    if (buffer.valid) *response = buffer.data;
-    else { free(buffer.data); status = CALCULATOR_VALUE_TOO_LARGE; }
-cleanup:
-    status = calculator_budget_status(status);
-    if (status != CALCULATOR_OK)
-    {
-        free(*response); *response = NULL;
-        if (error == NULL || error->status == CALCULATOR_OK) calculator_error_set(error, status, 0);
-        else if (error->status != status) calculator_error_set(error, status, error->offset);
-        if (status == CALCULATOR_TIME_LIMIT) *code = "time_limit";
-        else if (status == CALCULATOR_VALUE_TOO_LARGE) *code = "value_too_large";
-        else if (status == CALCULATOR_OUT_OF_MEMORY) *code = "out_of_memory";
-    }
-    free(display);
-    free(snapshot);
-    bigrational_destroy(exact);
-    calculator_value_destroy(&source);
-    calculator_value_destroy(&converted);
+    CalculatorStatus status = application_conversion_compute(session, input, options->from,
+        options->to, &options->context, &entry, error, code);
+    if (status == CALCULATOR_OK) status = numforge_web_conversion_response(&entry, options->snapshot, response);
+    application_conversion_destroy(&entry);
+    if (status != CALCULATOR_OK) calculator_error_set(error, status, error == NULL ? 0 : error->offset);
+    if (status == CALCULATOR_TIME_LIMIT) *code = "time_limit";
+    else if (status == CALCULATOR_VALUE_TOO_LARGE) *code = "value_too_large";
+    else if (status == CALCULATOR_OUT_OF_MEMORY) *code = "out_of_memory";
     if (owner) numforge_budget_end();
     return status;
 }

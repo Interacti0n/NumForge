@@ -12,7 +12,8 @@ of its last confirmed assignment using that assignment's display settings;
 very long text is shortened. The server retains the full typed value and clicking
 the name uses that value, including exact fractions and units. Preview or failed
 assignments leave the list unchanged. Tool/language navigation keeps the list;
-New session or reload clears it together with the calculator session.
+New session clears it together with the calculator session. Reload retains the
+tab's ID and fetches the authoritative variable/history lists from the server.
 
 Use the × button beside a variable to delete it and reclaim one slot. Deletion
 leaves `ans`, history and random state unchanged; other variables retain their
@@ -44,9 +45,10 @@ reserved function names.
 - Use names anywhere an expression accepts a value: `sqrt(x)`, `x+y`, `2*x`.
 - Undefined names produce a located error. Chained/nested assignments and
   user-defined functions are not supported.
-- New session, CLI `reset`, browser reload, server restart or session eviction
+- New session, CLI `reset`, explicit HTTP reset/release, server restart or session eviction
   discards variables. In-app navigation/language changes keep the same session.
-  No persistence or synchronization is added.
+  Reload also retains the tab's ID. Server snapshots synchronize displayed lists;
+  no disk persistence, account or cross-tab sharing is added.
 
 ## Stored values
 

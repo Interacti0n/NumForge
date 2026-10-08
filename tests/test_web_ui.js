@@ -8,7 +8,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../web/calculator.js'), 'utf8');
 const instrumentedSource = source.replace('return () => {\n    lifecycle.abort();',
-    'window.__numforgeTest = {ensureSession, calculate, appendHistory};\nreturn () => {\n    lifecycle.abort();');
+    'window.__numforgeTest = {ensureSession, calculate, refreshSession};\nreturn () => {\n    lifecycle.abort();');
 assert.notEqual(instrumentedSource, source, 'calculator test hooks must be installed');
 
 async function createUI(english) {
@@ -31,6 +31,9 @@ async function createUI(english) {
         return elements.get(id);
     }
     const pending = [], timers = [], copied = [];
+    const server = {entries:[], sequence:0, revision:0};
+    const jsonResponse = data => Promise.resolve({ok:true,status:200,headers:{get:()=> 'application/json'},json:async()=>data});
+
     const clear = element('clear'); clear.dataset.action = 'clear';
     const insert = element('insert'); insert.dataset.insert = '1';
     const angleRad = element('angle-rad'); angleRad.dataset.angle = 'rad';
@@ -52,12 +55,24 @@ async function createUI(english) {
         getComputedStyle: () => ({lineHeight: '20px', paddingTop: '8px', paddingBottom: '8px',
             borderTopWidth: '1px', borderBottomWidth: '1px'}),
         crypto: {getRandomValues: bytes => bytes.fill(1)},
-        TypeError, SyntaxError,
+        TypeError, SyntaxError, URLSearchParams,
         setTimeout: callback => (timers.push(callback), timers.length),
         clearTimeout() {},
-        fetch: (url, options) => url.endsWith('&action=start')
-            ? Promise.resolve({ok: true, headers: {get: () => 'application/json'}, json: async () => ({ok: true, result: ''})})
-            : new Promise((resolve, reject) => pending.push({url, options, resolve, reject}))
+        fetch: (url, options) => {
+            if(url.startsWith('/api/functions')) return jsonResponse({ok:true,functions:[]});
+            if(url.startsWith('/api/session')) {
+                const query=new URLSearchParams(url.split('?')[1]);
+                const data={ok:true,revision:String(server.revision),history_sequence:String(server.sequence)};
+                if(url.startsWith('/api/session/history')) {
+                    const offset=Number(query.get('offset')||0);
+                    data.items=server.entries.slice(offset,offset+1);
+                    data.next_offset=offset+1<server.entries.length?offset+1:null;
+                } else if(url.startsWith('/api/session/variables')) {data.items=[];data.next_offset=null;}
+                return jsonResponse(data);
+            }
+            return url.endsWith('&action=start') ? jsonResponse({ok:true,result:''})
+                : new Promise((resolve,reject)=>pending.push({url,options,resolve,reject}));
+        }
     };
     vm.runInNewContext(instrumentedSource, runtime);
     Object.assign(runtime, runtime.window.__numforgeTest);
@@ -70,10 +85,21 @@ async function createUI(english) {
         element('#expression').value = value;
         return element('#calculator').listeners.submit({preventDefault() {}});
     };
-    const respond = (index, result, extra = {}) => pending[index].resolve({
-        ok: true, headers: {get: () => 'application/json'}, json: async () => ({ok: true, result, ...extra})
-    });
-    return {element, pending, preview, confirm, respond, clear, insert, timers, copied, runtime};
+    const respond = (index, result, extra = {}) => {
+        const request=pending[index];
+        if(request.url.includes('&action=commit')) {
+            const query=new URLSearchParams(request.url.split('?')[1]);
+            const id=query.get('revision');
+            if(!server.entries.some(entry=>entry.id===id)) {
+                server.sequence++;
+                server.entries.push({id,expression:request.options.body,display:result,value:{context:{places:10,angle:query.get('angle'),notation:query.get('notation')||'auto'}}});
+                server.entries=server.entries.slice(-16);
+            }
+            server.revision=Math.max(server.revision,Number(id));
+        }
+        request.resolve({ok:true,headers:{get:()=> 'application/json'},json:async()=>({ok:true,result,...extra})});
+    };
+    return {element, pending, preview, confirm, respond, clear, insert, timers, copied, runtime, server};
 }
 
 async function test(english) {
@@ -215,6 +241,7 @@ async function testConfirmation(english) {
     assert.equal(ui.pending[2].options.body, 'ans+1');
     assert.equal(ui.element('#expression').value, 'ans+1', 'retry restores the captured expression');
     ui.respond(2, '6'); await retry;
+    await ui.runtime.refreshSession();
     assert.equal(ui.element('#history-list').children.length, 1);
     assert.equal(ui.element('#history-list').children[0].children[0].textContent, '#1');
     const item = ui.element('#history-list').children[0].children[1];
@@ -229,6 +256,7 @@ async function testConfirmation(english) {
     ui.element('#expression').value = '2+2';
     ui.element('#expression').listeners.input();
     ui.respond(3, '7'); await next;
+    await ui.runtime.refreshSession();
     assert.equal(ui.element('#history-list').children.length, 2, 'late confirmation still enters history');
     assert.equal(ui.element('#history-list').children[1].children[0].textContent, '#2');
     assert.equal(ui.element('#result').textContent, '', 'late result does not replace newer input preview');
@@ -236,8 +264,9 @@ async function testConfirmation(english) {
 
 async function testHistoryNumbering(english) {
     const ui = await createUI(english);
-    for (let number = 1; number <= 18; number++)
-        ui.runtime.appendHistory({input: String(number), precision: '10', angle: 'rad', notation: 'auto'}, String(number));
+    ui.server.sequence=18;
+    ui.server.entries=Array.from({length:16},(_,i)=>({id:String(i+3),expression:String(i+3),display:String(i+3),value:{context:{places:10,angle:'rad',notation:'auto'}}}));
+    await ui.runtime.refreshSession();
     const rows = ui.element('#history-list').children;
     assert.equal(rows.length, 16);
     assert.equal(rows[0].children[0].textContent, '#3');

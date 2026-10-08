@@ -93,16 +93,16 @@ automatic repeat requests and precision changes. A successful commit adopts
 those draws and advances the session generator once per occurrence. A new
 intentional commit makes fresh draws. Failed requests and replay of the same
 successful commit do not advance it. Each session has its own generator state;
-reloading or resetting starts a new sequence. One-shot and legacy HTTP requests
+resetting starts a new sequence; reloading retains the session. One-shot and legacy HTTP requests
 draw afresh and do not cache random expressions.
 
 The session pool is separate from the legacy cache: eight sessions, FIFO
 eviction, 16 confirmed entries each and less than 4 MiB retained history per
 session. Each entry stores input, internal value, context and display. Evaluation
 of an unknown/evicted session returns `session expired; reload the page` and
-never starts another session implicitly. Reload and New session use a fresh
-random ID; language and guide navigation in the same tab reuse the ID and
-revision through session storage. Server restart loses all sessions. IDs are
+never starts another session implicitly. Reload, language and guide navigation
+reuse the tab ID and read its current revision from the server. New session
+explicitly resets existing state through the session API. Server restart loses all sessions. IDs are
 not authentication. History buttons restore only input, so expressions with
 `ans` use the current answer when evaluated again. CLI `history` lists its
 session entries; `reset` clears them and ans, retaining precision, angle and
@@ -144,3 +144,6 @@ The example body above is exactly six UTF-8 bytes and has no trailing newline.
 
 See [Web/API coverage](WEB_API_PARITY.md) for available calls and remaining gaps,
 and [Unit HTTP API](UNIT_HTTP_API.md) for catalogue and conversion routes.
+The [session HTTP API](SESSION_HTTP_API.md) adds read-only typed variables/history,
+explicit lifecycle actions, a function registry and confirmed conversion history.
+Its reads do not consume evaluation revisions or alter calculator previews.

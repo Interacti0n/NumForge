@@ -11,6 +11,28 @@
 
 /* Typed value ownership, exact projection, and output selection. */
 
+CalculatorStatus calculator_value_snapshot_text(const CalculatorValue *value, char **result)
+{
+    if (value == NULL || result == NULL) return CALCULATOR_NULL_ARGUMENT;
+    *result = NULL;
+    CalculatorStatus status = CALCULATOR_OK;
+    if (value->kind == CALCULATOR_VALUE_INTEGER) {
+        *result = bigint_to_string(value->integer);
+        if (*result == NULL) status = CALCULATOR_OUT_OF_MEMORY;
+    } else if (value->kind == CALCULATOR_VALUE_RATIONAL) {
+        BigRationalStatus converted = bigrational_to_string(value->rational, result);
+        if (converted != BIGRATIONAL_OK) status = converted == BIGRATIONAL_OUT_OF_MEMORY ? CALCULATOR_OUT_OF_MEMORY : CALCULATOR_VALUE_TOO_LARGE;
+    } else {
+        BigDecimalStatus converted = bigdecimal_format_mode(value->number, -1, value->context.rounding,
+            BIGDECIMAL_FORMAT_SCIENTIFIC, CALCULATOR_MAX_OUTPUT_BYTES, result);
+        if (converted != BIGDECIMAL_OK) status = converted == BIGDECIMAL_OUT_OF_MEMORY ? CALCULATOR_OUT_OF_MEMORY : CALCULATOR_VALUE_TOO_LARGE;
+    }
+    status = calculator_budget_status(status);
+    if (status == CALCULATOR_OK && strlen(*result) > CALCULATOR_MAX_OUTPUT_BYTES) status = CALCULATOR_VALUE_TOO_LARGE;
+    if (status != CALCULATOR_OK) { free(*result); *result = NULL; }
+    return status;
+}
+
 void calculator_value_destroy(CalculatorValue *value)
 {
     if (value != NULL)

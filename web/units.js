@@ -54,26 +54,10 @@ function initUnits() {
     let catalogue = [], category = 'length', generation = 0, timer = null;
     let conversion = null, catalogRequest = null, copyValue = '', disposed = false;
     let client = '';
-    let confirming = false, retryConfirmation = false;
-    const history = window.numforgeUnitHistory || {entries:[],sequence:0};
-    window.numforgeUnitHistory = history;
-    if (!history.entries.length) {
-        try {
-            const saved=JSON.parse(sessionStorage.getItem('numforge-units-history') || 'null');
-            if (Array.isArray(saved?.entries) && Number.isSafeInteger(saved.sequence) && saved.sequence>=0 &&
-                new TextEncoder().encode(JSON.stringify(saved)).length<=1024*1024) {
-                history.entries=saved.entries.slice(-16).filter(e=>e && typeof e.expression==='string' && e.expression.length<=4096 &&
-                    typeof e.category==='string' && typeof e.from==='string' && typeof e.to==='string' &&
-                    Number.isSafeInteger(e.number) && e.number>0 && e.number<=saved.sequence &&
-                    e.body?.ok===true && typeof e.body.result==='string' && typeof e.body.symbol==='string' &&
-                    e.body.unit===e.to && e.body.value?.unit===e.to &&
-                    ['rational','decimal_approximation'].includes(e.body.value.kind) &&
-                    typeof e.body.value.text==='string' && /^-?\d+(?:\/[1-9]\d*)?$/.test(e.body.value.text) &&
-                    typeof e.settings==='object' && e.settings!==null);
-                history.sequence=saved.sequence;
-            }
-        } catch (_) {}
-    }
+    let confirming = false, retryConfirmation = false, confirmationRequest = 0, historyRefresh = 0;
+    const history = {entries:[],sequence:0};
+    let conversionRevision = 0n, pendingConversion = null;
+    let sessionReady = null;
     const input = $('unit-input'), from = $('unit-from'), to = $('unit-to');
     const status = $('unit-status'), result = $('unit-result'), meta = $('unit-result-meta');
     const fields = ['unit-precision','unit-places-mode','unit-places','unit-notation','unit-rounding','unit-angle'];
@@ -99,7 +83,67 @@ function initUnits() {
         try { sessionStorage.setItem('numforge-units-state',JSON.stringify({input:input.value,category,from:from.value,to:to.value,...Object.fromEntries(fields.map(id=>[id,$(id).value]))})); } catch (_) {}
     }
     function saveHistory() {
-        try { sessionStorage.setItem('numforge-units-history',JSON.stringify(history)); } catch (_) {}
+        // UI keeps an in-memory mirror only; server owns confirmed snapshots.
+        try {
+            if (pendingConversion) sessionStorage.setItem('numforge-units-pending',JSON.stringify(pendingConversion));
+            else sessionStorage.removeItem('numforge-units-pending');
+        } catch (_) {}
+    }
+    function conversionEntry(entry) {
+        const context=entry.value.context;
+        const category=catalogue.find(u=>u.id===entry.from)?.quantity;
+        return {id:entry.id,expression:entry.expression,category,from:entry.from,to:entry.to,
+            settings:{'unit-precision':String(context.precision),'unit-places-mode':context.places===-1?'full':context.places===10?'auto':'custom',
+                'unit-places':String(context.places===-1?10:context.places),'unit-notation':context.notation,
+                'unit-rounding':context.rounding,'unit-angle':context.angle},
+            body:{ok:true,result:entry.result,unit:entry.to,symbol:entry.symbol,
+                input_approximate:entry.input_approximate,factor_approximate:entry.factor_approximate,
+                value:{...entry.value,unit:entry.to}},number:0};
+    }
+    async function unitRead(path) {
+        const response=await fetch(path,{signal:lifecycle.signal});
+        const body=await response.json();
+        if(!response.ok || !body.ok) throw Error(text.expressionErrors[body.status] || body.error || text.network);
+        return body;
+    }
+    async function ensureUnitSession() {
+        if(sessionReady) return sessionReady;
+        sessionReady=(async()=>{
+            if(!client) {
+                client=sessionStorage.getItem('numforge-client-id') || '';
+                if(!/^[0-9a-f]{32}$/.test(client)) {
+                    const bytes=crypto.getRandomValues(new Uint8Array(16));
+                    client=[...bytes].map(v=>v.toString(16).padStart(2,'0')).join('');
+                    sessionStorage.setItem('numforge-client-id',client);
+                }
+            }
+            await fetch('/api/evaluate?precision=10&angle=rad&client='+client+'&revision=1&action=start',{method:'POST',body:''}).then(async response=>{
+                const body=await response.json();if(!response.ok || !body.ok)throw Error(body.error || text.network);
+            });
+            const state=await unitRead('/api/session?client='+client);
+            conversionRevision=BigInt(state.conversion_revision);
+            try {pendingConversion=JSON.parse(sessionStorage.getItem('numforge-units-pending') || 'null');} catch(_) {}
+        })().catch(error=>{sessionReady=null;throw error;});
+        return sessionReady;
+    }
+    async function refreshUnitHistory() {
+        const refresh=++historyRefresh;
+        await ensureUnitSession();
+        for(let attempt=0;attempt<3;attempt++) {
+            try {
+                const state=await unitRead('/api/session?client='+client);
+                const entries=[];let offset=0;
+                do {
+                    const page=await unitRead('/api/conversions?client='+client+'&limit=1&full=1&offset='+offset+'&at='+state.conversion_revision);
+                    entries.push(...page.items.map(conversionEntry));offset=page.next_offset;
+                } while(offset!==null);
+                if(disposed || refresh!==historyRefresh)return;
+                conversionRevision=BigInt(state.conversion_revision);
+                history.sequence=Number(state.conversion_sequence);
+                entries.forEach((entry,i)=>{entry.number=history.sequence-entries.length+i+1;});
+                history.entries=entries;renderHistory();return;
+            } catch(error) {if(attempt===2)throw error;}
+        }
     }
     function showResult(body, message) {
         result.textContent=body.result; $('unit-result-symbol').textContent=body.symbol;
@@ -113,12 +157,15 @@ function initUnits() {
         $('unit-history-empty').textContent=english?'Confirmed conversions appear here.':'Sem sa uložia potvrdené prevody.';
         $('unit-history-empty').hidden=history.entries.length!==0;
         $('unit-history-clear').disabled=history.entries.length===0;
-        for (const entry of [...history.entries].reverse()) {
+        for (let entry of [...history.entries].reverse()) {
             const item=document.createElement('li');
             const restore=document.createElement('button');restore.type='button';restore.className='unit-history-restore';
             restore.textContent=`${entry.number}. ${entry.expression.slice(0,80)} ${entry.from} → ${entry.body.result.slice(0,80)} ${entry.body.symbol}`;
             restore.title=english?'Restore stored conversion':'Obnoviť uložený prevod';
-            restore.addEventListener('click',()=>{
+            restore.addEventListener('click',async()=>{
+                try {
+                const page=await unitRead('/api/conversions?client='+client+'&id='+entry.id+'&full=1');
+                entry=conversionEntry(page.items[0]);
                 input.value=entry.expression;
                 for (const id of fields) {
                     const value=entry.settings[id];
@@ -127,6 +174,7 @@ function initUnits() {
                 updatePlaces(); chooseCategory(entry.category,[entry.from,entry.to]);
                 invalidate();root.removeAttribute('aria-busy');save();
                 showResult(entry.body,english?'Stored conversion · original value':'Uložený prevod · pôvodná hodnota');
+                } catch(error){if(!disposed)setStatus(error.message,true);}
             },{signal:lifecycle.signal});
             const copy=document.createElement('button');copy.type='button';copy.className='unit-history-copy';copy.textContent='⧉';
             copy.setAttribute('aria-label',english?'Copy stored numeric value':'Skopírovať uloženú číselnú hodnotu');
@@ -137,7 +185,17 @@ function initUnits() {
             item.append(restore,copy);$('unit-history-list').append(item);
         }
     }
-    $('unit-history-clear').addEventListener('click',()=>{history.entries=[];history.sequence=0;saveHistory();renderHistory();},{signal:lifecycle.signal});
+    $('unit-history-clear').addEventListener('click',async()=>{
+        if(confirming || pendingConversion)return;
+        const revision=String(conversionRevision+1n);
+        pendingConversion={action:'clear',revision};saveHistory();
+        try {
+            const response=await fetch('/api/conversions?client='+client+'&action=clear&revision='+revision,{method:'POST',body:'',signal:AbortSignal.timeout(10000)});
+            const body=await response.json();
+            if(!response.ok || !body.ok){pendingConversion=null;saveHistory();throw Error(body.error || text.network);}
+            pendingConversion=null;saveHistory();await refreshUnitHistory();
+        } catch(error){setStatus(error.message,true);retryConfirmation=true;$('unit-retry').hidden=false;}
+    },{signal:lifecycle.signal});
     function setStatus(message, error=false) { status.textContent=message; status.classList.toggle('error',error); }
     function invalidate() {
         ++generation; clearTimeout(timer); conversion?.abort();
@@ -200,42 +258,67 @@ function initUnits() {
     }
     async function calculate(confirm=false, id=generation) {
         if (disposed || !catalogue.length || id!==generation) return;
-        const expression=input.value.trim();
+        let expression=input.value.trim();
         if (!expression) { setStatus(text.empty); return; }
         const precision=$('unit-precision').value, places=$('unit-places-mode').value==='full'?'full':$('unit-places-mode').value==='custom'?$('unit-places').value:'10';
         if (!/^\d+$/.test(precision) || Number(precision)<1 || Number(precision)>10000 ||
             (places!=='full' && (!/^\d+$/.test(places) || Number(places)>10000))) { setStatus(text.settings,true); return; }
         conversion=new AbortController();
+        const confirmation=confirm?++confirmationRequest:0;
         const query=new URLSearchParams({from:from.value,to:to.value,precision,places,rounding:$('unit-rounding').value,notation:$('unit-notation').value,angle:$('unit-angle').value});
-        if (confirm) query.set('snapshot','1');
-        const entry={expression,category,from:from.value,to:to.value,settings:Object.fromEntries(fields.map(id=>[id,$(id).value]))};
+
         if (confirm) {confirming=true;$('unit-submit').disabled=true;}
-        if (client) query.set('client',client);
-        setStatus(text.calculating); root.setAttribute('aria-busy','true');
         try {
-            const response=await fetch('/api/convert?'+query,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:expression,signal:conversion.signal});
-            const body=await response.json();
+        await ensureUnitSession();
+        query.set('client',client);
+        let endpoint='/api/convert?'+query;
+        if(confirm) {
+            if(pendingConversion?.action==='clear') {
+                endpoint='/api/conversions?client='+client+'&action=clear&revision='+pendingConversion.revision;
+                expression='';
+            } else {
+                if(!pendingConversion) pendingConversion={action:'commit',revision:String(conversionRevision+1n),expression,query:query.toString()};
+                expression=pendingConversion.expression;
+                endpoint='/api/conversions?'+pendingConversion.query+'&action=commit&revision='+pendingConversion.revision;
+            }
+            saveHistory();
+        }
+        setStatus(text.calculating); root.setAttribute('aria-busy','true');
+            const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:expression,signal:confirm?AbortSignal.timeout(10000):conversion.signal});
+            let body=await response.json();
+            if(confirm && response.ok && body.ok){
+                pendingConversion=null;saveHistory();
+                conversionRevision=BigInt(body.conversion_revision);
+                confirming=false;if(!disposed)$('unit-submit').disabled=false;
+            }
             if (id!==generation || disposed) return;
             if (!response.ok || !body.ok) {
+                if(confirm){pendingConversion=null;saveHistory();}
                 const message=text.errors[body.code] || text.expressionErrors[body.status] || text.expression;
                 setStatus(message+(Number.isSafeInteger(body.column)?` ${text.column} ${body.column}.`:''),true);
                 return;
             }
-            if (typeof body.result!=='string' || body.unit!==to.value || typeof body.symbol!=='string') throw Error('Invalid result');
             if(confirm) {
-                if (!body.value || body.value.unit!==entry.to || typeof body.value.text!=='string' ||
-                    !['rational','decimal_approximation'].includes(body.value.kind) || !/^-?\d+(?:\/[1-9]\d*)?$/.test(body.value.text)) throw Error('Invalid snapshot');
-                history.entries.push({...entry,body,number:++history.sequence});
-                history.entries=history.entries.slice(-16);
-                while(new TextEncoder().encode(JSON.stringify(history)).length>1024*1024 && history.entries.length>1) history.entries.shift();
-                saveHistory();renderHistory();retryConfirmation=false;
+                await refreshUnitHistory();retryConfirmation=false;
+                if(id!==generation || disposed)return;
+                if(!body.entry){setStatus(english?'Conversion history cleared.':'História prevodov vymazaná.');return;}
+                const saved=conversionEntry(body.entry);
+                if(input.value.trim()!==saved.expression || from.value!==saved.from || to.value!==saved.to ||
+                    fields.some(field=>$(field).value!==saved.settings[field])) {
+                    input.value=saved.expression;
+                    for(const field of fields) $(field).value=saved.settings[field];
+                    updatePlaces();chooseCategory(saved.category,[saved.from,saved.to]);
+                    id=invalidate();save();
+                }
+                body=saved.body;
             }
+            if (typeof body.result!=='string' || typeof body.symbol!=='string') throw Error('Invalid result');
             showResult(body,confirm?text.confirmed:text.preview);
         } catch (error) {
             if (id!==generation || disposed || error.name==='AbortError') return;
             retryConfirmation=confirm;setStatus(text.network,true); $('unit-retry').hidden=false;
         } finally {
-            if(confirm){confirming=false;if(!disposed)$('unit-submit').disabled=false;}
+            if(confirm && confirmation===confirmationRequest){confirming=false;if(!disposed)$('unit-submit').disabled=false;}
             if (id===generation) root.removeAttribute('aria-busy');
         }
     }
@@ -261,7 +344,7 @@ function initUnits() {
         else if(retryConfirmation){const id=invalidate();calculate(true,id);}
         else schedule(0);
     },{signal:lifecycle.signal});
-    window.addEventListener('numforge:navigate',save,{signal:lifecycle.signal});
+    window.addEventListener('numforge:navigate',()=>{save();saveHistory();},{signal:lifecycle.signal});
     async function loadCatalogue() {
         catalogRequest?.abort(); catalogRequest=new AbortController();
         const controller=catalogRequest;
@@ -275,7 +358,7 @@ function initUnits() {
             catalogue=body.units;
             history.entries=history.entries.filter(e=>categories.some(c=>c[0]===e.category) &&
                 catalogue.some(u=>u.id===e.from && u.quantity===e.category) && catalogue.some(u=>u.id===e.to && u.quantity===e.category));
-            renderHistory();
+            await refreshUnitHistory();
             $('unit-categories').replaceChildren();
             for (const c of categories) {
                 const button=document.createElement('button'); button.type='button'; button.dataset.quantity=c[0];
