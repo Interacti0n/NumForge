@@ -2,6 +2,16 @@
 
 ## Automatic complex domains
 
+`sum`, `product` and `mean` accept 1–256 dimensionless real or complex values.
+With entirely exact integer/rational inputs, they use exact rational-complex
+arithmetic, including division by the count for mean. With any approximate
+input, all operands are materialized at working precision before accumulation;
+finite decimal additions/products are exact and only a recurring mean division
+rounds. The result retains its complex kind, even with zero imaginary part.
+For example `mean(1/3;i;2/3)` is exactly `1/3 + (1/3)*i`.
+Other statistics remain real-only. Mixing complex values with quantities is a
+dimension error. Real-only calls retain their existing behavior.
+
 Dimensionless calculator inputs automatically use complex arithmetic where the
 real domain ends: sqrt(x<0), ln/log of negative input or base, asin/acos outside
 [-1,1], acosh(x<1), atanh outside [-1,1], negative even roots and noninteger

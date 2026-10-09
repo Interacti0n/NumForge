@@ -1,5 +1,33 @@
 const {test, expect}=require('@playwright/test');
 for(const lang of ['sk','en']) for(const width of [390,1280]) {
+    test('complex aggregates '+lang+' '+width,async({page})=>{
+        await page.setViewportSize({width,height:844});await page.goto('/?lang='+lang);
+        for(const [expression,expected] of [
+            ['sum(1/3;i;2/3)','1 + i'],['product(1+i;1-i;1/3)','2/3'],
+            ['mean(1/3;i;2/3)','1/3 + (1/3)*i'],
+            ['mean(i;sqrt(2))','0.7071067812 + 0.5*i']
+        ]) {await page.locator('#expression').fill(expression);await expect(page.locator('#result')).toHaveText(expected);}
+    });
+}
+test('HTTP complex aggregates keep exact components and failed commits preserve state',async({request})=>{
+    const client='abababababababababababababababab';
+    const base='/api/evaluate?precision=10&client='+client;let revision=1;
+    const evaluate=async(expression,action='preview')=>(await request.post(base+'&revision='+revision+++'&action='+action,{data:expression})).json();
+    expect((await evaluate('','start')).ok).toBe(true);
+    expect((await evaluate('z=mean(1/3;i;2/3)','commit')).ok).toBe(true);
+    const snapshot=async(name)=>(await (await request.get('/api/session/value?client='+client+'&name='+name)).json()).value;
+    const before=await snapshot('z');
+    expect(before.kind).toBe('complex_rational');expect(before.approximate).toBe(false);
+    expect(before.components).toEqual({real:'1/3',imaginary:'1/3'});
+    for(const [input,expected] of [['sum(z;ans)','2/3 + (2/3)*i'],['product(z;3)','1 + i'],['mean(z;z)','1/3 + (1/3)*i']]) {
+        const data=await evaluate(input);expect(data.ok).toBe(true);expect(data.result).toBe(expected);
+    }
+    for(const input of ['z=median(i;1)','z=sum(i;qty(1;"m"))','z=mean()']) expect((await evaluate(input,'commit')).ok).toBe(false);
+    expect(await snapshot('z')).toEqual(before);expect(await snapshot('ans')).toEqual(before);
+    expect((await evaluate('w=mean(i;sqrt(2))','commit')).ok).toBe(true);
+    const approximate=await snapshot('w');expect(approximate.kind).toBe('complex_decimal_approximation');expect(approximate.approximate).toBe(true);
+});
+for(const lang of ['sk','en']) for(const width of [390,1280]) {
     test('automatic complex domains '+lang+' '+width,async({page})=>{
         await page.setViewportSize({width,height:844});await page.goto('/?lang='+lang);
         const input=page.locator('#expression'),result=page.locator('#result');

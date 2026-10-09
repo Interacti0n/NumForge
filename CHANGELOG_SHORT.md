@@ -5,6 +5,9 @@ details and the [2.1 release record](docs/project/RELEASE_2_1.md) for validation
 
 ## Unreleased
 
+- Complex sum, product and mean with exact rational components.
+- Independent complex accuracy references and timing diagnostics.
+
 - Authoritative session/history HTTP API.
 - Typed values, function catalogue and explicit lifecycle.
 - Server-owned conversion history with safe retries.

@@ -7,6 +7,13 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Support mixed real/complex `sum`, `product` and `mean` in the shared C
+  calculator and HTTP API. Keep exact rational components, including mean;
+  preserve approximation metadata and reject mixed unit quantities.
+
+- Add 744 independently verified complex references up to 250 significant
+  digits and per-case timing diagnostics.
+
 - Automatically extend supported dimensionless function domains to principal
   complex results: negative logarithms, out-of-domain inverse trigonometric and
   hyperbolic inputs, even roots and fractional powers. Add public complex

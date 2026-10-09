@@ -31,6 +31,38 @@ static void test_exact_and_mixed_arithmetic(void)
     context.significant_division=false;
     check("complex(1;2)+3","4 + 2*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
 }
+static void test_complex_aggregates(void)
+{
+    check("sum(1/3;i;2/3)","1 + i",CALCULATOR_VALUE_COMPLEX_RATIONAL);
+    check("product(1+i;1-i;1/3)","2/3",CALCULATOR_VALUE_COMPLEX_RATIONAL);
+    check("mean(1/3;i;2/3)","1/3 + (1/3)*i",CALCULATOR_VALUE_COMPLEX_RATIONAL);
+    check("sum(i;-i)","0",CALCULATOR_VALUE_COMPLEX_RATIONAL);
+    check("product(i;0)","0",CALCULATOR_VALUE_COMPLEX_RATIONAL);
+    check("mean(i)","i",CALCULATOR_VALUE_COMPLEX_RATIONAL);
+    check("sum(i;sqrt(2);-i)","1.4142135624",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("product(i;sqrt(2))","1.4142135624*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("mean(i;sqrt(2))","0.7071067812 + 0.5*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("sum(1;i;sum(2;-i))","3",CALCULATOR_VALUE_COMPLEX_RATIONAL);
+    check("sum(sqrt(-1);1)","1 + i",CALCULATOR_VALUE_COMPLEX_RATIONAL);
+    check("mean(1;2;3)","2",CALCULATOR_VALUE_INTEGER);
+    check("sum(1E100;i;-1E100)","i",CALCULATOR_VALUE_COMPLEX_RATIONAL);
+    char many[1024]="sum(i";size_t used=5;
+    for(size_t i=1;i<256;i++) {many[used++]=';';many[used++]='i';}
+    many[used]=')';many[used+1]='\0';check(many,"256*i",CALCULATOR_VALUE_COMPLEX_RATIONAL);
+    CalculatorValue value={0};CalculatorError error;
+    many[used++]=';';many[used++]='i';many[used++]=')';many[used]='\0';
+    TEST_ASSERT_NOT_EQUAL(CALCULATOR_OK,calculator_compute_value(many,&context,&value,&error));
+    calculator_value_destroy(&value);
+    const char *invalid[]={"sum()","product()","mean()","median(i;1)","min(i;1)","variance(i;1)"};
+    for(size_t i=0;i<sizeof(invalid)/sizeof(invalid[0]);i++) {
+        TEST_ASSERT_NOT_EQUAL(CALCULATOR_OK,calculator_compute_value(invalid[i],&context,&value,&error));
+        calculator_value_destroy(&value);
+    }
+    TEST_ASSERT_EQUAL(CALCULATOR_DIMENSION_ERROR,calculator_compute_value("sum(i;qty(1;\"m\"))",&context,&value,&error));
+    calculator_value_destroy(&value);
+    context.significant_division=false;
+    check("mean(i;1)","0.5 + 0.5*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+}
 static void test_domains(void)
 {
     const char *inputs[]={"(0*i)^i",
@@ -344,6 +376,7 @@ static void test_automatic_complex_domains(void)
 }
 static bool sqrt_allocation_only=false;
 static bool promotion_allocation_only=false;
+static bool aggregate_allocation_only=false;
 static void test_allocation_failures(void)
 {
     const char *inputs[]={"w=ln(-1)","w=log(-1;-1)","w=asin(2)","w=acosh(-1)","w=atanh(2)",
@@ -351,9 +384,13 @@ static void test_allocation_failures(void)
         "w=sqrt(-1/9)","w=sqrt(-2)","w=sqrt(4/9)+1/3","w=sqrt(3+4i)","w=sqrt(z)","w=ln(z)","w=z^i","w=log(i;i)",
         "w=sin(i)","w=cos(i)","w=tan(i)","w=sinh(0*i)","w=cosh(0*i)",
         "w=tanh(0*i)","w=tanh(0.1+0.1i)","w=tanh(1+i)",
-        "w=asin(0*i)","w=acos(1+0i)","w=atan(0*i)"};
+        "w=asin(0*i)","w=acos(1+0i)","w=atan(0*i)",
+        "w=sum(z;i;1/3)","w=product(z;i;1/3)","w=mean(z;i;1/3)",
+        "w=sum(z;0.5+i)","w=product(z;0.5+i)","w=mean(z;0.5+i)"};
     for(size_t input=0;input<sizeof(inputs)/sizeof(inputs[0]);input++) {
     if (promotion_allocation_only && input>=10) continue;
+    if (aggregate_allocation_only && strncmp(inputs[input],"w=sum(z;",8)!=0 &&
+        strncmp(inputs[input],"w=product(z;",12)!=0 && strncmp(inputs[input],"w=mean(z;",9)!=0) continue;
     if (sqrt_allocation_only && strncmp(inputs[input],"w=sqrt(",7)!=0) continue;
     size_t count=0;
     for(size_t failure=0;;failure++) {
@@ -376,8 +413,9 @@ static void test_allocation_failures(void)
 int main(int argc,char **argv)
 {
     promotion_allocation_only=argc==2 && strcmp(argv[1],"--promotion-allocation-only")==0;
+    aggregate_allocation_only=argc==2 && strcmp(argv[1],"--aggregate-allocation-only")==0;
     sqrt_allocation_only=argc==2 && strcmp(argv[1],"--sqrt-allocation-only")==0;
-    UNITY_BEGIN();RUN_TEST(test_exact_and_mixed_arithmetic);RUN_TEST(test_domains);
+    UNITY_BEGIN();RUN_TEST(test_exact_and_mixed_arithmetic);RUN_TEST(test_domains);RUN_TEST(test_complex_aggregates);
     RUN_TEST(test_sessions_and_snapshots);RUN_TEST(test_imaginary_unit_and_projections);
     RUN_TEST(test_principal_square_roots);RUN_TEST(test_principal_logarithms);RUN_TEST(test_principal_powers);RUN_TEST(test_base_logarithms);RUN_TEST(test_complex_trigonometry);RUN_TEST(test_complex_hyperbolic);RUN_TEST(test_complex_inverse_trigonometry);RUN_TEST(test_automatic_complex_domains);
     if(argc!=2 || strcmp(argv[1],"--numeric-only")!=0)RUN_TEST(test_allocation_failures);

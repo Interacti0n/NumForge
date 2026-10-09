@@ -457,6 +457,62 @@ static CalculatorStatus complex_root(CalculatorValue *result,const CalculatorVal
     }
     bigint_destroy(one);bigint_destroy(denominator);calculator_value_destroy(&exponent);return status;
 }
+static CalculatorStatus complex_aggregate(CalculatorValue *result,const CalculatorValue *values,
+    size_t count,CalculatorFunctionImplementation function,const CalculatorContext *context)
+{
+    if (!count) return CALCULATOR_INVALID_ARGUMENT;
+    bool all_exact=true;
+    for (size_t i=0;i<count;i++) {
+        if (values[i].quantity) return CALCULATOR_DIMENSION_ERROR;
+        all_exact=all_exact && exact(&values[i]);
+    }
+    CalculatorStatus status=CALCULATOR_OUT_OF_MEMORY;
+    char denominator[32];snprintf(denominator,sizeof(denominator),"%zu",count);
+    bool product=function==CALCULATOR_FUNCTION_PRODUCT;
+    if (all_exact) {
+        BigRationalComplex *operand=bigrationalcomplex_create();
+        BigRational *n=bigrational_create(),*zero=bigrational_create();
+        BigInt *integer=bigint_create();
+        result->kind=CALCULATOR_VALUE_COMPLEX_RATIONAL;
+        result->complex_rational=bigrationalcomplex_create();
+        if (operand && n && zero && integer && result->complex_rational) {
+            status=as_exact(result->complex_rational,&values[0]);
+            for (size_t i=1;status==CALCULATOR_OK && i<count;i++) {
+                status=as_exact(operand,&values[i]);
+                if (status==CALCULATOR_OK) status=mapped(product ?
+                    bigrationalcomplex_mul(result->complex_rational,result->complex_rational,operand) :
+                    bigrationalcomplex_add(result->complex_rational,result->complex_rational,operand));
+            }
+            if (status==CALCULATOR_OK && function==CALCULATOR_FUNCTION_MEAN) {
+                status=calculator_from_integer_status(bigint_set_string(integer,denominator));
+                if (status==CALCULATOR_OK) status=calculator_from_rational_status(bigrational_from_bigint(n,integer));
+                if (status==CALCULATOR_OK) status=mapped(bigrationalcomplex_set_parts(operand,n,zero));
+                if (status==CALCULATOR_OK) status=mapped(bigrationalcomplex_div(result->complex_rational,result->complex_rational,operand));
+            }
+        }
+        bigrationalcomplex_destroy(operand);bigrational_destroy(n);bigrational_destroy(zero);
+        bigint_destroy(integer);
+    } else {
+        BigComplex *operand=bigcomplex_create();
+        result->kind=CALCULATOR_VALUE_COMPLEX_DECIMAL;result->complex_decimal=bigcomplex_create();
+        if (operand && result->complex_decimal) {
+            status=as_decimal(result->complex_decimal,&values[0],context);
+            for (size_t i=1;status==CALCULATOR_OK && i<count;i++) {
+                status=as_decimal(operand,&values[i],context);
+                if (status==CALCULATOR_OK) status=mapped(product ?
+                    bigcomplex_mul(result->complex_decimal,result->complex_decimal,operand) :
+                    bigcomplex_add(result->complex_decimal,result->complex_decimal,operand));
+            }
+            if (status==CALCULATOR_OK && function==CALCULATOR_FUNCTION_MEAN) {
+                status=mapped(bigcomplex_set_strings(operand,denominator,"0"));
+                if (status==CALCULATOR_OK) status=mapped(bigcomplex_div(result->complex_decimal,
+                    result->complex_decimal,operand,context->division_scale,context->rounding));
+            }
+        }
+        bigcomplex_destroy(operand);
+    }
+    return status;
+}
 static CalculatorStatus complex_call(CalculatorValue *result, const CalculatorExpression *expression,
     const CalculatorContext *context, const CalculatorValue *answer,uint64_t *random_state,CalculatorError *error)
 {
@@ -513,6 +569,8 @@ static CalculatorStatus complex_call(CalculatorValue *result, const CalculatorEx
         }
     }
     if (function == CALCULATOR_FUNCTION_COMPLEX) status=construct(result,&values[0],&values[1],context);
+    else if (any_complex && (function==CALCULATOR_FUNCTION_SUM || function==CALCULATOR_FUNCTION_PRODUCT ||
+        function==CALCULATOR_FUNCTION_MEAN)) status=complex_aggregate(result,values,count,function,context);
     else if (function == CALCULATOR_FUNCTION_REAL_PART || function == CALCULATOR_FUNCTION_IMAGINARY_PART ||
         function == CALCULATOR_FUNCTION_CONJUGATE || function == CALCULATOR_FUNCTION_ARGUMENT ||
         (any_complex && (function == CALCULATOR_FUNCTION_ABS || complex_unary_operation(function) != NULL)))

@@ -273,6 +273,13 @@ successful output with `free()`; all failures preserve the output pointer.
 
 ## Proposed continuation
 
+Calculator `sum`, `product` and `mean` now support mixed real/complex arguments
+through the existing C evaluator and HTTP API. Entirely exact arguments use
+BigRationalComplex accumulation and an exact count division for mean. Approximate
+inputs select BigComplex arithmetic at working precision. These are calculator
+functions built from the existing public numeric operations; no new standalone
+aggregate C symbols are added.
+
 The independent unary complex oracle now checks 744 cases at up to 250
 significant digits, with an operation timing mode. See
 [numeric testing](../testing/NUMERIC_TESTING.md) and

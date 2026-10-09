@@ -21,6 +21,7 @@ calculator `a+bi` / `complex(re;im)` arithmetic, re/im/conj/abs/arg and complex
 exponentials, principal square roots, natural/custom-base logarithms, general powers,
 trigonometry, inverse trigonometry, hyperbolic and inverse hyperbolic functions,
 automatic principal complex results for supported out-of-real-domain inputs,
+exact rational complex `sum`, `product` and `mean`,
 typed sessions and Cartesian/trigonometric/
 exponential display. Existing 2.1.0 release archives do not contain these features.
 

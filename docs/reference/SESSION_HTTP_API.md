@@ -1,5 +1,13 @@
 # Session, history and function HTTP API
 
+The shared C evaluator supports complex `sum`, `product` and `mean` through
+`/api/evaluate`, including mixed real arguments, variables and `ans`.
+`mean(1/3;i;2/3)` yields authoritative exact components
+`{"real":"1/3","imaginary":"1/3"}` with kind `complex_rational`.
+Any approximate argument selects `complex_decimal_approximation`. Arity remains
+1–256; other statistics remain real-only and quantities cannot be mixed with
+complex arguments. Failed commits preserve variables, answer and history.
+
 Complex values have value-level `schema_version:2`, with kind
 `complex_rational` or `complex_decimal_approximation`. Full snapshots include
 `components:{"real":"1/3","imaginary":"2/3"}` (or exact stored scientific

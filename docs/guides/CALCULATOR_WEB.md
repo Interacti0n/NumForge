@@ -126,6 +126,11 @@ See [expression rules](../reference/CALCULATOR_EXPRESSIONS.md),
 
 ## Automatic complex results
 
+`sum`, `product` and `mean` also work with complex arguments. For example,
+`mean(1/3;i;2/3)` retains exact rational components: `1/3 + (1/3)*i`.
+Approximate inputs make the result approximate; other statistics remain
+real-only. These functions use the shared C evaluator through the same API.
+
 Dimensionless inputs no longer require +0i to extend supported real domains.
 Negative logarithms, asin/acos outside [-1,1], acosh below 1, atanh outside
 [-1,1], negative even roots and fractional powers of negative bases select
