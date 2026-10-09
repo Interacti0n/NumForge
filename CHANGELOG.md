@@ -7,6 +7,8 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+## 2.2.0 — 10 October 2026
+
 - Improve complex division, magnitude, square-root verification and extreme
   logarithms with exact exponent scaling. Add bounded magnitude rounding for
   proven irrational tails, scaled tangent evaluation and input-sensitive general
@@ -84,7 +86,7 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 - Add an opaque standalone BigComplex C API with owned decimal components,
   exact basic arithmetic, componentwise exact-or-significant division,
   conjugation, squared modulus and canonical text. Include aliasing/allocation
-  tests and installed C/C++ consumer coverage; calculator integration is deferred.
+  tests and installed C/C++ consumer coverage; the calculator integration is included in this release.
 
 - Reduce the desktop navbar height; grow conversion input to three lines and
   calculator input to five, then scroll longer expressions within the field.

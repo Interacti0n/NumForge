@@ -16,14 +16,14 @@ NumForge is a C17 mathematics library for arbitrary-precision integers
 calculators. Both calculators use the same C expression parser and numeric
 library.
 
-**In the working tree (unreleased):** [decimal and exact rational complex APIs](docs/reference/BIGCOMPLEX.md),
+**Released in 2.2.0:** [decimal and exact rational complex APIs](docs/reference/BIGCOMPLEX.md),
 calculator `a+bi` / `complex(re;im)` arithmetic, re/im/conj/abs/arg and complex
 exponentials, principal square roots, natural/custom-base logarithms, general powers,
 trigonometry, inverse trigonometry, hyperbolic and inverse hyperbolic functions,
 automatic principal complex results for supported out-of-real-domain inputs,
 exact rational complex `sum`, `product` and `mean`,
 typed sessions and Cartesian/trigonometric/
-exponential display. Existing 2.1.0 release archives do not contain these features.
+exponential display. The 2.1.0 release archives predate these features.
 
 **Released in 2.1.0:** unit conversion, dimensional arithmetic with `qty(...)`,
 session variables and ready-to-use application and C/C++ SDK downloads.
@@ -145,7 +145,7 @@ integer examples above, or `notation fraction` for exact fractions. Use
 `precision 40` for the illustrated square root, and `quit` to exit.
 
 To run without a compiler, download the portable Windows x64 ZIP or Linux x64
-tar.gz from the [2.1.0 release](https://github.com/Interacti0n/NumForge/releases/tag/v2.1.0).
+tar.gz from the [2.2.0 release](https://github.com/Interacti0n/NumForge/releases/tag/v2.2.0).
 Verify its SHA-256, extract the entire archive and launch `numforge_web.exe`
 (Windows) or `./numforge_web` (Linux); the browser opens automatically on Windows.
 Both archives also include the CLI. Windows binaries are unsigned; Linux requires
@@ -157,12 +157,12 @@ verification. A hosted demo remains future distribution work.
 
 Use NumForge in your own application **without compiling the NumForge source
 tree**. Download a prebuilt SDK and its matching SHA-256 file from the
-[2.1.0 release](https://github.com/Interacti0n/NumForge/releases/tag/v2.1.0):
+[2.2.0 release](https://github.com/Interacti0n/NumForge/releases/tag/v2.2.0):
 
 | Platform | SDK archive | Toolchain |
 | --- | --- | --- |
-| Windows x64 | `NumForge-2.1.0-sdk-win-x64.zip` | MSVC, Release `/MD` |
-| Linux x64 | `NumForge-2.1.0-sdk-linux-x64.tar.gz` | GCC, glibc |
+| Windows x64 | `NumForge-2.2.0-sdk-win-x64.zip` | MSVC, Release `/MD` |
+| Linux x64 | `NumForge-2.2.0-sdk-linux-x64.tar.gz` | GCC, glibc |
 
 Each SDK contains the public headers, a static library, relocatable CMake
 exports and a working example. It exposes BigInt, BigDecimal, BigRational,
@@ -200,7 +200,7 @@ cleanup:
 Link your C or C++ target through CMake:
 
 ```cmake
-find_package(NumForge 2.1 CONFIG REQUIRED)
+find_package(NumForge 2.2 CONFIG REQUIRED)
 target_link_libraries(my_target PRIVATE NumForge::numforge)
 ```
 

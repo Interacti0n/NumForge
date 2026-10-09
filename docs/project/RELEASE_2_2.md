@@ -1,8 +1,8 @@
-# Next release preparation
+# Release 2.2 record
 
-This is a preparation record for the next release after 2.1.0. The version and
-publication date are not assigned; no release tag or archives are published by
-this work. The complete feature scope is in [the changelog](../../CHANGELOG.md).
+NumForge 2.2.0 — 10 October 2026. Publication and final CI are tracked at
+[the GitHub release](https://github.com/Interacti0n/NumForge/releases/tag/v2.2.0).
+The complete feature scope is in [the changelog](../../CHANGELOG.md).
 
 ## Complex stability stage
 
@@ -40,8 +40,8 @@ These are local Windows results, not a completed release CI or archive audit.
 
 ## Publication checks
 
-Before publishing, assign the version consistently, review the complete
-Unreleased scope, and run CI against the final pushed commit. Verify Windows
+The version and changelog are closed for 2.2.0. Run CI against the final
+pushed commit and exact release tag. Verify Windows
 and Linux release archives and the installed SDK using the
 [packaging guide](RELEASE_PACKAGING.md). Local Windows checks alone do not
 establish Linux or sanitizer results.

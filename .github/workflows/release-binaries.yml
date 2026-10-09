@@ -8,7 +8,7 @@ on:
       tag:
         description: Existing release tag (vX.Y.Z or vX.Y.Z-rc.1)
         required: true
-        default: v2.1.0
+        default: v2.2.0
         type: string
       publish:
         description: Attach verified archives to the existing GitHub release

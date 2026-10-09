@@ -1,9 +1,15 @@
 # Changelog highlights
 
 The main changes in a few words. See the [full changelog](CHANGELOG.md) for
-details and the [2.1 release record](docs/project/RELEASE_2_1.md) for validation.
+details and the [2.2 release record](docs/project/RELEASE_2_2.md) for validation.
 
 ## Unreleased
+
+## 2.2.0 — 10 October 2026
+
+- Public BigComplex and BigRationalComplex C APIs, integrated into CLI and web.
+- Principal complex roots, powers, logarithms, trigonometry and inverse functions.
+- Complex display forms, automatic domain promotion and factorials up to 100000.
 
 - Improve complex stability and intermediate growth; add 384 stress references.
 
