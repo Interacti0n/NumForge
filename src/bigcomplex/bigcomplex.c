@@ -372,6 +372,29 @@ BigComplexStatus bigcomplex_format_form(const BigComplex *value, BigComplexForm 
     *result=text;text=NULL;
 done:free(r);free(a);free(text);bigdecimal_destroy(radius);bigdecimal_destroy(angle);return status;
 }
+BigComplexStatus bigcomplex_exp(BigComplex *result, const BigComplex *value,
+    int64_t digits, BigDecimalRoundingMode rounding)
+{
+    if (!result || !value) return BIGCOMPLEX_NULL_ARGUMENT;
+    if (digits < 1 || digits > INT64_MAX-12 || rounding < BIGDECIMAL_ROUND_TOWARD_ZERO ||
+        rounding > BIGDECIMAL_ROUND_HALF_EVEN) return BIGCOMPLEX_INVALID_ARGUMENT;
+    BigComplex *temporary=bigcomplex_create();
+    BigDecimal *radius=bigdecimal_create(), *one=bigdecimal_create();
+    BigDecimalStatus status=BIGDECIMAL_OUT_OF_MEMORY;
+    if (!temporary || !radius || !one) goto done;
+    TRY(bigdecimal_exp(radius,value->real,digits+12,rounding));
+    TRY(bigdecimal_cos(temporary->real,value->imaginary,digits+12,rounding));
+    TRY(bigdecimal_sin(temporary->imaginary,value->imaginary,digits+12,rounding));
+    TRY(bigdecimal_mul(temporary->real,temporary->real,radius));
+    TRY(bigdecimal_mul(temporary->imaginary,temporary->imaginary,radius));
+    TRY(bigdecimal_set_string(one,"1"));
+    TRY(bigdecimal_div_significant(temporary->real,temporary->real,one,digits,rounding));
+    TRY(bigdecimal_div_significant(temporary->imaginary,temporary->imaginary,one,digits,rounding));
+    commit(result,temporary);
+done:
+    bigcomplex_destroy(temporary);bigdecimal_destroy(radius);bigdecimal_destroy(one);
+    return mapped(status);
+}
 BigComplexStatus bigcomplex_set_polar(BigComplex *result, const BigDecimal *radius,
     const BigDecimal *angle, int64_t digits, BigDecimalRoundingMode rounding)
 {

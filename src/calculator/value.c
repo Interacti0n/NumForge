@@ -2,21 +2,80 @@
 #include "value_internal.h"
 #include "formatter.h"
 #include "quantity.h"
+#include "exact_functions.h"
 
 #include <numforge/runtime.h>
 
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 /* Typed value ownership, exact projection, and output selection. */
+bool calculator_value_is_complex(const CalculatorValue *value)
+{
+    return value != NULL && (value->kind == CALCULATOR_VALUE_COMPLEX_DECIMAL ||
+        value->kind == CALCULATOR_VALUE_COMPLEX_RATIONAL);
+}
+CalculatorStatus calculator_value_complex_parts_text(const CalculatorValue *value, char **real, char **imaginary)
+{
+    if (value == NULL || real == NULL || imaginary == NULL) return CALCULATOR_NULL_ARGUMENT;
+    if (!calculator_value_is_complex(value) || real == imaginary) return CALCULATOR_INVALID_ARGUMENT;
+    char *re=NULL,*im=NULL;
+    CalculatorStatus status=CALCULATOR_OUT_OF_MEMORY;
+    if (value->kind == CALCULATOR_VALUE_COMPLEX_RATIONAL) {
+        BigRational *part=bigrational_create();
+        if (part != NULL) {
+            status=calculator_from_complex_status(bigrationalcomplex_get_real(part,value->complex_rational));
+            if (status==CALCULATOR_OK) status=calculator_from_rational_status(bigrational_to_string(part,&re));
+            if (status==CALCULATOR_OK) status=calculator_from_complex_status(bigrationalcomplex_get_imaginary(part,value->complex_rational));
+            if (status==CALCULATOR_OK) status=calculator_from_rational_status(bigrational_to_string(part,&im));
+        }
+        bigrational_destroy(part);
+    } else {
+        BigDecimal *part=bigdecimal_create();
+        if (part != NULL) {
+            status=calculator_from_complex_status(bigcomplex_get_real(part,value->complex_decimal));
+            if (status==CALCULATOR_OK) status=calculator_from_decimal_status(bigdecimal_format_mode(part,-1,value->context.rounding,BIGDECIMAL_FORMAT_SCIENTIFIC,CALCULATOR_MAX_OUTPUT_BYTES,&re));
+            if (status==CALCULATOR_OK) status=calculator_from_complex_status(bigcomplex_get_imaginary(part,value->complex_decimal));
+            if (status==CALCULATOR_OK) status=calculator_from_decimal_status(bigdecimal_format_mode(part,-1,value->context.rounding,BIGDECIMAL_FORMAT_SCIENTIFIC,CALCULATOR_MAX_OUTPUT_BYTES,&im));
+        }
+        bigdecimal_destroy(part);
+    }
+    if (status == CALCULATOR_OK && (strlen(re)>CALCULATOR_MAX_OUTPUT_BYTES || strlen(im)>CALCULATOR_MAX_OUTPUT_BYTES)) status=CALCULATOR_VALUE_TOO_LARGE;
+    if (status == CALCULATOR_OK) {*real=re;*imaginary=im;} else {free(re);free(im);}
+    return calculator_budget_status(status);
+}
+CalculatorStatus calculator_value_complex_expression_text(const CalculatorValue *value,char **result)
+{
+    if (result == NULL) return CALCULATOR_NULL_ARGUMENT;
+    char *re=NULL,*im=NULL;
+    CalculatorStatus status=calculator_value_complex_parts_text(value,&re,&im);
+    if (status == CALCULATOR_OK) {
+        size_t a=strlen(re),b=strlen(im);
+        if (a>CALCULATOR_MAX_INPUT_BYTES || b>CALCULATOR_MAX_INPUT_BYTES || a+b+10U>CALCULATOR_MAX_INPUT_BYTES) status=CALCULATOR_VALUE_TOO_LARGE;
+        else {
+            char *text=numforge_malloc(a+b+11U);
+            if (text == NULL) status=CALCULATOR_OUT_OF_MEMORY;
+            else {(void)snprintf(text,a+b+11U,"complex(%s;%s)",re,im);*result=text;}
+        }
+    }
+    free(re);free(im);return calculator_budget_status(status);
+}
 
 CalculatorStatus calculator_value_snapshot_text(const CalculatorValue *value, char **result)
 {
     if (value == NULL || result == NULL) return CALCULATOR_NULL_ARGUMENT;
     *result = NULL;
     CalculatorStatus status = CALCULATOR_OK;
-    if (value->kind == CALCULATOR_VALUE_INTEGER) {
+    if (value->kind == CALCULATOR_VALUE_COMPLEX_RATIONAL) {
+        BigComplexStatus converted = bigrationalcomplex_to_string(value->complex_rational, CALCULATOR_MAX_OUTPUT_BYTES, result);
+        if (converted != BIGCOMPLEX_OK) status = converted == BIGCOMPLEX_OUT_OF_MEMORY ? CALCULATOR_OUT_OF_MEMORY : CALCULATOR_VALUE_TOO_LARGE;
+    } else if (value->kind == CALCULATOR_VALUE_COMPLEX_DECIMAL) {
+        BigComplexStatus converted = bigcomplex_format(value->complex_decimal, -1, value->context.rounding,
+            BIGDECIMAL_FORMAT_SCIENTIFIC, CALCULATOR_MAX_OUTPUT_BYTES, result);
+        if (converted != BIGCOMPLEX_OK) status = converted == BIGCOMPLEX_OUT_OF_MEMORY ? CALCULATOR_OUT_OF_MEMORY : CALCULATOR_VALUE_TOO_LARGE;
+    } else if (value->kind == CALCULATOR_VALUE_INTEGER) {
         *result = bigint_to_string(value->integer);
         if (*result == NULL) status = CALCULATOR_OUT_OF_MEMORY;
     } else if (value->kind == CALCULATOR_VALUE_RATIONAL) {
@@ -40,6 +99,8 @@ void calculator_value_destroy(CalculatorValue *value)
         bigdecimal_destroy(value->number);
         bigint_destroy(value->integer);
         bigrational_destroy(value->rational);
+        bigcomplex_destroy(value->complex_decimal);
+        bigrationalcomplex_destroy(value->complex_rational);
         memset(value, 0, sizeof(*value));
     }
 }
@@ -72,6 +133,14 @@ CalculatorStatus calculator_value_copy(CalculatorValue *result, const Calculator
             goto failed;
         }
     }
+    if (value->complex_decimal != NULL) {
+        temporary.complex_decimal = bigcomplex_create();
+        if (temporary.complex_decimal == NULL || bigcomplex_copy(temporary.complex_decimal, value->complex_decimal) != BIGCOMPLEX_OK) goto failed;
+    }
+    if (value->complex_rational != NULL) {
+        temporary.complex_rational = bigrationalcomplex_create();
+        if (temporary.complex_rational == NULL || bigrationalcomplex_copy(temporary.complex_rational, value->complex_rational) != BIGCOMPLEX_OK) goto failed;
+    }
     temporary.context = value->context;
     temporary.kind = value->kind;
     temporary.quantity = value->quantity;
@@ -93,6 +162,7 @@ failed:
 CalculatorStatus calculator_materialize_exact(
     BigDecimal *result, const CalculatorValue *value, const CalculatorContext *context)
 {
+    if (calculator_value_is_complex(value)) return CALCULATOR_INVALID_ARGUMENT;
     if (value->kind == CALCULATOR_VALUE_INTEGER)
     {
         BigDecimalStatus decimal_status = bigdecimal_from_bigint(result, value->integer);
@@ -221,9 +291,32 @@ static CalculatorStatus calculator_format_value_profile_impl(
         return CALCULATOR_NULL_ARGUMENT;
     }
     if (context->time_limit_ms < 0 || context->notation < CALCULATOR_NOTATION_AUTO ||
-        context->notation > CALCULATOR_NOTATION_FRACTION)
+        context->notation > CALCULATOR_NOTATION_FRACTION || context->complex_form < BIGCOMPLEX_FORM_CARTESIAN ||
+        context->complex_form > BIGCOMPLEX_FORM_EXPONENTIAL)
     {
         return CALCULATOR_INVALID_ARGUMENT;
+    }
+    if (calculator_value_is_complex(value)) {
+        BigDecimalFormatMode mode = context->notation == CALCULATOR_NOTATION_FRACTION ? BIGDECIMAL_FORMAT_AUTO : (BigDecimalFormatMode)context->notation;
+        BigComplexStatus formatted;
+        if (context->complex_form != BIGCOMPLEX_FORM_CARTESIAN) {
+            if (value->kind == CALCULATOR_VALUE_COMPLEX_RATIONAL)
+                formatted=bigrationalcomplex_format_form(value->complex_rational,context->complex_form,context->division_scale,
+                    context->output_scale,context->rounding,mode,CALCULATOR_MAX_OUTPUT_BYTES,result);
+            else formatted=bigcomplex_format_form(value->complex_decimal,context->complex_form,context->division_scale,
+                context->output_scale,context->rounding,mode,CALCULATOR_MAX_OUTPUT_BYTES,result);
+        } else if (value->kind == CALCULATOR_VALUE_COMPLEX_RATIONAL &&
+            (context->notation == CALCULATOR_NOTATION_AUTO || context->notation == CALCULATOR_NOTATION_FRACTION))
+            formatted = bigrationalcomplex_to_string(value->complex_rational, CALCULATOR_MAX_OUTPUT_BYTES, result);
+        else if (value->kind == CALCULATOR_VALUE_COMPLEX_RATIONAL) {
+            BigComplex *decimal = bigcomplex_create();
+            if (decimal == NULL) return CALCULATOR_OUT_OF_MEMORY;
+            formatted = bigrationalcomplex_to_bigcomplex(decimal, value->complex_rational, context->division_scale, context->rounding);
+            if (formatted == BIGCOMPLEX_OK) formatted = bigcomplex_format(decimal, context->output_scale, context->rounding, mode, CALCULATOR_MAX_OUTPUT_BYTES, result);
+            bigcomplex_destroy(decimal);
+        } else formatted = bigcomplex_format(value->complex_decimal, context->output_scale, context->rounding, mode, CALCULATOR_MAX_OUTPUT_BYTES, result);
+        return formatted == BIGCOMPLEX_OK ? CALCULATOR_OK : formatted == BIGCOMPLEX_OUT_OF_MEMORY ? CALCULATOR_OUT_OF_MEMORY :
+            formatted == BIGCOMPLEX_INVALID_ARGUMENT ? CALCULATOR_INVALID_ARGUMENT : CALCULATOR_VALUE_TOO_LARGE;
     }
     if (context->notation == CALCULATOR_NOTATION_FRACTION &&
         value->kind == CALCULATOR_VALUE_INTEGER)

@@ -215,9 +215,10 @@ static void test_rational_failure_contracts(void) {
     TEST_ASSERT_NOT_NULL(a);TEST_ASSERT_NOT_NULL(r);TEST_ASSERT_NOT_NULL(zero);TEST_ASSERT_NOT_NULL(part);TEST_ASSERT_NOT_NULL(n);
     TEST_ASSERT_EQUAL(BIGINT_OK,bigint_set_string(n,"7"));TEST_ASSERT_EQUAL(BIGRATIONAL_OK,bigrational_from_bigint(part,n));
     TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigrationalcomplex_from_bigcomplex(a,z));
-    for(int op=0;op<9;op++){
+    for(int op=0;op<11;op++){
         size_t count=0;
         for(size_t failure=0;;failure++){
+            TEST_ASSERT_EQUAL(BIGRATIONAL_OK,bigrational_from_bigint(part,n));
             TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigrationalcomplex_set_parts(r,part,part));
             TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(z,"9","8"));
             numforge_test_allocator_begin(failure);BigComplexStatus status;char marker='x',*s=&marker;
@@ -230,7 +231,9 @@ static void test_rational_failure_contracts(void) {
                 case 5:status=bigrationalcomplex_pow_int(r,a,-2);break;
                 case 6:status=bigrationalcomplex_to_bigcomplex(z,a,8,BIGDECIMAL_ROUND_HALF_EVEN);break;
                 case 7:status=bigrationalcomplex_from_bigcomplex(r,z);break;
-                default:status=bigrationalcomplex_to_string(a,80,&s);break;
+                case 8:status=bigrationalcomplex_to_string(a,80,&s);break;
+                case 9:status=bigrationalcomplex_conjugate(r,a);break;
+                default:status=bigrationalcomplex_abs_squared(part,a);break;
             }
             if(failure==0)count=numforge_test_allocator_call_count();numforge_test_allocator_end();
             if(failure==0){TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,status);if(op==8)free(s);}
@@ -238,6 +241,8 @@ static void test_rational_failure_contracts(void) {
                 TEST_ASSERT_EQUAL(BIGCOMPLEX_OUT_OF_MEMORY,status);text_is(z,"9 + 8*i");
                 char *unchanged=NULL;TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigrationalcomplex_to_string(r,80,&unchanged));
                 TEST_ASSERT_EQUAL_STRING("7 + 7*i",unchanged);free(unchanged);if(op==8)TEST_ASSERT_EQUAL_PTR(&marker,s);
+                TEST_ASSERT_EQUAL(BIGRATIONAL_OK,bigrational_to_string(part,&unchanged));
+                TEST_ASSERT_EQUAL_STRING("7",unchanged);free(unchanged);
             }if(failure==count)break;
         }
     }
@@ -256,10 +261,27 @@ static void test_rational_failure_contracts(void) {
     TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigrationalcomplex_to_string(r,1,&s));TEST_ASSERT_EQUAL_STRING("1",s);free(s);
     bigrationalcomplex_destroy(a);bigrationalcomplex_destroy(r);bigrationalcomplex_destroy(zero);bigrational_destroy(part);bigint_destroy(n);bigcomplex_destroy(z);
 }
+static void test_complex_exponential_and_exact_helpers(void) {
+    BigComplex *v=number("1","1");char *text=NULL;
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_exp(v,v,12,BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_format(v,8,BIGDECIMAL_ROUND_HALF_EVEN,BIGDECIMAL_FORMAT_AUTO,80,&text));
+    TEST_ASSERT_EQUAL_STRING("1.46869394 + 2.28735529*i",text);free(text);
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_INVALID_ARGUMENT,bigcomplex_exp(v,v,0,BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_NULL_ARGUMENT,bigcomplex_exp(v,NULL,12,BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(v,"3","4"));
+    BigRationalComplex *r=bigrationalcomplex_create();BigRational *squared=bigrational_create();
+    TEST_ASSERT_NOT_NULL(r);TEST_ASSERT_NOT_NULL(squared);
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigrationalcomplex_from_bigcomplex(r,v));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigrationalcomplex_abs_squared(squared,r));
+    TEST_ASSERT_EQUAL(BIGRATIONAL_OK,bigrational_to_string(squared,&text));TEST_ASSERT_EQUAL_STRING("25",text);free(text);
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigrationalcomplex_conjugate(r,r));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigrationalcomplex_to_string(r,80,&text));TEST_ASSERT_EQUAL_STRING("3 - 4*i",text);free(text);
+    bigrational_destroy(squared);bigrationalcomplex_destroy(r);bigcomplex_destroy(v);
+}
 static void test_allocation_failures(void) {
     BigComplex *a=number("1.2","-3.4"), *b=number("5.6","7.8"), *r=number("9","8");
     BigDecimal *d=bigdecimal_create(); TEST_ASSERT_NOT_NULL(d);
-    for(int operation=0;operation<11;operation++) {
+    for(int operation=0;operation<12;operation++) {
         size_t count=0;
         for(size_t failure=0;;failure++) {
             TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(r,"9","8"));
@@ -278,7 +300,8 @@ static void test_allocation_failures(void) {
                 case 7: status=bigcomplex_abs(d,a,12,BIGDECIMAL_ROUND_HALF_EVEN);break;
                 case 8: status=bigcomplex_format(a,2,BIGDECIMAL_ROUND_HALF_EVEN,BIGDECIMAL_FORMAT_MATHEMATICAL,80,&text);break;
                 case 9: status=bigcomplex_arg(d,a,8,BIGDECIMAL_ROUND_HALF_EVEN);break;
-                default: status=bigcomplex_format_form(a,BIGCOMPLEX_FORM_EXPONENTIAL,8,3,BIGDECIMAL_ROUND_HALF_EVEN,BIGDECIMAL_FORMAT_AUTO,80,&text);break;
+                case 10: status=bigcomplex_format_form(a,BIGCOMPLEX_FORM_EXPONENTIAL,8,3,BIGDECIMAL_ROUND_HALF_EVEN,BIGDECIMAL_FORMAT_AUTO,80,&text);break;
+                default: status=bigcomplex_exp(r,a,8,BIGDECIMAL_ROUND_HALF_EVEN);break;
             }
             if(failure==0) count=numforge_test_allocator_call_count();
             numforge_test_allocator_end();
@@ -294,5 +317,5 @@ static void test_allocation_failures(void) {
 }
 int main(void) {
     UNITY_BEGIN();RUN_TEST(test_lifecycle_and_text);RUN_TEST(test_arithmetic_and_aliasing);
-    RUN_TEST(test_division_and_contracts);RUN_TEST(test_powers_and_modulus);RUN_TEST(test_formatting);RUN_TEST(test_exact_rationals_and_forms);RUN_TEST(test_rational_failure_contracts);RUN_TEST(test_allocation_failures);return UNITY_END();
+    RUN_TEST(test_division_and_contracts);RUN_TEST(test_powers_and_modulus);RUN_TEST(test_formatting);RUN_TEST(test_exact_rationals_and_forms);RUN_TEST(test_rational_failure_contracts);RUN_TEST(test_complex_exponential_and_exact_helpers);RUN_TEST(test_allocation_failures);return UNITY_END();
 }

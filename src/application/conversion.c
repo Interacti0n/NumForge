@@ -191,6 +191,11 @@ CalculatorStatus application_conversion_compute(const CalculatorSession *session
         session == NULL ? empty : session->variables, session == NULL ? 0 : session->variable_count,
         &source, error);
     if (status != CALCULATOR_OK) goto cleanup;
+    if (calculator_value_is_complex(&source)) {
+        *code = "complex_not_allowed";
+        status = CALCULATOR_INVALID_ARGUMENT;
+        goto cleanup;
+    }
     if (source.quantity)
     {
         *code = "quantity_not_allowed";

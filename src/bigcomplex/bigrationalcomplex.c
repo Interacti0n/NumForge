@@ -36,6 +36,21 @@ BigComplexStatus bigrationalcomplex_copy(BigRationalComplex *r,const BigRational
     return v?bigrationalcomplex_set_parts(r,v->real,v->imaginary):BIGCOMPLEX_NULL_ARGUMENT;
 }
 BigComplexStatus bigrationalcomplex_get_real(BigRational *r,const BigRationalComplex *v){return v?mapped(bigrational_copy(r,v->real)):BIGCOMPLEX_NULL_ARGUMENT;}
+BigComplexStatus bigrationalcomplex_conjugate(BigRationalComplex *r,const BigRationalComplex *v){
+    if(!r || !v)return BIGCOMPLEX_NULL_ARGUMENT;
+    BigRationalComplex *t=bigrationalcomplex_create();if(!t)return BIGCOMPLEX_OUT_OF_MEMORY;
+    BigRationalStatus s;TRY(bigrational_copy(t->real,v->real));
+    TRY(bigrational_negate(t->imaginary,v->imaginary));commit(r,t);
+done:bigrationalcomplex_destroy(t);return mapped(s);
+}
+BigComplexStatus bigrationalcomplex_abs_squared(BigRational *r,const BigRationalComplex *v){
+    if(!r || !v)return BIGCOMPLEX_NULL_ARGUMENT;
+    BigRational *a=bigrational_create(),*b=bigrational_create();
+    BigRationalStatus s=BIGRATIONAL_OUT_OF_MEMORY;if(!a || !b)goto done;
+    TRY(bigrational_mul(a,v->real,v->real));TRY(bigrational_mul(b,v->imaginary,v->imaginary));
+    TRY(bigrational_add(a,a,b));TRY(bigrational_copy(r,a));
+done:bigrational_destroy(a);bigrational_destroy(b);return mapped(s);
+}
 BigComplexStatus bigrationalcomplex_get_imaginary(BigRational *r,const BigRationalComplex *v){return v?mapped(bigrational_copy(r,v->imaginary)):BIGCOMPLEX_NULL_ARGUMENT;}
 static BigComplexStatus binary(BigRationalComplex *r,const BigRationalComplex *a,const BigRationalComplex *b,int op){
     if(!r || !a || !b)return BIGCOMPLEX_NULL_ARGUMENT;

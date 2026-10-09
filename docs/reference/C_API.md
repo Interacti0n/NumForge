@@ -22,8 +22,10 @@ separately versioned remote service.
 - `BigInt`, `BigDecimal`, `BigRational`, `BigComplex` and `BigRationalComplex` are opaque. Create them
   with `*_create()` and release them with `*_destroy()`; destruction accepts `NULL`.
 - [BigComplex](BIGCOMPLEX.md) provides standalone finite-decimal complex
-  arithmetic, exact rational complex arithmetic and three display forms.
-  Calculator/session/HTTP integration is a future stage.
+  arithmetic, exact rational complex arithmetic, complex exponential,
+  component extraction, conjugation, squared modulus and three display forms.
+  Private calculator/session/HTTP adapters support typed complex values; those
+  adapters remain outside the public numeric C library ABI.
 - Mutating functions return a status code. On failure, their output is left
   unchanged unless their public-header comment explicitly says otherwise.
 - `bigint_to_string()` returns an owned `char *`; free it with `free()`.

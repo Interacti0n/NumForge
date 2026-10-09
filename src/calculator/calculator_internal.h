@@ -7,6 +7,7 @@
 
 #include <numforge/bigdecimal.h>
 #include <numforge/bigrational.h>
+#include <numforge/bigrationalcomplex.h>
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
@@ -71,13 +72,16 @@ typedef struct CalculatorContext
     CalculatorNotation notation;
     CalculatorAngleUnit angle_unit;
     bool significant_division;
+    BigComplexForm complex_form;
 } CalculatorContext;
 
 typedef enum CalculatorValueKind
 {
     CALCULATOR_VALUE_DECIMAL = 0,
     CALCULATOR_VALUE_INTEGER,
-    CALCULATOR_VALUE_RATIONAL
+    CALCULATOR_VALUE_RATIONAL,
+    CALCULATOR_VALUE_COMPLEX_DECIMAL,
+    CALCULATOR_VALUE_COMPLEX_RATIONAL
 } CalculatorValueKind;
 
 /* Owned, unformatted value. number is a decimal projection for the established
@@ -91,6 +95,8 @@ typedef struct CalculatorValue
     BigDecimal *number;
     BigInt *integer;
     BigRational *rational;
+    BigComplex *complex_decimal;
+    BigRationalComplex *complex_rational;
     CalculatorValueKind kind;
     bool quantity;
     bool temperature_point;
@@ -102,6 +108,10 @@ typedef struct CalculatorValue
     bool uses_random;
     bool uses_variables;
 } CalculatorValue;
+
+/* Complex values keep number as an owned zero presence marker for caches;
+ * it is never a scalar projection. Scalar conversion must reject them. */
+bool calculator_value_is_complex(const CalculatorValue *value);
 
 #define CALCULATOR_VARIABLE_CAPACITY 32U
 #define CALCULATOR_VARIABLE_NAME_BYTES 31U
@@ -166,6 +176,9 @@ void calculator_value_destroy(CalculatorValue *value);
 /* Lossless numeric coordinate text; decimal kinds preserve the finite
  * approximation in scientific notation, without units or display rounding. */
 CalculatorStatus calculator_value_snapshot_text(const CalculatorValue *value, char **result);
+/* Owned lossless component texts for versioned complex snapshots. */
+CalculatorStatus calculator_value_complex_parts_text(const CalculatorValue *value, char **real, char **imaginary);
+CalculatorStatus calculator_value_complex_expression_text(const CalculatorValue *value, char **result);
 CalculatorStatus calculator_value_copy(CalculatorValue *result, const CalculatorValue *value);
 bool calculator_value_matches(const CalculatorValue *value, const CalculatorContext *context);
 CalculatorStatus calculator_format_value(

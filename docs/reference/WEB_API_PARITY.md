@@ -14,6 +14,8 @@ is added; saved values remain bounded application-owned memory.
 | Web operation | Current HTTP equivalent | Coverage |
 | --- | --- | --- |
 | Calculate, format, choose RAD/DEG or precision | `POST /api/evaluate`, expression body and output options | Available |
+| Construct complex values and choose Cartesian/trigonometric/exponential display | `complex(re;im)`, evaluation `form=cartesian|trig|exp` | Available; exact component snapshots use value schema 2 |
+| Natural complex input and component functions | `i`, `a+bi`, `re`, `im`, `conj`, `abs`, `arg`, `exp`, explicit `e^z` | Available in the C evaluator; argument/exponential angles are radians; approximate results retain numerical residuals |
 | Read-only calculator preview | `action=preview` with session ID and revision | Available |
 | Confirm result, update ans/history | `action=commit` | Available |
 | Create or replace a variable | Commit `x=2/3` | Available |

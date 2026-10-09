@@ -14,6 +14,9 @@ void bigrationalcomplex_destroy(BigRationalComplex *value);
 BigComplexStatus bigrationalcomplex_set_parts(BigRationalComplex *result,
     const BigRational *real, const BigRational *imaginary);
 BigComplexStatus bigrationalcomplex_copy(BigRationalComplex *result, const BigRationalComplex *value);
+BigComplexStatus bigrationalcomplex_conjugate(BigRationalComplex *result, const BigRationalComplex *value);
+/* Exact squared modulus re*re + im*im; preserves result on failure. */
+BigComplexStatus bigrationalcomplex_abs_squared(BigRational *result, const BigRationalComplex *value);
 BigComplexStatus bigrationalcomplex_get_real(BigRational *result, const BigRationalComplex *value);
 BigComplexStatus bigrationalcomplex_get_imaginary(BigRational *result, const BigRationalComplex *value);
 BigComplexStatus bigrationalcomplex_add(BigRationalComplex *result, const BigRationalComplex *a, const BigRationalComplex *b);

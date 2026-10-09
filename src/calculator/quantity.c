@@ -112,7 +112,7 @@ static CalculatorStatus numeric_value(CalculatorValue *result, const CalculatorE
         calculator_error_clear(error);
     }
     BigDecimal *projected_answer = NULL;
-    if (answer != NULL && answer->kind != CALCULATOR_VALUE_DECIMAL)
+    if (answer != NULL && (answer->kind == CALCULATOR_VALUE_INTEGER || answer->kind == CALCULATOR_VALUE_RATIONAL))
     {
         projected_answer = bigdecimal_create();
         status = projected_answer == NULL ? CALCULATOR_OUT_OF_MEMORY :

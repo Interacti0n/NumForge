@@ -2,6 +2,24 @@
 
 ## Local HTTP API
 
+Complex expressions use the same evaluation/session endpoints, e.g.
+`complex(1/3;1/3)^2`, `2+3i`, `re(z)`, `im(z)`, `conj(z)`, `abs(z)`, `arg(z)`
+and `exp(z)`. Lowercase `i` is reserved; uppercase `I` remains a variable.
+Arguments and complex exponentials use radians regardless of `angle=deg`.
+Exponentials are approximate and can retain small numerical residuals.
+An optional final output option
+`&form=cartesian|trig|exp` follows precision, angle and notation, and precedes
+client/revision/action suffixes. Omission selects Cartesian. Example:
+`POST /api/evaluate?precision=10&angle=rad&notation=auto&form=exp` with body
+`complex(-1;0)` displays `e^(i*(π))`. Real values ignore the selected form.
+Polar angles are radians even when `angle=deg` applies to real function calls.
+
+Session/cached complex responses provide `copy` as a lossless Cartesian
+constructor `complex(re;im)`, or null when it cannot fit the input limit.
+This copy is independent of display rounding/form and is not a typed snapshot
+of approximation provenance. Stateless responses still provide display text;
+use typed session snapshots for authoritative components and their kind.
+
 The calculator layout keeps all controls within the viewport while the result
 is collapsed to five lines. Compact spacing and proportional scaling adapt to
 short windows. Expanding a long result allows vertical page scrolling; collapsing

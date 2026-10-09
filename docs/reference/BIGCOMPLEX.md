@@ -2,7 +2,8 @@
 
 `<numforge/bigcomplex.h>` is an additive part of `NumForge::numforge`.
 It owns two opaque `BigDecimal` components representing `re + im*i`.
-No calculator, session or HTTP behavior changes in this first stage.
+The calculator now supports complex(re;im), typed arithmetic, sessions and
+HTTP snapshots; see CALCULATOR_EXPRESSIONS.md and SESSION_HTTP_API.md.
 
 ```c
 #include <numforge/bigcomplex.h>
@@ -21,6 +22,17 @@ bigcomplex_destroy(z);
 ```
 
 ## Contract
+
+`bigcomplex_exp(result, value, digits, rounding)` computes
+exp(re)*(cos(im)+i*sin(im)) in radians, using digits+12 working digits and
+rounding each resulting component to the requested significant digits.
+It supports aliasing and preserves the destination on every failure. This is
+an approximate numerical exponential, not symbolic simplification or a promise
+of correct rounding. Small imaginary residuals near multiples of pi are retained.
+
+`bigrationalcomplex_conjugate` preserves exact rational components and supports
+aliasing. `bigrationalcomplex_abs_squared` returns the exact rational sum of
+the component squares. Both preserve their destination on failure.
 
 - Creation returns owned zero or NULL; destruction accepts NULL. Setters and
   accessors copy values. There are no borrowed pointers to mutable components.
@@ -101,17 +113,13 @@ successful output with `free()`; all failures preserve the output pointer.
 1. Consider a scaled/adaptive magnitude algorithm to reduce exact intermediate
    storage while preserving rounding guarantees. Integer powers, exact-sum
    modulus and bounded display formatting are available.
-2. Decide calculator mixed exact/decimal promotion rules. BigRationalComplex
-   provides exact rational components; its decimal projection is explicit.
-3. Extend CalculatorValue, ownership/copying, evaluator, cache and snapshots.
-   Decide whether `i` is reserved and whether `sqrt(-1)` needs complex mode.
-   Unsupported real-only functions and unit conversions must reject complex
-   arguments explicitly. Preserve existing real behavior.
-4. Add versioned typed complex snapshots, session variables/ans/history and
-   documented HTTP operations together with localized web formatting/tests.
-   Neither plain display strings nor a discarded imaginary part are snapshots.
-5. Improve argument rounding guarantees, add principal square root and logarithm branches, then exp,
-   powers and trigonometric functions. Define cuts, zero behavior and numerical
+2. Consider an explicit complex mode for extending real-domain functions.
+   The calculator already supports i, complex(re;im), re/im/conj/abs/arg and exp.
+   Mixed approximate operations explicitly project exact components at working
+   precision. Typed sessions and snapshots are implemented.
+3. Improve argument/exponential rounding guarantees, add principal square root
+   and logarithm branches, then general powers and trigonometric functions.
+   Define cuts, zero behavior and numerical
    validation separately. Correct rounding needs more than fixed guard digits.
 
 The stages are a roadmap, not implemented features or release dates.
@@ -132,9 +140,9 @@ digits: finite components remain exact, recurring components round independently
 `from_bigcomplex` converts stored finite decimals exactly; it cannot recover
 fractions previously rounded to decimals. These conversions are atomic.
 
-Calculator promotion, typed snapshots and HTTP integration remain future work.
-Exact real integers/rationals should promote to rational complex values; mixed
-decimal operations need an explicit policy before connecting to sessions.
+Calculator exact real inputs promote to rational complex values. Mixed
+approximate operations project exact components at working precision to decimal
+complex values. Typed snapshots preserve kind and both stored components.
 
 ## Cartesian, trigonometric and exponential forms
 

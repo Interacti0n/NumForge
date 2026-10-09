@@ -21,6 +21,14 @@ CalculatorStatus numforge_web_evaluate_session_mode(
     int64_t output_scale, CalculatorAngleUnit angle_unit, CalculatorNotation notation,
     char **result, CalculatorError *error, bool *reused
 );
+CalculatorStatus numforge_web_evaluate_session_form(CalculatorSession *session,
+    uint64_t revision, bool commit, const char *input, int64_t output_scale,
+    CalculatorAngleUnit angle_unit, CalculatorNotation notation, BigComplexForm form,
+    char **result, CalculatorError *error, bool *reused);
+CalculatorStatus numforge_web_evaluate_cached_form(ApplicationEvaluationCache *cache,
+    uint64_t revision, const char *input, int64_t output_scale,
+    CalculatorAngleUnit angle_unit, CalculatorNotation notation, BigComplexForm form,
+    char **result, CalculatorError *error, bool *reused);
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------

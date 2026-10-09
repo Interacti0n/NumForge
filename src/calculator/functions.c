@@ -12,6 +12,11 @@
 
 static const CalculatorFunction calculator_functions[] =
 {
+    { "re", 1, 1, CALCULATOR_FUNCTION_REAL_PART },
+    { "im", 1, 1, CALCULATOR_FUNCTION_IMAGINARY_PART },
+    { "conj", 1, 1, CALCULATOR_FUNCTION_CONJUGATE },
+    { "arg", 1, 1, CALCULATOR_FUNCTION_ARGUMENT },
+    { "complex", 2, 2, CALCULATOR_FUNCTION_COMPLEX },
     { "qty", 2, 2, CALCULATOR_FUNCTION_QUANTITY },
     { "convert", 3, 3, CALCULATOR_FUNCTION_CONVERT },
     { "abs", 1, 1, CALCULATOR_FUNCTION_ABS },

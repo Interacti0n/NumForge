@@ -474,6 +474,10 @@ static CalculatorStatus calculator_parse_primary(
         {
             expression = calculator_expression_create(CALCULATOR_EXPRESSION_ANSWER, parser->current.offset);
         }
+        else if (parser->current.length == 1U && parser->current.text[0] == 'i')
+        {
+            expression = calculator_expression_create(CALCULATOR_EXPRESSION_IMAGINARY, parser->current.offset);
+        }
         else if (calculator_constant_from_text(parser->current.text, parser->current.length, &constant))
         {
             expression = calculator_expression_create_constant(&parser->current, constant);

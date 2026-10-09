@@ -21,6 +21,9 @@ test('mobile text input supports variables and semicolon-separated arguments', a
 
 test('every library function has English and Slovak search names', async ({page}) => {
     const names = {
+        complex: ['complex number', 'komplexné číslo'],
+        re: ['real part', 'reálna časť'], im: ['imaginary part', 'imaginárna časť'],
+        conj: ['complex conjugate', 'komplexne združené číslo'], arg: ['phase', 'fáza'],
         abs: ['modulus', 'absolútna hodnota'], sign: ['sgn', 'znamienko'],
         min: ['smallest', 'najmenšia hodnota'], max: ['largest', 'najväčšia hodnota'],
         sum: ['summation', 'súčet'], product: ['prod', 'súčin'], mean: ['avg', 'aritmetický priemer'],
@@ -92,7 +95,7 @@ test('constant search accepts localized aliases, symbols and case', async ({page
         await expect(page.locator('.constants-library')).toBeHidden();
         await search.fill('Pi');
         await search.press('Escape');
-        await page.locator('#function-tab-6').click();
+        await page.locator('#function-tab-7').click();
         await expect(page.locator('.constants-library button:visible')).toHaveCount(3);
     }
 });
@@ -573,8 +576,8 @@ for (const lang of ['sk', 'en']) {
         });
         test('function groups, aliases and trigonometry', async ({ page }, testInfo) => {
             test.setTimeout(30000);
-            await expect(page.locator('details.function-group')).toHaveCount(7);
-            await expect(page.locator('[data-function]')).toHaveCount(46);
+            await expect(page.locator('details.function-group')).toHaveCount(8);
+            await expect(page.locator('[data-function]')).toHaveCount(51);
             await expect(page.locator('[data-function]:disabled')).toHaveCount(0);
             await page.locator('#function-tab-0').click();
             await page.locator('[data-function="rand"]').click();
@@ -1264,7 +1267,7 @@ test('mobile input actions, constants and bottom settings survive rotation', asy
   await page.locator('#clear-expression').click();
   await expect(page.locator('#expression')).toHaveValue('');
   await expect(page.locator('#history-list li')).toHaveCount(historyCount + 1);
-  await page.locator('#function-tab-6').click();
+  await page.locator('#function-tab-7').click();
   await page.locator('.constants-library [data-insert="π"]').click();
   await expect(page.locator('#expression')).toHaveValue('π');
   await page.locator('#expression').press('Enter');

@@ -47,19 +47,34 @@ static void snapshot(Json *json, const CalculatorValue *value, bool full)
     if (json->status != CALCULATOR_OK) return;
     if (value == NULL) { append(json, "null"); return; }
     const char *kind = value->kind == CALCULATOR_VALUE_INTEGER ? "integer" :
-        value->kind == CALCULATOR_VALUE_RATIONAL ? "rational" : "decimal_approximation";
-    append(json, "{\"schema_version\":1,\"kind\":\"%s\",\"full\":%s,\"text\":", kind, full ? "true" : "false");
+        value->kind == CALCULATOR_VALUE_RATIONAL ? "rational" :
+        value->kind == CALCULATOR_VALUE_COMPLEX_RATIONAL ? "complex_rational" :
+        value->kind == CALCULATOR_VALUE_COMPLEX_DECIMAL ? "complex_decimal_approximation" : "decimal_approximation";
+    append(json, "{\"schema_version\":%u,\"kind\":\"%s\",\"full\":%s,\"text\":", calculator_value_is_complex(value) ? 2U : 1U, kind, full ? "true" : "false");
     char *text = NULL;
     if (full) {
         json->status = calculator_value_snapshot_text(value, &text);
         if (json->status == CALCULATOR_OK) string(json, text);
         free(text);
     } else append(json, "null");
+    if (calculator_value_is_complex(value)) {
+        append(json, ",\"components\":");
+        if (full) {
+            char *re=NULL,*im=NULL;
+            json->status=calculator_value_complex_parts_text(value,&re,&im);
+            if (json->status == CALCULATOR_OK) {
+                append(json,"{\"real\":");string(json,re);append(json,",\"imaginary\":");string(json,im);append(json,"}");
+            }
+            free(re);free(im);
+        } else append(json,"null");
+    }
     append(json, ",\"approximate\":%s,\"quantity\":%s,\"temperature_point\":%s,\"dimensions\":[%d,%d,%d,%d,%d,%d],\"unit\":",
-        value->kind == CALCULATOR_VALUE_DECIMAL ? "true" : "false", value->quantity ? "true" : "false",
+        value->kind == CALCULATOR_VALUE_DECIMAL || value->kind == CALCULATOR_VALUE_COMPLEX_DECIMAL ? "true" : "false", value->quantity ? "true" : "false",
         value->temperature_point ? "true" : "false", value->dimensions[0], value->dimensions[1], value->dimensions[2],
         value->dimensions[3], value->dimensions[4], value->dimensions[5]);
     string(json, value->unit);
+    static const char *forms[] = {"cartesian","trig","exp"};
+    append(json, ",\"complex_form\":\"%s\"", forms[value->context.complex_form]);
     append(json, ",\"context\":"); context(json, &value->context);
     append(json, "}");
 }
@@ -293,6 +308,13 @@ static CalculatorStatus session_request(ApplicationClientStore *store,
                 const CalculatorHistoryEntry *entry = &session->history[i];
                 append(&json, "{\"id\":\"%llu\",\"expression\":", (unsigned long long)entry->revision); string(&json, entry->expression);
                 append(&json, ",\"display\":"); string(&json, entry->display);
+                if (calculator_value_is_complex(&entry->value)) {
+                    char *copy=NULL;
+                    CalculatorStatus copied=calculator_value_complex_expression_text(&entry->value,&copy);
+                    append(&json,",\"copy\":");
+                    if (copied==CALCULATOR_OK) string(&json,copy); else append(&json,"null");
+                    free(copy);
+                }
                 append(&json, ",\"value\":"); snapshot(&json, &entry->value, full != 0U); append(&json, "}");
             } else conversion(&json, &session->conversions[i], full != 0U);
         }

@@ -2,6 +2,46 @@
 
 ## Calculator expressions
 
+`complex(re;im)` constructs a complex value from two real, dimensionless
+arguments. For example `complex(0;1)^2` is `-1` and
+`complex(1/3;1/3)^2` is `(2/9)*i`. Supported operations are unary signs,
+addition, subtraction, multiplication, division and signed integer powers
+(`^`, `pow`, `²`, `³`); exponents must be real integers within signed 64-bit
+range. Exact inputs remain rational-complex. Mixing an approximate input
+(constants, irrational functions, decimal division mode) explicitly projects
+exact components at working precision and produces decimal-complex values.
+Finite decimal literals remain exact in the default exact evaluation policy.
+
+Lowercase `i` is the reserved imaginary unit; `2+3i`, `2+3*i` and
+`complex(2;3)` are equivalent. Uppercase `I` is still a valid variable.
+Adjacent ASCII names remain a single identifier: `xi` is a variable, while
+`x*i` is a product. `x`, `y` and `xy` are independent variables.
+Complex values retain their type even when the imaginary component is
+zero. Real-only calls, complex arguments inside `complex(...)`, quantities and
+unit conversions reject complex values rather than discarding a component.
+`sqrt(-1)` retains its existing real-domain error.
+
+`re(z)` and `im(z)` return real scalar components with exact fractions intact;
+`conj(z)` preserves the representation and negates only the imaginary component.
+On real values, `re` and `conj` return the value and `im` returns exact zero.
+`abs(z)` returns an exact rational magnitude when possible, otherwise an
+approximate decimal square root of the squared modulus. `arg(z)` returns an
+approximate principal argument in radians, (-pi, pi], independently of RAD/DEG;
+zero is invalid. Real functions can consume extracted components, e.g. `sin(re(z))`.
+
+`exp(z)` supports complex inputs. An explicit Euler constant base in `e^z` or
+`pow(e;z)` also accepts complex exponents via exp(re)*(cos(im)+i*sin(im)), radians.
+Other bases retain the real signed-integer exponent restriction. These numerical
+exponentials do not infer symbolic identities: `e^(π*i)` may retain a tiny
+imaginary residual. Other complex transcendental calls remain unsupported.
+
+The web form selector changes display between Cartesian, trigonometric and
+exponential form without changing the stored value. Polar angles are always
+radians, independently of RAD/DEG for real trigonometric calls; see
+[BigComplex](BIGCOMPLEX.md) for approximation and branch rules. Auto/fraction
+Cartesian display preserves exact rational components. Copying a complex result
+uses `complex(re;im)` with stored Cartesian components, independently of display.
+
 The calculator is currently an application layer, not a public C header. It
 accepts decimal numbers with `.` or `,` as the decimal separator, optional
 uppercase-`E` scientific exponent notation, `π`, `e`, and `φ` constants,
@@ -92,11 +132,12 @@ return `CALCULATOR_VALUE_TOO_LARGE` instead of risking process stack overflow.
 ### Named calls
 
 Names contain lowercase ASCII letters only and require parentheses. Arguments
-use semicolons, not commas: `pow(1,5;2)` is `2.25`. The registry recognizes 46
-names; recognition is separate from numerical implementation:
+use semicolons, not commas: `pow(1,5;2)` is `2.25`. `/api/functions` reports
+the current registry; recognition is separate from numerical implementation:
 
 | Calls | Current calculation support |
 | --- | --- |
+| `complex(re;im)`, `re(z)`, `im(z)`, `conj(z)`, `arg(z)` | Typed complex construction, scalar components, exact conjugation and approximate principal argument in radians. See the complex rules above. |
 | `pow(x;y)`, `factorial(n)` | Active aliases of `x^y` and `n!`, with identical domains and limits. |
 | `abs(x)`, `sign(x)`, `min(a;b;…)`, `max(a;b;…)` | Active: absolute value, sign −1/0/1 and minimum/maximum of at least two arguments. |
 | `rand()`, `rand(x)`, `rand(x;y)` | Random decimal in `[0,1)`, `[0,x)` for `x > 0`, or `[x,y)` for `x < y`. Each occurrence draws independently. |

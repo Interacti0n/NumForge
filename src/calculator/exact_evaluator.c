@@ -38,9 +38,10 @@ bool calculator_exact_supported(const CalculatorExpression *expression, const Ca
             }
             return true;
         case CALCULATOR_EXPRESSION_VARIABLE:
-            return expression->data.variable.value != NULL && expression->data.variable.value->kind != CALCULATOR_VALUE_DECIMAL;
+            return expression->data.variable.value != NULL &&
+                (expression->data.variable.value->kind == CALCULATOR_VALUE_INTEGER || expression->data.variable.value->kind == CALCULATOR_VALUE_RATIONAL);
         case CALCULATOR_EXPRESSION_ANSWER:
-            return answer != NULL && answer->kind != CALCULATOR_VALUE_DECIMAL;
+            return answer != NULL && (answer->kind == CALCULATOR_VALUE_INTEGER || answer->kind == CALCULATOR_VALUE_RATIONAL);
         case CALCULATOR_EXPRESSION_UNARY:
             return calculator_exact_supported(expression->data.unary.operand, answer);
         case CALCULATOR_EXPRESSION_BINARY:

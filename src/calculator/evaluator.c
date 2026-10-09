@@ -4,6 +4,7 @@
 #include "random.h"
 #include "exact_evaluator.h"
 #include "value_internal.h"
+#include "complex_evaluator.h"
 
 #include <numforge/bigint.h>
 #include <numforge/runtime.h>
@@ -1056,6 +1057,10 @@ CalculatorStatus calculator_evaluate_with_answer(
     bool owner;
     CalculatorStatus status;
     uint64_t local_random_state = calculator_random_seed();
+    if (calculator_expression_has_complex(expression,typed_answer)) {
+        calculator_error_set(error,CALCULATOR_INVALID_ARGUMENT,expression->offset);
+        return CALCULATOR_INVALID_ARGUMENT;
+    }
 
     if (random_state == NULL)
     {

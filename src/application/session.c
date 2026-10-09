@@ -165,7 +165,7 @@ static CalculatorStatus session_assignment(const char *input, char *name,
     if(length==0U || length>CALCULATOR_VARIABLE_NAME_BYTES) goto invalid;
     for(size_t i=0;i<length;i++)
         if(!((start[i]>='a' && start[i]<='z') || (start[i]>='A' && start[i]<='Z'))) goto invalid;
-    if((length==3U && memcmp(start,"ans",3U)==0) ||
+    if((length==1U && start[0]=='i') || (length==3U && memcmp(start,"ans",3U)==0) ||
         calculator_function_find(start,length)!=NULL ||
         calculator_constant_from_text(start,length,&constant)) goto invalid;
     memcpy(name,start,length);name[length]='\0';
@@ -249,6 +249,7 @@ CalculatorStatus calculator_session_compute(
         context->output_scale == last->value.context.output_scale &&
         context->rounding == last->value.context.rounding &&
         context->notation == last->value.context.notation &&
+        context->complex_form == last->value.context.complex_form &&
         context->angle_unit == last->value.context.angle_unit &&
         context->significant_division == last->value.context.significant_division)
     {
@@ -386,6 +387,8 @@ CalculatorStatus calculator_session_compute(
             value.number = NULL;
             value.integer = NULL;
             value.rational = NULL;
+            value.complex_decimal = NULL;
+            value.complex_rational = NULL;
             if (reused != NULL)
             {
                 *reused = hit;

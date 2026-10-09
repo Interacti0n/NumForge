@@ -12,7 +12,8 @@
     another independent bounded FIFO; its storage is not included below.
     Each retained coefficient was allocated under the 128 KiB single-allocation
     bound. Sixteen entries (value, <=64 KiB display, <=4096-byte input) retain
-    less than 4 MiB including object overhead. Preview has one separate value.
+    less than 16 MiB including four rational-complex coefficients and object
+    overhead. Preview has one separate value.
     Up to 32 variable snapshots add their separately owned typed values; the
     history estimate does not include them. The same per-allocation bound applies.
     No persistence or thread safety. Revisions identify requests, not values.

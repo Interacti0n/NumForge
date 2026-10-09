@@ -17,6 +17,7 @@ const copyButtons = [copyResult, copyResultDialog];
 const precision = document.querySelector('#precision');
 const precisionMode = document.querySelector('#precision-mode');
 const notationMode = document.querySelector('#notation-mode');
+const complexForm = document.querySelector('#complex-form');
 const angleButtons = [...document.querySelectorAll('[data-angle]')];
 const english = document.documentElement.lang === 'en';
 let generation = 0;
@@ -263,6 +264,11 @@ const functionSearchAliases = {
     isqrt: ['integer square root', 'celočíselná odmocnina'],
     rand: ['random', 'rng', 'random number', 'náhodné číslo', 'náhodná hodnota'],
     pow: ['power', 'exponentiation', 'mocnina', 'umocnenie'],
+    complex: ['complex number','imaginary','cartesian','komplexné číslo','imaginárne'],
+    re: ['real part','real component','reálna časť','reálna zložka'],
+    im: ['imaginary part','imaginary component','imaginárna časť','imaginárna zložka'],
+    conj: ['conjugate','complex conjugate','komplexne združené číslo','združené'],
+    arg: ['argument','phase','principal argument','fáza','argument komplexného čísla'],
     sqrt: ['square root', 'druhá odmocnina', 'kvadratická odmocnina'],
     cbrt: ['cube root', 'cubic root', 'tretia odmocnina', 'kubická odmocnina'],
     root: ['nth root', 'n-th root', 'n-tá odmocnina', 'všeobecná odmocnina'],
@@ -291,7 +297,7 @@ const functionSearchAliases = {
     degrees: ['rad2deg', 'radians to degrees', 'radiány na stupne']
 };
 const functionHelp = {
-    abs: ["|x|","abs(x)","Absolútna hodnota.","Absolute value."],
+    abs: ["|x|","abs(x)","Absolútna hodnota alebo veľkosť komplexného čísla.","Absolute value or complex magnitude."],
     sign: ["sign","sign(x)","Znamienko: -1, 0 alebo 1.","Sign: -1, 0 or 1."],
     min: ["min","min(x;y;...)","Minimum z 2 až 256 hodnôt.","Minimum of 2 to 256 values."],
     max: ["max","max(x;y;...)","Maximum z 2 až 256 hodnôt.","Maximum of 2 to 256 values."],
@@ -310,13 +316,18 @@ const functionHelp = {
     factorial: ["n!","factorial(n)","Celé n od 0 do 10000.","Integer n from 0 to 10000."],
     isqrt: ["isqrt","isqrt(n)","Celá časť odmocniny; celé n ≥ 0.","Integer square root; integer n ≥ 0."],
     rand: ["rand","rand() / rand(x) / rand(x;y)","Náhodná hodnota v [0,1), [0,x) alebo [x,y); x > 0 a x < y.","Random value in [0,1), [0,x) or [x,y); x > 0 and x < y."],
-    pow: ["xʸ","pow(x;n)","Exponent n musí byť celé číslo; 0 na záporný exponent nie je definované.","Exponent n must be an integer; zero to a negative exponent is undefined."],
+    pow: ["xʸ","pow(x;n)","Exponent n musí byť celé číslo; základ e prijíma aj komplexný exponent. Nula na záporný exponent nie je definovaná.","Exponent n must be an integer; base e also accepts complex exponents. Zero to a negative exponent is undefined."],
+    complex: ["a + bi","complex(re;im)","Reálna a imaginárna zložka. Funguje aj a + b*i; i je imaginárna jednotka.","Real and imaginary components. Also accepts a + b*i; i is the imaginary unit."],
+    re: ["Re","re(z)","Reálna časť; presné zlomky zostávajú presné.","Real part; exact fractions stay exact."],
+    im: ["Im","im(z)","Imaginárna časť; pre reálne číslo vráti 0.","Imaginary part; returns 0 for a real number."],
+    conj: ["conj","conj(z)","Komplexne združené číslo: a + bi → a − bi.","Complex conjugate: a + bi → a − bi."],
+    arg: ["arg","arg(z)","Hlavný argument v radiánoch (−π, π]; pre nulu nie je definovaný.","Principal argument in radians (−π, π]; undefined for zero."],
     sqrt: ["√x","sqrt(x)","Druhá odmocnina; x ≥ 0.","Square root; x ≥ 0."],
     cbrt: ["∛x","cbrt(x)","Tretia odmocnina aj zo záporného čísla.","Cube root, including negative numbers."]
 };
 Object.assign(functionHelp, {
     root: ["ⁿ√x","root(x;n)","Celé n od 1 do 10000; záporné x iba pre nepárne n.","Integer n from 1 to 10000; negative x requires odd n."],
-    exp: ["eˣ","exp(x)","Eulerovo číslo umocnené na x.","Euler’s number raised to x."],
+    exp: ["eˣ","exp(x)","Eulerovo číslo umocnené na reálny alebo komplexný exponent; polárny uhol je v radiánoch.","Euler’s number raised to a real or complex exponent; polar angle is in radians."],
     ln: ["ln","ln(x)","Prirodzený logaritmus; x > 0.","Natural logarithm; x > 0."],
     log: ["log","log(x) / log(x;y)","Základ 10 alebo y; x > 0, y > 0 a y ≠ 1.","Base 10 or y; x > 0, y > 0 and y ≠ 1."],
     median: ["median","median(x;y;...)","Presný medián 1 až 256 hodnôt.","Exact median of 1 to 256 values."],
@@ -545,6 +556,7 @@ function renderHistory()
         line.append(input, separator, result);
         button.append(line);
         button.title = '#' + number + ' · ' + entry.input + ' → ' + entry.display;
+        button.disabled = entry.copy === null;
         let caret = null;
         button.addEventListener('pointerdown', () => {
             caret = document.activeElement === expression
@@ -559,6 +571,7 @@ function renderHistory()
         const copy = document.createElement('button');
         copy.type = 'button';
         copy.className = 'history-copy';
+        copy.disabled = entry.copy === null;
         copy.textContent = '⧉';
         copy.title = english ? 'Copy result' : 'Skopírovať výsledok';
         copy.setAttribute('aria-label', copy.title);
@@ -658,10 +671,11 @@ async function refreshSession()
             lists.variables.forEach(entry => storedVariables.set(entry.name, entry.display));
             historyEntries.splice(0, historyEntries.length, ...lists.history.map(entry => ({
                 input: entry.expression, display: entry.display,
-                copy: entry.display.replace(/ × 10\^([+-]?\d+)/g, (_, exponent) =>
+                copy: Object.hasOwn(entry, 'copy') ? entry.copy : entry.display.replace(/ × 10\^([+-]?\d+)/g, (_, exponent) =>
                     'E' + (/^[+-]/.test(exponent) ? exponent : '+' + exponent)),
                 precision: String(entry.value.context.places === -1 ? 'full' : entry.value.context.places),
-                angle: entry.value.context.angle, notation: entry.value.context.notation
+                angle: entry.value.context.angle, notation: entry.value.context.notation,
+                complexForm: entry.value.complex_form || 'cartesian'
             })));
             historySequence = Number(state.history_sequence);
             renderVariables(); renderHistory();
@@ -1059,6 +1073,7 @@ precisionMode.addEventListener('change', () => {
     scheduleCalculation(0);
 });
 notationMode.addEventListener('change', () => scheduleCalculation(0));
+complexForm.addEventListener('change', () => scheduleCalculation(0));
 
 
 async function calculate(commit)
@@ -1074,6 +1089,7 @@ async function calculate(commit)
         updateExpressionOverflow();
         precisionMode.value = pendingCommit.mode;
         notationMode.value = pendingCommit.notation;
+        complexForm.value = pendingCommit.complexForm || 'cartesian';
         if (pendingCommit.precision !== 'full') precision.value = pendingCommit.precision;
         updatePrecisionMode();
         selectAngleUnit(pendingCommit.angle, false);
@@ -1087,7 +1103,7 @@ async function calculate(commit)
         const requestedPrecision = precisionMode.value === 'full' ? 'full' :
             (precisionMode.value === 'custom' ? precision.value : '10');
         const request = pendingCommit || {input: expression.value, precision: requestedPrecision,
-            mode: precisionMode.value, notation: notationMode.value, angle: angleUnit, id};
+            mode: precisionMode.value, notation: notationMode.value, complexForm: complexForm.value, angle: angleUnit, id};
         if (request.precision !== 'full' &&
             (!/^[0-9]+$/.test(request.precision) || Number(request.precision) > 10000))
             throw new Error(english ? 'Precision must be between 0 and 10000.' : 'Presnosť musí byť od 0 do 10000.');
@@ -1099,7 +1115,7 @@ async function calculate(commit)
         if (commit) pendingCommit = request;
         sent = true;
         const {response, data} = await requestEvaluation(
-            '/api/evaluate?precision=' + encodeURIComponent(request.precision) + '&angle=' + request.angle + '&notation=' + request.notation, {
+            '/api/evaluate?precision=' + encodeURIComponent(request.precision) + '&angle=' + request.angle + '&notation=' + request.notation + '&form=' + (request.complexForm || 'cartesian'), {
                 method: 'POST', headers: {'Content-Type': 'text/plain; charset=utf-8'},
                 body: request.input, ...(commit ? {} : {signal: controller.signal})
             }, commit ? 'commit' : 'preview', request.id);
@@ -1113,7 +1129,7 @@ async function calculate(commit)
         if (id !== generation) return;
         result.textContent = data.result;
         setResultApproximation(data.approx);
-        resultCopy = typeof data.copy === 'string' ? data.copy :
+        resultCopy = Object.hasOwn(data, 'copy') ? (typeof data.copy === 'string' ? data.copy : '') :
             (request.notation === 'math' ? '' : data.result);
         copyButtons.forEach(button => { button.disabled = !resultCopy; });
         updateResultExpansion();
@@ -1158,7 +1174,7 @@ function saveNavigationState()
             client: cacheClient, revision: generation, started: sessionStarted,
             pending: pendingCommit, expression: expression.value,
             precision: precision.value, mode: precisionMode.value,
-            notation: notationMode.value, angle: angleUnit,
+            notation: notationMode.value, complexForm: complexForm.value, angle: angleUnit,
             result: result.textContent, resultCopy, resultApprox: resultApproxValue,
             resultError: result.classList.contains('error'),
             sessionTab: activeSessionTab, pendingVariableDeletion, pendingLifecycle: pendingReset, recent: recentItems,
@@ -1198,6 +1214,7 @@ try
             precision.value = state.precision;
             precisionMode.value = state.mode;
             notationMode.value = state.notation;
+            complexForm.value = ['cartesian','trig','exp'].includes(state.complexForm) ? state.complexForm : 'cartesian';
             selectAngleUnit(state.angle, false);
             updatePrecisionMode();
             updateExpressionOverflow();

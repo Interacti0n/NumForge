@@ -54,6 +54,9 @@
             <div class="field angle-field"><span>Uhol</span>
               <div class="angle-switch" role="group" aria-label="Jednotka uhla"><button type="button" data-angle="rad">RAD</button><button type="button" data-angle="deg">DEG</button></div>
             </div>
+            <label class="field">Komplexný zápis
+              <select id="complex-form" title="Polárne uhly sú vždy v radiánoch"><option value="cartesian">Bežný · a + bi</option><option value="trig">Goniometrický</option><option value="exp">Exponenciálny</option></select>
+            </label>
           </div>
         </section>
 
@@ -165,6 +168,14 @@
 <button type="button" data-function="asinh" data-insert="asinh(">asinh</button>
 <button type="button" data-function="acosh" data-insert="acosh(">acosh</button>
 <button type="button" data-function="atanh" data-insert="atanh(">atanh</button>
+</div></details>
+<details class="function-group"><summary>Komplexné čísla</summary><div class="keypad functions">
+<button type="button" data-insert="i" title="Imaginárna jednotka: i² = -1" aria-label="Imaginárna jednotka: i² = -1">i</button>
+<button type="button" data-function="complex" data-insert="complex(">complex</button>
+<button type="button" data-function="re" data-insert="re(">re</button>
+<button type="button" data-function="im" data-insert="im(">im</button>
+<button type="button" data-function="conj" data-insert="conj(">conj</button>
+<button type="button" data-function="arg" data-insert="arg(">arg</button>
 </div></details>
 <details class="function-group"><summary>Konštanty</summary><div class="keypad functions constants-library">
 <button type="button" data-insert="π" title="Ludolfovo číslo" aria-label="Ludolfovo číslo">π<span>Ludolfovo číslo</span></button>

@@ -7,6 +7,14 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Integrate typed exact/decimal complex values into calculator arithmetic,
+  variables, ans, previews, history and HTTP snapshots. Add complex(re;im),
+  explicit mixed promotion, versioned component snapshots and web display-form
+  selection; reserve lowercase i as the imaginary unit and reject complex unit conversions.
+- Add natural a+bi input, re/im/conj/abs/arg and complex exp/e^z in the C
+  calculator, with exact component extraction and rational magnitudes.
+  Add public bigcomplex_exp, rational conjugation and squared-modulus APIs.
+
 - Add standalone exact BigRationalComplex arithmetic, signed powers and explicit
   decimal projection. Add Cartesian, trigonometric and exponential complex
   display forms, radian argument, symbolic axis angles and polar construction.

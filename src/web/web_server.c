@@ -300,7 +300,8 @@ static bool numforge_parse_evaluation_options(
     const char *target,
     int64_t *output_scale,
     CalculatorAngleUnit *angle_unit,
-    CalculatorNotation *notation
+    CalculatorNotation *notation,
+    BigComplexForm *form
 )
 {
     const char *value;
@@ -311,6 +312,19 @@ static bool numforge_parse_evaluation_options(
     long long parsed;
     char precision[32];
     size_t precision_length;
+    char normalized[4096];
+    *form=BIGCOMPLEX_FORM_CARTESIAN;
+    const char *form_option=target == NULL ? NULL : strstr(target,"&form=");
+    if (form_option != NULL) {
+        const char *name=form_option+strlen("&form=");
+        if (strcmp(name,"cartesian")==0) *form=BIGCOMPLEX_FORM_CARTESIAN;
+        else if (strcmp(name,"trig")==0) *form=BIGCOMPLEX_FORM_TRIGONOMETRIC;
+        else if (strcmp(name,"exp")==0) *form=BIGCOMPLEX_FORM_EXPONENTIAL;
+        else return false;
+        size_t length=(size_t)(form_option-target);
+        if (length >= sizeof(normalized)) return false;
+        memcpy(normalized,target,length);normalized[length]='\0';target=normalized;
+    }
 
     if (target == NULL || output_scale == NULL || angle_unit == NULL || notation == NULL)
     {
@@ -439,7 +453,7 @@ static bool numforge_parse_page_language(
 ------------------------------------------------------------------------------------------------------------------------------
     Application-owned session/cache pools. HTTP borrows values; creation and FIFO eviction live in src/application/.
     Values were allocated under the calculator's single-allocation bound;
-    numeric limb storage per retained value is at most 128 KiB. No cookies or
+    numeric limb storage per retained rational-complex value is at most 512 KiB. No cookies or
     cross-tab storage: each page creates a fresh random identifier.
 ------------------------------------------------------------------------------------------------------------------------------
 */
@@ -570,6 +584,7 @@ static void numforge_handle_evaluation_impl(
     int64_t output_scale,
     CalculatorAngleUnit angle_unit,
     CalculatorNotation notation,
+    BigComplexForm form,
     const char *client,
     uint64_t revision,
     const char *action
@@ -583,6 +598,7 @@ static void numforge_handle_evaluation_impl(
     char *approximation = NULL;
     size_t response_capacity;
     bool reused = false;
+    const CalculatorValue *output_value = NULL;
 
     if (action != NULL)
     {
@@ -615,22 +631,29 @@ static void numforge_handle_evaluation_impl(
         }
         else
         {
-            status = numforge_web_evaluate_session_mode(session, revision, strcmp(action, "commit") == 0,
-                body, output_scale, angle_unit, notation, &result, &error, &reused);
+            status = numforge_web_evaluate_session_form(session, revision, strcmp(action, "commit") == 0,
+                body, output_scale, angle_unit, notation, form, &result, &error, &reused);
+            if (status == CALCULATOR_OK) output_value = strcmp(action,"commit")==0 ||
+                strcmp(session->preview_expression,body)!=0 ? calculator_session_answer(session) : &session->preview;
         }
     }
     else
     {
-        status = numforge_web_evaluate_cached_mode(
-            application_client_cache(&numforge_application_clients, client), revision, body, output_scale, angle_unit,
-            notation, &result, &error, &reused);
+        ApplicationEvaluationCache *cache=application_client_cache(&numforge_application_clients, client);
+        status = numforge_web_evaluate_cached_form(
+            cache, revision, body, output_scale, angle_unit,
+            notation, form, &result, &error, &reused);
+        if (status == CALCULATOR_OK && cache != NULL && strcmp(cache->expression,body)==0) output_value = &cache->value;
     }
 
     NumForgeProfilePhase serial_previous = numforge_profile_enter(NUMFORGE_PHASE_SERIALIZE);
     if (status == CALCULATOR_OK)
     {
         approximation = numforge_web_fraction_approximation(result);
-        if (notation == CALCULATOR_NOTATION_MATHEMATICAL)
+        bool complex_output=calculator_value_is_complex(output_value);
+        if (complex_output) {
+            (void)calculator_value_complex_expression_text(output_value,&copy_text);
+        } else if (notation == CALCULATOR_NOTATION_MATHEMATICAL)
         {
             copy_text = numforge_math_copy_text(result);
         }
@@ -640,7 +663,7 @@ static void numforge_handle_evaluation_impl(
 
         if (response != NULL)
         {
-            if (notation == CALCULATOR_NOTATION_MATHEMATICAL)
+            if (notation == CALCULATOR_NOTATION_MATHEMATICAL || complex_output)
             {
                 if (*client == '\0')
                 {
@@ -735,6 +758,7 @@ static void numforge_handle_evaluation(
     int64_t output_scale,
     CalculatorAngleUnit angle_unit,
     CalculatorNotation notation,
+    BigComplexForm form,
     const char *client,
     uint64_t revision,
     const char *action
@@ -753,7 +777,7 @@ static void numforge_handle_evaluation(
     }
 #endif
     numforge_handle_evaluation_impl(socket, body, output_scale, angle_unit,
-                                   notation, client, revision, action);
+        notation, form, client, revision, action);
 #ifdef NUMFORGE_ENABLE_ALLOC_STATS
     if (measure)
     {
@@ -836,6 +860,7 @@ void numforge_handle_connection_with_origin(
     int64_t output_scale;
     CalculatorAngleUnit angle_unit;
     CalculatorNotation notation;
+    BigComplexForm complex_form;
     bool english;
     bool has_content_length;
     bool origin_allowed;
@@ -1025,10 +1050,10 @@ void numforge_handle_connection_with_origin(
         }
         else if (numforge_parse_session_action(target, &action) &&
                  numforge_parse_cache_options(target, client, &revision) &&
-                 numforge_parse_evaluation_options(target, &output_scale, &angle_unit, &notation) &&
+                 numforge_parse_evaluation_options(target, &output_scale, &angle_unit, &notation, &complex_form) &&
                  (action == NULL || *client != '\0'))
         {
-            numforge_handle_evaluation(socket, body, output_scale, angle_unit, notation, client, revision, action);
+            numforge_handle_evaluation(socket, body, output_scale, angle_unit, notation, complex_form, client, revision, action);
         }
         else
         {

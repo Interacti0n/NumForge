@@ -7,6 +7,7 @@
 #include "exact_evaluator.h"
 #include "value_internal.h"
 #include "quantity.h"
+#include "complex_evaluator.h"
 
 #include <numforge/runtime.h>
 
@@ -93,6 +94,7 @@ void calculator_context_init(
     context->notation = CALCULATOR_NOTATION_AUTO;
     context->angle_unit = CALCULATOR_ANGLE_RADIANS;
     context->significant_division = true;
+    context->complex_form = BIGCOMPLEX_FORM_CARTESIAN;
 }
 
 CalculatorStatus calculator_context_set_angle_unit(
@@ -211,7 +213,6 @@ static bool calculator_expression_independent(const CalculatorExpression *expres
             switch (expression->data.call.function->implementation)
             {
                 case CALCULATOR_FUNCTION_FACTORIAL:
-                case CALCULATOR_FUNCTION_ABS:
                 case CALCULATOR_FUNCTION_SIGN:
                 case CALCULATOR_FUNCTION_MIN:
                 case CALCULATOR_FUNCTION_MAX:
@@ -419,7 +420,16 @@ static CalculatorStatus calculator_compute_value_with_answer_profile_impl(
             status = calculator_bind_variables(expression, variables, variable_count, &result->uses_variables, error);
     }
 
-    if (status == CALCULATOR_OK && calculator_expression_has_quantity(expression, answer))
+    if (status == CALCULATOR_OK && calculator_expression_has_complex(expression, answer))
+    {
+        bool uses_variables = result->uses_variables;
+        status = calculator_expression_has_quantity(expression, answer) ? CALCULATOR_DIMENSION_ERROR :
+            calculator_evaluate_complex(result, expression, context, answer, random_state, error);
+        result->uses_variables = uses_variables;
+        value = result->number;
+        result->number = NULL;
+    }
+    else if (status == CALCULATOR_OK && calculator_expression_has_quantity(expression, answer))
     {
         bool uses_variables = result->uses_variables;
         status = calculator_evaluate_quantity(result, expression, context, answer, random_state, error);
@@ -485,7 +495,7 @@ static CalculatorStatus calculator_compute_value_with_answer_profile_impl(
         }
         if (status == CALCULATOR_OK && !exact_candidate)
         {
-            if (answer != NULL && answer->kind != CALCULATOR_VALUE_DECIMAL)
+            if (answer != NULL && (answer->kind == CALCULATOR_VALUE_INTEGER || answer->kind == CALCULATOR_VALUE_RATIONAL))
             {
                 answer_decimal = bigdecimal_create();
                 status = answer_decimal == NULL ? CALCULATOR_OUT_OF_MEMORY :
@@ -506,7 +516,7 @@ static CalculatorStatus calculator_compute_value_with_answer_profile_impl(
 
     if (status == CALCULATOR_OK)
     {
-        result->independent = result->kind != CALCULATOR_VALUE_DECIMAL ||
+        result->independent = (result->kind != CALCULATOR_VALUE_DECIMAL && result->kind != CALCULATOR_VALUE_COMPLEX_DECIMAL) ||
             calculator_expression_independent(expression);
         result->uses_answer = calculator_expression_uses_answer(expression);
         result->uses_random = calculator_expression_uses_random(expression);

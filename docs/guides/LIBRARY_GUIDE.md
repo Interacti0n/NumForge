@@ -38,7 +38,13 @@ target_link_libraries(example PRIVATE NumForge::numforge)
 Include `<numforge/bigint.h>` for arbitrary-precision signed integers,
 `<numforge/bigdecimal.h>` for exact base-10 values, and
 `<numforge/bigrational.h>` for exact reduced fractions. The unreleased
-`<numforge/bigcomplex.h>` adds [finite-decimal complex arithmetic](../reference/BIGCOMPLEX.md).
+`<numforge/bigcomplex.h>` adds finite-decimal complex arithmetic and
+`<numforge/bigrationalcomplex.h>` exact rational complex values, with
+[precision, ownership and display contracts](../reference/BIGCOMPLEX.md).
+Use `bigcomplex_exp` for approximate complex exponentials in radians;
+component accessors, conjugation and squared modulus are available for decimal
+and rational complex values. The calculator adds `i`, `re/im/conj/abs/arg`
+through the C application layer; see [expression rules](../reference/CALCULATOR_EXPRESSIONS.md).
 `<numforge/runtime.h>` is
 optional and provides an explicitly scoped, thread-local allocation/deadline
 budget. Ordinary numeric calls start no budget.

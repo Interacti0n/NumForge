@@ -159,6 +159,14 @@ static int public_api_checks(void)
             BIGDECIMAL_ROUND_HALF_EVEN) != NUMFORGE_UNIT_OK ||
         bigdecimal_to_string(a, &text) != BIGDECIMAL_OK || strcmp(text, "3.141592654") != 0) goto cleanup;
     free(text); text = NULL;
+    if (bigcomplex_set_strings(complex_value, "0", "0") != BIGCOMPLEX_OK ||
+        bigcomplex_exp(complex_value, complex_value, 12, BIGDECIMAL_ROUND_HALF_EVEN) != BIGCOMPLEX_OK ||
+        bigcomplex_to_string(complex_value, &text) != BIGCOMPLEX_OK || strcmp(text, "1") != 0) goto cleanup;
+    free(text); text = NULL;
+    if (bigrationalcomplex_conjugate(exact_complex, exact_complex) != BIGCOMPLEX_OK ||
+        bigrationalcomplex_abs_squared(fraction, exact_complex) != BIGCOMPLEX_OK ||
+        bigrational_to_string(fraction, &text) != BIGRATIONAL_OK || strcmp(text, "1") != 0) goto cleanup;
+    free(text); text = NULL;
     result = 0;
 cleanup:
     bigrationalcomplex_destroy(exact_complex);

@@ -1,5 +1,19 @@
 # Session, history and function HTTP API
 
+Complex values have value-level `schema_version:2`, with kind
+`complex_rational` or `complex_decimal_approximation`. Full snapshots include
+`components:{"real":"1/3","imaginary":"2/3"}` (or exact stored scientific
+decimal texts); compact snapshots set components to null. The enclosing
+response and real-value schemas stay at version one. Component texts and kind
+are authoritative; display text is not a restoration format. `approximate`
+is true only for decimal-complex values. `complex_form` records
+`cartesian`, `trig` or `exp` display policy. Variables, ans, previews and history
+own/copy both components; clearing history preserves complex ans.
+
+Complex history entries also provide a bounded `copy` constructor, or null.
+Unit conversions reject complex input with `complex_not_allowed`, including
+values with a zero imaginary component. No arbitrary snapshot import is added.
+
 These routes supplement [expression evaluation](HTTP_API.md) and the read-only
 [unit converter](UNIT_HTTP_API.md). State belongs to the application layer,
 never the numeric library or browser storage. There is no database, account,

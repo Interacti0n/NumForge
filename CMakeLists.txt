@@ -136,6 +136,7 @@ if(NUMFORGE_BUILD_APPS OR BUILD_TESTING OR NUMFORGE_BUILD_FUZZERS OR NUMFORGE_BU
     add_library(numforge_calculator STATIC
         src/calculator/calculator.c
         src/calculator/value.c
+        src/calculator/complex_evaluator.c
         src/calculator/quantity.c
         src/calculator/random.c
         src/calculator/constants.c
@@ -613,6 +614,12 @@ if(BUILD_TESTING)
     )
 
     add_executable(session_tests tests/test_session.c)
+    add_executable(calculator_complex_tests tests/test_calculator_complex.c)
+    target_link_libraries(calculator_complex_tests PRIVATE numforge_client unity)
+    target_include_directories(calculator_complex_tests PRIVATE src/internal)
+    target_compile_definitions(calculator_complex_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
+    numforge_enable_diagnostics(calculator_complex_tests)
+    add_test(NAME calculator_complex_tests COMMAND calculator_complex_tests)
     add_executable(application_tests tests/test_application.c)
     target_link_libraries(application_tests PRIVATE numforge_application unity)
     numforge_enable_diagnostics(application_tests)

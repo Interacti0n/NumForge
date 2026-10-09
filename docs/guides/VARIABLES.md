@@ -39,10 +39,14 @@ reserved function names.
 
 - One top-level assignment: `name = expression`. Reassignment is allowed.
 - Names contain 1–31 ASCII letters, are case-sensitive, and must not be `ans`,
-  a constant (`e`, `π`, `φ`) or a registered function name. ASCII `pi` and
+  a constant (`e`, `π`, `φ`), the imaginary unit `i` or a registered function name.
+  Uppercase `I` is available. ASCII `pi` and
   `phi` are ordinary available names. Digits/underscores are
   not part of this initial naming grammar. Up to 32 distinct names per session.
 - Use names anywhere an expression accepts a value: `sqrt(x)`, `x+y`, `2*x`.
+- Adjacent letters form one name: `x`, `y` and `xy` are independent. Use
+  `x*y` for multiplication and `x*i` for multiplication by the imaginary unit;
+  `xi` is one variable name. Numeric coefficients support `3i`.
 - Undefined names produce a located error. Chained/nested assignments and
   user-defined functions are not supported.
 - New session, CLI `reset`, explicit HTTP reset/release, server restart or session eviction
@@ -51,6 +55,9 @@ reserved function names.
   no disk persistence, account or cross-tab sharing is added.
 
 ## Stored values
+
+Complex values retain both components, e.g. `z=1/3+2/3*i`. Use `re(z)`,
+`im(z)`, `conj(z)`, `abs(z)` and `arg(z)`; argument angles are always radians.
 
 A variable stores the computed value, not a formula. `y=x` copies the current
 value of `x`; later changes to `x` do not change `y`. Exact integers and fractions

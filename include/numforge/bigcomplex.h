@@ -93,6 +93,11 @@ BigComplexStatus bigcomplex_arg(BigDecimal *result, const BigComplex *value,
  * zero. Failure preserves result. Not an exact symbolic trigonometric type. */
 BigComplexStatus bigcomplex_set_polar(BigComplex *result, const BigDecimal *radius,
     const BigDecimal *angle, int64_t digits, BigDecimalRoundingMode rounding);
+/* exp(re + im*i) = exp(re)*(cos(im) + i*sin(im)), radians. Approximate;
+ * uses digits+12 working digits and rounds components to significant digits.
+ * Supports aliasing and preserves result on failure. */
+BigComplexStatus bigcomplex_exp(BigComplex *result, const BigComplex *value,
+    int64_t digits, BigDecimalRoundingMode rounding);
 /* Cartesian delegates to format; polar displays r*(cos(phi)+i*sin(phi)) or
  * r*e^(i*(phi)), radians. Zero displays 0 in every form. Polar coordinates
  * are approximate, with explicit working digits; places is display policy.
