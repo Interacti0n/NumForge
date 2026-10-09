@@ -124,6 +124,8 @@ add_library(numforge STATIC
     src/bigdecimal/format_mode.c
     src/bigdecimal/constants.c
     src/bigrational/bigrational.c
+    src/bigcomplex/bigcomplex.c
+    src/bigcomplex/bigrationalcomplex.c
     src/units/units.c
     src/internal/numforge_alloc.c
 )
@@ -484,6 +486,13 @@ if(BUILD_TESTING)
     target_link_libraries(bigrational_tests PRIVATE numforge unity)
     numforge_enable_diagnostics(bigrational_tests)
     add_test(NAME bigrational_tests COMMAND bigrational_tests)
+
+    add_executable(bigcomplex_tests tests/test_bigcomplex.c)
+    target_link_libraries(bigcomplex_tests PRIVATE numforge unity)
+    target_include_directories(bigcomplex_tests PRIVATE src/internal)
+    target_compile_definitions(bigcomplex_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
+    numforge_enable_diagnostics(bigcomplex_tests)
+    add_test(NAME bigcomplex_tests COMMAND bigcomplex_tests)
 
     add_executable(units_tests tests/test_units.c)
     target_link_libraries(units_tests PRIVATE numforge unity)

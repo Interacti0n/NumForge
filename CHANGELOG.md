@@ -7,6 +7,22 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Add standalone exact BigRationalComplex arithmetic, signed powers and explicit
+  decimal projection. Add Cartesian, trigonometric and exponential complex
+  display forms, radian argument, symbolic axis angles and polar construction.
+
+- Add bounded BigComplex display formatting using shared decimal rounding and
+  notation modes, preserving signed directed rounding and UTF-8 byte limits.
+
+- Extend BigComplex with exact integer powers (including negative exponents
+  and INT64_MIN) and exact-or-significant modulus, with explicit precision,
+  rounding, atomic failure behavior and allocation-failure tests.
+
+- Add an opaque standalone BigComplex C API with owned decimal components,
+  exact basic arithmetic, componentwise exact-or-significant division,
+  conjugation, squared modulus and canonical text. Include aliasing/allocation
+  tests and installed C/C++ consumer coverage; calculator integration is deferred.
+
 - Reduce the desktop navbar height; grow conversion input to three lines and
   calculator input to five, then scroll longer expressions within the field.
 

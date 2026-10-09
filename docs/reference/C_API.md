@@ -4,12 +4,13 @@ This reference describes the public C numeric library. Function signatures and
 all edge-case constraints remain in
 the public headers: `include/numforge/bigint.h`,
 `include/numforge/bigdecimal.h`, `include/numforge/bigrational.h`,
+`include/numforge/bigcomplex.h`, `include/numforge/bigrationalcomplex.h`,
 `include/numforge/units.h` and optional
 `include/numforge/runtime.h`.
 
 ## Public C API scope
 
-The public API consists of these five headers. Existing 1.x numeric signatures
+The public API consists of these seven headers. Existing 1.x numeric signatures
 remain source compatible in 2.x, and the new operations are additive.
 The calculator implementation and `src/web/web_api.h` are private application
 code, not headers for library consumers. `numforge_web` and its loopback HTTP
@@ -18,8 +19,11 @@ separately versioned remote service.
 
 ## Common rules
 
-- `BigInt`, `BigDecimal` and `BigRational` are opaque. Create them with `*_create()` and
-  release them with `*_destroy()`; all three destroy functions accept `NULL`.
+- `BigInt`, `BigDecimal`, `BigRational`, `BigComplex` and `BigRationalComplex` are opaque. Create them
+  with `*_create()` and release them with `*_destroy()`; destruction accepts `NULL`.
+- [BigComplex](BIGCOMPLEX.md) provides standalone finite-decimal complex
+  arithmetic, exact rational complex arithmetic and three display forms.
+  Calculator/session/HTTP integration is a future stage.
 - Mutating functions return a status code. On failure, their output is left
   unchanged unless their public-header comment explicitly says otherwise.
 - `bigint_to_string()` returns an owned `char *`; free it with `free()`.

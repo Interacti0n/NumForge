@@ -37,7 +37,9 @@ target_link_libraries(example PRIVATE NumForge::numforge)
 
 Include `<numforge/bigint.h>` for arbitrary-precision signed integers,
 `<numforge/bigdecimal.h>` for exact base-10 values, and
-`<numforge/bigrational.h>` for exact reduced fractions. `<numforge/runtime.h>` is
+`<numforge/bigrational.h>` for exact reduced fractions. The unreleased
+`<numforge/bigcomplex.h>` adds [finite-decimal complex arithmetic](../reference/BIGCOMPLEX.md).
+`<numforge/runtime.h>` is
 optional and provides an explicitly scoped, thread-local allocation/deadline
 budget. Ordinary numeric calls start no budget.
 

@@ -16,6 +16,10 @@ NumForge is a C17 mathematics library for arbitrary-precision integers
 calculators. Both calculators use the same C expression parser and numeric
 library.
 
+**In the working tree (unreleased):** a standalone [BigComplex foundation](docs/reference/BIGCOMPLEX.md)
+for finite-decimal complex arithmetic. Complex calculator expressions are a
+planned follow-up; existing 2.1.0 release archives do not contain this API.
+
 **Released in 2.1.0:** unit conversion, dimensional arithmetic with `qty(...)`,
 session variables and ready-to-use application and C/C++ SDK downloads.
 

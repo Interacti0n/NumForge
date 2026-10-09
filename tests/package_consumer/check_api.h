@@ -3,6 +3,8 @@
 #include <numforge/bigint.h>
 #include <numforge/bigdecimal.h>
 #include <numforge/bigrational.h>
+#include <numforge/bigcomplex.h>
+#include <numforge/bigrationalcomplex.h>
 #include <numforge/runtime.h>
 #include <numforge/units.h>
 #include <stdlib.h>
@@ -14,11 +16,31 @@ static int public_api_checks(void)
     BigDecimal *a = bigdecimal_create(), *b = bigdecimal_create();
     BigInt *n = bigint_create(), *r = bigint_create();
     BigRational *fraction = bigrational_create();
+    BigComplex *complex_value = bigcomplex_create();
+    BigRationalComplex *exact_complex = bigrationalcomplex_create();
     char *text = NULL;
     const BigDecimal *values[2];
     bool integer = false;
     int sign = 0, result = 1;
-    if (a == NULL || b == NULL || n == NULL || r == NULL || fraction == NULL) goto cleanup;
+    if (a == NULL || b == NULL || n == NULL || r == NULL || fraction == NULL || complex_value == NULL || exact_complex == NULL) goto cleanup;
+    if (bigcomplex_set_strings(complex_value, "0", "1") != BIGCOMPLEX_OK ||
+        bigcomplex_pow_int(complex_value, complex_value, 2, 10, BIGDECIMAL_ROUND_HALF_EVEN) != BIGCOMPLEX_OK ||
+        bigcomplex_to_string(complex_value, &text) != BIGCOMPLEX_OK || strcmp(text, "-1") != 0) goto cleanup;
+    free(text); text = NULL;
+    if (bigcomplex_abs(a, complex_value, 10, BIGDECIMAL_ROUND_HALF_EVEN) != BIGCOMPLEX_OK ||
+        bigdecimal_to_string(a, &text) != BIGDECIMAL_OK || strcmp(text, "1") != 0) goto cleanup;
+    free(text); text = NULL;
+    if (bigcomplex_format(complex_value, -1, BIGDECIMAL_ROUND_HALF_EVEN,
+        BIGDECIMAL_FORMAT_PLAIN, 2U, &text) != BIGCOMPLEX_OK || strcmp(text, "-1") != 0) goto cleanup;
+    free(text); text = NULL;
+    if (bigrationalcomplex_from_bigcomplex(exact_complex, complex_value) != BIGCOMPLEX_OK ||
+        bigrationalcomplex_pow_int(exact_complex, exact_complex, -1) != BIGCOMPLEX_OK ||
+        bigrationalcomplex_to_string(exact_complex, 2U, &text) != BIGCOMPLEX_OK || strcmp(text, "-1") != 0) goto cleanup;
+    free(text); text = NULL;
+    if (bigcomplex_format_form(complex_value, BIGCOMPLEX_FORM_EXPONENTIAL, 10, -1,
+        BIGDECIMAL_ROUND_HALF_EVEN, BIGDECIMAL_FORMAT_AUTO, 80U, &text) != BIGCOMPLEX_OK ||
+        strcmp(text, "e^(i*(π))") != 0) goto cleanup;
+    free(text); text = NULL;
     values[0] = a; values[1] = b;
     if (bigint_set_string_base(n, "-fF", 16) != BIGINT_OK ||
         bigint_to_string_base(n, 2, false, &text) != BIGINT_OK ||
@@ -139,6 +161,8 @@ static int public_api_checks(void)
     free(text); text = NULL;
     result = 0;
 cleanup:
+    bigrationalcomplex_destroy(exact_complex);
+    bigcomplex_destroy(complex_value);
     free(text); bigint_destroy(n); bigint_destroy(r); bigdecimal_destroy(a); bigdecimal_destroy(b);
     bigrational_destroy(fraction);
     return result;
