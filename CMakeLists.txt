@@ -494,6 +494,13 @@ if(BUILD_TESTING)
     target_compile_definitions(bigcomplex_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
     numforge_enable_diagnostics(bigcomplex_tests)
     add_test(NAME bigcomplex_tests COMMAND bigcomplex_tests)
+    add_executable(complex_oracle_driver tests/complex_oracle_driver.c benchmarks/benchmark_clock.c)
+    target_link_libraries(complex_oracle_driver PRIVATE numforge)
+    numforge_enable_diagnostics(complex_oracle_driver)
+    find_program(NUMFORGE_COMPLEX_NODE NAMES node nodejs REQUIRED)
+    add_test(NAME complex_oracle_tests COMMAND "${NUMFORGE_COMPLEX_NODE}"
+        "${PROJECT_SOURCE_DIR}/tests/test_complex_oracle.js" $<TARGET_FILE:complex_oracle_driver>)
+    set_tests_properties(complex_oracle_tests PROPERTIES TIMEOUT 150)
 
     add_executable(units_tests tests/test_units.c)
     target_link_libraries(units_tests PRIVATE numforge unity)

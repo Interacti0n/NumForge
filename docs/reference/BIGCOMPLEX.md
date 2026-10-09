@@ -273,6 +273,12 @@ successful output with `free()`; all failures preserve the output pointer.
 
 ## Proposed continuation
 
+The independent unary complex oracle now checks 744 cases at up to 250
+significant digits, with an operation timing mode. See
+[numeric testing](../testing/NUMERIC_TESTING.md) and
+[complex benchmarks](../benchmarks/COMPLEX_BENCHMARKS.md). Binary-function
+oracle coverage and memory profiling remain future work.
+
 1. Consider a scaled/adaptive magnitude algorithm to reduce exact intermediate
    storage while preserving rounding guarantees. Integer powers, exact-sum
    modulus and bounded display formatting are available.

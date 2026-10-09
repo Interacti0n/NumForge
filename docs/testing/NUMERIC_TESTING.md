@@ -136,3 +136,28 @@ corpora/findings as artifacts.
 Replay a discovered input with the corresponding fuzzer executable and add
 a focused C regression before fixing it. See [LLVM's libFuzzer documentation](https://llvm.org/docs/LibFuzzer.html).
 Short campaigns are regression smoke coverage, not exhaustive fuzzing.
+
+## Independent complex references
+
+`complex_oracle_tests` checks 744 public BigComplex C API cases against frozen
+mpmath 1.3.0 references. The developer-only generator
+`tests/generate_complex_references.py` independently evaluates each component
+at 600 and 800 decimal digits and requires matching reference strings. CTest
+needs Node.js, not Python or mpmath.
+
+Coverage includes sqrt, exp, ln, sin/cos/tan, sinh/cosh/tanh, asin/acos/atan
+and asinh/acosh/atanh at 12, 34, 100 and 250 significant digits. All six rounding
+modes are exercised at 1+i. Other cases cover both sides of selected cuts,
+exact unsigned-zero cut conventions, near singularities, components as small
+as 1e-100 and magnitudes of 1e100. The negative imaginary asinh cut is explicitly
+adjusted to the documented NumForge convention rather than mpmath's cut lip.
+
+Comparison uses exact JavaScript BigInt decimal arithmetic, with a bound of
+two units at the requested component's significant precision. Expected zero
+uses the absolute bound 2*10^(1-digits). Nonzero components use their own
+exponent, so dropping a tiny imaginary part fails. This is sampled error-bound
+validation, not a certified correct-rounding test or a whole-expression error
+guarantee. Binary pow/log/div, exhaustive cuts, memory scaling and domain-error
+preservation remain covered by other tests or require further oracle coverage.
+
+See [complex performance diagnostics](../benchmarks/COMPLEX_BENCHMARKS.md).
