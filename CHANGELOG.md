@@ -7,6 +7,11 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Add independent complex memory probes with isolated allocation tracking and
+  zero-live-allocation checks. Reuse guarded scalar evaluations in tan and the
+  small-real-part tanh quotient, reducing allocation requests while preserving
+  component rounding, aliasing and atomic failure.
+
 - Extend independent complex references with 156 binary div/log/pow cases.
   Preserve tiny complex logarithm components for nearly equal decimal inputs
   using input-sensitive working precision; retain atomic failure and aliasing.

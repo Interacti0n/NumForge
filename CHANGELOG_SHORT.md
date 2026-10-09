@@ -5,6 +5,8 @@ details and the [2.1 release record](docs/project/RELEASE_2_1.md) for validation
 
 ## Unreleased
 
+- Add complex memory probes and reduce repeated work in tan/tanh quotients.
+
 - Preserve tiny complex logarithm components for nearly equal inputs;
   extend the independent complex oracle to 900 cases.
 

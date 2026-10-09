@@ -145,6 +145,8 @@ sin(x+iy)=sin(x)cosh(y)+i*cos(x)sinh(y) and
 cos(x+iy)=cos(x)cosh(y)-i*sin(x)sinh(y), guarded scalar calls at digits+12,
 then component-wise significant rounding. Tangent divides guarded complex
 sine by cosine, with another 12 guard digits before the final division.
+Tangent shares the guarded scalar evaluations between its sine and cosine
+numerator/denominator, retaining the same component rounding as separate calls.
 digits must be positive and leave room for 12 guard digits for sin/cos,
 24 for tan; rounding must be a valid mode. Aliasing is supported and every
 failure preserves the destination.

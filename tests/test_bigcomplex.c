@@ -561,6 +561,24 @@ static void test_inverse_hyperbolic(void)
     bigdecimal_destroy(expected_real);bigdecimal_destroy(actual_real);bigdecimal_destroy(input);
     bigcomplex_destroy(a);bigcomplex_destroy(r);
 }
+static void test_shared_trigonometric_quotients(void) {
+    const char *points[][2]={{"0","0"},{"-0.3","0.7"},{"0.1","1E-100"},
+        {"0.00000000000000000001","1.00000000000000000001"}};
+    BigComplex *z=bigcomplex_create(),*actual=bigcomplex_create(),*n=bigcomplex_create(),*d=bigcomplex_create();
+    TEST_ASSERT_NOT_NULL(z);TEST_ASSERT_NOT_NULL(actual);TEST_ASSERT_NOT_NULL(n);TEST_ASSERT_NOT_NULL(d);
+    for(size_t p=0;p<4;p++) for(int mode=0;mode<6;mode++) for(int hyper=0;hyper<2;hyper++) {
+        BigDecimalRoundingMode rounding=(BigDecimalRoundingMode)mode;bool equal=false;
+        TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(z,points[p][0],points[p][1]));
+        TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,hyper ? bigcomplex_sinh(n,z,24,rounding) : bigcomplex_sin(n,z,24,rounding));
+        TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,hyper ? bigcomplex_cosh(d,z,24,rounding) : bigcomplex_cos(d,z,24,rounding));
+        TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_div(n,n,d,12,rounding));
+        TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_copy(actual,z));
+        TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,hyper ? bigcomplex_tanh(actual,actual,12,rounding) : bigcomplex_tan(actual,actual,12,rounding));
+        TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_equal(&equal,n,actual));TEST_ASSERT_TRUE(equal);
+    }
+    bigcomplex_destroy(z);bigcomplex_destroy(actual);bigcomplex_destroy(n);bigcomplex_destroy(d);
+}
+static bool tangent_allocation_only=false;
 static int allocation_operation_start=0;
 static int allocation_operation_end=30;
 static void test_allocation_failures(void) {
@@ -568,6 +586,7 @@ static void test_allocation_failures(void) {
     BigComplex *small=number("0.1","0.1"),*zero=number("0","0");
     BigDecimal *d=bigdecimal_create(); TEST_ASSERT_NOT_NULL(d);
     for(int operation=allocation_operation_start;operation<allocation_operation_end;operation++) {
+        if(tangent_allocation_only && operation!=18 && operation!=22) continue;
         size_t count=0;
         for(size_t failure=0;;failure++) {
             TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(r,"9","8"));
@@ -594,7 +613,7 @@ static void test_allocation_failures(void) {
                 case 15: status=bigcomplex_log(r,a,a,8,BIGDECIMAL_ROUND_HALF_EVEN);break;
                 case 16: status=bigcomplex_sin(r,a,8,BIGDECIMAL_ROUND_HALF_EVEN);break;
                 case 17: status=bigcomplex_cos(r,a,8,BIGDECIMAL_ROUND_HALF_EVEN);break;
-                case 18: status=bigcomplex_tan(r,a,8,BIGDECIMAL_ROUND_HALF_EVEN);break;
+                case 18: status=bigcomplex_tan(r,tangent_allocation_only ? zero : a,8,BIGDECIMAL_ROUND_HALF_EVEN);break;
                 case 19: status=bigcomplex_sinh(r,small,4,BIGDECIMAL_ROUND_HALF_EVEN);break;
                 case 20: status=bigcomplex_cosh(r,small,4,BIGDECIMAL_ROUND_HALF_EVEN);break;
                 case 21: status=bigcomplex_tanh(r,zero,4,BIGDECIMAL_ROUND_HALF_EVEN);break;
@@ -620,6 +639,11 @@ static void test_allocation_failures(void) {
     bigdecimal_destroy(d);bigcomplex_destroy(a);bigcomplex_destroy(b);bigcomplex_destroy(r);bigcomplex_destroy(small);bigcomplex_destroy(zero);
 }
 int main(int argc,char **argv) {
+    if(argc==2 && strcmp(argv[1],"--tangent-only")==0) {
+        tangent_allocation_only=true;
+        UNITY_BEGIN();RUN_TEST(test_shared_trigonometric_quotients);RUN_TEST(test_allocation_failures);
+        return UNITY_END();
+    }
     if(argc==2 && strcmp(argv[1],"--log-only")==0) {
         allocation_operation_start=15;allocation_operation_end=16;
         UNITY_BEGIN();RUN_TEST(test_base_logarithms);RUN_TEST(test_allocation_failures);
@@ -640,6 +664,7 @@ int main(int argc,char **argv) {
     /* Default CTest remains exhaustive; numerical checks can be rerun quickly
      * after a reference/formatting change without repeating unchanged faults. */
     RUN_TEST(test_complex_inverse_trigonometry);RUN_TEST(test_inverse_hyperbolic);
+    RUN_TEST(test_shared_trigonometric_quotients);
     if(argc!=2 || strcmp(argv[1],"--numeric-only")!=0) RUN_TEST(test_allocation_failures);
     return UNITY_END();
 }

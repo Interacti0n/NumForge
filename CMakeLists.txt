@@ -501,6 +501,11 @@ if(BUILD_TESTING)
     add_test(NAME complex_oracle_tests COMMAND "${NUMFORGE_COMPLEX_NODE}"
         "${PROJECT_SOURCE_DIR}/tests/test_complex_oracle.js" $<TARGET_FILE:complex_oracle_driver>)
     set_tests_properties(complex_oracle_tests PROPERTIES TIMEOUT 150)
+    if(NUMFORGE_BUILD_BENCHMARKS)
+        add_test(NAME complex_memory_smoke COMMAND "${NUMFORGE_COMPLEX_NODE}"
+            "${PROJECT_SOURCE_DIR}/tests/test_complex_oracle.js" $<TARGET_FILE:complex_oracle_driver> --memory --quick)
+        set_tests_properties(complex_memory_smoke PROPERTIES TIMEOUT 150)
+    endif()
 
     add_executable(units_tests tests/test_units.c)
     target_link_libraries(units_tests PRIVATE numforge unity)

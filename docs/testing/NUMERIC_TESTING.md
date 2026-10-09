@@ -169,3 +169,13 @@ guarantee. Exhaustive cuts, memory scaling and domain-error preservation remain
 covered by other tests or require further oracle coverage.
 
 See [complex performance diagnostics](../benchmarks/COMPLEX_BENCHMARKS.md).
+
+Benchmark-enabled builds additionally run `complex_memory_smoke`: 130 independently
+validated half-even cases at 34 digits, with tracked allocation counters and zero
+tracked allocations after each isolated case. `--memory` runs 520 cases at all
+four precisions. Timing is kept separate from allocation instrumentation.
+`bigcomplex_tests --tangent-only` checks paired quotient evaluation against
+separate public sin/cos and sinh/cosh calls across all six rounding modes,
+in-place inputs and tiny components, then injects every allocation failure in
+selected zero-tangent and small-complex-tanh cases to verify atomic failure in
+the two paired evaluation paths.

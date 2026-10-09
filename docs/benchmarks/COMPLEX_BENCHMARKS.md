@@ -28,6 +28,77 @@ changes. These are operation timings, not application latency or memory
 benchmarks. Decimal allocation, resource limits and adaptive precision remain
 separate follow-up work.
 
+## Allocation and live-memory probes
+
+Configure a separate Release testing build with `NUMFORGE_BUILD_BENCHMARKS=ON`
+and build `complex_oracle_driver` and `allocation_stats_check`. The normal
+driver rejects memory mode when this instrumentation is absent.
+
+```powershell
+.\build\factorial-bench\Release\allocation_stats_check.exe
+node tests/test_complex_oracle.js build/factorial-bench/Release/complex_oracle_driver.exe --memory
+ctest --test-dir build/factorial-bench -C Release -R complex_memory_smoke --output-on-failure
+```
+
+The full probe validates 520 half-even cases across all four precisions. The
+smoke test uses the 130 cases at 34 digits. Each case creates fresh owned objects,
+resets counters after input parsing, captures counters immediately after the
+public C operation, and verifies zero tracked live bytes after destroying all
+objects and formatting buffers. Reference comparison remains mandatory.
+CSV reports allocation calls, cumulative requested bytes, baseline/end live
+bytes, peak live bytes and additional peak above the baseline. Baseline includes
+the owned inputs and empty result/component containers. Output conversion is
+outside the captured operation counters. Tracking and allocator overhead, RSS,
+input parsing and output formatting are not measured operation memory.
+
+Run timing and memory separately: `--memory --benchmark` is rejected because
+instrumentation distorts timing. `--operation=tan,tanh` selects matching cases
+for a focused before/after run; `--memory --quick` selects 34 digits.
+
+On the same Windows/MSVC machine, all 520 before and after probes completed with
+zero tracked allocations left after each case. The largest observed live peak
+was 12,838 bytes (acosh at 250 digits). The largest cumulative request before
+optimization was 13,455,105 bytes for tan(1+i) at 250 digits, despite a live peak
+of only 6,200 bytes. This identified repeated scalar evaluations as a useful
+first target; it does not establish bounds for arbitrary inputs or precisions.
+
+The tangent quotient and the small-real-part tanh quotient now share the guarded
+scalar evaluations used to form both numerator and denominator. Final component
+rounding and division are unchanged. Exact request counts from matching probes:
+
+| Operation/input | Digits | Calls before → after | Requested bytes before → after | Live peak before → after |
+| --- | ---: | ---: | ---: | ---: |
+| tan(1+i) | 34 | 53,983 → 28,116 | 2,078,416 → 1,068,315 | 3,784 → 3,768 |
+| tan(1+i) | 250 | 157,989 → 87,267 | 13,455,105 → 7,550,462 | 6,200 → 5,848 |
+| tanh(-0.3+0.7i) | 34 | 45,914 → 24,187 | 1,576,769 → 820,685 | 3,896 → 3,880 |
+| tanh(-0.3+0.7i) | 250 | 139,411 → 77,694 | 10,454,209 → 6,009,246 | 6,312 → 5,960 |
+
+Raw memory outputs are `build/complex-memory-baseline.txt` and
+`build/complex-memory-after.txt`; source snapshots, compiler/CPU metadata and
+CMake cache use matching before/after prefixes. This reduces allocation churn
+and consumption of cumulative request budgets; the live-memory improvement is
+much smaller. Numerical conditioning, poles, exact intermediate growth and
+certified rounding remain separate concerns.
+
+Five uninstrumented Release processes per version measured the same 80 tan/tanh
+cases, with mandatory reference validation and matching case order. Selected
+half-even median milliseconds were:
+
+| Operation/input | Digits | Before | After |
+| --- | ---: | ---: | ---: |
+| tan(1+i) | 34 | 21.133 | 11.278 |
+| tan(1+i) | 250 | 240.883 | 141.571 |
+| tanh(-0.3+0.7i) | 34 | 16.062 | 8.035 |
+| tanh(-0.3+0.7i) | 250 | 176.019 | 107.757 |
+
+Raw per-case timing outputs are `build/complex-tangent-before.txt` and
+`build/complex-tangent-after.txt`. The compiler and machine match the local
+baselines below; no builds/tests ran concurrently with the timing commands.
+An idle web server remained running and CPU clock frequency was not fixed.
+The improvement applies to the shared quotient paths; scaled and real-axis
+tanh paths keep their existing algorithms. These timings are observations on
+this machine, not portable speed guarantees.
+
 ## Local baseline, 9 October 2026
 
 Windows, AMD Ryzen 7 7435HS, MSVC 19.51.36247.0, Release, warnings as errors,
