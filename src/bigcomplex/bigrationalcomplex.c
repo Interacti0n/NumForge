@@ -99,7 +99,9 @@ BigComplexStatus bigrationalcomplex_to_bigcomplex(BigComplex *r,const BigRationa
     if(!r || !v)return BIGCOMPLEX_NULL_ARGUMENT;
     if(digits<1 || mode<BIGDECIMAL_ROUND_TOWARD_ZERO || mode>BIGDECIMAL_ROUND_HALF_EVEN)return BIGCOMPLEX_INVALID_ARGUMENT;
     BigDecimal *re=bigdecimal_create(),*im=bigdecimal_create();BigRationalStatus s=BIGRATIONAL_OUT_OF_MEMORY;
-    if(!re || !im)goto done;TRY(bigrational_to_bigdecimal(re,v->real,digits,mode));TRY(bigrational_to_bigdecimal(im,v->imaginary,digits,mode));
+    if(!re || !im)goto done;
+    TRY(bigrational_to_bigdecimal(re,v->real,digits,mode));
+    TRY(bigrational_to_bigdecimal(im,v->imaginary,digits,mode));
     {BigComplexStatus status=bigcomplex_set_parts(r,re,im);bigdecimal_destroy(re);bigdecimal_destroy(im);return status;}
 done:bigdecimal_destroy(re);bigdecimal_destroy(im);return mapped(s);
 }
