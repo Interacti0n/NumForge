@@ -274,7 +274,10 @@ static BigComplexStatus try_small_hypot(BigDecimal *result,const BigComplex *val
         TRY(bigdecimal_scale_difference(a->scale,b->scale,&difference));
         gap=a_digits>=b_digits && a_digits-b_digits>=difference ? a_digits-b_digits-difference : 0;
     }
-    if(digits>INT64_MAX-4 || a_digits>(uint64_t)(INT64_MAX-4)) {status=BIGDECIMAL_VALUE_TOO_LARGE;goto done;}
+    if(digits>INT64_MAX-4) {status=BIGDECIMAL_VALUE_TOO_LARGE;goto done;}
+#if SIZE_MAX > INT64_MAX
+    if(a_digits>(uint64_t)(INT64_MAX-4)) {status=BIGDECIMAL_VALUE_TOO_LARGE;goto done;}
+#endif
     int64_t work=(int64_t)a_digits>digits ? (int64_t)a_digits+2 : digits+2;
     status=BIGDECIMAL_OK;
     if(gap<(uint64_t)work/2+2 || !modulus_is_nonsquare(value)) goto done;
