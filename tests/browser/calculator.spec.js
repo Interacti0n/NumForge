@@ -727,7 +727,7 @@ for (const lang of ['sk', 'en']) {
             await calculate(page, 'sqrt(2)', '1.414');
             await page.locator('#precision-mode').selectOption('full');
             await expect(page.locator('#result')).toHaveText('1.414213562373095048801688724209698');
-            await page.locator('#expression').fill('root(-16;4)');
+            await page.locator('#expression').fill('root(-16;0)');
             await page.locator('#expression').press('Enter');
             await expect(page.locator('#result')).toContainText(lang === 'sk' ? 'neplatný argument' : 'invalid argument');
             await page.locator('.guide-link').click();
@@ -1169,15 +1169,14 @@ for (const lang of ['sk', 'en']) {
             await expect(page.locator('#function-help')).toContainText('-1 ≤ x ≤ 1');
             await page.locator('#expression').fill('asin(2)');
             await page.locator('#expression').press('Enter');
-            await expect(page.locator('#result')).toContainText('-1 ≤ x ≤ 1');
-            await expect(page.locator('#result')).toContainText('⟦asin⟧');
+            await expect(page.locator('#result')).toHaveText('1.5707963268 - 1.3169578969*i');
             await page.locator('#function-tab-3').click();
             await page.locator('[data-action=clear]:visible').click();
             await page.locator('[data-function=log]').dispatchEvent('click');
             await expect(page.locator('#function-help')).toContainText('y ≠ 1');
             await expect(page.locator('#expression')).toHaveValue('log()');
             await page.locator('[data-function=sqrt]').hover();
-            await expect(page.locator('#function-help')).toContainText('x ≥ 0');
+            await expect(page.locator('#function-help')).toContainText('sqrt(-1) = i');
             await expect(page.locator('[data-function=sqrt]')).toHaveText('√x');
             await page.locator('#expression').fill('log(2;1)');
             await page.locator('#expression').press('Enter');

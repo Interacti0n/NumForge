@@ -6,6 +6,7 @@
 #include <numforge/runtime.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 CalculatorStatus calculator_from_complex_status(BigComplexStatus status)
@@ -21,25 +22,36 @@ CalculatorStatus calculator_from_complex_status(BigComplexStatus status)
     }
 }
 #define mapped calculator_from_complex_status
-static bool expression_uses_complex(const CalculatorExpression *e, const CalculatorValue *answer, bool include_roots)
+static bool function_may_promote(CalculatorFunctionImplementation function)
+{
+    switch (function) {
+        case CALCULATOR_FUNCTION_SQRT: case CALCULATOR_FUNCTION_LN: case CALCULATOR_FUNCTION_LOG:
+        case CALCULATOR_FUNCTION_ASIN: case CALCULATOR_FUNCTION_ACOS:
+        case CALCULATOR_FUNCTION_ACOSH: case CALCULATOR_FUNCTION_ATANH:
+        case CALCULATOR_FUNCTION_POWER: case CALCULATOR_FUNCTION_ROOT: case CALCULATOR_FUNCTION_CBRT:
+            return true;
+        default:return false;
+    }
+}
+static bool expression_uses_complex(const CalculatorExpression *e, const CalculatorValue *answer, bool allow_promotion)
 {
     if (e == NULL) return false;
     switch (e->type) {
         case CALCULATOR_EXPRESSION_IMAGINARY: return true;
         case CALCULATOR_EXPRESSION_ANSWER: return calculator_value_is_complex(answer);
         case CALCULATOR_EXPRESSION_VARIABLE: return calculator_value_is_complex(e->data.variable.value);
-        case CALCULATOR_EXPRESSION_UNARY: return expression_uses_complex(e->data.unary.operand, answer, include_roots);
-        case CALCULATOR_EXPRESSION_POSTFIX: return expression_uses_complex(e->data.postfix.operand, answer, include_roots);
-        case CALCULATOR_EXPRESSION_BINARY: return expression_uses_complex(e->data.binary.left, answer, include_roots) || expression_uses_complex(e->data.binary.right, answer, include_roots);
+        case CALCULATOR_EXPRESSION_UNARY: return expression_uses_complex(e->data.unary.operand, answer, allow_promotion);
+        case CALCULATOR_EXPRESSION_POSTFIX: return expression_uses_complex(e->data.postfix.operand, answer, allow_promotion);
+        case CALCULATOR_EXPRESSION_BINARY: return (allow_promotion && e->data.binary.operation == CALCULATOR_BINARY_POWER) || expression_uses_complex(e->data.binary.left, answer, allow_promotion) || expression_uses_complex(e->data.binary.right, answer, allow_promotion);
         case CALCULATOR_EXPRESSION_CALL:
-            if ((include_roots && e->data.call.function->implementation == CALCULATOR_FUNCTION_SQRT) ||
+            if ((allow_promotion && function_may_promote(e->data.call.function->implementation)) ||
                 e->data.call.function->implementation == CALCULATOR_FUNCTION_COMPLEX ||
                 e->data.call.function->implementation == CALCULATOR_FUNCTION_REAL_PART ||
                 e->data.call.function->implementation == CALCULATOR_FUNCTION_IMAGINARY_PART ||
                 e->data.call.function->implementation == CALCULATOR_FUNCTION_CONJUGATE ||
                 e->data.call.function->implementation == CALCULATOR_FUNCTION_ARGUMENT) return true;
             for (size_t i=0; i<e->data.call.count; i++)
-                if (expression_uses_complex(e->data.call.arguments[i], answer, include_roots)) return true;
+                if (expression_uses_complex(e->data.call.arguments[i], answer, allow_promotion)) return true;
             return false;
         default: return false;
     }
@@ -202,6 +214,9 @@ static CalculatorStatus arithmetic(CalculatorValue *r,const CalculatorValue *a,c
     }
     return status;
 }
+static CalculatorStatus evaluate_real(CalculatorValue *result,
+    const CalculatorExpression *e,const CalculatorContext *context,
+    const CalculatorValue *answer,uint64_t *random_state,CalculatorError *error);
 /* Borrow evaluated real operands for the existing scalar evaluator. This also
  * permits sin(re(z)), sum(re(z);im(z)), etc. without evaluating children twice. */
 static CalculatorStatus real_operation(CalculatorValue *result, const CalculatorExpression *expression,
@@ -215,7 +230,7 @@ static CalculatorStatus real_operation(CalculatorValue *result, const Calculator
         operation.data.binary.left=&left;operation.data.binary.right=&right;
     } else if (expression->type == CALCULATOR_EXPRESSION_UNARY) operation.data.unary.operand=&left;
     else operation.data.postfix.operand=&left;
-    return calculator_evaluate_complex(result,&operation,context,answer,random_state,error);
+    return evaluate_real(result,&operation,context,answer,random_state,error);
 }
 /* A rational principal root exists exactly when both computed components
  * have proven rational square roots. NOT_IMPLEMENTED requests decimal fallback. */
@@ -263,6 +278,9 @@ static ComplexUnaryOperation complex_unary_operation(CalculatorFunctionImplement
         case CALCULATOR_FUNCTION_ASIN: return bigcomplex_asin;
         case CALCULATOR_FUNCTION_ACOS: return bigcomplex_acos;
         case CALCULATOR_FUNCTION_ATAN: return bigcomplex_atan;
+        case CALCULATOR_FUNCTION_ASINH: return bigcomplex_asinh;
+        case CALCULATOR_FUNCTION_ACOSH: return bigcomplex_acosh;
+        case CALCULATOR_FUNCTION_ATANH: return bigcomplex_atanh;
         default: return NULL;
     }
 }
@@ -370,6 +388,75 @@ static CalculatorStatus evaluate_real(CalculatorValue *result,
         answer != NULL && !calculator_value_is_complex(answer) ? answer_decimal : NULL,answer,random_state,error);
     bigdecimal_destroy(answer_decimal);return status;
 }
+static CalculatorStatus compare_real(int *comparison,const CalculatorValue *value,const char *boundary)
+{
+    CalculatorStatus status=CALCULATOR_OUT_OF_MEMORY;
+    if (exact(value)) {
+        BigRational *a=bigrational_create(),*b=bigrational_create();BigInt *integer=bigint_create();
+        if (a && b && integer) {
+            status=rational_part(a,value);
+            if (status==CALCULATOR_OK) status=calculator_from_integer_status(bigint_set_string(integer,boundary));
+            if (status==CALCULATOR_OK) status=calculator_from_rational_status(bigrational_from_bigint(b,integer));
+            if (status==CALCULATOR_OK) status=calculator_from_rational_status(bigrational_compare(comparison,a,b));
+        }
+        bigrational_destroy(a);bigrational_destroy(b);bigint_destroy(integer);
+    } else {
+        BigDecimal *limit=bigdecimal_create();
+        if (limit) {
+            status=calculator_from_decimal_status(bigdecimal_set_string(limit,boundary));
+            if (status==CALCULATOR_OK) status=calculator_from_decimal_status(bigdecimal_compare(comparison,value->number,limit));
+        }
+        bigdecimal_destroy(limit);
+    }
+    return status;
+}
+static CalculatorStatus promote_complex(CalculatorValue *value,const CalculatorContext *context)
+{
+    if (calculator_value_is_complex(value)) return CALCULATOR_OK;
+    CalculatorValue promoted={0};CalculatorStatus status=CALCULATOR_OUT_OF_MEMORY;
+    if (exact(value)) {
+        promoted.kind=CALCULATOR_VALUE_COMPLEX_RATIONAL;promoted.complex_rational=bigrationalcomplex_create();
+        if (promoted.complex_rational) status=as_exact(promoted.complex_rational,value);
+    } else {
+        promoted.kind=CALCULATOR_VALUE_COMPLEX_DECIMAL;promoted.complex_decimal=bigcomplex_create();
+        if (promoted.complex_decimal) status=as_decimal(promoted.complex_decimal,value,context);
+    }
+    if (status==CALCULATOR_OK) {calculator_value_destroy(value);*value=promoted;}
+    else calculator_value_destroy(&promoted);
+    return status;
+}
+/* A noninteger real power can remain real; preserve that scalar result type. */
+static CalculatorStatus noninteger_power(CalculatorValue *result,const CalculatorValue *base,
+    const CalculatorValue *exponent,const CalculatorContext *context)
+{
+    CalculatorStatus status=arithmetic(result,base,exponent,CALCULATOR_BINARY_POWER,context);
+    bool negative=false;
+    if (status==CALCULATOR_OK && !calculator_value_is_complex(base) && !calculator_value_is_complex(exponent)) {
+        status=negative_real(&negative,base);
+        if (status==CALCULATOR_OK && !negative) {
+            result->number=bigdecimal_create();
+            status=result->number ? mapped(bigcomplex_get_real(result->number,result->complex_decimal)) : CALCULATOR_OUT_OF_MEMORY;
+            if (status==CALCULATOR_OK) {bigcomplex_destroy(result->complex_decimal);result->complex_decimal=NULL;result->kind=CALCULATOR_VALUE_DECIMAL;}
+        }
+    }
+    return status;
+}
+static CalculatorStatus complex_root(CalculatorValue *result,const CalculatorValue *value,
+    int64_t degree,const CalculatorContext *context)
+{
+    if (degree==2) return complex_function(result,value,CALCULATOR_FUNCTION_SQRT,context);
+    CalculatorValue exponent={0};BigInt *one=bigint_create(),*denominator=bigint_create();
+    CalculatorStatus status=CALCULATOR_OUT_OF_MEMORY;char text[32];
+    exponent.kind=CALCULATOR_VALUE_RATIONAL;exponent.rational=bigrational_create();
+    snprintf(text,sizeof(text),"%lld",(long long)degree);
+    if (one && denominator && exponent.rational) {
+        status=calculator_from_integer_status(bigint_set_string(one,"1"));
+        if (status==CALCULATOR_OK) status=calculator_from_integer_status(bigint_set_string(denominator,text));
+        if (status==CALCULATOR_OK) status=calculator_from_rational_status(bigrational_set_fraction(exponent.rational,one,denominator));
+        if (status==CALCULATOR_OK) status=arithmetic(result,value,&exponent,CALCULATOR_BINARY_POWER,context);
+    }
+    bigint_destroy(one);bigint_destroy(denominator);calculator_value_destroy(&exponent);return status;
+}
 static CalculatorStatus complex_call(CalculatorValue *result, const CalculatorExpression *expression,
     const CalculatorContext *context, const CalculatorValue *answer,uint64_t *random_state,CalculatorError *error)
 {
@@ -388,23 +475,41 @@ static CalculatorStatus complex_call(CalculatorValue *result, const CalculatorEx
     }
     if (status != CALCULATOR_OK) goto done;
     CalculatorFunctionImplementation function=expression->data.call.function->implementation;
-    if (function == CALCULATOR_FUNCTION_SQRT && !any_complex && !values[0].quantity) {
+    bool fractional_power=false;
+    if (function==CALCULATOR_FUNCTION_POWER && !any_complex) {
+        int64_t unused;status=exponent_value(&values[1],context,&unused);
+        fractional_power=status==CALCULATOR_INVALID_ARGUMENT;
+        if (fractional_power) status=CALCULATOR_OK;
+        if (status!=CALCULATOR_OK) goto done;
+    }
+    for (size_t i=0;i<count;i++) {
+        if (calculator_value_is_complex(&values[i]) || values[i].quantity) continue;
+        bool promote=false,negative=false;int lower=0,upper=0;
+        if (function==CALCULATOR_FUNCTION_SQRT || function==CALCULATOR_FUNCTION_LN || function==CALCULATOR_FUNCTION_LOG) {
+            status=negative_real(&negative,&values[i]);promote=negative;
+        } else if (function==CALCULATOR_FUNCTION_ASIN || function==CALCULATOR_FUNCTION_ACOS || function==CALCULATOR_FUNCTION_ATANH) {
+            status=compare_real(&lower,&values[i],"-1");
+            if (status==CALCULATOR_OK) status=compare_real(&upper,&values[i],"1");
+            promote=lower<0 || upper>0;
+        } else if (function==CALCULATOR_FUNCTION_ACOSH) {
+            status=compare_real(&upper,&values[i],"1");promote=upper<0;
+        }
+        if (status==CALCULATOR_OK && promote) {status=promote_complex(&values[i],context);any_complex=true;}
+        if (status!=CALCULATOR_OK) goto done;
+    }
+    if (function==CALCULATOR_FUNCTION_ROOT || function==CALCULATOR_FUNCTION_CBRT) {
+        int64_t degree=3;
+        if (function==CALCULATOR_FUNCTION_ROOT) status=exponent_value(&values[1],context,&degree);
+        if (status==CALCULATOR_OK && degree<1) status=CALCULATOR_INVALID_ARGUMENT;
+        if (status==CALCULATOR_OK && degree>CALCULATOR_MAX_ROOT_DEGREE) status=CALCULATOR_VALUE_TOO_LARGE;
+        if (status!=CALCULATOR_OK) goto done;
         bool negative=false;
-        status=negative_real(&negative,&values[0]);
-        if (status != CALCULATOR_OK) goto done;
-        if (negative) {
-            CalculatorValue promoted={0};
-            if (exact(&values[0])) {
-                promoted.kind=CALCULATOR_VALUE_COMPLEX_RATIONAL;
-                promoted.complex_rational=bigrationalcomplex_create();
-                status=promoted.complex_rational ? as_exact(promoted.complex_rational,&values[0]) : CALCULATOR_OUT_OF_MEMORY;
-            } else {
-                promoted.kind=CALCULATOR_VALUE_COMPLEX_DECIMAL;
-                promoted.complex_decimal=bigcomplex_create();
-                status=promoted.complex_decimal ? as_decimal(promoted.complex_decimal,&values[0],context) : CALCULATOR_OUT_OF_MEMORY;
-            }
-            if (status == CALCULATOR_OK) status=complex_function(result,&promoted,function,context);
-            calculator_value_destroy(&promoted);goto done;
+        if (!calculator_value_is_complex(&values[0])) status=negative_real(&negative,&values[0]);
+        if (status!=CALCULATOR_OK) goto done;
+        if (any_complex || (negative && degree%2==0)) {
+            status=promote_complex(&values[0],context);
+            if (status==CALCULATOR_OK) status=complex_root(result,&values[0],degree,context);
+            goto done;
         }
     }
     if (function == CALCULATOR_FUNCTION_COMPLEX) status=construct(result,&values[0],&values[1],context);
@@ -429,12 +534,12 @@ static CalculatorStatus complex_call(CalculatorValue *result, const CalculatorEx
         }
         bigcomplex_destroy(value);bigcomplex_destroy(base);
     }
-    else if (function == CALCULATOR_FUNCTION_POWER && any_complex) {
+    else if (function == CALCULATOR_FUNCTION_POWER && (any_complex || fractional_power)) {
         const CalculatorExpression *base=expression->data.call.arguments[0];
         if (calculator_value_is_complex(&values[1]) && base->type == CALCULATOR_EXPRESSION_CONSTANT &&
             base->data.constant.constant == CALCULATOR_CONSTANT_E)
             status=complex_function(result,&values[1],CALCULATOR_FUNCTION_EXP,context);
-        else status=arithmetic(result,&values[0],&values[1],CALCULATOR_BINARY_POWER,context);
+        else status=noninteger_power(result,&values[0],&values[1],context);
     } else if (any_complex) status=CALCULATOR_INVALID_ARGUMENT;
     else {
         CalculatorExpression operation=*expression;operation.data.call.arguments=children;
@@ -476,7 +581,16 @@ CalculatorStatus calculator_evaluate_complex(CalculatorValue *result,
     else {status=CALCULATOR_INVALID_ARGUMENT;goto done;}
     status=calculator_evaluate_complex(&a,left,context,answer,random_state,error);if (status != CALCULATOR_OK) goto done;
     if (right != NULL) {status=calculator_evaluate_complex(&b,right,context,answer,random_state,error);if (status != CALCULATOR_OK) goto done;}
-    if (!calculator_value_is_complex(&a) && (right == NULL || !calculator_value_is_complex(&b)))
+    bool fractional_power=false;
+    if (e->type==CALCULATOR_EXPRESSION_BINARY && op==CALCULATOR_BINARY_POWER &&
+        !calculator_value_is_complex(&a) && !calculator_value_is_complex(&b)) {
+        int64_t unused;status=exponent_value(&b,context,&unused);
+        fractional_power=status==CALCULATOR_INVALID_ARGUMENT;
+        if (fractional_power) status=CALCULATOR_OK;
+        if (status!=CALCULATOR_OK) goto done;
+    }
+    if (fractional_power) status=noninteger_power(result,&a,&b,context);
+    else if (!calculator_value_is_complex(&a) && (right == NULL || !calculator_value_is_complex(&b)))
         status=real_operation(result,e,&a,&b,context,answer,random_state,error);
     else if (e->type == CALCULATOR_EXPRESSION_BINARY && op == CALCULATOR_BINARY_POWER &&
         calculator_value_is_complex(&b) && left->type == CALCULATOR_EXPRESSION_CONSTANT &&

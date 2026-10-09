@@ -1,5 +1,20 @@
 const {test, expect}=require('@playwright/test');
 for(const lang of ['sk','en']) for(const width of [390,1280]) {
+    test('automatic complex domains '+lang+' '+width,async({page})=>{
+        await page.setViewportSize({width,height:844});await page.goto('/?lang='+lang);
+        const input=page.locator('#expression'),result=page.locator('#result');
+        for(const [expression,expected] of [
+            ['ln(-1)','3.1415926536*i'],['log(-1)','1.3643763538*i'],
+            ['asin(2)','1.5707963268 - 1.3169578969*i'],['acos(2)','1.3169578969*i'],
+            ['acosh(-1)','3.1415926536*i'],['atanh(2)','0.5493061443 - 1.5707963268*i'],
+            ['asinh(1+i)','1.0612750619 + 0.6662394325*i'],
+            ['2^0.5','1.4142135624'],['(-1)^0.3','0.5877852523 + 0.8090169944*i'],
+            ['root(-4;2)','2*i'],['root(-8;3)','-2']
+        ]) {await input.fill(expression);await expect(result).toHaveText(expected);}
+    });
+}
+
+for(const lang of ['sk','en']) for(const width of [390,1280]) {
     test(`complex inverse trigonometry uses radians ${lang} ${width}`,async({page})=>{
         await page.addInitScript(()=>localStorage.setItem('numforge-angle-unit','deg'));
         await page.setViewportSize({width,height:844});await page.goto('/?lang='+lang);
@@ -34,7 +49,7 @@ test('HTTP complex inverse trigonometry preserves domains and failed commits',as
     expect(saved.ok).toBe(true);
     const before=await (await request.get('/api/session/value?client='+client+'&name=z')).json();
     expect(before.value.kind).toBe('complex_decimal_approximation');expect(before.value.approximate).toBe(true);
-    for(const expression of ['z=atan(i)','z=atan(-i)','z=asin(2)','z=acos(2)']) {
+    for(const expression of ['z=atan(i)','z=atan(-i)','z=atanh(1)','z=atanh(-1)']) {
         const data=await (await request.post(base+'&revision='+revision+++'&action=commit',{data:expression})).json();
         expect(data.ok).toBe(false);
     }
@@ -182,7 +197,7 @@ test('HTTP complex roots retain exact components and preserve real domains',asyn
     expect((await send('w=sqrt(x)')).result).toBe('(2/3)*i');
     const promoted=await (await request.get('/api/session/value?client='+client+'&name=w')).json();
     expect(promoted.value.components).toEqual({real:'0',imaginary:'2/3'});
-    expect((await send('root(-1;2)')).ok).toBe(false);
+    expect((await send('root(-1;0)')).ok).toBe(false);
     expect((await send('ans')).result).toBe('(2/3)*i');
     expect((await send('sqrt(-1+0i)')).result).toBe('i');
     expect((await send('sqrt(i)')).result).toBe('0.7071067812 + 0.7071067812*i');
@@ -200,7 +215,7 @@ test('HTTP principal logarithm retains radians, typed values and failed-assignme
     expect(snapshot.value.kind).toBe('complex_decimal_approximation');expect(snapshot.value.approximate).toBe(true);
     expect(Number(snapshot.value.components.real)).toBe(0);
     expect(Number(snapshot.value.components.imaginary)).toBeCloseTo(Math.PI/2,12);
-    expect((await send('ln(-1)')).ok).toBe(false);
+    expect((await send('ln(0)')).ok).toBe(false);
     expect((await send('z=ln(0*i)')).ok).toBe(false);
     expect((await send('ans')).result).toBe('1.5707963268*i');
     expect((await send('ln(-1+0i)')).result).toBe('3.1415926536*i');
@@ -225,7 +240,7 @@ test('HTTP principal powers preserve branches, exact integers and failed state',
     expect((await send('z=(0*i)^i')).ok).toBe(false);
     expect((await send('z=(0*i)^(-1/2)')).ok).toBe(false);
     expect((await send('ans')).result).toBe('0.2078795764');
-    expect((await send('2^0.5')).ok).toBe(false);
+    expect((await send('2^0.5')).result).toBe('1.4142135624');
     expect((await send('pow(2;i)')).result).toBe('0.7692389014 + 0.6389612763*i');
     expect((await send('(-1+0i)^0.3')).result).toBe('0.5877852523 + 0.8090169944*i');
     expect((await send('(-1-1E-20i)^0.3')).result).toBe('0.5877852523 - 0.8090169944*i');
@@ -244,7 +259,7 @@ test('HTTP complex base logarithms preserve domains and failed state',async({req
     expect(await send('z=log(i;i)')).toMatchObject({ok:true,result:'1'});
     const snapshot=await (await request.get('/api/session/value?client='+client+'&name=z')).json();
     expect(snapshot.value.kind).toBe('complex_decimal_approximation');expect(snapshot.value.approximate).toBe(true);
-    for(const input of ['z=log(i;1)','z=log(i;0)','z=log(0*i)','log(-1)','log(2;-1)',
+    for(const input of ['z=log(i;1)','z=log(i;0)','z=log(0*i)',
         'log(qty(2;"m");i)','log(i;qty(2;"m"))']) expect((await send(input)).ok).toBe(false);
     expect((await send('ans')).result).toBe('1');
     expect((await send('log(i)')).result).toBe('0.6821881769*i');
@@ -272,7 +287,7 @@ test('HTTP complex trigonometry preserves radians, near-pole values and failed s
     expect(Number(snapshot.value.components.imaginary)).toBe(0);
     expect((await send('z=tan(90)')).ok).toBe(false);
     expect((await send('ans')).result).toBe('1.5430806348');
-    expect((await send('asinh(i)')).ok).toBe(false);
+    expect((await send('asinh(i)')).result).toBe('1.5707963268*i');
     expect((await send('sin(1+i)')).result).toBe('1.2984575814 + 0.6349639148*i');
     expect((await send('cos(1-i)')).result).toBe('0.8337300251 + 0.9888977058*i');
     expect((await send('tan(-i)')).result).toBe('-0.761594156*i');
@@ -295,7 +310,7 @@ test('HTTP complex hyperbolic functions preserve tiny tails, poles and session s
     expect((await send('z=cosh(i)')).result).toBe('0.5403023059');
     let snapshot=await (await request.get('/api/session/value?client='+client+'&name=z')).json();
     expect(snapshot.value.kind).toBe('complex_decimal_approximation');expect(snapshot.value.approximate).toBe(true);
-    expect((await send('z=atanh(i)')).ok).toBe(false);
+    expect((await send('z=atanh(1)')).ok).toBe(false);
     expect((await send('ans')).result).toBe('0.5403023059');
     expect((await send('tanh(-1+i)')).result).toBe('-1.0839233273 + 0.2717525853*i');
     expect((await send('tanh(0.25+0.5i)')).result).toBe('0.3124206925 + 0.5045007027*i');
@@ -340,4 +355,24 @@ test('HTTP imaginary unit, projections and variable names preserve session seman
     expect(Math.abs(Number(snapshot.value.components.imaginary))).toBeLessThan(1e-30);
     const registry=await (await request.get('/api/functions')).json();
     for(const name of ['re','im','conj','arg']) expect(JSON.stringify(registry)).toContain('"'+name+'"');
+});
+
+test('HTTP automatic domains preserve types, aliases, singularities and variables',async({request})=>{
+    const client='a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1',base='/api/evaluate?precision=10&angle=deg&client='+client;
+    let revision=1;const send=async(data,action='commit')=>(await request.post(base+'&revision='+(revision++)+'&action='+action,{data})).json();
+    expect((await send('','start')).ok).toBe(true);
+    expect((await send('x=-1')).result).toBe('-1');
+    expect((await send('z=ln(x)')).result).toBe('3.1415926536*i');
+    const complex=await (await request.get('/api/session/value?client='+client+'&name=z')).json();
+    expect(complex.value.kind).toBe('complex_decimal_approximation');
+    for(const input of ['z=ln(0)','z=atanh(1)','z=atanh(-1)','z=log(2;1)','z=factorial(-1)','z=isqrt(-1)'])expect((await send(input)).ok).toBe(false);
+    expect((await send('ans')).result).toBe('3.1415926536*i');
+    expect((await send('arcsin(2)')).result).toBe('1.5707963268 - 1.3169578969*i');
+    expect((await send('arcuscosh(-1)')).result).toBe('3.1415926536*i');
+    expect((await send('arctanh(2)')).result).toBe('0.5493061443 - 1.5707963268*i');
+    expect((await send('log(-1;-1)')).result).toBe('1');
+    expect((await send('a=2^0.5')).result).toBe('1.4142135624');
+    const real=await (await request.get('/api/session/value?client='+client+'&name=a')).json();
+    expect(real.value.kind).not.toContain('complex');
+    expect((await send('asin(0.5)')).result).toBe('30');
 });

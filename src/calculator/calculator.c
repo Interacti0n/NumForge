@@ -430,7 +430,7 @@ static CalculatorStatus calculator_compute_value_with_answer_profile_impl(
         status = calculator_expression_has_quantity(expression, answer) ? CALCULATOR_DIMENSION_ERROR :
             calculator_evaluate_complex(result, expression, context, answer, random_state, error);
         /* Preserve the scalar API's integer representation after evaluating
-         * a possibly complex root that ultimately produced a real integer. */
+         * a possibly complex function/power that produced a real integer. */
         if (status == CALCULATOR_OK && result->kind == CALCULATOR_VALUE_RATIONAL &&
             !calculator_expression_has_complex(expression, answer))
         {

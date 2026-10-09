@@ -123,3 +123,13 @@ These are application limits, not implicit budgets of the public numeric C API.
 See [expression rules](../reference/CALCULATOR_EXPRESSIONS.md),
 [HTTP transport](../reference/HTTP_API.md) and
 [session API](../reference/SESSION_HTTP_API.md) for domains, errors and pagination.
+
+## Automatic complex results
+
+Dimensionless inputs no longer require +0i to extend supported real domains.
+Negative logarithms, asin/acos outside [-1,1], acosh below 1, atanh outside
+[-1,1], negative even roots and fractional powers of negative bases select
+principal complex results. Valid real results remain real; real odd roots
+remain real. Complex outputs use radians even in DEG. Poles and integer-only
+or ordering/statistical constraints remain errors. See
+[domain and branch rules](../reference/CALCULATOR_EXPRESSIONS.md#automatic-complex-domains).

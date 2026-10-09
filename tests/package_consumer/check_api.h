@@ -229,6 +229,21 @@ static int public_api_checks(void)
         bigcomplex_format(complex_value, 10, BIGDECIMAL_ROUND_HALF_EVEN, BIGDECIMAL_FORMAT_AUTO, 100, &text) != BIGCOMPLEX_OK ||
         strcmp(text, "1.0172219679 + 0.4023594781*i") != 0) goto cleanup;
     free(text); text = NULL;
+    if (bigcomplex_set_strings(complex_value, "1", "1") != BIGCOMPLEX_OK ||
+        bigcomplex_asinh(complex_value, complex_value, 16, BIGDECIMAL_ROUND_HALF_EVEN) != BIGCOMPLEX_OK ||
+        bigcomplex_format(complex_value, 10, BIGDECIMAL_ROUND_HALF_EVEN, BIGDECIMAL_FORMAT_AUTO, 100, &text) != BIGCOMPLEX_OK ||
+        strcmp(text, "1.0612750619 + 0.6662394325*i") != 0) goto cleanup;
+    free(text); text = NULL;
+    if (bigcomplex_set_strings(complex_value, "1", "1") != BIGCOMPLEX_OK ||
+        bigcomplex_acosh(complex_value, complex_value, 16, BIGDECIMAL_ROUND_HALF_EVEN) != BIGCOMPLEX_OK ||
+        bigcomplex_format(complex_value, 10, BIGDECIMAL_ROUND_HALF_EVEN, BIGDECIMAL_FORMAT_AUTO, 100, &text) != BIGCOMPLEX_OK ||
+        strcmp(text, "1.0612750619 + 0.9045568943*i") != 0) goto cleanup;
+    free(text); text = NULL;
+    if (bigcomplex_set_strings(complex_value, "1", "1") != BIGCOMPLEX_OK ||
+        bigcomplex_atanh(complex_value, complex_value, 16, BIGDECIMAL_ROUND_HALF_EVEN) != BIGCOMPLEX_OK ||
+        bigcomplex_format(complex_value, 10, BIGDECIMAL_ROUND_HALF_EVEN, BIGDECIMAL_FORMAT_AUTO, 100, &text) != BIGCOMPLEX_OK ||
+        strcmp(text, "0.4023594781 + 1.0172219679*i") != 0) goto cleanup;
+    free(text); text = NULL;
     result = 0;
 cleanup:
     bigrationalcomplex_destroy(exact_complex);

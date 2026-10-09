@@ -795,3 +795,51 @@ BigComplexStatus bigcomplex_set_polar(BigComplex *result, const BigDecimal *radi
     commit(result,temporary);
 done:bigcomplex_destroy(temporary);return mapped(status);
 }
+
+/* Rotations reuse the guarded inverse-trigonometric kernels and their cuts.
+ * Round after the final sign changes so directed rounding remains directed. */
+static BigComplexStatus inverse_hyperbolic(BigComplex *result,const BigComplex *value,
+    int64_t digits,BigDecimalRoundingMode rounding,int operation)
+{
+    if (!result || !value) return BIGCOMPLEX_NULL_ARGUMENT;
+    if (digits<1 || digits>INT64_MAX-84 || rounding<BIGDECIMAL_ROUND_TOWARD_ZERO ||
+        rounding>BIGDECIMAL_ROUND_HALF_EVEN) return BIGCOMPLEX_INVALID_ARGUMENT;
+    BigComplex *rotated=bigcomplex_create(),*inverse=bigcomplex_create(),*temporary=bigcomplex_create();
+    BigDecimal *one=bigdecimal_create();BigComplexStatus status=BIGCOMPLEX_OUT_OF_MEMORY;
+    bool negative=false;
+    if (!rotated || !inverse || !temporary || !one) goto done;
+#define HYP_DEC(call) do { status=mapped(call);if(status!=BIGCOMPLEX_OK)goto done; } while(0)
+    if (operation==1) status=bigcomplex_acos(inverse,value,digits+12,BIGDECIMAL_ROUND_HALF_EVEN);
+    else {
+        HYP_DEC(bigdecimal_negate(rotated->real,value->imaginary));
+        HYP_DEC(bigdecimal_copy(rotated->imaginary,value->real));
+        status=operation==0 ? bigcomplex_asin(inverse,rotated,digits+12,BIGDECIMAL_ROUND_HALF_EVEN) :
+            bigcomplex_atan(inverse,rotated,digits+12,BIGDECIMAL_ROUND_HALF_EVEN);
+    }
+    if (status!=BIGCOMPLEX_OK) goto done;
+    HYP_DEC(bigdecimal_copy(temporary->real,inverse->imaginary));
+    HYP_DEC(bigdecimal_negate(temporary->imaginary,inverse->real));
+    if (operation==1) {
+        HYP_DEC(bigdecimal_negate(temporary->real,temporary->real));
+        HYP_DEC(bigdecimal_negate(temporary->imaginary,temporary->imaginary));
+        HYP_DEC(bigdecimal_is_negative(&negative,temporary->real));
+        if (negative) {
+            HYP_DEC(bigdecimal_negate(temporary->real,temporary->real));
+            HYP_DEC(bigdecimal_negate(temporary->imaginary,temporary->imaginary));
+        }
+    }
+    HYP_DEC(bigdecimal_set_string(one,"1"));
+    HYP_DEC(bigdecimal_div_significant(temporary->real,temporary->real,one,digits,rounding));
+    HYP_DEC(bigdecimal_div_significant(temporary->imaginary,temporary->imaginary,one,digits,rounding));
+    commit(result,temporary);
+done:
+    bigcomplex_destroy(rotated);bigcomplex_destroy(inverse);bigcomplex_destroy(temporary);bigdecimal_destroy(one);
+    return status;
+#undef HYP_DEC
+}
+BigComplexStatus bigcomplex_asinh(BigComplex *result,const BigComplex *value,int64_t digits,BigDecimalRoundingMode rounding)
+{ return inverse_hyperbolic(result,value,digits,rounding,0); }
+BigComplexStatus bigcomplex_acosh(BigComplex *result,const BigComplex *value,int64_t digits,BigDecimalRoundingMode rounding)
+{ return inverse_hyperbolic(result,value,digits,rounding,1); }
+BigComplexStatus bigcomplex_atanh(BigComplex *result,const BigComplex *value,int64_t digits,BigDecimalRoundingMode rounding)
+{ return inverse_hyperbolic(result,value,digits,rounding,2); }

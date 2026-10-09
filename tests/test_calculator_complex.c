@@ -33,7 +33,7 @@ static void test_exact_and_mixed_arithmetic(void)
 }
 static void test_domains(void)
 {
-    const char *inputs[]={"(0*i)^i","2^0.5","asinh(complex(1;2))",
+    const char *inputs[]={"(0*i)^i",
         "complex(complex(1;2);3)","complex(1;2)!"};
     for(size_t i=0;i<sizeof(inputs)/sizeof(inputs[0]);i++) {
         CalculatorValue value={0};CalculatorError error;
@@ -169,7 +169,7 @@ static void test_principal_logarithms(void)
     check("re(ln(1+i))","0.3465735903",CALCULATOR_VALUE_DECIMAL);
     context.angle_unit=CALCULATOR_ANGLE_DEGREES;
     check("ln(i)","1.5707963268*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
-    const char *invalid[]={"ln(0*i)","ln(-1)","ln(0)"};
+    const char *invalid[]={"ln(0*i)","ln(0)"};
     for(size_t n=0;n<sizeof(invalid)/sizeof(invalid[0]);n++) {
         CalculatorValue value={0};CalculatorError error;
         TEST_ASSERT_EQUAL_MESSAGE(CALCULATOR_INVALID_ARGUMENT,calculator_compute_value(invalid[n],&context,&value,&error),invalid[n]);
@@ -214,7 +214,7 @@ static void test_principal_powers(void)
     TEST_ASSERT_NULL(text);TEST_ASSERT_EQUAL_UINT(1,session.variable_count);
     compute(&session,3,false,"ans","0.2078795764");
     TEST_ASSERT_EQUAL(CALCULATOR_DIVISION_BY_ZERO,calculator_session_compute(&session,4,true,"z=(0*i)^(-1/2)",&context,&text,&error,NULL));
-    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,calculator_session_compute(&session,5,true,"(-1)^(1/2)",&context,&text,&error,NULL));
+    TEST_ASSERT_EQUAL(CALCULATOR_DIVISION_BY_ZERO,calculator_session_compute(&session,5,true,"0^(-1/2)",&context,&text,&error,NULL));
     calculator_session_destroy(&session);
 }
 static void test_base_logarithms(void)
@@ -227,7 +227,7 @@ static void test_base_logarithms(void)
     check("log(100;10+0i)","2",CALCULATOR_VALUE_COMPLEX_DECIMAL);
     context.angle_unit=CALCULATOR_ANGLE_DEGREES;
     check("log(i)","0.6821881769*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
-    const char *invalid[]={"log(0*i)","log(i;1)","log(i;0)","log(-1)","log(2;-1)"};
+    const char *invalid[]={"log(0*i)","log(i;1)","log(i;0)"};
     for(size_t n=0;n<sizeof(invalid)/sizeof(invalid[0]);n++) {
         CalculatorValue value={0};CalculatorError error;
         TEST_ASSERT_EQUAL_MESSAGE(CALCULATOR_INVALID_ARGUMENT,calculator_compute_value(invalid[n],&context,&value,&error),invalid[n]);
@@ -282,7 +282,7 @@ static void test_complex_hyperbolic(void)
     check("tanh(1+i)","1.0839233273 + 0.2717525853*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
     CalculatorSession session={0};char *text=NULL;CalculatorError error;
     compute(&session,1,true,"z=tanh(i)","1.5574077247*i");
-    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,calculator_session_compute(&session,2,true,"z=atanh(i)",&context,&text,&error,NULL));
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,calculator_session_compute(&session,2,true,"z=atanh(1)",&context,&text,&error,NULL));
     TEST_ASSERT_NULL(text);TEST_ASSERT_EQUAL_UINT(1,session.variable_count);
     compute(&session,3,false,"ans","1.5574077247*i");calculator_session_destroy(&session);
 }
@@ -304,22 +304,56 @@ static void test_complex_inverse_trigonometry(void)
     check("arcsin(0.5+0i)","0.5235987756",CALCULATOR_VALUE_COMPLEX_DECIMAL);
     CalculatorSession session={0};char *text=NULL;CalculatorError error;
     compute(&session,1,true,"z=asin(i)","0.881373587*i");
-    const char *bad[]={"z=atan(i)","z=atan(-i)","z=asin(2)"};
+    const char *bad[]={"z=atan(i)","z=atan(-i)","z=atanh(1)"};
     for(size_t j=0;j<3;j++) {
         TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,calculator_session_compute(&session,j+2,true,bad[j],&context,&text,&error,NULL));
         TEST_ASSERT_NULL(text);TEST_ASSERT_EQUAL_UINT(1,session.variable_count);
     }
     compute(&session,5,false,"ans","0.881373587*i");calculator_session_destroy(&session);
 }
+static void test_automatic_complex_domains(void)
+{
+    check("ln(-1)","3.1415926536*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("log(-1)","1.3643763538*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("log(-1;-1)","1",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("asin(2)","1.5707963268 - 1.3169578969*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("acos(2)","1.3169578969*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("acosh(-1)","3.1415926536*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("acosh(-2)","1.3169578969 + 3.1415926536*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("atanh(2)","0.5493061443 - 1.5707963268*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("atanh(-2)","-0.5493061443 + 1.5707963268*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("asinh(1+i)","1.0612750619 + 0.6662394325*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("acosh(1+i)","1.0612750619 + 0.9045568943*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("atanh(1+i)","0.4023594781 + 1.0172219679*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("root(-4;2)","2*i",CALCULATOR_VALUE_COMPLEX_RATIONAL);
+    check("root(-16;4)","1.4142135624 + 1.4142135624*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("root(-8;3)","-2",CALCULATOR_VALUE_INTEGER);
+    check("cbrt(-8)","-2",CALCULATOR_VALUE_INTEGER);
+    check("cbrt(i)","0.8660254038 + 0.5*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("2^0.5","1.4142135624",CALCULATOR_VALUE_DECIMAL);
+    check("pow(-1;0.3)","0.5877852523 + 0.8090169944*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("(-1)^0.3","0.5877852523 + 0.8090169944*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("ln(-1)+sqrt(-1)","4.1415926536*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    context.angle_unit=CALCULATOR_ANGLE_DEGREES;
+    check("asin(2)","1.5707963268 - 1.3169578969*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("asin(0.5)","30",CALCULATOR_VALUE_DECIMAL);
+    CalculatorSession session={0};
+    compute(&session,1,true,"x=-1","-1");
+    compute(&session,2,true,"z=ln(x)","3.1415926536*i");
+    compute(&session,3,false,"re(exp(z))","-1");calculator_session_destroy(&session);
+}
 static bool sqrt_allocation_only=false;
+static bool promotion_allocation_only=false;
 static void test_allocation_failures(void)
 {
-    const char *inputs[]={"w=z^-2","w=conj(z)","w=abs(z)","w=sum(re(z);im(z))",
+    const char *inputs[]={"w=ln(-1)","w=log(-1;-1)","w=asin(2)","w=acosh(-1)","w=atanh(2)",
+        "w=asinh(i)","w=root(-4;2)","w=root(-16;4)","w=2^0.5","w=pow(-1;0.3)","w=z^-2","w=conj(z)","w=abs(z)","w=sum(re(z);im(z))",
         "w=sqrt(-1/9)","w=sqrt(-2)","w=sqrt(4/9)+1/3","w=sqrt(3+4i)","w=sqrt(z)","w=ln(z)","w=z^i","w=log(i;i)",
         "w=sin(i)","w=cos(i)","w=tan(i)","w=sinh(0*i)","w=cosh(0*i)",
         "w=tanh(0*i)","w=tanh(0.1+0.1i)","w=tanh(1+i)",
         "w=asin(0*i)","w=acos(1+0i)","w=atan(0*i)"};
     for(size_t input=0;input<sizeof(inputs)/sizeof(inputs[0]);input++) {
+    if (promotion_allocation_only && input>=10) continue;
     if (sqrt_allocation_only && strncmp(inputs[input],"w=sqrt(",7)!=0) continue;
     size_t count=0;
     for(size_t failure=0;;failure++) {
@@ -341,10 +375,11 @@ static void test_allocation_failures(void)
 }
 int main(int argc,char **argv)
 {
+    promotion_allocation_only=argc==2 && strcmp(argv[1],"--promotion-allocation-only")==0;
     sqrt_allocation_only=argc==2 && strcmp(argv[1],"--sqrt-allocation-only")==0;
     UNITY_BEGIN();RUN_TEST(test_exact_and_mixed_arithmetic);RUN_TEST(test_domains);
     RUN_TEST(test_sessions_and_snapshots);RUN_TEST(test_imaginary_unit_and_projections);
-    RUN_TEST(test_principal_square_roots);RUN_TEST(test_principal_logarithms);RUN_TEST(test_principal_powers);RUN_TEST(test_base_logarithms);RUN_TEST(test_complex_trigonometry);RUN_TEST(test_complex_hyperbolic);RUN_TEST(test_complex_inverse_trigonometry);
+    RUN_TEST(test_principal_square_roots);RUN_TEST(test_principal_logarithms);RUN_TEST(test_principal_powers);RUN_TEST(test_base_logarithms);RUN_TEST(test_complex_trigonometry);RUN_TEST(test_complex_hyperbolic);RUN_TEST(test_complex_inverse_trigonometry);RUN_TEST(test_automatic_complex_domains);
     if(argc!=2 || strcmp(argv[1],"--numeric-only")!=0)RUN_TEST(test_allocation_failures);
     return UNITY_END();
 }

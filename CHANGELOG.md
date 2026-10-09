@@ -7,6 +7,11 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Automatically extend supported dimensionless function domains to principal
+  complex results: negative logarithms, out-of-domain inverse trigonometric and
+  hyperbolic inputs, even roots and fractional powers. Add public complex
+  asinh/acosh/atanh; preserve real-domain results, quantities and singularities.
+
 - Automatically promote negative dimensionless `sqrt` / `√` arguments to
   principal complex roots in the typed calculator and HTTP API; preserve exact
   rational roots and existing real/quantity behavior.

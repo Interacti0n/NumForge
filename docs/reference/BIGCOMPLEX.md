@@ -244,8 +244,8 @@ Both functions require positive digits and a valid rounding mode for every
 input, including exact results and exponent zero. Failures preserve output;
 powers support input/output aliasing and inherit runtime budgets.
 
-Functions and complete signatures are in the public headers. Complex
-transcendental functions remain deferred.
+Functions and complete signatures are in the public headers, including
+principal logarithmic, trigonometric and hyperbolic functions.
 
 ## Display formatting
 
@@ -276,7 +276,7 @@ successful output with `free()`; all failures preserve the output pointer.
 1. Consider a scaled/adaptive magnitude algorithm to reduce exact intermediate
    storage while preserving rounding guarantees. Integer powers, exact-sum
    modulus and bounded display formatting are available.
-2. Consider an explicit complex mode for extending real-domain functions.
+2. Extend further complex statistical operations only with explicit domain definitions.
    The calculator already supports i, complex(re;im), re/im/conj/abs/arg and exp.
    Mixed approximate operations explicitly project exact components at working
    precision. Typed sessions and snapshots are implemented.
@@ -336,3 +336,25 @@ and sine at twelve extra working digits, followed by exact decimal products.
 It is approximate and cannot retain symbolic pi or exact rational origins;
 round trips can differ. A zero radius produces zero. Negative radius and invalid
 precision/modes are errors. Failure preserves the destination.
+
+## Principal inverse hyperbolic functions
+
+`bigcomplex_asinh`, `bigcomplex_acosh`, `bigcomplex_atanh` are approximate,
+atomic on failure and support output/input aliasing. Digits range from 1 to
+INT64_MAX-84; normal resource and scale limits still apply. They reuse guarded
+inverse-trigonometric kernels via asinh(z)=-i asin(iz), atanh(z)=-i atan(iz),
+and acosh(z)=±i acos(z), choosing nonnegative real part. Final rounding follows
+the requested mode after rotations/sign changes. No correct-rounding guarantee
+is claimed near branch points.
+
+Cuts: asinh on the imaginary axis beyond ±i; acosh on the real axis below 1;
+atanh on the real axis outside [-1,1]. Without signed zero, asinh(2i) has
+positive real part and imaginary +pi/2; asinh(-2i) has negative real part and
+imaginary -pi/2. Acosh uses positive imaginary part on its real cut:
+acosh(-2)=acosh(2)+i*pi. Atanh(x>1) uses negative imaginary pi/2 and
+atanh(x<-1) positive imaginary pi/2. Atanh(±1) is invalid and preserves output.
+See [DLMF inverse hyperbolic functions](https://dlmf.nist.gov/4.37) for branches
+and interrelations; the cut-side conventions above are the implementation contract.
+
+Calculator aliases share these C kernels and automatically promote acosh(x<1)
+and atanh(|x|>1). Public real BigDecimal functions keep their real domains.

@@ -1,5 +1,23 @@
 # Calculator expression reference
 
+## Automatic complex domains
+
+Dimensionless calculator inputs automatically use complex arithmetic where the
+real domain ends: sqrt(x<0), ln/log of negative input or base, asin/acos outside
+[-1,1], acosh(x<1), atanh outside [-1,1], negative even roots and noninteger
+powers of negative bases. No explicit +0i is required. Variables, ans and nested
+calls follow the same rule. Real inverse-trigonometric results follow RAD/DEG;
+complex results always use radians, including automatically promoted results.
+Real odd roots remain real. Singularities (ln(0), atanh(±1), atan(±i), zero
+logarithm bases, base 1 and division by zero) remain errors. Integer-only and
+ordering/statistical functions retain their documented domains; this does not
+add gamma-factorial, complex ordering or complex unit quantities.
+
+Public BigDecimal APIs retain their real domains. Promotion belongs to the typed
+calculator; numerical complex work uses the public BigComplex C API.
+`asinh`, `acosh`, `atanh` and their arc/arcus aliases now accept complex inputs.
+They return approximate principal branches; see [BigComplex](BIGCOMPLEX.md).
+
 ## Calculator expressions
 
 `complex(re;im)` constructs a complex value from two real, dimensionless
@@ -8,7 +26,8 @@ arguments. For example `complex(0;1)^2` is `-1` and
 addition, subtraction, multiplication, division and signed integer powers
 (`^`, `pow`, `²`, `³`); real integer exponents use signed 64-bit range.
 Exact integer powers remain rational-complex. Noninteger or complex exponents
-use approximate principal powers when either operand is complex. Mixing an approximate input
+use approximate principal powers, with automatic complex promotion for negative
+real bases and noninteger exponents. Positive real bases keep real results. Mixing an approximate input
 (constants, irrational functions, decimal division mode) explicitly projects
 exact components at working precision and produces decimal-complex values.
 Finite decimal literals remain exact in the default exact evaluation policy.
@@ -48,8 +67,11 @@ imaginary residual.
 noninteger or complex exponents, with radians and the principal logarithm
 branch (-pi, pi]. For example `i^i` is approximately `0.2078795764`,
 `2^i` is `0.7692389014 + 0.6389612763*i`, and `(-1+0i)^(1/2)`
-approaches `i` and may retain a tiny real residual. Both-real operands retain the integer
-restriction: write `(-1+0i)^(1/2)` to select complex arithmetic.
+approaches `i` and may retain a tiny real residual. Real noninteger exponents
+are accepted too: `2^0.5` stays real; `(-1)^0.5` selects the principal complex
+root. `cbrt(-8)` and `root(-8;3)` retain their real result -2, whereas
+`(-8)^(1/3)` is a principal complex power. Even roots of negative real numbers
+promote automatically; explicit complex `root`/`cbrt` return principal roots.
 Zero to zero is one; zero to a positive real exponent is zero; negative
 real exponents fail with division by zero and nonreal exponents are invalid.
 Integer powers retain exact arithmetic; complex-typed exponents use the
@@ -58,20 +80,19 @@ projected at guarded working precision. No correctly-rounded guarantee or
 symbolic identity simplification is provided. Multivalued powers and algebraic
 identities across branch cuts are not implied.
 
-`ln(z)` accepts explicit complex arguments and returns the approximate principal
+`ln(z)` accepts complex arguments and automatically promotes negative real input and returns the approximate principal
 natural logarithm ln(|z|)+i*arg(z), in radians regardless of RAD/DEG.
 Its imaginary component lies in (-pi, pi]; negative real values use +pi,
 with a -pi limit below the branch cut. Zero is invalid. For example,
-`ln(-1+0i)` displays approximately `3.1415926536*i`; real `ln(-1)` retains
-its domain error. Exact rational components are projected to decimals at guarded
+Both `ln(-1)` and `ln(-1+0i)` display approximately `3.1415926536*i`. Exact rational components are projected to decimals at guarded
 working precision.
 
 `log(z)` uses base 10; `log(z;b)` uses ln(z)/ln(b) with the same principal
-branches and radians when either argument is complex. For example `log(i)`
+branches and radians when either argument is complex or negative real. For example `log(i)`
 is approximately `0.6821881769*i`, `log(-1+0i;i)=2`, and `log(-i;i)=-1`.
 Zero input and bases zero or one are invalid. Negative real and nonreal bases
-are allowed in this explicit complex path; both-real calls retain positive
-input/base restrictions. Results remain approximate complex values even if
+are allowed, with automatic promotion. Positive real input/base keep real
+results and their existing real numerical policy. Results remain approximate complex values even if
 they display a real number. Bases close to one amplify numerical errors;
 principal log and power are not general inverse identities across branch cuts.
 `sin(z)`, `cos(z)` and `tan(z)` accept complex inputs in radians, independently
@@ -93,11 +114,10 @@ their existing scalar behavior. Sinh/cosh grow with large real components.
 Tanh uses a scaled decaying exponential for |re|>0.5 and a guarded quotient
 for smaller real parts; tiny imaginary tails are preserved and may hit scale
 limits. Near imaginary-axis poles, errors amplify; finite decimal pi inputs
-are not symbolic poles. Complex inverse hyperbolic calls remain unsupported.
-
+are not symbolic poles.
 `asin(z)`, `acos(z)`, `atan(z)` and their arc/arcus aliases accept complex
 inputs and return approximate principal branches in radians, even in DEG.
-Real-only asin/acos still require [-1,1]. For example asin(i)≈0.881373587*i,
+Asin/acos outside [-1,1] promote automatically. For example asin(i)≈0.881373587*i,
 asin(2+0i)≈1.5707963268-1.3169578969*i and acos(2+0i)≈1.3169578969*i.
 Atan(±i) is invalid. On the imaginary-axis cuts atan(2i)≈pi/2+0.5493061443*i
 and atan(-2i)≈-pi/2-0.5493061443*i. Failed commits preserve ans, variables
@@ -222,10 +242,10 @@ the current registry; recognition is separate from numerical implementation:
 | `mod(a;b)` | Integer remainder after division truncating toward zero; nonzero remainder has the dividend's sign. `mod(-7;3) = -1`; zero divisor is an error. |
 | `npr(n;r)`, `ncr(n;r)` | Exact permutations and combinations without repetition. Both arguments are integers and require `0 ≤ r ≤ n`; `npr(5;2) = 20`, `ncr(5;2) = 10`. |
 | `isqrt(n)` | Floor of the square root of a non-negative integer: `isqrt(15) = 3`. |
-| `sqrt(x)`, `cbrt(x)`, `root(x;n)` | Active real roots; `√(x)` aliases `sqrt(x)`. Negative dimensionless real inputs to `sqrt` are promoted to principal complex roots; nonnegative real inputs stay real. Cube roots accept negative real x. `root` accepts integer n from 1 to 10000, and negative x only for odd n. |
-| `exp(x)`, `ln(x)`, `log(x)`, `log(x;b)` | Active. `exp` and `ln` accept explicit complex arguments with the rules above. Real logarithm inputs must be positive; a custom real base must be positive and not 1. `ln` uses base e, one-argument `log` uses base 10. Explicit complex `log` follows the principal-base rules above. |
-| `sin(x)`, `cos(x)`, `tan(x)`, `asin(x)`, `acos(x)`, `atan(x)` | Active. Real inputs/results use RAD/DEG. Complex inputs/results always use radians, including zero imaginary parts; inverse calls select principal branches. Real-only `asin`/`acos` require x in `[-1,1]`; complex `atan(±i)` fails. Exact degree poles such as `tan(90)` are rejected in DEG mode. |
-| `sinh(x)`, `cosh(x)`, `tanh(x)`, `asinh(x)`, `acosh(x)`, `atanh(x)` | Active and independent of RAD/DEG. `acosh` requires x ≥ 1; `atanh` requires -1 < x < 1. |
+| `sqrt(x)`, `cbrt(x)`, `root(x;n)` | Active real roots; `√(x)` aliases `sqrt(x)`. Negative dimensionless real inputs to `sqrt` are promoted to principal complex roots; nonnegative real inputs stay real. Cube roots accept negative real x. `root` accepts integer n from 1 to 10000, and negative x with odd n stays real; even n promotes to the principal complex root. |
+| `exp(x)`, `ln(x)`, `log(x)`, `log(x;b)` | Active. `exp` and `ln` accept explicit complex arguments with the rules above. Negative real arguments/bases promote automatically; zero input and bases 0 or 1 remain invalid. `ln` uses base e, one-argument `log` uses base 10. Explicit complex `log` follows the principal-base rules above. |
+| `sin(x)`, `cos(x)`, `tan(x)`, `asin(x)`, `acos(x)`, `atan(x)` | Active. Real inputs/results use RAD/DEG. Complex inputs/results always use radians, including zero imaginary parts; inverse calls select principal branches. Real `asin`/`acos` outside `[-1,1]` promote automatically; complex `atan(±i)` fails. Exact degree poles such as `tan(90)` are rejected in DEG mode. |
+| `sinh(x)`, `cosh(x)`, `tanh(x)`, `asinh(x)`, `acosh(x)`, `atanh(x)` | Active and independent of RAD/DEG. All accept complex inputs. `acosh(x<1)` and `atanh(|x|>1)` promote automatically; `atanh(±1)` remains invalid. |
 | `radians(x)`, `degrees(x)` | Active explicit conversions, independent of the selected angle mode. |
 
 Each inverse trigonometric or hyperbolic calculator call also accepts both

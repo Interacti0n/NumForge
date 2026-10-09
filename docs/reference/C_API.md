@@ -28,7 +28,8 @@ separately versioned remote service.
   `bigcomplex_ln`, principal `bigcomplex_log` / `bigcomplex_pow`, radian
   `bigcomplex_sin` / `bigcomplex_cos` / `bigcomplex_tan`, hyperbolic
   `bigcomplex_sinh` / `bigcomplex_cosh` / `bigcomplex_tanh`, principal inverse
-  `bigcomplex_asin` / `bigcomplex_acos` / `bigcomplex_atan` and three display forms.
+  `bigcomplex_asin` / `bigcomplex_acos` / `bigcomplex_atan`, inverse hyperbolic
+  `bigcomplex_asinh` / `bigcomplex_acosh` / `bigcomplex_atanh` and three display forms.
   Private calculator/session/HTTP adapters support typed complex values; those
   adapters remain outside the public numeric C library ABI.
 - Mutating functions return a status code. On failure, their output is left

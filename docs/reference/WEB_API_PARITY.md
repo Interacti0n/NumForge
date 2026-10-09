@@ -17,12 +17,13 @@ is added; saved values remain bounded application-owned memory.
 | Construct complex values and choose Cartesian/trigonometric/exponential display | `complex(re;im)`, evaluation `form=cartesian|trig|exp` | Available; exact component snapshots use value schema 2 |
 | Natural complex input and component functions | `i`, `a+bi`, `re`, `im`, `conj`, `abs`, `arg`, `exp`, explicit `e^z` | Available in the C evaluator; argument/exponential angles are radians; approximate results retain numerical residuals |
 | Principal complex square root | `sqrt(z)`, `√(z)`; negative dimensionless real input promotes automatically | Available in C; rational roots stay exact; public real-valued `bigdecimal_sqrt` still requires nonnegative input |
-| Principal complex natural logarithm | `ln(z)` with explicit complex input | Available in C via `bigcomplex_ln`; radians and (-pi, pi] branch; zero and negative real inputs retain domain errors |
-| Principal complex powers | `z^w`, `pow(z;w)` when either operand is complex | Public C `bigcomplex_pow`; radians, principal branch and approximate snapshots; integer powers stay exact |
-| Principal complex base logarithms | `log(z)`, `log(z;b)` with either argument complex | Public C `bigcomplex_log`; base 10 default, principal radians, approximate snapshots; zero input and bases 0/1 invalid |
+| Principal complex natural logarithm | `ln(z)` with automatic negative-real promotion | Available in C via `bigcomplex_ln`; radians and (-pi, pi] branch; zero remains invalid; negative real inputs promote automatically |
+| Principal complex powers | `z^w`, `pow(z;w)` with automatic fractional-power promotion | Public C `bigcomplex_pow`; radians, principal branch and approximate snapshots; integer powers stay exact |
+| Principal complex base logarithms | `log(z)`, `log(z;b)` with automatic negative-real promotion | Public C `bigcomplex_log`; base 10 default, principal radians, approximate snapshots; zero input and bases 0/1 invalid |
 | Complex trigonometry | `sin(z)`, `cos(z)`, `tan(z)` with complex input | Public C APIs; complex angles always radians, real inputs keep RAD/DEG; approximate snapshots and atomic failures |
 | Complex hyperbolic functions | `sinh(z)`, `cosh(z)`, `tanh(z)` | Public C APIs; radian angles, approximate snapshots, scaled tanh for large real components, atomic failures |
 | Complex inverse trigonometry | `asin(z)`, `acos(z)`, `atan(z)` and arc/arcus aliases | Public C APIs; principal branches in radians, explicit cut conventions, atan(±i) rejected atomically |
+| Complex inverse hyperbolic functions | `asinh(z)`, `acosh(z)`, `atanh(z)` and aliases | Public C APIs; principal branches, automatic real-domain promotion and atomic errors at atanh(±1) |
 | Read-only calculator preview | `action=preview` with session ID and revision | Available |
 | Confirm result, update ans/history | `action=commit` | Available |
 | Create or replace a variable | Commit `x=2/3` | Available |
@@ -88,3 +89,9 @@ again in JavaScript. Presentation remains a client responsibility.
 
 HTTP coverage is distinct from a public C calculator/session ABI. The installed
 SDK contains the numerical library; private application headers are not exported.
+
+Automatic dimensionless promotion also covers log arguments/bases, asin/acos
+outside [-1,1], acosh below 1, atanh outside [-1,1], negative even roots and
+noninteger powers. Public C inverse hyperbolic functions are
+`bigcomplex_asinh`, `bigcomplex_acosh`, `bigcomplex_atanh`. Singularities,
+integer-only functions, ordering and complex quantities retain their restrictions.

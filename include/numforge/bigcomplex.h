@@ -180,6 +180,19 @@ BigComplexStatus bigcomplex_acos(BigComplex *result, const BigComplex *value,
     int64_t digits, BigDecimalRoundingMode rounding);
 BigComplexStatus bigcomplex_atan(BigComplex *result, const BigComplex *value,
     int64_t digits, BigDecimalRoundingMode rounding);
+/* Principal inverse hyperbolic functions, approximate; alias-safe and atomic.
+ * asinh(z)=-i*asin(i*z), atanh(z)=-i*atan(i*z); acosh chooses nonnegative
+ * real part and an imaginary part in [-pi,pi], positive on the real cut.
+ * asinh cuts: imaginary axis beyond +/-i; atanh cuts: real axis outside
+ * [-1,1], with negative imaginary part for x>1 and positive for x<-1.
+ * atanh(+/-1) is invalid. No signed zeros or correct-rounding guarantee.
+ * digits>=1, <=INT64_MAX-84. */
+BigComplexStatus bigcomplex_asinh(BigComplex *result, const BigComplex *value,
+    int64_t digits, BigDecimalRoundingMode rounding);
+BigComplexStatus bigcomplex_acosh(BigComplex *result, const BigComplex *value,
+    int64_t digits, BigDecimalRoundingMode rounding);
+BigComplexStatus bigcomplex_atanh(BigComplex *result, const BigComplex *value,
+    int64_t digits, BigDecimalRoundingMode rounding);
 /* Cartesian delegates to format; polar displays r*(cos(phi)+i*sin(phi)) or
  * r*e^(i*(phi)), radians. Zero displays 0 in every form. Polar coordinates
  * are approximate, with explicit working digits; places is display policy.

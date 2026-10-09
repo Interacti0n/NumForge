@@ -2,6 +2,13 @@
 
 ## Local HTTP API
 
+The typed evaluator automatically promotes dimensionless inputs outside supported
+real domains to principal complex results. This includes negative logarithms,
+asin/acos outside [-1,1], acosh below 1, atanh outside [-1,1], negative even
+roots and fractional powers. Singularities remain errors; valid real results
+and unit dimensional rules are preserved. See
+[automatic complex domains](CALCULATOR_EXPRESSIONS.md#automatic-complex-domains).
+
 Complex expressions use the same evaluation/session endpoints, e.g.
 `complex(1/3;1/3)^2`, `2+3i`, `re(z)`, `im(z)`, `conj(z)`, `abs(z)`, `arg(z)`
 and `exp(z)`. Lowercase `i` is reserved; uppercase `I` remains a variable.
@@ -9,10 +16,10 @@ and `exp(z)`. Lowercase `i` is reserved; uppercase `I` remains a variable.
 root, with proven rational roots staying exact. Negative dimensionless real
 arguments are promoted automatically: `sqrt(-1)` returns exact `i`, just like
 `sqrt(-1+0i)`. Nonnegative real inputs and quantity roots retain their real rules.
-`z^w` and `pow(z;w)` accept principal noninteger and complex powers when
-either operand is complex, via public C `bigcomplex_pow`. Integer powers
+`z^w` and `pow(z;w)` accept principal noninteger and complex powers, via public C `bigcomplex_pow`. Integer powers
 retain exact arithmetic. General powers use exp(w*ln(z)), radians and the
-principal logarithm branch; both-real operands retain the integer restriction.
+principal logarithm branch; positive real bases/noninteger real exponents retain
+real results, negative bases promote automatically.
 Zero to zero is one; zero to a positive real exponent is zero; negative real
 and nonreal exponents of zero fail. Approximate snapshots retain complex
 components even for a displayed real result. Failed assignments preserve state.
@@ -29,7 +36,7 @@ complex-typed input, including zero imaginary components. Angles are radians,
 independent of `angle=deg`; real-only inputs keep RAD/DEG behavior. Results
 are approximate complex snapshots. Tangent uses guarded sin/cos division;
 near-pole errors and resource/scale limits apply. Complex inverse hyperbolic
-calls remain unsupported. Failed commits preserve session state.
+calls are supported through public `bigcomplex_asinh/acosh/atanh`. Failed commits preserve session state.
 
 `asin(z)`, `acos(z)` and `atan(z)` and their arc/arcus aliases use the public
 complex C APIs for complex-typed arguments, returning principal branches in
@@ -40,15 +47,16 @@ Atan(±i) is invalid; failed commits leave ans, variables and history unchanged.
 See [complex cut conventions and precision](BIGCOMPLEX.md#principal-inverse-trigonometry).
 
 `log(z)` uses base 10, and `log(z;b)` computes principal ln(z)/ln(b) when
-either argument is complex, through public C `bigcomplex_log`. Zero input
+either argument is complex or negative real, through public C `bigcomplex_log`. Zero input
 and bases zero or one are invalid; negative and nonreal bases are supported.
-Both-real calls retain their positive-domain restrictions. Results are
+Positive real arguments/base retain real results; negative arguments/base
+promote automatically. Results are
 approximate complex snapshots even when displaying a real number. Near-unit
 bases amplify numerical error; failed commits preserve ans and variables.
 
-`ln(z)` accepts explicit complex input and returns an approximate principal
+`ln(z)` accepts complex input and promotes negative real arguments and returns an approximate principal
 logarithm in radians, imaginary part in (-pi, pi]. Zero is invalid; real
-`ln(-1)` remains an error, while `ln(-1+0i)` uses the positive pi branch.
+Both `ln(-1)` and `ln(-1+0i)` use the positive pi branch.
 Arguments and complex exponentials use radians regardless of `angle=deg`.
 Exponentials are approximate and can retain small numerical residuals.
 An optional final output option
