@@ -95,7 +95,8 @@ Responses are bounded to 128 KiB including JSON framing; each full numeric
 encoding is bounded to 65536 bytes. A large aggregate returns `value too large`;
 retry with smaller pages, usually `limit=1`. Errors do not silently truncate or
 round exact values. All serialization shares the 5-second/64-MiB cooperative
-request budget and 128-KiB single-allocation limit.
+request budget and 512-KiB single-allocation limit. The 128-KiB response bound
+is a separate serialization limit.
 
 ## Ordering, retries and expiration
 

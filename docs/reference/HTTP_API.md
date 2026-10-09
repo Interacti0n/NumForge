@@ -160,8 +160,9 @@ resetting starts a new sequence; reloading retains the session. One-shot and leg
 draw afresh and do not cache random expressions.
 
 The session pool is separate from the legacy cache: eight sessions, FIFO
-eviction, 16 confirmed entries each and less than 4 MiB retained history per
-session. Each entry stores input, internal value, context and display. Evaluation
+eviction, 16 confirmed entries each and less than 64 MiB retained calculator
+history per session (excluding variables, conversion history and previews).
+Each entry stores input, internal value, context and display. Evaluation
 of an unknown/evicted session returns `session expired; reload the page` and
 never starts another session implicitly. Reload, language and guide navigation
 reuse the tab ID and read its current revision from the server. New session

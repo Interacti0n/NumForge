@@ -95,3 +95,31 @@ temporarily reevaluate its argument and constants with additional guard digits
 based on the argument magnitude, so symbolic π multiples survive angle
 reduction. Public `bigdecimal_div` retains
 its original explicit decimal-scale policy, independent of this calculator mode.
+
+## Application limits
+
+| Resource | Limit |
+| --- | --- |
+| Factorial input | Integer 0–100000 |
+| Root degree | Integer 1–10000 |
+| Output decimal places | 0–10000; default 10 |
+| Calculation time | 5 s, including parsing and output |
+| Allocation budget | 64 MiB cumulative requests; 512 KiB per allocation |
+| Expression / output | 4096 / 65536 UTF-8 bytes |
+| Parser depth / arguments per call | 256 / 256 |
+| Variables | 32 per session; names up to 31 ASCII letters |
+| Calculator / conversion history | 16 / 16 confirmed entries per session |
+| Server sessions | 8, with FIFO eviction; restart clears them |
+| HTTP request / receive time | 8192 bytes total / 2 s |
+| Session API response / page | 128 KiB JSON; 1–32 entries, default 8 |
+
+Time cancellation is cooperative. Freed allocations still count toward the
+64-MiB cumulative allocation budget; this is not process RSS. Allowed inputs
+are not a completion guarantee: `100000!` has 456574 digits, exceeds the full
+plain output bound and may exceed the five-second calculation budget even
+with scientific notation. Full precision does not disable resource limits.
+
+These are application limits, not implicit budgets of the public numeric C API.
+See [expression rules](../reference/CALCULATOR_EXPRESSIONS.md),
+[HTTP transport](../reference/HTTP_API.md) and
+[session API](../reference/SESSION_HTTP_API.md) for domains, errors and pagination.
