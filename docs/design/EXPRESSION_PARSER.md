@@ -66,18 +66,27 @@ the guard digit lets BigDecimal rescaling implement all six rounding modes.
 This rounds the root of the already evaluated argument, not an exact symbolic
 expression. Roots use at least 34 working significant digits, or a higher
 context division precision; full output retains this finite working precision.
-Degree 1 is identity; degrees 1..10000 are accepted, with negative arguments
-only for odd degrees. Intermediate size and cooperative time limits still apply.
+In these real BigDecimal kernels, degree 1 is identity and degrees 1..10000
+are accepted, with negative arguments only for odd degrees. The typed calculator
+automatically promotes negative even roots to principal complex roots through
+the public BigComplex API; real odd roots remain real. Intermediate size and cooperative time limits still apply.
 
 Exponential and logarithmic functions are implemented in
 `src/bigdecimal/transcendental.c` and exposed through the public BigDecimal API.
-`exp(x)` computes e^x; `ln(x)` requires x > 0; `log(x)` has base 10; and
-`log(x;b)` requires x > 0, b > 0 and b != 1. Argument reduction repeatedly
+In the real kernels, `exp(x)` computes e^x, `ln(x)` requires x > 0, `log(x)`
+has base 10, and `log(x;b)` requires x > 0, b > 0 and b != 1. The typed
+calculator promotes negative logarithm arguments/bases automatically through
+BigComplex; zero input and bases 0 or 1 remain invalid. Argument reduction repeatedly
 halves exponential inputs and repeatedly square-roots logarithm inputs before
 evaluating guarded decimal series. The result is then reconstructed at the
 requested significant precision. No binary floating-point conversion is used.
 The evaluator uses at least 34 significant digits, or the higher context
 precision, and all loops participate in the normal cooperative resource budget.
+
+The typed evaluator similarly promotes asin/acos outside [-1,1], acosh below
+1, atanh outside [-1,1] and fractional powers of negative bases. Complex
+results always use radians; singularities and integer/ordering constraints
+remain errors. See [automatic complex domains](../reference/CALCULATOR_EXPRESSIONS.md#automatic-complex-domains).
 
 Public BigDecimal trigonometry always uses radians. `CalculatorContext` adds an
 angle unit, defaulting to RAD. In DEG mode complete turns are removed exactly
