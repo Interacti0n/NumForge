@@ -34,7 +34,7 @@ static void test_exact_and_mixed_arithmetic(void)
 static void test_domains(void)
 {
     const char *inputs[]={"complex(1;2)^0.5","complex(1;2)^complex(1;0)","sin(complex(1;2))",
-        "complex(complex(1;2);3)","complex(1;2)!","sqrt(complex(1;2))"};
+        "complex(complex(1;2);3)","complex(1;2)!","sqrt(-1)"};
     for(size_t i=0;i<sizeof(inputs)/sizeof(inputs[0]);i++) {
         CalculatorValue value={0};CalculatorError error;
         TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,calculator_compute_value(inputs[i],&context,&value,&error));
@@ -125,9 +125,58 @@ static void test_imaginary_unit_and_projections(void)
     compute(&session,8,true,"I+i","7 + i");
     calculator_session_destroy(&session);
 }
+static void test_principal_square_roots(void)
+{
+    check("sqrt(3+4i)","2 + i",CALCULATOR_VALUE_COMPLEX_RATIONAL);
+    check("sqrt(3-4i)","2 - i",CALCULATOR_VALUE_COMPLEX_RATIONAL);
+    check("sqrt(-3+4i)","1 + 2*i",CALCULATOR_VALUE_COMPLEX_RATIONAL);
+    check("sqrt(-3-4i)","1 - 2*i",CALCULATOR_VALUE_COMPLEX_RATIONAL);
+    check("sqrt(-1+0i)","i",CALCULATOR_VALUE_COMPLEX_RATIONAL);
+    check("√(-1+0i)","i",CALCULATOR_VALUE_COMPLEX_RATIONAL);
+    check("sqrt(0*i)","0",CALCULATOR_VALUE_COMPLEX_RATIONAL);
+    check("sqrt(-1/9+0i)","(1/3)*i",CALCULATOR_VALUE_COMPLEX_RATIONAL);
+    check("sqrt((1/3+i/7)^2)","1/3 + (1/7)*i",CALCULATOR_VALUE_COMPLEX_RATIONAL);
+    check("sqrt((-1/3+i/7)^2)","1/3 - (1/7)*i",CALCULATOR_VALUE_COMPLEX_RATIONAL);
+    check("sqrt(1+i)","1.0986841135 + 0.4550898606*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("sqrt(i)","0.7071067812 + 0.7071067812*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("sqrt(-i)","0.7071067812 - 0.7071067812*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    CalculatorSession session={0};
+    compute(&session,1,true,"z=sqrt(3+4i)","2 + i");
+    compute(&session,2,true,"z^2","3 + 4*i");
+    calculator_session_destroy(&session);
+}
+static void test_principal_logarithms(void)
+{
+    check("ln(1+0i)","0",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("ln(-1+0i)","3.1415926536*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("ln(i)","1.5707963268*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("ln(-i)","-1.5707963268*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("ln(1+i)","0.3465735903 + 0.7853981634*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("ln(3+4i)","1.6094379124 + 0.927295218*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("ln(-3-4i)","1.6094379124 - 2.2142974356*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("exp(ln(2+3i))","2 + 3*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("re(ln(1+i))","0.3465735903",CALCULATOR_VALUE_DECIMAL);
+    context.angle_unit=CALCULATOR_ANGLE_DEGREES;
+    check("ln(i)","1.5707963268*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    const char *invalid[]={"ln(0*i)","ln(-1)","ln(0)","log(i)","log(2;i)"};
+    for(size_t n=0;n<sizeof(invalid)/sizeof(invalid[0]);n++) {
+        CalculatorValue value={0};CalculatorError error;
+        TEST_ASSERT_EQUAL_MESSAGE(CALCULATOR_INVALID_ARGUMENT,calculator_compute_value(invalid[n],&context,&value,&error),invalid[n]);
+        calculator_value_destroy(&value);
+    }
+    CalculatorSession session={0};
+    compute(&session,1,true,"z=ln(i)","1.5707963268*i");
+    compute(&session,2,true,"exp(ln(2+3i))","2 + 3*i");
+    char *text=NULL;CalculatorError error;
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,calculator_session_compute(&session,3,true,"z=ln(0*i)",&context,&text,&error,NULL));
+    TEST_ASSERT_NULL(text);TEST_ASSERT_EQUAL_UINT(1,session.variable_count);
+    compute(&session,4,false,"ans","2 + 3*i");
+    calculator_session_destroy(&session);
+}
 static void test_allocation_failures(void)
 {
-    const char *inputs[]={"w=z^-2","w=conj(z)","w=abs(z)","w=sum(re(z);im(z))"};
+    const char *inputs[]={"w=z^-2","w=conj(z)","w=abs(z)","w=sum(re(z);im(z))",
+        "w=sqrt(3+4i)","w=sqrt(z)","w=ln(z)"};
     for(size_t input=0;input<sizeof(inputs)/sizeof(inputs[0]);input++) {
     size_t count=0;
     for(size_t failure=0;;failure++) {
@@ -150,5 +199,6 @@ static void test_allocation_failures(void)
 int main(void)
 {
     UNITY_BEGIN();RUN_TEST(test_exact_and_mixed_arithmetic);RUN_TEST(test_domains);
-    RUN_TEST(test_sessions_and_snapshots);RUN_TEST(test_imaginary_unit_and_projections);RUN_TEST(test_allocation_failures);return UNITY_END();
+    RUN_TEST(test_sessions_and_snapshots);RUN_TEST(test_imaginary_unit_and_projections);
+    RUN_TEST(test_principal_square_roots);RUN_TEST(test_principal_logarithms);RUN_TEST(test_allocation_failures);return UNITY_END();
 }

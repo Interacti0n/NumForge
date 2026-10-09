@@ -23,7 +23,9 @@ separately versioned remote service.
   with `*_create()` and release them with `*_destroy()`; destruction accepts `NULL`.
 - [BigComplex](BIGCOMPLEX.md) provides standalone finite-decimal complex
   arithmetic, exact rational complex arithmetic, complex exponential,
-  component extraction, conjugation, squared modulus and three display forms.
+  component extraction, conjugation, squared modulus, principal complex square
+  root through `bigcomplex_sqrt`, principal natural logarithm through
+  `bigcomplex_ln` and three display forms.
   Private calculator/session/HTTP adapters support typed complex values; those
   adapters remain outside the public numeric C library ABI.
 - Mutating functions return a status code. On failure, their output is left

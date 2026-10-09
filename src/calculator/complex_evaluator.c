@@ -195,11 +195,46 @@ static CalculatorStatus real_operation(CalculatorValue *result, const Calculator
     else operation.data.postfix.operand=&left;
     return calculator_evaluate_complex(result,&operation,context,answer,random_state,error);
 }
+/* A rational principal root exists exactly when both computed components
+ * have proven rational square roots. NOT_IMPLEMENTED requests decimal fallback. */
+static CalculatorStatus exact_square_root(BigRationalComplex **result,const BigRationalComplex *value)
+{
+    BigRational *squared=bigrational_create(),*radius=bigrational_create(),*re=bigrational_create();
+    BigRational *im=bigrational_create(),*u=bigrational_create(),*v=bigrational_create(),*two=bigrational_create();
+    BigInt *integer=bigint_create();BigRationalComplex *root=bigrationalcomplex_create();
+    CalculatorStatus status=CALCULATOR_OUT_OF_MEMORY;
+    if (!squared || !radius || !re || !im || !u || !v || !two || !integer || !root) goto done;
+    status=mapped(bigrationalcomplex_abs_squared(squared,value));
+    if (status == CALCULATOR_OK) status=calculator_exact_sqrt(radius,squared);
+    if (status == CALCULATOR_OK) status=mapped(bigrationalcomplex_get_real(re,value));
+    if (status == CALCULATOR_OK) status=mapped(bigrationalcomplex_get_imaginary(im,value));
+    if (status == CALCULATOR_OK) status=calculator_from_integer_status(bigint_set_string(integer,"2"));
+    if (status == CALCULATOR_OK) status=calculator_from_rational_status(bigrational_from_bigint(two,integer));
+    if (status == CALCULATOR_OK) status=calculator_from_rational_status(bigrational_add(u,radius,re));
+    if (status == CALCULATOR_OK) status=calculator_from_rational_status(bigrational_div(u,u,two));
+    if (status == CALCULATOR_OK) status=calculator_exact_sqrt(u,u);
+    if (status == CALCULATOR_OK) status=calculator_from_rational_status(bigrational_sub(v,radius,re));
+    if (status == CALCULATOR_OK) status=calculator_from_rational_status(bigrational_div(v,v,two));
+    if (status == CALCULATOR_OK) status=calculator_exact_sqrt(v,v);
+    if (status == CALCULATOR_OK) status=calculator_from_rational_status(bigrational_get_numerator(integer,im));
+    if (status == CALCULATOR_OK && bigint_is_negative(integer)) status=calculator_from_rational_status(bigrational_negate(v,v));
+    if (status == CALCULATOR_OK) status=mapped(bigrationalcomplex_set_parts(root,u,v));
+    if (status == CALCULATOR_OK) {*result=root;root=NULL;}
+done:
+    bigrational_destroy(squared);bigrational_destroy(radius);bigrational_destroy(re);bigrational_destroy(im);
+    bigrational_destroy(u);bigrational_destroy(v);bigrational_destroy(two);bigint_destroy(integer);
+    bigrationalcomplex_destroy(root);return status;
+}
 static CalculatorStatus complex_function(CalculatorValue *result, const CalculatorValue *a,
     CalculatorFunctionImplementation function, const CalculatorContext *context)
 {
     if (a->quantity) return CALCULATOR_DIMENSION_ERROR;
     CalculatorStatus status=CALCULATOR_OUT_OF_MEMORY;
+    if (function == CALCULATOR_FUNCTION_SQRT && a->kind == CALCULATOR_VALUE_COMPLEX_RATIONAL) {
+        status=exact_square_root(&result->complex_rational,a->complex_rational);
+        if (status == CALCULATOR_OK) {result->kind=CALCULATOR_VALUE_COMPLEX_RATIONAL;return status;}
+        if (status != CALCULATOR_NOT_IMPLEMENTED) return status;
+    }
     if (function == CALCULATOR_FUNCTION_REAL_PART || function == CALCULATOR_FUNCTION_IMAGINARY_PART) {
         if (!calculator_value_is_complex(a)) {
             if (function == CALCULATOR_FUNCTION_REAL_PART) return calculator_value_copy(result,a);
@@ -251,10 +286,14 @@ static CalculatorStatus complex_function(CalculatorValue *result, const Calculat
     if (!projected) return CALCULATOR_OUT_OF_MEMORY;
     CalculatorContext working=*context;working.division_scale+=12;
     status=as_decimal(projected,a,&working);
-    if (status == CALCULATOR_OK && function == CALCULATOR_FUNCTION_EXP) {
+    if (status == CALCULATOR_OK && (function == CALCULATOR_FUNCTION_EXP || function == CALCULATOR_FUNCTION_SQRT ||
+        function == CALCULATOR_FUNCTION_LN)) {
         result->kind=CALCULATOR_VALUE_COMPLEX_DECIMAL;result->complex_decimal=bigcomplex_create();
-        status=result->complex_decimal ? mapped(bigcomplex_exp(result->complex_decimal,projected,
-            context->division_scale,context->rounding)) : CALCULATOR_OUT_OF_MEMORY;
+        status=result->complex_decimal ? mapped(function == CALCULATOR_FUNCTION_SQRT ?
+            bigcomplex_sqrt(result->complex_decimal,projected,context->division_scale,context->rounding) :
+            function == CALCULATOR_FUNCTION_LN ?
+            bigcomplex_ln(result->complex_decimal,projected,context->division_scale,context->rounding) :
+            bigcomplex_exp(result->complex_decimal,projected,context->division_scale,context->rounding)) : CALCULATOR_OUT_OF_MEMORY;
     } else if (status == CALCULATOR_OK) {
         result->number=bigdecimal_create();
         status=result->number ? mapped(function == CALCULATOR_FUNCTION_ABS ?
@@ -284,7 +323,8 @@ static CalculatorStatus complex_call(CalculatorValue *result, const CalculatorEx
     if (function == CALCULATOR_FUNCTION_COMPLEX) status=construct(result,&values[0],&values[1],context);
     else if (function == CALCULATOR_FUNCTION_REAL_PART || function == CALCULATOR_FUNCTION_IMAGINARY_PART ||
         function == CALCULATOR_FUNCTION_CONJUGATE || function == CALCULATOR_FUNCTION_ARGUMENT ||
-        (any_complex && (function == CALCULATOR_FUNCTION_ABS || function == CALCULATOR_FUNCTION_EXP)))
+        (any_complex && (function == CALCULATOR_FUNCTION_ABS || function == CALCULATOR_FUNCTION_EXP ||
+            function == CALCULATOR_FUNCTION_SQRT || function == CALCULATOR_FUNCTION_LN)))
         status=complex_function(result,&values[0],function,context);
     else if (function == CALCULATOR_FUNCTION_POWER && any_complex) {
         const CalculatorExpression *base=expression->data.call.arguments[0];

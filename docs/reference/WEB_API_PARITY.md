@@ -16,6 +16,8 @@ is added; saved values remain bounded application-owned memory.
 | Calculate, format, choose RAD/DEG or precision | `POST /api/evaluate`, expression body and output options | Available |
 | Construct complex values and choose Cartesian/trigonometric/exponential display | `complex(re;im)`, evaluation `form=cartesian|trig|exp` | Available; exact component snapshots use value schema 2 |
 | Natural complex input and component functions | `i`, `a+bi`, `re`, `im`, `conj`, `abs`, `arg`, `exp`, explicit `e^z` | Available in the C evaluator; argument/exponential angles are radians; approximate results retain numerical residuals |
+| Principal complex square root | `sqrt(z)`, `√(z)` with explicit complex input | Available in C; rational roots stay exact; real negative inputs retain their domain error |
+| Principal complex natural logarithm | `ln(z)` with explicit complex input | Available in C via `bigcomplex_ln`; radians and (-pi, pi] branch; zero and negative real inputs retain domain errors |
 | Read-only calculator preview | `action=preview` with session ID and revision | Available |
 | Confirm result, update ans/history | `action=commit` | Available |
 | Create or replace a variable | Commit `x=2/3` | Available |

@@ -192,6 +192,57 @@ BigComplexStatus bigcomplex_abs(BigDecimal *result, const BigComplex *value,
     bigdecimal_destroy(squared);
     return status;
 }
+BigComplexStatus bigcomplex_sqrt(BigComplex *result, const BigComplex *value,
+    int64_t digits, BigDecimalRoundingMode rounding)
+{
+    if (!result || !value) return BIGCOMPLEX_NULL_ARGUMENT;
+    if (digits < 1 || digits > INT64_MAX-12 || rounding < BIGDECIMAL_ROUND_TOWARD_ZERO ||
+        rounding > BIGDECIMAL_ROUND_HALF_EVEN) return BIGCOMPLEX_INVALID_ARGUMENT;
+    BigComplex *temporary=bigcomplex_create(), *square=bigcomplex_create();
+    BigDecimal *radius=bigdecimal_create(),*magnitude=bigdecimal_create(),*two=bigdecimal_create();
+    BigDecimalStatus status=BIGDECIMAL_OUT_OF_MEMORY;BigComplexStatus complex_status=BIGCOMPLEX_OK;
+    bool imaginary_zero=false,real_negative=false,imaginary_negative=false,equal=false;
+    if (!temporary || !square || !radius || !magnitude || !two) goto done;
+    TRY(bigdecimal_is_zero(&imaginary_zero,value->imaginary));
+    TRY(bigdecimal_is_negative(&real_negative,value->real));
+    TRY(bigdecimal_is_negative(&imaginary_negative,value->imaginary));
+    TRY(bigdecimal_abs(magnitude,value->real));
+    TRY(bigdecimal_set_string(two,"2"));
+    if (imaginary_zero) {
+        TRY(bigdecimal_sqrt(real_negative ? temporary->imaginary : temporary->real,
+            magnitude,digits+12,rounding));
+    } else {
+        complex_status=bigcomplex_abs(radius,value,digits+12,rounding);
+        if (complex_status != BIGCOMPLEX_OK) goto done;
+        TRY(bigdecimal_add(magnitude,radius,magnitude));
+        TRY(bigdecimal_div_exact_or_significant(magnitude,magnitude,two,digits+12,rounding));
+        TRY(bigdecimal_sqrt(magnitude,magnitude,digits+12,rounding));
+        TRY(bigdecimal_mul(radius,two,magnitude));
+        if (!real_negative) {
+            TRY(bigdecimal_copy(temporary->real,magnitude));
+            TRY(bigdecimal_div_exact_or_significant(temporary->imaginary,value->imaginary,radius,digits+12,rounding));
+        } else {
+            TRY(bigdecimal_abs(temporary->real,value->imaginary));
+            TRY(bigdecimal_div_exact_or_significant(temporary->real,temporary->real,radius,digits+12,rounding));
+            TRY(imaginary_negative ? bigdecimal_negate(temporary->imaginary,magnitude) :
+                bigdecimal_copy(temporary->imaginary,magnitude));
+        }
+    }
+    /* Prove exactness on stored finite decimals before applying output precision. */
+    complex_status=bigcomplex_mul(square,temporary,temporary);
+    if (complex_status == BIGCOMPLEX_OK) complex_status=bigcomplex_equal(&equal,square,value);
+    if (complex_status != BIGCOMPLEX_OK) goto done;
+    if (!equal) {
+        TRY(bigdecimal_set_string(two,"1"));
+        TRY(bigdecimal_div_significant(temporary->real,temporary->real,two,digits,rounding));
+        TRY(bigdecimal_div_significant(temporary->imaginary,temporary->imaginary,two,digits,rounding));
+    }
+    commit(result,temporary);
+done:
+    bigcomplex_destroy(temporary);bigcomplex_destroy(square);
+    bigdecimal_destroy(radius);bigdecimal_destroy(magnitude);bigdecimal_destroy(two);
+    return complex_status != BIGCOMPLEX_OK ? complex_status : mapped(status);
+}
 BigComplexStatus bigcomplex_pow_int(BigComplex *result, const BigComplex *value,
     int64_t exponent, int64_t digits, BigDecimalRoundingMode rounding)
 {
@@ -371,6 +422,29 @@ BigComplexStatus bigcomplex_format_form(const BigComplex *value, BigComplexForm 
     else{if(comparison==0)(void)snprintf(text,(size_t)length+1,format,a);else(void)snprintf(text,(size_t)length+1,format,r,a);}
     *result=text;text=NULL;
 done:free(r);free(a);free(text);bigdecimal_destroy(radius);bigdecimal_destroy(angle);return status;
+}
+BigComplexStatus bigcomplex_ln(BigComplex *result, const BigComplex *value,
+    int64_t digits, BigDecimalRoundingMode rounding)
+{
+    if (!result || !value) return BIGCOMPLEX_NULL_ARGUMENT;
+    if (digits < 1 || digits > INT64_MAX-12 || rounding < BIGDECIMAL_ROUND_TOWARD_ZERO ||
+        rounding > BIGDECIMAL_ROUND_HALF_EVEN) return BIGCOMPLEX_INVALID_ARGUMENT;
+    BigComplex *temporary=bigcomplex_create();
+    BigDecimal *squared=bigdecimal_create(),*two=bigdecimal_create();
+    BigComplexStatus status=BIGCOMPLEX_OUT_OF_MEMORY;
+    if (!temporary || !squared || !two) goto done;
+    /* No rounded magnitude before ln: preserve small nonzero log magnitudes
+     * for values close to the unit circle. */
+    status=bigcomplex_abs_squared(squared,value);
+    if (status == BIGCOMPLEX_OK) status=mapped(bigdecimal_ln(temporary->real,squared,digits+12,rounding));
+    if (status == BIGCOMPLEX_OK) status=mapped(bigdecimal_set_string(two,"2"));
+    if (status == BIGCOMPLEX_OK) status=mapped(bigdecimal_div_significant(
+        temporary->real,temporary->real,two,digits,rounding));
+    if (status == BIGCOMPLEX_OK) status=bigcomplex_arg(temporary->imaginary,value,digits,rounding);
+    if (status == BIGCOMPLEX_OK) commit(result,temporary);
+done:
+    bigcomplex_destroy(temporary);bigdecimal_destroy(squared);bigdecimal_destroy(two);
+    return status;
 }
 BigComplexStatus bigcomplex_exp(BigComplex *result, const BigComplex *value,
     int64_t digits, BigDecimalRoundingMode rounding)

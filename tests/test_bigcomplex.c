@@ -278,10 +278,66 @@ static void test_complex_exponential_and_exact_helpers(void) {
     TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigrationalcomplex_to_string(r,80,&text));TEST_ASSERT_EQUAL_STRING("3 - 4*i",text);free(text);
     bigrational_destroy(squared);bigrationalcomplex_destroy(r);bigcomplex_destroy(v);
 }
+static void test_principal_square_root(void) {
+    const char *cases[][3]={{"3","4","2 + i"},{"3","-4","2 - i"},{"-3","4","1 + 2*i"},
+        {"-3","-4","1 - 2*i"},{"-1","0","i"},{"0","0","0"},{"4","0","2"},
+        {"-15241578750190521","0","123456789*i"}};
+    BigComplex *v=bigcomplex_create();TEST_ASSERT_NOT_NULL(v);
+    for(size_t i=0;i<sizeof(cases)/sizeof(cases[0]);i++) {
+        TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(v,cases[i][0],cases[i][1]));
+        TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_sqrt(v,v,4,BIGDECIMAL_ROUND_HALF_EVEN));
+        text_is(v,cases[i][2]);
+    }
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(v,"1","1"));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_sqrt(v,v,12,BIGDECIMAL_ROUND_HALF_EVEN));char *text=NULL;
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_format(v,10,BIGDECIMAL_ROUND_HALF_EVEN,BIGDECIMAL_FORMAT_AUTO,100,&text));
+    TEST_ASSERT_EQUAL_STRING("1.0986841135 + 0.4550898606*i",text);free(text);
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_INVALID_ARGUMENT,bigcomplex_sqrt(v,v,0,BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_INVALID_ARGUMENT,bigcomplex_sqrt(v,v,INT64_MAX,BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_NULL_ARGUMENT,bigcomplex_sqrt(v,NULL,12,BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(v,"-1E100","1"));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_sqrt(v,v,12,BIGDECIMAL_ROUND_HALF_EVEN));
+    BigComplex *expected=number("5E-51","1E50");bool equal=false;
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_equal(&equal,v,expected));TEST_ASSERT_TRUE(equal);
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(v,"1E100","-1"));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_sqrt(v,v,12,BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(expected,"1E50","-5E-51"));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_equal(&equal,v,expected));TEST_ASSERT_TRUE(equal);
+    bigcomplex_destroy(expected);bigcomplex_destroy(v);
+}
+static void test_principal_logarithm(void) {
+    const char *cases[][3]={{"1","0","0"},{"-1","0","3.1415926536*i"},
+        {"0","1","1.5707963268*i"},{"0","-1","-1.5707963268*i"},
+        {"1","1","0.3465735903 + 0.7853981634*i"},
+        {"-3","-4","1.6094379124 - 2.2142974356*i"}};
+    BigComplex *v=bigcomplex_create(),*r=number("9","8");char *text=NULL;
+    TEST_ASSERT_NOT_NULL(v);
+    for(size_t i=0;i<sizeof(cases)/sizeof(cases[0]);i++) {
+        TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(v,cases[i][0],cases[i][1]));
+        TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_ln(v,v,12,BIGDECIMAL_ROUND_HALF_EVEN));
+        TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_format(v,10,BIGDECIMAL_ROUND_HALF_EVEN,BIGDECIMAL_FORMAT_AUTO,100,&text));
+        TEST_ASSERT_EQUAL_STRING(cases[i][2],text);free(text);text=NULL;
+    }
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(v,"0","0"));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_INVALID_ARGUMENT,bigcomplex_ln(r,v,12,BIGDECIMAL_ROUND_HALF_EVEN));text_is(r,"9 + 8*i");
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_INVALID_ARGUMENT,bigcomplex_ln(r,v,0,BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_INVALID_ARGUMENT,bigcomplex_ln(r,v,INT64_MAX,BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_INVALID_ARGUMENT,bigcomplex_ln(r,v,12,(BigDecimalRoundingMode)99));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_NULL_ARGUMENT,bigcomplex_ln(r,NULL,12,BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(v,"1","1E-40"));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_ln(r,v,12,BIGDECIMAL_ROUND_HALF_EVEN));
+    BigComplex *expected=number("5E-81","1E-40");bool equal=false;
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_equal(&equal,r,expected));TEST_ASSERT_TRUE(equal);
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(v,"-1","-1E-40"));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_ln(r,v,12,BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_format(r,10,BIGDECIMAL_ROUND_HALF_EVEN,BIGDECIMAL_FORMAT_AUTO,100,&text));
+    TEST_ASSERT_EQUAL_STRING("5E-81 - 3.1415926536*i",text);free(text);
+    bigcomplex_destroy(expected);bigcomplex_destroy(r);bigcomplex_destroy(v);
+}
 static void test_allocation_failures(void) {
     BigComplex *a=number("1.2","-3.4"), *b=number("5.6","7.8"), *r=number("9","8");
     BigDecimal *d=bigdecimal_create(); TEST_ASSERT_NOT_NULL(d);
-    for(int operation=0;operation<12;operation++) {
+    for(int operation=0;operation<14;operation++) {
         size_t count=0;
         for(size_t failure=0;;failure++) {
             TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(r,"9","8"));
@@ -301,7 +357,9 @@ static void test_allocation_failures(void) {
                 case 8: status=bigcomplex_format(a,2,BIGDECIMAL_ROUND_HALF_EVEN,BIGDECIMAL_FORMAT_MATHEMATICAL,80,&text);break;
                 case 9: status=bigcomplex_arg(d,a,8,BIGDECIMAL_ROUND_HALF_EVEN);break;
                 case 10: status=bigcomplex_format_form(a,BIGCOMPLEX_FORM_EXPONENTIAL,8,3,BIGDECIMAL_ROUND_HALF_EVEN,BIGDECIMAL_FORMAT_AUTO,80,&text);break;
-                default: status=bigcomplex_exp(r,a,8,BIGDECIMAL_ROUND_HALF_EVEN);break;
+                case 11: status=bigcomplex_exp(r,a,8,BIGDECIMAL_ROUND_HALF_EVEN);break;
+                case 12: status=bigcomplex_sqrt(r,a,8,BIGDECIMAL_ROUND_HALF_EVEN);break;
+                default: status=bigcomplex_ln(r,a,8,BIGDECIMAL_ROUND_HALF_EVEN);break;
             }
             if(failure==0) count=numforge_test_allocator_call_count();
             numforge_test_allocator_end();
@@ -317,5 +375,5 @@ static void test_allocation_failures(void) {
 }
 int main(void) {
     UNITY_BEGIN();RUN_TEST(test_lifecycle_and_text);RUN_TEST(test_arithmetic_and_aliasing);
-    RUN_TEST(test_division_and_contracts);RUN_TEST(test_powers_and_modulus);RUN_TEST(test_formatting);RUN_TEST(test_exact_rationals_and_forms);RUN_TEST(test_rational_failure_contracts);RUN_TEST(test_complex_exponential_and_exact_helpers);RUN_TEST(test_allocation_failures);return UNITY_END();
+    RUN_TEST(test_division_and_contracts);RUN_TEST(test_powers_and_modulus);RUN_TEST(test_formatting);RUN_TEST(test_exact_rationals_and_forms);RUN_TEST(test_rational_failure_contracts);RUN_TEST(test_complex_exponential_and_exact_helpers);RUN_TEST(test_principal_square_root);RUN_TEST(test_principal_logarithm);RUN_TEST(test_allocation_failures);return UNITY_END();
 }

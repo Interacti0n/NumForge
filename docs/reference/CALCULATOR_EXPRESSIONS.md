@@ -20,6 +20,11 @@ Complex values retain their type even when the imaginary component is
 zero. Real-only calls, complex arguments inside `complex(...)`, quantities and
 unit conversions reject complex values rather than discarding a component.
 `sqrt(-1)` retains its existing real-domain error.
+Explicit complex arguments select the principal root: `sqrt(-1+0i) = i`,
+`sqrt(3+4i) = 2+i`, `sqrt(-3-4i) = 1-2i`. The real component is nonnegative;
+the imaginary sign follows the input, with positive imaginary roots on the
+negative real axis. Zero maps to zero. Rational component roots stay exact;
+other roots use approximate decimal components. `√(z)` is the same operation.
 
 `re(z)` and `im(z)` return real scalar components with exact fractions intact;
 `conj(z)` preserves the representation and negates only the imaginary component.
@@ -33,7 +38,15 @@ zero is invalid. Real functions can consume extracted components, e.g. `sin(re(z
 `pow(e;z)` also accepts complex exponents via exp(re)*(cos(im)+i*sin(im)), radians.
 Other bases retain the real signed-integer exponent restriction. These numerical
 exponentials do not infer symbolic identities: `e^(π*i)` may retain a tiny
-imaginary residual. Other complex transcendental calls remain unsupported.
+imaginary residual.
+
+`ln(z)` accepts explicit complex arguments and returns the approximate principal
+natural logarithm ln(|z|)+i*arg(z), in radians regardless of RAD/DEG.
+Its imaginary component lies in (-pi, pi]; negative real values use +pi,
+with a -pi limit below the branch cut. Zero is invalid. For example,
+`ln(-1+0i)` displays approximately `3.1415926536*i`; real `ln(-1)` retains
+its domain error. Exact rational components are projected to decimals at guarded
+working precision. Other complex transcendental calls, including `log`, remain unsupported.
 
 The web form selector changes display between Cartesian, trigonometric and
 exponential form without changing the stored value. Polar angles are always
@@ -149,8 +162,8 @@ the current registry; recognition is separate from numerical implementation:
 | `mod(a;b)` | Integer remainder after division truncating toward zero; nonzero remainder has the dividend's sign. `mod(-7;3) = -1`; zero divisor is an error. |
 | `npr(n;r)`, `ncr(n;r)` | Exact permutations and combinations without repetition. Both arguments are integers and require `0 ≤ r ≤ n`; `npr(5;2) = 20`, `ncr(5;2) = 10`. |
 | `isqrt(n)` | Floor of the square root of a non-negative integer: `isqrt(15) = 3`. |
-| `sqrt(x)`, `cbrt(x)`, `root(x;n)` | Active real roots; `√(x)` aliases `sqrt(x)`. Square roots require x ≥ 0; cube roots accept negative x. `root` accepts integer n from 1 to 10000, and negative x only for odd n. |
-| `exp(x)`, `ln(x)`, `log(x)`, `log(x;b)` | Active. `ln` uses base e, one-argument `log` uses base 10, and the second argument selects an arbitrary base. Logarithm inputs must be positive; a custom base must be positive and not 1. |
+| `sqrt(x)`, `cbrt(x)`, `root(x;n)` | Active real roots; `√(x)` aliases `sqrt(x)`. Real square roots require x ≥ 0; explicit complex `sqrt(z)` returns the principal root. Cube roots accept negative real x. `root` accepts integer n from 1 to 10000, and negative x only for odd n. |
+| `exp(x)`, `ln(x)`, `log(x)`, `log(x;b)` | Active. `exp` and `ln` accept explicit complex arguments with the rules above. Real logarithm inputs must be positive; a custom real base must be positive and not 1. `ln` uses base e, one-argument `log` uses base 10. `log` remains real-only. |
 | `sin(x)`, `cos(x)`, `tan(x)`, `asin(x)`, `acos(x)`, `atan(x)` | Active. They use the selected RAD/DEG calculator mode; inverse results follow the same mode. `asin`/`acos` require x in `[-1,1]`. Exact degree poles such as `tan(90)` are rejected in DEG mode. |
 | `sinh(x)`, `cosh(x)`, `tanh(x)`, `asinh(x)`, `acosh(x)`, `atanh(x)` | Active and independent of RAD/DEG. `acosh` requires x ≥ 1; `atanh` requires -1 < x < 1. |
 | `radians(x)`, `degrees(x)` | Active explicit conversions, independent of the selected angle mode. |

@@ -7,6 +7,12 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Add public `bigcomplex_ln` and principal complex natural logarithms in the
+  calculator and HTTP API, preserving real domains and documenting the branch cut.
+
+- Add public `bigcomplex_sqrt` and principal complex roots through calculator
+  `sqrt` / `√`, preserving proven rational roots and existing real domains.
+
 - Integrate typed exact/decimal complex values into calculator arithmetic,
   variables, ans, previews, history and HTTP snapshots. Add complex(re;im),
   explicit mixed promotion, versioned component snapshots and web display-form

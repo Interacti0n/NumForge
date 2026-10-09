@@ -64,6 +64,14 @@ BigComplexStatus bigcomplex_abs_squared(BigDecimal *result, const BigComplex *va
  * Exact intermediates may exceed resource/scale limits. */
 BigComplexStatus bigcomplex_abs(BigDecimal *result, const BigComplex *value,
     int64_t digits, BigDecimalRoundingMode rounding);
+/* Principal square root: nonnegative real part; imaginary sign follows input,
+ * with positive imaginary root on the negative real axis. Zero maps to zero.
+ * Exact finite roots remain exact; otherwise approximate components round to
+ * significant digits. Uses digits+12 working digits and a cancellation-free
+ * formula, not a correctly-rounded guarantee. Exact intermediate squares may
+ * exceed resource/scale limits. Supports aliasing and atomic failure. */
+BigComplexStatus bigcomplex_sqrt(BigComplex *result, const BigComplex *value,
+    int64_t digits, BigDecimalRoundingMode rounding);
 /* Exact canonical decimal text: 0, re, i, -i, im*i, re + im*i, re - im*i.
  * This is display text, not a versioned persistence format. Caller frees the
  * owned string with free(); *result is unchanged on failure. */
@@ -97,6 +105,14 @@ BigComplexStatus bigcomplex_set_polar(BigComplex *result, const BigDecimal *radi
  * uses digits+12 working digits and rounds components to significant digits.
  * Supports aliasing and preserves result on failure. */
 BigComplexStatus bigcomplex_exp(BigComplex *result, const BigComplex *value,
+    int64_t digits, BigDecimalRoundingMode rounding);
+/* Principal natural logarithm: ln(abs(z)) + i*arg(z), radians, arg in
+ * (-pi, pi]. Zero returns INVALID_ARGUMENT; ln(1+0i) is zero. The negative
+ * real axis uses +pi; approaching from below gives the -pi limit. Signed
+ * zero is not retained. Real part uses ln(re*re+im*im)/2 with exact squares
+ * and digits+12 working digits. Approximate, not correctly-rounded; exact
+ * intermediates may exceed resource/scale limits. Atomic and alias-safe. */
+BigComplexStatus bigcomplex_ln(BigComplex *result, const BigComplex *value,
     int64_t digits, BigDecimalRoundingMode rounding);
 /* Cartesian delegates to format; polar displays r*(cos(phi)+i*sin(phi)) or
  * r*e^(i*(phi)), radians. Zero displays 0 in every form. Polar coordinates

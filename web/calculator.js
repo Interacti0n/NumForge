@@ -322,13 +322,13 @@ const functionHelp = {
     im: ["Im","im(z)","Imaginárna časť; pre reálne číslo vráti 0.","Imaginary part; returns 0 for a real number."],
     conj: ["conj","conj(z)","Komplexne združené číslo: a + bi → a − bi.","Complex conjugate: a + bi → a − bi."],
     arg: ["arg","arg(z)","Hlavný argument v radiánoch (−π, π]; pre nulu nie je definovaný.","Principal argument in radians (−π, π]; undefined for zero."],
-    sqrt: ["√x","sqrt(x)","Druhá odmocnina; x ≥ 0.","Square root; x ≥ 0."],
+    sqrt: ["√x","sqrt(x)","Hlavná odmocnina. Reálne x ≥ 0; komplexné číslo zadaj napríklad ako -1+0i.","Principal square root. Real x ≥ 0; enter complex values explicitly, for example -1+0i."],
     cbrt: ["∛x","cbrt(x)","Tretia odmocnina aj zo záporného čísla.","Cube root, including negative numbers."]
 };
 Object.assign(functionHelp, {
     root: ["ⁿ√x","root(x;n)","Celé n od 1 do 10000; záporné x iba pre nepárne n.","Integer n from 1 to 10000; negative x requires odd n."],
     exp: ["eˣ","exp(x)","Eulerovo číslo umocnené na reálny alebo komplexný exponent; polárny uhol je v radiánoch.","Euler’s number raised to a real or complex exponent; polar angle is in radians."],
-    ln: ["ln","ln(x)","Prirodzený logaritmus; x > 0.","Natural logarithm; x > 0."],
+    ln: ["ln","ln(x)","Prirodzený logaritmus. Reálne x > 0; komplexný vstup používa hlavnú vetvu v radiánoch, nula nie je povolená.","Natural logarithm. Real x > 0; complex input uses the principal branch in radians, zero is invalid."],
     log: ["log","log(x) / log(x;y)","Základ 10 alebo y; x > 0, y > 0 a y ≠ 1.","Base 10 or y; x > 0, y > 0 and y ≠ 1."],
     median: ["median","median(x;y;...)","Presný medián 1 až 256 hodnôt.","Exact median of 1 to 256 values."],
     geomean: ["geomean","geomean(x;y;...)","Geometrický priemer nezáporných hodnôt.","Geometric mean of non-negative values."],

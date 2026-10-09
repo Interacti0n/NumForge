@@ -23,7 +23,11 @@ for(const lang of ['sk','en']) for(const width of [390,1280]) {
             ['i^2','-1'],['2+3i','2 + 3*i'],['re(1/3+2i)','1/3'],
             ['im(1+2/3*i)','2/3'],['conj(2+3i)','2 - 3*i'],
             ['abs(3/5+4/5*i)','1'],['arg(i)','1.5707963268'],
-            ['re(e^(π*i))','-1'],['sin(re(i))','0']
+            ['re(e^(π*i))','-1'],['sin(re(i))','0'],
+            ['sqrt(3+4i)','2 + i'],['sqrt(-1+0i)','i'],['sqrt(-3-4i)','1 - 2*i'],
+            ['sqrt((1/3+i/7)^2)','1/3 + (1/7)*i'],['sqrt(i)','0.7071067812 + 0.7071067812*i'],
+            ['ln(-1+0i)','3.1415926536*i'],['ln(i)','1.5707963268*i'],
+            ['ln(1+i)','0.3465735903 + 0.7853981634*i'],['exp(ln(2+3i))','2 + 3*i']
         ]) {await input.fill(expression);await expect(result).toHaveText(expected);}
         const search=page.locator('#function-search');
         await search.fill(lang==='sk'?'imaginárna jednotka':'imaginary unit');
@@ -55,6 +59,45 @@ test('HTTP forms reject invalid options and retain exact snapshots',async({reque
     expect(approximate.value.kind).toBe('complex_decimal_approximation');expect(approximate.value.approximate).toBe(true);
     expect(approximate.value.components.imaginary).toMatch(/^3\.333.*E-1$/);
     const invalid=await request.post(base+'&form=invalid',{data:'2+2'});expect(invalid.status()).toBe(400);
+});
+
+test('HTTP complex roots retain exact components and preserve real domains',async({request})=>{
+    const client='efefefefefefefefefefefefefefefef',base='/api/evaluate?precision=10&angle=rad&notation=auto&client='+client;
+    let revision=1;
+    const send=async(body,action='commit')=>(await request.post(base+'&revision='+(revision++)+'&action='+action,{data:body})).json();
+    expect((await send('','start')).ok).toBe(true);
+    expect((await send('z=sqrt(3+4i)')).result).toBe('2 + i');
+    let snapshot=await (await request.get('/api/session/value?client='+client+'&name=z')).json();
+    expect(snapshot.value.kind).toBe('complex_rational');expect(snapshot.value.components).toEqual({real:'2',imaginary:'1'});
+    expect((await send('z^2')).result).toBe('3 + 4*i');
+    expect((await send('sqrt(-1)')).ok).toBe(false);
+    expect((await send('ans')).result).toBe('3 + 4*i');
+    expect((await send('sqrt(-1+0i)')).result).toBe('i');
+    expect((await send('sqrt(i)')).result).toBe('0.7071067812 + 0.7071067812*i');
+    snapshot=await (await request.get('/api/session/value?client='+client+'&name=ans')).json();
+    expect(snapshot.value.kind).toBe('complex_decimal_approximation');expect(snapshot.value.approximate).toBe(true);
+});
+
+test('HTTP principal logarithm retains radians, typed values and failed-assignment state',async({request})=>{
+    const client='bcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbc',base='/api/evaluate?precision=10&angle=deg&notation=auto&client='+client;
+    let revision=1;
+    const send=async(body,action='commit')=>(await request.post(base+'&revision='+(revision++)+'&action='+action,{data:body})).json();
+    expect((await send('','start')).ok).toBe(true);
+    expect((await send('z=ln(i)')).result).toBe('1.5707963268*i');
+    let snapshot=await (await request.get('/api/session/value?client='+client+'&name=z')).json();
+    expect(snapshot.value.kind).toBe('complex_decimal_approximation');expect(snapshot.value.approximate).toBe(true);
+    expect(Number(snapshot.value.components.real)).toBe(0);
+    expect(Number(snapshot.value.components.imaginary)).toBeCloseTo(Math.PI/2,12);
+    expect((await send('ln(-1)')).ok).toBe(false);
+    expect((await send('z=ln(0*i)')).ok).toBe(false);
+    expect((await send('ans')).result).toBe('1.5707963268*i');
+    expect((await send('ln(-1+0i)')).result).toBe('3.1415926536*i');
+    expect((await send('exp(ln(2+3i))')).result).toBe('2 + 3*i');
+    expect((await send('ln(-3-4i)')).result).toBe('1.6094379124 - 2.2142974356*i');
+    const positiveCut=await send('ln(-1+1E-40i)'),negativeCut=await send('ln(-1-1E-40i)');
+    expect(positiveCut.result).toContain('+ 3.1415926536*i');
+    expect(negativeCut.result).toContain('- 3.1415926536*i');
+    expect(positiveCut.result).toContain('5E-81');expect(negativeCut.result).toContain('5E-81');
 });
 
 test('HTTP imaginary unit, projections and variable names preserve session semantics',async({request})=>{

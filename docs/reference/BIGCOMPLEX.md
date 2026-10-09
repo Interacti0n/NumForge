@@ -23,6 +23,21 @@ bigcomplex_destroy(z);
 
 ## Contract
 
+`bigcomplex_ln(result, value, digits, rounding)` returns the principal natural
+logarithm ln(|z|)+i*arg(z), in radians with imaginary part in (-pi, pi].
+Zero is invalid; ln(1+0i) is zero. The negative real axis uses +pi, with the
+-pi limit on approach from below. Signed zero is not retained. This is one
+principal value, not the family of logarithms differing by 2*pi*i.
+
+The real component computes ln(re*re+im*im)/2 from the exact stored decimal
+squares at digits+12 working digits, avoiding a rounded magnitude which could
+lose a small logarithm near the unit circle. Components round independently to
+the requested significant digits. Approximate results are not guaranteed to be
+correctly rounded; exact intermediate sizes/scales can still exceed resource
+limits. Aliasing is supported; all failures preserve the destination. The
+calculator explicitly projects rational components at guarded working precision
+before using this decimal API, so projection error may remain in either component.
+
 `bigcomplex_exp(result, value, digits, rounding)` computes
 exp(re)*(cos(im)+i*sin(im)) in radians, using digits+12 working digits and
 rounding each resulting component to the requested significant digits.
@@ -59,6 +74,25 @@ the component squares. Both preserve their destination on failure.
   exactly. No claim about the exact mathematical origin of a decimal is made.
 
 ## Integer powers and modulus
+
+`bigcomplex_sqrt(result, value, digits, rounding)` returns the principal square
+root: real part >= 0, imaginary sign follows the input, and the negative real
+axis has a positive imaginary root. Signed zero is not retained. Zero maps to
+zero. The branch cut lies on the negative real axis; approaching it from below
+gives a negative imaginary limit, while the value on the axis uses the positive
+root. This is one root, not a list of both plus/minus solutions.
+
+The algorithm computes the larger component from sqrt((abs(z)+abs(re))/2)
+and the smaller by division, avoiding subtraction of nearly equal quantities.
+Working precision is digits+12. A candidate whose exact square matches the
+stored input remains exact; otherwise both components round to significant
+digits. Approximate results have no correctly-rounded guarantee. Exact squares
+and large exponent gaps remain subject to resource/scale limits. Aliasing is
+supported and every failure preserves the destination.
+
+The calculator first proves rational component roots through BigInt/BigRational;
+irrational rational-input roots explicitly project to decimals at guarded working
+precision. `sqrt(-1)` stays a real-domain error; `sqrt(-1+0i)` returns exact `i`.
 
 `bigcomplex_pow_int(result, value, exponent, digits, rounding)` accepts signed
 64-bit exponents, including `INT64_MIN`. Exponentiation by squaring performs
@@ -117,8 +151,8 @@ successful output with `free()`; all failures preserve the output pointer.
    The calculator already supports i, complex(re;im), re/im/conj/abs/arg and exp.
    Mixed approximate operations explicitly project exact components at working
    precision. Typed sessions and snapshots are implemented.
-3. Improve argument/exponential rounding guarantees, add principal square root
-   and logarithm branches, then general powers and trigonometric functions.
+3. Improve argument/exponential/square-root/logarithm rounding guarantees, add
+   general powers, logarithms with custom bases and trigonometric functions.
    Define cuts, zero behavior and numerical
    validation separately. Correct rounding needs more than fixed guard digits.
 

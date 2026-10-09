@@ -5,6 +5,12 @@
 Complex expressions use the same evaluation/session endpoints, e.g.
 `complex(1/3;1/3)^2`, `2+3i`, `re(z)`, `im(z)`, `conj(z)`, `abs(z)`, `arg(z)`
 and `exp(z)`. Lowercase `i` is reserved; uppercase `I` remains a variable.
+`sqrt(z)` / `√(z)` accepts explicit complex values and returns the principal
+root, with proven rational roots staying exact. `sqrt(-1)` remains a real-domain
+error; use `sqrt(-1+0i)` for exact `i`.
+`ln(z)` accepts explicit complex input and returns an approximate principal
+logarithm in radians, imaginary part in (-pi, pi]. Zero is invalid; real
+`ln(-1)` remains an error, while `ln(-1+0i)` uses the positive pi branch.
 Arguments and complex exponentials use radians regardless of `angle=deg`.
 Exponentials are approximate and can retain small numerical residuals.
 An optional final output option

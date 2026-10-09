@@ -167,6 +167,14 @@ static int public_api_checks(void)
         bigrationalcomplex_abs_squared(fraction, exact_complex) != BIGCOMPLEX_OK ||
         bigrational_to_string(fraction, &text) != BIGRATIONAL_OK || strcmp(text, "1") != 0) goto cleanup;
     free(text); text = NULL;
+    if (bigcomplex_set_strings(complex_value, "3", "4") != BIGCOMPLEX_OK ||
+        bigcomplex_sqrt(complex_value, complex_value, 12, BIGDECIMAL_ROUND_HALF_EVEN) != BIGCOMPLEX_OK ||
+        bigcomplex_to_string(complex_value, &text) != BIGCOMPLEX_OK || strcmp(text, "2 + i") != 0) goto cleanup;
+    free(text); text = NULL;
+    if (bigcomplex_set_strings(complex_value, "1", "0") != BIGCOMPLEX_OK ||
+        bigcomplex_ln(complex_value, complex_value, 12, BIGDECIMAL_ROUND_HALF_EVEN) != BIGCOMPLEX_OK ||
+        bigcomplex_to_string(complex_value, &text) != BIGCOMPLEX_OK || strcmp(text, "0") != 0) goto cleanup;
+    free(text); text = NULL;
     result = 0;
 cleanup:
     bigrationalcomplex_destroy(exact_complex);

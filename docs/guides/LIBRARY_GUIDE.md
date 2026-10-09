@@ -41,7 +41,9 @@ Include `<numforge/bigint.h>` for arbitrary-precision signed integers,
 `<numforge/bigcomplex.h>` adds finite-decimal complex arithmetic and
 `<numforge/bigrationalcomplex.h>` exact rational complex values, with
 [precision, ownership and display contracts](../reference/BIGCOMPLEX.md).
-Use `bigcomplex_exp` for approximate complex exponentials in radians;
+Use `bigcomplex_exp` for approximate complex exponentials in radians,
+`bigcomplex_sqrt` for principal square roots and `bigcomplex_ln` for principal
+natural logarithms (zero is invalid, arguments are radians in (-pi, pi]);
 component accessors, conjugation and squared modulus are available for decimal
 and rational complex values. The calculator adds `i`, `re/im/conj/abs/arg`
 through the C application layer; see [expression rules](../reference/CALCULATOR_EXPRESSIONS.md).
