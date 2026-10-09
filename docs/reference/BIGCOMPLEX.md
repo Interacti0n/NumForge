@@ -280,8 +280,8 @@ successful output with `free()`; all failures preserve the output pointer.
    The calculator already supports i, complex(re;im), re/im/conj/abs/arg and exp.
    Mixed approximate operations explicitly project exact components at working
    precision. Typed sessions and snapshots are implemented.
-3. Improve argument/exponential/square-root/logarithm rounding guarantees, add
-   inverse hyperbolic functions and improve transcendental error bounds.
+3. Improve argument/exponential/square-root/logarithm rounding guarantees and
+   transcendental error bounds, including the implemented inverse hyperbolic functions.
    Define cuts, zero behavior and numerical
    validation separately. Correct rounding needs more than fixed guard digits.
 
