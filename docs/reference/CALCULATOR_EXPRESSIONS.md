@@ -20,7 +20,10 @@ Adjacent ASCII names remain a single identifier: `xi` is a variable, while
 Complex values retain their type even when the imaginary component is
 zero. Real-only calls, complex arguments inside `complex(...)`, quantities and
 unit conversions reject complex values rather than discarding a component.
-`sqrt(-1)` retains its existing real-domain error.
+Negative dimensionless real arguments are promoted to the complex domain:
+`sqrt(-1) = i`, `sqrt(-4/9) = (2/3)*i`. This also applies to `√(x)`,
+variables and composed expressions. Nonnegative real arguments retain real
+results; quantity roots keep their existing dimensional rules.
 Explicit complex arguments select the principal root: `sqrt(-1+0i) = i`,
 `sqrt(3+4i) = 2+i`, `sqrt(-3-4i) = 1-2i`. The real component is nonnegative;
 the imaginary sign follows the input, with positive imaginary roots on the
@@ -219,7 +222,7 @@ the current registry; recognition is separate from numerical implementation:
 | `mod(a;b)` | Integer remainder after division truncating toward zero; nonzero remainder has the dividend's sign. `mod(-7;3) = -1`; zero divisor is an error. |
 | `npr(n;r)`, `ncr(n;r)` | Exact permutations and combinations without repetition. Both arguments are integers and require `0 ≤ r ≤ n`; `npr(5;2) = 20`, `ncr(5;2) = 10`. |
 | `isqrt(n)` | Floor of the square root of a non-negative integer: `isqrt(15) = 3`. |
-| `sqrt(x)`, `cbrt(x)`, `root(x;n)` | Active real roots; `√(x)` aliases `sqrt(x)`. Real square roots require x ≥ 0; explicit complex `sqrt(z)` returns the principal root. Cube roots accept negative real x. `root` accepts integer n from 1 to 10000, and negative x only for odd n. |
+| `sqrt(x)`, `cbrt(x)`, `root(x;n)` | Active real roots; `√(x)` aliases `sqrt(x)`. Negative dimensionless real inputs to `sqrt` are promoted to principal complex roots; nonnegative real inputs stay real. Cube roots accept negative real x. `root` accepts integer n from 1 to 10000, and negative x only for odd n. |
 | `exp(x)`, `ln(x)`, `log(x)`, `log(x;b)` | Active. `exp` and `ln` accept explicit complex arguments with the rules above. Real logarithm inputs must be positive; a custom real base must be positive and not 1. `ln` uses base e, one-argument `log` uses base 10. Explicit complex `log` follows the principal-base rules above. |
 | `sin(x)`, `cos(x)`, `tan(x)`, `asin(x)`, `acos(x)`, `atan(x)` | Active. Real inputs/results use RAD/DEG. Complex inputs/results always use radians, including zero imaginary parts; inverse calls select principal branches. Real-only `asin`/`acos` require x in `[-1,1]`; complex `atan(±i)` fails. Exact degree poles such as `tan(90)` are rejected in DEG mode. |
 | `sinh(x)`, `cosh(x)`, `tanh(x)`, `asinh(x)`, `acosh(x)`, `atanh(x)` | Active and independent of RAD/DEG. `acosh` requires x ≥ 1; `atanh` requires -1 < x < 1. |

@@ -6,8 +6,9 @@ Complex expressions use the same evaluation/session endpoints, e.g.
 `complex(1/3;1/3)^2`, `2+3i`, `re(z)`, `im(z)`, `conj(z)`, `abs(z)`, `arg(z)`
 and `exp(z)`. Lowercase `i` is reserved; uppercase `I` remains a variable.
 `sqrt(z)` / `√(z)` accepts explicit complex values and returns the principal
-root, with proven rational roots staying exact. `sqrt(-1)` remains a real-domain
-error; use `sqrt(-1+0i)` for exact `i`.
+root, with proven rational roots staying exact. Negative dimensionless real
+arguments are promoted automatically: `sqrt(-1)` returns exact `i`, just like
+`sqrt(-1+0i)`. Nonnegative real inputs and quantity roots retain their real rules.
 `z^w` and `pow(z;w)` accept principal noninteger and complex powers when
 either operand is complex, via public C `bigcomplex_pow`. Integer powers
 retain exact arithmetic. General powers use exp(w*ln(z)), radians and the

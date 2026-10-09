@@ -7,6 +7,10 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Automatically promote negative dimensionless `sqrt` / `√` arguments to
+  principal complex roots in the typed calculator and HTTP API; preserve exact
+  rational roots and existing real/quantity behavior.
+
 - Raise calculator factorial input to 100000, matching BigInt, and the
   single-allocation limit to 512 KiB while retaining time/output/total budgets.
   Extend exact-reference factorial/product-tree benchmarks through 100000.

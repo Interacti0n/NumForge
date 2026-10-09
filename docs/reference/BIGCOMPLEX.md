@@ -219,7 +219,9 @@ supported and every failure preserves the destination.
 
 The calculator first proves rational component roots through BigInt/BigRational;
 irrational rational-input roots explicitly project to decimals at guarded working
-precision. `sqrt(-1)` stays a real-domain error; `sqrt(-1+0i)` returns exact `i`.
+precision. The typed calculator automatically promotes negative dimensionless real
+arguments: both `sqrt(-1)` and `sqrt(-1+0i)` return exact `i`. The public
+real-valued `bigdecimal_sqrt` retains its nonnegative input requirement.
 
 `bigcomplex_pow_int(result, value, exponent, digits, rounding)` accepts signed
 64-bit exponents, including `INT64_MIN`. Exponentiation by squaring performs

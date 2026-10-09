@@ -126,7 +126,7 @@ for(const lang of ['sk','en']) for(const width of [390,1280]) {
             ['im(1+2/3*i)','2/3'],['conj(2+3i)','2 - 3*i'],
             ['abs(3/5+4/5*i)','1'],['arg(i)','1.5707963268'],
             ['re(e^(π*i))','-1'],['sin(re(i))','0'],
-            ['sqrt(3+4i)','2 + i'],['sqrt(-1+0i)','i'],['sqrt(-3-4i)','1 - 2*i'],
+            ['sqrt(-1)','i'],['sqrt(-4/9)','(2/3)*i'],['sqrt(-2)','1.4142135624*i'],['sqrt(3+4i)','2 + i'],['sqrt(-1+0i)','i'],['sqrt(-3-4i)','1 - 2*i'],
             ['sqrt((1/3+i/7)^2)','1/3 + (1/7)*i'],['sqrt(i)','0.7071067812 + 0.7071067812*i'],
             ['ln(-1+0i)','3.1415926536*i'],['ln(i)','1.5707963268*i'],
             ['ln(1+i)','0.3465735903 + 0.7853981634*i'],['exp(ln(2+3i))','2 + 3*i'],
@@ -176,8 +176,14 @@ test('HTTP complex roots retain exact components and preserve real domains',asyn
     let snapshot=await (await request.get('/api/session/value?client='+client+'&name=z')).json();
     expect(snapshot.value.kind).toBe('complex_rational');expect(snapshot.value.components).toEqual({real:'2',imaginary:'1'});
     expect((await send('z^2')).result).toBe('3 + 4*i');
-    expect((await send('sqrt(-1)')).ok).toBe(false);
-    expect((await send('ans')).result).toBe('3 + 4*i');
+    expect((await send('sqrt(-1)')).result).toBe('i');
+    expect((await send('ans')).result).toBe('i');
+    expect((await send('x=-4/9')).result).toBe('-4/9');
+    expect((await send('w=sqrt(x)')).result).toBe('(2/3)*i');
+    const promoted=await (await request.get('/api/session/value?client='+client+'&name=w')).json();
+    expect(promoted.value.components).toEqual({real:'0',imaginary:'2/3'});
+    expect((await send('root(-1;2)')).ok).toBe(false);
+    expect((await send('ans')).result).toBe('(2/3)*i');
     expect((await send('sqrt(-1+0i)')).result).toBe('i');
     expect((await send('sqrt(i)')).result).toBe('0.7071067812 + 0.7071067812*i');
     snapshot=await (await request.get('/api/session/value?client='+client+'&name=ans')).json();

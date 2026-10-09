@@ -16,7 +16,7 @@ is added; saved values remain bounded application-owned memory.
 | Calculate, format, choose RAD/DEG or precision | `POST /api/evaluate`, expression body and output options | Available |
 | Construct complex values and choose Cartesian/trigonometric/exponential display | `complex(re;im)`, evaluation `form=cartesian|trig|exp` | Available; exact component snapshots use value schema 2 |
 | Natural complex input and component functions | `i`, `a+bi`, `re`, `im`, `conj`, `abs`, `arg`, `exp`, explicit `e^z` | Available in the C evaluator; argument/exponential angles are radians; approximate results retain numerical residuals |
-| Principal complex square root | `sqrt(z)`, `√(z)` with explicit complex input | Available in C; rational roots stay exact; real negative inputs retain their domain error |
+| Principal complex square root | `sqrt(z)`, `√(z)`; negative dimensionless real input promotes automatically | Available in C; rational roots stay exact; public real-valued `bigdecimal_sqrt` still requires nonnegative input |
 | Principal complex natural logarithm | `ln(z)` with explicit complex input | Available in C via `bigcomplex_ln`; radians and (-pi, pi] branch; zero and negative real inputs retain domain errors |
 | Principal complex powers | `z^w`, `pow(z;w)` when either operand is complex | Public C `bigcomplex_pow`; radians, principal branch and approximate snapshots; integer powers stay exact |
 | Principal complex base logarithms | `log(z)`, `log(z;b)` with either argument complex | Public C `bigcomplex_log`; base 10 default, principal radians, approximate snapshots; zero input and bases 0/1 invalid |

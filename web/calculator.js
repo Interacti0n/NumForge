@@ -322,7 +322,7 @@ const functionHelp = {
     im: ["Im","im(z)","Imaginárna časť; pre reálne číslo vráti 0.","Imaginary part; returns 0 for a real number."],
     conj: ["conj","conj(z)","Komplexne združené číslo: a + bi → a − bi.","Complex conjugate: a + bi → a − bi."],
     arg: ["arg","arg(z)","Hlavný argument v radiánoch (−π, π]; pre nulu nie je definovaný.","Principal argument in radians (−π, π]; undefined for zero."],
-    sqrt: ["√x","sqrt(x)","Hlavná odmocnina. Reálne x ≥ 0; komplexné číslo zadaj napríklad ako -1+0i.","Principal square root. Real x ≥ 0; enter complex values explicitly, for example -1+0i."],
+    sqrt: ["√x","sqrt(x)","Hlavná odmocnina; záporné x bez jednotiek dá komplexný výsledok, napr. sqrt(-1) = i.","Principal square root; negative dimensionless x gives a complex result, e.g. sqrt(-1) = i."],
     cbrt: ["∛x","cbrt(x)","Tretia odmocnina aj zo záporného čísla.","Cube root, including negative numbers."]
 };
 Object.assign(functionHelp, {

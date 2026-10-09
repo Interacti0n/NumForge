@@ -5,6 +5,7 @@
 #include "formatter.h"
 #include "expression_internal.h"
 #include "exact_evaluator.h"
+#include "exact_functions.h"
 #include "value_internal.h"
 #include "quantity.h"
 #include "complex_evaluator.h"
@@ -420,11 +421,36 @@ static CalculatorStatus calculator_compute_value_with_answer_profile_impl(
             status = calculator_bind_variables(expression, variables, variable_count, &result->uses_variables, error);
     }
 
-    if (status == CALCULATOR_OK && calculator_expression_has_complex(expression, answer))
+    if (status == CALCULATOR_OK &&
+        (calculator_expression_has_complex(expression, answer) ||
+         (calculator_expression_may_be_complex(expression, answer) &&
+          !calculator_expression_has_quantity(expression, answer))))
     {
         bool uses_variables = result->uses_variables;
         status = calculator_expression_has_quantity(expression, answer) ? CALCULATOR_DIMENSION_ERROR :
             calculator_evaluate_complex(result, expression, context, answer, random_state, error);
+        /* Preserve the scalar API's integer representation after evaluating
+         * a possibly complex root that ultimately produced a real integer. */
+        if (status == CALCULATOR_OK && result->kind == CALCULATOR_VALUE_RATIONAL &&
+            !calculator_expression_has_complex(expression, answer))
+        {
+            BigInt *denominator = bigint_create();
+            status = denominator == NULL ? CALCULATOR_OUT_OF_MEMORY :
+                calculator_from_rational_status(bigrational_get_denominator(denominator, result->rational));
+            if (status == CALCULATOR_OK && bigint_is_one(denominator))
+            {
+                result->integer = bigint_create();
+                status = result->integer == NULL ? CALCULATOR_OUT_OF_MEMORY :
+                    calculator_from_rational_status(bigrational_get_numerator(result->integer, result->rational));
+                if (status == CALCULATOR_OK)
+                {
+                    bigrational_destroy(result->rational);
+                    result->rational = NULL;
+                    result->kind = CALCULATOR_VALUE_INTEGER;
+                }
+            }
+            bigint_destroy(denominator);
+        }
         result->uses_variables = uses_variables;
         value = result->number;
         result->number = NULL;

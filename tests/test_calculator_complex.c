@@ -34,7 +34,7 @@ static void test_exact_and_mixed_arithmetic(void)
 static void test_domains(void)
 {
     const char *inputs[]={"(0*i)^i","2^0.5","asinh(complex(1;2))",
-        "complex(complex(1;2);3)","complex(1;2)!","sqrt(-1)"};
+        "complex(complex(1;2);3)","complex(1;2)!"};
     for(size_t i=0;i<sizeof(inputs)/sizeof(inputs[0]);i++) {
         CalculatorValue value={0};CalculatorError error;
         TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,calculator_compute_value(inputs[i],&context,&value,&error));
@@ -131,6 +131,17 @@ static void test_principal_square_roots(void)
     check("sqrt(3-4i)","2 - i",CALCULATOR_VALUE_COMPLEX_RATIONAL);
     check("sqrt(-3+4i)","1 + 2*i",CALCULATOR_VALUE_COMPLEX_RATIONAL);
     check("sqrt(-3-4i)","1 - 2*i",CALCULATOR_VALUE_COMPLEX_RATIONAL);
+    check("sqrt(-1)","i",CALCULATOR_VALUE_COMPLEX_RATIONAL);
+    check("√(-4)","2*i",CALCULATOR_VALUE_COMPLEX_RATIONAL);
+    check("sqrt(-1/9)","(1/3)*i",CALCULATOR_VALUE_COMPLEX_RATIONAL);
+    check("sqrt(1-5)+3","3 + 2*i",CALCULATOR_VALUE_COMPLEX_RATIONAL);
+    check("sqrt(-1)^2","-1",CALCULATOR_VALUE_COMPLEX_RATIONAL);
+    check("sqrt(sqrt(-1)^2)","i",CALCULATOR_VALUE_COMPLEX_RATIONAL);
+    check("sqrt(-2)","1.4142135624*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("sqrt(-1E-100)","(1/100000000000000000000000000000000000000000000000000)*i",CALCULATOR_VALUE_COMPLEX_RATIONAL);
+    context.significant_division=false;
+    check("sqrt(-4)","2*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    context.significant_division=true;
     check("sqrt(-1+0i)","i",CALCULATOR_VALUE_COMPLEX_RATIONAL);
     check("√(-1+0i)","i",CALCULATOR_VALUE_COMPLEX_RATIONAL);
     check("sqrt(0*i)","0",CALCULATOR_VALUE_COMPLEX_RATIONAL);
@@ -300,14 +311,16 @@ static void test_complex_inverse_trigonometry(void)
     }
     compute(&session,5,false,"ans","0.881373587*i");calculator_session_destroy(&session);
 }
+static bool sqrt_allocation_only=false;
 static void test_allocation_failures(void)
 {
     const char *inputs[]={"w=z^-2","w=conj(z)","w=abs(z)","w=sum(re(z);im(z))",
-        "w=sqrt(3+4i)","w=sqrt(z)","w=ln(z)","w=z^i","w=log(i;i)",
+        "w=sqrt(-1/9)","w=sqrt(-2)","w=sqrt(4/9)+1/3","w=sqrt(3+4i)","w=sqrt(z)","w=ln(z)","w=z^i","w=log(i;i)",
         "w=sin(i)","w=cos(i)","w=tan(i)","w=sinh(0*i)","w=cosh(0*i)",
         "w=tanh(0*i)","w=tanh(0.1+0.1i)","w=tanh(1+i)",
         "w=asin(0*i)","w=acos(1+0i)","w=atan(0*i)"};
     for(size_t input=0;input<sizeof(inputs)/sizeof(inputs[0]);input++) {
+    if (sqrt_allocation_only && strncmp(inputs[input],"w=sqrt(",7)!=0) continue;
     size_t count=0;
     for(size_t failure=0;;failure++) {
         CalculatorSession *session=calloc(1,sizeof(*session));TEST_ASSERT_NOT_NULL(session);
@@ -328,6 +341,7 @@ static void test_allocation_failures(void)
 }
 int main(int argc,char **argv)
 {
+    sqrt_allocation_only=argc==2 && strcmp(argv[1],"--sqrt-allocation-only")==0;
     UNITY_BEGIN();RUN_TEST(test_exact_and_mixed_arithmetic);RUN_TEST(test_domains);
     RUN_TEST(test_sessions_and_snapshots);RUN_TEST(test_imaginary_unit_and_projections);
     RUN_TEST(test_principal_square_roots);RUN_TEST(test_principal_logarithms);RUN_TEST(test_principal_powers);RUN_TEST(test_base_logarithms);RUN_TEST(test_complex_trigonometry);RUN_TEST(test_complex_hyperbolic);RUN_TEST(test_complex_inverse_trigonometry);
