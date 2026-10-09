@@ -46,6 +46,9 @@ Use `bigcomplex_exp` for approximate complex exponentials in radians,
 natural logarithms (zero is invalid, arguments are radians in (-pi, pi]).
 Use `bigcomplex_sinh`, `bigcomplex_cosh` and `bigcomplex_tanh` for complex
 hyperbolic functions; tanh avoids growing intermediates for large real parts.
+Use `bigcomplex_asin`, `bigcomplex_acos` and `bigcomplex_atan` for principal
+inverse trigonometry in radians; atan rejects ±i. See the complex reference
+for branch cuts, precision limits and values directly on the cuts.
 Use `bigcomplex_sin`, `bigcomplex_cos` and `bigcomplex_tan` for complex
 trigonometry in radians, and `bigcomplex_log` for principal logarithms with a custom complex base,
 `bigcomplex_pow` for approximate principal general powers, and

@@ -547,6 +547,144 @@ BigComplexStatus bigcomplex_tan(BigComplex *result, const BigComplex *value,
 done:
     bigcomplex_destroy(numerator);bigcomplex_destroy(denominator);return status;
 }
+BigComplexStatus bigcomplex_asin(BigComplex *result, const BigComplex *value,
+    int64_t digits, BigDecimalRoundingMode rounding)
+{
+    if (!result || !value) return BIGCOMPLEX_NULL_ARGUMENT;
+    if (digits < 1 || digits > INT64_MAX-60 || rounding < BIGDECIMAL_ROUND_TOWARD_ZERO ||
+        rounding > BIGDECIMAL_ROUND_HALF_EVEN) return BIGCOMPLEX_INVALID_ARGUMENT;
+    BigComplex *z=bigcomplex_create(),*t=bigcomplex_create(),*one=bigcomplex_create();
+    BigDecimal *unit=bigdecimal_create();
+    BigComplexStatus status=BIGCOMPLEX_OUT_OF_MEMORY;
+    bool nx=false,ny=false,xzero=false,yzero=false,interior=false;int comparison=0;
+    if (!z || !t || !one || !unit) goto done;
+#define INVERSE_TRY(call) do { status=(call); if(status!=BIGCOMPLEX_OK)goto done; } while(0)
+#define INVERSE_DEC(call) INVERSE_TRY(mapped(call))
+    INVERSE_DEC(bigdecimal_is_negative(&nx,value->real));
+    INVERSE_DEC(bigdecimal_is_negative(&ny,value->imaginary));
+    INVERSE_DEC(bigdecimal_is_zero(&xzero,value->real));
+    INVERSE_DEC(bigdecimal_is_zero(&yzero,value->imaginary));
+    INVERSE_DEC(bigdecimal_set_string(unit,"1"));
+    if (xzero) {
+        INVERSE_DEC(bigdecimal_asinh(t->imaginary,value->imaginary,digits,rounding));
+    } else if (yzero) {
+        INVERSE_DEC(bigdecimal_abs(z->real,value->real));
+        INVERSE_DEC(bigdecimal_compare(&comparison,z->real,unit));
+        if (comparison<=0) INVERSE_DEC(bigdecimal_asin(t->real,value->real,digits,rounding));
+        else {
+            INVERSE_DEC(bigdecimal_set_constant_significant(t->real,BIGDECIMAL_CONSTANT_PI,digits+12,rounding));
+            INVERSE_DEC(bigdecimal_set_string(z->imaginary,"2"));
+            if(nx) INVERSE_DEC(bigdecimal_negate(t->real,t->real));
+            INVERSE_DEC(bigdecimal_div_significant(t->real,t->real,z->imaginary,digits,rounding));
+            INVERSE_DEC(bigdecimal_acosh(t->imaginary,z->real,digits+12,rounding));
+            if(!nx) INVERSE_DEC(bigdecimal_negate(t->imaginary,t->imaginary));
+            INVERSE_DEC(bigdecimal_div_significant(t->imaginary,t->imaginary,unit,digits,rounding));
+        }
+    } else {
+        /* Work in x>=0,y<0: sqrt(1-z*z)+i*z adds components with matching
+         * signs. Reflect the result only before its final directed rounding. */
+        INVERSE_DEC(bigdecimal_abs(z->real,value->real));
+        INVERSE_DEC(bigdecimal_abs(z->imaginary,value->imaginary));
+        INVERSE_DEC(bigdecimal_compare(&comparison,z->real,unit));interior=comparison<=0;
+        INVERSE_DEC(bigdecimal_set_string(one->real,"0.5"));
+        INVERSE_DEC(bigdecimal_compare(&comparison,z->imaginary,one->real));interior=interior && comparison<=0;
+        INVERSE_DEC(bigdecimal_negate(z->imaginary,z->imaginary));
+        INVERSE_TRY(bigcomplex_set_strings(one,"1","0"));
+        INVERSE_TRY(bigcomplex_mul(t,z,z));
+        INVERSE_TRY(bigcomplex_sub(t,one,t));
+        INVERSE_TRY(bigcomplex_sqrt(t,t,digits+24,rounding));
+        if(interior) {
+            /* The logarithmic formula can drown a tiny imaginary component
+             * in the rounded square root's norm error. In this region the
+             * principal atan(z/sqrt(1-z*z)) has no quadrant correction. */
+            INVERSE_TRY(bigcomplex_div(one,z,t,digits+24,rounding));
+            INVERSE_TRY(bigcomplex_atan(t,one,digits+12,rounding));
+            INVERSE_TRY(bigcomplex_copy(z,t));
+        } else {
+            INVERSE_DEC(bigdecimal_sub(t->real,t->real,z->imaginary));
+            INVERSE_DEC(bigdecimal_add(t->imaginary,t->imaginary,z->real));
+            INVERSE_TRY(bigcomplex_ln(t,t,digits+12,rounding));
+            INVERSE_DEC(bigdecimal_copy(z->real,t->imaginary));
+            INVERSE_DEC(bigdecimal_negate(z->imaginary,t->real));
+        }
+        if(nx) INVERSE_DEC(bigdecimal_negate(z->real,z->real));
+        if(!ny) INVERSE_DEC(bigdecimal_negate(z->imaginary,z->imaginary));
+        INVERSE_DEC(bigdecimal_div_significant(t->real,z->real,unit,digits,rounding));
+        INVERSE_DEC(bigdecimal_div_significant(t->imaginary,z->imaginary,unit,digits,rounding));
+    }
+    commit(result,t);
+done:
+    bigcomplex_destroy(z);bigcomplex_destroy(t);bigcomplex_destroy(one);bigdecimal_destroy(unit);
+    return status;
+#undef INVERSE_DEC
+#undef INVERSE_TRY
+}
+BigComplexStatus bigcomplex_acos(BigComplex *result, const BigComplex *value,
+    int64_t digits, BigDecimalRoundingMode rounding)
+{
+    if (!result || !value) return BIGCOMPLEX_NULL_ARGUMENT;
+    if (digits < 1 || digits > INT64_MAX-72 || rounding < BIGDECIMAL_ROUND_TOWARD_ZERO ||
+        rounding > BIGDECIMAL_ROUND_HALF_EVEN) return BIGCOMPLEX_INVALID_ARGUMENT;
+    BigComplex *t=bigcomplex_create(),*one=bigcomplex_create();
+    BigDecimal *two=bigdecimal_create();BigComplexStatus status=BIGCOMPLEX_OUT_OF_MEMORY;
+    if(!t || !one || !two)goto done;
+    /* 2*asin(sqrt((1-z)/2)) preserves small acos near z=1. */
+    status=bigcomplex_set_strings(one,"1","0");
+    if(status==BIGCOMPLEX_OK)status=bigcomplex_sub(t,one,value);
+    if(status==BIGCOMPLEX_OK)status=mapped(bigdecimal_set_string(two,"2"));
+    if(status==BIGCOMPLEX_OK)status=mapped(bigdecimal_div_significant(t->real,t->real,two,digits+12,rounding));
+    if(status==BIGCOMPLEX_OK)status=mapped(bigdecimal_div_significant(t->imaginary,t->imaginary,two,digits+12,rounding));
+    if(status==BIGCOMPLEX_OK)status=bigcomplex_sqrt(t,t,digits+12,rounding);
+    if(status==BIGCOMPLEX_OK)status=bigcomplex_asin(t,t,digits+12,rounding);
+    if(status==BIGCOMPLEX_OK)status=mapped(bigdecimal_mul(t->real,t->real,two));
+    if(status==BIGCOMPLEX_OK)status=mapped(bigdecimal_mul(t->imaginary,t->imaginary,two));
+    if(status==BIGCOMPLEX_OK)status=mapped(bigdecimal_set_string(two,"1"));
+    if(status==BIGCOMPLEX_OK)status=mapped(bigdecimal_div_significant(t->real,t->real,two,digits,rounding));
+    if(status==BIGCOMPLEX_OK)status=mapped(bigdecimal_div_significant(t->imaginary,t->imaginary,two,digits,rounding));
+    if(status==BIGCOMPLEX_OK)commit(result,t);
+done:bigcomplex_destroy(t);bigcomplex_destroy(one);bigdecimal_destroy(two);return status;
+}
+BigComplexStatus bigcomplex_atan(BigComplex *result, const BigComplex *value,
+    int64_t digits, BigDecimalRoundingMode rounding)
+{
+    if (!result || !value) return BIGCOMPLEX_NULL_ARGUMENT;
+    if (digits < 1 || digits > INT64_MAX-48 || rounding < BIGDECIMAL_ROUND_TOWARD_ZERO ||
+        rounding > BIGDECIMAL_ROUND_HALF_EVEN) return BIGCOMPLEX_INVALID_ARGUMENT;
+    BigComplex *t=bigcomplex_create(),*angle=bigcomplex_create();
+    BigDecimal *x=bigdecimal_create(),*y=bigdecimal_create(),*one=bigdecimal_create();
+    BigDecimal *four=bigdecimal_create(),*d=bigdecimal_create(),*square=bigdecimal_create();
+    BigComplexStatus status=BIGCOMPLEX_OUT_OF_MEMORY;bool nx=false,ny=false,xzero=false,yzero=false,zero=false;
+    if(!t || !angle || !x || !y || !one || !four || !d || !square)goto done;
+#define ATAN_TRY(call) do { status=mapped(call);if(status!=BIGCOMPLEX_OK)goto done; } while(0)
+    ATAN_TRY(bigdecimal_is_negative(&nx,value->real));ATAN_TRY(bigdecimal_is_negative(&ny,value->imaginary));
+    ATAN_TRY(bigdecimal_is_zero(&xzero,value->real));ATAN_TRY(bigdecimal_is_zero(&yzero,value->imaginary));
+    if(yzero){ATAN_TRY(bigdecimal_atan(t->real,value->real,digits,rounding));goto finish;}
+    ATAN_TRY(bigdecimal_abs(x,value->real));ATAN_TRY(bigdecimal_abs(y,value->imaginary));
+    ATAN_TRY(bigdecimal_set_string(one,"1"));ATAN_TRY(bigdecimal_set_string(four,"4"));
+    ATAN_TRY(bigdecimal_mul(square,x,x));ATAN_TRY(bigdecimal_sub(d,y,one));
+    ATAN_TRY(bigdecimal_mul(d,d,d));ATAN_TRY(bigdecimal_add(d,d,square));
+    ATAN_TRY(bigdecimal_is_zero(&zero,d));
+    if(zero){status=BIGCOMPLEX_INVALID_ARGUMENT;goto done;}
+    /* Im atan = sign(y)*ln(1+4|y|/(x*x+(|y|-1)^2))/4.
+     * Exact addition avoids cancellation between two almost equal logs. */
+    ATAN_TRY(bigdecimal_mul(t->imaginary,four,y));
+    ATAN_TRY(bigdecimal_div_significant(t->imaginary,t->imaginary,d,digits+24,rounding));
+    ATAN_TRY(bigdecimal_add(t->imaginary,t->imaginary,one));
+    ATAN_TRY(bigdecimal_ln(t->imaginary,t->imaginary,digits+12,rounding));
+    if(ny)ATAN_TRY(bigdecimal_negate(t->imaginary,t->imaginary));
+    ATAN_TRY(bigdecimal_div_significant(t->imaginary,t->imaginary,four,digits,rounding));
+    ATAN_TRY(bigdecimal_mul(d,y,y));ATAN_TRY(bigdecimal_add(d,d,square));
+    ATAN_TRY(bigdecimal_sub(angle->real,one,d));ATAN_TRY(bigdecimal_add(angle->imaginary,x,x));
+    status=bigcomplex_arg(t->real,angle,digits+12,rounding);if(status!=BIGCOMPLEX_OK)goto done;
+    if(nx || (xzero && ny))ATAN_TRY(bigdecimal_negate(t->real,t->real));
+    ATAN_TRY(bigdecimal_set_string(four,"2"));
+    ATAN_TRY(bigdecimal_div_significant(t->real,t->real,four,digits,rounding));
+finish:commit(result,t);
+done:
+    bigcomplex_destroy(t);bigcomplex_destroy(angle);bigdecimal_destroy(x);bigdecimal_destroy(y);
+    bigdecimal_destroy(one);bigdecimal_destroy(four);bigdecimal_destroy(d);bigdecimal_destroy(square);return status;
+#undef ATAN_TRY
+}
 BigComplexStatus bigcomplex_log(BigComplex *result, const BigComplex *value,
     const BigComplex *base, int64_t digits, BigDecimalRoundingMode rounding)
 {

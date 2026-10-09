@@ -33,7 +33,7 @@ static void test_exact_and_mixed_arithmetic(void)
 }
 static void test_domains(void)
 {
-    const char *inputs[]={"(0*i)^i","2^0.5","asin(complex(1;2))",
+    const char *inputs[]={"(0*i)^i","2^0.5","asinh(complex(1;2))",
         "complex(complex(1;2);3)","complex(1;2)!","sqrt(-1)"};
     for(size_t i=0;i<sizeof(inputs)/sizeof(inputs[0]);i++) {
         CalculatorValue value={0};CalculatorError error;
@@ -275,12 +275,38 @@ static void test_complex_hyperbolic(void)
     TEST_ASSERT_NULL(text);TEST_ASSERT_EQUAL_UINT(1,session.variable_count);
     compute(&session,3,false,"ans","1.5574077247*i");calculator_session_destroy(&session);
 }
+static void test_complex_inverse_trigonometry(void)
+{
+    check("asin(i)","0.881373587*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("asin(0.1+1E-100i)","0.1001674212 + 1.0050378153E-100*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("asin(-0.1-1E-100i)","-0.1001674212 - 1.0050378153E-100*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("acos(1-1E-60+0i)","1.4142135624E-30",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("asin(1+i)","0.6662394325 + 1.0612750619*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("acos(1+i)","0.9045568943 - 1.0612750619*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("atan(1+i)","1.0172219679 + 0.4023594781*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("asin(2+0i)","1.5707963268 - 1.3169578969*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("acos(2+0i)","1.3169578969*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("atan(2i)","1.5707963268 + 0.5493061443*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("atan(-2i)","-1.5707963268 - 0.5493061443*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    context.angle_unit=CALCULATOR_ANGLE_DEGREES;
+    check("asin(0.5)","30",CALCULATOR_VALUE_DECIMAL);
+    check("arcsin(0.5+0i)","0.5235987756",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    CalculatorSession session={0};char *text=NULL;CalculatorError error;
+    compute(&session,1,true,"z=asin(i)","0.881373587*i");
+    const char *bad[]={"z=atan(i)","z=atan(-i)","z=asin(2)"};
+    for(size_t j=0;j<3;j++) {
+        TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,calculator_session_compute(&session,j+2,true,bad[j],&context,&text,&error,NULL));
+        TEST_ASSERT_NULL(text);TEST_ASSERT_EQUAL_UINT(1,session.variable_count);
+    }
+    compute(&session,5,false,"ans","0.881373587*i");calculator_session_destroy(&session);
+}
 static void test_allocation_failures(void)
 {
     const char *inputs[]={"w=z^-2","w=conj(z)","w=abs(z)","w=sum(re(z);im(z))",
         "w=sqrt(3+4i)","w=sqrt(z)","w=ln(z)","w=z^i","w=log(i;i)",
         "w=sin(i)","w=cos(i)","w=tan(i)","w=sinh(0*i)","w=cosh(0*i)",
-        "w=tanh(0*i)","w=tanh(0.1+0.1i)","w=tanh(1+i)"};
+        "w=tanh(0*i)","w=tanh(0.1+0.1i)","w=tanh(1+i)",
+        "w=asin(0*i)","w=acos(1+0i)","w=atan(0*i)"};
     for(size_t input=0;input<sizeof(inputs)/sizeof(inputs[0]);input++) {
     size_t count=0;
     for(size_t failure=0;;failure++) {
@@ -300,9 +326,11 @@ static void test_allocation_failures(void)
     }
     }
 }
-int main(void)
+int main(int argc,char **argv)
 {
     UNITY_BEGIN();RUN_TEST(test_exact_and_mixed_arithmetic);RUN_TEST(test_domains);
     RUN_TEST(test_sessions_and_snapshots);RUN_TEST(test_imaginary_unit_and_projections);
-    RUN_TEST(test_principal_square_roots);RUN_TEST(test_principal_logarithms);RUN_TEST(test_principal_powers);RUN_TEST(test_base_logarithms);RUN_TEST(test_complex_trigonometry);RUN_TEST(test_complex_hyperbolic);RUN_TEST(test_allocation_failures);return UNITY_END();
+    RUN_TEST(test_principal_square_roots);RUN_TEST(test_principal_logarithms);RUN_TEST(test_principal_powers);RUN_TEST(test_base_logarithms);RUN_TEST(test_complex_trigonometry);RUN_TEST(test_complex_hyperbolic);RUN_TEST(test_complex_inverse_trigonometry);
+    if(argc!=2 || strcmp(argv[1],"--numeric-only")!=0)RUN_TEST(test_allocation_failures);
+    return UNITY_END();
 }

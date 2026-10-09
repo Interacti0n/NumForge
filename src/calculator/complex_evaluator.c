@@ -251,6 +251,9 @@ static ComplexUnaryOperation complex_unary_operation(CalculatorFunctionImplement
         case CALCULATOR_FUNCTION_SINH: return bigcomplex_sinh;
         case CALCULATOR_FUNCTION_COSH: return bigcomplex_cosh;
         case CALCULATOR_FUNCTION_TANH: return bigcomplex_tanh;
+        case CALCULATOR_FUNCTION_ASIN: return bigcomplex_asin;
+        case CALCULATOR_FUNCTION_ACOS: return bigcomplex_acos;
+        case CALCULATOR_FUNCTION_ATAN: return bigcomplex_atan;
         default: return NULL;
     }
 }

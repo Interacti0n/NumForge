@@ -27,8 +27,16 @@ computed zero denominators fail. Failed commits preserve session state.
 complex-typed input, including zero imaginary components. Angles are radians,
 independent of `angle=deg`; real-only inputs keep RAD/DEG behavior. Results
 are approximate complex snapshots. Tangent uses guarded sin/cos division;
-near-pole errors and resource/scale limits apply. Complex inverse trigonometry
-and inverse hyperbolic calls remain unsupported. Failed commits preserve session state.
+near-pole errors and resource/scale limits apply. Complex inverse hyperbolic
+calls remain unsupported. Failed commits preserve session state.
+
+`asin(z)`, `acos(z)` and `atan(z)` and their arc/arcus aliases use the public
+complex C APIs for complex-typed arguments, returning principal branches in
+radians even with `angle=deg`. Real-only inputs keep RAD/DEG and their domains.
+Snapshots remain complex decimal approximations. For example asin(i)≈0.881373587*i,
+asin(2+0i)≈pi/2-1.3169578969*i and acos(2+0i)≈1.3169578969*i.
+Atan(±i) is invalid; failed commits leave ans, variables and history unchanged.
+See [complex cut conventions and precision](BIGCOMPLEX.md#principal-inverse-trigonometry).
 
 `log(z)` uses base 10, and `log(z;b)` computes principal ln(z)/ln(b) when
 either argument is complex, through public C `bigcomplex_log`. Zero input

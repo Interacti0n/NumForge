@@ -166,6 +166,20 @@ BigComplexStatus bigcomplex_cosh(BigComplex *result, const BigComplex *value,
  * digits>=1, <=INT64_MAX-24. Alias-safe and atomic on failure. */
 BigComplexStatus bigcomplex_tanh(BigComplex *result, const BigComplex *value,
     int64_t digits, BigDecimalRoundingMode rounding);
+/* Principal inverse trigonometric functions, radians, approximate.
+ * asin/acos cuts: real axis outside [-1,1]. On the cuts asin(x) has
+ * imaginary sign opposite x; acos(x)=pi/2-asin(x). Signed zero is not stored.
+ * atan cuts: imaginary axis beyond +/-i; atan(+iy), y>1, has real +pi/2,
+ * atan(-iy), y>1, real -pi/2. At +/-i returns INVALID_ARGUMENT.
+ * Guarded intermediates, no correct-rounding guarantee near branch points.
+ * digits>=1, <=INT64_MAX-60 (atan: INT64_MAX-48, acos: INT64_MAX-72).
+ * Alias-safe; failure preserves result. */
+BigComplexStatus bigcomplex_asin(BigComplex *result, const BigComplex *value,
+    int64_t digits, BigDecimalRoundingMode rounding);
+BigComplexStatus bigcomplex_acos(BigComplex *result, const BigComplex *value,
+    int64_t digits, BigDecimalRoundingMode rounding);
+BigComplexStatus bigcomplex_atan(BigComplex *result, const BigComplex *value,
+    int64_t digits, BigDecimalRoundingMode rounding);
 /* Cartesian delegates to format; polar displays r*(cos(phi)+i*sin(phi)) or
  * r*e^(i*(phi)), radians. Zero displays 0 in every form. Polar coordinates
  * are approximate, with explicit working digits; places is display policy.

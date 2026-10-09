@@ -90,8 +90,16 @@ their existing scalar behavior. Sinh/cosh grow with large real components.
 Tanh uses a scaled decaying exponential for |re|>0.5 and a guarded quotient
 for smaller real parts; tiny imaginary tails are preserved and may hit scale
 limits. Near imaginary-axis poles, errors amplify; finite decimal pi inputs
-are not symbolic poles. Complex inverse trigonometry and inverse hyperbolic
-calls remain unsupported.
+are not symbolic poles. Complex inverse hyperbolic calls remain unsupported.
+
+`asin(z)`, `acos(z)`, `atan(z)` and their arc/arcus aliases accept complex
+inputs and return approximate principal branches in radians, even in DEG.
+Real-only asin/acos still require [-1,1]. For example asin(i)≈0.881373587*i,
+asin(2+0i)≈1.5707963268-1.3169578969*i and acos(2+0i)≈1.3169578969*i.
+Atan(±i) is invalid. On the imaginary-axis cuts atan(2i)≈pi/2+0.5493061443*i
+and atan(-2i)≈-pi/2-0.5493061443*i. Failed commits preserve ans, variables
+and history. See [BigComplex](BIGCOMPLEX.md#principal-inverse-trigonometry)
+for cut conventions, working precision and numerical limitations.
 
 The web form selector changes display between Cartesian, trigonometric and
 exponential form without changing the stored value. Polar angles are always
@@ -209,7 +217,7 @@ the current registry; recognition is separate from numerical implementation:
 | `isqrt(n)` | Floor of the square root of a non-negative integer: `isqrt(15) = 3`. |
 | `sqrt(x)`, `cbrt(x)`, `root(x;n)` | Active real roots; `√(x)` aliases `sqrt(x)`. Real square roots require x ≥ 0; explicit complex `sqrt(z)` returns the principal root. Cube roots accept negative real x. `root` accepts integer n from 1 to 10000, and negative x only for odd n. |
 | `exp(x)`, `ln(x)`, `log(x)`, `log(x;b)` | Active. `exp` and `ln` accept explicit complex arguments with the rules above. Real logarithm inputs must be positive; a custom real base must be positive and not 1. `ln` uses base e, one-argument `log` uses base 10. Explicit complex `log` follows the principal-base rules above. |
-| `sin(x)`, `cos(x)`, `tan(x)`, `asin(x)`, `acos(x)`, `atan(x)` | Active. Real inputs use the selected RAD/DEG mode; inverse results follow the same mode. Explicit complex sin/cos/tan inputs always use radians, even with zero imaginary part. Complex inverse calls remain unsupported. `asin`/`acos` require x in `[-1,1]`. Exact degree poles such as `tan(90)` are rejected in DEG mode. |
+| `sin(x)`, `cos(x)`, `tan(x)`, `asin(x)`, `acos(x)`, `atan(x)` | Active. Real inputs/results use RAD/DEG. Complex inputs/results always use radians, including zero imaginary parts; inverse calls select principal branches. Real-only `asin`/`acos` require x in `[-1,1]`; complex `atan(±i)` fails. Exact degree poles such as `tan(90)` are rejected in DEG mode. |
 | `sinh(x)`, `cosh(x)`, `tanh(x)`, `asinh(x)`, `acosh(x)`, `atanh(x)` | Active and independent of RAD/DEG. `acosh` requires x ≥ 1; `atanh` requires -1 < x < 1. |
 | `radians(x)`, `degrees(x)` | Active explicit conversions, independent of the selected angle mode. |
 

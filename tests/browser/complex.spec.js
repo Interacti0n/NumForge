@@ -1,5 +1,80 @@
 const {test, expect}=require('@playwright/test');
 for(const lang of ['sk','en']) for(const width of [390,1280]) {
+    test(`complex inverse trigonometry uses radians ${lang} ${width}`,async({page})=>{
+        await page.addInitScript(()=>localStorage.setItem('numforge-angle-unit','deg'));
+        await page.setViewportSize({width,height:844});await page.goto('/?lang='+lang);
+        const input=page.locator('#expression'),result=page.locator('#result');
+        for(const [expression,expected] of [
+            ['asin(i)','0.881373587*i'],['asin(1+i)','0.6662394325 + 1.0612750619*i'],
+            ['acos(1+i)','0.9045568943 - 1.0612750619*i'],
+            ['atan(1+i)','1.0172219679 + 0.4023594781*i'],
+            ['asin(0.1+1E-100i)','0.1001674212 + 1.0050378153E-100*i'],
+            ['acos(1-1E-60+0i)','1.4142135624E-30'],
+            ['asin(2+0i)','1.5707963268 - 1.3169578969*i'],
+            ['arcsin(0.5+0i)','0.5235987756'],['asin(0.5)','30']
+        ]) {await input.fill(expression);await expect(result).toHaveText(expected);}
+    });
+}
+test('HTTP complex inverse trigonometry preserves domains and failed commits',async({request})=>{
+    const client='a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4';
+    const base='/api/evaluate?precision=10&angle=deg&notation=auto&form=cartesian&client='+client;
+    expect((await (await request.post(base+'&revision=1&action=start',{data:''})).json()).ok).toBe(true);
+    let revision=2;
+    for(const [expression,expected] of [
+        ['z=asin(i)','0.881373587*i'],['acos(2+0i)','1.3169578969*i'],
+        ['atan(2i)','1.5707963268 + 0.5493061443*i'],
+        ['atan(-2i)','-1.5707963268 - 0.5493061443*i'],
+        ['arcuscos(1+i)','0.9045568943 - 1.0612750619*i'],
+        ['asin(0.5)','30']
+    ]) {
+        const data=await (await request.post(base+'&revision='+revision+++'&action=preview',{data:expression})).json();
+        expect(data.ok).toBe(true);expect(data.result).toBe(expected);
+    }
+    const saved=await (await request.post(base+'&revision='+revision+++'&action=commit',{data:'z=asin(i)'})).json();
+    expect(saved.ok).toBe(true);
+    const before=await (await request.get('/api/session/value?client='+client+'&name=z')).json();
+    expect(before.value.kind).toBe('complex_decimal_approximation');expect(before.value.approximate).toBe(true);
+    for(const expression of ['z=atan(i)','z=atan(-i)','z=asin(2)','z=acos(2)']) {
+        const data=await (await request.post(base+'&revision='+revision+++'&action=commit',{data:expression})).json();
+        expect(data.ok).toBe(false);
+    }
+    const after=await (await request.get('/api/session/value?client='+client+'&name=z')).json();
+    expect(after.value).toEqual(before.value);
+    const answer=await (await request.get('/api/session/value?client='+client+'&name=ans')).json();
+    expect(answer.value).toEqual(before.value);
+});
+test('HTTP inverse branches agree with independent real-component identities',async({request})=>{
+    test.setTimeout(60000);
+    const client='a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5';
+    const base='/api/evaluate?precision=10&client='+client;let revision=1;
+    expect((await (await request.post(base+'&revision='+revision+++'&action=start',{data:''})).json()).ok).toBe(true);
+    for(const x of [-2,-0.25,0.25,2]) for(const y of [-1.5,-0.1,0.1,1.5]) {
+        const radius=(Math.hypot(x+1,y)+Math.hypot(x-1,y))/2;
+        const asin=[Math.asin(x/radius),Math.sign(y)*Math.acosh(radius)];
+        const references={asin,acos:[Math.PI/2-asin[0],-asin[1]],
+            atan:[Math.atan2(2*x,1-x*x-y*y)/2,Math.log((x*x+(y+1)**2)/(x*x+(y-1)**2))/4]};
+        for(const [fn,[re,im]] of Object.entries(references)) {
+            const expression=`z=${fn}(complex(${x};${y}))`;
+            const data=await (await request.post(base+'&revision='+revision+++'&action=commit',{data:expression})).json();
+            expect(data.ok,expression).toBe(true);
+            const snapshot=await (await request.get('/api/session/value?client='+client+'&name=z')).json();
+            expect(Number(snapshot.value.components.real),expression).toBeCloseTo(re,9);
+            expect(Number(snapshot.value.components.imaginary),expression).toBeCloseTo(im,9);
+        }
+    }
+    for(const [expression,re,im] of [
+        ['asin(2+1E-20i)',Math.PI/2,Math.acosh(2)],
+        ['asin(2-1E-20i)',Math.PI/2,-Math.acosh(2)],
+        ['atan(1E-20+2i)',Math.PI/2,Math.log(3)/2],
+        ['atan(-1E-20+2i)',-Math.PI/2,Math.log(3)/2]
+    ]) {
+        expect((await (await request.post(base+'&revision='+revision+++'&action=commit',{data:'z='+expression})).json()).ok).toBe(true);
+        const snapshot=await (await request.get('/api/session/value?client='+client+'&name=z')).json();
+        expect(Number(snapshot.value.components.real)).toBeCloseTo(re,9);
+        expect(Number(snapshot.value.components.imaginary)).toBeCloseTo(im,9);
+    }
+});
+for(const lang of ['sk','en']) for(const width of [390,1280]) {
     test(`complex hyperbolic functions use radians ${lang} ${width}`,async({page})=>{
         await page.addInitScript(()=>localStorage.setItem('numforge-angle-unit','deg'));
         await page.setViewportSize({width,height:844});await page.goto('/?lang='+lang);
@@ -191,7 +266,7 @@ test('HTTP complex trigonometry preserves radians, near-pole values and failed s
     expect(Number(snapshot.value.components.imaginary)).toBe(0);
     expect((await send('z=tan(90)')).ok).toBe(false);
     expect((await send('ans')).result).toBe('1.5430806348');
-    expect((await send('asin(i)')).ok).toBe(false);
+    expect((await send('asinh(i)')).ok).toBe(false);
     expect((await send('sin(1+i)')).result).toBe('1.2984575814 + 0.6349639148*i');
     expect((await send('cos(1-i)')).result).toBe('0.8337300251 + 0.9888977058*i');
     expect((await send('tan(-i)')).result).toBe('-0.761594156*i');

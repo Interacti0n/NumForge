@@ -463,11 +463,55 @@ static void test_complex_hyperbolic(void) {
     TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_tanh(v,v,12,BIGDECIMAL_ROUND_HALF_EVEN));text_is(v,"-1");
     bigdecimal_destroy(part);bigdecimal_destroy(bound);bigcomplex_destroy(v);bigcomplex_destroy(r);
 }
+static void test_complex_inverse_trigonometry(void) {
+    typedef BigComplexStatus (*Inverse)(BigComplex *,const BigComplex *,int64_t,BigDecimalRoundingMode);
+    const Inverse functions[]={bigcomplex_asin,bigcomplex_acos,bigcomplex_atan};
+    const char *references[]={"0.6662394325 + 1.0612750619*i",
+        "0.9045568943 - 1.0612750619*i","1.0172219679 + 0.4023594781*i"};
+    BigComplex *v=number("1","1"),*r=number("9","8");char *text=NULL;
+    for(size_t j=0;j<3;j++) {
+        TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(v,"1","1"));
+        TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,functions[j](v,v,16,BIGDECIMAL_ROUND_HALF_EVEN));
+        TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_format(v,10,BIGDECIMAL_ROUND_HALF_EVEN,BIGDECIMAL_FORMAT_AUTO,120,&text));
+        TEST_ASSERT_EQUAL_STRING(references[j],text);free(text);text=NULL;
+        TEST_ASSERT_EQUAL(BIGCOMPLEX_INVALID_ARGUMENT,functions[j](r,v,0,BIGDECIMAL_ROUND_HALF_EVEN));
+        TEST_ASSERT_EQUAL(BIGCOMPLEX_INVALID_ARGUMENT,functions[j](r,v,INT64_MAX,BIGDECIMAL_ROUND_HALF_EVEN));
+        TEST_ASSERT_EQUAL(BIGCOMPLEX_INVALID_ARGUMENT,functions[j](r,v,16,(BigDecimalRoundingMode)-1));
+        TEST_ASSERT_EQUAL(BIGCOMPLEX_NULL_ARGUMENT,functions[j](r,NULL,16,BIGDECIMAL_ROUND_HALF_EVEN));
+        TEST_ASSERT_EQUAL(BIGCOMPLEX_NULL_ARGUMENT,functions[j](NULL,v,16,BIGDECIMAL_ROUND_HALF_EVEN));text_is(r,"9 + 8*i");
+    }
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(v,"0","1"));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_INVALID_ARGUMENT,bigcomplex_atan(r,v,16,BIGDECIMAL_ROUND_HALF_EVEN));text_is(r,"9 + 8*i");
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(v,"0","-1"));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_INVALID_ARGUMENT,bigcomplex_atan(r,v,16,BIGDECIMAL_ROUND_HALF_EVEN));text_is(r,"9 + 8*i");
+    const char *cuts[][3]={{"2","0","1.5707963268 - 1.3169578969*i"},
+        {"-2","0","-1.5707963268 + 1.3169578969*i"},
+        {"2","1E-20","1.5707963268 + 1.3169578969*i"},
+        {"2","-1E-20","1.5707963268 - 1.3169578969*i"}};
+    for(size_t j=0;j<4;j++) {
+        TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(v,cuts[j][0],cuts[j][1]));
+        TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_asin(v,v,16,BIGDECIMAL_ROUND_HALF_EVEN));
+        TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_format(v,10,BIGDECIMAL_ROUND_HALF_EVEN,BIGDECIMAL_FORMAT_AUTO,120,&text));
+        TEST_ASSERT_EQUAL_STRING(cuts[j][2],text);free(text);text=NULL;
+    }
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(v,"0","1E-100"));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_asin(v,v,16,BIGDECIMAL_ROUND_HALF_EVEN));text_is(v,"0.0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001*i");
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(v,"1","0"));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_acos(v,v,16,BIGDECIMAL_ROUND_HALF_EVEN));text_is(v,"0");
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(v,"0","0"));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_asin(v,v,16,BIGDECIMAL_ROUND_HALF_EVEN));text_is(v,"0");
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(v,"0.1","1E-100"));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_asin(v,v,16,BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_format(v,10,BIGDECIMAL_ROUND_HALF_EVEN,BIGDECIMAL_FORMAT_AUTO,120,&text));
+    TEST_ASSERT_EQUAL_STRING("0.1001674212 + 1.0050378153E-100*i",text);free(text);
+    bigcomplex_destroy(v);bigcomplex_destroy(r);
+}
+static int allocation_operation_start=0;
 static void test_allocation_failures(void) {
     BigComplex *a=number("1.2","-3.4"), *b=number("5.6","7.8"), *r=number("9","8");
     BigComplex *small=number("0.1","0.1"),*zero=number("0","0");
     BigDecimal *d=bigdecimal_create(); TEST_ASSERT_NOT_NULL(d);
-    for(int operation=0;operation<24;operation++) {
+    for(int operation=allocation_operation_start;operation<27;operation++) {
         size_t count=0;
         for(size_t failure=0;;failure++) {
             TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(r,"9","8"));
@@ -499,7 +543,10 @@ static void test_allocation_failures(void) {
                 case 20: status=bigcomplex_cosh(r,small,4,BIGDECIMAL_ROUND_HALF_EVEN);break;
                 case 21: status=bigcomplex_tanh(r,zero,4,BIGDECIMAL_ROUND_HALF_EVEN);break;
                 case 22: status=bigcomplex_tanh(r,small,4,BIGDECIMAL_ROUND_HALF_EVEN);break;
-                default: status=bigcomplex_tanh(r,a,4,BIGDECIMAL_ROUND_HALF_EVEN);break;
+                case 23: status=bigcomplex_tanh(r,a,4,BIGDECIMAL_ROUND_HALF_EVEN);break;
+                case 24: status=bigcomplex_asin(r,small,4,BIGDECIMAL_ROUND_HALF_EVEN);break;
+                case 25: status=bigcomplex_acos(r,zero,4,BIGDECIMAL_ROUND_HALF_EVEN);break;
+                default: status=bigcomplex_atan(r,small,4,BIGDECIMAL_ROUND_HALF_EVEN);break;
             }
             if(failure==0) count=numforge_test_allocator_call_count();
             numforge_test_allocator_end();
@@ -514,10 +561,16 @@ static void test_allocation_failures(void) {
     bigdecimal_destroy(d);bigcomplex_destroy(a);bigcomplex_destroy(b);bigcomplex_destroy(r);bigcomplex_destroy(small);bigcomplex_destroy(zero);
 }
 int main(int argc,char **argv) {
+    if(argc==2 && strcmp(argv[1],"--inverse-only")==0) {
+        allocation_operation_start=24;
+        UNITY_BEGIN();RUN_TEST(test_complex_inverse_trigonometry);RUN_TEST(test_allocation_failures);
+        return UNITY_END();
+    }
     UNITY_BEGIN();RUN_TEST(test_lifecycle_and_text);RUN_TEST(test_arithmetic_and_aliasing);
     RUN_TEST(test_division_and_contracts);RUN_TEST(test_powers_and_modulus);RUN_TEST(test_formatting);RUN_TEST(test_exact_rationals_and_forms);RUN_TEST(test_rational_failure_contracts);RUN_TEST(test_complex_exponential_and_exact_helpers);RUN_TEST(test_principal_square_root);RUN_TEST(test_principal_logarithm);RUN_TEST(test_principal_powers);RUN_TEST(test_base_logarithms);RUN_TEST(test_complex_trigonometry);RUN_TEST(test_complex_hyperbolic);
     /* Default CTest remains exhaustive; numerical checks can be rerun quickly
      * after a reference/formatting change without repeating unchanged faults. */
+    RUN_TEST(test_complex_inverse_trigonometry);
     if(argc!=2 || strcmp(argv[1],"--numeric-only")!=0) RUN_TEST(test_allocation_failures);
     return UNITY_END();
 }

@@ -7,6 +7,9 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Add principal complex `asin`, `acos` and `atan` to C, calculator and HTTP,
+  with radian results, documented cut conventions and atomic errors at atan(±i).
+
 - Add public complex `sinh`, `cosh` and `tanh` across C, calculator and HTTP,
   with a scaled tanh formula for large real components and retained imaginary tails.
 

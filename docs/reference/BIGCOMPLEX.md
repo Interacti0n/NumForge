@@ -101,7 +101,41 @@ correct-rounding guarantee, exact symbolic simplification or all-branches
 interpretation. Complex inputs always use radians, independently of RAD/DEG,
 and stay approximate complex values even when a result displays as real.
 Exact calculator inputs are projected at guarded precision. Complex inverse
-trigonometric and inverse hyperbolic functions remain future work.
+hyperbolic functions remain future work.
+
+## Principal inverse trigonometry
+
+`bigcomplex_asin`, `bigcomplex_acos` and `bigcomplex_atan` return approximate
+principal values in radians. Calculator/HTTP `asin`, `acos`, `atan` and their
+arc/arcus aliases use these public C functions for complex-typed inputs,
+including zero imaginary parts. Real-only calls keep RAD/DEG and real domains.
+Results remain complex decimal approximations; quantities are not accepted.
+
+The asin/acos cuts lie on the real axis outside [-1,1]. Signed zero is not
+stored: directly on the cuts, asin(x) has imaginary sign opposite x,
+and acos(x)=pi/2-asin(x). Thus asin(2+0i)≈pi/2-1.3169578969*i,
+acos(2+0i)≈1.3169578969*i. Above the positive cut asin has positive
+imaginary part; below it negative. At ±1 both are finite.
+Atan cuts lie on the imaginary axis beyond ±i. Directly on them,
+atan(2i)≈pi/2+0.5493061443*i and atan(-2i)≈-pi/2-0.5493061443*i.
+At ±i it returns INVALID_ARGUMENT, preserving destination and session state.
+These choices select one side of each cut; signed-zero conventions in other
+libraries can select the other side. See [DLMF §4.23](https://dlmf.nist.gov/4.23).
+
+Asin reflects into x>=0,y<0 before computing -i*ln(sqrt(1-z*z)+i*z),
+so the sum adds components of matching signs. Axis inputs use scalar
+asin/acosh/asinh. For |x|<=1, |y|<=0.5 it uses atan(z/sqrt(1-z*z))
+to avoid losing tiny imaginary parts to the rounded square root's norm error.
+Acos uses 2*asin(sqrt((1-z)/2)) to preserve small
+results near z=1. Atan uses arg(1-x*x-y*y+2*x*i)/2 and
+sign(y)*ln(1+4*abs(y)/(x*x+(abs(y)-1)^2))/4, with quadrant handling.
+Guarded intermediates precede final significant-digit rounding. Digits must
+be positive and <=INT64_MAX-60 for asin, <=INT64_MAX-48 for atan,
+<=INT64_MAX-72 for acos.
+Aliasing is supported and all failures preserve the result. Runtime/scale
+limits apply, and fixed guard digits do not guarantee correct rounding or
+uniform relative accuracy for tiny components or near branch points/cuts.
+Exact rational inputs are projected at calculator working precision first.
 
 ## Complex trigonometry
 
@@ -129,7 +163,7 @@ The calculator uses this path for complex-typed inputs, including inputs
 whose imaginary part is zero. Exact fractions project at guarded working
 precision. Results remain complex decimal approximations. Real-only inputs
 keep RAD/DEG behavior; complex inputs use radians even in DEG. Complex inverse
-trigonometry and inverse hyperbolic functions remain future work.
+hyperbolic functions remain future work.
 
 ## Principal base logarithms
 
@@ -245,7 +279,7 @@ successful output with `free()`; all failures preserve the output pointer.
    Mixed approximate operations explicitly project exact components at working
    precision. Typed sessions and snapshots are implemented.
 3. Improve argument/exponential/square-root/logarithm rounding guarantees, add
-   inverse trigonometric/hyperbolic functions and improve transcendental error bounds.
+   inverse hyperbolic functions and improve transcendental error bounds.
    Define cuts, zero behavior and numerical
    validation separately. Correct rounding needs more than fixed guard digits.
 
