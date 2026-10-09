@@ -174,11 +174,17 @@ and nonreal bases are allowed. This is a numerical approximation, not all
 logarithm branches: log(-1;i)=2 and log(-i;i)=-1. It is not a general inverse
 identity for principal powers across branch cuts.
 
-Both logarithms use digits+12 working digits before component-wise
-exact-or-significant division. digits must be positive and at most
+Both logarithms use digits+12 plus an input-sensitive guard before component-wise
+exact-or-significant division. The guard is the maximum binary coefficient bit
+length divided by three, plus one, across the four decimal components. This
+conservative decimal-width estimate protects cancellation for nearby decimal
+arguments, e.g. log(1+i;1+(1+1e-60)i), whose imaginary component is about 3e-61.
+It is not a certified bound for arbitrary transcendental cancellation.
+digits must be positive and at most
 INT64_MAX-24. There is no correctly-rounded guarantee; bases near one amplify
 input projection and rounding errors. Runtime/scale limits apply. Aliasing
 with either or both inputs is supported, and failures preserve the result.
+An overflowing input-sensitive working digit count returns VALUE_TOO_LARGE.
 The calculator projects exact components at guarded working precision and
 retains an approximate complex result even when it displays a real number.
 
@@ -280,11 +286,11 @@ inputs select BigComplex arithmetic at working precision. These are calculator
 functions built from the existing public numeric operations; no new standalone
 aggregate C symbols are added.
 
-The independent unary complex oracle now checks 744 cases at up to 250
+The independent complex oracle now checks 900 unary/binary cases at up to 250
 significant digits, with an operation timing mode. See
 [numeric testing](../testing/NUMERIC_TESTING.md) and
-[complex benchmarks](../benchmarks/COMPLEX_BENCHMARKS.md). Binary-function
-oracle coverage and memory profiling remain future work.
+[complex benchmarks](../benchmarks/COMPLEX_BENCHMARKS.md). Broader oracle
+coverage and memory profiling remain future work.
 
 1. Consider a scaled/adaptive magnitude algorithm to reduce exact intermediate
    storage while preserving rounding guarantees. Integer powers, exact-sum

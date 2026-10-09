@@ -1,4 +1,16 @@
 const {test, expect}=require('@playwright/test');
+test('HTTP complex logarithm preserves a tiny component after cancellation',async({request})=>{
+    const client='bcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbc';
+    const base='/api/evaluate?precision=10&client='+client;
+    expect((await (await request.post(base+'&revision=1&action=start',{data:''})).json()).ok).toBe(true);
+    const imaginary='1.'+'0'.repeat(59)+'1';
+    const data=await (await request.post(base+'&revision=2&action=commit',{
+        data:`z=log(1+i;complex(1;${imaginary}))`})).json();
+    expect(data.ok).toBe(true);expect(data.result).toBe('1 + 2.9772475578E-61*i');
+    const value=(await (await request.get('/api/session/value?client='+client+'&name=z')).json()).value;
+    expect(value.kind).toBe('complex_decimal_approximation');expect(value.approximate).toBe(true);
+    expect(Number(value.components.imaginary)).toBeGreaterThan(0);
+});
 for(const lang of ['sk','en']) for(const width of [390,1280]) {
     test('complex aggregates '+lang+' '+width,async({page})=>{
         await page.setViewportSize({width,height:844});await page.goto('/?lang='+lang);

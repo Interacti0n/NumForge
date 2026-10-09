@@ -125,9 +125,12 @@ BigComplexStatus bigcomplex_pow(BigComplex *result, const BigComplex *value,
     const BigComplex *exponent, int64_t digits, BigDecimalRoundingMode rounding);
 /* Principal base logarithm ln(value)/ln(base), radians and (-pi, pi] branch.
  * Zero value, zero base and base 1 are INVALID_ARGUMENT. Approximate with
- * digits+12 working digits; no correct-rounding guarantee. Near-unit bases
+ * digits+12 plus a conservative input-coefficient width as working digits,
+ * protecting small components when nearby decimal inputs cancel. No
+ * correct-rounding guarantee. Near-unit bases
  * amplify input/rounding error. Supports either-input aliasing, atomic failure.
- * digits must leave room for 24 internal guard digits. */
+ * digits must leave room for 24 internal guard digits. Additional input guards
+ * can cause VALUE_TOO_LARGE when the working digit count would overflow. */
 BigComplexStatus bigcomplex_log(BigComplex *result, const BigComplex *value,
     const BigComplex *base, int64_t digits, BigDecimalRoundingMode rounding);
 /* Complex sine/cosine in radians, independent of calculator RAD/DEG:

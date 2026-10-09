@@ -7,6 +7,10 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Extend independent complex references with 156 binary div/log/pow cases.
+  Preserve tiny complex logarithm components for nearly equal decimal inputs
+  using input-sensitive working precision; retain atomic failure and aliasing.
+
 - Support mixed real/complex `sum`, `product` and `mean` in the shared C
   calculator and HTTP API. Keep exact rational components, including mean;
   preserve approximation metadata and reject mixed unit quantities.

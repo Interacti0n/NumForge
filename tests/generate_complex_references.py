@@ -42,3 +42,37 @@ for digits in (12, 34, 100, 250):
 path = Path(__file__).with_name("complex_references.tsv")
 path.write_text("# mpmath 1.3.0; op re im digits rounding expected_re expected_im\n" + "\n".join(rows) + "\n", encoding="utf-8")
 print(f"Generated {len(rows)} independently verified cases")
+
+BINARY = {
+    "div": [("1", "1", "3", "-2"), ("1e100", "1e-100", "1e100", "-1e-100"),
+            ("1", "1", "1e-100", "1e-100"), ("1", "-1", "1", "1"),
+            ("0.00000000000000000001", "1", "1", "0.00000000000000000001")],
+    "log": [("1", "1", "2", "-0.5"), ("-2", "0", "-3", "0"),
+            ("-2", "1e-30", "-3", "-1e-30"), ("-2", "-1e-30", "-3", "1e-30"),
+            ("1.00000000000000000001", "1e-30", "1.00000000000000000002", "-1e-30"),
+            ("1", "1", "1", "1." + "0" * 59 + "1"),
+            ("1e100", "1e-100", "1e-100", "2e-100")],
+    "pow": [("1", "1", "0.3", "-0.2"), ("-2", "0", "0.5", "0"),
+            ("-2", "1e-30", "0.3", "0.2"), ("-2", "-1e-30", "0.3", "0.2"),
+            ("1", "1e-100", "1", "1"), ("1e100", "1e-100", "0.3", "0.2"),
+            ("0.99999999999999999999", "1e-30", "1000", "0.3")],
+}
+
+def binary_reference(op, re, im, bre, bim, digits, precision):
+    with mp.workdps(precision):
+        z, b = mp.mpc(re, im), mp.mpc(bre, bim)
+        value = z / b if op == "div" else mp.log(z) / mp.log(b) if op == "log" else mp.power(z, b)
+        return [mp.nstr(x, digits + 20) for x in (value.real, value.imag)]
+
+rows = []
+for digits in (12, 34, 100, 250):
+    for op, points in BINARY.items():
+        for index, (re, im, bre, bim) in enumerate(points):
+            a = binary_reference(op, re, im, bre, bim, digits, 600)
+            if a != binary_reference(op, re, im, bre, bim, digits, 800):
+                raise RuntimeError(f"Unstable binary reference: {op} {re} {im}")
+            for rounding in (range(6) if index == 0 or (op == "log" and bim.startswith("1.000")) else (5,)):
+                rows.append("\t".join([op, re, im, str(digits), str(rounding), *a, bre, bim]))
+path.with_name("complex_binary_references.tsv").write_text(
+    "# mpmath 1.3.0; op re im digits rounding expected_re expected_im b_re b_im\n" + "\n".join(rows) + "\n", encoding="utf-8")
+print(f"Generated {len(rows)} independently verified binary cases")

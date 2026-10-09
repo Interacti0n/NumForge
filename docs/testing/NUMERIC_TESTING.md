@@ -139,7 +139,7 @@ Short campaigns are regression smoke coverage, not exhaustive fuzzing.
 
 ## Independent complex references
 
-`complex_oracle_tests` checks 744 public BigComplex C API cases against frozen
+`complex_oracle_tests` checks 900 public BigComplex C API cases against frozen
 mpmath 1.3.0 references. The developer-only generator
 `tests/generate_complex_references.py` independently evaluates each component
 at 600 and 800 decimal digits and requires matching reference strings. CTest
@@ -152,12 +152,20 @@ exact unsigned-zero cut conventions, near singularities, components as small
 as 1e-100 and magnitudes of 1e100. The negative imaginary asinh cut is explicitly
 adjusted to the documented NumForge convention rather than mpmath's cut lip.
 
+The corpus includes 744 unary cases and 156 binary div/log/pow cases in
+`complex_binary_references.tsv`. Binary inputs cover cancellation, very small
+denominators, near-unit logarithm bases, principal negative-axis powers and
+large exponent gaps. All rounding modes are exercised for an ordinary input
+of each operation and for the close-input logarithm regression. That regression
+revealed a lost imaginary component near 3e-61 and now checks input-sensitive
+working precision. Use `--binary` for only this subset, including benchmarks.
+
 Comparison uses exact JavaScript BigInt decimal arithmetic, with a bound of
 two units at the requested component's significant precision. Expected zero
 uses the absolute bound 2*10^(1-digits). Nonzero components use their own
 exponent, so dropping a tiny imaginary part fails. This is sampled error-bound
 validation, not a certified correct-rounding test or a whole-expression error
-guarantee. Binary pow/log/div, exhaustive cuts, memory scaling and domain-error
-preservation remain covered by other tests or require further oracle coverage.
+guarantee. Exhaustive cuts, memory scaling and domain-error preservation remain
+covered by other tests or require further oracle coverage.
 
 See [complex performance diagnostics](../benchmarks/COMPLEX_BENCHMARKS.md).

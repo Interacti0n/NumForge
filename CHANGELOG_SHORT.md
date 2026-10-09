@@ -5,6 +5,9 @@ details and the [2.1 release record](docs/project/RELEASE_2_1.md) for validation
 
 ## Unreleased
 
+- Preserve tiny complex logarithm components for nearly equal inputs;
+  extend the independent complex oracle to 900 cases.
+
 - Complex sum, product and mean with exact rational components.
 - Independent complex accuracy references and timing diagnostics.
 

@@ -386,6 +386,17 @@ static void test_base_logarithms(void) {
     TEST_ASSERT_EQUAL(BIGCOMPLEX_INVALID_ARGUMENT,bigcomplex_log(b,b,b,INT64_MAX,BIGDECIMAL_ROUND_HALF_EVEN));
     TEST_ASSERT_EQUAL(BIGCOMPLEX_INVALID_ARGUMENT,bigcomplex_log(b,b,b,12,(BigDecimalRoundingMode)99));
     TEST_ASSERT_EQUAL(BIGCOMPLEX_NULL_ARGUMENT,bigcomplex_log(b,b,NULL,12,BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_VALUE_TOO_LARGE,bigcomplex_log(b,b,b,INT64_MAX-24,BIGDECIMAL_ROUND_HALF_EVEN));
+    text_is(b,"2");
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(a,"1","1"));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(b,"1","1.000000000000000000000000000000000000000000000000000000000001"));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_log(b,a,b,12,BIGDECIMAL_ROUND_HALF_EVEN));
+    BigDecimal *tiny=bigdecimal_create(),*expected=bigdecimal_create();int comparison=1;
+    TEST_ASSERT_NOT_NULL(tiny);TEST_ASSERT_NOT_NULL(expected);
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_get_imaginary(tiny,b));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK,bigdecimal_set_string(expected,"2.97724755784E-61"));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK,bigdecimal_compare(&comparison,tiny,expected));
+    TEST_ASSERT_EQUAL(0,comparison);bigdecimal_destroy(tiny);bigdecimal_destroy(expected);
     bigcomplex_destroy(a);bigcomplex_destroy(b);
 }
 static void test_complex_trigonometry(void) {
@@ -551,11 +562,12 @@ static void test_inverse_hyperbolic(void)
     bigcomplex_destroy(a);bigcomplex_destroy(r);
 }
 static int allocation_operation_start=0;
+static int allocation_operation_end=30;
 static void test_allocation_failures(void) {
     BigComplex *a=number("1.2","-3.4"), *b=number("5.6","7.8"), *r=number("9","8");
     BigComplex *small=number("0.1","0.1"),*zero=number("0","0");
     BigDecimal *d=bigdecimal_create(); TEST_ASSERT_NOT_NULL(d);
-    for(int operation=allocation_operation_start;operation<30;operation++) {
+    for(int operation=allocation_operation_start;operation<allocation_operation_end;operation++) {
         size_t count=0;
         for(size_t failure=0;;failure++) {
             TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(r,"9","8"));
@@ -608,6 +620,11 @@ static void test_allocation_failures(void) {
     bigdecimal_destroy(d);bigcomplex_destroy(a);bigcomplex_destroy(b);bigcomplex_destroy(r);bigcomplex_destroy(small);bigcomplex_destroy(zero);
 }
 int main(int argc,char **argv) {
+    if(argc==2 && strcmp(argv[1],"--log-only")==0) {
+        allocation_operation_start=15;allocation_operation_end=16;
+        UNITY_BEGIN();RUN_TEST(test_base_logarithms);RUN_TEST(test_allocation_failures);
+        return UNITY_END();
+    }
     if(argc==2 && strcmp(argv[1],"--inverse-hyperbolic-only")==0) {
         allocation_operation_start=27;
         UNITY_BEGIN();RUN_TEST(test_inverse_hyperbolic);RUN_TEST(test_allocation_failures);

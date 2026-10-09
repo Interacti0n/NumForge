@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include "../bigdecimal/bigdecimal_internal.h"
+#include "../bigint/bigint_internal.h"
 
 
 struct BigComplex { BigDecimal *real, *imaginary; };
@@ -685,17 +687,33 @@ done:
     bigdecimal_destroy(one);bigdecimal_destroy(four);bigdecimal_destroy(d);bigdecimal_destroy(square);return status;
 #undef ATAN_TRY
 }
+/* A conservative decimal coefficient width from the binary bit count. Extra
+ * input-sensitive precision protects cancellation between almost equal logs.
+ * This is not a certified error bound for arbitrary transcendental relations. */
+static size_t logarithm_input_guard(const BigComplex *value,const BigComplex *base)
+{
+    const BigDecimal *parts[]={value->real,value->imaginary,base->real,base->imaginary};
+    size_t guard=0;
+    for(size_t i=0;i<4;i++) {
+        size_t width=bigint_bit_length(parts[i]->coefficient)/3+1;
+        if(width>guard) guard=width;
+    }
+    return guard;
+}
 BigComplexStatus bigcomplex_log(BigComplex *result, const BigComplex *value,
     const BigComplex *base, int64_t digits, BigDecimalRoundingMode rounding)
 {
     if (!result || !value || !base) return BIGCOMPLEX_NULL_ARGUMENT;
     if (digits < 1 || digits > INT64_MAX-24 || rounding < BIGDECIMAL_ROUND_TOWARD_ZERO ||
         rounding > BIGDECIMAL_ROUND_HALF_EVEN) return BIGCOMPLEX_INVALID_ARGUMENT;
+    size_t guard=logarithm_input_guard(value,base);
+    if (guard>(uint64_t)(INT64_MAX-digits-24)) return BIGCOMPLEX_VALUE_TOO_LARGE;
+    int64_t working=digits+12+(int64_t)guard;
     BigComplex *numerator=bigcomplex_create(),*denominator=bigcomplex_create();
     BigComplexStatus status=BIGCOMPLEX_OUT_OF_MEMORY;bool zero=false;
     if (!numerator || !denominator) goto done;
-    status=bigcomplex_ln(numerator,value,digits+12,rounding);
-    if (status == BIGCOMPLEX_OK) status=bigcomplex_ln(denominator,base,digits+12,rounding);
+    status=bigcomplex_ln(numerator,value,working,rounding);
+    if (status == BIGCOMPLEX_OK) status=bigcomplex_ln(denominator,base,working,rounding);
     if (status == BIGCOMPLEX_OK) status=bigcomplex_is_zero(&zero,denominator);
     if (status == BIGCOMPLEX_OK && zero) status=BIGCOMPLEX_INVALID_ARGUMENT;
     if (status == BIGCOMPLEX_OK) status=bigcomplex_div(numerator,numerator,denominator,digits,rounding);
