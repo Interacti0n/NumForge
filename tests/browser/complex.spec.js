@@ -27,7 +27,9 @@ for(const lang of ['sk','en']) for(const width of [390,1280]) {
             ['sqrt(3+4i)','2 + i'],['sqrt(-1+0i)','i'],['sqrt(-3-4i)','1 - 2*i'],
             ['sqrt((1/3+i/7)^2)','1/3 + (1/7)*i'],['sqrt(i)','0.7071067812 + 0.7071067812*i'],
             ['ln(-1+0i)','3.1415926536*i'],['ln(i)','1.5707963268*i'],
-            ['ln(1+i)','0.3465735903 + 0.7853981634*i'],['exp(ln(2+3i))','2 + 3*i']
+            ['ln(1+i)','0.3465735903 + 0.7853981634*i'],['exp(ln(2+3i))','2 + 3*i'],
+            ['i^i','0.2078795764'],['2^i','0.7692389014 + 0.6389612763*i'],
+            ['(-1+0i)^0.3','0.5877852523 + 0.8090169944*i'],['pow(2;i)','0.7692389014 + 0.6389612763*i']
         ]) {await input.fill(expression);await expect(result).toHaveText(expected);}
         const search=page.locator('#function-search');
         await search.fill(lang==='sk'?'imaginárna jednotka':'imaginary unit');
@@ -100,6 +102,30 @@ test('HTTP principal logarithm retains radians, typed values and failed-assignme
     expect(positiveCut.result).toContain('5E-81');expect(negativeCut.result).toContain('5E-81');
 });
 
+test('HTTP principal powers preserve branches, exact integers and failed state',async({request})=>{
+    const client='dededededededededededededededede',base='/api/evaluate?precision=10&angle=deg&client='+client;
+    let revision=1;
+    const send=async(data,action='commit')=>(await request.post(base+'&revision='+(revision++)+'&action='+action,{data})).json();
+    expect((await send('','start')).ok).toBe(true);
+    expect((await send('z=i^i')).result).toBe('0.2078795764');
+    let snapshot=await (await request.get('/api/session/value?client='+client+'&name=z')).json();
+    expect(snapshot.value.kind).toBe('complex_decimal_approximation');
+    expect(snapshot.value.approximate).toBe(true);
+    expect(Number(snapshot.value.components.real)).toBeCloseTo(Math.exp(-Math.PI/2),12);
+    expect((await send('z=(0*i)^i')).ok).toBe(false);
+    expect((await send('z=(0*i)^(-1/2)')).ok).toBe(false);
+    expect((await send('ans')).result).toBe('0.2078795764');
+    expect((await send('2^0.5')).ok).toBe(false);
+    expect((await send('pow(2;i)')).result).toBe('0.7692389014 + 0.6389612763*i');
+    expect((await send('(-1+0i)^0.3')).result).toBe('0.5877852523 + 0.8090169944*i');
+    expect((await send('(-1-1E-20i)^0.3')).result).toBe('0.5877852523 - 0.8090169944*i');
+    expect((await send('(0*i)^(1/2)')).result).toBe('0');
+    expect((await send('(0*i)^0')).result).toBe('1');
+    expect((await send('(1+i)^3')).result).toBe('-2 + 2*i');
+    snapshot=await (await request.get('/api/session/value?client='+client+'&name=ans')).json();
+    expect(snapshot.value.approximate).toBe(false);
+});
+
 test('HTTP imaginary unit, projections and variable names preserve session semantics',async({request})=>{
     const client='cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd',base='/api/evaluate?precision=10&angle=deg&client='+client;
     let revision=1;
@@ -115,7 +141,7 @@ test('HTTP imaginary unit, projections and variable names preserve session seman
     expect(names).toEqual(['I','x','y','xy','z']);
     expect(variables.items.find(item=>item.name==='z').value.components).toEqual({real:'1/3',imaginary:'2/3'});
     expect((await send('arg(0)')).ok).toBe(false);
-    expect((await send('2^i')).ok).toBe(false);
+    expect((await send('(0*i)^i')).ok).toBe(false);
     const exponential=await send('e^(π*i)');expect(exponential.ok).toBe(true);
     expect(exponential.result).toMatch(/^-1/);
     const snapshot=await (await request.get('/api/session/value?client='+client+'&name=ans')).json();

@@ -6,8 +6,9 @@
 arguments. For example `complex(0;1)^2` is `-1` and
 `complex(1/3;1/3)^2` is `(2/9)*i`. Supported operations are unary signs,
 addition, subtraction, multiplication, division and signed integer powers
-(`^`, `pow`, `²`, `³`); exponents must be real integers within signed 64-bit
-range. Exact inputs remain rational-complex. Mixing an approximate input
+(`^`, `pow`, `²`, `³`); real integer exponents use signed 64-bit range.
+Exact integer powers remain rational-complex. Noninteger or complex exponents
+use approximate principal powers when either operand is complex. Mixing an approximate input
 (constants, irrational functions, decimal division mode) explicitly projects
 exact components at working precision and produces decimal-complex values.
 Finite decimal literals remain exact in the default exact evaluation policy.
@@ -36,9 +37,23 @@ zero is invalid. Real functions can consume extracted components, e.g. `sin(re(z
 
 `exp(z)` supports complex inputs. An explicit Euler constant base in `e^z` or
 `pow(e;z)` also accepts complex exponents via exp(re)*(cos(im)+i*sin(im)), radians.
-Other bases retain the real signed-integer exponent restriction. These numerical
+Other bases accept complex exponents through principal powers. These numerical
 exponentials do not infer symbolic identities: `e^(π*i)` may retain a tiny
 imaginary residual.
+
+`z^w` and `pow(z;w)` with either operand complex use exp(w*ln(z)) for
+noninteger or complex exponents, with radians and the principal logarithm
+branch (-pi, pi]. For example `i^i` is approximately `0.2078795764`,
+`2^i` is `0.7692389014 + 0.6389612763*i`, and `(-1+0i)^(1/2)`
+approaches `i` and may retain a tiny real residual. Both-real operands retain the integer
+restriction: write `(-1+0i)^(1/2)` to select complex arithmetic.
+Zero to zero is one; zero to a positive real exponent is zero; negative
+real exponents fail with division by zero and nonreal exponents are invalid.
+Integer powers retain exact arithmetic; complex-typed exponents use the
+approximate path even when their imaginary part is zero. Exact inputs are
+projected at guarded working precision. No correctly-rounded guarantee or
+symbolic identity simplification is provided. Multivalued powers and algebraic
+identities across branch cuts are not implied.
 
 `ln(z)` accepts explicit complex arguments and returns the approximate principal
 natural logarithm ln(|z|)+i*arg(z), in radians regardless of RAD/DEG.

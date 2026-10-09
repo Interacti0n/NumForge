@@ -8,6 +8,14 @@ and `exp(z)`. Lowercase `i` is reserved; uppercase `I` remains a variable.
 `sqrt(z)` / `√(z)` accepts explicit complex values and returns the principal
 root, with proven rational roots staying exact. `sqrt(-1)` remains a real-domain
 error; use `sqrt(-1+0i)` for exact `i`.
+`z^w` and `pow(z;w)` accept principal noninteger and complex powers when
+either operand is complex, via public C `bigcomplex_pow`. Integer powers
+retain exact arithmetic. General powers use exp(w*ln(z)), radians and the
+principal logarithm branch; both-real operands retain the integer restriction.
+Zero to zero is one; zero to a positive real exponent is zero; negative real
+and nonreal exponents of zero fail. Approximate snapshots retain complex
+components even for a displayed real result. Failed assignments preserve state.
+
 `ln(z)` accepts explicit complex input and returns an approximate principal
 logarithm in radians, imaginary part in (-pi, pi]. Zero is invalid; real
 `ln(-1)` remains an error, while `ln(-1+0i)` uses the positive pi branch.

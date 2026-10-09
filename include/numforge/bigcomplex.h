@@ -114,6 +114,15 @@ BigComplexStatus bigcomplex_exp(BigComplex *result, const BigComplex *value,
  * intermediates may exceed resource/scale limits. Atomic and alias-safe. */
 BigComplexStatus bigcomplex_ln(BigComplex *result, const BigComplex *value,
     int64_t digits, BigDecimalRoundingMode rounding);
+/* Principal power exp(exponent*ln(value)), in radians, with digits+12 guard
+ * digits. Approximate even for integer exponents; use pow_int for exact
+ * integer powers. 0^0=1, zero to a positive real exponent=0, negative real
+ * exponent returns DIVISION_BY_ZERO, nonreal exponent INVALID_ARGUMENT.
+ * Supports aliasing with either input and preserves result on failure.
+ * No correct-rounding guarantee; cancellation and input projection can lose
+ * relative accuracy. digits must leave room for 24 internal guard digits. */
+BigComplexStatus bigcomplex_pow(BigComplex *result, const BigComplex *value,
+    const BigComplex *exponent, int64_t digits, BigDecimalRoundingMode rounding);
 /* Cartesian delegates to format; polar displays r*(cos(phi)+i*sin(phi)) or
  * r*e^(i*(phi)), radians. Zero displays 0 in every form. Polar coordinates
  * are approximate, with explicit working digits; places is display policy.

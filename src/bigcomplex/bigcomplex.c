@@ -423,6 +423,32 @@ BigComplexStatus bigcomplex_format_form(const BigComplex *value, BigComplexForm 
     *result=text;text=NULL;
 done:free(r);free(a);free(text);bigdecimal_destroy(radius);bigdecimal_destroy(angle);return status;
 }
+BigComplexStatus bigcomplex_pow(BigComplex *result, const BigComplex *value,
+    const BigComplex *exponent, int64_t digits, BigDecimalRoundingMode rounding)
+{
+    if (!result || !value || !exponent) return BIGCOMPLEX_NULL_ARGUMENT;
+    if (digits < 1 || digits > INT64_MAX-24 || rounding < BIGDECIMAL_ROUND_TOWARD_ZERO ||
+        rounding > BIGDECIMAL_ROUND_HALF_EVEN) return BIGCOMPLEX_INVALID_ARGUMENT;
+    bool zero=false, exponent_zero=false, real=false, negative=false;
+    BigComplexStatus status=bigcomplex_is_zero(&zero,value);
+    if (status == BIGCOMPLEX_OK) status=bigcomplex_is_zero(&exponent_zero,exponent);
+    if (status != BIGCOMPLEX_OK) return status;
+    BigComplex *temporary=bigcomplex_create();
+    if (!temporary) return BIGCOMPLEX_OUT_OF_MEMORY;
+    if (exponent_zero) status=bigcomplex_set_strings(temporary,"1","0");
+    else if (zero) {
+        status=mapped(bigdecimal_is_zero(&real,exponent->imaginary));
+        if (status == BIGCOMPLEX_OK && !real) status=BIGCOMPLEX_INVALID_ARGUMENT;
+        if (status == BIGCOMPLEX_OK) status=mapped(bigdecimal_is_negative(&negative,exponent->real));
+        if (status == BIGCOMPLEX_OK && negative) status=BIGCOMPLEX_DIVISION_BY_ZERO;
+    } else {
+        status=bigcomplex_ln(temporary,value,digits+12,rounding);
+        if (status == BIGCOMPLEX_OK) status=bigcomplex_mul(temporary,exponent,temporary);
+        if (status == BIGCOMPLEX_OK) status=bigcomplex_exp(temporary,temporary,digits,rounding);
+    }
+    if (status == BIGCOMPLEX_OK) commit(result,temporary);
+    bigcomplex_destroy(temporary);return status;
+}
 BigComplexStatus bigcomplex_ln(BigComplex *result, const BigComplex *value,
     int64_t digits, BigDecimalRoundingMode rounding)
 {

@@ -316,7 +316,7 @@ const functionHelp = {
     factorial: ["n!","factorial(n)","Celé n od 0 do 10000.","Integer n from 0 to 10000."],
     isqrt: ["isqrt","isqrt(n)","Celá časť odmocniny; celé n ≥ 0.","Integer square root; integer n ≥ 0."],
     rand: ["rand","rand() / rand(x) / rand(x;y)","Náhodná hodnota v [0,1), [0,x) alebo [x,y); x > 0 a x < y.","Random value in [0,1), [0,x) or [x,y); x > 0 and x < y."],
-    pow: ["xʸ","pow(x;n)","Exponent n musí byť celé číslo; základ e prijíma aj komplexný exponent. Nula na záporný exponent nie je definovaná.","Exponent n must be an integer; base e also accepts complex exponents. Zero to a negative exponent is undefined."],
+    pow: ["xʸ","pow(x;n)","Reálny exponent musí byť celý; komplexné operandy prijímajú aj hlavné neceločíselné a komplexné mocniny. Nula na záporný alebo nereálny exponent nie je definovaná.","Real exponents must be integers; complex operands also accept principal noninteger and complex powers. Zero to a negative or nonreal exponent is undefined."],
     complex: ["a + bi","complex(re;im)","Reálna a imaginárna zložka. Funguje aj a + b*i; i je imaginárna jednotka.","Real and imaginary components. Also accepts a + b*i; i is the imaginary unit."],
     re: ["Re","re(z)","Reálna časť; presné zlomky zostávajú presné.","Real part; exact fractions stay exact."],
     im: ["Im","im(z)","Imaginárna časť; pre reálne číslo vráti 0.","Imaginary part; returns 0 for a real number."],

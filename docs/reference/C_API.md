@@ -25,7 +25,7 @@ separately versioned remote service.
   arithmetic, exact rational complex arithmetic, complex exponential,
   component extraction, conjugation, squared modulus, principal complex square
   root through `bigcomplex_sqrt`, principal natural logarithm through
-  `bigcomplex_ln` and three display forms.
+  `bigcomplex_ln`, principal `bigcomplex_pow` and three display forms.
   Private calculator/session/HTTP adapters support typed complex values; those
   adapters remain outside the public numeric C library ABI.
 - Mutating functions return a status code. On failure, their output is left

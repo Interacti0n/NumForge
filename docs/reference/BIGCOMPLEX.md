@@ -73,6 +73,24 @@ the component squares. Both preserve their destination on failure.
 - BigComplex does not preserve recurring rational components such as `1/3`
   exactly. No claim about the exact mathematical origin of a decimal is made.
 
+## Principal general powers
+
+`bigcomplex_pow(result, value, exponent, digits, rounding)` computes the
+approximate principal value exp(exponent*ln(value)), in radians with the
+logarithm branch (-pi, pi]. It uses digits+12 for ln, exact decimal
+multiplication, and exp with its own 12 guard digits. `digits` must be positive
+and at most INT64_MAX-24. There is no correct-rounding guarantee; cancellation
+and exact-rational projection can lose relative accuracy. Intermediate scale
+and runtime limits apply. Small numerical residuals are retained.
+
+Unlike `bigcomplex_pow_int`, this general API is approximate even for integer
+exponents. Use the integer API when exactness matters. Zero to zero is one;
+zero to a positive real exponent is zero. Zero to a negative real exponent
+returns DIVISION_BY_ZERO, and a nonreal exponent returns INVALID_ARGUMENT.
+Errors preserve the destination; aliasing with either or both inputs is
+supported. For example i^i is approximately 0.2078795764. This returns one
+principal value, not all branches; identities across branch cuts need not hold.
+
 ## Integer powers and modulus
 
 `bigcomplex_sqrt(result, value, digits, rounding)` returns the principal square
@@ -152,7 +170,7 @@ successful output with `free()`; all failures preserve the output pointer.
    Mixed approximate operations explicitly project exact components at working
    precision. Typed sessions and snapshots are implemented.
 3. Improve argument/exponential/square-root/logarithm rounding guarantees, add
-   general powers, logarithms with custom bases and trigonometric functions.
+   logarithms with custom bases and trigonometric functions.
    Define cuts, zero behavior and numerical
    validation separately. Correct rounding needs more than fixed guard digits.
 

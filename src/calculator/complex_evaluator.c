@@ -136,6 +136,19 @@ static CalculatorStatus arithmetic(CalculatorValue *r,const CalculatorValue *a,c
     if (a->quantity || b->quantity) return CALCULATOR_DIMENSION_ERROR;
     int64_t exponent=0;
     CalculatorStatus status=op == CALCULATOR_BINARY_POWER ? exponent_value(b,context,&exponent) : CALCULATOR_OK;
+    if (op == CALCULATOR_BINARY_POWER && status == CALCULATOR_INVALID_ARGUMENT) {
+        BigComplex *x=bigcomplex_create(),*y=bigcomplex_create();
+        r->kind=CALCULATOR_VALUE_COMPLEX_DECIMAL;r->complex_decimal=bigcomplex_create();
+        status=CALCULATOR_OUT_OF_MEMORY;
+        CalculatorContext working=*context;working.division_scale+=12;
+        if (x && y && r->complex_decimal) {
+            status=as_decimal(x,a,&working);
+            if (status == CALCULATOR_OK) status=as_decimal(y,b,&working);
+            if (status == CALCULATOR_OK) status=mapped(bigcomplex_pow(
+                r->complex_decimal,x,y,context->division_scale,context->rounding));
+        }
+        bigcomplex_destroy(x);bigcomplex_destroy(y);return status;
+    }
     if (status != CALCULATOR_OK) return status;
     bool use_exact=exact(a) && (op == CALCULATOR_BINARY_POWER || exact(b));
     status=CALCULATOR_OUT_OF_MEMORY;

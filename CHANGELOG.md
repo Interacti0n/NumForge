@@ -7,6 +7,9 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Add public `bigcomplex_pow` and principal complex powers via `^` / `pow`
+  in calculator and HTTP API, preserving exact integer powers and real domains.
+
 - Add public `bigcomplex_ln` and principal complex natural logarithms in the
   calculator and HTTP API, preserving real domains and documenting the branch cut.
 
