@@ -20,6 +20,7 @@ is added; saved values remain bounded application-owned memory.
 | Principal complex natural logarithm | `ln(z)` with explicit complex input | Available in C via `bigcomplex_ln`; radians and (-pi, pi] branch; zero and negative real inputs retain domain errors |
 | Principal complex powers | `z^w`, `pow(z;w)` when either operand is complex | Public C `bigcomplex_pow`; radians, principal branch and approximate snapshots; integer powers stay exact |
 | Principal complex base logarithms | `log(z)`, `log(z;b)` with either argument complex | Public C `bigcomplex_log`; base 10 default, principal radians, approximate snapshots; zero input and bases 0/1 invalid |
+| Complex trigonometry | `sin(z)`, `cos(z)`, `tan(z)` with complex input | Public C APIs; complex angles always radians, real inputs keep RAD/DEG; approximate snapshots and atomic failures |
 | Read-only calculator preview | `action=preview` with session ID and revision | Available |
 | Confirm result, update ans/history | `action=commit` | Available |
 | Create or replace a variable | Commit `x=2/3` | Available |

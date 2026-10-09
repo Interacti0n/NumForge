@@ -423,6 +423,54 @@ BigComplexStatus bigcomplex_format_form(const BigComplex *value, BigComplexForm 
     *result=text;text=NULL;
 done:free(r);free(a);free(text);bigdecimal_destroy(radius);bigdecimal_destroy(angle);return status;
 }
+static BigComplexStatus complex_sine_cosine(BigComplex *result, const BigComplex *value,
+    int64_t digits, BigDecimalRoundingMode rounding, bool cosine)
+{
+    if (!result || !value) return BIGCOMPLEX_NULL_ARGUMENT;
+    if (digits < 1 || digits > INT64_MAX-12 || rounding < BIGDECIMAL_ROUND_TOWARD_ZERO ||
+        rounding > BIGDECIMAL_ROUND_HALF_EVEN) return BIGCOMPLEX_INVALID_ARGUMENT;
+    BigComplex *temporary=bigcomplex_create();
+    BigDecimal *sine=bigdecimal_create(),*cosine_value=bigdecimal_create();
+    BigDecimal *sinh_value=bigdecimal_create(),*cosh_value=bigdecimal_create(),*one=bigdecimal_create();
+    BigDecimalStatus status=BIGDECIMAL_OUT_OF_MEMORY;
+    if (!temporary || !sine || !cosine_value || !sinh_value || !cosh_value || !one) goto done;
+    TRY(bigdecimal_sin(sine,value->real,digits+12,rounding));
+    TRY(bigdecimal_cos(cosine_value,value->real,digits+12,rounding));
+    TRY(bigdecimal_sinh(sinh_value,value->imaginary,digits+12,rounding));
+    TRY(bigdecimal_cosh(cosh_value,value->imaginary,digits+12,rounding));
+    TRY(bigdecimal_mul(temporary->real,cosine ? cosine_value : sine,cosh_value));
+    TRY(bigdecimal_mul(temporary->imaginary,cosine ? sine : cosine_value,sinh_value));
+    if (cosine) TRY(bigdecimal_negate(temporary->imaginary,temporary->imaginary));
+    TRY(bigdecimal_set_string(one,"1"));
+    TRY(bigdecimal_div_significant(temporary->real,temporary->real,one,digits,rounding));
+    TRY(bigdecimal_div_significant(temporary->imaginary,temporary->imaginary,one,digits,rounding));
+    commit(result,temporary);
+done:
+    bigcomplex_destroy(temporary);bigdecimal_destroy(sine);bigdecimal_destroy(cosine_value);
+    bigdecimal_destroy(sinh_value);bigdecimal_destroy(cosh_value);bigdecimal_destroy(one);return mapped(status);
+}
+BigComplexStatus bigcomplex_sin(BigComplex *result, const BigComplex *value,
+    int64_t digits, BigDecimalRoundingMode rounding)
+{ return complex_sine_cosine(result,value,digits,rounding,false); }
+BigComplexStatus bigcomplex_cos(BigComplex *result, const BigComplex *value,
+    int64_t digits, BigDecimalRoundingMode rounding)
+{ return complex_sine_cosine(result,value,digits,rounding,true); }
+BigComplexStatus bigcomplex_tan(BigComplex *result, const BigComplex *value,
+    int64_t digits, BigDecimalRoundingMode rounding)
+{
+    if (!result || !value) return BIGCOMPLEX_NULL_ARGUMENT;
+    if (digits < 1 || digits > INT64_MAX-24 || rounding < BIGDECIMAL_ROUND_TOWARD_ZERO ||
+        rounding > BIGDECIMAL_ROUND_HALF_EVEN) return BIGCOMPLEX_INVALID_ARGUMENT;
+    BigComplex *numerator=bigcomplex_create(),*denominator=bigcomplex_create();
+    BigComplexStatus status=BIGCOMPLEX_OUT_OF_MEMORY;
+    if (!numerator || !denominator) goto done;
+    status=bigcomplex_sin(numerator,value,digits+12,rounding);
+    if (status == BIGCOMPLEX_OK) status=bigcomplex_cos(denominator,value,digits+12,rounding);
+    if (status == BIGCOMPLEX_OK) status=bigcomplex_div(numerator,numerator,denominator,digits,rounding);
+    if (status == BIGCOMPLEX_OK) commit(result,numerator);
+done:
+    bigcomplex_destroy(numerator);bigcomplex_destroy(denominator);return status;
+}
 BigComplexStatus bigcomplex_log(BigComplex *result, const BigComplex *value,
     const BigComplex *base, int64_t digits, BigDecimalRoundingMode rounding)
 {

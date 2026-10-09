@@ -1,5 +1,18 @@
 const {test, expect}=require('@playwright/test');
 for(const lang of ['sk','en']) for(const width of [390,1280]) {
+    test(`complex trigonometry uses radians ${lang} ${width}`,async({page})=>{
+        await page.addInitScript(()=>localStorage.setItem('numforge-angle-unit','deg'));
+        await page.setViewportSize({width,height:844});await page.goto('/?lang='+lang);
+        const input=page.locator('#expression'),result=page.locator('#result');
+        for(const [expression,expected] of [
+            ['sin(i)','1.1752011936*i'],['cos(i)','1.5430806348'],['tan(i)','0.761594156*i'],
+            ['sin(1+i)','1.2984575814 + 0.6349639148*i'],
+            ['cos(1+i)','0.8337300251 - 0.9888977058*i'],
+            ['tan(1+i)','0.2717525853 + 1.0839233273*i'],['sin(90)','1']
+        ]) {await input.fill(expression);await expect(result).toHaveText(expected);}
+    });
+}
+for(const lang of ['sk','en']) for(const width of [390,1280]) {
     test(`complex values, forms and copying ${lang} ${width}`,async({page},testInfo)=>{
         test.setTimeout(30000); // Exercises the growing complex-function catalogue.
         await page.setViewportSize({width,height:844});await page.goto('/?lang='+lang);
@@ -152,6 +165,32 @@ test('HTTP complex base logarithms preserve domains and failed state',async({req
     expect((await send('log(1+i;2+i)')).result).toBe('0.7455202636 + 0.5464509967*i');
     const stored=await (await request.get('/api/session/value?client='+client+'&name=z')).json();
     expect(stored.value.components).toEqual(snapshot.value.components);
+});
+
+test('HTTP complex trigonometry preserves radians, near-pole values and failed state',async({request})=>{
+    const client='a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2',base='/api/evaluate?precision=10&angle=deg&client='+client;
+    let revision=1;
+    const send=async(data,action='commit')=>(await request.post(base+'&revision='+(revision++)+'&action='+action,{data})).json();
+    expect((await send('','start')).ok).toBe(true);
+    expect((await send('z=cos(i)')).result).toBe('1.5430806348');
+    let snapshot=await (await request.get('/api/session/value?client='+client+'&name=z')).json();
+    expect(snapshot.value.kind).toBe('complex_decimal_approximation');expect(snapshot.value.approximate).toBe(true);
+    expect(Number(snapshot.value.components.imaginary)).toBe(0);
+    expect((await send('z=tan(90)')).ok).toBe(false);
+    expect((await send('ans')).result).toBe('1.5430806348');
+    expect((await send('asin(i)')).ok).toBe(false);
+    expect((await send('sin(1+i)')).result).toBe('1.2984575814 + 0.6349639148*i');
+    expect((await send('cos(1-i)')).result).toBe('0.8337300251 + 0.9888977058*i');
+    expect((await send('tan(-i)')).result).toBe('-0.761594156*i');
+    expect((await send('tan(π/2+1E-8i)')).ok).toBe(true);
+    snapshot=await (await request.get('/api/session/value?client='+client+'&name=ans')).json();
+    expect(Number(snapshot.value.components.imaginary)/1e8).toBeCloseTo(1,10);
+    expect(Math.abs(Number(snapshot.value.components.real))).toBeLessThan(1e-10);
+    expect((await send('tan(20i)')).result).toBe('i');
+    expect((await send('tan(1E-40i)')).result).toBe('1E-40*i');
+    expect((await send('sin(90+0i)')).result).toBe('0.8939966636');
+    const stored=await (await request.get('/api/session/value?client='+client+'&name=z')).json();
+    expect(Number(stored.value.components.real)).toBeCloseTo(Math.cosh(1),12);
 });
 
 test('HTTP imaginary unit, projections and variable names preserve session semantics',async({request})=>{

@@ -7,6 +7,9 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Add public complex `sin`, `cos` and `tan` in the C library, calculator and
+  HTTP API, using radians for complex inputs and preserving real RAD/DEG behavior.
+
 - Add public `bigcomplex_log` and complex base-10/custom-base logarithms
   through calculator and HTTP API, with principal branches and atomic errors.
 

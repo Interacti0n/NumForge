@@ -73,6 +73,34 @@ the component squares. Both preserve their destination on failure.
 - BigComplex does not preserve recurring rational components such as `1/3`
   exactly. No claim about the exact mathematical origin of a decimal is made.
 
+## Complex trigonometry
+
+`bigcomplex_sin`, `bigcomplex_cos` and `bigcomplex_tan` accept finite complex
+inputs, always in radians. Sine and cosine use
+sin(x+iy)=sin(x)cosh(y)+i*cos(x)sinh(y) and
+cos(x+iy)=cos(x)cosh(y)-i*sin(x)sinh(y), guarded scalar calls at digits+12,
+then component-wise significant rounding. Tangent divides guarded complex
+sine by cosine, with another 12 guard digits before the final division.
+digits must be positive and leave room for 12 guard digits for sin/cos,
+24 for tan; rounding must be a valid mode. Aliasing is supported and every
+failure preserves the destination.
+
+These results are approximate, without correctly-rounded guarantees or symbolic
+recognition of pi multiples. Tangent's poles are on the real axis at
+pi/2+k*pi; a computed zero cosine returns DIVISION_BY_ZERO. Finite decimal
+approximations to poles need not give exact zeros. Near poles, rounding and
+rational projection errors can be amplified. Large imaginary parts grow
+sin/cos exponentially; runtime and scale limits apply to intermediates even
+when a final tangent is bounded. No saturation approximation is substituted.
+Tiny nonzero residuals are preserved. For example sin(i) is approximately
+1.1752011936*i, cos(i) 1.5430806348 and tan(i) 0.761594156*i.
+
+The calculator uses this path for complex-typed inputs, including inputs
+whose imaginary part is zero. Exact fractions project at guarded working
+precision. Results remain complex decimal approximations. Real-only inputs
+keep RAD/DEG behavior; complex inputs use radians even in DEG. Complex inverse
+trigonometry and hyperbolic functions remain future work.
+
 ## Principal base logarithms
 
 `bigcomplex_log(result, value, base, digits, rounding)` returns
@@ -187,7 +215,7 @@ successful output with `free()`; all failures preserve the output pointer.
    Mixed approximate operations explicitly project exact components at working
    precision. Typed sessions and snapshots are implemented.
 3. Improve argument/exponential/square-root/logarithm rounding guarantees, add
-   trigonometric functions and improve logarithm error bounds.
+   inverse trigonometric/hyperbolic functions and improve transcendental error bounds.
    Define cuts, zero behavior and numerical
    validation separately. Correct rounding needs more than fixed guard digits.
 

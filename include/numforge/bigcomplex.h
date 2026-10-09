@@ -130,6 +130,24 @@ BigComplexStatus bigcomplex_pow(BigComplex *result, const BigComplex *value,
  * digits must leave room for 24 internal guard digits. */
 BigComplexStatus bigcomplex_log(BigComplex *result, const BigComplex *value,
     const BigComplex *base, int64_t digits, BigDecimalRoundingMode rounding);
+/* Complex sine/cosine in radians, independent of calculator RAD/DEG:
+ * sin(x+iy)=sin(x)cosh(y)+i*cos(x)sinh(y),
+ * cos(x+iy)=cos(x)cosh(y)-i*sin(x)sinh(y).
+ * Approximate, digits+12 guarded scalar calls, final component significant
+ * rounding. No correct-rounding guarantee; large imaginary parts can exceed
+ * runtime/scale limits. Alias-safe, failure preserves result. digits>=1 and
+ * <=INT64_MAX-12. No implicit symbolic recognition of multiples of pi. */
+BigComplexStatus bigcomplex_sin(BigComplex *result, const BigComplex *value,
+    int64_t digits, BigDecimalRoundingMode rounding);
+BigComplexStatus bigcomplex_cos(BigComplex *result, const BigComplex *value,
+    int64_t digits, BigDecimalRoundingMode rounding);
+/* tan(z)=sin(z)/cos(z), guarded sine/cosine at digits+12 and final division.
+ * digits<=INT64_MAX-24. Computed zero denominator gives DIVISION_BY_ZERO;
+ * near real-axis poles can amplify errors. Finite decimal pi approximations
+ * need not give exact poles. Resource limits apply also to intermediates,
+ * even when the final tangent is bounded. Atomic and alias-safe. */
+BigComplexStatus bigcomplex_tan(BigComplex *result, const BigComplex *value,
+    int64_t digits, BigDecimalRoundingMode rounding);
 /* Cartesian delegates to format; polar displays r*(cos(phi)+i*sin(phi)) or
  * r*e^(i*(phi)), radians. Zero displays 0 in every form. Polar coordinates
  * are approximate, with explicit working digits; places is display policy.

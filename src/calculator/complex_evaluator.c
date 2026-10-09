@@ -300,12 +300,19 @@ static CalculatorStatus complex_function(CalculatorValue *result, const Calculat
     CalculatorContext working=*context;working.division_scale+=12;
     status=as_decimal(projected,a,&working);
     if (status == CALCULATOR_OK && (function == CALCULATOR_FUNCTION_EXP || function == CALCULATOR_FUNCTION_SQRT ||
-        function == CALCULATOR_FUNCTION_LN)) {
+        function == CALCULATOR_FUNCTION_LN || function == CALCULATOR_FUNCTION_SIN ||
+        function == CALCULATOR_FUNCTION_COS || function == CALCULATOR_FUNCTION_TAN)) {
         result->kind=CALCULATOR_VALUE_COMPLEX_DECIMAL;result->complex_decimal=bigcomplex_create();
         status=result->complex_decimal ? mapped(function == CALCULATOR_FUNCTION_SQRT ?
             bigcomplex_sqrt(result->complex_decimal,projected,context->division_scale,context->rounding) :
             function == CALCULATOR_FUNCTION_LN ?
             bigcomplex_ln(result->complex_decimal,projected,context->division_scale,context->rounding) :
+            function == CALCULATOR_FUNCTION_SIN ?
+            bigcomplex_sin(result->complex_decimal,projected,context->division_scale,context->rounding) :
+            function == CALCULATOR_FUNCTION_COS ?
+            bigcomplex_cos(result->complex_decimal,projected,context->division_scale,context->rounding) :
+            function == CALCULATOR_FUNCTION_TAN ?
+            bigcomplex_tan(result->complex_decimal,projected,context->division_scale,context->rounding) :
             bigcomplex_exp(result->complex_decimal,projected,context->division_scale,context->rounding)) : CALCULATOR_OUT_OF_MEMORY;
     } else if (status == CALCULATOR_OK) {
         result->number=bigdecimal_create();
@@ -337,7 +344,9 @@ static CalculatorStatus complex_call(CalculatorValue *result, const CalculatorEx
     else if (function == CALCULATOR_FUNCTION_REAL_PART || function == CALCULATOR_FUNCTION_IMAGINARY_PART ||
         function == CALCULATOR_FUNCTION_CONJUGATE || function == CALCULATOR_FUNCTION_ARGUMENT ||
         (any_complex && (function == CALCULATOR_FUNCTION_ABS || function == CALCULATOR_FUNCTION_EXP ||
-            function == CALCULATOR_FUNCTION_SQRT || function == CALCULATOR_FUNCTION_LN)))
+            function == CALCULATOR_FUNCTION_SQRT || function == CALCULATOR_FUNCTION_LN ||
+            function == CALCULATOR_FUNCTION_SIN || function == CALCULATOR_FUNCTION_COS ||
+            function == CALCULATOR_FUNCTION_TAN)))
         status=complex_function(result,&values[0],function,context);
     else if (function == CALCULATOR_FUNCTION_LOG && any_complex) {
         if (values[0].quantity || (count == 2 && values[1].quantity)) {

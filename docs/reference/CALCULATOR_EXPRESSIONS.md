@@ -71,7 +71,17 @@ are allowed in this explicit complex path; both-real calls retain positive
 input/base restrictions. Results remain approximate complex values even if
 they display a real number. Bases close to one amplify numerical errors;
 principal log and power are not general inverse identities across branch cuts.
-Other complex transcendental calls remain unsupported.
+`sin(z)`, `cos(z)` and `tan(z)` accept complex inputs in radians, independently
+of RAD/DEG. For example `sin(i)` is approximately `1.1752011936*i`,
+`cos(i)` is `1.5430806348` and `tan(i)` is `0.761594156*i`.
+Complex-typed zero-imaginary inputs also use radians; `sin(90)` in DEG is one,
+while `sin(90+0i)` computes radians. Real-only calls keep existing RAD/DEG and
+pole rules. `tan` is the guarded quotient sin(z)/cos(z); near real-axis poles
+errors can be amplified. Finite decimal pi approximations are not symbolic
+poles, and tiny residuals remain. Large imaginary parts can exhaust scale or
+runtime limits, even when the tangent itself is bounded. Exact components
+project at guarded precision; results stay approximate complex values.
+Complex inverse trigonometry and hyperbolic calls remain unsupported.
 
 The web form selector changes display between Cartesian, trigonometric and
 exponential form without changing the stored value. Polar angles are always
@@ -189,7 +199,7 @@ the current registry; recognition is separate from numerical implementation:
 | `isqrt(n)` | Floor of the square root of a non-negative integer: `isqrt(15) = 3`. |
 | `sqrt(x)`, `cbrt(x)`, `root(x;n)` | Active real roots; `√(x)` aliases `sqrt(x)`. Real square roots require x ≥ 0; explicit complex `sqrt(z)` returns the principal root. Cube roots accept negative real x. `root` accepts integer n from 1 to 10000, and negative x only for odd n. |
 | `exp(x)`, `ln(x)`, `log(x)`, `log(x;b)` | Active. `exp` and `ln` accept explicit complex arguments with the rules above. Real logarithm inputs must be positive; a custom real base must be positive and not 1. `ln` uses base e, one-argument `log` uses base 10. Explicit complex `log` follows the principal-base rules above. |
-| `sin(x)`, `cos(x)`, `tan(x)`, `asin(x)`, `acos(x)`, `atan(x)` | Active. They use the selected RAD/DEG calculator mode; inverse results follow the same mode. `asin`/`acos` require x in `[-1,1]`. Exact degree poles such as `tan(90)` are rejected in DEG mode. |
+| `sin(x)`, `cos(x)`, `tan(x)`, `asin(x)`, `acos(x)`, `atan(x)` | Active. Real inputs use the selected RAD/DEG mode; inverse results follow the same mode. Explicit complex sin/cos/tan inputs always use radians, even with zero imaginary part. Complex inverse calls remain unsupported. `asin`/`acos` require x in `[-1,1]`. Exact degree poles such as `tan(90)` are rejected in DEG mode. |
 | `sinh(x)`, `cosh(x)`, `tanh(x)`, `asinh(x)`, `acosh(x)`, `atanh(x)` | Active and independent of RAD/DEG. `acosh` requires x ≥ 1; `atanh` requires -1 < x < 1. |
 | `radians(x)`, `degrees(x)` | Active explicit conversions, independent of the selected angle mode. |
 

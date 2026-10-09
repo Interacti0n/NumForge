@@ -16,6 +16,13 @@ Zero to zero is one; zero to a positive real exponent is zero; negative real
 and nonreal exponents of zero fail. Approximate snapshots retain complex
 components even for a displayed real result. Failed assignments preserve state.
 
+`sin(z)`, `cos(z)` and `tan(z)` use the public complex C APIs for
+complex-typed input, including zero imaginary components. Angles are radians,
+independent of `angle=deg`; real-only inputs keep RAD/DEG behavior. Results
+are approximate complex snapshots. Tangent uses guarded sin/cos division;
+near-pole errors and resource/scale limits apply. Complex inverse trigonometry
+and hyperbolic calls remain unsupported. Failed commits preserve session state.
+
 `log(z)` uses base 10, and `log(z;b)` computes principal ln(z)/ln(b) when
 either argument is complex, through public C `bigcomplex_log`. Zero input
 and bases zero or one are invalid; negative and nonreal bases are supported.

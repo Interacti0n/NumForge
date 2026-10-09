@@ -18,7 +18,7 @@ library.
 
 **In the working tree (unreleased):** [decimal and exact rational complex APIs](docs/reference/BIGCOMPLEX.md),
 calculator `a+bi` / `complex(re;im)` arithmetic, re/im/conj/abs/arg and complex
-exponentials, principal square roots, natural/custom-base logarithms and general powers,
+exponentials, principal square roots, natural/custom-base logarithms, general powers and trigonometry,
 typed sessions and Cartesian/trigonometric/
 exponential display. Existing 2.1.0 release archives do not contain these features.
 
