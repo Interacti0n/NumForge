@@ -158,7 +158,7 @@ static void test_principal_logarithms(void)
     check("re(ln(1+i))","0.3465735903",CALCULATOR_VALUE_DECIMAL);
     context.angle_unit=CALCULATOR_ANGLE_DEGREES;
     check("ln(i)","1.5707963268*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
-    const char *invalid[]={"ln(0*i)","ln(-1)","ln(0)","log(i)","log(2;i)"};
+    const char *invalid[]={"ln(0*i)","ln(-1)","ln(0)"};
     for(size_t n=0;n<sizeof(invalid)/sizeof(invalid[0]);n++) {
         CalculatorValue value={0};CalculatorError error;
         TEST_ASSERT_EQUAL_MESSAGE(CALCULATOR_INVALID_ARGUMENT,calculator_compute_value(invalid[n],&context,&value,&error),invalid[n]);
@@ -206,10 +206,32 @@ static void test_principal_powers(void)
     TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,calculator_session_compute(&session,5,true,"(-1)^(1/2)",&context,&text,&error,NULL));
     calculator_session_destroy(&session);
 }
+static void test_base_logarithms(void)
+{
+    check("log(i)","0.6821881769*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("log(i;i)","1",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("log(-1+0i;i)","2",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("log(-i;i)","-1",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("log(i;-1)","0.5",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("log(100;10+0i)","2",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    context.angle_unit=CALCULATOR_ANGLE_DEGREES;
+    check("log(i)","0.6821881769*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    const char *invalid[]={"log(0*i)","log(i;1)","log(i;0)","log(-1)","log(2;-1)"};
+    for(size_t n=0;n<sizeof(invalid)/sizeof(invalid[0]);n++) {
+        CalculatorValue value={0};CalculatorError error;
+        TEST_ASSERT_EQUAL_MESSAGE(CALCULATOR_INVALID_ARGUMENT,calculator_compute_value(invalid[n],&context,&value,&error),invalid[n]);
+        calculator_value_destroy(&value);
+    }
+    CalculatorSession session={0};char *text=NULL;CalculatorError error;
+    compute(&session,1,true,"z=log(i;i)","1");
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,calculator_session_compute(&session,2,true,"z=log(i;1)",&context,&text,&error,NULL));
+    TEST_ASSERT_NULL(text);TEST_ASSERT_EQUAL_UINT(1,session.variable_count);
+    compute(&session,3,false,"ans","1");calculator_session_destroy(&session);
+}
 static void test_allocation_failures(void)
 {
     const char *inputs[]={"w=z^-2","w=conj(z)","w=abs(z)","w=sum(re(z);im(z))",
-        "w=sqrt(3+4i)","w=sqrt(z)","w=ln(z)","w=z^i"};
+        "w=sqrt(3+4i)","w=sqrt(z)","w=ln(z)","w=z^i","w=log(i;i)"};
     for(size_t input=0;input<sizeof(inputs)/sizeof(inputs[0]);input++) {
     size_t count=0;
     for(size_t failure=0;;failure++) {
@@ -233,5 +255,5 @@ int main(void)
 {
     UNITY_BEGIN();RUN_TEST(test_exact_and_mixed_arithmetic);RUN_TEST(test_domains);
     RUN_TEST(test_sessions_and_snapshots);RUN_TEST(test_imaginary_unit_and_projections);
-    RUN_TEST(test_principal_square_roots);RUN_TEST(test_principal_logarithms);RUN_TEST(test_principal_powers);RUN_TEST(test_allocation_failures);return UNITY_END();
+    RUN_TEST(test_principal_square_roots);RUN_TEST(test_principal_logarithms);RUN_TEST(test_principal_powers);RUN_TEST(test_base_logarithms);RUN_TEST(test_allocation_failures);return UNITY_END();
 }

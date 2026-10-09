@@ -180,6 +180,10 @@ static int public_api_checks(void)
         bigcomplex_format(complex_value, 10, BIGDECIMAL_ROUND_HALF_EVEN, BIGDECIMAL_FORMAT_AUTO, 80, &text) != BIGCOMPLEX_OK ||
         strcmp(text, "0.2078795764") != 0) goto cleanup;
     free(text); text = NULL;
+    if (bigcomplex_set_strings(complex_value, "0", "1") != BIGCOMPLEX_OK ||
+        bigcomplex_log(complex_value, complex_value, complex_value, 12, BIGDECIMAL_ROUND_HALF_EVEN) != BIGCOMPLEX_OK ||
+        bigcomplex_to_string(complex_value, &text) != BIGCOMPLEX_OK || strcmp(text, "1") != 0) goto cleanup;
+    free(text); text = NULL;
     result = 0;
 cleanup:
     bigrationalcomplex_destroy(exact_complex);

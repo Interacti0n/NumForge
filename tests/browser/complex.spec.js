@@ -1,6 +1,7 @@
 const {test, expect}=require('@playwright/test');
 for(const lang of ['sk','en']) for(const width of [390,1280]) {
     test(`complex values, forms and copying ${lang} ${width}`,async({page},testInfo)=>{
+        test.setTimeout(30000); // Exercises the growing complex-function catalogue.
         await page.setViewportSize({width,height:844});await page.goto('/?lang='+lang);
         const input=page.locator('#expression'),result=page.locator('#result');
         await input.fill('z=complex(-1;0)');
@@ -29,7 +30,9 @@ for(const lang of ['sk','en']) for(const width of [390,1280]) {
             ['ln(-1+0i)','3.1415926536*i'],['ln(i)','1.5707963268*i'],
             ['ln(1+i)','0.3465735903 + 0.7853981634*i'],['exp(ln(2+3i))','2 + 3*i'],
             ['i^i','0.2078795764'],['2^i','0.7692389014 + 0.6389612763*i'],
-            ['(-1+0i)^0.3','0.5877852523 + 0.8090169944*i'],['pow(2;i)','0.7692389014 + 0.6389612763*i']
+            ['(-1+0i)^0.3','0.5877852523 + 0.8090169944*i'],['pow(2;i)','0.7692389014 + 0.6389612763*i'],
+            ['log(i)','0.6821881769*i'],['log(-1+0i;i)','2'],['log(-i;i)','-1'],
+            ['log(1+i;2+i)','0.7455202636 + 0.5464509967*i']
         ]) {await input.fill(expression);await expect(result).toHaveText(expected);}
         const search=page.locator('#function-search');
         await search.fill(lang==='sk'?'imaginárna jednotka':'imaginary unit');
@@ -124,6 +127,31 @@ test('HTTP principal powers preserve branches, exact integers and failed state',
     expect((await send('(1+i)^3')).result).toBe('-2 + 2*i');
     snapshot=await (await request.get('/api/session/value?client='+client+'&name=ans')).json();
     expect(snapshot.value.approximate).toBe(false);
+});
+
+test('HTTP complex base logarithms preserve domains and failed state',async({request})=>{
+    const client='f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0',base='/api/evaluate?precision=10&angle=deg&client='+client;
+    let revision=1;
+    const send=async(data,action='commit')=>(await request.post(base+'&revision='+(revision++)+'&action='+action,{data})).json();
+    expect((await send('','start')).ok).toBe(true);
+    expect(await send('z=log(i;i)')).toMatchObject({ok:true,result:'1'});
+    const snapshot=await (await request.get('/api/session/value?client='+client+'&name=z')).json();
+    expect(snapshot.value.kind).toBe('complex_decimal_approximation');expect(snapshot.value.approximate).toBe(true);
+    for(const input of ['z=log(i;1)','z=log(i;0)','z=log(0*i)','log(-1)','log(2;-1)',
+        'log(qty(2;"m");i)','log(i;qty(2;"m"))']) expect((await send(input)).ok).toBe(false);
+    expect((await send('ans')).result).toBe('1');
+    expect((await send('log(i)')).result).toBe('0.6821881769*i');
+    expect((await send('log(-1+0i;i)')).result).toBe('2');
+    expect((await send('log(-1-1E-20i;i)')).ok).toBe(true);
+    const cut=await (await request.get('/api/session/value?client='+client+'&name=ans')).json();
+    expect(Number(cut.value.components.real)).toBeCloseTo(-2,12);
+    const cutImaginary=Number(cut.value.components.imaginary);
+    expect(cutImaginary).toBeLessThan(0);expect(Math.abs(cutImaginary)).toBeLessThan(1e-30);
+    expect((await send('log(-i;i)')).result).toBe('-1');
+    expect((await send('log(i;-1)')).result).toBe('0.5');
+    expect((await send('log(1+i;2+i)')).result).toBe('0.7455202636 + 0.5464509967*i');
+    const stored=await (await request.get('/api/session/value?client='+client+'&name=z')).json();
+    expect(stored.value.components).toEqual(snapshot.value.components);
 });
 
 test('HTTP imaginary unit, projections and variable names preserve session semantics',async({request})=>{

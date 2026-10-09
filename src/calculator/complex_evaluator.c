@@ -339,6 +339,23 @@ static CalculatorStatus complex_call(CalculatorValue *result, const CalculatorEx
         (any_complex && (function == CALCULATOR_FUNCTION_ABS || function == CALCULATOR_FUNCTION_EXP ||
             function == CALCULATOR_FUNCTION_SQRT || function == CALCULATOR_FUNCTION_LN)))
         status=complex_function(result,&values[0],function,context);
+    else if (function == CALCULATOR_FUNCTION_LOG && any_complex) {
+        if (values[0].quantity || (count == 2 && values[1].quantity)) {
+            status=CALCULATOR_DIMENSION_ERROR;goto done;
+        }
+        BigComplex *value=bigcomplex_create(),*base=bigcomplex_create();
+        result->kind=CALCULATOR_VALUE_COMPLEX_DECIMAL;result->complex_decimal=bigcomplex_create();
+        status=CALCULATOR_OUT_OF_MEMORY;
+        CalculatorContext working=*context;working.division_scale+=12;
+        if (value && base && result->complex_decimal) {
+            status=as_decimal(value,&values[0],&working);
+            if (status == CALCULATOR_OK) status=count == 1 ? mapped(bigcomplex_set_strings(base,"10","0")) :
+                as_decimal(base,&values[1],&working);
+            if (status == CALCULATOR_OK) status=mapped(bigcomplex_log(
+                result->complex_decimal,value,base,context->division_scale,context->rounding));
+        }
+        bigcomplex_destroy(value);bigcomplex_destroy(base);
+    }
     else if (function == CALCULATOR_FUNCTION_POWER && any_complex) {
         const CalculatorExpression *base=expression->data.call.arguments[0];
         if (calculator_value_is_complex(&values[1]) && base->type == CALCULATOR_EXPRESSION_CONSTANT &&

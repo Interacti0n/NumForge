@@ -423,6 +423,24 @@ BigComplexStatus bigcomplex_format_form(const BigComplex *value, BigComplexForm 
     *result=text;text=NULL;
 done:free(r);free(a);free(text);bigdecimal_destroy(radius);bigdecimal_destroy(angle);return status;
 }
+BigComplexStatus bigcomplex_log(BigComplex *result, const BigComplex *value,
+    const BigComplex *base, int64_t digits, BigDecimalRoundingMode rounding)
+{
+    if (!result || !value || !base) return BIGCOMPLEX_NULL_ARGUMENT;
+    if (digits < 1 || digits > INT64_MAX-24 || rounding < BIGDECIMAL_ROUND_TOWARD_ZERO ||
+        rounding > BIGDECIMAL_ROUND_HALF_EVEN) return BIGCOMPLEX_INVALID_ARGUMENT;
+    BigComplex *numerator=bigcomplex_create(),*denominator=bigcomplex_create();
+    BigComplexStatus status=BIGCOMPLEX_OUT_OF_MEMORY;bool zero=false;
+    if (!numerator || !denominator) goto done;
+    status=bigcomplex_ln(numerator,value,digits+12,rounding);
+    if (status == BIGCOMPLEX_OK) status=bigcomplex_ln(denominator,base,digits+12,rounding);
+    if (status == BIGCOMPLEX_OK) status=bigcomplex_is_zero(&zero,denominator);
+    if (status == BIGCOMPLEX_OK && zero) status=BIGCOMPLEX_INVALID_ARGUMENT;
+    if (status == BIGCOMPLEX_OK) status=bigcomplex_div(numerator,numerator,denominator,digits,rounding);
+    if (status == BIGCOMPLEX_OK) commit(result,numerator);
+done:
+    bigcomplex_destroy(numerator);bigcomplex_destroy(denominator);return status;
+}
 BigComplexStatus bigcomplex_pow(BigComplex *result, const BigComplex *value,
     const BigComplex *exponent, int64_t digits, BigDecimalRoundingMode rounding)
 {

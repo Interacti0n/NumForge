@@ -7,6 +7,9 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Add public `bigcomplex_log` and complex base-10/custom-base logarithms
+  through calculator and HTTP API, with principal branches and atomic errors.
+
 - Add public `bigcomplex_pow` and principal complex powers via `^` / `pow`
   in calculator and HTTP API, preserving exact integer powers and real domains.
 

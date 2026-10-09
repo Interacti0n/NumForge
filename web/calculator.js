@@ -329,7 +329,7 @@ Object.assign(functionHelp, {
     root: ["ⁿ√x","root(x;n)","Celé n od 1 do 10000; záporné x iba pre nepárne n.","Integer n from 1 to 10000; negative x requires odd n."],
     exp: ["eˣ","exp(x)","Eulerovo číslo umocnené na reálny alebo komplexný exponent; polárny uhol je v radiánoch.","Euler’s number raised to a real or complex exponent; polar angle is in radians."],
     ln: ["ln","ln(x)","Prirodzený logaritmus. Reálne x > 0; komplexný vstup používa hlavnú vetvu v radiánoch, nula nie je povolená.","Natural logarithm. Real x > 0; complex input uses the principal branch in radians, zero is invalid."],
-    log: ["log","log(x) / log(x;y)","Základ 10 alebo y; x > 0, y > 0 a y ≠ 1.","Base 10 or y; x > 0, y > 0 and y ≠ 1."],
+    log: ["log","log(x) / log(x;y)","Základ 10 alebo y. Reálne: x > 0, y > 0 a y ≠ 1. Komplexné: ln(x)/ln(y); x ≠ 0, y ≠ 0,1.","Base 10 or y. Real: x > 0, y > 0 and y ≠ 1. Complex: ln(x)/ln(y); x ≠ 0, y ≠ 0,1."],
     median: ["median","median(x;y;...)","Presný medián 1 až 256 hodnôt.","Exact median of 1 to 256 values."],
     geomean: ["geomean","geomean(x;y;...)","Geometrický priemer nezáporných hodnôt.","Geometric mean of non-negative values."],
     harmean: ["harmean","harmean(x;y;...)","Harmonický priemer kladných hodnôt.","Harmonic mean of positive values."],

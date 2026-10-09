@@ -16,6 +16,13 @@ Zero to zero is one; zero to a positive real exponent is zero; negative real
 and nonreal exponents of zero fail. Approximate snapshots retain complex
 components even for a displayed real result. Failed assignments preserve state.
 
+`log(z)` uses base 10, and `log(z;b)` computes principal ln(z)/ln(b) when
+either argument is complex, through public C `bigcomplex_log`. Zero input
+and bases zero or one are invalid; negative and nonreal bases are supported.
+Both-real calls retain their positive-domain restrictions. Results are
+approximate complex snapshots even when displaying a real number. Near-unit
+bases amplify numerical error; failed commits preserve ans and variables.
+
 `ln(z)` accepts explicit complex input and returns an approximate principal
 logarithm in radians, imaginary part in (-pi, pi]. Zero is invalid; real
 `ln(-1)` remains an error, while `ln(-1+0i)` uses the positive pi branch.

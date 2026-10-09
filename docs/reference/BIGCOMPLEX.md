@@ -73,6 +73,23 @@ the component squares. Both preserve their destination on failure.
 - BigComplex does not preserve recurring rational components such as `1/3`
   exactly. No claim about the exact mathematical origin of a decimal is made.
 
+## Principal base logarithms
+
+`bigcomplex_log(result, value, base, digits, rounding)` returns
+ln(value)/ln(base), using the principal logarithm branch (-pi, pi] in radians.
+Zero value, zero base and base one return INVALID_ARGUMENT. Negative real
+and nonreal bases are allowed. This is a numerical approximation, not all
+logarithm branches: log(-1;i)=2 and log(-i;i)=-1. It is not a general inverse
+identity for principal powers across branch cuts.
+
+Both logarithms use digits+12 working digits before component-wise
+exact-or-significant division. digits must be positive and at most
+INT64_MAX-24. There is no correctly-rounded guarantee; bases near one amplify
+input projection and rounding errors. Runtime/scale limits apply. Aliasing
+with either or both inputs is supported, and failures preserve the result.
+The calculator projects exact components at guarded working precision and
+retains an approximate complex result even when it displays a real number.
+
 ## Principal general powers
 
 `bigcomplex_pow(result, value, exponent, digits, rounding)` computes the
@@ -170,7 +187,7 @@ successful output with `free()`; all failures preserve the output pointer.
    Mixed approximate operations explicitly project exact components at working
    precision. Typed sessions and snapshots are implemented.
 3. Improve argument/exponential/square-root/logarithm rounding guarantees, add
-   logarithms with custom bases and trigonometric functions.
+   trigonometric functions and improve logarithm error bounds.
    Define cuts, zero behavior and numerical
    validation separately. Correct rounding needs more than fixed guard digits.
 

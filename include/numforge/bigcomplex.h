@@ -123,6 +123,13 @@ BigComplexStatus bigcomplex_ln(BigComplex *result, const BigComplex *value,
  * relative accuracy. digits must leave room for 24 internal guard digits. */
 BigComplexStatus bigcomplex_pow(BigComplex *result, const BigComplex *value,
     const BigComplex *exponent, int64_t digits, BigDecimalRoundingMode rounding);
+/* Principal base logarithm ln(value)/ln(base), radians and (-pi, pi] branch.
+ * Zero value, zero base and base 1 are INVALID_ARGUMENT. Approximate with
+ * digits+12 working digits; no correct-rounding guarantee. Near-unit bases
+ * amplify input/rounding error. Supports either-input aliasing, atomic failure.
+ * digits must leave room for 24 internal guard digits. */
+BigComplexStatus bigcomplex_log(BigComplex *result, const BigComplex *value,
+    const BigComplex *base, int64_t digits, BigDecimalRoundingMode rounding);
 /* Cartesian delegates to format; polar displays r*(cos(phi)+i*sin(phi)) or
  * r*e^(i*(phi)), radians. Zero displays 0 in every form. Polar coordinates
  * are approximate, with explicit working digits; places is display policy.
