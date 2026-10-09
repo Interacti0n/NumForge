@@ -235,7 +235,8 @@ static void test_rational_failure_contracts(void) {
                 case 9:status=bigrationalcomplex_conjugate(r,a);break;
                 default:status=bigrationalcomplex_abs_squared(part,a);break;
             }
-            if(failure==0)count=numforge_test_allocator_call_count();numforge_test_allocator_end();
+            if(failure==0)count=numforge_test_allocator_call_count();
+            numforge_test_allocator_end();
             if(failure==0){TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,status);if(op==8)free(s);}
             else{
                 TEST_ASSERT_EQUAL(BIGCOMPLEX_OUT_OF_MEMORY,status);text_is(z,"9 + 8*i");

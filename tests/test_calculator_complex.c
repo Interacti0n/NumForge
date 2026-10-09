@@ -398,7 +398,8 @@ static void test_allocation_failures(void)
         compute(session,1,true,"z=complex(1/3;2/3)","1/3 + (2/3)*i");
         numforge_test_allocator_begin(failure);char *text=NULL;CalculatorError error;
         CalculatorStatus status=calculator_session_compute(session,2,true,inputs[input],&context,&text,&error,NULL);
-        if(failure==0)count=numforge_test_allocator_call_count();numforge_test_allocator_end();
+        if(failure==0)count=numforge_test_allocator_call_count();
+        numforge_test_allocator_end();
         if(failure==0){TEST_ASSERT_EQUAL(CALCULATOR_OK,status);free(text);}
         else{
             TEST_ASSERT_NOT_EQUAL(CALCULATOR_OK,status);TEST_ASSERT_NULL(text);
