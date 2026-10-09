@@ -127,6 +127,28 @@ done:
 BigComplexStatus bigcomplex_negate(BigComplex *result, const BigComplex *value) { return unary(result, value, false); }
 BigComplexStatus bigcomplex_conjugate(BigComplex *result, const BigComplex *value) { return unary(result, value, true); }
 
+/* Factor a common decimal power without rounding coefficients. Ignoring zero
+ * components prevents their canonical scale zero from selecting the factor. */
+static int64_t common_scale(const BigComplex *value)
+{
+    bool re_zero=bigint_is_zero(value->real->coefficient),im_zero=bigint_is_zero(value->imaginary->coefficient);
+    if(re_zero) return im_zero ? 0 : value->imaginary->scale;
+    if(im_zero) return value->real->scale;
+    return value->real->scale<value->imaginary->scale ? value->real->scale : value->imaginary->scale;
+}
+static BigComplexStatus copy_scaled(BigComplex *result,const BigComplex *value,int64_t scale)
+{
+    BigComplexStatus status=bigcomplex_copy(result,value);
+    if(status!=BIGCOMPLEX_OK) return status;
+    BigDecimal *parts[]={result->real,result->imaginary};
+    for(size_t i=0;i<2;i++) if(!bigint_is_zero(parts[i]->coefficient)) {
+        int64_t adjusted;
+        if(!bigdecimal_i64_sub(parts[i]->scale,scale,&adjusted)) return BIGCOMPLEX_SCALE_OVERFLOW;
+        parts[i]->scale=adjusted;
+    }
+    return BIGCOMPLEX_OK;
+}
+
 static BigComplexStatus binary(BigComplex *result, const BigComplex *a, const BigComplex *b,
     int operation, int64_t digits, BigDecimalRoundingMode rounding)
 {
@@ -137,6 +159,17 @@ static BigComplexStatus binary(BigComplex *result, const BigComplex *a, const Bi
         bool zero; BigComplexStatus check = bigcomplex_is_zero(&zero, b);
         if (check != BIGCOMPLEX_OK) return check;
         if (zero) return BIGCOMPLEX_DIVISION_BY_ZERO;
+        int64_t scale=common_scale(b);
+        if(scale!=0) {
+            BigComplex *scaled_a=bigcomplex_create(),*scaled_b=bigcomplex_create();
+            check=BIGCOMPLEX_OUT_OF_MEMORY;
+            if(scaled_a && scaled_b) {
+                check=copy_scaled(scaled_a,a,scale);
+                if(check==BIGCOMPLEX_OK) check=copy_scaled(scaled_b,b,scale);
+                if(check==BIGCOMPLEX_OK) check=binary(result,scaled_a,scaled_b,operation,digits,rounding);
+            }
+            bigcomplex_destroy(scaled_a);bigcomplex_destroy(scaled_b);return check;
+        }
     }
     BigComplex *temporary = bigcomplex_create();
     BigDecimal *x = NULL, *y = NULL, *denominator = NULL;
@@ -181,12 +214,103 @@ BigComplexStatus bigcomplex_abs_squared(BigDecimal *result, const BigComplex *va
 done:
     bigdecimal_destroy(x); bigdecimal_destroy(y); return mapped(status);
 }
+static unsigned coefficient_modulo(const BigInt *value,unsigned prime)
+{
+    unsigned result=0,base=(unsigned)((UINT64_MAX%prime+1)%prime);
+    for(size_t i=value->size;i>0;i--) result=(unsigned)(((uint64_t)result*base+value->limbs[i-1]%prime)%prime);
+    return result;
+}
+static unsigned power10_modulo(uint64_t exponent,unsigned prime)
+{
+    unsigned result=1,factor=10%prime;
+    while(exponent) {
+        if(exponent&1) result=result*factor%prime;
+        exponent>>=1;if(exponent) factor=factor*factor%prime;
+    }
+    return result;
+}
+/* A modular nonsquare witness proves that the modulus cannot be a finite
+ * decimal. Otherwise retain the exact-square/root path and its guarantees. */
+static bool modulus_is_nonsquare(const BigComplex *value)
+{
+    const unsigned primes[]={3,7,11,13,17,19};
+    int64_t scale=value->real->scale>value->imaginary->scale ? value->real->scale : value->imaginary->scale;
+    uint64_t re_shift=0,im_shift=0;
+    if(bigdecimal_scale_difference(scale,value->real->scale,&re_shift)!=BIGDECIMAL_OK ||
+        bigdecimal_scale_difference(scale,value->imaginary->scale,&im_shift)!=BIGDECIMAL_OK) return false;
+    for(size_t i=0;i<sizeof(primes)/sizeof(primes[0]);i++) {
+        unsigned p=primes[i],a=coefficient_modulo(value->real->coefficient,p)*power10_modulo(re_shift,p)%p;
+        unsigned b=coefficient_modulo(value->imaginary->coefficient,p)*power10_modulo(im_shift,p)%p;
+        unsigned sum=(a*a+b*b)%p;bool square=false;
+        for(unsigned r=0;r<p;r++) if(r*r%p==sum) {square=true;break;}
+        if(!square) return true;
+    }
+    return false;
+}
+static BigComplexStatus try_small_hypot(BigDecimal *result,const BigComplex *value,
+    int64_t digits,BigDecimalRoundingMode rounding,bool *handled)
+{
+    *handled=false;
+    if(bigint_is_zero(value->real->coefficient) || bigint_is_zero(value->imaginary->coefficient)) return BIGCOMPLEX_OK;
+    int64_t high=value->real->scale>value->imaginary->scale ? value->real->scale : value->imaginary->scale;
+    int64_t low=value->real->scale<value->imaginary->scale ? value->real->scale : value->imaginary->scale;
+    uint64_t spread=0;
+    if(bigdecimal_scale_difference(high,low,&spread)!=BIGDECIMAL_OK || spread<64) return BIGCOMPLEX_OK;
+    BigDecimal *a=bigdecimal_create(),*b=bigdecimal_create(),*epsilon=bigdecimal_create(),*perturbed=bigdecimal_create();
+    char *a_text=NULL,*b_text=NULL;BigDecimalStatus status=BIGDECIMAL_OUT_OF_MEMORY;int comparison=0;
+    if(!a || !b || !epsilon || !perturbed) goto done;
+    TRY(bigdecimal_abs(a,value->real));TRY(bigdecimal_abs(b,value->imaginary));
+    TRY(bigdecimal_compare(&comparison,a,b));
+    if(comparison<0) {BigDecimal *swap=a;a=b;b=swap;}
+    a_text=bigint_to_string(a->coefficient);b_text=bigint_to_string(b->coefficient);
+    if(!a_text || !b_text) {status=BIGDECIMAL_OUT_OF_MEMORY;goto done;}
+    size_t a_digits=strlen(a_text),b_digits=strlen(b_text);
+    uint64_t gap=0,difference=0;
+    if(b->scale>=a->scale) {
+        TRY(bigdecimal_scale_difference(b->scale,a->scale,&difference));
+        if(a_digits>=b_digits) gap=difference>UINT64_MAX-(a_digits-b_digits) ? UINT64_MAX : difference+(a_digits-b_digits);
+        else gap=difference>=b_digits-a_digits ? difference-(b_digits-a_digits) : 0;
+    } else {
+        TRY(bigdecimal_scale_difference(a->scale,b->scale,&difference));
+        gap=a_digits>=b_digits && a_digits-b_digits>=difference ? a_digits-b_digits-difference : 0;
+    }
+    if(digits>INT64_MAX-4 || a_digits>(uint64_t)(INT64_MAX-4)) {status=BIGDECIMAL_VALUE_TOO_LARGE;goto done;}
+    int64_t work=(int64_t)a_digits>digits ? (int64_t)a_digits+2 : digits+2;
+    status=BIGDECIMAL_OK;
+    if(gap<(uint64_t)work/2+2 || !modulus_is_nonsquare(value)) goto done;
+    *handled=true;
+    /* 0<hypot(a,b)-a<b^2/(2a)<epsilon. epsilon is two decimal positions
+     * below both a's final stored digit and the requested rounding grid.
+     * No rounding boundary lies between the two positive perturbations. */
+    TRY(bigdecimal_set_string(epsilon,"1"));
+    if(!bigdecimal_i64_add(a->scale,work-(int64_t)a_digits,&epsilon->scale)) {status=BIGDECIMAL_SCALE_OVERFLOW;goto done;}
+    TRY(bigdecimal_add(perturbed,a,epsilon));
+    TRY(bigdecimal_round_significant(result,perturbed,digits,rounding));
+done:
+    free(a_text);free(b_text);bigdecimal_destroy(a);bigdecimal_destroy(b);
+    bigdecimal_destroy(epsilon);bigdecimal_destroy(perturbed);return mapped(status);
+}
 BigComplexStatus bigcomplex_abs(BigDecimal *result, const BigComplex *value,
     int64_t digits, BigDecimalRoundingMode rounding)
 {
     if (result == NULL || value == NULL) return BIGCOMPLEX_NULL_ARGUMENT;
     if (digits < 1 || rounding < BIGDECIMAL_ROUND_TOWARD_ZERO || rounding > BIGDECIMAL_ROUND_HALF_EVEN)
         return BIGCOMPLEX_INVALID_ARGUMENT;
+    bool handled=false;BigComplexStatus check=try_small_hypot(result,value,digits,rounding,&handled);
+    if(check!=BIGCOMPLEX_OK || handled) return check;
+    int64_t scale=common_scale(value);
+    if(scale!=0) {
+        BigComplex *normalized=bigcomplex_create();BigDecimal *magnitude=bigdecimal_create();
+        BigComplexStatus status=BIGCOMPLEX_OUT_OF_MEMORY;
+        if(normalized && magnitude) {
+            status=copy_scaled(normalized,value,scale);
+            if(status==BIGCOMPLEX_OK) status=bigcomplex_abs(magnitude,normalized,digits,rounding);
+            if(status==BIGCOMPLEX_OK && !bigint_is_zero(magnitude->coefficient) &&
+                !bigdecimal_i64_add(magnitude->scale,scale,&magnitude->scale)) status=BIGCOMPLEX_SCALE_OVERFLOW;
+            if(status==BIGCOMPLEX_OK) {bigdecimal_commit(result,magnitude);magnitude=NULL;}
+        }
+        bigcomplex_destroy(normalized);bigdecimal_destroy(magnitude);return status;
+    }
     BigDecimal *squared = bigdecimal_create();
     if (squared == NULL) return BIGCOMPLEX_OUT_OF_MEMORY;
     BigComplexStatus status = bigcomplex_abs_squared(squared, value);
@@ -231,8 +355,22 @@ BigComplexStatus bigcomplex_sqrt(BigComplex *result, const BigComplex *value,
         }
     }
     /* Prove exactness on stored finite decimals before applying output precision. */
-    complex_status=bigcomplex_mul(square,temporary,temporary);
-    if (complex_status == BIGCOMPLEX_OK) complex_status=bigcomplex_equal(&equal,square,value);
+    int64_t proof_scale=common_scale(temporary);
+    if(proof_scale!=0) {
+        BigComplex *proof_root=bigcomplex_create(),*proof_value=bigcomplex_create();
+        complex_status=BIGCOMPLEX_OUT_OF_MEMORY;
+        if(proof_root && proof_value) {
+            complex_status=copy_scaled(proof_root,temporary,proof_scale);
+            if(complex_status==BIGCOMPLEX_OK) complex_status=copy_scaled(proof_value,value,proof_scale);
+            if(complex_status==BIGCOMPLEX_OK) complex_status=copy_scaled(proof_value,proof_value,proof_scale);
+            if(complex_status==BIGCOMPLEX_OK) complex_status=bigcomplex_mul(square,proof_root,proof_root);
+            if(complex_status==BIGCOMPLEX_OK) complex_status=bigcomplex_equal(&equal,square,proof_value);
+        }
+        bigcomplex_destroy(proof_root);bigcomplex_destroy(proof_value);
+    } else {
+        complex_status=bigcomplex_mul(square,temporary,temporary);
+        if (complex_status == BIGCOMPLEX_OK) complex_status=bigcomplex_equal(&equal,square,value);
+    }
     if (complex_status != BIGCOMPLEX_OK) goto done;
     if (!equal) {
         TRY(bigdecimal_set_string(two,"1"));
@@ -546,6 +684,36 @@ BigComplexStatus bigcomplex_tan(BigComplex *result, const BigComplex *value,
     if (!result || !value) return BIGCOMPLEX_NULL_ARGUMENT;
     if (digits < 1 || digits > INT64_MAX-24 || rounding < BIGDECIMAL_ROUND_TOWARD_ZERO ||
         rounding > BIGDECIMAL_ROUND_HALF_EVEN) return BIGCOMPLEX_INVALID_ARGUMENT;
+    if(!bigint_is_zero(value->imaginary->coefficient)) {
+        BigDecimal *absolute=bigdecimal_create(),*half=bigdecimal_create();int comparison=0;
+        BigComplexStatus check=BIGCOMPLEX_OUT_OF_MEMORY;
+        if(absolute && half) {
+            check=mapped(bigdecimal_abs(absolute,value->imaginary));
+            if(check==BIGCOMPLEX_OK) check=mapped(bigdecimal_set_string(half,"0.5"));
+            if(check==BIGCOMPLEX_OK) check=mapped(bigdecimal_compare(&comparison,absolute,half));
+        }
+        bigdecimal_destroy(absolute);bigdecimal_destroy(half);
+        if(check!=BIGCOMPLEX_OK) return check;
+        if(comparison>0) {
+            if(digits>INT64_MAX-36) return BIGCOMPLEX_VALUE_TOO_LARGE;
+            BigComplex *rotated=bigcomplex_create(),*temporary=bigcomplex_create();
+            BigDecimal *one=bigdecimal_create();check=BIGCOMPLEX_OUT_OF_MEMORY;
+            if(rotated && temporary && one) {
+                /* tan(z)=-i*tanh(i*z). The scaled tanh path avoids growing
+                 * exponentials; rotate before final directed rounding. */
+                check=mapped(bigdecimal_negate(rotated->real,value->imaginary));
+                if(check==BIGCOMPLEX_OK) check=mapped(bigdecimal_copy(rotated->imaginary,value->real));
+                if(check==BIGCOMPLEX_OK) check=bigcomplex_tanh(rotated,rotated,digits+12,BIGDECIMAL_ROUND_HALF_EVEN);
+                if(check==BIGCOMPLEX_OK) check=mapped(bigdecimal_copy(temporary->real,rotated->imaginary));
+                if(check==BIGCOMPLEX_OK) check=mapped(bigdecimal_negate(temporary->imaginary,rotated->real));
+                if(check==BIGCOMPLEX_OK) check=mapped(bigdecimal_set_string(one,"1"));
+                if(check==BIGCOMPLEX_OK) check=mapped(bigdecimal_div_significant(temporary->real,temporary->real,one,digits,rounding));
+                if(check==BIGCOMPLEX_OK) check=mapped(bigdecimal_div_significant(temporary->imaginary,temporary->imaginary,one,digits,rounding));
+                if(check==BIGCOMPLEX_OK) commit(result,temporary);
+            }
+            bigcomplex_destroy(rotated);bigcomplex_destroy(temporary);bigdecimal_destroy(one);return check;
+        }
+    }
     BigComplex *numerator=bigcomplex_create(),*denominator=bigcomplex_create();
     BigComplexStatus status=BIGCOMPLEX_OUT_OF_MEMORY;
     if (!numerator || !denominator) goto done;
@@ -696,7 +864,7 @@ done:
 /* A conservative decimal coefficient width from the binary bit count. Extra
  * input-sensitive precision protects cancellation between almost equal logs.
  * This is not a certified error bound for arbitrary transcendental relations. */
-static size_t logarithm_input_guard(const BigComplex *value,const BigComplex *base)
+static size_t complex_input_guard(const BigComplex *value,const BigComplex *base)
 {
     const BigDecimal *parts[]={value->real,value->imaginary,base->real,base->imaginary};
     size_t guard=0;
@@ -712,7 +880,7 @@ BigComplexStatus bigcomplex_log(BigComplex *result, const BigComplex *value,
     if (!result || !value || !base) return BIGCOMPLEX_NULL_ARGUMENT;
     if (digits < 1 || digits > INT64_MAX-24 || rounding < BIGDECIMAL_ROUND_TOWARD_ZERO ||
         rounding > BIGDECIMAL_ROUND_HALF_EVEN) return BIGCOMPLEX_INVALID_ARGUMENT;
-    size_t guard=logarithm_input_guard(value,base);
+    size_t guard=complex_input_guard(value,base);
     if (guard>(uint64_t)(INT64_MAX-digits-24)) return BIGCOMPLEX_VALUE_TOO_LARGE;
     int64_t working=digits+12+(int64_t)guard;
     BigComplex *numerator=bigcomplex_create(),*denominator=bigcomplex_create();
@@ -746,11 +914,14 @@ BigComplexStatus bigcomplex_pow(BigComplex *result, const BigComplex *value,
         if (status == BIGCOMPLEX_OK) status=mapped(bigdecimal_is_negative(&negative,exponent->real));
         if (status == BIGCOMPLEX_OK && negative) status=BIGCOMPLEX_DIVISION_BY_ZERO;
     } else {
-        status=bigcomplex_ln(temporary,value,digits+12,rounding);
+        size_t guard=complex_input_guard(value,exponent);
+        if(guard>(uint64_t)(INT64_MAX-digits-24)) {status=BIGCOMPLEX_VALUE_TOO_LARGE;goto done;}
+        status=bigcomplex_ln(temporary,value,digits+12+(int64_t)guard,BIGDECIMAL_ROUND_HALF_EVEN);
         if (status == BIGCOMPLEX_OK) status=bigcomplex_mul(temporary,exponent,temporary);
         if (status == BIGCOMPLEX_OK) status=bigcomplex_exp(temporary,temporary,digits,rounding);
     }
     if (status == BIGCOMPLEX_OK) commit(result,temporary);
+done:
     bigcomplex_destroy(temporary);return status;
 }
 BigComplexStatus bigcomplex_ln(BigComplex *result, const BigComplex *value,
@@ -759,6 +930,33 @@ BigComplexStatus bigcomplex_ln(BigComplex *result, const BigComplex *value,
     if (!result || !value) return BIGCOMPLEX_NULL_ARGUMENT;
     if (digits < 1 || digits > INT64_MAX-12 || rounding < BIGDECIMAL_ROUND_TOWARD_ZERO ||
         rounding > BIGDECIMAL_ROUND_HALF_EVEN) return BIGCOMPLEX_INVALID_ARGUMENT;
+    int64_t scale=common_scale(value);
+    if(scale>INT64_MAX/2 || scale<INT64_MIN/2) {
+        if(digits>INT64_MAX-44) return BIGCOMPLEX_VALUE_TOO_LARGE;
+        BigComplex *normalized=bigcomplex_create(),*temporary=bigcomplex_create();
+        BigDecimal *squared=bigdecimal_create(),*factor=bigdecimal_create(),*ln10=bigdecimal_create(),*two=bigdecimal_create();
+        BigComplexStatus check=BIGCOMPLEX_OUT_OF_MEMORY;char text[32];
+        if(normalized && temporary && squared && factor && ln10 && two) {
+            /* ln|z|=ln|z*10^scale|-scale*ln(10). For extreme common
+             * exponents the correction avoids an unrepresentable square. */
+            check=copy_scaled(normalized,value,scale);
+            if(check==BIGCOMPLEX_OK) check=bigcomplex_abs_squared(squared,normalized);
+            if(check==BIGCOMPLEX_OK) check=mapped(bigdecimal_ln(temporary->real,squared,digits+32,BIGDECIMAL_ROUND_HALF_EVEN));
+            if(check==BIGCOMPLEX_OK) check=mapped(bigdecimal_set_string(two,"2"));
+            if(check==BIGCOMPLEX_OK) check=mapped(bigdecimal_div_significant(temporary->real,temporary->real,two,digits+32,BIGDECIMAL_ROUND_HALF_EVEN));
+            if(check==BIGCOMPLEX_OK) check=mapped(bigdecimal_set_string(ln10,"10"));
+            if(check==BIGCOMPLEX_OK) check=mapped(bigdecimal_ln(ln10,ln10,digits+32,BIGDECIMAL_ROUND_HALF_EVEN));
+            snprintf(text,sizeof(text),"%lld",(long long)scale);
+            if(check==BIGCOMPLEX_OK) check=mapped(bigdecimal_set_string(factor,text));
+            if(check==BIGCOMPLEX_OK) check=mapped(bigdecimal_mul(factor,factor,ln10));
+            if(check==BIGCOMPLEX_OK) check=mapped(bigdecimal_sub(temporary->real,temporary->real,factor));
+            if(check==BIGCOMPLEX_OK) check=mapped(bigdecimal_round_significant(temporary->real,temporary->real,digits,rounding));
+            if(check==BIGCOMPLEX_OK) check=bigcomplex_arg(temporary->imaginary,value,digits,rounding);
+            if(check==BIGCOMPLEX_OK) commit(result,temporary);
+        }
+        bigcomplex_destroy(normalized);bigcomplex_destroy(temporary);bigdecimal_destroy(squared);
+        bigdecimal_destroy(factor);bigdecimal_destroy(ln10);bigdecimal_destroy(two);return check;
+    }
     BigComplex *temporary=bigcomplex_create();
     BigDecimal *squared=bigdecimal_create(),*two=bigdecimal_create();
     BigComplexStatus status=BIGCOMPLEX_OUT_OF_MEMORY;

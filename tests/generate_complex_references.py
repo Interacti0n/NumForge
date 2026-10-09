@@ -76,3 +76,46 @@ for digits in (12, 34, 100, 250):
 path.with_name("complex_binary_references.tsv").write_text(
     "# mpmath 1.3.0; op re im digits rounding expected_re expected_im b_re b_im\n" + "\n".join(rows) + "\n", encoding="utf-8")
 print(f"Generated {len(rows)} independently verified binary cases")
+
+# Cancellation exponent is an independently constructed decimal literal, not a
+# NumForge result. Its finite truncation leaves a nonzero, very small phase.
+with mp.workdps(800):
+    z = mp.mpc(1, 1)
+    cancellation_exponent = mp.nstr(-mp.arg(z) / mp.log(abs(z)), 61)
+STABILITY = [
+    ("abs", "1e10000", "1e-10000", "0", "0"),
+    ("abs", "3e10000", "4e-10000", "0", "0"),
+    ("abs", "3e9223372036854775807", "4e9223372036854775807", "0", "0"),
+    ("abs", "3e-9223372036854775807", "4e-9223372036854775807", "0", "0"),
+    ("sqrt", "3e9223372036854775807", "4e9223372036854775807", "0", "0"),
+    ("sqrt", "3e-9223372036854775807", "4e-9223372036854775807", "0", "0"),
+    ("ln", "3e9223372036854775807", "4e9223372036854775807", "0", "0"),
+    ("ln", "3e-9223372036854775807", "4e-9223372036854775807", "0", "0"),
+    ("div", "1e9223372036854775807", "1e9223372036854775807", "3e9223372036854775807", "-2e9223372036854775807"),
+    ("div", "1e-9223372036854775807", "1e-9223372036854775807", "3e-9223372036854775807", "-2e-9223372036854775807"),
+    ("tan", "0.3", "1000", "0", "0"), ("tan", "-0.3", "-1000", "0", "0"),
+    ("tan", "1", "0.50000000000000000001", "0", "0"),
+    ("tan", "1", "0.49999999999999999999", "0", "0"),
+    ("tan", "1.57079632679489661923132169163975144209858469968755", "1e-40", "0", "0"),
+    ("pow", "1", "1", "1", cancellation_exponent),
+]
+
+def stability_reference(op, re, im, bre, bim, digits, precision):
+    if op in BINARY:
+        return binary_reference(op, re, im, bre, bim, digits, precision)
+    with mp.workdps(precision):
+        z = mp.mpc(re, im)
+        value = mp.mpc(abs(z), 0) if op == "abs" else mp.log(z) if op == "ln" else getattr(mp, op)(z)
+        return [mp.nstr(x, digits + 20) for x in (value.real, value.imag)]
+
+rows = []
+for digits in (12, 34, 100, 250):
+    for op, re, im, bre, bim in STABILITY:
+        a = stability_reference(op, re, im, bre, bim, digits, 600)
+        if a != stability_reference(op, re, im, bre, bim, digits, 800):
+            raise RuntimeError(f"Unstable stability reference: {op} {re} {im}")
+        for rounding in range(6):
+            rows.append("\t".join([op, re, im, str(digits), str(rounding), *a, bre, bim]))
+path.with_name("complex_stability_references.tsv").write_text(
+    "# mpmath 1.3.0; op re im digits rounding expected_re expected_im b_re b_im\n" + "\n".join(rows) + "\n", encoding="utf-8")
+print(f"Generated {len(rows)} independently verified stability cases")

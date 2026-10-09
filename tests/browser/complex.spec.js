@@ -336,6 +336,11 @@ test('HTTP complex trigonometry preserves radians, near-pole values and failed s
     expect(Number(snapshot.value.components.imaginary)/1e8).toBeCloseTo(1,10);
     expect(Math.abs(Number(snapshot.value.components.real))).toBeLessThan(1e-10);
     expect((await send('tan(20i)')).result).toBe('i');
+    expect((await send('tan(1000i)')).result).toBe('i');
+    expect((await send('tan(0.3+1000i)')).ok).toBe(true);
+    snapshot=await (await request.get('/api/session/value?client='+client+'&name=ans')).json();
+    expect(snapshot.value.components.real).not.toBe('0');
+    expect(Number(snapshot.value.components.imaginary)).toBe(1);
     expect((await send('tan(1E-40i)')).result).toBe('1E-40*i');
     expect((await send('sin(90+0i)')).result).toBe('0.8939966636');
     const stored=await (await request.get('/api/session/value?client='+client+'&name=z')).json();

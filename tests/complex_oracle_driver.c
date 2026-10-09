@@ -42,6 +42,11 @@ int main(int argc,char **argv) {
         OP(sqrt) OP(exp) OP(ln) OP(sin) OP(cos) OP(tan)
         OP(sinh) OP(cosh) OP(tanh) OP(asin) OP(acos) OP(atan)
         OP(asinh) OP(acosh) OP(atanh)
+        if (!strcmp(op,"abs") || !strcmp(op,"arg")) {
+            status=!strcmp(op,"abs") ? bigcomplex_abs(r,z,digits,(BigDecimalRoundingMode)rounding) :
+                bigcomplex_arg(r,z,digits,(BigDecimalRoundingMode)rounding);
+        }
+        else
         if (!strcmp(op,"div")) status=bigcomplex_div(out,z,b,digits,(BigDecimalRoundingMode)rounding);
         else if (!strcmp(op,"log")) status=bigcomplex_log(out,z,b,digits,(BigDecimalRoundingMode)rounding);
         else if (!strcmp(op,"pow")) status=bigcomplex_pow(out,z,b,digits,(BigDecimalRoundingMode)rounding);
@@ -55,9 +60,11 @@ int main(int argc,char **argv) {
             live=numforge_alloc_stats_live();peak=numforge_alloc_stats_peak();
         }
 #endif
+        if(!status && (!strcmp(op,"abs") || !strcmp(op,"arg"))) status=bigcomplex_from_bigdecimal(out,r);
         if (status || start < 0 || elapsed < 0 ||
             bigcomplex_get_real(r,out) || bigcomplex_get_imaginary(i,out) ||
-            bigdecimal_to_string(r,&rt) || bigdecimal_to_string(i,&it)) {
+            bigdecimal_format_mode(r,-1,BIGDECIMAL_ROUND_HALF_EVEN,BIGDECIMAL_FORMAT_SCIENTIFIC,65536,&rt) ||
+            bigdecimal_format_mode(i,-1,BIGDECIMAL_ROUND_HALF_EVEN,BIGDECIMAL_FORMAT_SCIENTIFIC,65536,&it)) {
             fprintf(stderr,"Failed %s(%s,%s): %d\n",op,re,im,(int)status);
             free(rt); free(it); exit_code = 1; break;
         }

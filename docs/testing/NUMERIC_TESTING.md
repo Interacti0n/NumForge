@@ -139,7 +139,7 @@ Short campaigns are regression smoke coverage, not exhaustive fuzzing.
 
 ## Independent complex references
 
-`complex_oracle_tests` checks 900 public BigComplex C API cases against frozen
+`complex_oracle_tests` checks 1284 public BigComplex C API cases against frozen
 mpmath 1.3.0 references. The developer-only generator
 `tests/generate_complex_references.py` independently evaluates each component
 at 600 and 800 decimal digits and requires matching reference strings. CTest
@@ -160,6 +160,16 @@ of each operation and for the close-input logarithm regression. That regression
 revealed a lost imaginary component near 3e-61 and now checks input-sensitive
 working precision. Use `--binary` for only this subset, including benchmarks.
 
+Another 384 cases in `complex_stability_references.tsv` cover common exponents
+at the signed 64-bit limits, magnitude gaps of 20000 decimal orders, tangent
+tails and near poles, and cancellation in general powers. Use `--stability`
+to isolate them. Reference precision cannot resolve every tiny correction;
+explicit C assertions additionally check directed magnitude rounding, halfway
+boundaries and preservation of exact finite roots. Decimal comparison uses
+BigInt exponents as well as coefficients, avoiding double precision at the
+extreme exponent limits. The corpus driver receives a temporary regular input
+file to avoid Windows bidirectional pipe backpressure; that file is cleaned up.
+
 Comparison uses exact JavaScript BigInt decimal arithmetic, with a bound of
 two units at the requested component's significant precision. Expected zero
 uses the absolute bound 2*10^(1-digits). Nonzero components use their own
@@ -170,9 +180,9 @@ covered by other tests or require further oracle coverage.
 
 See [complex performance diagnostics](../benchmarks/COMPLEX_BENCHMARKS.md).
 
-Benchmark-enabled builds additionally run `complex_memory_smoke`: 130 independently
+Benchmark-enabled builds additionally run `complex_memory_smoke`: 146 independently
 validated half-even cases at 34 digits, with tracked allocation counters and zero
-tracked allocations after each isolated case. `--memory` runs 520 cases at all
+tracked allocations after each isolated case. `--memory` runs 584 cases at all
 four precisions. Timing is kept separate from allocation instrumentation.
 `bigcomplex_tests --tangent-only` checks paired quotient evaluation against
 separate public sin/cos and sinh/cosh calls across all six rounding modes,

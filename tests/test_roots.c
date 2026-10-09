@@ -12,6 +12,7 @@ static void test_root_expressions(void)
 {
     static const struct { const char *input; const char *expected; } cases[] = {
         { "sqrt(0)", "0" }, { "cbrt(-0)", "0" }, { "sqrt(1)", "1" },
+        { "sqrt(-1)", "i" }, { "root(-16;4)", "1.4142135624 + 1.4142135624*i" },
         { "√(4)", "2" }, { "2sqrt(abs(-4))", "4" },
         { "sqrt(0.0004)", "0.02" }, { "cbrt(-0.125)", "-0.5" },
         { "root(-32;5)", "-2" }, { "root(-2.5;1)", "-2.5" },
@@ -37,7 +38,7 @@ static void test_root_expressions(void)
         free(text);
     }
     static const char *const invalid[] = {
-        "sqrt(-1)", "root(-16;4)", "root(2;0)", "root(2;-3)",
+        "root(2;0)", "root(2;-3)",
         "root(2;1.5)", "root(0;0)", "root(1;1E-100000)"
     };
     for (size_t i = 0; i < sizeof(invalid) / sizeof(invalid[0]); i++)

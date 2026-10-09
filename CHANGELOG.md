@@ -7,6 +7,11 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Improve complex division, magnitude, square-root verification and extreme
+  logarithms with exact exponent scaling. Add bounded magnitude rounding for
+  proven irrational tails, scaled tangent evaluation and input-sensitive general
+  powers. Extend independent references to 1284 cases, with 384 stability cases.
+
 - Add independent complex memory probes with isolated allocation tracking and
   zero-live-allocation checks. Reuse guarded scalar evaluations in tan and the
   small-real-part tanh quotient, reducing allocation requests while preserving

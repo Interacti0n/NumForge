@@ -214,7 +214,7 @@ async function testErrorContext(english) {
         await request;
         assert.ok(ui.element('#result').textContent.includes(excerpt));
         assert.ok(ui.element('#result').textContent.includes(`${english ? 'position' : 'pozícia'} ${column}`));
-        if (input === 'sqrt(-1)') assert.ok(ui.element('#result').textContent.includes('x ≥ 0'));
+        if (input === 'sqrt(-1)') assert.ok(ui.element('#result').textContent.includes('sqrt(-1) = i'));
         if (input === 'round(1;1.5)') assert.ok(ui.element('#result').textContent.includes('round(x;n)'));
     }
 }

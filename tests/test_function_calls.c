@@ -58,12 +58,12 @@ static void test_inverse_arc_aliases(void)
     TEST_ASSERT_EQUAL(CALCULATOR_ARGUMENT_COUNT,
                       calculator_compute("arctan(1;2)", &context, &text, &error));
     TEST_ASSERT_NULL(text);
-    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,
                       calculator_compute("arcsin(2)", &context, &text, &error));
-    TEST_ASSERT_NULL(text);
-    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,
+    TEST_ASSERT_EQUAL_STRING("1.5707963268 - 1.3169578969*i",text);free(text);text=NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,
                       calculator_compute("arcuscosh(0)", &context, &text, &error));
-    TEST_ASSERT_NULL(text);
+    TEST_ASSERT_EQUAL_STRING("1.5707963268*i",text);free(text);
 }
 
 static void test_call_errors(void)
@@ -223,9 +223,9 @@ static void test_evaluation_and_implicit_products(void)
     TEST_ASSERT_EQUAL_STRING("0.5493061443", text);
     free(text);
     text = NULL;
-    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,
                       calculator_compute("acosh(0.5)", &context, &text, &error));
-    TEST_ASSERT_NULL(text);
+    TEST_ASSERT_EQUAL_STRING("1.0471975512*i",text);free(text);text=NULL;
     TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,
                       calculator_compute("atanh(1)", &context, &text, &error));
     TEST_ASSERT_NULL(text);

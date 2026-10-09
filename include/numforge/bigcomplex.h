@@ -61,7 +61,9 @@ BigComplexStatus bigcomplex_pow_int(BigComplex *result, const BigComplex *value,
 BigComplexStatus bigcomplex_abs_squared(BigDecimal *result, const BigComplex *value);
 /* Square root of the exact squared modulus. Exact finite roots remain exact;
  * irrational roots round to positive significant digits with the given mode.
- * Exact intermediates may exceed resource/scale limits. */
+ * Common exponents are scaled exactly before squaring. For widely separated
+ * components, a proven irrational modulus can use a bounded rounding path;
+ * otherwise the exact-square path remains. Resource/scale limits still apply. */
 BigComplexStatus bigcomplex_abs(BigDecimal *result, const BigComplex *value,
     int64_t digits, BigDecimalRoundingMode rounding);
 /* Principal square root: nonnegative real part; imaginary sign follows input,
@@ -111,11 +113,13 @@ BigComplexStatus bigcomplex_exp(BigComplex *result, const BigComplex *value,
  * real axis uses +pi; approaching from below gives the -pi limit. Signed
  * zero is not retained. Real part uses ln(re*re+im*im)/2 with exact squares
  * and digits+12 working digits. Approximate, not correctly-rounded; exact
- * intermediates may exceed resource/scale limits. Atomic and alias-safe. */
+ * common exponents that would overflow the square use exact scaling and
+ * an ln(10) correction instead. Resource/scale limits still apply;
+ * the scaled branch needs room for 44 working digits. Atomic and alias-safe. */
 BigComplexStatus bigcomplex_ln(BigComplex *result, const BigComplex *value,
     int64_t digits, BigDecimalRoundingMode rounding);
-/* Principal power exp(exponent*ln(value)), in radians, with digits+12 guard
- * digits. Approximate even for integer exponents; use pow_int for exact
+/* Principal power exp(exponent*ln(value)), in radians, with digits+12 plus
+ * input-coefficient-width working digits for ln. Approximate even for integer exponents; use pow_int for exact
  * integer powers. 0^0=1, zero to a positive real exponent=0, negative real
  * exponent returns DIVISION_BY_ZERO, nonreal exponent INVALID_ARGUMENT.
  * Supports aliasing with either input and preserves result on failure.
@@ -145,6 +149,8 @@ BigComplexStatus bigcomplex_sin(BigComplex *result, const BigComplex *value,
 BigComplexStatus bigcomplex_cos(BigComplex *result, const BigComplex *value,
     int64_t digits, BigDecimalRoundingMode rounding);
 /* tan(z)=sin(z)/cos(z), guarded sine/cosine at digits+12 and final division.
+ * For |im|>0.5, -i*tanh(i*z) avoids growing hyperbolic intermediates and
+ * rounds after the final rotation; this branch needs room for 36 digits.
  * digits<=INT64_MAX-24. Computed zero denominator gives DIVISION_BY_ZERO;
  * near real-axis poles can amplify errors. Finite decimal pi approximations
  * need not give exact poles. Resource limits apply also to intermediates,

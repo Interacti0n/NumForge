@@ -5,6 +5,8 @@ details and the [2.1 release record](docs/project/RELEASE_2_1.md) for validation
 
 ## Unreleased
 
+- Improve complex stability and intermediate growth; add 384 stress references.
+
 - Add complex memory probes and reduce repeated work in tan/tanh quotients.
 
 - Preserve tiny complex logarithm components for nearly equal inputs;

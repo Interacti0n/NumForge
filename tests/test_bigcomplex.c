@@ -562,11 +562,12 @@ static void test_inverse_hyperbolic(void)
     bigcomplex_destroy(a);bigcomplex_destroy(r);
 }
 static void test_shared_trigonometric_quotients(void) {
-    const char *points[][2]={{"0","0"},{"-0.3","0.7"},{"0.1","1E-100"},
+    const char *points[][2]={{"0","0"},{"-0.3","0.2"},{"0.1","1E-100"},
         {"0.00000000000000000001","1.00000000000000000001"}};
     BigComplex *z=bigcomplex_create(),*actual=bigcomplex_create(),*n=bigcomplex_create(),*d=bigcomplex_create();
     TEST_ASSERT_NOT_NULL(z);TEST_ASSERT_NOT_NULL(actual);TEST_ASSERT_NOT_NULL(n);TEST_ASSERT_NOT_NULL(d);
     for(size_t p=0;p<4;p++) for(int mode=0;mode<6;mode++) for(int hyper=0;hyper<2;hyper++) {
+        if(p==3 && !hyper) continue; /* Large imaginary tan now uses its scaled path. */
         BigDecimalRoundingMode rounding=(BigDecimalRoundingMode)mode;bool equal=false;
         TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(z,points[p][0],points[p][1]));
         TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,hyper ? bigcomplex_sinh(n,z,24,rounding) : bigcomplex_sin(n,z,24,rounding));
@@ -578,12 +579,41 @@ static void test_shared_trigonometric_quotients(void) {
     }
     bigcomplex_destroy(z);bigcomplex_destroy(actual);bigcomplex_destroy(n);bigcomplex_destroy(d);
 }
+static void test_scaled_modulus_rounding(void) {
+    BigComplex *z=number("1e10000","1e-10000");
+    BigDecimal *actual=bigdecimal_create(),*expected=bigdecimal_create();
+    TEST_ASSERT_NOT_NULL(actual);TEST_ASSERT_NOT_NULL(expected);
+    for(int mode=0;mode<6;mode++) {
+        int comparison=1;
+        TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_abs(actual,z,4,(BigDecimalRoundingMode)mode));
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK,bigdecimal_set_string(expected,
+            mode==BIGDECIMAL_ROUND_AWAY_FROM_ZERO || mode==BIGDECIMAL_ROUND_CEILING ? "1.001e10000" : "1e10000"));
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK,bigdecimal_compare(&comparison,actual,expected));
+        TEST_ASSERT_EQUAL_INT(0,comparison);
+    }
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(z,"3e10000","4e10000"));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_abs(actual,z,1,BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK,bigdecimal_set_string(expected,"5e10000"));
+    int comparison=1;
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK,bigdecimal_compare(&comparison,actual,expected));TEST_ASSERT_EQUAL_INT(0,comparison);
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(z,"-1e-10000","-1.0005e10000"));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_abs(actual,z,4,BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK,bigdecimal_set_string(expected,"1.001e10000"));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK,bigdecimal_compare(&comparison,actual,expected));TEST_ASSERT_EQUAL_INT(0,comparison);
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(z,"3.12e10000","4.16e10000"));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_abs(actual,z,1,BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK,bigdecimal_set_string(expected,"5.2e10000"));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK,bigdecimal_compare(&comparison,actual,expected));TEST_ASSERT_EQUAL_INT(0,comparison);
+    bigcomplex_destroy(z);bigdecimal_destroy(actual);bigdecimal_destroy(expected);
+}
 static bool tangent_allocation_only=false;
 static int allocation_operation_start=0;
-static int allocation_operation_end=30;
+static int allocation_operation_end=32;
 static void test_allocation_failures(void) {
     BigComplex *a=number("1.2","-3.4"), *b=number("5.6","7.8"), *r=number("9","8");
     BigComplex *small=number("0.1","0.1"),*zero=number("0","0");
+    BigComplex *unequal=number("1e10000","1e-10000");
+    BigComplex *extreme=number("1e9223372036854775807","0");
     BigDecimal *d=bigdecimal_create(); TEST_ASSERT_NOT_NULL(d);
     for(int operation=allocation_operation_start;operation<allocation_operation_end;operation++) {
         if(tangent_allocation_only && operation!=18 && operation!=22) continue;
@@ -624,7 +654,9 @@ static void test_allocation_failures(void) {
                 case 26: status=bigcomplex_atan(r,small,4,BIGDECIMAL_ROUND_HALF_EVEN);break;
                 case 27: status=bigcomplex_asinh(r,small,4,BIGDECIMAL_ROUND_HALF_EVEN);break;
                 case 28: status=bigcomplex_acosh(r,zero,4,BIGDECIMAL_ROUND_HALF_EVEN);break;
-                default: status=bigcomplex_atanh(r,small,4,BIGDECIMAL_ROUND_HALF_EVEN);break;
+                case 29: status=bigcomplex_atanh(r,small,4,BIGDECIMAL_ROUND_HALF_EVEN);break;
+                case 30: status=bigcomplex_abs(d,unequal,4,BIGDECIMAL_ROUND_HALF_EVEN);break;
+                default: status=bigcomplex_ln(r,extreme,1,BIGDECIMAL_ROUND_HALF_EVEN);break;
             }
             if(failure==0) count=numforge_test_allocator_call_count();
             numforge_test_allocator_end();
@@ -637,8 +669,15 @@ static void test_allocation_failures(void) {
     TEST_ASSERT_NULL(bigcomplex_create());
     TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_MEMORY,numforge_budget_failure());numforge_budget_end();
     bigdecimal_destroy(d);bigcomplex_destroy(a);bigcomplex_destroy(b);bigcomplex_destroy(r);bigcomplex_destroy(small);bigcomplex_destroy(zero);
+    bigcomplex_destroy(unequal);
+    bigcomplex_destroy(extreme);
 }
 int main(int argc,char **argv) {
+    if(argc==2 && strcmp(argv[1],"--stability-only")==0) {
+        allocation_operation_start=30;
+        UNITY_BEGIN();RUN_TEST(test_scaled_modulus_rounding);RUN_TEST(test_allocation_failures);
+        return UNITY_END();
+    }
     if(argc==2 && strcmp(argv[1],"--tangent-only")==0) {
         tangent_allocation_only=true;
         UNITY_BEGIN();RUN_TEST(test_shared_trigonometric_quotients);RUN_TEST(test_allocation_failures);
@@ -650,12 +689,12 @@ int main(int argc,char **argv) {
         return UNITY_END();
     }
     if(argc==2 && strcmp(argv[1],"--inverse-hyperbolic-only")==0) {
-        allocation_operation_start=27;
+        allocation_operation_start=27;allocation_operation_end=30;
         UNITY_BEGIN();RUN_TEST(test_inverse_hyperbolic);RUN_TEST(test_allocation_failures);
         return UNITY_END();
     }
     if(argc==2 && strcmp(argv[1],"--inverse-only")==0) {
-        allocation_operation_start=24;
+        allocation_operation_start=24;allocation_operation_end=30;
         UNITY_BEGIN();RUN_TEST(test_complex_inverse_trigonometry);RUN_TEST(test_allocation_failures);
         return UNITY_END();
     }
@@ -665,6 +704,7 @@ int main(int argc,char **argv) {
      * after a reference/formatting change without repeating unchanged faults. */
     RUN_TEST(test_complex_inverse_trigonometry);RUN_TEST(test_inverse_hyperbolic);
     RUN_TEST(test_shared_trigonometric_quotients);
+    RUN_TEST(test_scaled_modulus_rounding);
     if(argc!=2 || strcmp(argv[1],"--numeric-only")!=0) RUN_TEST(test_allocation_failures);
     return UNITY_END();
 }

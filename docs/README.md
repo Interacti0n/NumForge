@@ -56,6 +56,7 @@ for specific source snapshots, not promises about every machine.
 - [Presentation](project/PROJECT_PRESENTATION.md): README assets and screenshots.
 - [Release packaging](project/RELEASE_PACKAGING.md): archives and automation.
 - [Release 2.1 record](project/RELEASE_2_1.md): scope, validation and limitations.
+- [Next release preparation](project/RELEASE_NEXT.md): stability scope and publication checks.
 - [Short changelog](../CHANGELOG_SHORT.md) or [full changelog](../CHANGELOG.md).
 
 Screenshots live in `images/`. Generated output and benchmark runs stay in

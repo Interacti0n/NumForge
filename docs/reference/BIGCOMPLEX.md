@@ -143,12 +143,12 @@ Exact rational inputs are projected at calculator working precision first.
 inputs, always in radians. Sine and cosine use
 sin(x+iy)=sin(x)cosh(y)+i*cos(x)sinh(y) and
 cos(x+iy)=cos(x)cosh(y)-i*sin(x)sinh(y), guarded scalar calls at digits+12,
-then component-wise significant rounding. Tangent divides guarded complex
+then component-wise significant rounding. For |imaginary part|<=0.5, tangent divides guarded complex
 sine by cosine, with another 12 guard digits before the final division.
 Tangent shares the guarded scalar evaluations between its sine and cosine
 numerator/denominator, retaining the same component rounding as separate calls.
 digits must be positive and leave room for 12 guard digits for sin/cos,
-24 for tan; rounding must be a valid mode. Aliasing is supported and every
+24 for the tangent quotient and 36 for its scaled branch; rounding must be a valid mode. Aliasing is supported and every
 failure preserves the destination.
 
 These results are approximate, without correctly-rounded guarantees or symbolic
@@ -157,7 +157,8 @@ pi/2+k*pi; a computed zero cosine returns DIVISION_BY_ZERO. Finite decimal
 approximations to poles need not give exact zeros. Near poles, rounding and
 rational projection errors can be amplified. Large imaginary parts grow
 sin/cos exponentially; runtime and scale limits apply to intermediates even
-when a final tangent is bounded. No saturation approximation is substituted.
+for sine/cosine. Tangent uses its scaled tanh branch for |imaginary part|>0.5
+to avoid that growth. No saturation approximation is substituted.
 Tiny nonzero residuals are preserved. For example sin(i) is approximately
 1.1752011936*i, cos(i) 1.5430806348 and tan(i) 0.761594156*i.
 
@@ -194,7 +195,7 @@ retains an approximate complex result even when it displays a real number.
 
 `bigcomplex_pow(result, value, exponent, digits, rounding)` computes the
 approximate principal value exp(exponent*ln(value)), in radians with the
-logarithm branch (-pi, pi]. It uses digits+12 for ln, exact decimal
+logarithm branch (-pi, pi]. It uses digits+12 plus an input-coefficient-width guard for ln, exact decimal
 multiplication, and exp with its own 12 guard digits. `digits` must be positive
 and at most INT64_MAX-24. There is no correct-rounding guarantee; cancellation
 and exact-rational projection can lose relative accuracy. Intermediate scale
@@ -288,15 +289,15 @@ inputs select BigComplex arithmetic at working precision. These are calculator
 functions built from the existing public numeric operations; no new standalone
 aggregate C symbols are added.
 
-The independent complex oracle now checks 900 unary/binary cases at up to 250
+The independent complex oracle now checks 1284 unary/binary/stability cases at up to 250
 significant digits, with an operation timing mode. See
 [numeric testing](../testing/NUMERIC_TESTING.md) and
-[complex benchmarks](../benchmarks/COMPLEX_BENCHMARKS.md). Broader oracle
-coverage and memory profiling remain future work.
+[complex benchmarks](../benchmarks/COMPLEX_BENCHMARKS.md). Memory profiling now
+covers 584 isolated half-even cases; broader coverage remains future work.
 
-1. Consider a scaled/adaptive magnitude algorithm to reduce exact intermediate
-   storage while preserving rounding guarantees. Integer powers, exact-sum
-   modulus and bounded display formatting are available.
+1. Extend the implemented exact scaling and bounded magnitude path with
+   certified adaptive error bounds and broader intermediate-growth controls.
+   Integer powers, exact finite modulus and bounded display formatting are available.
 2. Extend further complex statistical operations only with explicit domain definitions.
    The calculator already supports i, complex(re;im), re/im/conj/abs/arg and exp.
    Mixed approximate operations explicitly project exact components at working
@@ -379,3 +380,36 @@ and interrelations; the cut-side conventions above are the implementation contra
 
 Calculator aliases share these C kernels and automatically promote acosh(x<1)
 and atanh(|x|>1). Public real BigDecimal functions keep their real domains.
+
+## Numerical stability and intermediate growth
+
+Division normalizes a common denominator exponent exactly before forming its
+squared modulus. Magnitude calculations normalize common component exponents;
+square-root exactness checks compare scaled candidates and inputs. These changes
+avoid exponent overflow in selected intermediates when the result is representable.
+The exact `abs_squared` API retains its original exact-square contract.
+
+For widely separated nonzero components, magnitude can avoid constructing the
+full squared sum. A modular nonsquare witness first proves that the magnitude
+is irrational. A bound on the smaller component then permits final rounding
+using a small positive perturbation of the dominant component. Exact finite
+roots retain the exact path, and directed rounding still accounts for nonzero
+tails. If the proof is inconclusive, the original exact path is used.
+
+When a common exponent would overflow logarithm's squared modulus, logarithm
+uses exact decimal scaling and an ln(10) correction at digits+32 working
+precision. The ordinary path retains exact squared inputs to preserve logarithms
+near the unit circle. General powers now use input-sensitive working precision
+for their logarithm to reduce cancellation losses.
+
+For tangent with |imaginary part|>0.5, the scaled identity
+`tan(z)=-i*tanh(i*z)` avoids growing hyperbolic intermediates. Final component
+rounding follows the rotation. Small imaginary parts retain the shared sine/cosine
+quotient. Near poles, arbitrary cancellation and huge relative exponent gaps
+can still encounter accuracy, scale or resource limits. These improvements are
+not a universal correctly-rounded guarantee or a bound on all intermediate memory.
+
+The stability corpus adds 384 independently checked cases covering extreme
+64-bit decimal exponents, very unequal component magnitudes, tangent tails and
+poles, and cancellation in general powers. Explicit C tests supplement the
+oracle for directed rounding of tails below the reference generator's precision.

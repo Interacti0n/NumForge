@@ -12,7 +12,7 @@ sanitizers, coverage or allocation instrumentation, then run on a quiet machine:
 node tests/test_complex_oracle.js build/remote-tests/Release/complex_oracle_driver.exe --benchmark
 ```
 
-The command repeats the 900-case corpus in five fresh processes, emitting
+The command repeats the 1284-case corpus in five fresh processes, emitting
 minimum, median and maximum milliseconds for each identical input, precision
 and rounding mode. Cases are not pooled across inputs. There is no CI timing
 threshold. The command has a 120-second timeout per process and an 8 MiB output
@@ -40,8 +40,8 @@ node tests/test_complex_oracle.js build/factorial-bench/Release/complex_oracle_d
 ctest --test-dir build/factorial-bench -C Release -R complex_memory_smoke --output-on-failure
 ```
 
-The full probe validates 520 half-even cases across all four precisions. The
-smoke test uses the 130 cases at 34 digits. Each case creates fresh owned objects,
+The full probe validates 584 half-even cases across all four precisions. The
+smoke test uses the 146 cases at 34 digits. Each case creates fresh owned objects,
 resets counters after input parsing, captures counters immediately after the
 public C operation, and verifies zero tracked live bytes after destroying all
 objects and formatting buffers. Reference comparison remains mandatory.
@@ -141,3 +141,17 @@ imaginary component. Raw per-case output is `build/complex-binary-baseline.txt`;
 matching metadata, CMake cache, patch and source snapshots use the same prefix.
 These are separate operation timings, not a before/after comparison or a
 memory measurement. An idle local web server remained running.
+
+The additional stability corpus can be isolated with `--stability`. It contains
+384 cases, including extreme signed 64-bit exponents; comparison uses exact
+BigInt exponents. Scalar magnitude/argument timings exclude boxing into a
+complex result and output formatting. Earlier before/after tables remain
+historical measurements of their stated corpus and implementation.
+
+The stability-stage full memory probe (`build/complex-memory-stability.txt`)
+passed 584 isolated cases with zero tracked live allocations after cleanup.
+For magnitude of `1e10000 + 1e-10000*i`, the operation requested 2564 bytes
+across 65 allocation calls at 250 digits; additional peak live memory was
+810 bytes. At 34 digits the corresponding figures were 1272 bytes, 62 calls
+and 602 bytes. These are local MSVC Release measurements with benchmarking
+enabled, and bound neither arbitrary inputs nor the exact fallback path.
