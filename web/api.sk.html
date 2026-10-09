@@ -39,6 +39,7 @@
     <div class="guide-layout">
       <aside class="guide-sidebar">
         <nav class="guide-toc" aria-label="Sekcie príručky">
+          <a href="#intro">Úvod</a>
           <a href="#syntax">Zápis výrazov</a>
           <a href="#precision">Výstupná presnosť</a>
           <a href="#functions">Funkcie</a>
@@ -47,10 +48,11 @@
           <a href="#history">ans a história</a>
           <a href="#http">Lokálne HTTP</a>
           <a href="#library">Verejné C API</a>
+          <a href="#session-http">HTTP API sedenia a prevodov</a>
         </nav>
       </aside>
       <main class="guide-content">
-  <h1 class="guide-title"><img class="guide-wordmark" src="/assets/wordmark.png" alt="NumForge" width="2172" height="724"><span>Použitie a API</span></h1>
+  <h1 class="guide-title" id="intro"><img class="guide-wordmark" src="/assets/wordmark.png" alt="NumForge" width="2172" height="724"><span>Použitie a API</span></h1>
   <p>JavaScript iba odošle výraz lokálnemu serveru; samotný výpočet vykoná C aplikácia: tokenizer → parser → evaluator → presný zlomok alebo BigDecimal → formatter.</p>
   <p class="notice">Aritmetika presných vstupov uchová celé čísla a zlomky bez zaokrúhlenia. Desatinný výpis periodického zlomku používa najmenej 34 významných číslic; výstup má predvolene 10 desatinných miest.</p>
   <h2 id="syntax">Čo môžeš zadať do kalkulačky</h2>
@@ -137,7 +139,7 @@ HTTP/1.1 200 OK
   <p><code>#include &lt;numforge/bigrational.h&gt;</code></p>
   <p>Uchováva presné skrátené zlomky s kladným menovateľom. Podporuje presnú aritmetiku, porovnanie, prevody z <code>BigInt</code> a <code>BigDecimal</code> a prevod na <code>BigDecimal</code> so zvolenou presnosťou a zaokrúhlením. Menovateľ 1 sa vypisuje ako celé číslo.</p>
   <p>Mutujúce operácie vracajú stavový kód a pri chybe ponechajú cieľovú hodnotu nezmenenú. Úplné signatúry sú v hlavičkách a podrobnejší prehľad v <code>docs/API.md</code> projekte.</p>
-<h2>HTTP API sedenia a prevodov</h2>
+<h2 id="session-http">HTTP API sedenia a prevodov</h2>
 <p><code>GET /api/session?client=ID</code> vracia revíziu, kapacity a dostupnosť ans. Premenné číta <code>/api/session/variables</code>, históriu <code>/api/session/history</code> a uloženú hodnotu <code>/api/session/value?client=ID&amp;name=ans</code>. Zoznamy podporujú offset/limit, pripnutie revízie cez at a full=1 pre úplné hodnoty. Revízie sú desiatkové reťazce. Reload zachová sedenie.</p>
 <p><code>POST /api/session?client=ID&amp;revision=N&amp;action=clear-history</code> zachová ans a premenné; reset vymaže všetky hodnoty; release uvoľní hodnoty a uzavrie sedenie. Telo je prázdne. <code>GET /api/functions</code> poskytuje názvy, aliasy a arity funkcií.</p>
 <p>Prevody potvrdzuje <code>POST /api/conversions?client=ID&amp;revision=N&amp;action=commit&amp;from=km&amp;to=m</code> s výrazom v tele. GET /api/conversions číta uložené prevody, action=clear ich maže. Majú vlastnú revíziu; opakovanie vráti pôvodnú hodnotu bez nového výpočtu. Snapshot rozlišuje presné čísla/zlomky, aproximácie a Quantity vrátane rozmerov, jednotky a kontextu. Úplný kontrakt je v docs/reference/SESSION_HTTP_API.md.</p>

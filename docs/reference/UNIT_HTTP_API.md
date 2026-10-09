@@ -32,8 +32,17 @@ or use `/api/evaluate` for [Quantity arithmetic](QUANTITIES.md).
 Percent-encode IDs containing `/`, for example `from=km%2Fh`.
 
 ```json
-{"ok":true,"result":"1000/3","unit":"m","symbol":"m","input_approximate":false,"factor_approximate":false}
+{"ok":true,"result":"1000/3","unit":"m","symbol":"m","approx":"333.3333333333","input_approximate":false,"factor_approximate":false}
 ```
+
+Successful responses may include `approx`, a secondary decimal display hint for
+fractions up to 16 characters, matching the calculator's hint policy (10 decimal
+places, half-even rounding, scientific notation for tiny nonzero values).
+It uses the same output unit and does not replace the exact `result`, change
+the copy value or describe an error bound. The field is absent for non-fraction
+results or when the optional hint cannot be generated.
+Conversion confirmation and history entries also include the optional `approx`
+hint, so restoring a saved fraction retains its secondary display.
 
 | Parameter | Values / default |
 | --- | --- |

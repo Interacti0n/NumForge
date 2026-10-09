@@ -32,13 +32,14 @@
             <a href="/api?lang=en" lang="en" aria-current="true" title="English">EN</a>
           </span>
           <a class="login-link" href="/login?lang=en">Sign in</a>
-          <a class="register-link" href="/register?lang=en">Sign up</a>
+          <a class="register-link" href="/register?lang=en">Create account</a>
         </div>
       </div>
     </header>
     <div class="guide-layout">
       <aside class="guide-sidebar">
         <nav class="guide-toc" aria-label="Guide sections">
+          <a href="#intro">Introduction</a>
           <a href="#syntax">Expressions</a>
           <a href="#functions">Functions</a>
           <a href="#cache">Precision and cache</a>
@@ -47,10 +48,11 @@
           <a href="#precision">Output precision</a>
           <a href="#http">Local HTTP</a>
           <a href="#library">Public C API</a>
+          <a href="#session-http">Session and conversion HTTP API</a>
         </nav>
       </aside>
       <main class="guide-content">
-  <h1 class="guide-title"><img class="guide-wordmark" src="/assets/wordmark.png" alt="NumForge" width="2172" height="724"><span>Usage and API</span></h1>
+  <h1 class="guide-title" id="intro"><img class="guide-wordmark" src="/assets/wordmark.png" alt="NumForge" width="2172" height="724"><span>Usage and API</span></h1>
   <p>JavaScript sends expressions to the local server. The C application parses and evaluates them with BigInt, BigRational or BigDecimal, then formats the result.</p>
   <p class="notice">Exact expressions retain integers and reduced fractions. Decimal output for a recurring fraction uses the current precision; the default display has 10 decimal places.</p>
   <h2 id="syntax">What you can enter</h2>
@@ -137,7 +139,7 @@ HTTP/1.1 200 OK
   <p><code>#include &lt;numforge/bigrational.h&gt;</code></p>
   <p>Stores exact reduced fractions with a positive denominator. It provides exact arithmetic, comparison, conversion from <code>BigInt</code> and <code>BigDecimal</code>, and conversion to <code>BigDecimal</code> with explicit precision and rounding. A denominator of one prints as an integer.</p>
   <p>Mutating operations return a status code and leave the destination value unchanged on failure. Full signatures are in the headers and a more detailed overview is in <code>docs/API.md</code>.</p>
-<h2>Session and conversion HTTP API</h2>
+<h2 id="session-http">Session and conversion HTTP API</h2>
 <p><code>GET /api/session?client=ID</code> reports revision, capacities and ans availability. Read all variables with <code>/api/session/variables</code>, calculator history with <code>/api/session/history</code>, and a saved value with <code>/api/session/value?client=ID&amp;name=ans</code>. Lists support offset/limit, revision pinning with at, and full=1 for lossless values. Revisions are decimal strings.</p>
 <p><code>POST /api/session?client=ID&amp;revision=N&amp;action=clear-history</code> keeps ans and variables; reset clears all session values; release frees values and marks the session closed. These calls have an empty body. <code>GET /api/functions</code> lists function names, aliases and arities.</p>
 <p>Confirm conversions through <code>POST /api/conversions?client=ID&amp;revision=N&amp;action=commit&amp;from=km&amp;to=m</code> with the expression body. Read or retrieve saved records with GET /api/conversions and clear them with action=clear. Converter revisions are independent; replay returns the original saved value without reevaluation. Snapshots distinguish exact integers/fractions, approximations and Quantity dimensions/units/context. The complete contract is in docs/reference/SESSION_HTTP_API.md.</p>

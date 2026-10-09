@@ -32,7 +32,7 @@
             <a href="/units?lang=en" lang="en" aria-current="true" title="English">EN</a>
           </span>
           <a class="login-link" href="/login?lang=en">Sign in</a>
-          <a class="register-link" href="/register?lang=en">Sign up</a>
+          <a class="register-link" href="/register?lang=en">Create account</a>
         </div>
       </div>
     </header>
@@ -44,8 +44,8 @@
         <section class="card" aria-labelledby="converter-title">
           <div class="unit-heading"><div class="section-title"><span class="section-icon" aria-hidden="true">↔</span><h2 id="converter-title">Converter</h2></div><span id="unit-category-label" class="unit-category-label"></span></div>
           <form id="unit-converter">
-            <label class="unit-value" for="unit-input">Value or expression</label>
-            <textarea id="unit-input" rows="1" maxlength="4096" spellcheck="false" placeholder="E.g. 1/3 or sqrt(2)" aria-describedby="unit-input-help"></textarea>
+            <div class="unit-input-heading"><label class="unit-value" for="unit-input">Value or expression</label></div>
+            <div class="unit-input-wrap"><textarea id="unit-input" rows="1" maxlength="4096" spellcheck="false" placeholder="E.g. 1/3 or sqrt(2)" aria-describedby="unit-input-help"></textarea></div>
             <div class="unit-pair">
               <label class="field">From unit<select id="unit-from" disabled></select></label>
               <button id="unit-swap" type="button" disabled aria-label="Swap units" title="Swap units">⇄</button>
@@ -68,6 +68,7 @@
         <section class="card" aria-labelledby="unit-result-title">
           <div class="unit-result-heading"><div class="section-title"><span class="section-icon" aria-hidden="true">=</span><h2 id="unit-result-title">Result</h2></div><button id="unit-copy" class="unit-copy" type="button" disabled>⧉ Copy</button></div>
           <div class="unit-result-line"><output id="unit-result" tabindex="0" data-placeholder="Your conversion preview appears here" aria-labelledby="unit-result-title"></output><span id="unit-result-symbol"></span></div>
+          <p id="unit-result-approx" class="unit-result-approx" hidden></p>
           <p id="unit-status" class="unit-status" role="status" aria-live="polite">Loading units…</p>
           <p id="unit-result-meta" class="unit-meta" hidden></p>
           <button id="unit-retry" class="unit-copy unit-retry" type="button" hidden>Try again</button>
@@ -76,7 +77,6 @@
       </main>
       <aside class="units-sidebar" aria-label="Quantities">
         <section class="card" aria-labelledby="unit-categories-title"><div class="sidebar-heading"><span class="sidebar-icon" aria-hidden="true">⌗</span><div><h2 id="unit-categories-title">Quantities</h2><p>Choose a category. Only compatible units can be converted.</p></div></div><button id="unit-category-toggle" class="unit-copy" type="button" aria-expanded="false" aria-controls="unit-categories" aria-label="Choose a quantity">Choose a quantity ▾</button><div id="unit-categories" class="unit-categories" role="group" aria-labelledby="unit-categories-title"></div></section>
-        <details class="card unit-example-card" aria-labelledby="unit-examples-title"><summary class="sidebar-heading"><span class="sidebar-icon" aria-hidden="true">↗</span><div><h2 id="unit-examples-title">Try it</h2><p>Click to fill in an example conversion.</p></div></summary><div id="unit-examples" class="unit-examples"></div></details>
         <section class="card unit-history-card" aria-labelledby="unit-history-title"><div class="unit-result-heading"><h2 id="unit-history-title">Conversion history</h2><button id="unit-history-clear" class="unit-copy" type="button">Clear history</button></div><p class="unit-history-help">Last 16 confirmations. Click to restore a stored conversion.</p><p id="unit-history-empty" class="unit-status"></p><ol id="unit-history-list"></ol></section>
       </aside>
     </div>

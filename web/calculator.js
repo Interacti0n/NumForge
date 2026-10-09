@@ -3,7 +3,6 @@ function initCalculator()
 const lifecycle = new AbortController();
 const form = document.querySelector('#calculator');
 const expression = document.querySelector('#expression');
-const expandExpression = document.querySelector('#expand-expression');
 const result = document.querySelector('#result');
 const resultApprox = document.querySelector('#result-approx');
 const resultMoreMarker = document.querySelector('#result-more-marker');
@@ -25,7 +24,6 @@ let controller = null;
 let copyTimer = null;
 let autoTimer = null;
 let resultExpanded = false;
-let expressionExpanded = false;
 let resultCopy = '';
 let resultApproxValue = '';
 let angleUnit = 'rad';
@@ -99,48 +97,16 @@ function toggleResultExpansion()
 
 function updateExpressionOverflow()
 {
-    if (!expressionExpanded)
-    {
-        const style = getComputedStyle(expression);
-        const lineHeight = parseFloat(style.lineHeight);
-        const frame = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom) +
-            parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
-        const minimum = Math.ceil(lineHeight + frame);
-        const maximum = Math.ceil(5 * lineHeight + frame);
-        expression.style.height = '0px';
-        const content = expression.value ? expression.scrollHeight +
-            parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth) : minimum;
-        expression.style.height = Math.min(maximum, Math.max(minimum, content)) + 'px';
-    }
-    expandExpression.hidden = !expressionExpanded && expression.scrollHeight <= expression.clientHeight + 1;
-}
-
-function updateExpandedExpressionSize()
-{
-    if (!expressionExpanded) return;
-    const formRect = form.getBoundingClientRect();
-    const button = form.querySelector('.primary-button');
-    const keypad = document.querySelector('.keypad-card');
-    const bottom = Math.min(result.getBoundingClientRect().top - 6,
-        keypad.offsetHeight ? keypad.getBoundingClientRect().top - 8 : Infinity, window.innerHeight - 8);
-    form.style.setProperty('--expanded-height', Math.max(64, bottom - formRect.top) + 'px');
-    form.style.setProperty('--expanded-width', Math.max(80, mobileSettings.matches ? formRect.width : formRect.width - button.offsetWidth - 10) + 'px');
-}
-
-function setExpressionExpanded(expanded)
-{
-    if (expanded)
-    {
-        form.style.setProperty('--expanded-height', expression.getBoundingClientRect().height + 'px');
-        expression.style.height = '';
-    }
-    expressionExpanded = expanded;
-    document.querySelector('.expression-card').classList.toggle('is-expanded', expanded);
-    expandExpression.setAttribute('aria-expanded', String(expanded));
-    expandExpression.textContent = expanded ? (english ? 'Show less' : 'Zobraziť menej') :
-        (english ? 'Show full expression...' : 'Zobraziť celý výraz...');
-    if (expanded) updateExpandedExpressionSize();
-    updateExpressionOverflow();
+    const style = getComputedStyle(expression);
+    const lineHeight = parseFloat(style.lineHeight);
+    const frame = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom) +
+        parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
+    const minimum = Math.ceil(lineHeight + frame);
+    const maximum = Math.ceil(5 * lineHeight + frame);
+    expression.style.height = '0px';
+    const content = expression.value ? expression.scrollHeight +
+        parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth) : minimum;
+    expression.style.height = Math.min(maximum, Math.max(minimum, content)) + 'px';
 }
 
 function invalidate()
@@ -898,27 +864,16 @@ expression.addEventListener('keydown', (event) => {
     {
         event.preventDefault();
         expression.setSelectionRange(expression.value.length, expression.value.length);
-        setExpressionExpanded(false);
         form.requestSubmit();
     }
-    else if (event.key === 'Escape' && expressionExpanded)
-    {
-        event.preventDefault();
-        setExpressionExpanded(false);
-    }
 });
-expandExpression.addEventListener('click', () => {
-    setExpressionExpanded(!expressionExpanded);
-    expression.focus();
-});
+updateExpressionOverflow();
 window.addEventListener?.('resize', () => {
-    updateExpandedExpressionSize();
     updateExpressionOverflow();
     updateResultExpansion();
     updateHistoryOverflow();
     updateRecentLayout();
 }, {signal: lifecycle.signal});
-updateExpressionOverflow();
 function insertText(text, isFunction = false)
 {
     invalidate();
@@ -1192,7 +1147,6 @@ async function calculate(commit)
 form.addEventListener('submit', event => {
     event.preventDefault();
     if (mobileSettings.matches) expression.blur();
-    if (expressionExpanded) setExpressionExpanded(false);
     return calculate(true);
 });
 

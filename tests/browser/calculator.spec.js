@@ -740,50 +740,30 @@ for (const lang of ['sk', 'en']) {
             await calculate(page, '2^2000', (2n ** 2000n).toString()[0] + '.' + (2n ** 2000n).toString().slice(1) + 'E+602');
             await expect(page.locator('#expand-result')).toHaveText(lang === 'sk' ? 'Zobraziť všetko...' : 'Show all...');
         });
-        test('long expression expands above a visible result while controls stay available', async ({ page }) => {
-            const oneLine = (await page.locator('#expression').boundingBox()).height;
-            expect(oneLine).toBeLessThan(50);
-            await page.locator('#expression').fill('1+'.repeat(80) + '1');
-            expect((await page.locator('#expression').boundingBox()).height).toBeGreaterThan(oneLine);
-            await expect(page.locator('#expand-expression')).toBeHidden();
-            const longExpression = '1+'.repeat(180) + '1';
-            await page.locator('#expression').fill(longExpression);
-            await expect(page.locator('#expand-expression')).toBeVisible();
-            const heightLimit = await page.locator('#expression').evaluate(el => {
-                const style = getComputedStyle(el);
-                return 5 * parseFloat(style.lineHeight) + parseFloat(style.paddingTop) +
-                    parseFloat(style.paddingBottom) + parseFloat(style.borderTopWidth) +
-                    parseFloat(style.borderBottomWidth);
-            });
-            expect((await page.locator('#expression').boundingBox()).height).toBeLessThanOrEqual(heightLimit + 2);
-            expect(await page.locator('#expression').evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
-            await page.locator('#expand-expression').click();
-            await expect(page.locator('.expression-card')).toHaveClass(/is-expanded/);
-            expect((await page.locator('#expression').boundingBox()).height).toBeGreaterThan(64);
-            await page.locator('#expression').fill(longExpression + '/');
-            await expect(page.locator('#result')).toContainText(lang === 'sk' ? 'Chyba' : 'Error');
-            const inputBox = await page.locator('#expression').boundingBox();
-            const resultText = await page.locator('#result').boundingBox();
-            expect(inputBox.y + inputBox.height).toBeLessThan(resultText.y);
-            expect(resultText.y + Math.min(resultText.height, 18)).toBeLessThanOrEqual(720);
-            await page.locator('#expression').fill(longExpression);
-            await page.locator('.number-keypad [data-insert="7"]').click();
-            await expect(page.locator('#expression')).toHaveValue(longExpression + '7');
-            await page.locator('#expression').fill('1+2');
-            await page.locator('#expression').press('Enter');
-            await expect(page.locator('.expression-card')).not.toHaveClass(/is-expanded/);
-            await expect(page.locator('#expression')).toHaveValue('1+2');
-            await expect(page.locator('#result')).toHaveText('3');
-            await expect(page.locator('#expand-expression')).toBeHidden();
-            expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(720);
-            await page.setViewportSize({width: 375, height: 667});
-            await page.locator('#expression').fill(longExpression);
-            await expect(page.locator('#expand-expression')).toBeVisible();
-            await page.locator('#expand-expression').click();
-            await expect(page.locator('.expression-card')).toHaveClass(/is-expanded/);
-            await page.locator('#expression').press('Escape');
-            await expect(page.locator('.expression-card')).not.toHaveClass(/is-expanded/);
-            expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+        test('long expression grows to five lines and scrolls while results stay accessible', async ({ page }) => {
+            for(const [width,height] of [[1280,720],[375,667]]) {
+                await page.setViewportSize({width,height});
+                await page.locator('#expression').fill('1');
+                const oneLine=(await page.locator('#expression').boundingBox()).height;
+                await page.locator('#expression').fill('1+'.repeat(180)+'1');
+                const metrics=await page.locator('#expression').evaluate(el=>{
+                    const s=getComputedStyle(el);return {height:el.getBoundingClientRect().height,
+                        limit:5*parseFloat(s.lineHeight)+parseFloat(s.paddingTop)+parseFloat(s.paddingBottom)+2,
+                        overflow:el.scrollHeight>el.clientHeight};
+                });
+                expect(metrics.height).toBeGreaterThan(oneLine);
+                expect(metrics.height).toBeLessThanOrEqual(metrics.limit+2);
+                expect(metrics.overflow).toBe(true);
+                await expect(page.locator('#expand-expression')).toHaveCount(0);
+                await page.locator('#expression').press('End');
+                await page.locator('#expression').press('Enter');
+                await expect(page.locator('#result')).toHaveText('181');
+                await page.locator('#expression').fill('1+2');
+                await page.locator('#expression').press('Enter');
+                await expect(page.locator('#result')).toHaveText('3');
+                expect((await page.locator('#expression').boundingBox()).height).toBe(oneLine);
+                expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+            }
         });
         test('session survives language and guide navigation in the same tab', async ({ page }) => {
             await calculate(page, '1/3', '1/3');
@@ -1069,12 +1049,10 @@ for (const lang of ['sk', 'en']) {
         test('guide sections stay navigable on narrow screens', async ({ page }) => {
             await page.locator('.guide-link').click();
             await page.setViewportSize({width: 375, height: 812});
-            const headerY = (await page.locator('.page-header').boundingBox()).y;
-            const menuY = (await page.locator('.guide-toc').boundingBox()).y;
             await page.locator('.guide-toc a[href="#http"]').click();
             await expect(page).toHaveURL(/#http$/);
-            expect((await page.locator('.page-header').boundingBox()).y).toBe(headerY);
-            expect((await page.locator('.guide-toc').boundingBox()).y).toBe(menuY);
+            await expect(page.locator('.guide-toc')).toBeInViewport();
+            await expect(page.locator('.guide-toc a[aria-current="location"]')).toHaveAttribute('href','#http');
             expect(await page.locator('.guide-content').evaluate(el => el.scrollTop)).toBeGreaterThan(0);
             await expect(page.locator('#http')).toBeVisible();
             await expect.poll(() => page.evaluate(() =>

@@ -7,6 +7,28 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Reduce the desktop navbar height; grow conversion input to three lines and
+  calculator input to five, then scroll longer expressions within the field.
+
+- Show a secondary decimal hint with its unit beneath short fractional conversion
+  results, using the same C formatter as calculator fraction hints.
+
+- Show desktop conversion precision/display settings permanently with a static
+  heading; retain the collapsible controls on smaller screens.
+
+- Separate result annotations with a subtle rule, place highlighted conversion
+  units next to the value and blend the navbar into the violet workbench palette.
+
+- Keep desktop converter/result panel heights stable when opening precision
+  settings and remove the redundant conversion examples card.
+
+- Hide the mobile header when scrolling down and reveal it when scrolling up,
+  including the guide reading pane; keep navigation available while its menu is open.
+
+- Refine mobile guide navigation with compact section links, a reading-section
+  indicator and scroll-aware highlighting that keeps the active link in view;
+  include the introduction and final session/conversion HTTP API section.
+
 - Reveal the result after explicit calculator/converter confirmation on phones,
   without moving live previews; simplify mobile converter copy and place history
   below its result while retaining errors and unit-source information.

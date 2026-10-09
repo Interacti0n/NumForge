@@ -14,11 +14,9 @@ function initUnits() {
         common:'Common units', more:'Other units and prefixes', approximate:'Approximate calculation', exact:'Exact conversion factors',
         pi:'Angle conversion uses an approximation of π.', inputApprox:'The expression contains an approximate calculation.',
         display:'The displayed number follows your display and rounding settings.', source:'Definition sources:',
-        readOnly:'Conversion does not change calculator variables, ans or history.',
         temperature:'Temperature points and temperature differences are separate categories. Values below absolute zero are converted mathematically.',
         information:'B = 8 bits. Decimal prefixes (MB) and binary prefixes (MiB) are distinct.',
         volume:'US and UK liquid measures have different definitions; their IDs distinguish them.',
-        defaultNote:'Names and symbols are display labels; conversion uses the catalogue definitions.',
         errors:{unknown_unit:'Unknown unit.',incompatible_units:'These units are not compatible.',assignment_not_allowed:'Assignments are not allowed here. Define variables in the calculator.',random_not_allowed:'Random calls are not available in conversions.',session_expired:'The calculator session has expired. Return to the calculator to start a new session.',invalid_options:'Check the conversion settings.',time_limit:'The calculation took too long. Try a simpler expression.',value_too_large:'The value exceeds the calculation limits.',out_of_memory:'Not enough memory for this calculation.'},
         expressionErrors:{'invalid quantity operation':'Invalid quantity operation.','unknown unit':'Unknown unit.','incompatible units':'These units are not compatible.','division by zero':'Division by zero.','variable is undefined':'This variable is not defined in the calculator session.','ans is undefined':'Confirm a result in the calculator before using ans.','invalid argument':'Invalid argument.','domain error':'The expression is outside the function domain.'},
         expression:'Check the expression.', column:'Column'
@@ -30,26 +28,24 @@ function initUnits() {
         common:'Bežné jednotky',more:'Ostatné jednotky a predpony',approximate:'Približný výpočet',exact:'Presné prevodné faktory',
         pi:'Uhlový prevod používa približnú hodnotu π.',inputApprox:'Výraz obsahuje približný výpočet.',
         display:'Výpis čísla rešpektuje nastavené zobrazenie a zaokrúhľovanie.',source:'Zdroje definícií:',
-        readOnly:'Prevod nemení premenné kalkulačky, ans ani históriu.',
         temperature:'Teplotné body a rozdiely teplôt sú samostatné kategórie. Hodnoty pod absolútnou nulou sa prevádzajú matematicky.',
         information:'B = 8 bitov. Desatinné predpony (MB) a binárne predpony (MiB) sú odlíšené.',
         volume:'Americké a britské objemové miery majú odlišné definície; rozlišujú ich ID.',
-        defaultNote:'Názvy a symboly sú popisky; prevod používa definície katalógu.',
         errors:{unknown_unit:'Neznáma jednotka.',incompatible_units:'Tieto jednotky nie sú kompatibilné.',assignment_not_allowed:'Priradenia sem nepatria. Premenné definuj v kalkulačke.',random_not_allowed:'Náhodné výpočty nie sú pri prevode dostupné.',session_expired:'Sedenie kalkulačky už nie je dostupné. Vráť sa do kalkulačky a začni nové sedenie.',invalid_options:'Skontroluj nastavenia prevodu.',time_limit:'Výpočet trval príliš dlho. Skús jednoduchší výraz.',value_too_large:'Hodnota presahuje limity výpočtu.',out_of_memory:'Na výpočet nie je dostatok pamäte.'},
         expressionErrors:{'invalid quantity operation':'Neplatná operácia s veličinami.','unknown unit':'Neznáma jednotka.','incompatible units':'Tieto jednotky nie sú kompatibilné.','division by zero':'Delenie nulou.','variable is undefined':'Táto premenná nie je definovaná v sedení kalkulačky.','ans is undefined':'Pred použitím ans potvrď výsledok v kalkulačke.','invalid argument':'Neplatný argument.','domain error':'Výraz je mimo definičného oboru funkcie.'},
         expression:'Skontroluj výraz.',column:'Stĺpec'
     };
     const categories = [
-        ['length','Dĺžka','Length','m', ['km','m','cm','mm','in','ft','yd','mi'],['km','m'],[['1/3','km','m'],['6','ft','m']]],
-        ['area','Plocha','Area','m²',['m2','cm2','km2','ha','acre','ft2'],['m2','cm2'],[['1','ha','m2'],['1','acre','m2']]],
-        ['volume','Objem','Volume','L',['L','mL','m3','cm3','gal_US','gal_UK','floz_US'],['L','mL'],[['1','gal_US','L'],['1','m3','L']]],
-        ['mass','Hmotnosť','Mass','kg',['kg','g','mg','t','lb','oz'],['kg','g'],[['1','lb','kg'],['1/2','kg','g']]],
-        ['time','Čas','Time','s',['s','ms','min','h','day'],['h','min'],[['1/3','h','min'],['1','day','h']]],
-        ['speed','Rýchlosť','Speed','m/s',['km/h','m/s','mph','kn'],['km/h','m/s'],[['90','km/h','m/s'],['60','mph','km/h']]],
-        ['temperature','Teplota','Temperature','°C',['degC','degF','K'],['degC','degF'],[['100','degC','degF'],['273.15','K','degC']]],
-        ['temperature_interval','Rozdiel teplôt','Temp. difference','Δ°C',['deltaC','deltaF','deltaK'],['deltaC','deltaF'],[['10','deltaC','deltaF'],['18','deltaF','deltaC']]],
-        ['information','Dáta','Data','B',['B','bit','kB','MB','GB','KiB','MiB','GiB'],['MiB','MB'],[['1','MiB','B'],['8','bit','B']]],
-        ['angle','Uhol','Angle','°',['deg','rad','turn','gon','arcmin','arcsec'],['deg','rad'],[['180','deg','rad'],['1','turn','deg']]]
+        ['length','Dĺžka','Length','m', ['km','m','cm','mm','in','ft','yd','mi'],['km','m']],
+        ['area','Plocha','Area','m²',['m2','cm2','km2','ha','acre','ft2'],['m2','cm2']],
+        ['volume','Objem','Volume','L',['L','mL','m3','cm3','gal_US','gal_UK','floz_US'],['L','mL']],
+        ['mass','Hmotnosť','Mass','kg',['kg','g','mg','t','lb','oz'],['kg','g']],
+        ['time','Čas','Time','s',['s','ms','min','h','day'],['h','min']],
+        ['speed','Rýchlosť','Speed','m/s',['km/h','m/s','mph','kn'],['km/h','m/s']],
+        ['temperature','Teplota','Temperature','°C',['degC','degF','K'],['degC','degF']],
+        ['temperature_interval','Rozdiel teplôt','Temp. difference','Δ°C',['deltaC','deltaF','deltaK'],['deltaC','deltaF']],
+        ['information','Dáta','Data','B',['B','bit','kB','MB','GB','KiB','MiB','GiB'],['MiB','MB']],
+        ['angle','Uhol','Angle','°',['deg','rad','turn','gon','arcmin','arcsec'],['deg','rad']]
     ];
     let catalogue = [], category = 'length', generation = 0, timer = null;
     let conversion = null, catalogRequest = null, copyValue = '', disposed = false;
@@ -64,6 +60,34 @@ function initUnits() {
     let restored = null;
     const compact = window.matchMedia('(max-width: 620px)');
     const mobileLayout = window.matchMedia('(max-width: 620px), (max-width: 980px) and (max-height: 500px) and (orientation: landscape)');
+    function updateInputOverflow() {
+        const style = getComputedStyle(input);
+        const line = parseFloat(style.lineHeight);
+        const border = parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
+        const frame = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom) + border;
+        input.style.height = '0px';
+        const content = input.value ? input.scrollHeight + border : line + frame;
+        input.style.height = Math.ceil(Math.min(3 * line + frame, Math.max(line + frame, content))) + 'px';
+    }
+    window.addEventListener('resize',updateInputOverflow,{signal:lifecycle.signal});
+    const desktopLayout = window.matchMedia('(min-width: 981px)');
+    let settingsExpanded = false;
+    function placeSettings() {
+        const previous = root.querySelector('.unit-settings');
+        const desktop = desktopLayout.matches;
+        if (previous.tagName === (desktop ? 'SECTION' : 'DETAILS')) return;
+        if (previous.tagName === 'DETAILS') settingsExpanded = previous.open;
+        const panel = document.createElement(desktop ? 'section' : 'details');
+        panel.className = 'unit-settings';
+        const heading = document.createElement(desktop ? 'h3' : 'summary');
+        heading.textContent = previous.firstElementChild.textContent;
+        previous.firstElementChild.replaceWith(heading);
+        panel.append(...previous.childNodes);
+        if (!desktop) panel.open = settingsExpanded;
+        previous.replaceWith(panel);
+    }
+    desktopLayout.addEventListener('change', placeSettings, {signal:lifecycle.signal});
+    placeSettings();
     function placeHistory() {
         const card = root.querySelector('.unit-history-card');
         const parent = root.querySelector(mobileLayout.matches ? '.units-column' : '.units-sidebar');
@@ -109,7 +133,7 @@ function initUnits() {
             settings:{'unit-precision':String(context.precision),'unit-places-mode':context.places===-1?'full':context.places===10?'auto':'custom',
                 'unit-places':String(context.places===-1?10:context.places),'unit-notation':context.notation,
                 'unit-rounding':context.rounding,'unit-angle':context.angle},
-            body:{ok:true,result:entry.result,unit:entry.to,symbol:entry.symbol,
+            body:{ok:true,result:entry.result,approx:entry.approx,unit:entry.to,symbol:entry.symbol,
                 input_approximate:entry.input_approximate,factor_approximate:entry.factor_approximate,
                 value:{...entry.value,unit:entry.to}},number:0};
     }
@@ -160,6 +184,9 @@ function initUnits() {
     }
     function showResult(body, message) {
         result.textContent=body.result; $('unit-result-symbol').textContent=body.symbol;
+        const approximation = $('unit-result-approx');
+        approximation.textContent = body.approx ? '≈ ' + body.approx + ' ' + body.symbol : '';
+        approximation.hidden = !body.approx;
         copyValue=body.result; $('unit-copy').disabled=false; setStatus(message);
         meta.textContent=(body.input_approximate || body.factor_approximate?text.approximate+'. ':text.exact+'. ')+
             (body.input_approximate?text.inputApprox+' ':'')+(body.factor_approximate?text.pi+' ':'')+
@@ -214,6 +241,7 @@ function initUnits() {
     function invalidate() {
         ++generation; clearTimeout(timer); conversion?.abort();
         copyValue=''; result.textContent=''; $('unit-result-symbol').textContent='';
+        $('unit-result-approx').textContent=''; $('unit-result-approx').hidden=true;
         $('unit-copy').disabled=true; meta.hidden=true; $('unit-retry').hidden=true;
         return generation;
     }
@@ -237,7 +265,10 @@ function initUnits() {
             const link=document.createElement('a'); link.textContent=unit[english?'name_en':'name_sk'];
             link.href=unit.source_url; link.target='_blank'; link.rel='noopener noreferrer'; node.append(link);
         });
-        $('unit-category-note').textContent=(category.startsWith('temperature') ? text.temperature : category==='information'?text.information:category==='volume'?text.volume:text.defaultNote)+' '+text.readOnly;
+        const note = $('unit-category-note');
+        note.textContent = category.startsWith('temperature') ? text.temperature
+            : category==='information' ? text.information : category==='volume' ? text.volume : '';
+        note.hidden = !note.textContent;
     }
     function chooseCategory(key, pair) {
         category=key;
@@ -261,13 +292,6 @@ function initUnits() {
         const selected=pair || c[5];
         from.value=units.some(u=>u.id===selected[0])?selected[0]:units[0].id;
         to.value=units.some(u=>u.id===selected[1])?selected[1]:units[0].id;
-        $('unit-examples').replaceChildren();
-        for (const [value,a,b] of c[6]) {
-            const button=document.createElement('button'); button.type='button';
-            button.textContent=`${value} ${a} → ${b}`;
-            button.addEventListener('click',()=>{ input.value=value; from.value=a; to.value=b; info(); schedule(0); input.focus(); },{signal:lifecycle.signal});
-            $('unit-examples').append(button);
-        }
         info(); schedule(0);
     }
     async function calculate(confirm=false, id=generation) {
@@ -338,6 +362,7 @@ function initUnits() {
         }
     }
     function schedule(delay=250) {
+        updateInputOverflow();
         retryConfirmation=false;
         const id=invalidate(); root.removeAttribute('aria-busy'); save();
         if (!input.value.trim()) { setStatus(text.empty); return; }

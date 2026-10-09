@@ -1,4 +1,5 @@
 #include "unit_web.h"
+#include "web_api.h"
 #include "tokenizer.h"
 #include "../internal/numforge_alloc.h"
 #include <numforge/runtime.h>
@@ -205,6 +206,11 @@ CalculatorStatus numforge_web_conversion_response(const ApplicationConversion *e
     json_append(&buffer, "{\"ok\":true,\"result\":"); json_string(&buffer, entry->display);
     json_append(&buffer, ",\"unit\":"); json_string(&buffer, entry->to);
     json_append(&buffer, ",\"symbol\":"); json_string(&buffer, to->symbol);
+    char *approximation = numforge_web_fraction_approximation(entry->display);
+    if (approximation != NULL) {
+        json_append(&buffer, ",\"approx\":"); json_string(&buffer, approximation);
+        free(approximation);
+    }
     json_append(&buffer, ",\"input_approximate\":%s,\"factor_approximate\":%s",
         entry->input_approximate ? "true" : "false", entry->factor_approximate ? "true" : "false");
     if (snapshot != NULL) {

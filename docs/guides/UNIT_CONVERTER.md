@@ -22,20 +22,23 @@ form controls and background. All assets are embedded in `numforge_web`.
    value. **Copy** copies the result number; the destination symbol is displayed
    separately. Long results wrap and can be scrolled with keyboard focus.
 
-The desktop sidebar offers ten quantity categories and examples. On narrow
+The desktop sidebar offers ten quantity categories and conversion history. On narrow
 screens the categories collapse behind a button; choosing one closes the menu
 and returns keyboard focus to that button. Native selects, visible focus,
 labelled controls and live status messages support keyboard/screen-reader use.
 Shift+Enter inserts a line break; Enter converts.
+The input starts at one line, grows to at most three visible lines, and then
+scrolls internally without an expansion button.
 
 On phones, confirming a conversion dismisses the input keyboard and reveals the
-result below the fixed header. Live previews keep the page position. History
+result below the navigation. The mobile header hides when scrolling down and
+returns when scrolling up. Live previews keep the page position. History
 sits below the result in portrait and landscape, and introductory/help paragraphs
 are hidden; error messages and unit-source information remain available.
 
 On desktop viewports at least 1200 pixels wide and 740 pixels high, the page
-uses one screen: expanded settings sit beside the input, with the result and
-footer remaining visible. The converter uses only its content height; remaining
+uses one screen: settings stay visible beside the input, with the result and
+footer remaining accessible. The converter reserves a stable height; remaining
 space goes to the result panel. Long numeric results scroll within their field.
 Narrower or shorter windows use normal page scrolling, including around
 961–1199 pixels where the calculator's desktop styles would otherwise lock it.
@@ -48,6 +51,10 @@ RAD/DEG controls functions inside the expression; source/destination units
 control the conversion. Approximation notes distinguish approximate expression
 evaluation and pi-based angle factors. Exact factors do not imply unrounded
 displayed text or certified rounding of approximate calculations.
+On desktop these controls are permanently visible; smaller screens retain a
+collapsible section. Short fraction results also show a secondary decimal hint
+with the output unit, separated from the exact value by a rule. Copying keeps
+the primary exact value; the hint is not an error bound.
 
 **About units and sources** links to the definitions for the selected units and
 explains distinctions such as temperature points versus intervals, MB versus

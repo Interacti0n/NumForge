@@ -1,5 +1,30 @@
 const {test,expect}=require('@playwright/test');
 
+test('conversion input grows to three lines and scrolls without shifting desktop panels',async({page})=>{
+    for(const [width,height] of [[1366,768],[390,844],[812,375]]) {
+        await page.setViewportSize({width,height});
+        await page.goto('/units?lang=en');
+        await expect(page.locator('#unit-result')).not.toBeEmpty();
+        await page.locator('#unit-input').fill('1');
+        const oneLine=(await page.locator('#unit-input').boundingBox()).height;
+        const resultTop=(await page.locator('.card[aria-labelledby="unit-result-title"]').boundingBox()).y;
+        await page.locator('#unit-input').fill('1+'.repeat(180)+'1');
+        const metrics=await page.locator('#unit-input').evaluate(el=>{
+            const s=getComputedStyle(el);return {height:el.getBoundingClientRect().height,
+                limit:3*parseFloat(s.lineHeight)+parseFloat(s.paddingTop)+parseFloat(s.paddingBottom)+2,
+                overflow:el.scrollHeight>el.clientHeight};
+        });
+        expect(metrics.height).toBeGreaterThan(oneLine);
+        expect(metrics.height).toBeLessThanOrEqual(metrics.limit+2);
+        expect(metrics.overflow).toBe(true);
+        if(width>980)expect((await page.locator('.card[aria-labelledby="unit-result-title"]').boundingBox()).y).toBe(resultTop);
+        await page.locator('#unit-input').press('Enter');
+        await expect(page.locator('#unit-result')).toHaveText('181000');
+        await page.locator('#unit-input').fill('1');
+        expect((await page.locator('#unit-input').boundingBox()).height).toBe(oneLine);
+    }
+});
+
 for(const lang of ['sk','en']) test.describe(lang,()=>{
     test('categories, exact preview, confirmation, swap, copy and approximation',async({page})=>{
         await page.goto('/units?lang='+lang);
@@ -7,15 +32,21 @@ for(const lang of ['sk','en']) test.describe(lang,()=>{
         await expect(page.locator('[data-quantity]')).toHaveCount(10);
         await page.locator('#unit-input').fill('1/3');
         await expect(page.locator('#unit-result')).toHaveText('1000/3');
+        await expect(page.locator('#unit-result-approx')).toHaveText('≈ 333.3333333333 m');
         await page.locator('#unit-input').press('Enter');
         await expect(page.locator('#unit-status')).toHaveText(lang==='sk'?'Prevod potvrdený':'Conversion confirmed');
+        await expect(page.locator('#unit-result-approx')).toHaveText('≈ 333.3333333333 m');
         await page.locator('#unit-copy').click();
         expect(await page.evaluate(()=>navigator.clipboard.readText())).toBe('1000/3');
+        await page.locator('.unit-history-restore').first().click();
+        await expect(page.locator('#unit-result-approx')).toHaveText('≈ 333.3333333333 m');
         await page.locator('#unit-swap').click();
         await expect(page.locator('#unit-result')).toHaveText('1/3000');
+        await expect(page.locator('#unit-result-approx')).toHaveText('≈ 0.0003333333 km');
         await page.locator('[data-quantity="temperature"]').click();
         await page.locator('#unit-input').fill('100');
         await expect(page.locator('#unit-result')).toHaveText('212');
+        await expect(page.locator('#unit-result-approx')).toBeHidden();
         await page.locator('[data-quantity="temperature_interval"]').click();
         await page.locator('#unit-input').fill('10');
         await expect(page.locator('#unit-result')).toHaveText('18');
@@ -36,7 +67,7 @@ for(const lang of ['sk','en']) test.describe(lang,()=>{
         await expect(page.locator('#unit-result')).toHaveText('1000');
         await page.locator('[data-quantity="speed"]').click();
         await page.locator('#unit-input').fill('1');
-        await page.locator('.unit-settings summary').click();
+        await expect(page.locator('.unit-settings h3')).toBeVisible();
         await page.locator('#unit-places-mode').selectOption('custom');
         await page.locator('#unit-places').fill('2');await page.locator('#unit-places').dispatchEvent('change');
         await page.locator('#unit-notation').selectOption('plain');
@@ -91,16 +122,46 @@ test('navigation preserves calculator variables, history and converter selection
     await expect(page.locator('#result')).toHaveText('4/3');
 });
 
+test('desktop precision settings keep converter and result geometry stable',async({page})=>{
+    for(const lang of ['sk','en']) {
+        await page.goto('/units?lang='+lang);
+        await page.locator('#unit-input').fill('1');
+        await expect(page.locator('#unit-result')).toHaveText('1000');
+        await expect(page.locator('.unit-example-card')).toHaveCount(0);
+        for(const [width,height] of [[1920,1080],[1366,768],[1100,700]]) {
+            await page.setViewportSize({width,height});
+            await expect(page.locator('.unit-settings h3')).toBeVisible();
+            const geometry=()=>page.locator('.units-column > .card').evaluateAll(cards=>cards.map(n=>{
+                const r=n.getBoundingClientRect();return {top:r.top,height:r.height};
+            }));
+            const before=await geometry();
+            await expect(page.locator('.unit-settings summary')).toHaveCount(0);
+            await page.locator('#unit-places-mode').selectOption('custom');
+            expect(await geometry(),`${lang}: ${width} × ${height}`).toEqual(before);
+            await page.locator('#unit-input').fill('2');
+            await page.locator('#unit-submit').click();
+            await expect(page.locator('#unit-result')).toHaveText('2000');
+        }
+        await page.setViewportSize({width:390,height:844});
+        await page.locator('.unit-settings summary').click();
+        await page.locator('#unit-precision').fill('50');
+        await page.setViewportSize({width:1366,height:768});
+        await expect(page.locator('.unit-settings h3')).toBeVisible();
+        await expect(page.locator('#unit-precision')).toHaveValue('50');
+        await page.setViewportSize({width:390,height:844});
+        await expect(page.locator('.unit-settings')).toHaveAttribute('open','');
+    }
+});
+
 test('expanded desktop workbench fits the viewport while smaller screens scroll naturally',async({page})=>{
     await page.goto('/units?lang=sk');
     await expect(page.locator('#unit-result')).toHaveText('1000');
-    await page.locator('.unit-settings summary').click();
+    await expect(page.locator('.unit-settings h3')).toBeVisible();
     await page.locator('#unit-places-mode').selectOption('custom');
     await page.locator('.unit-info summary').click();
     await page.locator('[data-quantity="temperature"]').click();
     await page.locator('#unit-input').press('Enter');
     await expect(page.locator('#unit-history-list li')).toHaveCount(1);
-    await page.locator('.unit-example-card summary').click();
     for(const [width,height] of [[1920,1080],[1440,900],[1366,768],[1280,768]]) {
         await page.setViewportSize({width,height});
         expect(await page.evaluate(()=>{
@@ -155,7 +216,7 @@ test('history keeps exact values, restores snapshots and ignores previews/errors
     await expect(page.locator('#unit-result')).toHaveText('1000');
     await expect(page.locator('#unit-history-list li')).toHaveCount(0);
     await page.locator('#unit-input').fill('1/3');
-    await page.locator('.unit-settings summary').click();
+    await expect(page.locator('.unit-settings h3')).toBeVisible();
     await page.locator('#unit-notation').selectOption('plain');
     await page.locator('#unit-places-mode').selectOption('custom');
     await page.locator('#unit-places').fill('2');await page.locator('#unit-places').dispatchEvent('change');

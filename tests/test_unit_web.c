@@ -55,6 +55,8 @@ static void test_exact_and_approximate_conversion(void)
         TEST_ASSERT_EQUAL(CALCULATOR_OK, numforge_web_convert(NULL, cases[i][1], &opts, &response, &error, &code));
         TEST_ASSERT_NOT_NULL(strstr(response, cases[i][2]));
         TEST_ASSERT_NOT_NULL(strstr(response, "\"unit\":"));
+        if (i == 0) TEST_ASSERT_NOT_NULL(strstr(response, "\"approx\":\"333.3333333333\""));
+        else TEST_ASSERT_NULL(strstr(response, "\"approx\":"));
         free(response);
     }
 }

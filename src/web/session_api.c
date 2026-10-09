@@ -1,5 +1,6 @@
 #include "session_api.h"
 #include "unit_web.h"
+#include "web_api.h"
 #include "functions.h"
 #include <numforge/runtime.h>
 #include <stdarg.h>
@@ -162,6 +163,11 @@ static void conversion(Json *json, const ApplicationConversion *entry, bool full
     append(json, ",\"from\":"); string(json, entry->from);
     append(json, ",\"to\":"); string(json, entry->to);
     append(json, ",\"result\":"); string(json, entry->display);
+    char *approximation = numforge_web_fraction_approximation(entry->display);
+    if (approximation != NULL) {
+        append(json, ",\"approx\":"); string(json, approximation);
+        free(approximation);
+    }
     append(json, ",\"symbol\":"); string(json, unit->symbol);
     append(json, ",\"input_approximate\":%s,\"factor_approximate\":%s,\"value\":",
         entry->input_approximate ? "true" : "false", entry->factor_approximate ? "true" : "false");

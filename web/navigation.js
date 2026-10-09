@@ -10,6 +10,7 @@ const routes = new Set(['/', '/api', '/graph', '/solve', '/units', '/login', '/r
 
 function setMenuOpen(open)
 {
+    if (open) pageHeader?.classList.remove('scroll-hidden');
     pageHeader?.classList.toggle('menu-open', open);
     navToggle?.setAttribute('aria-expanded', String(open));
     const slovak = document.documentElement.lang === 'sk';
@@ -36,6 +37,40 @@ window.matchMedia('(min-width: 981px)').addEventListener('change', event => {
     if (event.matches) setMenuOpen(false);
 });
 
+// Listen to both document scrolling and the guide's own reading pane.
+const mobileHeader = window.matchMedia('(max-width: 980px)');
+let scrollSource = null;
+let scrollPosition = 0;
+let scrollDistance = 0;
+function resetHeaderScroll()
+{
+    pageHeader?.classList.remove('scroll-hidden');
+    scrollSource = null;
+    scrollDistance = 0;
+}
+document.addEventListener('scroll', event => {
+    const source = event.target === document ? document.scrollingElement : event.target;
+    if (!mobileHeader.matches || !pageHeader || !(source instanceof Element)) return;
+    if (source !== document.scrollingElement && !source.matches('.guide-content, .upcoming-main, .calculator-column, .units-column')) return;
+    const position = Math.max(0, source.scrollTop);
+    const delta = position - (source === scrollSource ? scrollPosition : 0);
+    scrollSource = source;
+    scrollPosition = position;
+    if (position <= 16 || pageHeader.classList.contains('menu-open') || (pageHeader.contains(document.activeElement) && document.activeElement.matches(':focus-visible')))
+    {
+        pageHeader.classList.remove('scroll-hidden');
+        scrollDistance = 0;
+        return;
+    }
+    if (Math.sign(delta) !== Math.sign(scrollDistance)) scrollDistance = 0;
+    scrollDistance += delta;
+    if (scrollDistance >= 16) pageHeader.classList.add('scroll-hidden');
+    else if (scrollDistance <= -8) pageHeader.classList.remove('scroll-hidden');
+}, {capture: true, passive: true});
+pageHeader?.addEventListener('focusin', resetHeaderScroll);
+mobileHeader.addEventListener('change', resetHeaderScroll);
+window.addEventListener('numforge:navigate', resetHeaderScroll);
+
 function setupUpcoming()
 {
     const upcomingPage = document.querySelector('[data-upcoming]');
@@ -59,7 +94,7 @@ function setupUpcoming()
             solve: ['Equation solver', 'A dedicated tool for finding solutions to equations is in development.',
                 'What we plan', 'First we will define supported equation types, precision and how solutions are shown.', 'x='],
             login: ['Sign in', 'Sign-in is not available yet.',
-                'What comes next', 'Once accounts are available, you will be able to sign in securely and use your own workspace.', '→', 'Sign up', '/register?lang=en'],
+                'What comes next', 'Once accounts are available, you will be able to sign in securely and use your own workspace.', '→', 'Create account', '/register?lang=en'],
             register: ['Create an account', 'Registration is planned alongside a personal workspace.',
                 'What comes next', 'Before launch, we will decide what information an account needs and how it is stored securely.', '+', 'Sign in', '/login?lang=en']
         }
@@ -163,6 +198,63 @@ function syncChrome(current, incoming)
     if (text) text.textContent = incoming.querySelector(':scope > span').textContent;
 }
 
+function setupGuideNavigation()
+{
+    const content = document.querySelector('.guide-content');
+    const toc = document.querySelector('.guide-toc');
+    if (!content || !toc) return null;
+    const lifecycle = new AbortController();
+    const links = [...toc.querySelectorAll('a[href^="#"]')];
+    const sections = [...content.querySelectorAll('h1[id], h2[id]')].map(heading => ({heading,
+        link: links.find(link => link.hash === '#' + heading.id)})).filter(section => section.link);
+    sections.forEach(section => toc.append(section.link));
+    const heading = document.createElement('div');
+    heading.className = 'guide-nav-heading';
+    const label = document.createElement('span');
+    label.textContent = document.documentElement.lang === 'sk' ? 'Obsah príručky' : 'Guide contents';
+    const position = document.createElement('span');
+    position.className = 'guide-position';
+    heading.append(label, position);
+    toc.before(heading);
+    const compact = window.matchMedia('(max-width: 930px)');
+    let active = null, frame = 0;
+    function update()
+    {
+        frame = 0;
+        const boundary = content.getBoundingClientRect().top + 48;
+        let selected = sections[0];
+        for (const section of sections)
+            if (section.heading.getBoundingClientRect().top <= boundary) selected = section;
+        if (content.scrollTop > 0 && content.scrollTop + content.clientHeight >= content.scrollHeight - 2)
+            selected = sections.at(-1);
+        if (!selected) return;
+        position.textContent = String(sections.indexOf(selected) + 1).padStart(2, '0') + ' / ' + sections.length;
+        if (active === selected.link) return;
+        active = selected.link;
+        links.forEach(link => {
+            if (link === active) link.setAttribute('aria-current', 'location');
+            else link.removeAttribute('aria-current');
+        });
+        if (compact.matches)
+        {
+            const bounds = toc.getBoundingClientRect(), item = active.getBoundingClientRect();
+            if (item.left < bounds.left + 10 || item.right > bounds.right - 10)
+                toc.scrollTo({left: toc.scrollLeft + item.left - bounds.left - (toc.clientWidth - item.width) / 2,
+                    behavior: reducedMotion.matches ? 'auto' : 'smooth'});
+        }
+    }
+    function schedule()
+    {
+        if (!frame) frame = requestAnimationFrame(update);
+    }
+    content.addEventListener('scroll', schedule, {passive:true, signal:lifecycle.signal});
+    window.addEventListener('resize', () => {active = null; schedule();}, {signal:lifecycle.signal});
+    const observer = new ResizeObserver(schedule);
+    observer.observe(content);
+    update();
+    return () => {lifecycle.abort();observer.disconnect();cancelAnimationFrame(frame);};
+}
+let disposeGuideNavigation = setupGuideNavigation();
 let activePageKey = window.location.pathname + window.location.search;
 async function navigate(destination, addHistory = true)
 {
@@ -215,6 +307,8 @@ async function navigate(destination, addHistory = true)
         window.numforgeDisposeCalculator = null;
         window.numforgeDisposeUnits?.();
         window.numforgeDisposeUnits = null;
+        disposeGuideNavigation?.();
+        disposeGuideNavigation = null;
 
         const replacement = document.importNode(incomingContent, true);
         if (stagedStyle)
@@ -232,6 +326,7 @@ async function navigate(destination, addHistory = true)
         if (addHistory) history.pushState(null, '', destination.href);
         activePageKey = destination.pathname + destination.search;
         setupUpcoming();
+        disposeGuideNavigation = setupGuideNavigation();
         if (replacement.querySelector('#unit-converter'))
         {
             if (window.numforgeInitUnits)

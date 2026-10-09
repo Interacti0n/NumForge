@@ -79,21 +79,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 .expression-card { position: relative; }
 .expression-card .section-heading { margin-bottom: 18px; }
-.expression-card.is-expanded { z-index: 10; }
 #calculator { position: relative; display: flex; align-items: center; gap: 10px; }
-.expression-card.is-expanded #calculator::before { content: ""; flex: 1; }
-.expression-card.is-expanded #expression
-{
-    position: absolute;
-    top: 0;
-    left: 0;
-    z-index: 2;
-    width: var(--expanded-width);
-    height: var(--expanded-height);
-    border-color: var(--accent);
-    background: #1b0037;
-    box-shadow: 0 20px 45px #000b;
-}
 #expression
 {
     flex: 1;
@@ -112,9 +98,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
     resize: none;
 }
 #expression::placeholder { color: #9f7fcf; opacity: 1; }
-.expression-actions { display: flex; align-items: center; gap: 12px; }
-.expand-expression { padding: 2px 5px; border: 0; background: transparent; color: var(--mint); font-size: .76rem; font-weight: 700; }
-.expand-expression:hover { text-decoration: underline; }
 .primary-button
 {
     display: inline-flex;
@@ -196,7 +179,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 #result:empty::before { content: attr(data-placeholder); color: #bfa8db; font: .9rem/1.5 var(--font-ui); letter-spacing: 0; }
 #result.error { border-left-color: var(--danger); color: var(--danger); font-family: var(--font-ui); font-size: 1rem; letter-spacing: 0; }
 #result.expanded { height: auto; max-height: none; }
-.result-approx { margin: 2px 0 0 14px; color: #cda8ed; font: .88rem/1.4 var(--font-math); overflow-wrap: anywhere; }
+.result-approx { margin: 12px 0 0; padding-top: 12px; border-top: 1px solid #c994f03d; color: #cda8ed; font: .88rem/1.4 var(--font-math); overflow-wrap: anywhere; }
 #expand-result { margin-top: 9px; }
 #result-dialog
 {
@@ -509,8 +492,6 @@ html[lang="en"] .function-group:not(.search-results)::before { content: "Functio
     #settings-overview { display: inline; margin-left: auto; color: var(--quiet); font-size: .75rem; }
     .precision-controls:not([hidden]) { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border-soft); }
     .precision-controls { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
-    .expression-card.is-expanded #calculator::before { display: none; }
-    .expression-card.is-expanded #expression { position: static; width: 100%; }
 }
 @media (max-width: 960px) and (max-height: 500px) and (orientation: landscape)
 {

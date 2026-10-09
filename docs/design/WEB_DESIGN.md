@@ -61,9 +61,9 @@ functions are remembered; as many as fit appear in one row below the keypad,
 with larger touch targets on narrow screens. Narrow screens scroll at normal scale so controls retain
 usable touch sizes. The SK/EN API guide has a linked table of contents.
 The expression field starts at one line and grows to five as text wraps;
-longer input expands over the result
-without hiding the keypad or function library. Enter collapses the field and
-confirms the calculation; Esc only collapses it. A truncated result uses a visible
+longer input scrolls within the field without an expansion button.
+Units input follows the same behavior with a three-line limit. Enter
+confirms the calculation; Shift+Enter inserts a line break. A truncated result uses a visible
 ellipsis and an explicit expansion button.
 On desktop, the result uses the height available above the keypad before
 offering full-result expansion. The calculator shell fits the viewport at ordinary window heights;
