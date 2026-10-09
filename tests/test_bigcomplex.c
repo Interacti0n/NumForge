@@ -421,10 +421,53 @@ static void test_complex_trigonometry(void) {
     TEST_ASSERT_EQUAL_STRING("i",text);free(text);
     bigcomplex_destroy(v);bigcomplex_destroy(r);
 }
+static void test_complex_hyperbolic(void) {
+    typedef BigComplexStatus (*Hyperbolic)(BigComplex *,const BigComplex *,int64_t,BigDecimalRoundingMode);
+    Hyperbolic functions[]={bigcomplex_sinh,bigcomplex_cosh,bigcomplex_tanh};
+    const char *expected[][3]={{"0.8414709848*i","0.5403023059","1.5574077247*i"},
+        {"0.6349639148 + 1.2984575814*i","0.8337300251 + 0.9888977058*i","1.0839233273 + 0.2717525853*i"},
+        {"-0.6349639148 + 1.2984575814*i","0.8337300251 - 0.9888977058*i","-1.0839233273 + 0.2717525853*i"}};
+    const char *parts[][2]={{"0","1"},{"1","1"},{"-1","1"}};
+    BigComplex *v=bigcomplex_create(),*r=number("9","8");char *text=NULL;
+    TEST_ASSERT_NOT_NULL(v);
+    for(size_t op=0;op<3;op++) {
+        for(size_t n=0;n<3;n++) {
+            TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(v,parts[n][0],parts[n][1]));
+            /* Avoid double-rounding ties when formatting 10 decimal places. */
+            TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,functions[op](v,v,16,BIGDECIMAL_ROUND_HALF_EVEN));
+            TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_format(v,10,BIGDECIMAL_ROUND_HALF_EVEN,BIGDECIMAL_FORMAT_AUTO,100,&text));
+            TEST_ASSERT_EQUAL_STRING(expected[n][op],text);free(text);text=NULL;
+        }
+        TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(v,"0","0"));
+        TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,functions[op](v,v,12,BIGDECIMAL_ROUND_HALF_EVEN));text_is(v,op==1?"1":"0");
+        TEST_ASSERT_EQUAL(BIGCOMPLEX_INVALID_ARGUMENT,functions[op](r,v,0,BIGDECIMAL_ROUND_HALF_EVEN));text_is(r,"9 + 8*i");
+        TEST_ASSERT_EQUAL(BIGCOMPLEX_INVALID_ARGUMENT,functions[op](r,v,INT64_MAX,BIGDECIMAL_ROUND_HALF_EVEN));
+        TEST_ASSERT_EQUAL(BIGCOMPLEX_INVALID_ARGUMENT,functions[op](r,v,12,(BigDecimalRoundingMode)99));
+        TEST_ASSERT_EQUAL(BIGCOMPLEX_NULL_ARGUMENT,functions[op](r,NULL,12,BIGDECIMAL_ROUND_HALF_EVEN));
+    }
+    BigDecimal *part=bigdecimal_create(),*bound=bigdecimal_create();bool zero=true,negative=false;int comparison=0;
+    TEST_ASSERT_NOT_NULL(part);TEST_ASSERT_NOT_NULL(bound);
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(v,"1000","0.1"));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_tanh(v,v,12,BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_get_real(part,v));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK,bigdecimal_set_string(bound,"1"));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK,bigdecimal_compare(&comparison,part,bound));TEST_ASSERT_EQUAL(0,comparison);
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_get_imaginary(part,v));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK,bigdecimal_is_zero(&zero,part));TEST_ASSERT_FALSE(zero);
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK,bigdecimal_is_negative(&negative,part));TEST_ASSERT_FALSE(negative);
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK,bigdecimal_set_string(bound,"1E-800"));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK,bigdecimal_compare(&comparison,part,bound));TEST_ASSERT_TRUE(comparison<0);
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(v,"1E100","0"));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_tanh(v,v,12,BIGDECIMAL_ROUND_HALF_EVEN));text_is(v,"1");
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(v,"-1E100","0"));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_tanh(v,v,12,BIGDECIMAL_ROUND_HALF_EVEN));text_is(v,"-1");
+    bigdecimal_destroy(part);bigdecimal_destroy(bound);bigcomplex_destroy(v);bigcomplex_destroy(r);
+}
 static void test_allocation_failures(void) {
     BigComplex *a=number("1.2","-3.4"), *b=number("5.6","7.8"), *r=number("9","8");
+    BigComplex *small=number("0.1","0.1"),*zero=number("0","0");
     BigDecimal *d=bigdecimal_create(); TEST_ASSERT_NOT_NULL(d);
-    for(int operation=0;operation<19;operation++) {
+    for(int operation=0;operation<24;operation++) {
         size_t count=0;
         for(size_t failure=0;;failure++) {
             TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(r,"9","8"));
@@ -451,7 +494,12 @@ static void test_allocation_failures(void) {
                 case 15: status=bigcomplex_log(r,a,a,8,BIGDECIMAL_ROUND_HALF_EVEN);break;
                 case 16: status=bigcomplex_sin(r,a,8,BIGDECIMAL_ROUND_HALF_EVEN);break;
                 case 17: status=bigcomplex_cos(r,a,8,BIGDECIMAL_ROUND_HALF_EVEN);break;
-                default: status=bigcomplex_tan(r,a,8,BIGDECIMAL_ROUND_HALF_EVEN);break;
+                case 18: status=bigcomplex_tan(r,a,8,BIGDECIMAL_ROUND_HALF_EVEN);break;
+                case 19: status=bigcomplex_sinh(r,small,4,BIGDECIMAL_ROUND_HALF_EVEN);break;
+                case 20: status=bigcomplex_cosh(r,small,4,BIGDECIMAL_ROUND_HALF_EVEN);break;
+                case 21: status=bigcomplex_tanh(r,zero,4,BIGDECIMAL_ROUND_HALF_EVEN);break;
+                case 22: status=bigcomplex_tanh(r,small,4,BIGDECIMAL_ROUND_HALF_EVEN);break;
+                default: status=bigcomplex_tanh(r,a,4,BIGDECIMAL_ROUND_HALF_EVEN);break;
             }
             if(failure==0) count=numforge_test_allocator_call_count();
             numforge_test_allocator_end();
@@ -463,9 +511,13 @@ static void test_allocation_failures(void) {
     TEST_ASSERT_TRUE(numforge_budget_begin(1000,0,0));
     TEST_ASSERT_NULL(bigcomplex_create());
     TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_MEMORY,numforge_budget_failure());numforge_budget_end();
-    bigdecimal_destroy(d);bigcomplex_destroy(a);bigcomplex_destroy(b);bigcomplex_destroy(r);
+    bigdecimal_destroy(d);bigcomplex_destroy(a);bigcomplex_destroy(b);bigcomplex_destroy(r);bigcomplex_destroy(small);bigcomplex_destroy(zero);
 }
-int main(void) {
+int main(int argc,char **argv) {
     UNITY_BEGIN();RUN_TEST(test_lifecycle_and_text);RUN_TEST(test_arithmetic_and_aliasing);
-    RUN_TEST(test_division_and_contracts);RUN_TEST(test_powers_and_modulus);RUN_TEST(test_formatting);RUN_TEST(test_exact_rationals_and_forms);RUN_TEST(test_rational_failure_contracts);RUN_TEST(test_complex_exponential_and_exact_helpers);RUN_TEST(test_principal_square_root);RUN_TEST(test_principal_logarithm);RUN_TEST(test_principal_powers);RUN_TEST(test_base_logarithms);RUN_TEST(test_complex_trigonometry);RUN_TEST(test_allocation_failures);return UNITY_END();
+    RUN_TEST(test_division_and_contracts);RUN_TEST(test_powers_and_modulus);RUN_TEST(test_formatting);RUN_TEST(test_exact_rationals_and_forms);RUN_TEST(test_rational_failure_contracts);RUN_TEST(test_complex_exponential_and_exact_helpers);RUN_TEST(test_principal_square_root);RUN_TEST(test_principal_logarithm);RUN_TEST(test_principal_powers);RUN_TEST(test_base_logarithms);RUN_TEST(test_complex_trigonometry);RUN_TEST(test_complex_hyperbolic);
+    /* Default CTest remains exhaustive; numerical checks can be rerun quickly
+     * after a reference/formatting change without repeating unchanged faults. */
+    if(argc!=2 || strcmp(argv[1],"--numeric-only")!=0) RUN_TEST(test_allocation_failures);
+    return UNITY_END();
 }

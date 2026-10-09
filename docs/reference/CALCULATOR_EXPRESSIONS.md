@@ -81,7 +81,17 @@ errors can be amplified. Finite decimal pi approximations are not symbolic
 poles, and tiny residuals remain. Large imaginary parts can exhaust scale or
 runtime limits, even when the tangent itself is bounded. Exact components
 project at guarded precision; results stay approximate complex values.
-Complex inverse trigonometry and hyperbolic calls remain unsupported.
+`sinh(z)`, `cosh(z)` and `tanh(z)` also accept complex inputs; the imaginary
+angle is always in radians, independently of RAD/DEG. For example `sinh(i)`
+is approximately `0.8414709848*i`, `cosh(i)` is `0.5403023059` and
+`tanh(1+i)` is `1.0839233273 + 0.2717525853*i`. Results retain approximate
+complex types, including zero imaginary components. Real-only calls keep
+their existing scalar behavior. Sinh/cosh grow with large real components.
+Tanh uses a scaled decaying exponential for |re|>0.5 and a guarded quotient
+for smaller real parts; tiny imaginary tails are preserved and may hit scale
+limits. Near imaginary-axis poles, errors amplify; finite decimal pi inputs
+are not symbolic poles. Complex inverse trigonometry and inverse hyperbolic
+calls remain unsupported.
 
 The web form selector changes display between Cartesian, trigonometric and
 exponential form without changing the stored value. Polar angles are always

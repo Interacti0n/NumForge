@@ -73,6 +73,36 @@ the component squares. Both preserve their destination on failure.
 - BigComplex does not preserve recurring rational components such as `1/3`
   exactly. No claim about the exact mathematical origin of a decimal is made.
 
+## Complex hyperbolic functions
+
+`bigcomplex_sinh` and `bigcomplex_cosh` use
+sinh(x+iy)=sinh(x)cos(y)+i*cosh(x)sin(y) and
+cosh(x+iy)=cosh(x)cos(y)+i*sinh(x)sin(y), with radians and 12 guard
+digits. Real parts can produce exponentially large components. Both APIs
+accept digits>=1 up to INT64_MAX-12. Results are approximate, with no
+correctly-rounded guarantee. Resource/scale limits apply, every failure
+preserves the result, and input/output aliasing is supported.
+
+`bigcomplex_tanh` accepts digits>=1 up to INT64_MAX-24. On the real axis
+it delegates to stable scalar tanh. For |x|<=0.5 it divides guarded sinh(z)
+by cosh(z), protecting tiny real components. For larger |x| it sets
+t=exp(-2*abs(x)), D=(1-t)^2+4*t*cos(y)^2 and returns
+sign(x)*(1-t*t)/D + i*4*t*sin(y)*cos(y)/D. This avoids growing hyperbolic
+intermediates and subtraction in the positive denominator. Twelve guard
+digits precede the final divisions. Small nonzero imaginary tails are
+retained even when the real component rounds to +/-1; a tail beyond decimal
+scale limits may still reject the computation. The scalar real-axis path
+can round huge real inputs to +/-1 without materializing those tails.
+
+Tanh poles are on the imaginary axis at i*(pi/2+k*pi). A computed zero
+denominator returns DIVISION_BY_ZERO. Finite decimal pi approximations are
+not symbolic poles; near-pole errors may amplify. There is no blanket
+correct-rounding guarantee, exact symbolic simplification or all-branches
+interpretation. Complex inputs always use radians, independently of RAD/DEG,
+and stay approximate complex values even when a result displays as real.
+Exact calculator inputs are projected at guarded precision. Complex inverse
+trigonometric and inverse hyperbolic functions remain future work.
+
 ## Complex trigonometry
 
 `bigcomplex_sin`, `bigcomplex_cos` and `bigcomplex_tan` accept finite complex
@@ -99,7 +129,7 @@ The calculator uses this path for complex-typed inputs, including inputs
 whose imaginary part is zero. Exact fractions project at guarded working
 precision. Results remain complex decimal approximations. Real-only inputs
 keep RAD/DEG behavior; complex inputs use radians even in DEG. Complex inverse
-trigonometry and hyperbolic functions remain future work.
+trigonometry and inverse hyperbolic functions remain future work.
 
 ## Principal base logarithms
 

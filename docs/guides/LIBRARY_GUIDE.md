@@ -44,6 +44,8 @@ Include `<numforge/bigint.h>` for arbitrary-precision signed integers,
 Use `bigcomplex_exp` for approximate complex exponentials in radians,
 `bigcomplex_sqrt` for principal square roots and `bigcomplex_ln` for principal
 natural logarithms (zero is invalid, arguments are radians in (-pi, pi]).
+Use `bigcomplex_sinh`, `bigcomplex_cosh` and `bigcomplex_tanh` for complex
+hyperbolic functions; tanh avoids growing intermediates for large real parts.
 Use `bigcomplex_sin`, `bigcomplex_cos` and `bigcomplex_tan` for complex
 trigonometry in radians, and `bigcomplex_log` for principal logarithms with a custom complex base,
 `bigcomplex_pow` for approximate principal general powers, and

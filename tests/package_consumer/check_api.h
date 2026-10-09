@@ -199,6 +199,21 @@ static int public_api_checks(void)
         bigcomplex_format(complex_value, 10, BIGDECIMAL_ROUND_HALF_EVEN, BIGDECIMAL_FORMAT_AUTO, 80, &text) != BIGCOMPLEX_OK ||
         strcmp(text, "0.761594156*i") != 0) goto cleanup;
     free(text); text = NULL;
+    if (bigcomplex_set_strings(complex_value, "0", "1") != BIGCOMPLEX_OK ||
+        bigcomplex_sinh(complex_value, complex_value, 12, BIGDECIMAL_ROUND_HALF_EVEN) != BIGCOMPLEX_OK ||
+        bigcomplex_format(complex_value, 10, BIGDECIMAL_ROUND_HALF_EVEN, BIGDECIMAL_FORMAT_AUTO, 80, &text) != BIGCOMPLEX_OK ||
+        strcmp(text, "0.8414709848*i") != 0) goto cleanup;
+    free(text); text = NULL;
+    if (bigcomplex_set_strings(complex_value, "0", "1") != BIGCOMPLEX_OK ||
+        bigcomplex_cosh(complex_value, complex_value, 12, BIGDECIMAL_ROUND_HALF_EVEN) != BIGCOMPLEX_OK ||
+        bigcomplex_format(complex_value, 10, BIGDECIMAL_ROUND_HALF_EVEN, BIGDECIMAL_FORMAT_AUTO, 80, &text) != BIGCOMPLEX_OK ||
+        strcmp(text, "0.5403023059") != 0) goto cleanup;
+    free(text); text = NULL;
+    if (bigcomplex_set_strings(complex_value, "1", "1") != BIGCOMPLEX_OK ||
+        bigcomplex_tanh(complex_value, complex_value, 12, BIGDECIMAL_ROUND_HALF_EVEN) != BIGCOMPLEX_OK ||
+        bigcomplex_format(complex_value, 10, BIGDECIMAL_ROUND_HALF_EVEN, BIGDECIMAL_FORMAT_AUTO, 80, &text) != BIGCOMPLEX_OK ||
+        strcmp(text, "1.0839233273 + 0.2717525853*i") != 0) goto cleanup;
+    free(text); text = NULL;
     result = 0;
 cleanup:
     bigrationalcomplex_destroy(exact_complex);

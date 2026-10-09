@@ -148,6 +148,24 @@ BigComplexStatus bigcomplex_cos(BigComplex *result, const BigComplex *value,
  * even when the final tangent is bounded. Atomic and alias-safe. */
 BigComplexStatus bigcomplex_tan(BigComplex *result, const BigComplex *value,
     int64_t digits, BigDecimalRoundingMode rounding);
+/* sinh(x+iy)=sinh(x)cos(y)+i*cosh(x)sin(y),
+ * cosh(x+iy)=cosh(x)cos(y)+i*sinh(x)sin(y), radians.
+ * Approximate guarded scalar calls at digits+12; no correct-rounding guarantee.
+ * Large real parts can exhaust runtime/scale limits. digits>=1, <=INT64_MAX-12.
+ * Alias-safe, failure preserves result. */
+BigComplexStatus bigcomplex_sinh(BigComplex *result, const BigComplex *value,
+    int64_t digits, BigDecimalRoundingMode rounding);
+BigComplexStatus bigcomplex_cosh(BigComplex *result, const BigComplex *value,
+    int64_t digits, BigDecimalRoundingMode rounding);
+/* tanh(z), radians. Guarded sinh/cosh quotient for |re|<=0.5; larger real
+ * parts use exp(-2*abs(re)) and a positive scaled denominator, avoiding growing
+ * hyperbolic intermediates. Real-axis inputs use stable BigDecimal tanh.
+ * No symbolic poles or correctly-rounded guarantee. Near imaginary-axis poles
+ * errors amplify. Tiny nonzero imaginary tails are retained; unrepresentable
+ * tails may exceed scale/resource limits even when the real component is bounded.
+ * digits>=1, <=INT64_MAX-24. Alias-safe and atomic on failure. */
+BigComplexStatus bigcomplex_tanh(BigComplex *result, const BigComplex *value,
+    int64_t digits, BigDecimalRoundingMode rounding);
 /* Cartesian delegates to format; polar displays r*(cos(phi)+i*sin(phi)) or
  * r*e^(i*(phi)), radians. Zero displays 0 in every form. Polar coordinates
  * are approximate, with explicit working digits; places is display policy.

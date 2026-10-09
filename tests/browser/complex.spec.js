@@ -1,5 +1,18 @@
 const {test, expect}=require('@playwright/test');
 for(const lang of ['sk','en']) for(const width of [390,1280]) {
+    test(`complex hyperbolic functions use radians ${lang} ${width}`,async({page})=>{
+        await page.addInitScript(()=>localStorage.setItem('numforge-angle-unit','deg'));
+        await page.setViewportSize({width,height:844});await page.goto('/?lang='+lang);
+        const input=page.locator('#expression'),result=page.locator('#result');
+        for(const [expression,expected] of [
+            ['sinh(i)','0.8414709848*i'],['cosh(i)','0.5403023059'],['tanh(i)','1.5574077247*i'],
+            ['sinh(1+i)','0.6349639148 + 1.2984575814*i'],
+            ['cosh(1+i)','0.8337300251 + 0.9888977058*i'],
+            ['tanh(1+i)','1.0839233273 + 0.2717525853*i']
+        ]) {await input.fill(expression);await expect(result).toHaveText(expected);}
+    });
+}
+for(const lang of ['sk','en']) for(const width of [390,1280]) {
     test(`complex trigonometry uses radians ${lang} ${width}`,async({page})=>{
         await page.addInitScript(()=>localStorage.setItem('numforge-angle-unit','deg'));
         await page.setViewportSize({width,height:844});await page.goto('/?lang='+lang);
@@ -191,6 +204,35 @@ test('HTTP complex trigonometry preserves radians, near-pole values and failed s
     expect((await send('sin(90+0i)')).result).toBe('0.8939966636');
     const stored=await (await request.get('/api/session/value?client='+client+'&name=z')).json();
     expect(Number(stored.value.components.real)).toBeCloseTo(Math.cosh(1),12);
+});
+
+test('HTTP complex hyperbolic functions preserve tiny tails, poles and session state',async({request})=>{
+    const client='a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3',base='/api/evaluate?precision=10&angle=deg&client='+client;
+    let revision=1;
+    const send=async(data,action='commit')=>(await request.post(base+'&revision='+(revision++)+'&action='+action,{data})).json();
+    expect((await send('','start')).ok).toBe(true);
+    expect((await send('z=cosh(i)')).result).toBe('0.5403023059');
+    let snapshot=await (await request.get('/api/session/value?client='+client+'&name=z')).json();
+    expect(snapshot.value.kind).toBe('complex_decimal_approximation');expect(snapshot.value.approximate).toBe(true);
+    expect((await send('z=atanh(i)')).ok).toBe(false);
+    expect((await send('ans')).result).toBe('0.5403023059');
+    expect((await send('tanh(-1+i)')).result).toBe('-1.0839233273 + 0.2717525853*i');
+    expect((await send('tanh(0.25+0.5i)')).result).toBe('0.3124206925 + 0.5045007027*i');
+    expect((await send('tanh(0.5+0.5i)')).result).toBe('0.5640831413 + 0.4038964553*i');
+    expect((await send('tanh(0.500000000001+0.5i)')).result).toBe('0.5640831413 + 0.4038964553*i');
+    expect((await send('tanh(1E-40+0i)')).result).toBe('1E-40');
+    expect((await send('tanh(1E100+0i)')).result).toBe('1');
+    expect((await send('tanh(1000+i)')).ok).toBe(true);
+    snapshot=await (await request.get('/api/session/value?client='+client+'&name=ans')).json();
+    expect(Number(snapshot.value.components.real)).toBe(1);expect(snapshot.value.components.imaginary).not.toBe('0');
+    expect((await send('tanh(1E-8+π/2*i)')).ok).toBe(true);
+    snapshot=await (await request.get('/api/session/value?client='+client+'&name=ans')).json();
+    expect(Number(snapshot.value.components.real)/1e8).toBeCloseTo(1,10);
+    expect(Math.abs(Number(snapshot.value.components.imaginary))).toBeLessThan(1e-10);
+    expect((await send('cosh(1+i)^2-sinh(1+i)^2')).ok).toBe(true);
+    snapshot=await (await request.get('/api/session/value?client='+client+'&name=ans')).json();
+    expect(Number(snapshot.value.components.real)).toBeCloseTo(1,12);
+    expect(Math.abs(Number(snapshot.value.components.imaginary))).toBeLessThan(1e-30);
 });
 
 test('HTTP imaginary unit, projections and variable names preserve session semantics',async({request})=>{

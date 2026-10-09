@@ -424,7 +424,7 @@ BigComplexStatus bigcomplex_format_form(const BigComplex *value, BigComplexForm 
 done:free(r);free(a);free(text);bigdecimal_destroy(radius);bigdecimal_destroy(angle);return status;
 }
 static BigComplexStatus complex_sine_cosine(BigComplex *result, const BigComplex *value,
-    int64_t digits, BigDecimalRoundingMode rounding, bool cosine)
+    int64_t digits, BigDecimalRoundingMode rounding, bool cosine, bool hyperbolic)
 {
     if (!result || !value) return BIGCOMPLEX_NULL_ARGUMENT;
     if (digits < 1 || digits > INT64_MAX-12 || rounding < BIGDECIMAL_ROUND_TOWARD_ZERO ||
@@ -434,13 +434,18 @@ static BigComplexStatus complex_sine_cosine(BigComplex *result, const BigComplex
     BigDecimal *sinh_value=bigdecimal_create(),*cosh_value=bigdecimal_create(),*one=bigdecimal_create();
     BigDecimalStatus status=BIGDECIMAL_OUT_OF_MEMORY;
     if (!temporary || !sine || !cosine_value || !sinh_value || !cosh_value || !one) goto done;
-    TRY(bigdecimal_sin(sine,value->real,digits+12,rounding));
-    TRY(bigdecimal_cos(cosine_value,value->real,digits+12,rounding));
-    TRY(bigdecimal_sinh(sinh_value,value->imaginary,digits+12,rounding));
-    TRY(bigdecimal_cosh(cosh_value,value->imaginary,digits+12,rounding));
-    TRY(bigdecimal_mul(temporary->real,cosine ? cosine_value : sine,cosh_value));
-    TRY(bigdecimal_mul(temporary->imaginary,cosine ? sine : cosine_value,sinh_value));
-    if (cosine) TRY(bigdecimal_negate(temporary->imaginary,temporary->imaginary));
+    TRY(bigdecimal_sin(sine,hyperbolic ? value->imaginary : value->real,digits+12,rounding));
+    TRY(bigdecimal_cos(cosine_value,hyperbolic ? value->imaginary : value->real,digits+12,rounding));
+    TRY(bigdecimal_sinh(sinh_value,hyperbolic ? value->real : value->imaginary,digits+12,rounding));
+    TRY(bigdecimal_cosh(cosh_value,hyperbolic ? value->real : value->imaginary,digits+12,rounding));
+    if (hyperbolic) {
+        TRY(bigdecimal_mul(temporary->real,cosine ? cosh_value : sinh_value,cosine_value));
+        TRY(bigdecimal_mul(temporary->imaginary,cosine ? sinh_value : cosh_value,sine));
+    } else {
+        TRY(bigdecimal_mul(temporary->real,cosine ? cosine_value : sine,cosh_value));
+        TRY(bigdecimal_mul(temporary->imaginary,cosine ? sine : cosine_value,sinh_value));
+        if (cosine) TRY(bigdecimal_negate(temporary->imaginary,temporary->imaginary));
+    }
     TRY(bigdecimal_set_string(one,"1"));
     TRY(bigdecimal_div_significant(temporary->real,temporary->real,one,digits,rounding));
     TRY(bigdecimal_div_significant(temporary->imaginary,temporary->imaginary,one,digits,rounding));
@@ -451,10 +456,81 @@ done:
 }
 BigComplexStatus bigcomplex_sin(BigComplex *result, const BigComplex *value,
     int64_t digits, BigDecimalRoundingMode rounding)
-{ return complex_sine_cosine(result,value,digits,rounding,false); }
+{ return complex_sine_cosine(result,value,digits,rounding,false,false); }
 BigComplexStatus bigcomplex_cos(BigComplex *result, const BigComplex *value,
     int64_t digits, BigDecimalRoundingMode rounding)
-{ return complex_sine_cosine(result,value,digits,rounding,true); }
+{ return complex_sine_cosine(result,value,digits,rounding,true,false); }
+BigComplexStatus bigcomplex_sinh(BigComplex *result, const BigComplex *value,
+    int64_t digits, BigDecimalRoundingMode rounding)
+{ return complex_sine_cosine(result,value,digits,rounding,false,true); }
+BigComplexStatus bigcomplex_cosh(BigComplex *result, const BigComplex *value,
+    int64_t digits, BigDecimalRoundingMode rounding)
+{ return complex_sine_cosine(result,value,digits,rounding,true,true); }
+BigComplexStatus bigcomplex_tanh(BigComplex *result, const BigComplex *value,
+    int64_t digits, BigDecimalRoundingMode rounding)
+{
+    if (!result || !value) return BIGCOMPLEX_NULL_ARGUMENT;
+    if (digits < 1 || digits > INT64_MAX-24 || rounding < BIGDECIMAL_ROUND_TOWARD_ZERO ||
+        rounding > BIGDECIMAL_ROUND_HALF_EVEN) return BIGCOMPLEX_INVALID_ARGUMENT;
+    BigComplex *temporary=bigcomplex_create(),*denominator=NULL;
+    BigDecimal *absolute=NULL,*half=NULL,*one=NULL,*four=NULL,*t=NULL;
+    BigDecimal *sine=NULL,*cosine=NULL,*square=NULL,*den=NULL;
+    BigComplexStatus status=BIGCOMPLEX_OUT_OF_MEMORY;bool real=false,negative=false;int comparison=0;
+    if (!temporary) goto done;
+    status=mapped(bigdecimal_is_zero(&real,value->imaginary));
+    if (status != BIGCOMPLEX_OK) goto done;
+    if (real) {
+        status=mapped(bigdecimal_tanh(temporary->real,value->real,digits,rounding));
+        goto finish;
+    }
+    absolute=bigdecimal_create();half=bigdecimal_create();
+    if (!absolute || !half) {status=BIGCOMPLEX_OUT_OF_MEMORY;goto done;}
+    status=mapped(bigdecimal_abs(absolute,value->real));
+    if (status == BIGCOMPLEX_OK) status=mapped(bigdecimal_set_string(half,"0.5"));
+    if (status == BIGCOMPLEX_OK) status=mapped(bigdecimal_compare(&comparison,absolute,half));
+    if (status != BIGCOMPLEX_OK) goto done;
+    if (comparison <= 0) {
+        denominator=bigcomplex_create();
+        if (!denominator) {status=BIGCOMPLEX_OUT_OF_MEMORY;goto done;}
+        status=bigcomplex_sinh(temporary,value,digits+12,rounding);
+        if (status == BIGCOMPLEX_OK) status=bigcomplex_cosh(denominator,value,digits+12,rounding);
+        if (status == BIGCOMPLEX_OK) status=bigcomplex_div(temporary,temporary,denominator,digits,rounding);
+        goto finish;
+    }
+    one=bigdecimal_create();four=bigdecimal_create();t=bigdecimal_create();
+    sine=bigdecimal_create();cosine=bigdecimal_create();square=bigdecimal_create();den=bigdecimal_create();
+    if (!one || !four || !t || !sine || !cosine || !square || !den) {
+        status=BIGCOMPLEX_OUT_OF_MEMORY;goto done;
+    }
+    /* t=exp(-2|x|); D=(1-t)^2+4t*cos(y)^2, strictly positive for x!=0.
+     * Avoid both growing exp(2|x|) and subtraction near imaginary-axis poles. */
+    BigDecimalStatus ds=bigdecimal_set_string(one,"1");
+#define TANH_TRY(call) do { ds=(call); if(ds!=BIGDECIMAL_OK){status=mapped(ds);goto done;} } while(0)
+    if (ds != BIGDECIMAL_OK) {status=mapped(ds);goto done;}
+    TANH_TRY(bigdecimal_set_string(four,"4"));
+    TANH_TRY(bigdecimal_add(t,absolute,absolute));TANH_TRY(bigdecimal_negate(t,t));
+    TANH_TRY(bigdecimal_exp(t,t,digits+12,rounding));
+    TANH_TRY(bigdecimal_sin(sine,value->imaginary,digits+12,rounding));
+    TANH_TRY(bigdecimal_cos(cosine,value->imaginary,digits+12,rounding));
+    TANH_TRY(bigdecimal_sub(den,one,t));TANH_TRY(bigdecimal_mul(den,den,den));
+    TANH_TRY(bigdecimal_mul(square,cosine,cosine));TANH_TRY(bigdecimal_mul(square,square,t));
+    TANH_TRY(bigdecimal_mul(square,square,four));TANH_TRY(bigdecimal_add(den,den,square));
+    TANH_TRY(bigdecimal_mul(square,t,t));TANH_TRY(bigdecimal_sub(temporary->real,one,square));
+    TANH_TRY(bigdecimal_is_negative(&negative,value->real));
+    if (negative) TANH_TRY(bigdecimal_negate(temporary->real,temporary->real));
+    TANH_TRY(bigdecimal_div_significant(temporary->real,temporary->real,den,digits,rounding));
+    TANH_TRY(bigdecimal_mul(temporary->imaginary,sine,cosine));
+    TANH_TRY(bigdecimal_mul(temporary->imaginary,temporary->imaginary,t));
+    TANH_TRY(bigdecimal_mul(temporary->imaginary,temporary->imaginary,four));
+    TANH_TRY(bigdecimal_div_significant(temporary->imaginary,temporary->imaginary,den,digits,rounding));
+#undef TANH_TRY
+finish:
+    if (status == BIGCOMPLEX_OK) commit(result,temporary);
+done:
+    bigcomplex_destroy(temporary);bigcomplex_destroy(denominator);bigdecimal_destroy(absolute);bigdecimal_destroy(half);
+    bigdecimal_destroy(one);bigdecimal_destroy(four);bigdecimal_destroy(t);bigdecimal_destroy(sine);
+    bigdecimal_destroy(cosine);bigdecimal_destroy(square);bigdecimal_destroy(den);return status;
+}
 BigComplexStatus bigcomplex_tan(BigComplex *result, const BigComplex *value,
     int64_t digits, BigDecimalRoundingMode rounding)
 {

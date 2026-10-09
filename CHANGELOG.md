@@ -7,6 +7,9 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Add public complex `sinh`, `cosh` and `tanh` across C, calculator and HTTP,
+  with a scaled tanh formula for large real components and retained imaginary tails.
+
 - Add public complex `sin`, `cos` and `tan` in the C library, calculator and
   HTTP API, using radians for complex inputs and preserving real RAD/DEG behavior.
 

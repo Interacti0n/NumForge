@@ -251,11 +251,36 @@ static void test_complex_trigonometry(void)
     TEST_ASSERT_NULL(text);TEST_ASSERT_EQUAL_UINT(1,session.variable_count);
     compute(&session,3,false,"ans","0.761594156*i");calculator_session_destroy(&session);
 }
+static void test_complex_hyperbolic(void)
+{
+    check("sinh(i)","0.8414709848*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("cosh(i)","0.5403023059",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("tanh(i)","1.5574077247*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("sinh(1+i)","0.6349639148 + 1.2984575814*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("cosh(1+i)","0.8337300251 + 0.9888977058*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("tanh(1+i)","1.0839233273 + 0.2717525853*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("tanh(-1+i)","-1.0839233273 + 0.2717525853*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("tanh(1-i)","1.0839233273 - 0.2717525853*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("tanh(0.25+0.5i)","0.3124206925 + 0.5045007027*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("tanh(0*i)","0",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("cosh(0*i)","1",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("tanh(1E-40+0i)","1E-40",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("tanh(1E100+0i)","1",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    check("re(cosh(1+i)^2-sinh(1+i)^2)","1",CALCULATOR_VALUE_DECIMAL);
+    context.angle_unit=CALCULATOR_ANGLE_DEGREES;
+    check("tanh(1+i)","1.0839233273 + 0.2717525853*i",CALCULATOR_VALUE_COMPLEX_DECIMAL);
+    CalculatorSession session={0};char *text=NULL;CalculatorError error;
+    compute(&session,1,true,"z=tanh(i)","1.5574077247*i");
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,calculator_session_compute(&session,2,true,"z=atanh(i)",&context,&text,&error,NULL));
+    TEST_ASSERT_NULL(text);TEST_ASSERT_EQUAL_UINT(1,session.variable_count);
+    compute(&session,3,false,"ans","1.5574077247*i");calculator_session_destroy(&session);
+}
 static void test_allocation_failures(void)
 {
     const char *inputs[]={"w=z^-2","w=conj(z)","w=abs(z)","w=sum(re(z);im(z))",
         "w=sqrt(3+4i)","w=sqrt(z)","w=ln(z)","w=z^i","w=log(i;i)",
-        "w=sin(i)","w=cos(i)","w=tan(i)"};
+        "w=sin(i)","w=cos(i)","w=tan(i)","w=sinh(0*i)","w=cosh(0*i)",
+        "w=tanh(0*i)","w=tanh(0.1+0.1i)","w=tanh(1+i)"};
     for(size_t input=0;input<sizeof(inputs)/sizeof(inputs[0]);input++) {
     size_t count=0;
     for(size_t failure=0;;failure++) {
@@ -279,5 +304,5 @@ int main(void)
 {
     UNITY_BEGIN();RUN_TEST(test_exact_and_mixed_arithmetic);RUN_TEST(test_domains);
     RUN_TEST(test_sessions_and_snapshots);RUN_TEST(test_imaginary_unit_and_projections);
-    RUN_TEST(test_principal_square_roots);RUN_TEST(test_principal_logarithms);RUN_TEST(test_principal_powers);RUN_TEST(test_base_logarithms);RUN_TEST(test_complex_trigonometry);RUN_TEST(test_allocation_failures);return UNITY_END();
+    RUN_TEST(test_principal_square_roots);RUN_TEST(test_principal_logarithms);RUN_TEST(test_principal_powers);RUN_TEST(test_base_logarithms);RUN_TEST(test_complex_trigonometry);RUN_TEST(test_complex_hyperbolic);RUN_TEST(test_allocation_failures);return UNITY_END();
 }
