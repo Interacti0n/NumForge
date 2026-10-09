@@ -93,7 +93,7 @@ retains the existing 34-significant-digit working policy.
 `calculator_compute` opens one thread-local resource scope before parsing and
 closes it after formatting and cleanup. Nested evaluator/formatter calls reuse
 the existing scope; standalone calls open their own. Default limits are 5000
-monotonic milliseconds, 64 MiB cumulative allocation volume, 128 KiB per
+monotonic milliseconds, 64 MiB cumulative allocation volume, 512 KiB per
 allocation and 65536 output bytes. `GetTickCount64`/`CLOCK_MONOTONIC` replace
 the platform-dependent `clock()`. Budget checks inside expensive BigInt loops
 cancel arithmetic and conversion safely; allocation requests are checked before

@@ -176,8 +176,8 @@ Repeated decimal separators (`1.2.3`, `1,2,3`) and adjacent numeric tokens
 remain valid. Implicit multiplication shares the left-associative precedence
 of `*` and `/`, so `6/2(1+2)` is `9`.
 Factorial uses `bigint_factorial` and requires a non-negative whole number no
-greater than 10000 in the calculator, even though the underlying BigInt API has
-a higher limit. Non-terminating division defaults to 34 significant digits with half-even
+greater than 100000, matching the underlying BigInt API.
+Non-terminating division defaults to 34 significant digits with half-even
 rounding. The complete CLI/HTTP calculation has a five-second monotonic time
 budget, including parsing and output formatting. Expensive BigInt parsing,
 multiplication, division and decimal conversion loops check cancellation too.
@@ -185,12 +185,15 @@ Exceeding the deadline returns `CALCULATOR_TIME_LIMIT` (`TLE`). This is
 cooperative cancellation, not an OS-enforced hard real-time deadline.
 
 Application limits are 64 MiB of cumulative allocation requests per calculation,
-128 KiB per allocation, 65536 output bytes, and 10000 selected output places.
+512 KiB per allocation, 65536 output bytes, and 10000 selected output places.
 Freed allocations still count toward the cumulative work budget; it is not a
 measurement of process RSS. Resource limits return `value too large`, not TLE.
 These limits do not change unrestricted public BigInt/BigDecimal calls.
-An allowed factorial input (including 10000) may still exceed the time or
+An allowed factorial input (including 100000) may still exceed the time or
 memory budget; the input limit is not a completion guarantee.
+For example, 100000! has 456574 decimal digits: use scientific/auto notation
+with finite output precision. Its complete plain/fraction output exceeds the
+65536-byte display limit. Full precision does not remove resource limits.
 
 Parser and AST depth are limited to 256 levels, with at most 256 arguments per call. Inputs that exceed the limit
 return `CALCULATOR_VALUE_TOO_LARGE` instead of risking process stack overflow.

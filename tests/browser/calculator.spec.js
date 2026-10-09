@@ -1,5 +1,26 @@
 const { test, expect } = require('@playwright/test');
 
+test('HTTP factorial accepts larger inputs and preserves state above the new limit',async({request})=>{
+    const client='faca0000faca0000faca0000faca0000';
+    const base='/api/evaluate?precision=10&notation=auto&client='+client;
+    const send=async(input,revision,action='commit')=>(await request.post(base+'&revision='+revision+'&action='+action,{data:input})).json();
+    expect((await send('',1,'start')).ok).toBe(true);
+    const large=await send('n=factorial(20000)',2);
+    expect(large.ok).toBe(true);expect(large.result).toBe('1.8192063202E+77337');
+    expect((await send('n=100001!',3)).ok).toBe(false);
+    expect((await send('n=factorial(100001)',4)).ok).toBe(false);
+    expect((await send('ans',5,'preview')).result).toBe(large.result);
+    expect((await send('n',6,'preview')).result).toBe(large.result);
+});
+for(const lang of ['sk','en']) for(const width of [390,1280]) {
+    test(`large factorial scientific display ${lang} ${width}`,async({page})=>{
+        await page.setViewportSize({width,height:844});await page.goto('/?lang='+lang);
+        await page.locator('#expression').fill('20000!');
+        await expect(page.locator('#result')).toHaveText('1.8192063202E+77337');
+        expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    });
+}
+
 test('mobile text input supports variables and semicolon-separated arguments', async ({page}) => {
     await page.setViewportSize({width:390,height:844});
     for (const lang of ['sk','en']) {

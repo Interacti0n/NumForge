@@ -8,18 +8,19 @@ const binaryDirectory = args.shift();
 const outputDirectory = args.shift();
 const quick = args.includes('--quick');
 const bigintSuite = args.includes('--bigint');
+const factorialOnly = args.includes('--factorial-only');
 const decimalSuite = args.includes('--decimal');
 const timeoutIndex = args.indexOf('--case-timeout-ms');
-const caseTimeout = timeoutIndex < 0 ? 15000 : Number(args[timeoutIndex + 1]);
+const caseTimeout = timeoutIndex < 0 ? (bigintSuite && !quick ? 120000 : 15000) : Number(args[timeoutIndex + 1]);
 if (timeoutIndex >= 0) args.splice(timeoutIndex, 2);
 const prefixIndex = args.indexOf('--case-prefix');
 const casePrefix = prefixIndex < 0 ? null : args[prefixIndex + 1];
 if (prefixIndex >= 0) args.splice(prefixIndex, 2);
-if (!binaryDirectory || !outputDirectory || (bigintSuite && decimalSuite) ||
+if (!binaryDirectory || !outputDirectory || (bigintSuite && decimalSuite) || (factorialOnly && !bigintSuite) ||
     !Number.isInteger(caseTimeout) || caseTimeout < 1 ||
     (prefixIndex >= 0 && (!decimalSuite || !casePrefix || !/^[A-Za-z0-9_-]+$/.test(casePrefix))) ||
-    args.some(v => v !== '--quick' && v !== '--bigint' && v !== '--decimal'))
-    throw Error('Usage: node benchmarks/run_baseline.js binary-directory output-directory [--quick] [--bigint|--decimal] [--case-timeout-ms N] [--case-prefix name]');
+    args.some(v => v !== '--quick' && v !== '--bigint' && v !== '--decimal' && v !== '--factorial-only'))
+    throw Error('Usage: node benchmarks/run_baseline.js binary-directory output-directory [--quick] [--bigint|--decimal] [--factorial-only] [--case-timeout-ms N] [--case-prefix name]');
 const binaries = path.resolve(binaryDirectory);
 const output = path.resolve(outputDirectory);
 fs.mkdirSync(output, { recursive: true });
@@ -30,9 +31,9 @@ const env = {}, seen = new Set();
 for (const [key, value] of Object.entries(process.env)) {
     if (!seen.has(key.toUpperCase())) { seen.add(key.toUpperCase()); env[key] = value; }
 }
-function capture(command, arguments_) {
+function capture(command, arguments_, timeoutMs) {
     const result = spawnSync(command, arguments_, { cwd: root, env, encoding: 'utf8',
-        windowsHide: true, maxBuffer: 16 * 1024 * 1024 });
+        windowsHide: true, timeout: timeoutMs, maxBuffer: 16 * 1024 * 1024 });
     if (result.error || result.status !== 0) throw result.error || Error(result.stderr || `Exit ${result.status}`);
     return result;
 }
@@ -75,7 +76,7 @@ if (cache) {
 function save(name, command, parameters) {
     console.error(name);
     const begin = Date.now();
-    const result = capture(command, parameters);
+    const result = capture(command, parameters, caseTimeout);
     fs.writeFileSync(path.join(output, name + '.csv'), result.stdout);
     fs.writeFileSync(path.join(output, name + '.stderr.txt'), result.stderr);
     manifest.commands.push({ name, command, parameters, elapsedMs: Date.now() - begin });
@@ -137,7 +138,10 @@ if (decimalSuite) {
 }
 if (bigintSuite) {
     const { makeCases } = require('./bigint_cases');
-    const rows = makeCases(quick);
+    const rows = makeCases(quick, factorialOnly);
+    manifest.factorialOnly = factorialOnly;
+    manifest.fixtureCount = rows.length;
+    manifest.caseTimeoutMs = caseTimeout;
     const fixtures = path.join(output, 'bigint-cases.tsv');
     fs.writeFileSync(fixtures, rows.join('\n') + '\n');
     for (let run = 1; run <= 3; run++) for (const row of rows) {

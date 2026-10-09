@@ -17,6 +17,8 @@ node benchmarks/bigint_cases.js build/bigint-cases.tsv
 .\build\bench\Release\bigint_arithmetic_benchmark.exe build/bigint-cases.tsv --case mul-balanced-64-reuse
 node benchmarks/check_bigint_benchmark.js build/bench/Release/bigint_arithmetic_benchmark.exe
 node benchmarks/run_baseline.js build/bench/Release build/baseline-bigint --bigint
+node benchmarks/run_baseline.js build/bench/Release build/baseline-factorial --bigint --factorial-only --case-timeout-ms 120000
+.\build\bench\Release\calculator_benchmark.exe --factorial-only
 ```
 
 For GCC/Clang single-configuration builds use the executables directly in the
@@ -24,6 +26,17 @@ build directory. Add `--quick` to fixture generation and execution for a smoke
 check, or to the baseline recorder for three short diagnostic runs. The recorder
 requires an empty output directory and selects only the BigInt suite with
 `--bigint`; without that flag it records the formatting/cache/HTTP suite.
+Full BigInt recording defaults to a 120-second timeout per isolated case;
+`--case-timeout-ms` overrides it. Quick runs keep the 15-second default.
+
+`calculator_benchmark --factorial-only` separately measures parse, scalar
+evaluation and scientific/auto formatting for 10000!, 20000!, 50000! and
+100000!, one iteration per case, checking independently derived output text.
+Repeat the process for comparison ranges. This diagnostic disables phase time
+limits while retaining memory and output budgets; it does not change the
+combined CLI/HTTP calculation's five-second budget. It measures allocation traffic,
+not peak live storage. The arithmetic recorder remains isolated and records
+three runs of exact factorial/product-tree values and live-memory metrics.
 
 CTest includes `bigint_arithmetic_benchmark_smoke` when benchmarks, tests and
 Node.js are available. `NUMFORGE_REQUIRE_NODE_TESTS=ON` rejects a missing Node.
@@ -49,9 +62,13 @@ does not run them inside the measured process.
   carry propagation. Random, maximal, sparse, alternating, zero, sign and alias
   cases have exact references. This is a simple experimental kernel, not a
   production recommendation.
-- Factorial: 0, 1, 20, 100, 500, 1000, 5000 and 10000. Compare the public
+- Factorial: 0, 1, 20, 100, 500, 1000, 5000, 10000, 20000, 50000 and 100000. Compare the public
   implementation, which multiplies by a small integer in place, against a private
   recursive balanced product tree composed from public multiplication.
+  `--factorial-only` generates/records just this sweep; `--quick` retains
+  the bounded 0/1/20/100 smoke cases. Exact references through 100000! fit
+  the harness's 1 MiB record buffer. Inputs/references are parsed before
+  timing; decimal conversion and calculator/HTTP budgets are not measured.
 - Powers: 1, 4, 16 and 64-limb bases with exponents 0, 1, 2, 3, 16, 17 and 64.
   Compare public binary exponentiation with an experimental equivalent using the
   private square. Include zero, unit, negative bases and aliases.
@@ -130,6 +147,8 @@ latency thresholds or changing the ordinary production-build test jobs.
 
 ## Initial baseline: 7 October 2026
 
+For the extended factorial sweep through 100000, see the 9 October results below.
+
 Three complete runs were recorded on Windows x64, AMD Ryzen 7 7435HS, MSVC
 19.51.36247 Release. The measured working tree is based on `90fa792`; the
 fixture TSV, source snapshot, patch, compiler description and all raw rows are
@@ -187,3 +206,58 @@ corrupt-reference rejection.
 All 1084 full-size references also passed on GCC with short timing samples;
 these were correctness checks, not a GCC performance baseline. A separate GCC
 Release build with `BUILD_TESTING=OFF` built and ran the standalone harness.
+
+## Extended factorial baseline: 9 October 2026
+
+Three isolated Release runs on Windows x64, Ryzen 7 7435HS, MSVC 19.51.36247,
+based on `e14c97e` plus the recorded working-tree patch. Raw CSV, exact Node
+BigInt fixtures, compiler/CMake and machine metadata are stored locally in
+`build/baseline-factorial-100000`. All 22 scenarios passed in all three runs
+(66 exact-reference measurements plus the allocation check). No concurrent
+builds or test suites ran during the arithmetic recording; no CPU affinity or
+frequency lock was used. Times exclude decimal conversion, parsing and HTTP.
+
+Ranges below are min/max of the three per-run medians:
+
+| n! | Public factorial | Experimental product tree |
+| ---: | ---: | ---: |
+| 10000! | 31.88–32.37 ms | 13.35–13.70 ms |
+| 20000! | 133.69–134.97 ms | 57.08–58.10 ms |
+| 50000! | 935.41–940.29 ms | 410.14–427.88 ms |
+| 100000! | 4.025–4.073 s | 1.878–1.891 s |
+
+At 100000!, public factorial makes 16 allocation requests totalling 524280
+bytes, with tracked peak payload 524296 bytes (262152 warmed baseline).
+The tree makes 199997 requests totalling 4935680 bytes, with peak 568808
+bytes (189608 baseline). These are operation payloads, not process RSS.
+The production factorial algorithm is unchanged; the tree remains experimental.
+
+The calculator now accepts n<=100000, with a 512 KiB single-allocation limit.
+Its five-second, 64 MiB cumulative and 65536-byte output budgets still apply.
+100000! has 456574 decimal digits, so full plain/fraction display is too large;
+use finite-precision scientific/auto output. Input acceptance is not a guarantee
+of completion under the deadline on every machine.
+
+### Calculator phase timings
+
+Three further isolated process runs, saved in
+`build/baseline-factorial-pipeline-100000`, used the new
+`calculator_benchmark --factorial-only` diagnostic. Each run executes one
+iteration per input, with time limits disabled for measurement; memory and
+output budgets remain enabled. All literal scientific references passed.
+The ranges are minimum/maximum of those three single-iteration samples,
+not warmed medians, and are not HTTP latency measurements.
+
+| Input | Scalar evaluation, including decimal materialization | Scientific formatting |
+| ---: | ---: | ---: |
+| 10000! | 61.16–64.15 ms | 0.207–0.320 ms |
+| 20000! | 257.50–272.13 ms | 0.220–0.373 ms |
+| 50000! | 1.791–1.835 s | 0.237–0.406 ms |
+| 100000! | 7.852–7.877 s | 0.303–0.339 ms |
+
+Parse timings were below 0.03 ms. Decimal materialization adds substantial
+cost beyond the raw BigInt factorial. The ordinary CLI calculation of 100000!
+hit its five-second limit locally; 20000! and 50000! completed in scientific
+notation. Raising the input bound does not bypass the deadline. A future
+optimization should examine materialization and the factorial algorithm before
+increasing the production time limit.

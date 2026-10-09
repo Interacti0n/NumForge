@@ -114,7 +114,8 @@ does not claim a rigorous error bound.
 
 The sequential server retains at most eight page IDs, evicts FIFO and destroys
 the evicted handle. Each retained coefficient's limb allocation is bounded by
-the existing 128 KiB single-allocation limit (roughly 1 MiB total limb storage,
+the existing 512 KiB single-allocation limit (up to 16 MiB total limb storage
+for eight rational-complex cache entries,
 plus fixed expressions/metadata). There is no TTL or disk persistence; reload
 creates a new page ID. Formatting still has time, memory and output-size limits.
 Monotonic client revisions prevent older work from replacing newer work; errors
@@ -146,9 +147,11 @@ standalone storage so ans and variables remain available. Each entry retains its
 original display. A changed output precision never recomputes stored ans.
 
 History holds 16 entries, evicting the oldest. Each retained coefficient is
-bounded by the pipeline's 128 KiB allocation limit, each display by 64 KiB and
-each expression by 4096 bytes: history retains less than 4 MiB per session,
-including fixed metadata. The preview owns one separate bounded value. The
+bounded by the pipeline's 512 KiB allocation limit, each display by 64 KiB and
+each expression by 4096 bytes: history retains less than 64 MiB per session,
+including four rational-complex coefficients and fixed metadata. Variables
+and conversion history are additional separately bounded storage.
+The preview owns one separate bounded value. The
 server holds eight sessions with FIFO eviction; session eviction is reported
 explicitly and never silently recreates a session on evaluation. Reload and
 internal tool/language navigation preserve the tab ID. New session resets the

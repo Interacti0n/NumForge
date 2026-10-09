@@ -682,10 +682,10 @@ void test_evaluator_enforces_time_and_factorial_limits(void)
     calculator_expression_destroy(expression);
 
     calculator_context_init(&context);
-    expression = parse_expression("10001!");
+    expression = parse_expression("100001!");
     TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE, calculator_evaluate(result, expression, &context, &error));
     TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE, error.status);
-    TEST_ASSERT_EQUAL_UINT(5, error.offset);
+    TEST_ASSERT_EQUAL_UINT(6, error.offset);
     assert_decimal_equals("42", result);
     calculator_expression_destroy(expression);
     bigdecimal_destroy(result);
@@ -700,7 +700,7 @@ void test_evaluator_rejects_compact_invalid_integer_operands(void)
     } cases[] = {
         { "1E4294967294!", CALCULATOR_VALUE_TOO_LARGE },
         { "1E9223372036854775807!", CALCULATOR_VALUE_TOO_LARGE },
-        { "2E4!", CALCULATOR_VALUE_TOO_LARGE },
+        { "2E5!", CALCULATOR_VALUE_TOO_LARGE },
         { "1E-9223372036854775807!", CALCULATOR_INVALID_ARGUMENT },
         { "(-1E9223372036854775807)!", CALCULATOR_INVALID_ARGUMENT },
         { "2^1E-9223372036854775807", CALCULATOR_INVALID_ARGUMENT },
@@ -755,6 +755,8 @@ void test_large_factorial_evaluation_and_formatting(void)
      * CTest still bounds the entire process if calculation stops progressing. */
     context.time_limit_ms = INT64_MAX;
     assert_formatted_expression("1.8288019515E+12673", "4000!", &context);
+    TEST_ASSERT_EQUAL_UINT64(BIGINT_FACTORIAL_MAX_N, CALCULATOR_FACTORIAL_MAX_N);
+    assert_formatted_expression("1.8192063202E+77337", "20000!", &context);
 }
 
 /* ============================================================

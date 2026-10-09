@@ -7,6 +7,10 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Raise calculator factorial input to 100000, matching BigInt, and the
+  single-allocation limit to 512 KiB while retaining time/output/total budgets.
+  Extend exact-reference factorial/product-tree benchmarks through 100000.
+
 - Add principal complex `asin`, `acos` and `atan` to C, calculator and HTTP,
   with radian results, documented cut conventions and atomic errors at atan(±i).
 

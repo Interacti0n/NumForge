@@ -1,7 +1,8 @@
 // Independent exact references from Node's native BigInt. No NumForge calls.
 const fs = require('node:fs');
-function makeCases(quick) {
+function makeCases(quick, factorialOnly = false) {
     const rows = [];
+    const factorialReferences = new Map();
     let seed = 0x31415926;
     function random(limbs, pattern = 'random') {
         let value = 0n;
@@ -22,7 +23,11 @@ function makeCases(quick) {
         else if (op === 'copy') expected = a;
         else if (op === 'pow' || op === 'pow_square') expected = a ** b;
         else if (op === 'factorial' || op === 'tree') {
-            expected = 1n; for (let i = 2n; i <= a; i++) expected *= i;
+            expected = factorialReferences.get(a);
+            if (expected === undefined) {
+                expected = 1n; for (let i = 2n; i <= a; i++) expected *= i;
+                factorialReferences.set(a, expected);
+            }
         } else if (op === 'divmod') { expected = a / b; remainder = a % b; }
         else if (op === 'div') expected = a / b;
         else if (op === 'mod') expected = a % b;
@@ -30,6 +35,11 @@ function makeCases(quick) {
         else throw Error(op);
         rows.push([name, op, mode, a, b, expected, remainder].map(String).join('\t'));
     }
+    function factorials() {
+        for (const n of quick ? [0, 1, 20, 100] : [0, 1, 20, 100, 500, 1000, 5000, 10000, 20000, 50000, 100000])
+            for (const op of ['factorial', 'tree']) add(`${op}-${n}`, op, 'reuse', BigInt(n));
+    }
+    if (factorialOnly) { factorials(); return rows; }
     const sizes = quick ? [1, 8, 32] : [1, 2, 4, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 256, 384, 512, 768, 1024];
     for (const n of sizes) {
         const a = random(n), b = random(n);
@@ -71,8 +81,7 @@ function makeCases(quick) {
         for (const mode of ['reuse', 'alias_a']) add(`edge-square-${a}-${mode}`, 'square', mode, a);
         for (const b of [0n, 1n, -1n]) add(`edge-gcd-${a}-${b}`, 'gcd', 'reuse', a, b);
     }
-    for (const n of quick ? [0, 1, 20, 100] : [0, 1, 20, 100, 500, 1000, 5000, 10000])
-        for (const op of ['factorial', 'tree']) add(`${op}-${n}`, op, 'reuse', BigInt(n));
+    factorials();
     for (const n of quick ? [1, 8] : [1, 4, 16, 64]) for (const exponent of quick ? [0, 2, 17] : [0, 1, 2, 3, 16, 17, 64]) {
         const base = random(n);
         for (const op of ['pow', 'pow_square']) add(`${op}-${n}-${exponent}`, op, 'reuse', base, BigInt(exponent));
@@ -83,6 +92,6 @@ function makeCases(quick) {
 }
 module.exports = { makeCases };
 if (require.main === module) {
-    if (!process.argv[2]) throw Error('Usage: node benchmarks/bigint_cases.js output.tsv [--quick]');
-    fs.writeFileSync(process.argv[2], makeCases(process.argv.includes('--quick')).join('\n') + '\n');
+    if (!process.argv[2]) throw Error('Usage: node benchmarks/bigint_cases.js output.tsv [--quick] [--factorial-only]');
+    fs.writeFileSync(process.argv[2], makeCases(process.argv.includes('--quick'), process.argv.includes('--factorial-only')).join('\n') + '\n');
 }

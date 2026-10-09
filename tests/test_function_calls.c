@@ -169,7 +169,7 @@ static void test_evaluation_and_implicit_products(void)
                       calculator_compute("geomean(-1;4)", &context, &text, &error));
     TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,
                       calculator_compute("harmean(0;4)", &context, &text, &error));
-    TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE, calculator_compute("factorial(10001)", &context, &text, &error));
+    TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE, calculator_compute("factorial(100001)", &context, &text, &error));
     TEST_ASSERT_NULL(text);
     TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,
                       calculator_compute("round(1;1.5)", &context, &text, &error));

@@ -2,10 +2,11 @@
 #include <unity.h>
 #include <numforge/bigdecimal.h>
 #include "calculator_internal.h"
+#include "../src/internal/numforge_alloc.h"
 
 /* Real-root domains, exactness, scales and rounding (separate from grammar). */
 void setUp(void) {}
-void tearDown(void) {}
+void tearDown(void) { numforge_budget_end(); }
 
 static void test_root_expressions(void)
 {
@@ -48,7 +49,12 @@ static void test_root_expressions(void)
     char *text = NULL;
     TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE, calculator_compute("root(1;10001)", &context, &text, &error));
     TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE, calculator_compute("root(1;1E100000)", &context, &text, &error));
-    TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE, calculator_compute("root(2;10000)", &context, &text, &error));
+    /* Resource rejection is tested with an explicit small allocation bound,
+     * rather than depending on the production factorial-sized memory limit. */
+    TEST_ASSERT_TRUE(numforge_budget_begin(60000U, CALCULATOR_ALLOCATION_BUDGET, 128U*1024U));
+    CalculatorStatus limited=calculator_compute("root(2;10000)", &context, &text, &error);
+    numforge_budget_end();
+    TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE, limited);
     TEST_ASSERT_EQUAL(CALCULATOR_DIVISION_BY_ZERO, calculator_compute("root(2;1/0)", &context, &text, &error));
     TEST_ASSERT_EQUAL_UINT(8, error.offset);
     TEST_ASSERT_NULL(text);

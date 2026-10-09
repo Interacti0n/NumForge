@@ -24,6 +24,10 @@ cmake --build build-bench --config Release --target bigint_multiply_benchmark de
 
 Run `build-bench/calculator_benchmark` (single-config) or
 `build-bench/Release/calculator_benchmark.exe` (Visual Studio).
+Add `--factorial-only` for one iteration each of 10000!, 20000!, 50000!
+and 100000!, including scientific output verification and separate formatting
+timings. Repeat this diagnostic for timing ranges; see the BigInt benchmark
+reference for phase-budget and allocation-traffic caveats.
 The executable prints CSV totals, separating parse, evaluate and format, with
 allocation request counts and requested bytes for each phase. Tiny division,
 power, factorial and constants run 1000 iterations each; multiplication uses

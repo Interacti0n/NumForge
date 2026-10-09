@@ -26,7 +26,8 @@
 static int run_case(
     const char *label,
     const char *input,
-    unsigned iterations
+    unsigned iterations,
+    const char *expected
 )
 {
     CalculatorContext context;
@@ -35,6 +36,10 @@ static int run_case(
     uint64_t bytes[3] = { 0, 0, 0 };
 
     calculator_context_init(&context);
+    /* Large diagnostics measure the phases to completion rather than making
+     * hardware-dependent five-second timings a benchmark failure. The memory
+     * and output budgets remain active. Production defaults are unchanged. */
+    if (expected != NULL) context.time_limit_ms = INT64_MAX;
 
     for (unsigned iteration = 0; iteration < iterations; iteration++)
     {
@@ -93,6 +98,11 @@ static int run_case(
         calls[2] += numforge_alloc_stats_calls();
         bytes[2] += numforge_alloc_stats_bytes();
 
+        if (status == CALCULATOR_OK && expected != NULL && strcmp(text, expected) != 0)
+        {
+            fprintf(stderr, "Unexpected formatted factorial: %s => %s\n", input, text);
+            status = CALCULATOR_INVALID_ARGUMENT;
+        }
         free(text);
         bigdecimal_destroy(value);
         calculator_expression_destroy(expression);
@@ -143,8 +153,14 @@ static int run_case(
     Benchmark entry point.
 ------------------------------------------------------------------------------------------------------------------------------
 */
-int main(void)
+int main(int argc, char **argv)
 {
+    bool factorial_only = argc == 2 && strcmp(argv[1], "--factorial-only") == 0;
+    if (argc != 1 && !factorial_only)
+    {
+        fputs("Usage: calculator_benchmark [--factorial-only]\n", stderr);
+        return EXIT_FAILURE;
+    }
     static const char *const inputs[] = {
         "1E-40/3",
         "2^1024",
@@ -165,11 +181,29 @@ int main(void)
         "format_ms,format_calls,format_bytes"
     );
 
+    if (factorial_only)
+    {
+        /* Literal scientific references from the independent Node BigInt
+         * fixtures, rounded to the default ten decimal places. One iteration
+         * keeps large diagnostic runs practical; repeat processes for ranges.
+         * Large diagnostics disable the phase time limits explicitly. */
+        const char *cases[][2] = {
+            {"10000!", "2.8462596809E+35659"},
+            {"20000!", "1.8192063202E+77337"},
+            {"50000!", "3.3473205096E+213236"},
+            {"100000!", "2.824229408E+456573"}
+        };
+        for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++)
+            if (run_case(cases[i][0], cases[i][0], 1, cases[i][1]) != EXIT_SUCCESS)
+                return EXIT_FAILURE;
+        return EXIT_SUCCESS;
+    }
+
     for (size_t sample = 0;
          sample < sizeof(inputs) / sizeof(inputs[0]);
          sample++)
     {
-        if (run_case(inputs[sample], inputs[sample], 1000) != EXIT_SUCCESS)
+        if (run_case(inputs[sample], inputs[sample], 1000, NULL) != EXIT_SUCCESS)
         {
             return EXIT_FAILURE;
         }
@@ -195,7 +229,7 @@ int main(void)
             digits
         );
 
-        if (run_case(label, input, 100) != EXIT_SUCCESS)
+        if (run_case(label, input, 100, NULL) != EXIT_SUCCESS)
         {
             return EXIT_FAILURE;
         }

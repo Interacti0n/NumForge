@@ -334,9 +334,11 @@ CalculatorStatus calculator_exact_integer_operation(BigRational *result, BigRati
     }
     if (function == CALCULATOR_FUNCTION_FACTORIAL)
     {
+        char limit_text[32];
+        (void)snprintf(limit_text, sizeof(limit_text), "%" PRIu64, (uint64_t)CALCULATOR_FACTORIAL_MAX_N);
         limit = bigint_create();
         status = limit == NULL ? CALCULATOR_OUT_OF_MEMORY
-                               : calculator_from_integer_status(bigint_set_string(limit, "10000"));
+                               : calculator_from_integer_status(bigint_set_string(limit, limit_text));
         if (status != CALCULATOR_OK)
         {
             goto done;
