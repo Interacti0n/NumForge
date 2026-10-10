@@ -390,13 +390,12 @@ static void test_allocation_failures(void)
         "w=sum(z;i;1/3)","w=product(z;i;1/3)","w=mean(z;i;1/3)",
         "w=sum(z;0.5+i)","w=product(z;0.5+i)","w=mean(z;0.5+i)"};
     for(size_t input=0;input<sizeof(inputs)/sizeof(inputs[0]);input++) {
-    if(input%allocation_shards!=allocation_shard) continue;
     if (promotion_allocation_only && input>=10) continue;
     if (aggregate_allocation_only && strncmp(inputs[input],"w=sum(z;",8)!=0 &&
         strncmp(inputs[input],"w=product(z;",12)!=0 && strncmp(inputs[input],"w=mean(z;",9)!=0) continue;
     if (sqrt_allocation_only && strncmp(inputs[input],"w=sqrt(",7)!=0) continue;
     size_t count=0;
-    for(size_t failure=0;;failure++) {
+    for(size_t failure=0;;) {
         CalculatorSession *session=calloc(1,sizeof(*session));TEST_ASSERT_NOT_NULL(session);
         compute(session,1,true,"z=complex(1/3;2/3)","1/3 + (2/3)*i");
         numforge_test_allocator_begin(failure);char *text=NULL;CalculatorError error;
@@ -410,7 +409,14 @@ static void test_allocation_failures(void)
             char *saved=NULL;TEST_ASSERT_EQUAL(CALCULATOR_OK,calculator_format_value(calculator_session_answer(session),&context,&saved));
             TEST_ASSERT_EQUAL_STRING("1/3 + (2/3)*i",saved);free(saved);
         }
-        calculator_session_destroy(session);free(session);if(failure==count)break;
+        calculator_session_destroy(session);free(session);
+        if(failure==0) {
+            if(count<=allocation_shard) break;
+            failure=allocation_shard+1;
+        } else {
+            if(count-failure<allocation_shards) break;
+            failure+=allocation_shards;
+        }
     }
     }
 }

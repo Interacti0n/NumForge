@@ -140,9 +140,11 @@ Short campaigns are regression smoke coverage, not exhaustive fuzzing.
 ## Independent complex references
 
 CTest runs the numerical BigComplex/calculator suites separately from eight
-allocation-failure shards per suite. Shard `s` evaluates every allocation
-failure in cases whose index modulo eight equals `s`: no cases or failure
-positions are sampled or skipped. Plain `ctest` still includes all shards.
+allocation-failure shards per suite. Each shard runs every case successfully
+to count its allocations; shard `s` then injects failures at positions `s+1`,
+`s+9`, and so on through that count. Expensive cases are shared evenly across
+the shards; no cases or failure positions are sampled or skipped. Plain
+`ctest` still includes all shards.
 The test executables without arguments retain their exhaustive single-process
 mode for manual debugging.
 

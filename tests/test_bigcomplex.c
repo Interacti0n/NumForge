@@ -619,10 +619,9 @@ static void test_allocation_failures(void) {
     BigComplex *extreme=number("1e9223372036854775807","0");
     BigDecimal *d=bigdecimal_create(); TEST_ASSERT_NOT_NULL(d);
     for(int operation=allocation_operation_start;operation<allocation_operation_end;operation++) {
-        if(operation%allocation_shards!=allocation_shard) continue;
         if(tangent_allocation_only && operation!=18 && operation!=22) continue;
         size_t count=0;
-        for(size_t failure=0;;failure++) {
+        for(size_t failure=0;;) {
             TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,bigcomplex_set_strings(r,"9","8"));
             TEST_ASSERT_EQUAL(BIGDECIMAL_OK,bigdecimal_set_string(d,"7"));
             numforge_test_allocator_begin(failure);
@@ -666,7 +665,15 @@ static void test_allocation_failures(void) {
             numforge_test_allocator_end();
             if(failure==0) { TEST_ASSERT_EQUAL(BIGCOMPLEX_OK,status);if(operation==5 || operation==8 || operation==10)free(text); }
             else { TEST_ASSERT_EQUAL(BIGCOMPLEX_OUT_OF_MEMORY,status);text_is(r,"9 + 8*i");decimal_is(d,"7");if(operation==5 || operation==8 || operation==10)TEST_ASSERT_EQUAL_PTR(&marker,text); }
-            if(failure==count)break;
+            /* Interleave failure positions, so expensive operations are shared
+             * equally rather than putting one whole operation in one shard. */
+            if(failure==0) {
+                if(count<=(size_t)allocation_shard) break;
+                failure=(size_t)allocation_shard+1;
+            } else {
+                if(count-failure<(size_t)allocation_shards) break;
+                failure+=(size_t)allocation_shards;
+            }
         }
     }
     TEST_ASSERT_TRUE(numforge_budget_begin(1000,0,0));
