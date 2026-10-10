@@ -200,7 +200,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Configure GCC coverage
-        run: cmake -S . -B build-coverage -DCMAKE_C_COMPILER=gcc -DCMAKE_BUILD_TYPE=Debug "-DCMAKE_C_FLAGS_DEBUG=-Og -g" -DNUMFORGE_ENABLE_COVERAGE=ON -DNUMFORGE_REQUIRE_NODE_TESTS=ON -DNUMFORGE_WARNINGS_AS_ERRORS=ON
+        run: cmake -S . -B build-coverage -DCMAKE_C_COMPILER=gcc -DCMAKE_BUILD_TYPE=Debug -DNUMFORGE_ENABLE_COVERAGE=ON -DNUMFORGE_REQUIRE_NODE_TESTS=ON -DNUMFORGE_WARNINGS_AS_ERRORS=ON
       - name: Build
         run: cmake --build build-coverage --parallel 2
       - name: Test
