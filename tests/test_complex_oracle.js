@@ -22,6 +22,12 @@ assert.ok(!(memory && benchmark),'Memory instrumentation and timing benchmarks m
 let rows = process.argv.includes('--stability') ? stability : process.argv.includes('--binary') ? binary :
   [...unary.map(r=>[...r,'0','0']),...binary,...stability];
 if(memory) rows=rows.filter(r=>r[4]==='5' && (!process.argv.includes('--quick') || r[3]==='34'));
+const precisionOption=process.argv.find(x=>x.startsWith('--precision='));
+if(precisionOption) {
+  const precision=precisionOption.slice(12);
+  assert.ok(['12','34','100','250'].includes(precision),'Invalid precision shard');
+  rows=rows.filter(r=>r[3]===precision);
+}
 const operationOption=process.argv.find(x=>x.startsWith('--operation='));
 if(operationOption) {
   const operations=operationOption.slice(12).split(',');

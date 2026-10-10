@@ -377,6 +377,8 @@ static void test_automatic_complex_domains(void)
 static bool sqrt_allocation_only=false;
 static bool promotion_allocation_only=false;
 static bool aggregate_allocation_only=false;
+static size_t allocation_shard=0;
+static size_t allocation_shards=1;
 static void test_allocation_failures(void)
 {
     const char *inputs[]={"w=ln(-1)","w=log(-1;-1)","w=asin(2)","w=acosh(-1)","w=atanh(2)",
@@ -388,6 +390,7 @@ static void test_allocation_failures(void)
         "w=sum(z;i;1/3)","w=product(z;i;1/3)","w=mean(z;i;1/3)",
         "w=sum(z;0.5+i)","w=product(z;0.5+i)","w=mean(z;0.5+i)"};
     for(size_t input=0;input<sizeof(inputs)/sizeof(inputs[0]);input++) {
+    if(input%allocation_shards!=allocation_shard) continue;
     if (promotion_allocation_only && input>=10) continue;
     if (aggregate_allocation_only && strncmp(inputs[input],"w=sum(z;",8)!=0 &&
         strncmp(inputs[input],"w=product(z;",12)!=0 && strncmp(inputs[input],"w=mean(z;",9)!=0) continue;
@@ -413,6 +416,15 @@ static void test_allocation_failures(void)
 }
 int main(int argc,char **argv)
 {
+    if(argc==4 && strcmp(argv[1],"--allocation-shard")==0) {
+        char *end=NULL;
+        long shard=strtol(argv[2],&end,10);
+        if(!*argv[2] || *end || shard<0 || shard>63) return 2;
+        long shards=strtol(argv[3],&end,10);
+        if(!*argv[3] || *end || shards<1 || shards>64 || shard>=shards) return 2;
+        allocation_shard=(size_t)shard;allocation_shards=(size_t)shards;
+        UNITY_BEGIN();RUN_TEST(test_allocation_failures);return UNITY_END();
+    }
     promotion_allocation_only=argc==2 && strcmp(argv[1],"--promotion-allocation-only")==0;
     aggregate_allocation_only=argc==2 && strcmp(argv[1],"--aggregate-allocation-only")==0;
     sqrt_allocation_only=argc==2 && strcmp(argv[1],"--sqrt-allocation-only")==0;

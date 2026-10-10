@@ -6,7 +6,7 @@ for(const route of ['/', '/units', '/api']) test(`mobile header follows scroll d
     const header=page.locator('.page-header');
     const scroll=async y=>page.evaluate(y=>{
         const pane=document.querySelector('.guide-content') || document.scrollingElement;
-        pane.scrollTop=y;
+        pane.scrollTo({top:y,behavior:'instant'});
     },y);
     await scroll(220);
     await expect(header).toHaveClass(/scroll-hidden/);
@@ -28,6 +28,8 @@ for(const route of ['/', '/units', '/api']) test(`mobile header follows scroll d
     await page.setViewportSize({width:1280,height:720});
     await expect(header).not.toHaveClass(/scroll-hidden/);
     await page.setViewportSize({width:390,height:844});
+    await expect.poll(()=>page.evaluate(()=>matchMedia('(max-width: 980px)').matches)).toBe(true);
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
     await scroll(0);
     await expect(header).not.toHaveClass(/scroll-hidden/);
 });

@@ -49,10 +49,12 @@ static void test_root_expressions(void)
     }
     char *text = NULL;
     TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE, calculator_compute("root(1;10001)", &context, &text, &error));
+    TEST_ASSERT_TRUE(numforge_budget_begin(60000U, 128U*1024U, 128U*1024U));
     TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE, calculator_compute("root(1;1E100000)", &context, &text, &error));
+    numforge_budget_end();
     /* Resource rejection is tested with an explicit small allocation bound,
      * rather than depending on the production factorial-sized memory limit. */
-    TEST_ASSERT_TRUE(numforge_budget_begin(60000U, CALCULATOR_ALLOCATION_BUDGET, 128U*1024U));
+    TEST_ASSERT_TRUE(numforge_budget_begin(60000U, 128U*1024U, 128U*1024U));
     CalculatorStatus limited=calculator_compute("root(2;10000)", &context, &text, &error);
     numforge_budget_end();
     TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE, limited);

@@ -20,6 +20,7 @@ void setUp(void)
 
 void tearDown(void)
 {
+    numforge_budget_end();
     numforge_test_allocator_end();
     calculator_session_destroy(&session);
 }
@@ -172,7 +173,10 @@ static void test_limits_preserve_confirmed_state(void)
     context.time_limit_ms = 0;
     check_error(2U, true, "ans+1", CALCULATOR_TIME_LIMIT);
     context.time_limit_ms = CALCULATOR_DEFAULT_TIME_LIMIT_MS;
+    /* Isolate the allocation limit from runner speed and the wall-clock limit. */
+    TEST_ASSERT_TRUE(numforge_budget_begin(60000U, 128U*1024U, 128U*1024U));
     check_error(3U, true, "2^1000000000", CALCULATOR_VALUE_TOO_LARGE);
+    numforge_budget_end();
     check_result(4U, false, "ans", "5");
     TEST_ASSERT_EQUAL_UINT(1U, session.count);
 }

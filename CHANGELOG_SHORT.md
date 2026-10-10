@@ -5,6 +5,9 @@ details and the [2.2 release record](docs/project/RELEASE_2_2.md) for validation
 
 ## Unreleased
 
+- Stabilize CI with exhaustive complex test shards, deterministic resource-limit
+  checks and browser synchronization; prevent small desktop layout shifts.
+
 ## 2.2.0 — 10 October 2026
 
 - Public BigComplex and BigRationalComplex C APIs, integrated into CLI and web.

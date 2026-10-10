@@ -43,6 +43,7 @@ jobs:
       - name: Configure
         run: >-
           cmake -S . -B build
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo
           -DBUILD_TESTING=ON
           -DNUMFORGE_WARNINGS_AS_ERRORS=ON
           -DNUMFORGE_ENABLE_SANITIZERS=ON
@@ -53,7 +54,7 @@ jobs:
         env:
           ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
           UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
-        run: ctest --test-dir build --output-on-failure
+        run: cmake -DBUILD_DIR=build -P scripts/run_ci_tests.cmake
       - name: Configure installable package
         run: >-
           cmake -S . -B build-package
@@ -90,6 +91,7 @@ jobs:
       - name: Configure 32-bit CMake build
         run: >-
           cmake -S . -B build-32
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo
           -DBUILD_TESTING=ON
           -DNUMFORGE_WARNINGS_AS_ERRORS=ON
           -DCMAKE_C_FLAGS=-m32
@@ -98,7 +100,7 @@ jobs:
       - name: Build 32-bit targets
         run: cmake --build build-32 --parallel
       - name: Test 32-bit targets
-        run: ctest --test-dir build-32 --output-on-failure
+        run: cmake -DBUILD_DIR=build-32 -P scripts/run_ci_tests.cmake
 
   arm64:
     name: ${{ matrix.name }}
@@ -130,7 +132,7 @@ jobs:
       - name: Build
         run: cmake --build build-arm64 --parallel 2
       - name: Test library, CLI and local server
-        run: ctest --test-dir build-arm64 --output-on-failure
+        run: cmake -DBUILD_DIR=build-arm64 -DCONFIGURATION=Release -P scripts/run_ci_tests.cmake
       - name: Configure installable package
         run: >-
           cmake -S . -B build-arm64-package
@@ -167,9 +169,9 @@ jobs:
           -DBUILD_TESTING=ON
           -DNUMFORGE_WARNINGS_AS_ERRORS=ON
       - name: Build
-        run: cmake --build build --config Debug --parallel 2
+        run: cmake --build build --config RelWithDebInfo --parallel 2
       - name: Test
-        run: ctest --test-dir build -C Debug --output-on-failure
+        run: cmake -DBUILD_DIR=build -P scripts/run_ci_tests.cmake
       - name: Configure Release package
         run: >-
           cmake -S . -B build-package -G "Visual Studio 17 2022" -A x64
@@ -198,11 +200,11 @@ jobs:
         with:
           persist-credentials: false
       - name: Configure GCC coverage
-        run: cmake -S . -B build-coverage -DCMAKE_C_COMPILER=gcc -DCMAKE_BUILD_TYPE=Debug -DNUMFORGE_ENABLE_COVERAGE=ON -DNUMFORGE_REQUIRE_NODE_TESTS=ON -DNUMFORGE_WARNINGS_AS_ERRORS=ON
+        run: cmake -S . -B build-coverage -DCMAKE_C_COMPILER=gcc -DCMAKE_BUILD_TYPE=Debug "-DCMAKE_C_FLAGS_DEBUG=-Og -g" -DNUMFORGE_ENABLE_COVERAGE=ON -DNUMFORGE_REQUIRE_NODE_TESTS=ON -DNUMFORGE_WARNINGS_AS_ERRORS=ON
       - name: Build
         run: cmake --build build-coverage --parallel 2
       - name: Test
-        run: ctest --test-dir build-coverage --output-on-failure
+        run: cmake -DBUILD_DIR=build-coverage -DCONFIGURATION=Debug -P scripts/run_ci_tests.cmake
       - name: Collect line and branch coverage
         if: always()
         run: cmake --build build-coverage --target coverage_report
@@ -221,11 +223,11 @@ jobs:
         with:
           persist-credentials: false
       - name: Configure Clang with sanitizers
-        run: cmake -S . -B build-clang -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=Debug -DNUMFORGE_ENABLE_SANITIZERS=ON -DNUMFORGE_REQUIRE_NODE_TESTS=ON -DNUMFORGE_WARNINGS_AS_ERRORS=ON
+        run: cmake -S . -B build-clang -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=RelWithDebInfo -DNUMFORGE_ENABLE_SANITIZERS=ON -DNUMFORGE_REQUIRE_NODE_TESTS=ON -DNUMFORGE_WARNINGS_AS_ERRORS=ON
       - name: Build and test
         run: |
           cmake --build build-clang --parallel 2
-          ctest --test-dir build-clang --output-on-failure
+          cmake -DBUILD_DIR=build-clang -P scripts/run_ci_tests.cmake
       - name: Build coverage-guided fuzzers
         run: |
           cmake -S . -B build-fuzz -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=OFF -DNUMFORGE_BUILD_FUZZERS=ON -DNUMFORGE_ENABLE_SANITIZERS=ON -DNUMFORGE_WARNINGS_AS_ERRORS=ON

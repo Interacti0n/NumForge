@@ -139,7 +139,23 @@ Short campaigns are regression smoke coverage, not exhaustive fuzzing.
 
 ## Independent complex references
 
-`complex_oracle_tests` checks 1284 public BigComplex C API cases against frozen
+CTest runs the numerical BigComplex/calculator suites separately from eight
+allocation-failure shards per suite. Shard `s` evaluates every allocation
+failure in cases whose index modulo eight equals `s`: no cases or failure
+positions are sampled or skipped. Plain `ctest` still includes all shards.
+The test executables without arguments retain their exhaustive single-process
+mode for manual debugging.
+
+CI uses `cmake -DBUILD_DIR=build -P scripts/run_ci_tests.cmake` to run ordinary
+tests serially (avoiding local-server port collisions), then all allocation
+shards on two workers, and fails if either group fails. Diagnostic builds use
+RelWithDebInfo with the existing sanitizer flags; GCC coverage retains Debug
+symbols and uses `-Og`. Allocation shards keep a bounded 1500-second timeout.
+Memory-limit tests install a small explicit allocation budget so a slower
+runner cannot turn the expected memory rejection into a wall-clock timeout.
+
+`complex_oracle_12`, `complex_oracle_34`, `complex_oracle_100` and
+`complex_oracle_250` together check 1284 public BigComplex C API cases against frozen
 mpmath 1.3.0 references. The developer-only generator
 `tests/generate_complex_references.py` independently evaluates each component
 at 600 and 800 decimal digits and requires matching reference strings. CTest

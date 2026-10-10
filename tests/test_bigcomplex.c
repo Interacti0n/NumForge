@@ -610,6 +610,8 @@ static void test_scaled_modulus_rounding(void) {
 static bool tangent_allocation_only=false;
 static int allocation_operation_start=0;
 static int allocation_operation_end=32;
+static int allocation_shard=0;
+static int allocation_shards=1;
 static void test_allocation_failures(void) {
     BigComplex *a=number("1.2","-3.4"), *b=number("5.6","7.8"), *r=number("9","8");
     BigComplex *small=number("0.1","0.1"),*zero=number("0","0");
@@ -617,6 +619,7 @@ static void test_allocation_failures(void) {
     BigComplex *extreme=number("1e9223372036854775807","0");
     BigDecimal *d=bigdecimal_create(); TEST_ASSERT_NOT_NULL(d);
     for(int operation=allocation_operation_start;operation<allocation_operation_end;operation++) {
+        if(operation%allocation_shards!=allocation_shard) continue;
         if(tangent_allocation_only && operation!=18 && operation!=22) continue;
         size_t count=0;
         for(size_t failure=0;;failure++) {
@@ -674,6 +677,15 @@ static void test_allocation_failures(void) {
     bigcomplex_destroy(extreme);
 }
 int main(int argc,char **argv) {
+    if(argc==4 && strcmp(argv[1],"--allocation-shard")==0) {
+        char *end=NULL;
+        long shard=strtol(argv[2],&end,10);
+        if(!*argv[2] || *end || shard<0 || shard>31) return 2;
+        long shards=strtol(argv[3],&end,10);
+        if(!*argv[3] || *end || shards<1 || shards>32 || shard>=shards) return 2;
+        allocation_shard=(int)shard;allocation_shards=(int)shards;
+        UNITY_BEGIN();RUN_TEST(test_allocation_failures);return UNITY_END();
+    }
     if(argc==2 && strcmp(argv[1],"--stability-only")==0) {
         allocation_operation_start=30;
         UNITY_BEGIN();RUN_TEST(test_scaled_modulus_rounding);RUN_TEST(test_allocation_failures);

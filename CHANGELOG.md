@@ -7,6 +7,12 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Split exhaustive complex allocation-failure tests into eight disjoint shards
+  per suite and reference checks by precision. Keep all cases enabled in CTest;
+  CI runs allocation shards on two workers with optimized diagnostic builds.
+- Make resource-limit tests independent of runner speed, wait for session reset
+  navigation in browser tests, and stabilize desktop navigation and Units fields.
+
 ## 2.2.0 — 10 October 2026
 
 - Improve complex division, magnitude, square-root verification and extreme

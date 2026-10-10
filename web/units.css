@@ -64,6 +64,8 @@ body { height: auto; min-height: 100dvh; overflow: auto; }
 .unit-history-restore:hover, .unit-history-copy:hover { border-color: var(--accent); }
 @media (min-width: 981px) {
     .unit-settings { min-height: 260px; }
+    /* Reserve this field's grid cell so revealing it cannot resize the row. */
+    #unit-custom-places[hidden] { display: flex !important; visibility: hidden; }
 }
 @media (min-width: 1200px) and (min-height: 740px) {
     body { height: 100dvh; overflow: hidden; }

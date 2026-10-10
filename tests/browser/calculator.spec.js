@@ -299,6 +299,7 @@ test('header controls keep their size and position when changing language', asyn
     for (const width of [1280, 1024]) {
         await page.setViewportSize({width, height: 768});
         await page.goto('/?lang=sk');
+        await page.evaluate(() => document.fonts.ready);
         const geometry = () => page.evaluate(() => {
             const controls = [...document.querySelectorAll('.brand, .header-guide, .primary-nav a, .language-switch, .header-actions > a')];
             return {
@@ -1254,7 +1255,10 @@ test('variable assignments can be typed and confirmed in both languages', async 
         await page.locator('#expression').fill('x*3');
         await page.locator('#expression').press('Enter');
         await expect(page.locator('#result')).toHaveText('2');
-        await page.locator('#reset-session').click();
+        await Promise.all([
+            page.waitForEvent('load'),
+            page.locator('#reset-session').click()
+        ]);
         await page.locator('#expression').fill('x');
         await page.locator('#expression').press('Enter');
         await expect(page.locator('#result')).toContainText(language==='en'?'variable is undefined':'premenná nie je definovaná');
