@@ -46,6 +46,7 @@
           <a href="#random">Random values</a>
           <a href="#history">ans and history</a>
           <a href="#precision">Output precision</a>
+          <a href="#limits">Limits and constraints</a>
           <a href="#http">Local HTTP</a>
           <a href="#library">Public C API</a>
           <a href="#session-http">Session and conversion HTTP API</a>
@@ -122,7 +123,7 @@
   <h2 id="precision">Output precision</h2>
   <p><strong>Decimal places</strong>: 0–10000, default 10; applies to the mantissa in scientific notation. Non-terminating division uses max(34, N+4) significant digits. <strong>Full output</strong> skips final rounding, not 34-digit division. <code>1E-40 / 1</code> stays <code>1E-40</code>. Constants use the same working precision; intermediate results can still be rounded.</p>
 <p><code>100000!</code> has 456574 decimal digits. Use scientific/auto notation with finite precision; its full plain/fraction output exceeds the 65536-byte display limit. The five-second and memory budgets still apply.</p>
-  <p><strong>Application limits</strong></p>
+  <h2 id="limits">Limits and constraints</h2>
   <table><thead><tr><th>Resource</th><th>Limit</th></tr></thead><tbody>
     <tr><td>Factorial input</td><td>Integer 0–100000</td></tr>
     <tr><td>Root degree</td><td>Integer 1–10000</td></tr>

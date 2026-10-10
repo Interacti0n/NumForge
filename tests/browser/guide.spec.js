@@ -6,7 +6,7 @@ for(const lang of ['sk','en']) test(`guide tracks reading position and keeps mob
     await expect(page.locator('.guide-toc a[aria-current="location"]')).toHaveAttribute('href','#intro');
     expect(await page.locator('.guide-toc a').evaluateAll(links=>links.map(link=>link.hash.slice(1))))
         .toEqual(await page.locator('.guide-content h1,.guide-content h2').evaluateAll(headings=>headings.map(heading=>heading.id)));
-    for(const id of ['precision','functions','http','history','syntax']) {
+    for(const id of ['precision','functions','limits','http','history','syntax']) {
         await page.evaluate(id=>{
             const content=document.querySelector('.guide-content'), heading=document.getElementById(id);
             content.scrollTop+=heading.getBoundingClientRect().top-content.getBoundingClientRect().top-30;
@@ -18,17 +18,17 @@ for(const lang of ['sk','en']) test(`guide tracks reading position and keeps mob
         })).toBe(true);
         expect(await page.locator('.guide-toc').evaluate(n=>n.getBoundingClientRect().top)).toBeGreaterThanOrEqual(0);
         expect(new URL(page.url()).hash).toBe('');
-        if(id==='precision')await expect(page.locator('.guide-position')).toHaveText(lang==='sk'?'03 / 10':'07 / 10');
+        if(id==='precision')await expect(page.locator('.guide-position')).toHaveText(lang==='sk'?'03 / 11':'07 / 11');
     }
-    await page.locator('.guide-toc a[href="#http"]').click();
-    await expect(page).toHaveURL(/#http$/);
-    await expect(page.locator('.guide-toc a[aria-current="location"]')).toHaveAttribute('href','#http');
+    await page.locator('.guide-toc a[href="#limits"]').click();
+    await expect(page).toHaveURL(/#limits$/);
+    await expect(page.locator('.guide-toc a[aria-current="location"]')).toHaveAttribute('href','#limits');
     await page.locator('.guide-content').evaluate(n=>{n.scrollTop=n.scrollHeight;});
     await expect(page.locator('.guide-toc a[aria-current="location"]')).toHaveAttribute('href','#session-http');
-    await expect(page.locator('.guide-position')).toHaveText('10 / 10');
+    await expect(page.locator('.guide-position')).toHaveText('11 / 11');
     await page.locator('.guide-toc a[href="#intro"]').click();
     await expect(page.locator('.guide-toc a[aria-current="location"]')).toHaveAttribute('href','#intro');
-    await expect(page.locator('.guide-position')).toHaveText('01 / 10');
+    await expect(page.locator('.guide-position')).toHaveText('01 / 11');
     await page.locator('.guide-toc a[href="#session-http"]').click();
     await expect(page).toHaveURL(/#session-http$/);
     await expect(page.locator('.guide-toc a[aria-current="location"]')).toHaveAttribute('href','#session-http');
