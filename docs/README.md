@@ -47,6 +47,7 @@ numerical references, session/unit regressions, browser/CI checks and profiling.
 - [Formatting/cache measurements](benchmarks/BENCHMARKS.md).
 - [BigInt measurements](benchmarks/BIGINT_BENCHMARKS.md).
 - [Decimal/math measurements](benchmarks/DECIMAL_MATH_BENCHMARKS.md).
+- [Performance audit, 10 October 2026](benchmarks/PERFORMANCE_AUDIT_2026_10_10.md): current measurements, five-second risks and optimization priorities.
 
 Measurements retain their dates, environments and limitations. They are evidence
 for specific source snapshots, not promises about every machine.

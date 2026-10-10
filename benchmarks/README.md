@@ -12,7 +12,11 @@ See [the benchmark guide](../docs/benchmarks/BENCHMARKS.md) for setup and record
 | `bigint_cases.js`, `decimal_math_cases.js` | Generate inputs and independent exact arithmetic expectations. |
 | `check_*_benchmark.js` | Validate harness results and metric consistency; no speed thresholds. |
 | `http_benchmark.js` | Measure the real loopback HTTP path. |
+| `http_queue_benchmark.js` | Observe latency behind a slow request on a dedicated loopback server. |
 | `run_baseline.js` | Record three isolated runs with source/build/machine metadata. |
+| `run_performance_audit.js`, `summarize_performance_audit.js` | Record and check a cross-layer audit with production resource outcomes. |
+| `calculator_limit_benchmark.c` | Time the complete calculator pipeline with shared time/allocation/output budgets. |
+| `bigint_materialization_benchmark.c` | Isolate integer-to-decimal conversion; verify an exact round trip outside timing. |
 | `summarize_decimal_baseline.js` | Check completed decimal recordings and summarize their outcomes. |
 | `references/` | Frozen high-precision decimal/math expectations and their developer-only generator. |
 

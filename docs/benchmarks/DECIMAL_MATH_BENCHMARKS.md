@@ -138,6 +138,12 @@ thresholds; a smoke pass is not certification of the full stress matrix.
 
 ## Local baseline
 
+For a single-call diagnostic without warm-up or the separate memory/phase
+invocations, use `--validate --timing-only`. This emits only timing and validation
+columns; input parsing and independent-reference checks remain outside the API
+timer. Three fresh-process calls and their limitations are recorded in the
+[10 October performance audit](PERFORMANCE_AUDIT_2026_10_10.md).
+
 Recorded on 7 October 2026 on Windows x64, AMD Ryzen 7 7435HS, MSVC
 19.51.36247, Release with warnings-as-errors. The numeric workload is based on
 `89e6d2f` plus the captured working-tree changes. Sources, fixtures, compiler

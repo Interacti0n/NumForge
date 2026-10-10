@@ -72,7 +72,7 @@ static int check_value(const Case *c, BigDecimal *out, BigDecimal *original, Big
     return bounded ? 1 : -1;
 }
 
-static bool measure(const Case *c, int probe, double target, Measurement *m)
+static bool measure(const Case *c, int probe, double target, bool warm, Measurement *m)
 {
     BigDecimal *a = NULL, *b = NULL, *result = NULL, *original = NULL, *out;
     bool success = false;
@@ -83,7 +83,7 @@ static bool measure(const Case *c, int probe, double target, Measurement *m)
     out = !strcmp(c->mode, "alias_a") ? a : !strcmp(c->mode, "alias_b") ? b : result;
     if (bigdecimal_copy(a, c->a) != BIGDECIMAL_OK || bigdecimal_copy(b, c->b) != BIGDECIMAL_OK ||
         bigdecimal_set_string(result, "777") != BIGDECIMAL_OK) goto cleanup;
-    if (out == result && !strcmp(c->mode, "reuse") && c->expected_status == BIGDECIMAL_OK &&
+    if (warm && out == result && !strcmp(c->mode, "reuse") && c->expected_status == BIGDECIMAL_OK &&
         operate(c, out, a, b) != BIGDECIMAL_OK) goto cleanup;
     do
     {
@@ -137,7 +137,7 @@ cleanup:
     return success;
 }
 
-static bool run(const Case *c, bool quick, bool validate)
+static bool run(const Case *c, bool quick, bool validate, bool timing_only)
 {
     Measurement memory, phases, timing;
     double samples[5];
@@ -145,13 +145,22 @@ static bool run(const Case *c, bool quick, bool validate)
     int bounded = 0;
     for (size_t i = 0; i < count; i++)
     {
-        if (!measure(c, 0, validate ? 0.0 : quick ? 0.0002 : 0.001, &timing)) return false;
+        if (!measure(c, 0, validate ? 0.0 : quick ? 0.0002 : 0.001,
+            !(timing_only && validate), &timing)) return false;
         samples[i] = timing.seconds * 1e9 / (double)timing.iterations;
         bounded |= timing.bounded;
     }
     for (size_t i = 1; i < count; i++) for (size_t j = i; j > 0 && samples[j] < samples[j - 1]; j--)
     { double temp = samples[j]; samples[j] = samples[j - 1]; samples[j - 1] = temp; }
-    if (!measure(c, 1, 0.0, &memory) || !measure(c, 2, 0.0, &phases)) return false;
+    if (timing_only)
+    {
+        printf("%s,%s,%s,%lld,%d,%d,%s,%zu,%.3f,%.3f,%.3f\n",
+            c->name, c->op, c->mode, (long long)c->parameter, (int)c->rounding,
+            (int)c->expected_status, bounded ? "bounded_directed" : "exact", count,
+            samples[0], samples[count / 2U], samples[count - 1]);
+        return true;
+    }
+    if (!measure(c, 1, 0.0, true, &memory) || !measure(c, 2, 0.0, true, &phases)) return false;
     bounded |= memory.bounded | phases.bounded;
     printf("%s,%s,%s,%lld,%d,%d,%s,%zu,%.3f,%.3f,%.3f,%zu,%zu,%zu,%zu,%zu,%llu,%.3f,%.3f,%.3f,%.3f\n",
         c->name, c->op, c->mode, (long long)c->parameter, (int)c->rounding, (int)c->expected_status,
@@ -163,13 +172,14 @@ static bool run(const Case *c, bool quick, bool validate)
 
 int main(int argc, char **argv)
 {
-    bool quick = false, validate = false, success = true, found = false;
+    bool quick = false, validate = false, timing_only = false, success = true, found = false;
     const char *selected = NULL;
-    if (argc < 2) { fputs("Usage: decimal_math_benchmark fixtures.tsv [--quick] [--validate] [--case name]\n", stderr); return 1; }
+    if (argc < 2) { fputs("Usage: decimal_math_benchmark fixtures.tsv [--quick] [--validate] [--timing-only] [--case name]\n", stderr); return 1; }
     for (int i = 2; i < argc; i++)
     {
         if (!strcmp(argv[i], "--quick")) quick = true;
         else if (!strcmp(argv[i], "--validate")) validate = true;
+        else if (!strcmp(argv[i], "--timing-only")) timing_only = true;
         else if (!strcmp(argv[i], "--case") && i + 1 < argc) selected = argv[++i];
         else return 1;
     }
@@ -177,7 +187,10 @@ int main(int argc, char **argv)
     size_t capacity = 262144U;
     char *line = malloc(capacity);
     if (!input || !line) { if (input) fclose(input); free(line); return 1; }
-    puts("case,operation,mode,parameter,rounding,expected_status,validation,samples,min_ns_per_op,median_ns_per_op,max_ns_per_op,alloc_calls,requested_bytes,baseline_live_bytes,live_bytes,peak_live_bytes,process_peak_bytes,diagnostic_other_ns,diagnostic_alignment_ns,diagnostic_normalize_ns,diagnostic_core_ns");
+    if (timing_only)
+        puts("case,operation,mode,parameter,rounding,expected_status,validation,samples,min_ns_per_op,median_ns_per_op,max_ns_per_op");
+    else
+        puts("case,operation,mode,parameter,rounding,expected_status,validation,samples,min_ns_per_op,median_ns_per_op,max_ns_per_op,alloc_calls,requested_bytes,baseline_live_bytes,live_bytes,peak_live_bytes,process_peak_bytes,diagnostic_other_ns,diagnostic_alignment_ns,diagnostic_normalize_ns,diagnostic_core_ns");
     while (fgets(line, (int)capacity, input))
     {
         if (line[0] == '#') continue;
@@ -197,7 +210,7 @@ int main(int argc, char **argv)
             bigdecimal_set_string(c.tolerance, fields[8]) == BIGDECIMAL_OK && bigdecimal_set_string(c.expected, fields[9]) == BIGDECIMAL_OK;
         valid = valid && (!strcmp(c.mode, "reuse") || !strcmp(c.mode, "fresh") || !strcmp(c.mode, "alias_a") || !strcmp(c.mode, "alias_b"));
         if (!strcmp(c.op, "normalize") && strcmp(c.mode, "alias_a")) valid = false;
-        if (valid) valid = run(&c, quick, validate);
+        if (valid) valid = run(&c, quick, validate, timing_only);
         if (!valid) fprintf(stderr, "Failed independent reference or measurement: %s\n", c.name);
         bigdecimal_destroy(c.a); bigdecimal_destroy(c.b); bigdecimal_destroy(c.expected); bigdecimal_destroy(c.tolerance);
         if (!valid) { success = false; break; }
