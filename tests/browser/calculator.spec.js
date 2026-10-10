@@ -295,10 +295,13 @@ test('settings remain visible and retain values across layouts', async ({ page }
     }
 });
 
-test('header controls keep their size and position when changing language', async ({ page }) => {
-    for (const width of [1280, 1024]) {
+for (const font of ['system', 'Arial'])
+test(`header controls keep their size and position when changing language (${font})`, async ({ page }) => {
+    for (const width of [1280, 1024, 981]) {
         await page.setViewportSize({width, height: 768});
         await page.goto('/?lang=sk');
+        if (font === 'Arial')
+            await page.addStyleTag({content: ':root { --font-ui: Arial, sans-serif; }'});
         await page.evaluate(() => document.fonts.ready);
         const geometry = () => page.evaluate(() => {
             const controls = [...document.querySelectorAll('.brand, .header-guide, .primary-nav a, .language-switch, .header-actions > a')];
@@ -320,7 +323,8 @@ test('header controls keep their size and position when changing language', asyn
             expect(slovak.boxes[index].fits && english.boxes[index].fits,
                 `width ${width}, control ${index}: ${JSON.stringify([slovak.boxes[index], english.boxes[index]])}`).toBe(true);
             for (const dimension of ['x', 'width', 'height'])
-                expect(Math.abs(slovak.boxes[index][dimension] - english.boxes[index][dimension])).toBeLessThan(1);
+                expect(Math.abs(slovak.boxes[index][dimension] - english.boxes[index][dimension]),
+                    `width ${width}, control ${index}, ${dimension}: ${JSON.stringify([slovak.boxes[index], english.boxes[index]])}`).toBeLessThan(1);
         }
     }
 });

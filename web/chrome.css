@@ -110,7 +110,7 @@ body::before
 {
     display: inline-flex;
     order: 3;
-    flex: 0 0 112px;
+    flex: 0 0 120px;
     align-items: center;
     justify-content: center;
     gap: 7px;
@@ -169,8 +169,8 @@ body::before
     .brand-text strong { font-size: 1.05rem; }
     .brand-text small { display: none; }
     .primary-nav a { padding-inline: 6px; font-size: .8rem; }
-    .header-guide { flex-basis: 98px; font-size: .75rem; gap: 5px; }
-    .header-actions { grid-template-columns: 70px 92px 98px; gap: 5px; padding-left: 12px; }
+    .header-guide { flex-basis: 108px; font-size: .75rem; gap: 5px; }
+    .header-actions { grid-template-columns: 70px 92px 108px; gap: 5px; padding-left: 12px; }
     .header-actions > a { padding-inline: 5px; font-size: .75rem; }
     .language-switch a { padding-inline: 6px; font-size: .7rem; }
 }
