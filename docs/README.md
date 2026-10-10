@@ -17,6 +17,7 @@ testing entry points remain directly under `docs/`.
 Start with the [API guide](API.md), or open a specific reference:
 
 - [Public C API](reference/C_API.md): numeric types, functions and ownership.
+- [BigComplex](reference/BIGCOMPLEX.md): complex arithmetic, principal branches, precision and display forms.
 - [Calculator expressions](reference/CALCULATOR_EXPRESSIONS.md): syntax and calls.
 - [Local HTTP API](reference/HTTP_API.md): evaluation, sessions, revisions and errors.
 - [Session HTTP API](reference/SESSION_HTTP_API.md): saved values, pagination, lifecycle and conversion history.

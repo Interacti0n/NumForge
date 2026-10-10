@@ -42,6 +42,7 @@ const mobileHeader = window.matchMedia('(max-width: 980px)');
 let scrollSource = null;
 let scrollPosition = 0;
 let scrollDistance = 0;
+let scrollViewportHeight = 0;
 function resetHeaderScroll()
 {
     pageHeader?.classList.remove('scroll-hidden');
@@ -53,9 +54,14 @@ document.addEventListener('scroll', event => {
     if (!mobileHeader.matches || !pageHeader || !(source instanceof Element)) return;
     if (source !== document.scrollingElement && !source.matches('.guide-content, .upcoming-main, .calculator-column, .units-column')) return;
     const position = Math.max(0, source.scrollTop);
+    const viewportChanged = source === scrollSource && source.clientHeight !== scrollViewportHeight;
     const delta = position - (source === scrollSource ? scrollPosition : 0);
     scrollSource = source;
     scrollPosition = position;
+    scrollViewportHeight = source.clientHeight;
+    // Hiding the guide header changes the reading pane's height. At the bottom,
+    // scroll anchoring adjusts scrollTop; that is not a new user scroll direction.
+    if (viewportChanged) return;
     if (position <= 16 || pageHeader.classList.contains('menu-open') || (pageHeader.contains(document.activeElement) && document.activeElement.matches(':focus-visible')))
     {
         pageHeader.classList.remove('scroll-hidden');
@@ -249,7 +255,14 @@ function setupGuideNavigation()
     }
     content.addEventListener('scroll', schedule, {passive:true, signal:lifecycle.signal});
     window.addEventListener('resize', () => {active = null; schedule();}, {signal:lifecycle.signal});
-    const observer = new ResizeObserver(schedule);
+    const observer = new ResizeObserver(() => {
+        if (scrollSource === content && scrollViewportHeight !== content.clientHeight)
+        {
+            scrollPosition = Math.max(0, content.scrollTop);
+            scrollViewportHeight = content.clientHeight;
+        }
+        schedule();
+    });
     observer.observe(content);
     update();
     return () => {lifecycle.abort();observer.disconnect();cancelAnimationFrame(frame);};
