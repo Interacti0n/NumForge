@@ -7,6 +7,12 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Select a bounded theta/AGM path for suitable high-precision real logarithms
+  through the existing C API, calculator and complex compositions. Enclose
+  theta tails, pi and AGM rounding; adapt working precision until endpoint
+  rounding agrees, retain the series fallback and existing resource budgets.
+  Extend independent rounding-boundary, alias, cancellation and portability checks.
+
 - Remove the practical 100000 factorial input cap; retain the uint64 counter
   range and shared time/memory/output budgets. Check cancellation within grouped
   limb multiplication and avoid counter wrap; update C API, web help and guides.

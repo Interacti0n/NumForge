@@ -3,6 +3,7 @@
 #include <unity.h>
 
 #include <numforge/bigdecimal.h>
+#include <numforge/bigcomplex.h>
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
@@ -210,6 +211,39 @@ static void test_domains_and_failure_safety(void)
     bigdecimal_destroy(result);
 }
 
+static void test_high_precision_logarithm_compositions(void)
+{
+    BigDecimal *two = make_decimal("2"), *result = make_decimal("42");
+    BigDecimal *hundred = make_decimal("100"), *ten = make_decimal("10");
+    BigDecimal *part = make_decimal("0"), *reference = make_decimal("0");
+    BigComplex *z = bigcomplex_create();
+    int comparison;
+    TEST_ASSERT_NOT_NULL(z);
+    for (int mode = BIGDECIMAL_ROUND_TOWARD_ZERO; mode <= BIGDECIMAL_ROUND_HALF_EVEN; mode++) {
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_ln(result, two, 2000, (BigDecimalRoundingMode)mode));
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_rescale(result, result, 34, BIGDECIMAL_ROUND_HALF_EVEN));
+        assert_decimal_equals("0.6931471805599453094172321214581766", result);
+    }
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_copy(result, two));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_ln(result, result, 2000, BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_copy(reference, result));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK, bigcomplex_set_strings(z, "2", "0"));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK, bigcomplex_ln(z, z, 2000, BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK, bigcomplex_get_real(part, z));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_compare(&comparison, reference, part));
+    TEST_ASSERT_EQUAL(0, comparison);
+    TEST_ASSERT_EQUAL(BIGCOMPLEX_OK, bigcomplex_get_imaginary(part, z));
+    assert_decimal_equals("0", part);
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_log(result, hundred, ten, 2000, BIGDECIMAL_ROUND_HALF_EVEN));
+    assert_decimal_equals("2", result);
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(result, "42"));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_INVALID_ARGUMENT, bigdecimal_ln(result, two, 2000, (BigDecimalRoundingMode)99));
+    assert_decimal_equals("42", result);
+    bigcomplex_destroy(z);
+    bigdecimal_destroy(two); bigdecimal_destroy(result); bigdecimal_destroy(hundred);
+    bigdecimal_destroy(ten); bigdecimal_destroy(part); bigdecimal_destroy(reference);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -217,5 +251,6 @@ int main(void)
     RUN_TEST(test_compact_magnitudes_and_rounding);
     RUN_TEST(test_inverse_identities);
     RUN_TEST(test_domains_and_failure_safety);
+    RUN_TEST(test_high_precision_logarithm_compositions);
     return UNITY_END();
 }

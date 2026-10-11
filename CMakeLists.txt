@@ -119,6 +119,7 @@ add_library(numforge STATIC
     src/bigdecimal/operations.c
     src/bigdecimal/roots.c
     src/bigdecimal/transcendental.c
+    src/bigdecimal/logarithm_agm.c
     src/bigdecimal/hyperbolic.c
     src/bigdecimal/trigonometric.c
     src/bigdecimal/format.c
@@ -404,6 +405,11 @@ if(NUMFORGE_BUILD_BENCHMARKS)
         target_compile_definitions(logarithm_agm_benchmark PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
         add_test(NAME logarithm_agm_fault_checks COMMAND logarithm_agm_benchmark --fault-checks)
         set_tests_properties(logarithm_agm_fault_checks PROPERTIES TIMEOUT 300)
+        foreach(numforge_agm_shard RANGE 0 3)
+            add_test(NAME logarithm_agm_interval_fault_checks_${numforge_agm_shard}
+                COMMAND logarithm_agm_benchmark --fault-checks-interval ${numforge_agm_shard})
+            set_tests_properties(logarithm_agm_interval_fault_checks_${numforge_agm_shard} PROPERTIES TIMEOUT 300)
+        endforeach()
         target_compile_definitions(bigint_arithmetic_benchmark PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
         find_program(NUMFORGE_BIGINT_BENCH_NODE NAMES node nodejs)
         if(NUMFORGE_BIGINT_BENCH_NODE)

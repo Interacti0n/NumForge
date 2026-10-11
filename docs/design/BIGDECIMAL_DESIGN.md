@@ -19,6 +19,7 @@ binary floating point. Its public API is declared in
 | `operations.c` | BigInt conversions, integer/sign helpers, min/max, and integer powers. |
 | `roots.c` | General real roots plus square-root and cube-root wrappers. |
 | `transcendental.c` | Guarded exponential and logarithmic functions with decimal argument reduction. |
+| `logarithm_agm.c` | Private outward-rounded theta/AGM logarithm with adaptive precision and bounded pi. |
 | `hyperbolic.c` | Stable hyperbolic and inverse hyperbolic functions. |
 | `trigonometric.c` | Guarded radian trigonometric functions and magnitude-aware π reduction. |
 | `format.c` | Precision-aware readable and scientific result formatting. |
@@ -60,9 +61,10 @@ The production ln/exp series also own one private `BigDecimalWorkspace` per
 call. It reuses coefficient, alignment, rounding and normalized-division
 buffers, with a bounded power-of-ten cache. Cleanup runs on success and failure;
 only a successful result is published. Guard digits, rounding and application
-budgets are unchanged. The theta/AGM logarithm is still an
-[isolated benchmark prototype](../benchmarks/LOGARITHM_AGM_PROTOTYPE_2026_10_11.md),
-not the implementation selected by the public API or calculator.
+budgets are unchanged. A separate
+[bounded theta/AGM implementation](../benchmarks/LOGARITHM_AGM_INTEGRATION_2026_10_11.md)
+now serves suitable 2000–10000-digit logarithms through the existing public API.
+The earlier fixed-guard prototype remains isolated in its benchmark.
 
 Significant rounding counts coefficient digits through a private BigInt helper:
 integer bit-length bounds either prove the exact count, or one private magnitude
@@ -102,7 +104,7 @@ are public arguments with checked size/scale arithmetic, not application caps.
 
 Transcendental functions also take significant digits and a rounding mode.
 `exp` repeatedly halves its argument into [-0.5, 0.5], evaluates its Taylor
-series with 24 guard digits, and reconstructs the result by squaring. `ln`
+series with 24 guard digits, and reconstructs the result by squaring. The `ln` series fallback
 repeatedly square-roots a positive input into [0.9, 1.1], evaluates
 `2 * atanh((x-1)/(x+1))`, and restores the removed powers of two. `log10` and
 arbitrary-base `log` divide two guarded natural logarithms. Internal iterations
@@ -110,6 +112,8 @@ use half-even rounding so directed output modes cannot prevent convergence;
 the requested rounding mode is applied to the final significant result. A
 bounded number of reduction steps rejects magnitudes that cannot fit the
 representation, and every loop checks an active cooperative resource budget.
+Suitable 2000–10000-digit calls instead use theta/AGM interval arithmetic with
+full-tail bounds, a pi enclosure and adaptive endpoint-rounding agreement.
 
 Forward trigonometric functions are radian-only at the public library boundary.
 Argument reduction rounds `x/(π/2)` to the nearest integer, evaluates sine and
@@ -258,10 +262,11 @@ fails each allocation in conversion, comparison, exact and rounded arithmetic,
 then verifies out-of-memory propagation and unchanged destinations. Its
 end-to-end case also covers parser, evaluator, and formatter cleanup.
 
-Independent generated vectors and per-call scratch/power reuse are implemented.
-The next logarithm work is conservative error bounds and adaptive precision for
-the AGM prototype, difficult rounding/conditioning references and a measured
-production dispatcher that retains the existing series fallback. Any narrow
+Independent generated vectors, per-call scratch/power reuse and bounded AGM
+dispatch are implemented. Further work includes reducing interval allocation
+traffic and extending enclosure-based rounding to other approximate functions.
+The series fallback and complex compositions retain their existing approximate
+contracts. Any narrow
 `BigInt` helper added for performance must preserve the public layering and be
 independently tested.
 

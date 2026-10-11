@@ -47,14 +47,13 @@ Product-tree factorial and Karatsuba remain candidates for measured follow-ups.
 Existing experiments are described with their measured tradeoffs in
 [BIGINT_BENCHMARKS.md](../benchmarks/BIGINT_BENCHMARKS.md).
 
-The nearest numerical priority is the
-[theta/AGM logarithm prototype](../benchmarks/LOGARITHM_AGM_PROTOTYPE_2026_10_11.md).
-It has independent high-precision and failure checks, but is not selected by
-production APIs. Before integration, derive conservative error bounds/adaptive
-precision, extend difficult rounding and near-one inputs, then choose a private
-precision-dependent dispatcher with the current series as fallback. Recheck
-complete calculator requests and real/complex compositions on all supported
-division paths. Public correct-rounding guarantees must not exceed the evidence.
+The [bounded theta/AGM logarithm](../benchmarks/LOGARITHM_AGM_INTEGRATION_2026_10_11.md)
+is integrated with outward-rounded theta tails, AGM/pi enclosures, adaptive
+precision and a private precision-dependent dispatcher. The original series
+remains for low precision and near-one inputs. Next numerical candidates are
+lower interval allocation traffic, large balanced multiplication/product-tree
+factorials, and enclosure-based rounding for further functions. Composed
+complex functions retain their existing approximation contracts.
 
 ## Planned tool development
 

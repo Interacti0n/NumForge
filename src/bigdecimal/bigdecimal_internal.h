@@ -96,6 +96,12 @@ typedef struct BigDecimalWorkspace
     bool power_valid;
 } BigDecimalWorkspace;
 void bigdecimal_workspace_clear(BigDecimalWorkspace *workspace);
+/* Private logarithm paths, also exercised directly by the opt-in harness. */
+BigDecimalStatus bigdecimal_ln_series_internal(BigDecimal *result,
+    const BigDecimal *value, int64_t digits, BigDecimalRoundingMode rounding);
+BigDecimalStatus bigdecimal_ln_agm_internal(BigDecimal *result,
+    const BigDecimal *value, int64_t digits, int64_t extra, BigDecimalRoundingMode rounding,
+    unsigned *expansions, unsigned *iterations, unsigned *attempts);
 BigDecimalStatus bigdecimal_mul_significant_workspace(BigDecimal *result,
     const BigDecimal *a, const BigDecimal *b, int64_t digits,
     BigDecimalRoundingMode rounding, BigDecimalWorkspace *workspace);

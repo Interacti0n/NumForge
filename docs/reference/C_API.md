@@ -180,7 +180,12 @@ keeps decimal places; a negative scale rounds to tens, hundreds, and so on.
   `bigdecimal_log10` uses base 10; `bigdecimal_log` accepts an explicit base
   greater than zero and different from one. Each takes a positive significant
   digit count and an explicit rounding mode. Results use guarded decimal
-  series and argument reduction without binary floating-point conversion.
+  arithmetic and argument reduction without binary floating-point conversion.
+  `ln` selects an outward-rounded theta/AGM enclosure at 2000–10000 digits
+  outside the inclusive `[0.999, 1.001]` input band, retaining the series for
+  other cases. Working precision increases until endpoint rounding agrees;
+  retries remain within an installed runtime budget. See the
+  [integration and error bounds](../benchmarks/LOGARITHM_AGM_INTEGRATION_2026_10_11.md).
 - Trigonometric library calls always use radians. `sin`, `cos`, `tan`, and
   `atan` accept any finite value; `asin` and `acos` require an argument in
   `[-1, 1]`. Inverse results are radians. Forward reduction calculates enough

@@ -2456,6 +2456,21 @@ void test_large_factorial_cancellation_preserves_destination(void)
     }
 }
 
+static void test_production_agm_cancellation_preserves_destination(void)
+{
+    for (unsigned alias = 0; alias < 2; alias++) {
+        BigDecimal *input = make_bigdecimal("2"), *out = make_bigdecimal("77");
+        numforge_test_budget_expire_after(1000U);
+        TEST_ASSERT_TRUE(numforge_budget_begin(UINT64_MAX, SIZE_MAX, SIZE_MAX));
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OUT_OF_MEMORY,
+            bigdecimal_ln(alias ? input : out, input, 2000, BIGDECIMAL_ROUND_HALF_EVEN));
+        TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_TIME, numforge_budget_failure());
+        numforge_budget_end();
+        assert_bigdecimal_text("2", input); assert_bigdecimal_text("77", out);
+        bigdecimal_destroy(input); bigdecimal_destroy(out);
+    }
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -2507,5 +2522,6 @@ int main(void)
     RUN_TEST(test_bigrational_conversion_preserves_outputs_on_allocation_failure);
 
     RUN_TEST(test_large_factorial_cancellation_preserves_destination);
+    RUN_TEST(test_production_agm_cancellation_preserves_destination);
     return UNITY_END();
 }

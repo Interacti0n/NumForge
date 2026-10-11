@@ -385,7 +385,7 @@ BigDecimalStatus bigdecimal_exp(
     return status;
 }
 
-BigDecimalStatus bigdecimal_ln(
+BigDecimalStatus bigdecimal_ln_series_internal(
     BigDecimal *result,
     const BigDecimal *value,
     int64_t digits,
@@ -444,6 +444,26 @@ BigDecimalStatus bigdecimal_ln(
 
     bigdecimal_destroy(temporary);
     return status;
+}
+
+BigDecimalStatus bigdecimal_ln(
+    BigDecimal *result, const BigDecimal *value,
+    int64_t digits, BigDecimalRoundingMode rounding)
+{
+    /* Below this measured crossover the reduced series is faster. The upper
+     * bound limits the new dispatch, not the public precision argument. */
+    if (result != NULL && value != NULL && digits >= 2000 && digits <= 10000)
+    {
+        unsigned expansions, iterations, attempts;
+        BigDecimalStatus status = bigdecimal_ln_agm_internal(result, value, digits, 40,
+            rounding, &expansions, &iterations, &attempts);
+        if ((status != BIGDECIMAL_VALUE_TOO_LARGE && status != BIGDECIMAL_SCALE_OVERFLOW) ||
+            numforge_budget_failure() != NUMFORGE_BUDGET_OK)
+            return status;
+        /* Retry unsupported conditioning/representation on the original path.
+         * Do not retry after cancellation or allocation-budget exhaustion. */
+    }
+    return bigdecimal_ln_series_internal(result, value, digits, rounding);
 }
 
 BigDecimalStatus bigdecimal_log10(

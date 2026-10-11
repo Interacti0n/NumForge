@@ -1,5 +1,10 @@
 # Theta/AGM logarithm prototype — 11 October 2026
 
+Historical prototype snapshot: the subsequent
+[bounded interval integration](LOGARITHM_AGM_INTEGRATION_2026_10_11.md) implements
+a separate production path. The fixed-guard experiment described below remains
+benchmark-only; its timings and limitations are not those of the bounded path.
+
 This implements the first experiment from the
 [logarithm algorithm review](LOGARITHM_ALGORITHM_REVIEW_2026_10_11.md).
 It lives entirely in the opt-in `logarithm_agm_benchmark` executable. Production

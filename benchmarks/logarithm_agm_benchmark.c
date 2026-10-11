@@ -129,13 +129,14 @@ cleanup:
 }
 
 #ifdef NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING
-static int fault_checks(void)
+static int fault_checks(bool interval, int shard)
 {
     size_t checked = 0U;
     if (!numforge_alloc_stats_track(true)) return EXIT_FAILURE;
     for (unsigned alias = 0; alias < 2; alias++)
     for (unsigned deadlines = 0; deadlines < 2; deadlines++)
     {
+        if (shard >= 0 && alias * 2U + deadlines != (unsigned)shard) continue;
         bool completed = false;
         for (size_t index = 1U; index <= 65536U; index++)
         {
@@ -146,7 +147,7 @@ static int fault_checks(void)
                 bigdecimal_set_string(out, "7") == BIGDECIMAL_OK &&
                 bigdecimal_copy(original, alias ? a : out) == BIGDECIMAL_OK &&
                 bigdecimal_ln(reference, a, 34, BIGDECIMAL_ROUND_HALF_EVEN) == BIGDECIMAL_OK;
-            unsigned expansions, iterations;
+            unsigned expansions, iterations, attempts;
             int comparison;
             BigDecimalStatus status = BIGDECIMAL_INVALID_ARGUMENT;
             if (good)
@@ -157,7 +158,9 @@ static int fault_checks(void)
                     good = numforge_budget_begin(UINT64_MAX, SIZE_MAX, SIZE_MAX);
                     numforge_test_budget_expire_after(index);
                 }
-                if (good) status = experimental_ln(alias ? a : out, a, 34, 80,
+                if (good) status = interval ? bigdecimal_ln_agm_internal(alias ? a : out, a, 34, 80,
+                    BIGDECIMAL_ROUND_HALF_EVEN, &expansions, &iterations, &attempts) :
+                    experimental_ln(alias ? a : out, a, 34, 80,
                     BIGDECIMAL_ROUND_HALF_EVEN, &expansions, &iterations);
                 if (deadlines) numforge_budget_end();
                 numforge_test_allocator_end();
@@ -212,19 +215,25 @@ static bool expected_file(BigDecimal *expected, const char *path)
 int main(int argc, char **argv)
 {
 #ifdef NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING
-    if (argc == 2 && !strcmp(argv[1], "--fault-checks")) return fault_checks();
+    if (argc == 2 && !strcmp(argv[1], "--fault-checks")) return fault_checks(false, -1);
+    if (argc == 2 && !strcmp(argv[1], "--fault-checks-interval")) return fault_checks(true, -1);
+    if (argc == 3 && !strcmp(argv[1], "--fault-checks-interval")) {
+        int64_t shard;
+        if (!integer(argv[2], &shard) || shard < 0 || shard > 3) return EXIT_FAILURE;
+        return fault_checks(true, (int)shard);
+    }
 #endif
     int64_t digits, extra, rounding, deadline;
     bool memory = argc == 9 && !strcmp(argv[8], "--memory");
     bool alias = argc == 9 && !strcmp(argv[8], "--alias");
     if ((argc != 8 && !memory && !alias) ||
-        (strcmp(argv[1], "agm") && strcmp(argv[1], "series")) ||
+        (strcmp(argv[1], "agm") && strcmp(argv[1], "interval") && strcmp(argv[1], "series") && strcmp(argv[1], "public")) ||
         !integer(argv[3], &digits) || !integer(argv[4], &extra) ||
         !integer(argv[5], &rounding) || !integer(argv[6], &deadline) ||
         digits < 1 || digits > 10000 || extra < 40 || extra > 512 ||
         rounding < BIGDECIMAL_ROUND_TOWARD_ZERO || rounding > BIGDECIMAL_ROUND_HALF_EVEN || deadline < 0)
     {
-        fputs("Usage: logarithm_agm_benchmark agm|series input digits extra rounding deadline-ms reference-file|- [--memory|--alias]\n", stderr);
+        fputs("Usage: logarithm_agm_benchmark agm|interval|series|public input digits extra rounding deadline-ms reference-file|- [--memory|--alias]\n", stderr);
         return EXIT_FAILURE;
     }
     if (memory && !numforge_alloc_stats_track(true)) return EXIT_FAILURE;
@@ -239,12 +248,15 @@ int main(int argc, char **argv)
     if (strcmp(argv[7], "-") && !expected_file(expected, argv[7])) goto cleanup;
     numforge_alloc_stats_reset();
     if (!numforge_budget_begin((uint64_t)deadline, 64U*1024U*1024U, 512U*1024U)) goto cleanup;
-    unsigned expansions = 0U, iterations = 0U;
+    unsigned expansions = 0U, iterations = 0U, attempts = 0U;
     double begin = benchmark_seconds();
     BigDecimal *destination = alias ? a : out;
     BigDecimalStatus status = !strcmp(argv[1], "agm") ?
         experimental_ln(destination, a, digits, extra, (BigDecimalRoundingMode)rounding, &expansions, &iterations) :
-        bigdecimal_ln(destination, a, digits, (BigDecimalRoundingMode)rounding);
+        !strcmp(argv[1], "interval") ?
+        bigdecimal_ln_agm_internal(destination, a, digits, extra, (BigDecimalRoundingMode)rounding, &expansions, &iterations, &attempts) :
+        !strcmp(argv[1], "public") ? bigdecimal_ln(destination, a, digits, (BigDecimalRoundingMode)rounding) :
+        bigdecimal_ln_series_internal(destination, a, digits, (BigDecimalRoundingMode)rounding);
     double end = benchmark_seconds();
     size_t calls = numforge_alloc_stats_calls(), bytes = numforge_alloc_stats_bytes();
     size_t peak = numforge_alloc_stats_peak();
@@ -267,12 +279,12 @@ int main(int argc, char **argv)
         if (bigdecimal_compare(&comparison, destination, original) != BIGDECIMAL_OK || comparison != 0) goto cleanup;
     }
     if (begin < 0 || end < begin) goto cleanup;
-    printf("algorithm,digits,extra,rounding,status,elapsed_ms,alloc_calls,requested_bytes,peak_live,expansions,agm_iterations,budget_reason,reference_match,output_bytes,format_ms\n");
-    printf("%s,%" PRId64 ",%" PRId64 ",%" PRId64 ",%d,%.6f,%zu,%zu,%zu,%u,%u,%s,%d,%zu,%.6f\n",
+    printf("algorithm,digits,extra,rounding,status,elapsed_ms,alloc_calls,requested_bytes,peak_live,expansions,agm_iterations,budget_reason,reference_match,output_bytes,format_ms,attempts\n");
+    printf("%s,%" PRId64 ",%" PRId64 ",%" PRId64 ",%d,%.6f,%zu,%zu,%zu,%u,%u,%s,%d,%zu,%.6f,%u\n",
         argv[1], digits, extra, rounding, (int)status, (end-begin)*1000.0,
         calls, bytes, memory ? peak : 0U, expansions, iterations,
         failure == NUMFORGE_BUDGET_TIME ? "time" : failure == NUMFORGE_BUDGET_MEMORY ? "allocation" : "none",
-        checked ? 1 : 0, formatted ? strlen(formatted) : 0U, format_ms);
+        checked ? 1 : 0, formatted ? strlen(formatted) : 0U, format_ms, attempts);
     exit_code = !strcmp(argv[7], "-") || checked ? EXIT_SUCCESS : EXIT_FAILURE;
 cleanup:
     free(formatted);

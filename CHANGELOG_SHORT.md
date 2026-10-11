@@ -5,6 +5,9 @@ details and the [2.2 release record](docs/project/RELEASE_2_2.md) for validation
 
 ## Unreleased
 
+- Faster high-precision logarithms with bounded AGM and adaptive precision;
+  existing low-precision behavior and resource budgets remain.
+
 - Allow larger factorial inputs under existing time and memory budgets.
 - Reduce ln/exp allocations; 5000-place exp now fits existing resource limits.
 - Cut GCD allocation churn so large real/complex fractions fit existing limits.

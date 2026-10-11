@@ -26,11 +26,13 @@ The [decimal workspace report](../docs/benchmarks/DECIMAL_WORKSPACE_2026_10_11.m
 records ln/exp allocation reduction and remaining high-precision CPU limits.
 The [logarithm algorithm review](../docs/benchmarks/LOGARITHM_ALGORITHM_REVIEW_2026_10_11.md)
 compares high-precision alternatives and proposes a theta/AGM prototype.
-The opt-in `logarithm_agm_benchmark` now evaluates that experimental path and
-the unchanged public logarithm, with independent references and failure checks;
+The opt-in `logarithm_agm_benchmark` evaluates that fixed-guard experiment,
+the bounded interval implementation, the original series and public dispatcher,
+with independent references and failure checks;
 the [prototype results](../docs/benchmarks/LOGARITHM_AGM_PROTOTYPE_2026_10_11.md)
-record its precision crossover and remaining integration work. It is not used
-by the calculator or installed C API.
+record the original experiment's crossover and prerequisites. The separate
+[bounded AGM integration](../docs/benchmarks/LOGARITHM_AGM_INTEGRATION_2026_10_11.md)
+now serves suitable high-precision requests through the public C API.
 The [factorial budget report](../docs/benchmarks/FACTORIAL_BUDGETS_2026_10_11.md)
 records inputs above the former cap, deadline cancellation and separate final
 text-conversion timing for logarithms.
@@ -38,7 +40,7 @@ text-conversion timing for logarithms.
 | Files | Purpose |
 | --- | --- |
 | `*_benchmark.c` | C timing harnesses for arithmetic, formatting and calculator/cache behavior. |
-| `logarithm_agm_benchmark.c`, `check_logarithm_agm_benchmark.cjs` | Experimental theta/AGM logarithm, exact-reference checks and opt-in allocation/deadline injection. |
+| `logarithm_agm_benchmark.c`, `check_logarithm_agm_benchmark.cjs` | Fixed-guard experiment, interval/public/series logarithm comparisons, exact-reference checks and opt-in allocation/deadline injection. |
 | `generate_logarithm_agm_cases.py`, `data/logarithm_agm_smoke.tsv` | Standard-library Decimal references checked at two extra precisions; Python is needed only to regenerate fixtures. |
 | `benchmark_clock.c`, `benchmark_clock.h` | Shared monotonic clock. |
 | `allocation_stats_check.c` | Allocation-ledger validation. |

@@ -127,6 +127,11 @@ See [expression rules](../reference/CALCULATOR_EXPRESSIONS.md),
 [HTTP transport](../reference/HTTP_API.md) and
 [session API](../reference/SESSION_HTTP_API.md) for domains, errors and pagination.
 
+High-precision logarithms can increase working precision internally to resolve
+rounding. This shares the same resource budgets; selecting more output places
+does not guarantee completion. Algorithm selection is automatic in the C API
+used by both CLI and web, without another calculator setting.
+
 ## Automatic complex results
 
 `sum`, `product` and `mean` also work with complex arguments. For example,
