@@ -322,6 +322,14 @@ void numforge_budget_end(
 #endif
 }
 
+bool numforge_budget_can_allocate_pair(size_t first, size_t second)
+{
+    if (!budget_active) return true;
+    return budget_failure == NUMFORGE_BUDGET_OK &&
+        first <= budget_single && second <= budget_single &&
+        first <= budget_remaining && second <= budget_remaining - first;
+}
+
 static bool numforge_budget_allocate(
     size_t size
 )

@@ -43,10 +43,12 @@ GCD remainder buffers and per-call ln/exp arithmetic workspaces are implemented.
 The practical factorial cap is removed; the uint64 counter range and shared
 application time/memory/output budgets remain. See
 [factorial budgets and final text conversion](../benchmarks/FACTORIAL_BUDGETS_2026_10_11.md).
-Product-tree factorial and Karatsuba remain candidates for measured follow-ups.
+Budget-aware Karatsuba now serves sufficiently large balanced products;
+see the [integration report](../benchmarks/KARATSUBA_INTEGRATION_2026_10_11.md).
+Product-tree factorial remains a candidate for a separate measured follow-up.
 The [private Karatsuba experiment](../benchmarks/KARATSUBA_EXPERIMENT_2026_10_11.md)
 adds bounded scratch, exact references and cancellation/failure checks, with
-threshold and grouped product-tree comparisons before any production change.
+threshold and grouped product-tree comparisons preceding the integration.
 Existing experiments are described with their measured tradeoffs in
 [BIGINT_BENCHMARKS.md](../benchmarks/BIGINT_BENCHMARKS.md).
 
@@ -54,7 +56,7 @@ The [bounded theta/AGM logarithm](../benchmarks/LOGARITHM_AGM_INTEGRATION_2026_1
 is integrated with outward-rounded theta tails, AGM/pi enclosures, adaptive
 precision and a private precision-dependent dispatcher. The original series
 remains for low precision and near-one inputs. Next numerical candidates are
-lower interval allocation traffic, large balanced multiplication/product-tree
+lower interval allocation traffic, bounded product-tree
 factorials, and enclosure-based rounding for further functions. Composed
 complex functions retain their existing approximation contracts.
 

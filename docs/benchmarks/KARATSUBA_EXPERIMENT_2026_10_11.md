@@ -1,5 +1,9 @@
 # Private Karatsuba experiment — 11 October 2026
 
+This records the pre-integration snapshot. The subsequent
+[production integration](KARATSUBA_INTEGRATION_2026_10_11.md) changes multiplication
+dispatch; factorial-tree measurements here remain experimental.
+
 This is a benchmark-only experiment. Production `bigint_mul`, factorial,
 calculator limits and the installed C API are unchanged. Earlier product-tree
 measurements used classical products; this experiment tests faster products

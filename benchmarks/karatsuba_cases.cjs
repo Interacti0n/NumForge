@@ -34,7 +34,7 @@ function makeCases(quick = false, timing = false) {
             add('negative-' + n, -a, b); add('both-negative-' + n, -a, -b);
         }
         const ratios = [1, Math.max(1, Math.floor(n / 8)), Math.max(1, Math.floor(n / 2)), n - 1];
-        if (!timing) ratios.push(Math.floor(n / 2) + 1, Math.floor(3 * n / 4));
+        ratios.push(Math.floor(n / 2) + 1, Math.floor(2 * n / 3), Math.floor(3 * n / 4));
         for (const small of [...new Set(ratios)]) {
             const s = random(small);
             add(`ratio-${n}-${small}`, a, s); add(`reverse-${small}-${n}`, s, a);

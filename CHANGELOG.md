@@ -7,9 +7,14 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Select Karatsuba for large, sufficiently balanced BigInt products through the
+  existing C API. Reuse bounded per-call scratch, retain classical multiplication
+  for small/unbalanced inputs and preflight optional workspace against active
+  memory budgets. Preserve aliases and atomic cancellation/allocation failures.
+
 - Add a benchmark-only Karatsuba multiplication experiment with bounded shared
   scratch, independent exact references, alias/failure/cancellation checks and
-  grouped product-tree comparisons. Keep production arithmetic unchanged.
+  grouped product-tree comparisons preceding production integration.
 - Debounce calculator and unit-converter previews until two seconds after the
   last input or settings change; keep confirmation immediate and cancel pending
   previews on confirmation, clearing or navigation.

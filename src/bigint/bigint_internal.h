@@ -53,6 +53,10 @@ int bigint_compare_abs(const BigInt *a, const BigInt *b);
 BigIntStatus bigint_add_abs(BigInt *result, const BigInt *a, const BigInt *b);
 BigIntStatus bigint_subtract_abs(BigInt *result, const BigInt *a, const BigInt *b);
 void bigint_multiply_u64_u64(uint64_t a, uint64_t b, uint64_t *high, uint64_t *low);
+/* Private atomic Karatsuba kernel; threshold is a recursive leaf cutoff.
+ * Dispatch checks optional workspace against the active resource budget. */
+BigIntStatus bigint_mul_karatsuba(BigInt *out, const BigInt *a, const BigInt *b, size_t threshold);
+bool bigint_karatsuba_fits(size_t na, size_t nb, size_t threshold);
 /* Owned scratch for repeated magnitude division. Zero-initialize and free both
  * buffers after use. Output must not alias inputs/scratch and may change on
  * failure; callers publish only completed results. The divisor must be nonzero. */

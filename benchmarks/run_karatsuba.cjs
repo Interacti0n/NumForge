@@ -8,11 +8,22 @@ const {makeCases} = require('./karatsuba_cases.cjs');
 const executable = path.resolve(process.argv[2] || '');
 const output = path.resolve(process.argv[3] || '');
 const factorials = process.argv.length === 6 && process.argv[4] === '--factorials';
-if ((!factorials && process.argv.length !== 4) || !fs.existsSync(executable))
-    throw Error('Usage: node run_karatsuba.cjs executable empty-output-directory [--factorials fixtures.tsv]');
+const focused = process.argv.length === 5 && process.argv[4] === '--focused';
+if ((!factorials && !focused && process.argv.length !== 4) || !fs.existsSync(executable))
+    throw Error('Usage: node run_karatsuba.cjs executable empty-output-directory [--focused|--factorials fixtures.tsv]');
 fs.mkdirSync(output, {recursive:true});
 if (fs.readdirSync(output).length) throw Error('Output directory must be empty');
-const rows = factorials ? fs.readFileSync(process.argv[5], 'utf8').trim().split(/\r?\n/) : makeCases(false, true);
+let rows = factorials ? fs.readFileSync(process.argv[5], 'utf8').trim().split(/\r?\n/) : makeCases(false, true);
+if (focused) rows = rows.filter(row => {
+    const [name, op] = row.split('\t');
+    if (!['mul','karatsuba32','karatsuba64'].includes(op)) return false;
+    for (const n of [64,128,256,1024,4096]) {
+        if (name.startsWith(`balanced-${n}-`) || name.startsWith(`square-${n}-`)) return true;
+        for (const small of [Math.floor(n/2), Math.floor(n/2)+1, Math.floor(2*n/3), Math.floor(3*n/4)])
+            if (name.startsWith(`ratio-${n}-${small}-`) || name.startsWith(`reverse-${small}-${n}-`)) return true;
+    }
+    return false;
+});
 const hash = text => crypto.createHash('sha256').update(text).digest('hex');
 const fixture = rows.join('\n') + '\n';
 fs.writeFileSync(path.join(output, 'cases.tsv'), fixture);
@@ -21,7 +32,7 @@ fs.writeFileSync(path.join(output, 'metadata.json'), JSON.stringify({
     started:new Date().toISOString(), executable, executableSha256:hash(fs.readFileSync(executable)),
     fixtureSha256:hash(fixture), revision:revision.stdout.trim(),
     platform:process.platform, arch:process.arch, cpu:os.cpus()[0]?.model,
-    node:process.version, rows:rows.length, runs:3, samplesPerRun:factorials ? 1 : 3,
+    node:process.version, rows:rows.length, focused, runs:3, samplesPerRun:factorials ? 1 : 3,
     order:'forward, reverse, forward', timing:'whole operation; parsing/copying/reference comparison excluded',
     conditions:'No affinity/frequency lock. Run without concurrent builds or tests.'
 }, null, 2));
@@ -59,8 +70,9 @@ console.log('Median milliseconds across three per-process medians:');
 if (factorials) for (const row of summary)
     console.log(row.name, (row.medianNs / 1e6).toFixed(3), 'ms');
 else for (const n of [32,64,128,256,512,1024,2048,4096,8192]) {
+    if (!summary.some(r => r.name === `balanced-${n}-reuse-mul`)) continue;
     console.log(n, ['mul','karatsuba16','karatsuba32','karatsuba64','karatsuba128','karatsuba256'].map(op => {
         const item = summary.find(r => r.name === `balanced-${n}-reuse-${op}`);
-        return `${op}=${(item.medianNs/1e6).toFixed(4)}`;
+        return item ? `${op}=${(item.medianNs/1e6).toFixed(4)}` : '';
     }).join(' '));
 }

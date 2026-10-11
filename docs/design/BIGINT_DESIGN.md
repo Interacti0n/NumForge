@@ -15,6 +15,7 @@ root without floating-point conversion and preserves the destination on error.
 | `conversion.c` | Parsing and decimal string conversion. |
 | `comparison.c` | Signed comparison and basic value predicates. |
 | `arithmetic.c` | Sign operations, arithmetic, division, modulo, and integer powers. |
+| `multiplication.c` | Private bounded-scratch Karatsuba kernel and workspace preflight. |
 | `bitwise.c` | Bitwise operations and shifts. |
 | `number_theory.c` | GCD, LCM, factorial, permutations, and combinations. |
 | `primality.c` | Parity, Miller-Rabin primality testing, and perfect-square detection. |
@@ -145,11 +146,19 @@ argument failure.
 
 ## Performance boundaries
 
-The current multiplication and division implementations prioritize correctness,
-aliasing safety, and portability. Likely future optimizations, after profiling,
-are:
+Multiplication selects a private Karatsuba kernel when the smaller operand has
+at least 128 limbs and is greater than half the larger operand. Recursive leaves
+use classical multiplication below 32 limbs. A single per-call scratch arena
+serves all recursion; no recursive allocations or global scratch are used.
+Optional result/scratch allocation sizes are checked against the remaining
+thread-local budget before allocation. If the workspace does not fit, the
+original classical path remains available. Allocation/deadline failures preserve
+the destination and all permitted aliases. The public API and resource limits
+are unchanged. See the [integration measurements](../benchmarks/KARATSUBA_INTEGRATION_2026_10_11.md).
 
-- faster multiplication algorithms for very large limb counts;
+Future candidates, after profiling, include:
+
+- bounded/reusable scratch for product-tree factorials and repeated products;
 - divide-and-conquer conversion if measurements show that full decimal output
   remains a bottleneck after the native single-limb division fast path;
 - cached powers used repeatedly by higher-level decimal operations.

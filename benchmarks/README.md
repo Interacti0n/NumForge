@@ -36,10 +36,15 @@ now serves suitable high-precision requests through the public C API.
 The [factorial budget report](../docs/benchmarks/FACTORIAL_BUDGETS_2026_10_11.md)
 records inputs above the former cap, deadline cancellation and separate final
 text-conversion timing for logarithms.
+The [Karatsuba integration](../docs/benchmarks/KARATSUBA_INTEGRATION_2026_10_11.md)
+records compiler/operand-shape checks and the production budget-aware dispatcher.
+Use `run_karatsuba.cjs executable empty-directory --focused` for a serial
+three-run balanced/square/3:2/4:3/near-2:1 crossover recording. The ordinary
+matrix includes intermediate ratios too; all products are compared in full.
 
 | Files | Purpose |
 | --- | --- |
-| `karatsuba_experiment.c`, `karatsuba_cases.cjs`, `check_karatsuba.cjs`, `run_karatsuba.cjs` | Private bounded-scratch multiplication experiment, complete Node BigInt oracles, failure checks and serial threshold measurements; see the [experiment report](../docs/benchmarks/KARATSUBA_EXPERIMENT_2026_10_11.md). |
+| `karatsuba_experiment.c`, `karatsuba_cases.cjs`, `check_karatsuba.cjs`, `run_karatsuba.cjs` | Threshold adapter over the shared private multiplication kernel, complete Node BigInt oracles, failure checks and serial threshold measurements; see the [experiment report](../docs/benchmarks/KARATSUBA_EXPERIMENT_2026_10_11.md). |
 | `generate_karatsuba_factorials.py` | Independent Python factorial references for grouped product-tree comparisons. |
 | `*_benchmark.c` | C timing harnesses for arithmetic, formatting and calculator/cache behavior. |
 | `logarithm_agm_benchmark.c`, `check_logarithm_agm_benchmark.cjs` | Fixed-guard experiment, interval/public/series logarithm comparisons, exact-reference checks and opt-in allocation/deadline injection. |

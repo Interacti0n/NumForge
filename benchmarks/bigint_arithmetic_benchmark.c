@@ -316,6 +316,8 @@ int main(int argc, char **argv)
 #ifdef NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING
     if (argc == 2 && !strcmp(argv[1], "--karatsuba-check"))
         return benchmark_karatsuba_fault_checks() ? 0 : 1;
+    if (argc == 2 && !strcmp(argv[1], "--multiply-check"))
+        return benchmark_multiplication_fault_checks() ? 0 : 1;
 #endif
     bool quick = false, validate = false, success = true, found = false;
     bool check = false;

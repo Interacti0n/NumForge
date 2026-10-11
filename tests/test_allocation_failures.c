@@ -2471,6 +2471,75 @@ static void test_production_agm_cancellation_preserves_destination(void)
     }
 }
 
+/* Independent radix identity: (B^128-1)^2=B^256-2*B^128+1,
+ * B=2^64. This exercises the production entry boundary without a second
+ * multiplication implementation supplying the expected value. */
+static void test_karatsuba_dispatch_alias_failures_and_budget_fallback(void)
+{
+    BigInt input = {0}, expected = {0}, a = {0}, b = {0}, result = {0}, original = {0};
+    input.size = input.capacity = 128U;
+    input.limbs = calloc(128U, sizeof(uint64_t));
+    expected.size = expected.capacity = 256U;
+    expected.limbs = calloc(256U, sizeof(uint64_t));
+    TEST_ASSERT_NOT_NULL(input.limbs);
+    TEST_ASSERT_NOT_NULL(expected.limbs);
+    for (size_t i = 0U; i < 128U; ++i) input.limbs[i] = UINT64_MAX;
+    expected.limbs[0] = 1U;
+    expected.limbs[128] = UINT64_MAX - 1U;
+    for (size_t i = 129U; i < 256U; ++i) expected.limbs[i] = UINT64_MAX;
+    for (unsigned mode = 0U; mode < 4U; ++mode)
+    {
+        BigInt *out = mode == 1U || mode == 3U ? &a : mode == 2U ? &b : &result;
+        for (unsigned kind = 0U; kind < 2U; ++kind)
+        {
+            bool succeeded = false;
+            for (size_t fail = 1U; fail < 20000U; ++fail)
+            {
+                TEST_ASSERT_EQUAL(BIGINT_OK, bigint_copy(&a, &input));
+                TEST_ASSERT_EQUAL(BIGINT_OK, bigint_copy(&b, &input));
+                TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_uint64(&result, 77U));
+                TEST_ASSERT_EQUAL(BIGINT_OK, bigint_copy(&original, out));
+                TEST_ASSERT_TRUE(numforge_budget_begin(UINT64_MAX, SIZE_MAX, SIZE_MAX));
+                numforge_test_allocator_begin(kind == 0U ? fail : 0U);
+                if (kind == 1U) numforge_test_budget_expire_after(fail);
+                BigIntStatus status = bigint_mul(out, &a, mode == 3U ? &a : &b);
+                bool allocation_failed = numforge_test_allocator_did_fail();
+                NumForgeBudgetFailure reason = numforge_budget_failure();
+                numforge_test_allocator_end(); numforge_budget_end();
+                if (status == BIGINT_OK)
+                {
+                    TEST_ASSERT_EQUAL_INT(0, bigint_compare(out, &expected));
+                    if (kind == 0U) TEST_ASSERT_EQUAL_UINT(3U, fail); /* Two owned buffers. */
+                    succeeded = true; break;
+                }
+                TEST_ASSERT_EQUAL(BIGINT_OUT_OF_MEMORY, status);
+                TEST_ASSERT_EQUAL_INT(0, bigint_compare(out, &original));
+                TEST_ASSERT_TRUE(kind == 0U ? allocation_failed : reason == NUMFORGE_BUDGET_TIME);
+            }
+            TEST_ASSERT_TRUE(succeeded);
+        }
+        for (unsigned limit = 0U; limit < 3U; ++limit)
+        {
+            const size_t bytes = 256U * sizeof(uint64_t);
+            TEST_ASSERT_EQUAL(BIGINT_OK, bigint_copy(&a, &input));
+            TEST_ASSERT_EQUAL(BIGINT_OK, bigint_copy(&b, &input));
+            TEST_ASSERT_TRUE(numforge_budget_begin(UINT64_MAX,
+                limit == 0U ? bytes : limit == 2U ? bytes + 1U : SIZE_MAX,
+                limit == 1U ? bytes : SIZE_MAX));
+            void *spent = limit == 2U ? numforge_malloc(1U) : NULL;
+            if (limit == 2U) TEST_ASSERT_NOT_NULL(spent);
+            numforge_test_allocator_begin(0U);
+            TEST_ASSERT_EQUAL(BIGINT_OK, bigint_mul(out, &a, mode == 3U ? &a : &b));
+            TEST_ASSERT_EQUAL_UINT(1U, numforge_test_allocator_call_count());
+            TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_OK, numforge_budget_failure());
+            numforge_test_allocator_end(); numforge_budget_end(); free(spent);
+            TEST_ASSERT_EQUAL_INT(0, bigint_compare(out, &expected));
+        }
+    }
+    free(input.limbs); free(expected.limbs); free(a.limbs); free(b.limbs);
+    free(result.limbs); free(original.limbs);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -2487,6 +2556,7 @@ int main(void)
     RUN_TEST(test_numeric_creation_cleans_up_every_failed_allocation);
     RUN_TEST(test_bigint_conversion_failure_paths);
     RUN_TEST(test_bigint_arithmetic_failure_paths);
+    RUN_TEST(test_karatsuba_dispatch_alias_failures_and_budget_fallback);
     RUN_TEST(test_bigint_divmod_and_number_theory_failure_paths);
     RUN_TEST(test_limb_division_every_failure_and_alias);
     RUN_TEST(test_gcd_workspace_every_failure_and_alias);

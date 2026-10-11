@@ -86,7 +86,7 @@ int main(int argc, char **argv)
     if (begin < 0.0 || end < begin || (status == CALCULATOR_OK && !result) ||
         (status != CALCULATOR_OK && result != NULL)) { free(result); return EXIT_FAILURE; }
     printf("status,status_code,elapsed_ms,output_bytes,alloc_calls,requested_bytes,budget_reason\n");
-    printf("%s,%d,%.6f,%zu,%" PRIu64 ",%" PRIu64 ",%s\n",
+    printf("%s,%d,%.6f,%zu,%zu,%zu,%s\n",
         calculator_status_to_string(status), (int)status, (end - begin) * 1000.0,
         result ? strlen(result) : 0U, numforge_alloc_stats_calls(), numforge_alloc_stats_bytes(),
         budget_failure == NUMFORGE_BUDGET_TIME ? "time" :

@@ -165,6 +165,15 @@ BigIntStatus bigint_mul( /*Multiply two BigInts (a*b)*/
         return BIGINT_OK;
     }
 
+    /* Measurements favor recursive 32-limb leaves, with a conservative
+     * 128-limb entry point. Strongly unequal operands retain the classical
+     * kernel. Optional scratch must fit before any allocation is charged. */
+    size_t larger = a->size > b->size ? a->size : b->size;
+    size_t smaller = a->size < b->size ? a->size : b->size;
+    if (smaller >= 128U && smaller > larger / 2U &&
+        bigint_karatsuba_fits(a->size, b->size, 32U))
+        return bigint_mul_karatsuba(result, a, b, 32U);
+
     size_t result_size;
 
     if (bigint_size_add(a->size, b->size, &result_size) != BIGINT_OK ||

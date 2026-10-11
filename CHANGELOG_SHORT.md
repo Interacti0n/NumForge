@@ -5,6 +5,8 @@ details and the [2.2 release record](docs/project/RELEASE_2_2.md) for validation
 
 ## Unreleased
 
+- Accelerate large balanced multiplication with budget-aware Karatsuba.
+
 - Benchmark private Karatsuba multiplication and grouped product-tree factorials.
 - Wait for two seconds of idle editing before calculating web previews.
 
