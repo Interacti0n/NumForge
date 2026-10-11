@@ -5,6 +5,8 @@ These opt-in tools measure the production library and calculator. Build with
 See [the benchmark guide](../docs/benchmarks/BENCHMARKS.md) for setup and recording commands.
 The [11 October optimization report](../docs/benchmarks/PERFORMANCE_OPTIMIZATIONS_2026_10_11.md)
 compares direct integer conversion and combinatorial arithmetic with the audit.
+The [factor grouping report](../docs/benchmarks/FACTORIAL_GROUPING_2026_10_11.md)
+compares the next factorial optimization with the recursive product tree.
 
 | Files | Purpose |
 | --- | --- |

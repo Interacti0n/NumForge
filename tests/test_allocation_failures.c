@@ -1568,6 +1568,47 @@ void test_application_budget_is_cumulative_and_scoped(void)
     free(first);
 }
 
+void test_grouped_factorial_preserves_alias_on_every_failure(void)
+{
+    static const char expected[] =
+        "30414093201713378043612608166064768844377641568960512000000000000";
+    for (unsigned deadline = 0; deadline < 2U; deadline++)
+    {
+        bool completed = false;
+        for (size_t index = 1; index <= ALLOCATION_TEST_MAX_FAILURE_INDEX; index++)
+        {
+            BigInt *value = make_bigint("50");
+            if (deadline)
+            {
+                (void)numforge_budget_begin(5000U, SIZE_MAX, SIZE_MAX);
+                numforge_test_budget_expire_after(index);
+            }
+            else numforge_test_allocator_begin(index);
+            BigIntStatus status = bigint_factorial(value, value);
+            bool interrupted = deadline
+                ? numforge_budget_failure() != NUMFORGE_BUDGET_OK
+                : numforge_test_allocator_did_fail();
+            numforge_budget_end();
+            numforge_test_allocator_end();
+            if (status == BIGINT_OK)
+            {
+                TEST_ASSERT_FALSE(interrupted);
+                assert_bigint_text(expected, value);
+                completed = true;
+            }
+            else
+            {
+                TEST_ASSERT_TRUE(interrupted);
+                TEST_ASSERT_EQUAL(BIGINT_OUT_OF_MEMORY, status);
+                assert_bigint_text("50", value);
+            }
+            bigint_destroy(value);
+            if (completed) break;
+        }
+        TEST_ASSERT_TRUE(completed);
+    }
+}
+
 void test_numeric_loops_cancel_without_changing_destinations(void)
 {
     char digits[2001];
@@ -1818,6 +1859,7 @@ int main(void)
     RUN_TEST(test_base_conversion_and_prefix_failure_safety);
     RUN_TEST(test_application_budget_is_cumulative_and_scoped);
     RUN_TEST(test_numeric_loops_cancel_without_changing_destinations);
+    RUN_TEST(test_grouped_factorial_preserves_alias_on_every_failure);
     RUN_TEST(test_pipeline_deadline_covers_all_checkpoints);
     RUN_TEST(test_roots_preserve_aliases_on_every_allocation_failure);
     RUN_TEST(test_root_call_allocation_and_deadline_failures);

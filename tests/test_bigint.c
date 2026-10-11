@@ -1386,6 +1386,24 @@ void test_lcm_zero(void)
    FACTORIAL
    ============================================================ */
 
+void test_factorial_group_boundaries(void)
+{
+    static const struct { const char *n; const char *expected; } cases[] = {
+        { "19", "121645100408832000" },
+        { "20", "2432902008176640000" },
+        { "21", "51090942171709440000" },
+        { "22", "1124000727777607680000" },
+        { "50", "30414093201713378043612608166064768844377641568960512000000000000" }
+    };
+    for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++)
+    {
+        BigInt *value = make_bigint(cases[i].n);
+        TEST_ASSERT_EQUAL(BIGINT_OK, bigint_factorial(value, value));
+        assert_bigint_string(value, cases[i].expected);
+        bigint_destroy(value);
+    }
+}
+
 void test_factorial_zero(void)
 {
     BigInt *n = make_bigint("0");
@@ -2543,6 +2561,7 @@ int main(void)
 
     /* Factorial */
     RUN_TEST(test_factorial_zero);
+    RUN_TEST(test_factorial_group_boundaries);
     RUN_TEST(test_factorial_one);
     RUN_TEST(test_factorial_five);
     RUN_TEST(test_factorial_ten);

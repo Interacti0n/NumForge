@@ -7,6 +7,8 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Pack factorial factors into overflow-checked 64-bit products before multiplying
+  the large accumulator, reducing repeated limb scans without changing limits.
 - Convert BigInt to BigDecimal directly from its exact coefficient, avoiding
   full decimal text serialization while preserving atomic failure guarantees.
 - Reuse verified exact integer projections during calculator formatting.

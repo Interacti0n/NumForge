@@ -102,7 +102,10 @@ precondition and quotient/remainder semantics; public conversion is unchanged.
 - `0^0` is defined as `1`.
 - Powers reject negative exponents.
 - Factorial accepts `0 <= n <= BIGINT_FACTORIAL_MAX_N`; the limit prevents an
-  unbounded resource request.
+  unbounded resource request. Consecutive factors are packed into a `uint64_t`
+  product, checking `product > UINT64_MAX / factor` before multiplying. Each
+  completed group multiplies a private BigInt accumulator once. The budget is
+  checked for every factor; only the successful final value is committed.
 - Permutations and combinations require `0 <= r <= n`. Permutations use the
   falling product directly. Combinations use symmetry and exact division after
   each multiplication, avoiding full factorial intermediates.

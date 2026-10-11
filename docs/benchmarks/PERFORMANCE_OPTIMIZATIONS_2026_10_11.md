@@ -1,6 +1,8 @@
 # Integer conversion and combinatorics — 11 October 2026
 
 Follow-up to [the cross-layer audit](PERFORMANCE_AUDIT_2026_10_10.md).
+The later [factor grouping change](FACTORIAL_GROUPING_2026_10_11.md) provides
+additional headroom; measurements below describe the preceding implementation.
 Measurements use the same Windows PC and MSVC Release benchmark build.
 Production limits remain unchanged: 5000 ms, cumulative allocation budget,
 single-allocation cap and output cap. No running server was replaced.

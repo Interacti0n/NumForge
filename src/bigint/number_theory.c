@@ -204,29 +204,30 @@ BigIntStatus bigint_factorial( /*Calculate factorial of a BigInt (n!)*/
 
     if (status == BIGINT_OK && n >= 2U)
     {
-        uint64_t i = 2U;
+        uint64_t group = 1U;
 
-        for (;;)
+        for (uint64_t i = 2U; i <= n; i++)
         {
             if (!numforge_budget_check())
             {
                 status = BIGINT_OUT_OF_MEMORY;
                 break;
             }
-            status = bigint_multiply_by_uint64(&temporary, i);
-
-            if (status != BIGINT_OK)
+            /* Pack consecutive factors into a limb before scanning the large
+             * accumulator. Test before multiplying, so grouping never wraps. */
+            if (group > UINT64_MAX / i)
             {
-                break;
+                status = bigint_multiply_by_uint64(&temporary, group);
+                if (status != BIGINT_OK) break;
+                group = i;
             }
-
-            if (i == n)
+            else
             {
-                break;
+                group *= i;
             }
-
-            i++;
         }
+        if (status == BIGINT_OK)
+            status = bigint_multiply_by_uint64(&temporary, group);
     }
 
     if (status == BIGINT_OK)
