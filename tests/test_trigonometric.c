@@ -4,6 +4,7 @@
 
 #include <numforge/bigdecimal.h>
 #include "tangent_references.h"
+#include "../src/bigdecimal/bigdecimal_internal.h"
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
@@ -204,9 +205,38 @@ static void test_tangent_poles_independent_rounding_and_aliasing(void)
     }
 }
 
+static void test_private_sin_cos_pair_matches_public_rounding(void)
+{
+    const char *inputs[] = { "0", "1", "-1", "2", "3", "4", "5", "6",
+        "1e100", "1.5707963267948966192313216916397514420985" };
+    for (size_t n = 0U; n < sizeof(inputs) / sizeof(inputs[0]); n++)
+    for (unsigned mode = 0U; mode < 6U; mode++)
+    for (unsigned alias = 0U; alias < 3U; alias++)
+    {
+        BigDecimal *value = make_decimal(inputs[n]);
+        BigDecimal *s = bigdecimal_create(), *c = bigdecimal_create();
+        BigDecimal *expected_s = bigdecimal_create(), *expected_c = bigdecimal_create();
+        BigDecimal *out_s = alias == 1U ? value : s;
+        BigDecimal *out_c = alias == 2U ? value : c;
+        int comparison = 42;
+        TEST_ASSERT_NOT_NULL(s); TEST_ASSERT_NOT_NULL(c);
+        TEST_ASSERT_NOT_NULL(expected_s); TEST_ASSERT_NOT_NULL(expected_c);
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_sin(expected_s, value, 34, (BigDecimalRoundingMode)mode));
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_cos(expected_c, value, 34, (BigDecimalRoundingMode)mode));
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_sin_cos_pair(out_s, out_c, value, 34, (BigDecimalRoundingMode)mode));
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_compare(&comparison, out_s, expected_s));
+        TEST_ASSERT_EQUAL_INT(0, comparison);
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_compare(&comparison, out_c, expected_c));
+        TEST_ASSERT_EQUAL_INT(0, comparison);
+        bigdecimal_destroy(value); bigdecimal_destroy(s); bigdecimal_destroy(c);
+        bigdecimal_destroy(expected_s); bigdecimal_destroy(expected_c);
+    }
+}
+
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_private_sin_cos_pair_matches_public_rounding);
     RUN_TEST(test_forward_known_values);
     RUN_TEST(test_pi_argument_reduction_and_aliasing);
     RUN_TEST(test_large_argument_uses_extended_pi_reduction);

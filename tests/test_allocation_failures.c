@@ -14,6 +14,7 @@
 #include "calculator_internal.h"
 #include "web_api.h"
 #include "../src/bigint/bigint_internal.h"
+#include "../src/bigdecimal/bigdecimal_internal.h"
 
 #ifndef NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING
 #error "allocation_failure_tests requires NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING"
@@ -2122,6 +2123,75 @@ static void test_decimal_digit_count_preserves_output_on_every_failure(void)
     }
 }
 
+static void test_sin_cos_pair_atomic_on_every_failure(void)
+{
+    const char *inputs[] = { "0", "1" };
+    for (size_t n = 0U; n < sizeof(inputs) / sizeof(inputs[0]); n++)
+    for (unsigned alias = 0U; alias < 3U; alias++)
+    for (unsigned deadline = 0U; deadline < 2U; deadline++)
+    {
+        BigDecimal *expected_s = bigdecimal_create(), *expected_c = bigdecimal_create();
+        BigDecimal *input = make_bigdecimal(inputs[n]);
+        bool completed = false;
+        TEST_ASSERT_NOT_NULL(expected_s); TEST_ASSERT_NOT_NULL(expected_c);
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_sin(expected_s, input, 12, BIGDECIMAL_ROUND_HALF_EVEN));
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_cos(expected_c, input, 12, BIGDECIMAL_ROUND_HALF_EVEN));
+        bigdecimal_destroy(input);
+        for (size_t index = 1U; index <= ALLOCATION_TEST_MAX_FAILURE_INDEX; index++)
+        {
+            BigDecimal *value = make_bigdecimal(inputs[n]);
+            BigDecimal *original_s = make_bigdecimal("7.77"), *original_c = make_bigdecimal("-8.88");
+            BigDecimal *s = alias == 1U ? value : original_s;
+            BigDecimal *c = alias == 2U ? value : original_c;
+            BigDecimalStatus status;
+            bool interrupted;
+            if (deadline)
+            {
+                (void)numforge_budget_begin(5000U, SIZE_MAX, SIZE_MAX);
+                numforge_test_budget_expire_after(index);
+            }
+            else numforge_test_allocator_begin(index);
+            status = bigdecimal_sin_cos_pair(s, c, value, 12, BIGDECIMAL_ROUND_HALF_EVEN);
+            interrupted = deadline ? numforge_budget_failure() != NUMFORGE_BUDGET_OK
+                                   : numforge_test_allocator_did_fail();
+            numforge_budget_end(); numforge_test_allocator_end();
+            if (status == BIGDECIMAL_OK)
+            {
+                int comparison = 42;
+                TEST_ASSERT_FALSE(interrupted);
+                TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_compare(&comparison, s, expected_s));
+                TEST_ASSERT_EQUAL_INT(0, comparison);
+                TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_compare(&comparison, c, expected_c));
+                TEST_ASSERT_EQUAL_INT(0, comparison);
+                if (alias == 0U) assert_bigdecimal_text(inputs[n], value);
+                completed = true;
+            }
+            else
+            {
+                TEST_ASSERT_TRUE(interrupted);
+                TEST_ASSERT_EQUAL(BIGDECIMAL_OUT_OF_MEMORY, status);
+                assert_bigdecimal_text(inputs[n], value);
+                assert_bigdecimal_text("7.77", original_s);
+                assert_bigdecimal_text("-8.88", original_c);
+            }
+            bigdecimal_destroy(value); bigdecimal_destroy(original_s); bigdecimal_destroy(original_c);
+            if (completed) break;
+        }
+        bigdecimal_destroy(expected_s); bigdecimal_destroy(expected_c);
+        TEST_ASSERT_TRUE(completed);
+    }
+    BigDecimal *a = make_bigdecimal("1"), *b = make_bigdecimal("2");
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_sin_cos_pair(NULL, b, a, 12, BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_sin_cos_pair(a, NULL, b, 12, BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_sin_cos_pair(a, b, NULL, 12, BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_INVALID_ARGUMENT, bigdecimal_sin_cos_pair(a, a, b, 12, BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_INVALID_ARGUMENT, bigdecimal_sin_cos_pair(a, b, a, 0, BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_VALUE_TOO_LARGE, bigdecimal_sin_cos_pair(a, b, a, INT64_MAX, BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_INVALID_ARGUMENT, bigdecimal_sin_cos_pair(a, b, a, 12, (BigDecimalRoundingMode)99));
+    assert_bigdecimal_text("1", a); assert_bigdecimal_text("2", b);
+    bigdecimal_destroy(a); bigdecimal_destroy(b);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -2152,6 +2222,7 @@ int main(void)
     RUN_TEST(test_decimal_borrowed_coefficients_every_failure);
     RUN_TEST(test_equal_scale_comparison_without_allocations);
     RUN_TEST(test_decimal_digit_count_preserves_output_on_every_failure);
+    RUN_TEST(test_sin_cos_pair_atomic_on_every_failure);
     RUN_TEST(test_series_sum_owners_preserve_alias_on_every_failure);
     RUN_TEST(test_bigdecimal_aliasing_preserves_destination_on_allocation_failure);
     RUN_TEST(test_dynamic_constant_sampled_allocation_failures);

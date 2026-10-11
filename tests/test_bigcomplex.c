@@ -703,6 +703,12 @@ int main(int argc,char **argv) {
         UNITY_BEGIN();RUN_TEST(test_shared_trigonometric_quotients);RUN_TEST(test_allocation_failures);
         return UNITY_END();
     }
+    if(argc==2 && strcmp(argv[1],"--trig-only")==0) {
+        allocation_operation_start=16;allocation_operation_end=24;
+        UNITY_BEGIN();RUN_TEST(test_complex_trigonometry);RUN_TEST(test_complex_hyperbolic);
+        RUN_TEST(test_shared_trigonometric_quotients);RUN_TEST(test_allocation_failures);
+        return UNITY_END();
+    }
     if(argc==2 && strcmp(argv[1],"--log-only")==0) {
         allocation_operation_start=15;allocation_operation_end=16;
         UNITY_BEGIN();RUN_TEST(test_base_logarithms);RUN_TEST(test_allocation_failures);

@@ -13,6 +13,8 @@ The [decimal allocation report](../docs/benchmarks/DECIMAL_ALLOCATIONS_2026_10_1
 records coefficient borrowing and private series-sum reuse under unchanged limits.
 The [digit counting report](../docs/benchmarks/DIGIT_COUNTING_2026_10_11.md)
 records exact text-free precision selection and its allocation savings.
+The [complex paired evaluation report](../docs/benchmarks/COMPLEX_PAIR_2026_10_11.md)
+records shared scalar sine/cosine work and high-precision calculator outcomes.
 
 | Files | Purpose |
 | --- | --- |

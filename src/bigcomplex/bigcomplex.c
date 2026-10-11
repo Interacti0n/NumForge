@@ -578,8 +578,7 @@ static BigComplexStatus complex_sine_cosine(BigComplex *result, const BigComplex
     BigDecimal *sinh_value=bigdecimal_create(),*cosh_value=bigdecimal_create(),*one=bigdecimal_create();
     BigDecimalStatus status=BIGDECIMAL_OUT_OF_MEMORY;
     if (!temporary || (paired && !other) || !sine || !cosine_value || !sinh_value || !cosh_value || !one) goto done;
-    TRY(bigdecimal_sin(sine,hyperbolic ? value->imaginary : value->real,digits+12,rounding));
-    TRY(bigdecimal_cos(cosine_value,hyperbolic ? value->imaginary : value->real,digits+12,rounding));
+    TRY(bigdecimal_sin_cos_pair(sine,cosine_value,hyperbolic ? value->imaginary : value->real,digits+12,rounding));
     TRY(bigdecimal_sinh(sinh_value,hyperbolic ? value->real : value->imaginary,digits+12,rounding));
     TRY(bigdecimal_cosh(cosh_value,hyperbolic ? value->real : value->imaginary,digits+12,rounding));
     TRY(bigdecimal_set_string(one,"1"));
@@ -660,8 +659,7 @@ BigComplexStatus bigcomplex_tanh(BigComplex *result, const BigComplex *value,
     TANH_TRY(bigdecimal_set_string(four,"4"));
     TANH_TRY(bigdecimal_add(t,absolute,absolute));TANH_TRY(bigdecimal_negate(t,t));
     TANH_TRY(bigdecimal_exp(t,t,digits+12,rounding));
-    TANH_TRY(bigdecimal_sin(sine,value->imaginary,digits+12,rounding));
-    TANH_TRY(bigdecimal_cos(cosine,value->imaginary,digits+12,rounding));
+    TANH_TRY(bigdecimal_sin_cos_pair(sine,cosine,value->imaginary,digits+12,rounding));
     TANH_TRY(bigdecimal_sub(den,one,t));TANH_TRY(bigdecimal_mul(den,den,den));
     TANH_TRY(bigdecimal_mul(square,cosine,cosine));TANH_TRY(bigdecimal_mul(square,square,t));
     TANH_TRY(bigdecimal_mul(square,square,four));TANH_TRY(bigdecimal_add(den,den,square));

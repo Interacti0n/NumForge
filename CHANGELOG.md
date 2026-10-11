@@ -7,6 +7,9 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Share guarded sine/cosine evaluation inside complex forward functions instead
+  of calculating the same scalar pair twice; retain individual rounding and
+  atomic failures, with paired alias tests and high-precision limit checks.
 - Count decimal coefficient digits without text serialization using proven bit
   bounds and an exact chunk fallback; choose significant-division precision by
   integer mantissa alignment. Extend independent boundary and failure checks.

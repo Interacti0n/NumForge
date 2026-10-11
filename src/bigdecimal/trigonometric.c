@@ -486,6 +486,46 @@ cleanup:
     return status;
 }
 
+BigDecimalStatus bigdecimal_sin_cos_pair(
+    BigDecimal *sine, BigDecimal *cosine, const BigDecimal *value,
+    int64_t digits, BigDecimalRoundingMode rounding
+)
+{
+    BigDecimal *s = NULL, *c = NULL;
+    BigDecimalStatus status;
+    int64_t work_digits;
+    if (sine == NULL || cosine == NULL || value == NULL) return BIGDECIMAL_NULL_ARGUMENT;
+    if (sine == cosine || !bigdecimal_valid_rounding(rounding)) return BIGDECIMAL_INVALID_ARGUMENT;
+    status = trig_work_digits(digits, &work_digits);
+    if (status != BIGDECIMAL_OK) return status;
+    s = bigdecimal_create();
+    c = bigdecimal_create();
+    if (s == NULL || c == NULL)
+    {
+        status = BIGDECIMAL_OUT_OF_MEMORY;
+        goto cleanup;
+    }
+    if (bigint_is_zero(value->coefficient))
+    {
+        TRIG_TRY(bigdecimal_set_string(s, "0"));
+        TRIG_TRY(bigdecimal_set_string(c, "1"));
+    }
+    else
+    {
+        // Public sine/cosine use the same non-adaptive reduction and guards.
+        TRIG_TRY(calculate_sin_cos(s, c, value, work_digits, false));
+        TRIG_TRY(bigdecimal_round_significant(s, s, digits, rounding));
+        TRIG_TRY(bigdecimal_round_significant(c, c, digits, rounding));
+    }
+    // All input reads and fallible work finish before either output changes.
+    bigdecimal_commit(sine, s); s = NULL;
+    bigdecimal_commit(cosine, c); c = NULL;
+cleanup:
+    bigdecimal_destroy(s);
+    bigdecimal_destroy(c);
+    return status;
+}
+
 static BigDecimalStatus trig_forward(
     BigDecimal *result,
     const BigDecimal *value,

@@ -63,6 +63,13 @@ aligns the shorter coefficient to compare mantissas exactly, multiplying private
 decimal chunks without parsing the text of a power of ten. Signs and external
 scales do not affect magnitude counting; original inputs remain immutable.
 
+Complex forward functions use a private paired sine/cosine evaluation. It shares
+the same guarded, non-adaptive argument reduction and series used by separate
+public calls, then rounds each output independently to the requested precision
+and mode. Both outputs are committed only after all fallible work succeeds;
+they must be distinct and either may alias the input. This is not an installed
+public API or shared cache, and the public scalar functions retain their paths.
+
 Additive APIs also provide exact integer conversions, sign/integer predicates,
 min/max, sequence aggregates, floor/ceil/trunc/half-even round, integer powers,
 population/sample statistics, real roots, significant and exact-first division,
