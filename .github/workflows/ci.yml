@@ -252,7 +252,8 @@ jobs:
 
   browser:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # The serial suite alone takes about nine minutes; include build/install time.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
         with:

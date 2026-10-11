@@ -102,3 +102,11 @@ Chromium repetitions, each covering both languages and all three desktop sizes.
 Linux LeakSanitizer verification still requires the next CI
 run. The unchanged Windows, Linux 32-bit, Linux/macOS ARM64, coverage and all
 three numeric benchmark jobs succeeded in the failed CI run.
+
+The [next CI run for 16da8ce](https://github.com/Interacti0n/NumForge/actions/runs/38183650012)
+passed all ten other jobs, including both Linux sanitizer configurations and
+Clang fuzz campaigns. Chromium also reported 166/166 passed in 9.3 minutes,
+including the corrected Units geometry check. Its job was then cancelled at the
+overall ten-minute deadline, which also includes compilation and Chromium
+installation. The browser job now allows twenty minutes for setup, the serial
+suite and report handling; individual test timeouts and assertions are unchanged.
