@@ -2582,6 +2582,47 @@ static void test_factorial_tree_failure_cleanup_and_budget_fallback(void)
     bigint_destroy(input); bigint_destroy(expected);
 }
 
+static void test_factorial_admission_bounds_and_scope(void)
+{
+    size_t total, largest;
+    TEST_ASSERT_FALSE(bigint_factorial_tree_plan(8192U, NULL, &largest));
+    TEST_ASSERT_FALSE(bigint_factorial_tree_plan(UINT64_MAX, &total, &largest));
+    TEST_ASSERT_FALSE(bigint_multiplication_workspace_plan(SIZE_MAX, &total, &largest));
+    TEST_ASSERT_TRUE(bigint_factorial_tree_plan(233000U, &total, &largest));
+    TEST_ASSERT_EQUAL_UINT64(524288U, largest);
+    TEST_ASSERT_TRUE(total < 64U * 1024U * 1024U);
+    /* The exact single-request boundary matters; both budgets are enforced. */
+    TEST_ASSERT_TRUE(numforge_budget_begin(UINT64_MAX, total, largest));
+    TEST_ASSERT_TRUE(bigint_factorial_tree_fits(233000U));
+    TEST_ASSERT_TRUE(bigint_factorial_tree_fits(233000U));
+    TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_OK, numforge_budget_failure()); numforge_budget_end();
+    TEST_ASSERT_TRUE(numforge_budget_begin(UINT64_MAX, total - 1U, largest));
+    TEST_ASSERT_FALSE(bigint_factorial_tree_fits(233000U));
+    TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_OK, numforge_budget_failure()); numforge_budget_end();
+    TEST_ASSERT_TRUE(numforge_budget_begin(UINT64_MAX, total, largest - 1U));
+    TEST_ASSERT_FALSE(bigint_factorial_tree_fits(233000U));
+    TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_OK, numforge_budget_failure()); numforge_budget_end();
+    TEST_ASSERT_TRUE(numforge_budget_begin(UINT64_MAX, 64U * 1024U * 1024U, 512U * 1024U));
+    TEST_ASSERT_TRUE(bigint_factorial_tree_fits(234000U));
+    TEST_ASSERT_FALSE(bigint_factorial_tree_fits(235000U));
+    TEST_ASSERT_FALSE(bigint_factorial_tree_fits(250000U));
+    TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_OK, numforge_budget_failure()); numforge_budget_end();
+    /* A monotone binary search locates the last admitted counter. */
+    uint64_t low = 234000U, high = 235000U;
+    while (high - low > 1U)
+    {
+        uint64_t middle = low + (high - low) / 2U;
+        TEST_ASSERT_TRUE(numforge_budget_begin(UINT64_MAX, 64U * 1024U * 1024U, 512U * 1024U));
+        bool fits = bigint_factorial_tree_fits(middle);
+        numforge_budget_end();
+        if (fits) low = middle; else high = middle;
+    }
+    TEST_ASSERT_TRUE(bigint_factorial_tree_plan(low, &total, &largest));
+    TEST_ASSERT_EQUAL_UINT64(524288U, largest);
+    TEST_ASSERT_TRUE(bigint_factorial_tree_plan(high, &total, &largest));
+    TEST_ASSERT_EQUAL_UINT64(1048576U, largest);
+}
+
 static void test_production_agm_cancellation_preserves_destination(void)
 {
     for (unsigned alias = 0; alias < 2; alias++) {
@@ -2675,6 +2716,7 @@ int main(void)
     RUN_TEST(test_numeric_loops_cancel_without_changing_destinations);
     RUN_TEST(test_grouped_factorial_preserves_alias_on_every_failure);
     RUN_TEST(test_factorial_tree_failure_cleanup_and_budget_fallback);
+    RUN_TEST(test_factorial_admission_bounds_and_scope);
     RUN_TEST(test_pipeline_deadline_covers_all_checkpoints);
     RUN_TEST(test_roots_preserve_aliases_on_every_allocation_failure);
     RUN_TEST(test_root_call_allocation_and_deadline_failures);

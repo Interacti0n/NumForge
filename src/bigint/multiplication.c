@@ -193,21 +193,42 @@ BigIntStatus bigint_mul_karatsuba(BigInt *out, const BigInt *a, const BigInt *b,
     return status;
 }
 
+static BigIntStatus workspace_frame(size_t n, size_t *next, size_t *capacity, size_t *bytes)
+{
+    size_t needed;
+    *next = n - n / 2U + 1U;
+    if (bigint_size_mul(*next, 4U, &needed) != BIGINT_OK) return BIGINT_VALUE_TOO_LARGE;
+    *capacity = 32U;
+    while (*capacity < needed)
+        if (bigint_size_mul(*capacity, 2U, capacity) != BIGINT_OK) return BIGINT_VALUE_TOO_LARGE;
+    return bigint_size_mul(*capacity, sizeof(uint64_t), bytes);
+}
+
+bool bigint_multiplication_workspace_plan(size_t n, size_t *total, size_t *largest)
+{
+    if (!total || !largest) return false;
+    *total = *largest = 0U;
+    for (size_t depth = 0U; n >= 32U; ++depth)
+    {
+        size_t next, capacity, bytes, requests;
+        if (depth >= 64U || workspace_frame(n, &next, &capacity, &bytes) != BIGINT_OK ||
+            bigint_size_mul(bytes, 2U, &requests) != BIGINT_OK ||
+            bigint_size_add(*total, requests, total) != BIGINT_OK) return false;
+        if (*largest < bytes) *largest = bytes;
+        n = next;
+    }
+    return true;
+}
+
 static BigIntStatus prepare_workspace(BigIntMultiplicationWorkspace *workspace, size_t n)
 {
     for (size_t depth = 0U; n >= 32U; ++depth)
     {
-        size_t h = n - n / 2U + 1U, needed, bytes;
-        if (depth >= 64U || bigint_size_mul(h, 4U, &needed) != BIGINT_OK)
+        size_t h, capacity, bytes;
+        if (depth >= 64U || workspace_frame(n, &h, &capacity, &bytes) != BIGINT_OK)
             return BIGINT_VALUE_TOO_LARGE;
-        if (workspace->capacities[depth] < needed)
+        if (workspace->capacities[depth] < capacity)
         {
-            size_t capacity = workspace->capacities[depth] ? workspace->capacities[depth] : 32U;
-            while (capacity < needed)
-                if (bigint_size_mul(capacity, 2U, &capacity) != BIGINT_OK)
-                    return BIGINT_VALUE_TOO_LARGE;
-            if (bigint_size_mul(capacity, sizeof(uint64_t), &bytes) != BIGINT_OK)
-                return BIGINT_VALUE_TOO_LARGE;
             uint64_t *frame = numforge_realloc(workspace->frames[depth], bytes);
             if (!frame) return BIGINT_OUT_OF_MEMORY;
             workspace->frames[depth] = frame;

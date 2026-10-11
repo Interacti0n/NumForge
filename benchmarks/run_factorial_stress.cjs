@@ -20,10 +20,12 @@ const cases = source.trim().split(/\r?\n/).filter(x => x.startsWith('factorial-'
     const tail = front.slice(1).replace(/0+$/, '');
     const expected = front[0] + (tail ? '.' + tail : '') + 'E+' + exponent;
     fs.writeFileSync(path.join(output, `${n}.expected`), expected);
-    const bits = Math.floor(Math.log2(n)) + 1, bytes = 8 * (Math.ceil(n * bits / 64) + 2);
-    const largest = 2 ** Math.ceil(Math.log2(bytes + 64));
-    return {n, digits:digits.length, expected, treePlanBytes:bytes * (bits + 8) + n * 8 + 32768,
-        treePlanLargest:largest, planFitsFreshBudget:largest <= 524288 && bytes * (bits + 8) + n * 8 + 32768 <= 67108864};
+    const probe = spawnSync(bigint, ['--factorial-plan', String(n)],
+        {encoding:'utf8', windowsHide:true, timeout:10000});
+    assert.equal(probe.status, 0, probe.stderr);
+    const plan = JSON.parse(probe.stdout); assert.equal(plan.representable, true);
+    return {n, digits:digits.length, expected, treePlanBytes:plan.requested_bytes,
+        treePlanLargest:plan.largest_allocation, planFitsFreshBudget:plan.admitted};
 });
 assert(cases.length > 0);
 const hash = x => crypto.createHash('sha256').update(x).digest('hex');

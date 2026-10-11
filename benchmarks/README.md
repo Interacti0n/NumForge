@@ -49,6 +49,11 @@ The [zero-normalization integration](../docs/benchmarks/ZERO_NORMALIZATION_2026_
 compares scalar/inverse blocks and complete calculator requests. Generate its
 coefficient/count references with `generate_zero_normalization.py`; `--timing`
 selects the smaller recording matrix.
+The [factorial admission report](../docs/benchmarks/FACTORIAL_ADMISSION_2026_10_12.md)
+records checked range/workspace bounds. Generate `--workspace --admission`
+fixtures; the arithmetic harness exposes `--factorial-plan n` and diagnostic
+`--plan-budget` to check allocations against those bounds. Application-limit
+measurements use `--budget` or the serial factorial stress runner.
 Use `generate_karatsuba_factorials.py output.tsv --workspace` for public,
 grouped and workspace-tree references; add `--timing` for the serial speed matrix.
 Use `run_karatsuba.cjs executable empty-directory --focused` for a serial

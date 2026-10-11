@@ -70,6 +70,8 @@ BigIntStatus bigint_mul_workspace(BigInt *out, const BigInt *a, const BigInt *b,
     BigIntMultiplicationWorkspace *workspace);
 void bigint_multiplication_workspace_free(BigIntMultiplicationWorkspace *workspace);
 bool bigint_factorial_tree_fits(uint64_t n);
+bool bigint_factorial_tree_plan(uint64_t n, size_t *total, size_t *largest);
+bool bigint_multiplication_workspace_plan(size_t n, size_t *total, size_t *largest);
 BigIntStatus bigint_factorial_tree(BigInt *out, uint64_t n);
 BigIntStatus bigint_factorial_grouped(BigInt *out, uint64_t n);
 /* Owned scratch for repeated magnitude division. Zero-initialize and free both

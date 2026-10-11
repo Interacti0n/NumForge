@@ -52,6 +52,7 @@ numerical references, session/unit regressions, browser/CI checks and profiling.
 - [Factorial tree integration](benchmarks/FACTORIAL_TREE_INTEGRATION_2026_10_11.md): reusable bounded workspace, complete references and calculator/HTTP verification through 200000.
 - [Factorial stress diagnostics](benchmarks/FACTORIAL_STRESS_2026_10_11.md): admission boundary, real scratch limits and normalization cost through 300000.
 - [Exact zero normalization](benchmarks/ZERO_NORMALIZATION_2026_10_11.md): inverse division, bounded scratch and whole-request regressions.
+- [Factorial admission bounds](benchmarks/FACTORIAL_ADMISSION_2026_10_12.md): checked range/workspace planning and complete requests at the new boundary.
 - [Decimal/math measurements](benchmarks/DECIMAL_MATH_BENCHMARKS.md).
 - [Performance audit, 10 October 2026](benchmarks/PERFORMANCE_AUDIT_2026_10_10.md): current measurements, five-second risks and optimization priorities.
 - [Logarithm algorithm review](benchmarks/LOGARITHM_ALGORITHM_REVIEW_2026_10_11.md) and

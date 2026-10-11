@@ -118,6 +118,9 @@ precondition and quotient/remainder semantics; public conversion is unchanged.
   reusable per-depth Karatsuba scratch. Smaller or constrained requests retain
   grouped scalar multiplication. See the
   [integration measurements](../benchmarks/FACTORIAL_TREE_INTEGRATION_2026_10_11.md).
+  Admission sums integer factor bit lengths over power-of-two ranges and plans
+  scratch with the shared allocation capacity rule; see
+  [checked admission bounds](../benchmarks/FACTORIAL_ADMISSION_2026_10_12.md).
   In both paths consecutive leaf factors are packed into a `uint64_t`
   product, checking `product > UINT64_MAX / factor` before multiplying. Each
   completed group multiplies a private BigInt accumulator once. The budget is

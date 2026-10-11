@@ -52,7 +52,9 @@ identifies decimal zero stripping as the dominant successful-path cost and
 separates conservative admission from real scratch allocation constraints.
 Large decimal coefficients now use exact 27-zero inverse division with optional
 scratch; see [normalization integration](../benchmarks/ZERO_NORMALIZATION_2026_10_11.md).
-Tighter factorial admission remains a separate checked follow-up.
+Checked factor-range bounds and shared workspace planning now tighten admission;
+see [the boundary verification](../benchmarks/FACTORIAL_ADMISSION_2026_10_12.md).
+Further range-bound refinement and smaller/split scratch requests remain candidates.
 The [private Karatsuba experiment](../benchmarks/KARATSUBA_EXPERIMENT_2026_10_11.md)
 adds bounded scratch, exact references and cancellation/failure checks, with
 threshold and grouped product-tree comparisons preceding the integration.

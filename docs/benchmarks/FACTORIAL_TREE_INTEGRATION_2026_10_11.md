@@ -1,5 +1,9 @@
 # Bounded factorial product tree, 11 October 2026
 
+This records the initial admission rule. The subsequent
+[checked admission report](FACTORIAL_ADMISSION_2026_10_12.md) replaces the coarse
+plan below while preserving limits; these original measurements remain historical.
+
 Production `bigint_factorial` now uses a balanced product tree from `n = 8192`
 when a conservative allocation plan fits the active budget. Smaller inputs or
 plans that do not fit retain grouped scalar multiplication. This follows the

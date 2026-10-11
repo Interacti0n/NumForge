@@ -9,32 +9,62 @@ static unsigned counter_bits(uint64_t n)
     return bits;
 }
 
-bool bigint_factorial_tree_fits(uint64_t n)
+/* Sum integer bit lengths by power-of-two ranges. Each factor k is <
+ * 2^bit_length(k); this is a checked upper bound, without floating point. */
+static bool range_bits(uint64_t low, uint64_t high, size_t *total)
 {
-    size_t bit_bound, limbs, bytes, total, extra, largest = 8U;
-    unsigned bits = counter_bits(n);
-    if ((uint64_t)(size_t)n != n ||
-        bigint_size_mul((size_t)n, bits, &bit_bound) != BIGINT_OK ||
-        bigint_size_add(bit_bound, 63U, &limbs) != BIGINT_OK)
+    *total = 0U;
+    for (unsigned bits = 1U; bits <= 64U; ++bits)
+    {
+        uint64_t first = UINT64_C(1) << (bits - 1U);
+        if (first > high) break;
+        uint64_t last = bits == 64U ? UINT64_MAX : (UINT64_C(1) << bits) - 1U;
+        if (first < low) first = low;
+        if (last > high) last = high;
+        if (first <= last)
+        {
+            size_t count, contribution;
+            if ((uint64_t)(size_t)(last - first) != last - first ||
+                bigint_size_add((size_t)(last - first), 1U, &count) != BIGINT_OK ||
+                bigint_size_mul(count, bits, &contribution) != BIGINT_OK ||
+                bigint_size_add(*total, contribution, total) != BIGINT_OK)
+                return false;
+        }
+    }
+    return true;
+}
+
+bool bigint_factorial_tree_plan(uint64_t n, size_t *total, size_t *largest)
+{
+    size_t full_bits, child_bits, limbs, child_limbs, bytes, extra, workspace;
+    if (!total || !largest || (uint64_t)(size_t)n != n ||
+        !range_bits(2U, n, &full_bits) || !range_bits(n / 2U + 1U, n, &child_bits) ||
+        bigint_size_add(full_bits, 63U, &limbs) != BIGINT_OK ||
+        bigint_size_add(child_bits, 63U, &child_limbs) != BIGINT_OK)
         return false;
     limbs = limbs / 64U + 2U;
+    child_limbs /= 64U;
     if (limbs > BIGINT_MAX_LIMBS || bigint_size_mul(limbs, 8U, &bytes) != BIGINT_OK ||
-        bigint_size_add(bytes, 64U, &extra) != BIGINT_OK)
-        return false;
-    while (largest < extra)
-        if (bigint_size_mul(largest, 2U, &largest) != BIGINT_OK) return false;
-    /* Every factor has <= bits bits. Product buffers at each level total
-     * <= n*bits/8 plus rounding. There are < bits levels and < n/8 nodes.
-     * Frame capacities are <= twice each 4*h bound. Geometric growth requests
-     * < twice final capacities; sum(4*h) <= 4*max_input_limbs + 12*depth.
-     * Eight result bounds cover frames; n*8 + 32 KiB covers product rounding
-     * and the additive scratch terms over at most 64 recursive levels. */
-    if (bigint_size_mul(bytes, (size_t)bits + 8U, &total) != BIGINT_OK ||
+        !bigint_multiplication_workspace_plan(child_limbs, &workspace, largest)) return false;
+    if (*largest < bytes) *largest = bytes;
+    /* Upper-half factors dominate either root child and every descendant.
+     * Sum product buffers by tree level; 8*n + 32 KiB covers node/leaf
+     * rounding, scalar output reserves and global-bit leaf overestimation.
+     * Workspace includes every geometric reallocation request at each depth. */
+    if (bigint_size_mul(bytes, counter_bits(n), total) != BIGINT_OK ||
+        bigint_size_add(*total, workspace, total) != BIGINT_OK ||
         bigint_size_mul((size_t)n, 8U, &extra) != BIGINT_OK ||
-        bigint_size_add(total, extra, &total) != BIGINT_OK ||
-        bigint_size_add(total, 32768U, &total) != BIGINT_OK)
+        bigint_size_add(*total, extra, total) != BIGINT_OK ||
+        bigint_size_add(*total, 32768U, total) != BIGINT_OK)
         return false;
-    return numforge_budget_can_allocate_plan(total, largest);
+    return true;
+}
+
+bool bigint_factorial_tree_fits(uint64_t n)
+{
+    size_t total, largest;
+    return bigint_factorial_tree_plan(n, &total, &largest) &&
+        numforge_budget_can_allocate_plan(total, largest);
 }
 
 static BigIntStatus range_product(BigInt *out, uint64_t low, uint64_t high,

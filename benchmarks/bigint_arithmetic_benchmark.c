@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 /* Private adapters over production kernels and benchmark-only alternatives.
  * Fixtures/references come from independent Node BigInt, outside timed regions.
@@ -15,6 +16,7 @@ typedef struct Case {
     BigInt *a, *b, *expected, *remainder;
 } Case;
 static bool enforce_application_budget;
+static bool enforce_factorial_plan;
 
 /* Large independent references can use hex: limbs to avoid quadratic decimal
  * fixture parsing. This is fixture ingestion only, never timed arithmetic. */
@@ -352,7 +354,12 @@ static bool measure(const Case *c, bool memory, double target, Measurement *m, b
         bool owner = false;
         if (enforce_application_budget)
         {
-            owner = numforge_budget_begin(5000U, 64U * 1024U * 1024U, 512U * 1024U);
+            size_t cumulative = 64U * 1024U * 1024U, single = 512U * 1024U;
+            if (enforce_factorial_plan &&
+                (c->a->size > 1U || c->a->is_negative ||
+                 (strcmp(c->op, "factorial") && strcmp(c->op, "tree_workspace")) ||
+                 !bigint_factorial_tree_plan(c->a->size ? c->a->limbs[0] : 0U, &cumulative, &single))) goto cleanup;
+            owner = numforge_budget_begin(5000U, cumulative, single);
             if (!owner) goto cleanup;
         }
         double begin = benchmark_seconds();
@@ -408,6 +415,21 @@ static bool run(const Case *c, bool quick, bool validate)
 
 int main(int argc, char **argv)
 {
+    if (argc == 3 && !strcmp(argv[1], "--factorial-plan"))
+    {
+        char *end; errno = 0;
+        unsigned long long parsed = strtoull(argv[2], &end, 10);
+        if (errno || !*argv[2] || *argv[2] == '-' || *end || (uint64_t)parsed != parsed) return 1;
+        size_t total = 0U, largest = 0U;
+        bool represented = bigint_factorial_tree_plan((uint64_t)parsed, &total, &largest);
+        if (!numforge_budget_begin(UINT64_MAX, 64U * 1024U * 1024U, 512U * 1024U)) return 1;
+        bool admitted = represented && bigint_factorial_tree_fits((uint64_t)parsed);
+        numforge_budget_end();
+        printf("{\"representable\":%s,\"requested_bytes\":%zu,\"largest_allocation\":%zu,\"admitted\":%s}\n",
+            represented ? "true" : "false", represented ? total : 0U,
+            represented ? largest : 0U, admitted ? "true" : "false");
+        return 0;
+    }
 #ifdef NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING
     if (argc == 2 && !strcmp(argv[1], "--normalization-check"))
         return check_normalization_failures() ? 0 : 1;
@@ -419,11 +441,12 @@ int main(int argc, char **argv)
     bool quick = false, validate = false, success = true, found = false;
     bool check = false;
     const char *selected = NULL;
-    if (argc < 2) { fputs("Usage: bigint_arithmetic_benchmark fixtures.tsv [--quick] [--validate] [--budget] [--check] [--case name]\n", stderr); return 1; }
+    if (argc < 2) { fputs("Usage: bigint_arithmetic_benchmark fixtures.tsv [--quick] [--validate] [--budget|--plan-budget] [--check] [--case name]\n", stderr); return 1; }
     for (int i = 2; i < argc; i++)
     {
         if (!strcmp(argv[i], "--quick")) quick = true;
         else if (!strcmp(argv[i], "--budget")) enforce_application_budget = true;
+        else if (!strcmp(argv[i], "--plan-budget")) enforce_application_budget = enforce_factorial_plan = true;
         else if (!strcmp(argv[i], "--validate")) validate = true;
         else if (!strcmp(argv[i], "--check")) check = true;
         else if (!strcmp(argv[i], "--case") && i + 1 < argc) selected = argv[++i];

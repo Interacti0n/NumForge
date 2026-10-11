@@ -7,6 +7,10 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Tighten factorial tree admission using checked factor-range bit bounds and
+  shared workspace capacity planning. Verify adjacent admission boundaries,
+  complete results and calculator/HTTP requests without raising resource limits.
+
 - Normalize large decimal coefficients with exact 27-zero inverse division and
   reusable bounded scratch, retaining scalar tails and constrained fallback.
   Add complete coefficient/count references, cancellation/alias/failure checks
