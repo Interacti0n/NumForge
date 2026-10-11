@@ -142,6 +142,7 @@ CalculatorStatus calculator_value_copy(CalculatorValue *result, const Calculator
         if (temporary.complex_rational == NULL || bigrationalcomplex_copy(temporary.complex_rational, value->complex_rational) != BIGCOMPLEX_OK) goto failed;
     }
     temporary.context = value->context;
+    temporary.exact_integer_projection = value->exact_integer_projection;
     temporary.kind = value->kind;
     temporary.quantity = value->quantity;
     temporary.temperature_point = value->temperature_point;
@@ -348,6 +349,11 @@ static CalculatorStatus calculator_format_value_profile_impl(
         }
     }
     if (value->kind == CALCULATOR_VALUE_DECIMAL)
+    {
+        return calculator_format_result(value->number, context, result);
+    }
+    if (value->kind == CALCULATOR_VALUE_INTEGER && value->exact_integer_projection &&
+        value->number != NULL)
     {
         return calculator_format_result(value->number, context, result);
     }

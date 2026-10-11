@@ -93,6 +93,8 @@ typedef enum CalculatorValueKind
 typedef struct CalculatorValue
 {
     BigDecimal *number;
+    /* Set only after exact integer materialization; independent of precision. */
+    bool exact_integer_projection;
     BigInt *integer;
     BigRational *rational;
     BigComplex *complex_decimal;

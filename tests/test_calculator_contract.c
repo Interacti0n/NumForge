@@ -145,6 +145,35 @@ static void test_exact_division_aliasing_and_scale_failure(void)
     bigdecimal_destroy(b);
 }
 
+static void test_integer_projection_reformats_exactly_and_rationals_recompute(void)
+{
+    CalculatorContext context;
+    CalculatorError error;
+    CalculatorValue value = {0}, copy = {0};
+    char *text = NULL;
+    calculator_context_init(&context);
+    context.significant_division = true;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute_value("1267650600228229401496703205376", &context, &value, &error));
+    TEST_ASSERT_TRUE(value.exact_integer_projection);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_value_copy(&copy, &value));
+    calculator_value_destroy(&value);
+    context.notation = CALCULATOR_NOTATION_PLAIN;
+    context.output_scale = -1;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_format_value(&copy, &context, &text));
+    TEST_ASSERT_EQUAL_STRING("1267650600228229401496703205376", text);
+    free(text);
+    calculator_value_destroy(&copy);
+    context.division_scale = 2;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_compute_value("1/3", &context, &value, &error));
+    TEST_ASSERT_FALSE(value.exact_integer_projection);
+    context.division_scale = 20;
+    context.output_scale = 10;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_format_value(&value, &context, &text));
+    TEST_ASSERT_EQUAL_STRING("0.3333333333", text);
+    free(text);
+    calculator_value_destroy(&value);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -154,5 +183,6 @@ int main(void)
     RUN_TEST(test_constants_follow_working_precision_and_reuse);
     RUN_TEST(test_finite_division_preserves_exact_intermediates);
     RUN_TEST(test_exact_division_aliasing_and_scale_failure);
+    RUN_TEST(test_integer_projection_reformats_exactly_and_rationals_recompute);
     return UNITY_END();
 }

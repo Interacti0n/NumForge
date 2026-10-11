@@ -517,6 +517,8 @@ static CalculatorStatus calculator_compute_value_with_answer_profile_impl(
                 temporary.kind = result->kind;
                 temporary.number = value;
                 status = calculator_materialize_exact(value, &temporary, context);
+                result->exact_integer_projection = status == CALCULATOR_OK &&
+                    result->kind == CALCULATOR_VALUE_INTEGER;
             }
         }
         if (status == CALCULATOR_OK && !exact_candidate)
