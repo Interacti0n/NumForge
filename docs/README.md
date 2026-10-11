@@ -72,6 +72,7 @@ for specific source snapshots, not promises about every machine.
 - [Release readiness, 12 October 2026](project/RELEASE_READINESS_2026_10_12.md): local regression and archive checks before the next release.
 - [Release 2.1 record](project/RELEASE_2_1.md): scope, validation and limitations.
 - [Release 2.2 record](project/RELEASE_2_2.md): stability scope and publication checks.
+- [Release 2.2.1 record](project/RELEASE_2_2_1.md): performance scope and validation.
 - [Short changelog](../CHANGELOG_SHORT.md) or [full changelog](../CHANGELOG.md).
 
 Screenshots live in `images/`. Generated output and benchmark runs stay in

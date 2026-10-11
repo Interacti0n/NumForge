@@ -84,7 +84,8 @@ def main():
         raise RuntimeError('Unexpected installed SDK files: ' + str(actual.symmetric_difference(expected)))
     shutil.copy2(source / 'LICENSE', package / 'LICENSE')
     shutil.copytree(support / 'examples/sdk', package / 'example')
-    readme = (support / 'docs/guides/SDK.md').read_text(encoding='utf-8').replace('/blob/v2.2.0/', f'/blob/v{args.version}/')
+    readme = re.sub(r'/blob/v\d+\.\d+\.\d+/', f'/blob/v{args.version}/',
+                  (support / 'docs/guides/SDK.md').read_text(encoding='utf-8'))
     (package / 'README.md').write_text(readme, encoding='utf-8', newline='\n')
     info = {'version': args.version, 'source_commit': args.commit, 'platform': args.platform,
             'compiler': field('CMAKE_C_COMPILER_ID'), 'compiler_version': field('CMAKE_C_COMPILER_VERSION'),

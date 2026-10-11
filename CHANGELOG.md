@@ -7,6 +7,12 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+## 2.2.1 — 12 October 2026
+
+- Fix numeric-oracle workspace cleanup detected by Linux sanitizers and stabilize
+  Units geometry measurements after viewport resizing. Allow browser CI setup
+  time alongside the complete serial suite without relaxing individual tests.
+
 - Split factorial Karatsuba scratch into separate sum/cross-product buffers,
   preserving growth and failure guarantees while reducing each allocation.
   Verify wider admission and complete calculator results under unchanged limits;

@@ -1,9 +1,11 @@
 # Changelog highlights
 
 The main changes in a few words. See the [full changelog](CHANGELOG.md) for
-details and the [2.2 release record](docs/project/RELEASE_2_2.md) for validation.
+details and the [2.2.1 release record](docs/project/RELEASE_2_2_1.md) for validation.
 
 ## Unreleased
+
+## 2.2.1 — 12 October 2026
 
 - Accelerate large balanced multiplication with budget-aware Karatsuba.
 
