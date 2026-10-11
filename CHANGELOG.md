@@ -7,6 +7,10 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Debounce calculator and unit-converter previews until two seconds after the
+  last input or settings change; keep confirmation immediate and cancel pending
+  previews on confirmation, clearing or navigation.
+
 - Select a bounded theta/AGM path for suitable high-precision real logarithms
   through the existing C API, calculator and complex compositions. Enclose
   theta tails, pi and AGM rounding; adapt working precision until endpoint

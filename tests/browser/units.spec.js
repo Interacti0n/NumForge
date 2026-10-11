@@ -27,6 +27,8 @@ test('conversion input grows to three lines and scrolls without shifting desktop
 
 for(const lang of ['sk','en']) test.describe(lang,()=>{
     test('categories, exact preview, confirmation, swap, copy and approximation',async({page})=>{
+        // This scenario intentionally waits through several two-second previews.
+        test.setTimeout(30000);
         await page.goto('/units?lang='+lang);
         await expect(page.locator('#unit-result')).toHaveText('1000');
         await expect(page.locator('[data-quantity]')).toHaveCount(10);

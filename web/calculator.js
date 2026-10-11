@@ -182,7 +182,7 @@ function selectAngleUnit(unit, recalculate)
         button.setAttribute('aria-pressed', selected ? 'true' : 'false');
     });
     try { localStorage.setItem('numforge-angle-unit', angleUnit); } catch (_) {}
-    if (recalculate) scheduleCalculation(0);
+    if (recalculate) scheduleCalculation();
 }
 
 try { angleUnit = localStorage.getItem('numforge-angle-unit') || 'rad'; } catch (_) {}
@@ -217,7 +217,8 @@ function responseError(data)
         domainHint(data.status, chars.slice(index, end).join(''));
 }
 
-function scheduleCalculation(delay = 300)
+// Wait for editing to stop before spending server time on a preview.
+function scheduleCalculation(delay = 2000)
 {
     updateExpressionOverflow();
     invalidate();
@@ -475,7 +476,7 @@ async function deleteVariable(name)
         if (window.numforgePendingVariableDeletion === deletionFinished)
             window.numforgePendingVariableDeletion = null;
         finishDeletion();
-        if (!pendingVariableDeletion && expression.value.trim()) scheduleCalculation(0);
+        if (!pendingVariableDeletion && expression.value.trim()) scheduleCalculation();
     }
 }
 
@@ -1070,10 +1071,10 @@ function updatePrecisionMode()
 updatePrecisionMode();
 precisionMode.addEventListener('change', () => {
     updatePrecisionMode();
-    scheduleCalculation(0);
+    scheduleCalculation();
 });
-notationMode.addEventListener('change', () => scheduleCalculation(0));
-complexForm.addEventListener('change', () => scheduleCalculation(0));
+notationMode.addEventListener('change', () => scheduleCalculation());
+complexForm.addEventListener('change', () => scheduleCalculation());
 
 
 async function calculate(commit)
@@ -1152,7 +1153,7 @@ async function calculate(commit)
         if (commit)
         {
             commitInFlight = false;
-            if (!pendingCommit && id !== generation) scheduleCalculation(0);
+            if (!pendingCommit && id !== generation) scheduleCalculation();
         }
         if (commit && id === generation && !lifecycle.signal.aborted && mobileSettings.matches)
             document.querySelector('.result-panel').scrollIntoView({block: 'start',
@@ -1251,7 +1252,7 @@ try
                 pendingCommit = state.pending;
                 calculate(true);
             }
-            else if (expression.value.trim()) scheduleCalculation(0);
+            else if (expression.value.trim()) scheduleCalculation();
         }
     }
 }

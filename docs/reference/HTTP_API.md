@@ -138,6 +138,9 @@ Errors preserve the last successful value. This is not authentication or a
 public multiuser service.
 
 The browser adds a final `&action=start|preview|commit|delete-variable` after client/revision.
+Browser previews wait for two seconds without input or settings changes; Enter
+or Calculate/Convert bypasses that wait and cancels the pending preview.
+This scheduling is client-side only: API requests are evaluated immediately.
 For example, start a page session with a POST to
 `/api/evaluate?precision=10&angle=rad&client=<32 lowercase hex digits>&revision=1&action=start`
 and an empty body. Start returns `{"ok":true,"result":""}` and is idempotent

@@ -8,7 +8,7 @@ function initUnits() {
     const english = document.documentElement.lang === 'en';
     const text = english ? {
         preview:'Preview · Enter to confirm', confirmed:'Conversion confirmed', empty:'Enter a value or expression.',
-        loading:'Loading units…', calculating:'Converting…', network:'Could not connect. Try again.',
+        loading:'Loading units…', waiting:'Waiting for preview…', calculating:'Converting…', network:'Could not connect. Try again.',
         catalogue:'Could not load units. Try again.', settings:'Use whole numbers: working precision 1–10000, decimal places 0–10000.',
         copied:'Number copied to clipboard.', copyFailed:'Could not copy. Select the result and copy it manually.',
         common:'Common units', more:'Other units and prefixes', approximate:'Approximate calculation', exact:'Exact conversion factors',
@@ -22,7 +22,7 @@ function initUnits() {
         expression:'Check the expression.', column:'Column'
     } : {
         preview:'Náhľad · Enter potvrdí prevod',confirmed:'Prevod potvrdený',empty:'Zadaj hodnotu alebo výraz.',
-        loading:'Načítavam jednotky…',calculating:'Prevádzam…',network:'Nepodarilo sa pripojiť. Skús znova.',
+        loading:'Načítavam jednotky…',waiting:'Čakám na náhľad…',calculating:'Prevádzam…',network:'Nepodarilo sa pripojiť. Skús znova.',
         catalogue:'Jednotky sa nepodarilo načítať. Skús znova.',settings:'Použi celé čísla: výpočtová presnosť 1–10000, desatinné miesta 0–10000.',
         copied:'Číslo je skopírované.',copyFailed:'Kopírovanie sa nepodarilo. Označ výsledok a skopíruj ho ručne.',
         common:'Bežné jednotky',more:'Ostatné jednotky a predpony',approximate:'Približný výpočet',exact:'Presné prevodné faktory',
@@ -292,7 +292,7 @@ function initUnits() {
         const selected=pair || c[5];
         from.value=units.some(u=>u.id===selected[0])?selected[0]:units[0].id;
         to.value=units.some(u=>u.id===selected[1])?selected[1]:units[0].id;
-        info(); schedule(0);
+        info(); schedule();
     }
     async function calculate(confirm=false, id=generation) {
         if (disposed || !catalogue.length || id!==generation) return;
@@ -361,19 +361,19 @@ function initUnits() {
             if (confirm && id===generation) revealResult();
         }
     }
-    function schedule(delay=250) {
+    function schedule(delay=2000) {
         updateInputOverflow();
         retryConfirmation=false;
         const id=invalidate(); root.removeAttribute('aria-busy'); save();
         if (!input.value.trim()) { setStatus(text.empty); return; }
-        setStatus(catalogue.length?text.calculating:text.loading);
+        setStatus(catalogue.length?text.waiting:text.loading);
         timer=setTimeout(()=>calculate(false,id),delay);
     }
     $('unit-converter').addEventListener('submit',event=>{event.preventDefault();if(confirming)return; if(mobileLayout.matches)input.blur(); const id=invalidate(); save(); calculate(true,id);},{signal:lifecycle.signal});
     input.addEventListener('keydown',event=>{if(event.key==='Enter' && !event.shiftKey && !event.isComposing){event.preventDefault();$('unit-converter').requestSubmit();}},{signal:lifecycle.signal});
     input.addEventListener('input',()=>schedule(),{signal:lifecycle.signal});
-    for (const id of [...fields,'unit-from','unit-to']) $(id).addEventListener('change',()=>{updatePlaces();info();schedule(0);},{signal:lifecycle.signal});
-    $('unit-swap').addEventListener('click',()=>{const a=from.value;from.value=to.value;to.value=a;info();schedule(0);},{signal:lifecycle.signal});
+    for (const id of [...fields,'unit-from','unit-to']) $(id).addEventListener('change',()=>{updatePlaces();info();schedule();},{signal:lifecycle.signal});
+    $('unit-swap').addEventListener('click',()=>{const a=from.value;from.value=to.value;to.value=a;info();schedule();},{signal:lifecycle.signal});
     $('unit-copy').addEventListener('click',async()=>{
         const value=copyValue, id=generation; if (!value) return;
         try { await navigator.clipboard.writeText(value); if(id===generation && !disposed)setStatus(text.copied); }
@@ -382,7 +382,7 @@ function initUnits() {
     $('unit-retry').addEventListener('click',()=>{
         if(!catalogue.length)loadCatalogue();
         else if(retryConfirmation){const id=invalidate();calculate(true,id);}
-        else schedule(0);
+        else schedule();
     },{signal:lifecycle.signal});
     window.addEventListener('numforge:navigate',()=>{save();saveHistory();},{signal:lifecycle.signal});
     async function loadCatalogue() {

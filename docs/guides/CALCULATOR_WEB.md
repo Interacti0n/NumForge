@@ -32,6 +32,11 @@ The result panel is five lines high by default. Longer output shows a
 panel, and the same control collapses it again.
 
 Results default to 10 decimal places, rounded half-even.
+Calculator and unit-converter previews run after two seconds without changes
+to the input or calculation settings. Further edits restart the wait and discard
+stale results. Enter or Calculate/Convert runs immediately and cancels the pending
+preview; only confirmation updates the respective history. Evaluation errors also
+appear after this pause or on confirmation. Direct API calls have no such delay.
 The browser offers Auto (10 places), Full, and Custom; only Custom shows a
 numeric field. Full skips final output rounding, not working-precision limits.
 On phones, the expression fills the row; Calculate, Clear and the library

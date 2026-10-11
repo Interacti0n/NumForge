@@ -567,6 +567,8 @@ for (const lang of ['sk', 'en']) {
                 document.querySelector('.primary-nav') === window.originalMenu)).toBe(true);
         });
         test('automatic calculation and precision above result', async ({ page }, testInfo) => {
+            // Six successive previews intentionally include two-second idle waits.
+            test.setTimeout(30000);
             await expect(page.locator('.page-footer')).toBeVisible();
             await expect(page.locator('.page-footer')).toContainText('v' + projectVersion);
             await expect(page.locator('.page-footer a[href$="/LICENSE"]')).toBeVisible();

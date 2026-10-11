@@ -5,6 +5,8 @@ details and the [2.2 release record](docs/project/RELEASE_2_2.md) for validation
 
 ## Unreleased
 
+- Wait for two seconds of idle editing before calculating web previews.
+
 - Faster high-precision logarithms with bounded AGM and adaptive precision;
   existing low-precision behavior and resource budgets remain.
 

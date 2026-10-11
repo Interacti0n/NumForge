@@ -56,7 +56,7 @@ async function createUI(english) {
             borderTopWidth: '1px', borderBottomWidth: '1px'}),
         crypto: {getRandomValues: bytes => bytes.fill(1)},
         TypeError, SyntaxError, URLSearchParams,
-        setTimeout: callback => (timers.push(callback), timers.length),
+        setTimeout: (callback, delay) => (callback.delay = delay, timers.push(callback), timers.length),
         clearTimeout() {},
         fetch: (url, options) => {
             if(url.startsWith('/api/functions')) return jsonResponse({ok:true,functions:[]});
@@ -170,6 +170,7 @@ async function testAutomaticCalculation(english) {
     input.value = '1'; input.listeners.input();
     input.value = '1/8'; input.listeners.input();
     assert.equal(ui.pending.length, 0, 'typing is debounced');
+    assert.equal(ui.timers.at(-1).delay, 2000, 'preview waits two seconds after the last edit');
     ui.timers[0]();
     assert.equal(ui.pending.length, 0, 'superseded timer cannot submit');
     const calculation = ui.timers[1]();
@@ -178,11 +179,13 @@ async function testAutomaticCalculation(english) {
 
     ui.element('#precision').value = '2';
     ui.element('#precision').listeners.input();
+    assert.equal(ui.timers.at(-1).delay, 2000, 'precision edits also wait for idle');
     const rounded = ui.timers.at(-1)();
     assert.ok(ui.pending[1].url.includes('precision=2&angle=rad'));
     ui.respond(1, '0.12'); await rounded;
     ui.element('#precision-mode').value = 'full';
     ui.element('#precision-mode').listeners.change();
+    assert.equal(ui.timers.at(-1).delay, 2000, 'display changes also wait for idle');
     assert.equal(ui.element('#precision').disabled, true);
     const full = ui.timers.at(-1)();
     assert.ok(ui.pending[2].url.includes('precision=full&angle=rad'));
@@ -196,6 +199,15 @@ async function testAutomaticCalculation(english) {
     await ui.preview('');
     assert.equal(ui.pending.length, 3, 'empty input does not calculate');
     assert.equal(ui.element('#result').textContent, '');
+
+    input.value = '2+3'; input.listeners.input();
+    const beforeEnter = ui.timers.at(-1);
+    const confirmed = ui.confirm('2+3');
+    assert.equal(ui.pending.length, 4, 'Enter calculates immediately');
+    assert.ok(ui.pending[3].url.includes('&action=commit'));
+    beforeEnter();
+    assert.equal(ui.pending.length, 4, 'Enter cancels the pending preview');
+    ui.respond(3, '5'); await confirmed;
 }
 
 async function testErrorContext(english) {

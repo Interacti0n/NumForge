@@ -63,6 +63,8 @@ body { height: auto; min-height: 100dvh; overflow: auto; }
 .unit-history-restore, .unit-history-copy { min-height: 40px; padding: 8px; border: 1px solid var(--border-soft); border-radius: 8px; background: var(--surface-input); color: var(--muted); font: .76rem var(--font-math); }
 .unit-history-restore:hover, .unit-history-copy:hover { border-color: var(--accent); }
 @media (min-width: 981px) {
+    /* Retain the last metadata height while a desktop preview is pending. */
+    #unit-result-meta[hidden] { display: block !important; visibility: hidden; }
     .unit-settings { min-height: 260px; }
     /* Reserve this field's grid cell so revealing it cannot resize the row. */
     #unit-custom-places[hidden] { display: flex !important; visibility: hidden; }
