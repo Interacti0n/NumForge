@@ -2123,10 +2123,21 @@ static void test_decimal_digit_count_preserves_output_on_every_failure(void)
     }
 }
 
-static void test_sin_cos_pair_atomic_on_every_failure(void)
+static void check_forward_pair_failures(bool hyperbolic)
 {
-    const char *inputs[] = { "0", "1" };
-    for (size_t n = 0U; n < sizeof(inputs) / sizeof(inputs[0]); n++)
+    const char *trig_inputs[] = { "0", "1" };
+    const char *hyperbolic_inputs[] = { "0", "0.1", "-1" };
+    const char **inputs = hyperbolic ? hyperbolic_inputs : trig_inputs;
+    const size_t count = hyperbolic ? 3U : 2U;
+    const int64_t digits = hyperbolic ? 4 : 12;
+    BigDecimalStatus (*pair)(BigDecimal *, BigDecimal *, const BigDecimal *, int64_t,
+                            BigDecimalRoundingMode) = hyperbolic
+        ? bigdecimal_sinh_cosh_pair : bigdecimal_sin_cos_pair;
+    BigDecimalStatus (*sine)(BigDecimal *, const BigDecimal *, int64_t,
+                            BigDecimalRoundingMode) = hyperbolic ? bigdecimal_sinh : bigdecimal_sin;
+    BigDecimalStatus (*cosine)(BigDecimal *, const BigDecimal *, int64_t,
+                              BigDecimalRoundingMode) = hyperbolic ? bigdecimal_cosh : bigdecimal_cos;
+    for (size_t n = 0U; n < count; n++)
     for (unsigned alias = 0U; alias < 3U; alias++)
     for (unsigned deadline = 0U; deadline < 2U; deadline++)
     {
@@ -2134,10 +2145,12 @@ static void test_sin_cos_pair_atomic_on_every_failure(void)
         BigDecimal *input = make_bigdecimal(inputs[n]);
         bool completed = false;
         TEST_ASSERT_NOT_NULL(expected_s); TEST_ASSERT_NOT_NULL(expected_c);
-        TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_sin(expected_s, input, 12, BIGDECIMAL_ROUND_HALF_EVEN));
-        TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_cos(expected_c, input, 12, BIGDECIMAL_ROUND_HALF_EVEN));
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK, sine(expected_s, input, digits, BIGDECIMAL_ROUND_HALF_EVEN));
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK, cosine(expected_c, input, digits, BIGDECIMAL_ROUND_HALF_EVEN));
         bigdecimal_destroy(input);
-        for (size_t index = 1U; index <= ALLOCATION_TEST_MAX_FAILURE_INDEX; index++)
+        /* Exp plus the small-argument sinh series has more checkpoints than
+         * the generic 4096-position bound. Require eventual success as well. */
+        for (size_t index = 1U; index <= 16384U; index++)
         {
             BigDecimal *value = make_bigdecimal(inputs[n]);
             BigDecimal *original_s = make_bigdecimal("7.77"), *original_c = make_bigdecimal("-8.88");
@@ -2151,7 +2164,7 @@ static void test_sin_cos_pair_atomic_on_every_failure(void)
                 numforge_test_budget_expire_after(index);
             }
             else numforge_test_allocator_begin(index);
-            status = bigdecimal_sin_cos_pair(s, c, value, 12, BIGDECIMAL_ROUND_HALF_EVEN);
+            status = pair(s, c, value, digits, BIGDECIMAL_ROUND_HALF_EVEN);
             interrupted = deadline ? numforge_budget_failure() != NUMFORGE_BUDGET_OK
                                    : numforge_test_allocator_did_fail();
             numforge_budget_end(); numforge_test_allocator_end();
@@ -2181,15 +2194,25 @@ static void test_sin_cos_pair_atomic_on_every_failure(void)
         TEST_ASSERT_TRUE(completed);
     }
     BigDecimal *a = make_bigdecimal("1"), *b = make_bigdecimal("2");
-    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_sin_cos_pair(NULL, b, a, 12, BIGDECIMAL_ROUND_HALF_EVEN));
-    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_sin_cos_pair(a, NULL, b, 12, BIGDECIMAL_ROUND_HALF_EVEN));
-    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_sin_cos_pair(a, b, NULL, 12, BIGDECIMAL_ROUND_HALF_EVEN));
-    TEST_ASSERT_EQUAL(BIGDECIMAL_INVALID_ARGUMENT, bigdecimal_sin_cos_pair(a, a, b, 12, BIGDECIMAL_ROUND_HALF_EVEN));
-    TEST_ASSERT_EQUAL(BIGDECIMAL_INVALID_ARGUMENT, bigdecimal_sin_cos_pair(a, b, a, 0, BIGDECIMAL_ROUND_HALF_EVEN));
-    TEST_ASSERT_EQUAL(BIGDECIMAL_VALUE_TOO_LARGE, bigdecimal_sin_cos_pair(a, b, a, INT64_MAX, BIGDECIMAL_ROUND_HALF_EVEN));
-    TEST_ASSERT_EQUAL(BIGDECIMAL_INVALID_ARGUMENT, bigdecimal_sin_cos_pair(a, b, a, 12, (BigDecimalRoundingMode)99));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, pair(NULL, b, a, digits, BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, pair(a, NULL, b, digits, BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, pair(a, b, NULL, digits, BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_INVALID_ARGUMENT, pair(a, a, b, digits, BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_INVALID_ARGUMENT, pair(a, b, a, 0, BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_VALUE_TOO_LARGE, pair(a, b, a, INT64_MAX, BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_INVALID_ARGUMENT, pair(a, b, a, digits, (BigDecimalRoundingMode)99));
     assert_bigdecimal_text("1", a); assert_bigdecimal_text("2", b);
     bigdecimal_destroy(a); bigdecimal_destroy(b);
+}
+
+static void test_sin_cos_pair_atomic_on_every_failure(void)
+{
+    check_forward_pair_failures(false);
+}
+
+static void test_sinh_cosh_pair_atomic_on_every_failure(void)
+{
+    check_forward_pair_failures(true);
 }
 
 int main(void)
@@ -2223,6 +2246,7 @@ int main(void)
     RUN_TEST(test_equal_scale_comparison_without_allocations);
     RUN_TEST(test_decimal_digit_count_preserves_output_on_every_failure);
     RUN_TEST(test_sin_cos_pair_atomic_on_every_failure);
+    RUN_TEST(test_sinh_cosh_pair_atomic_on_every_failure);
     RUN_TEST(test_series_sum_owners_preserve_alias_on_every_failure);
     RUN_TEST(test_bigdecimal_aliasing_preserves_destination_on_allocation_failure);
     RUN_TEST(test_dynamic_constant_sampled_allocation_failures);

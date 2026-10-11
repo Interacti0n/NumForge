@@ -579,8 +579,7 @@ static BigComplexStatus complex_sine_cosine(BigComplex *result, const BigComplex
     BigDecimalStatus status=BIGDECIMAL_OUT_OF_MEMORY;
     if (!temporary || (paired && !other) || !sine || !cosine_value || !sinh_value || !cosh_value || !one) goto done;
     TRY(bigdecimal_sin_cos_pair(sine,cosine_value,hyperbolic ? value->imaginary : value->real,digits+12,rounding));
-    TRY(bigdecimal_sinh(sinh_value,hyperbolic ? value->real : value->imaginary,digits+12,rounding));
-    TRY(bigdecimal_cosh(cosh_value,hyperbolic ? value->real : value->imaginary,digits+12,rounding));
+    TRY(bigdecimal_sinh_cosh_pair(sinh_value,cosh_value,hyperbolic ? value->real : value->imaginary,digits+12,rounding));
     TRY(bigdecimal_set_string(one,"1"));
     /* Quotients need both outputs. Reuse the same guarded scalar evaluations;
      * component composition and rounding match the separate public calls. */

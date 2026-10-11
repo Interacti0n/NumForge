@@ -70,6 +70,11 @@ and mode. Both outputs are committed only after all fallible work succeeds;
 they must be distinct and either may alias the input. This is not an installed
 public API or shared cache, and the public scalar functions retain their paths.
 
+The analogous private sinh/cosh pair shares `exp(abs(x))` and its reciprocal.
+For `abs(x) <= 0.5`, sinh retains its cancellation-safe power series while cosh
+uses the existing exponential formula. Both outputs keep the public scalar
+guard digits and rounding, and are published atomically with the same aliases.
+
 Additive APIs also provide exact integer conversions, sign/integer predicates,
 min/max, sequence aggregates, floor/ceil/trunc/half-even round, integer powers,
 population/sample statistics, real roots, significant and exact-first division,

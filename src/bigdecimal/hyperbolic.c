@@ -368,6 +368,69 @@ cleanup:
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
+/* Match the separate public calls, including the cancellation-safe sinh
+ * series near zero. Publish both outputs only after every operation succeeds. */
+BigDecimalStatus bigdecimal_sinh_cosh_pair(
+    BigDecimal *sine, BigDecimal *cosine, const BigDecimal *value,
+    int64_t digits, BigDecimalRoundingMode rounding)
+{
+    BigDecimal *s = NULL, *c = NULL, *absolute = NULL, *half = NULL;
+    BigDecimal *exponential = NULL, *reciprocal = NULL, *one = NULL, *two = NULL;
+    BigDecimalStatus status;
+    int64_t work_digits;
+    int comparison = 0, sign = 0;
+
+    if (sine == NULL || cosine == NULL || value == NULL)
+        return BIGDECIMAL_NULL_ARGUMENT;
+    if (sine == cosine) return BIGDECIMAL_INVALID_ARGUMENT;
+    status = hyperbolic_work_digits(digits, rounding, &work_digits);
+    if (status != BIGDECIMAL_OK) return status;
+
+    s = bigdecimal_create(); c = bigdecimal_create();
+    if (s == NULL || c == NULL) { status = BIGDECIMAL_OUT_OF_MEMORY; goto cleanup; }
+    if (bigint_is_zero(value->coefficient))
+    {
+        HYPERBOLIC_TRY(bigdecimal_set_string(s, "0"));
+        HYPERBOLIC_TRY(bigdecimal_set_string(c, "1"));
+    }
+    else
+    {
+        absolute = bigdecimal_create(); half = bigdecimal_create();
+        exponential = bigdecimal_create(); reciprocal = bigdecimal_create();
+        one = bigdecimal_create(); two = bigdecimal_create();
+        if (!absolute || !half || !exponential || !reciprocal || !one || !two)
+        { status = BIGDECIMAL_OUT_OF_MEMORY; goto cleanup; }
+        HYPERBOLIC_TRY(bigdecimal_abs(absolute, value));
+        HYPERBOLIC_TRY(bigdecimal_set_string(half, "0.5"));
+        HYPERBOLIC_TRY(bigdecimal_compare(&comparison, absolute, half));
+        HYPERBOLIC_TRY(bigdecimal_exp(exponential, absolute, work_digits, BIGDECIMAL_ROUND_HALF_EVEN));
+        HYPERBOLIC_TRY(bigdecimal_set_string(one, "1"));
+        HYPERBOLIC_TRY(bigdecimal_set_string(two, "2"));
+        HYPERBOLIC_TRY(bigdecimal_div_significant(reciprocal, one, exponential, work_digits, BIGDECIMAL_ROUND_HALF_EVEN));
+        HYPERBOLIC_TRY(hyperbolic_binary_rounded(c, exponential, reciprocal, work_digits, false));
+        HYPERBOLIC_TRY(bigdecimal_div_significant(c, c, two, work_digits, BIGDECIMAL_ROUND_HALF_EVEN));
+        if (comparison <= 0)
+            HYPERBOLIC_TRY(hyperbolic_sinh_series(s, value, work_digits));
+        else
+        {
+            HYPERBOLIC_TRY(hyperbolic_binary_rounded(s, exponential, reciprocal, work_digits, true));
+            HYPERBOLIC_TRY(bigdecimal_div_significant(s, s, two, work_digits, BIGDECIMAL_ROUND_HALF_EVEN));
+            HYPERBOLIC_TRY(bigdecimal_sign(&sign, value));
+            if (sign < 0) HYPERBOLIC_TRY(bigdecimal_negate(s, s));
+        }
+        HYPERBOLIC_TRY(bigdecimal_round_significant(s, s, digits, rounding));
+        HYPERBOLIC_TRY(bigdecimal_round_significant(c, c, digits, rounding));
+    }
+    bigdecimal_commit(sine, s); s = NULL;
+    bigdecimal_commit(cosine, c); c = NULL;
+cleanup:
+    bigdecimal_destroy(s); bigdecimal_destroy(c);
+    bigdecimal_destroy(absolute); bigdecimal_destroy(half);
+    bigdecimal_destroy(exponential); bigdecimal_destroy(reciprocal);
+    bigdecimal_destroy(one); bigdecimal_destroy(two);
+    return status;
+}
+
 static BigDecimalStatus hyperbolic_sinh_cosh(
     BigDecimal *result,
     const BigDecimal *value,

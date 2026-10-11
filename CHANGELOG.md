@@ -7,6 +7,9 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Share exponential and reciprocal evaluation for scalar sinh/cosh inside
+  complex forward functions, preserving small-argument sinh precision and
+  independently rounded, atomic outputs.
 - Share guarded sine/cosine evaluation inside complex forward functions instead
   of calculating the same scalar pair twice; retain individual rounding and
   atomic failures, with paired alias tests and high-precision limit checks.

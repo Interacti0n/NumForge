@@ -84,8 +84,12 @@ BigDecimalStatus bigdecimal_round_significant(
     BigDecimalRoundingMode rounding
 );
 
-/* Private paired evaluation matching separate public sin/cos calls. Outputs
+/* Private paired evaluations matching their separate public calls. Outputs
  * must be distinct; either may alias value. Both remain unchanged on error. */
+BigDecimalStatus bigdecimal_sinh_cosh_pair(
+    BigDecimal *sine, BigDecimal *cosine, const BigDecimal *value,
+    int64_t digits, BigDecimalRoundingMode rounding);
+
 BigDecimalStatus bigdecimal_sin_cos_pair(
     BigDecimal *sine, BigDecimal *cosine, const BigDecimal *value,
     int64_t digits, BigDecimalRoundingMode rounding

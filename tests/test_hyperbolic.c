@@ -1,3 +1,4 @@
+#include "../src/bigdecimal/bigdecimal_internal.h"
 #include <stdlib.h>
 
 #include <unity.h>
@@ -202,9 +203,39 @@ static void test_domains_rounding_and_invalid_arguments(void)
     bigdecimal_destroy(outside);
 }
 
+static void test_private_sinh_cosh_pair_matches_public_rounding(void)
+{
+    const char *inputs[] = { "0", "1", "-1", "0.5", "-0.5",
+        "0.499999999999999999999999999999999999", "0.500000000000000000000000000000000001",
+        "-0.500000000000000000000000000000000001", "1e-100", "-1e-100", "10", "-10" };
+    for (size_t n = 0U; n < sizeof(inputs) / sizeof(inputs[0]); n++)
+    for (unsigned mode = 0U; mode < 6U; mode++)
+    for (unsigned alias = 0U; alias < 3U; alias++)
+    {
+        BigDecimal *value = make_decimal(inputs[n]);
+        BigDecimal *s = bigdecimal_create(), *c = bigdecimal_create();
+        BigDecimal *expected_s = bigdecimal_create(), *expected_c = bigdecimal_create();
+        BigDecimal *out_s = alias == 1U ? value : s;
+        BigDecimal *out_c = alias == 2U ? value : c;
+        int comparison = 42;
+        TEST_ASSERT_NOT_NULL(s); TEST_ASSERT_NOT_NULL(c);
+        TEST_ASSERT_NOT_NULL(expected_s); TEST_ASSERT_NOT_NULL(expected_c);
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_sinh(expected_s, value, 34, (BigDecimalRoundingMode)mode));
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_cosh(expected_c, value, 34, (BigDecimalRoundingMode)mode));
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_sinh_cosh_pair(out_s, out_c, value, 34, (BigDecimalRoundingMode)mode));
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_compare(&comparison, out_s, expected_s));
+        TEST_ASSERT_EQUAL_INT(0, comparison);
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_compare(&comparison, out_c, expected_c));
+        TEST_ASSERT_EQUAL_INT(0, comparison);
+        bigdecimal_destroy(value); bigdecimal_destroy(s); bigdecimal_destroy(c);
+        bigdecimal_destroy(expected_s); bigdecimal_destroy(expected_c);
+    }
+}
+
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_private_sinh_cosh_pair_matches_public_rounding);
     RUN_TEST(test_known_values_and_identities);
     RUN_TEST(test_parity_aliasing_and_extreme_arguments);
     RUN_TEST(test_small_arguments_preserve_information);
