@@ -17,6 +17,7 @@ root without floating-point conversion and preserves the destination on error.
 | `arithmetic.c` | Sign operations, arithmetic, division, modulo, and integer powers. |
 | `multiplication.c` | Private bounded-scratch Karatsuba kernel and workspace preflight. |
 | `factorial.c` | Budget-admitted product tree and per-call multiplication workspace ownership. |
+| `normalization.c` | Exact inverse division for decimal-zero stripping in private coefficients. |
 | `bitwise.c` | Bitwise operations and shifts. |
 | `number_theory.c` | GCD, LCM, factorial, permutations, and combinations. |
 | `primality.c` | Parity, Miller-Rabin primality testing, and perfect-square detection. |

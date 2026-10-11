@@ -172,7 +172,7 @@ uint64_t bigint_divide_by_uint64( /*Divide a BigInt by a uint64_t in place, retu
     return remainder;
 }
 
-BigIntStatus bigint_strip_decimal_zeros( /*Remove trailing decimal zeros from a BigInt, keeps the number of decimal zeros in *removed*/
+BigIntStatus bigint_strip_decimal_zeros_classic( /*Reference scalar normalization*/
     BigInt *value,
     uint64_t *removed
 )
@@ -185,7 +185,10 @@ BigIntStatus bigint_strip_decimal_zeros( /*Remove trailing decimal zeros from a 
      * already-normalized case without division or temporary allocation. */
     remainder10 = (unsigned int)(value->limbs[0] % 10U);
     for (size_t i = 1U; i < value->size; i++)
+    {
+        if (!(i & 255U) && !numforge_budget_check()) return BIGINT_OUT_OF_MEMORY;
         remainder10 = (remainder10 + 6U * (unsigned int)(value->limbs[i] % 10U)) % 10U;
+    }
     if (remainder10 != 0U) return BIGINT_OK;
 
     for (;;)
@@ -195,7 +198,10 @@ BigIntStatus bigint_strip_decimal_zeros( /*Remove trailing decimal zeros from a 
         unsigned int count = 0U;
         if (!numforge_budget_check()) return BIGINT_OUT_OF_MEMORY;
         for (size_t i = value->size; i > 0U; i--)
+        {
+            if (!(i & 255U) && !numforge_budget_check()) return BIGINT_OUT_OF_MEMORY;
             (void)bigint_divide_128_by_u64(remainder, value->limbs[i - 1U], block, &remainder);
+        }
         if (remainder == 0U)
         {
             count = 19U;
@@ -212,10 +218,27 @@ BigIntStatus bigint_strip_decimal_zeros( /*Remove trailing decimal zeros from a 
             if (count == 0U) return BIGINT_OK;
         }
         if (*removed > UINT64_MAX - count) return BIGINT_VALUE_TOO_LARGE;
-        (void)bigint_divide_by_uint64(value, divisor);
+        uint64_t carry = 0U;
+        for (size_t i = value->size; i > 0U; --i)
+        {
+            if (!(i & 255U) && !numforge_budget_check()) return BIGINT_OUT_OF_MEMORY;
+            value->limbs[i - 1U] = bigint_divide_128_by_u64(carry, value->limbs[i - 1U], divisor, &carry);
+        }
+        bigint_normalize(value);
         *removed += count;
         if (remainder != 0U) return BIGINT_OK;
     }
+}
+
+BigIntStatus bigint_strip_decimal_zeros(BigInt *value, uint64_t *removed)
+{
+    if (!value || !removed) return BIGINT_NULL_ARGUMENT;
+    if (!numforge_budget_check()) return BIGINT_OUT_OF_MEMORY;
+    BigIntStatus status = value->size >= 128U ?
+        bigint_strip_decimal_zeros_inverse(value, removed, 27U) :
+        bigint_strip_decimal_zeros_classic(value, removed);
+    if (status == BIGINT_OK && !numforge_budget_check()) status = BIGINT_OUT_OF_MEMORY;
+    return status;
 }
 
 void bigint_normalize( /*Trim trailing zero limbs and clear the sign on zero - the single source of truth for canonical form*/

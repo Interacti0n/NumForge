@@ -104,6 +104,7 @@ add_library(numforge STATIC
     src/bigint/arithmetic.c
     src/bigint/multiplication.c
     src/bigint/factorial.c
+    src/bigint/normalization.c
     src/bigint/bitwise.c
     src/bigint/comparison.c
     src/bigint/conversion.c
@@ -417,6 +418,8 @@ if(NUMFORGE_BUILD_BENCHMARKS)
         set_tests_properties(karatsuba_fault_checks PROPERTIES TIMEOUT 120)
         add_test(NAME multiplication_fault_checks COMMAND bigint_arithmetic_benchmark --multiply-check)
         set_tests_properties(multiplication_fault_checks PROPERTIES TIMEOUT 120)
+        add_test(NAME normalization_fault_checks COMMAND bigint_arithmetic_benchmark --normalization-check)
+        set_tests_properties(normalization_fault_checks PROPERTIES TIMEOUT 120)
         find_program(NUMFORGE_BIGINT_BENCH_NODE NAMES node nodejs)
         if(NUMFORGE_BIGINT_BENCH_NODE)
             add_test(NAME karatsuba_reference_smoke

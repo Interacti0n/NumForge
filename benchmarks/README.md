@@ -45,6 +45,10 @@ separates the admission cliff from actual scratch limits and decimal normalizati
 Generate `--workspace --stress` fixtures and use `run_factorial_stress.cjs`
 for serial budgeted whole-request/phase/tree diagnostics. Calculator limit
 benchmark `--phases-profile` additionally measures exclusive normalization time.
+The [zero-normalization integration](../docs/benchmarks/ZERO_NORMALIZATION_2026_10_11.md)
+compares scalar/inverse blocks and complete calculator requests. Generate its
+coefficient/count references with `generate_zero_normalization.py`; `--timing`
+selects the smaller recording matrix.
 Use `generate_karatsuba_factorials.py output.tsv --workspace` for public,
 grouped and workspace-tree references; add `--timing` for the serial speed matrix.
 Use `run_karatsuba.cjs executable empty-directory --focused` for a serial

@@ -210,10 +210,13 @@ then adds the operand scales and the normalization adjustment using checked
 otherwise overflowing intermediate sum. Zero remains canonical at scale zero;
 true final scale overflow leaves the destination unchanged.
 
-Normalization strips decimal zeroes in blocks of up to 19 using private
-single-limb division helpers. The common already-normalized case is detected
-without allocation. This avoids thousands of general BigInt divisions when
-high-precision division produces a short terminating decimal.
+Normalization uses private exact inverse division in 27-zero blocks for
+coefficients of at least 128 limbs when optional magnitude-sized scratch fits.
+A binary divisibility check and modulo-five scan reject ordinary already
+normalized coefficients without allocation. Small values, scalar tails and
+constrained scopes retain blocks of up to 19 zeros. Deadline checkpoints cover
+limb scans; failure of a private temporary never publishes a partial public
+decimal. See [normalization measurements](../benchmarks/ZERO_NORMALIZATION_2026_10_11.md).
 
 ### Division
 

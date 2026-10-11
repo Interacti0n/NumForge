@@ -34,9 +34,12 @@ struct BigInt
     bool is_negative;
 };
 
-/* Private normalization of a temporary magnitude, in blocks of up to 19
- * decimal zeros. On cancellation the temporary may be partially reduced. */
+/* Private normalization of a temporary magnitude. Large values use trial
+ * inverse division in 27-zero blocks if scratch fits; scalar tails/fallback
+ * retain blocks up to 19. Failure may partially reduce a private temporary. */
 BigIntStatus bigint_strip_decimal_zeros(BigInt *value, uint64_t *removed);
+BigIntStatus bigint_strip_decimal_zeros_classic(BigInt *value, uint64_t *removed);
+BigIntStatus bigint_strip_decimal_zeros_inverse(BigInt *value, uint64_t *removed, unsigned block);
 
 /* Shared implementation helpers used by the split BigInt modules.
  * Implementation: src/bigint/bigint.c. */

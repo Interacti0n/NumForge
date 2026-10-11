@@ -1117,6 +1117,61 @@ void test_bigdecimal_from_bigint_every_allocation_failure(void)
     TEST_ASSERT_TRUE(completed);
 }
 
+static void test_large_zero_normalization_failures_alias_and_scale(void)
+{
+    char input[4103];
+    memcpy(input, "-12345", 6U); memset(input + 6U, '0', 4096U); input[4102] = '\0';
+    BigInt *source = make_bigint(input);
+    BigDecimal *expected = make_bigdecimal("-12345e4096");
+    BigInt *original = make_bigint(input);
+    for (unsigned alias = 0U; alias < 2U; ++alias)
+    for (unsigned deadline = 0U; deadline < 2U; ++deadline)
+    {
+        bool completed = false;
+        for (size_t index = 1U; index < 4096U; ++index)
+        {
+            BigDecimal *result = make_bigdecimal("42");
+            if (alias) { TEST_ASSERT_EQUAL(BIGINT_OK, bigint_copy(result->coefficient, source)); result->scale = 0; }
+            if (deadline)
+            { (void)numforge_budget_begin(5000U, SIZE_MAX, SIZE_MAX); numforge_test_budget_expire_after(index); }
+            else numforge_test_allocator_begin(index);
+            BigDecimalStatus status = bigdecimal_from_bigint(result, alias ? result->coefficient : source);
+            bool interrupted = deadline ? numforge_budget_failure() != NUMFORGE_BUDGET_OK : numforge_test_allocator_did_fail();
+            numforge_budget_end(); numforge_test_allocator_end();
+            TEST_ASSERT_EQUAL_INT(0, bigint_compare(source, original));
+            if (status == BIGDECIMAL_OK)
+            {
+                int comparison = 1;
+                TEST_ASSERT_FALSE(interrupted);
+                TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_compare(&comparison, result, expected));
+                TEST_ASSERT_EQUAL_INT(0, comparison); completed = true;
+            }
+            else
+            {
+                TEST_ASSERT_TRUE(interrupted); TEST_ASSERT_EQUAL(BIGDECIMAL_OUT_OF_MEMORY, status);
+                if (alias) { TEST_ASSERT_EQUAL_INT(0, bigint_compare(source, result->coefficient)); TEST_ASSERT_EQUAL_INT64(0, result->scale); }
+                else assert_bigdecimal_text("42", result);
+            }
+            bigdecimal_destroy(result);
+            if (completed) break;
+        }
+        TEST_ASSERT_TRUE(completed);
+    }
+    /* A constrained optional scratch plan must fall back without poisoning. */
+    BigInt copy = {0}; uint64_t removed = 0U;
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_copy(&copy, source));
+    (void)numforge_budget_begin(5000U, 1U, 1U);
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_strip_decimal_zeros_inverse(&copy, &removed, 27U));
+    TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_OK, numforge_budget_failure()); numforge_budget_end();
+    TEST_ASSERT_EQUAL_UINT64(4096U, removed); assert_bigint_text("-12345", &copy); free(copy.limbs);
+    char overflow[4130];
+    memcpy(overflow, input, sizeof(input)); strcat(overflow, "e9223372036854775807");
+    BigDecimal *result = make_bigdecimal("42");
+    TEST_ASSERT_EQUAL(BIGDECIMAL_SCALE_OVERFLOW, bigdecimal_set_string(result, overflow));
+    assert_bigdecimal_text("42", result);
+    bigdecimal_destroy(result); bigdecimal_destroy(expected); bigint_destroy(source); bigint_destroy(original);
+}
+
 void test_bigdecimal_conversion_and_comparison_failure_paths(void)
 {
     static const char large_value[] =
@@ -2641,6 +2696,7 @@ int main(void)
 #endif
     RUN_TEST(test_bigdecimal_conversion_and_comparison_failure_paths);
     RUN_TEST(test_bigdecimal_from_bigint_every_allocation_failure);
+    RUN_TEST(test_large_zero_normalization_failures_alias_and_scale);
     RUN_TEST(test_bigdecimal_arithmetic_failure_paths);
     RUN_TEST(test_decimal_workspace_every_failure_alias_and_retry);
     RUN_TEST(test_decimal_workspace_scale_boundaries_and_invalid_arguments);

@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Private experiments only. Production algorithms and public API are unchanged.
+/* Private adapters over production kernels and benchmark-only alternatives.
  * Fixtures/references come from independent Node BigInt, outside timed regions.
  * Every invocation restores alias inputs outside timing. No chained products. */
 typedef struct Case {
@@ -151,6 +151,21 @@ static BigIntStatus power_square(BigInt *out, const BigInt *a, const BigInt *b)
 
 static BigIntStatus operate(const Case *c, BigInt *out, BigInt *rem, BigInt *a, BigInt *b)
 {
+    if (!strcmp(c->op, "strip_classic") || !strcmp(c->op, "strip19") ||
+        !strcmp(c->op, "strip27") || !strcmp(c->op, "strip"))
+    {
+        BigInt temporary = {0};
+        uint64_t removed = 0U;
+        BigIntStatus status = bigint_copy(&temporary, a);
+        if (status == BIGINT_OK)
+            status = !strcmp(c->op, "strip_classic") ? bigint_strip_decimal_zeros_classic(&temporary, &removed) :
+                !strcmp(c->op, "strip") ? bigint_strip_decimal_zeros(&temporary, &removed) :
+                bigint_strip_decimal_zeros_inverse(&temporary, &removed, !strcmp(c->op, "strip19") ? 19U : 27U);
+        if (status == BIGINT_OK) status = bigint_set_uint64(rem, removed);
+        if (status == BIGINT_OK) bigint_commit(out, &temporary);
+        free(temporary.limbs);
+        return status;
+    }
     if (!strcmp(c->op, "mul")) return bigint_mul(out, a, !strcmp(c->mode, "alias_all") ? a : b);
     if (!strncmp(c->op, "karatsuba", 9U))
     {
@@ -199,6 +214,48 @@ static BigIntStatus operate(const Case *c, BigInt *out, BigInt *rem, BigInt *a, 
 #ifdef NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING
 /* Exhaust every allocation failure in the private experiments, including an
  * aliased output. Checks remain active under NDEBUG. Never time this work. */
+static bool check_normalization_failures(void)
+{
+    if (!numforge_alloc_stats_track(true)) return false;
+    BigInt n = {0}, input = {0}, expected = {0}; uint64_t count = 0U;
+    bool good = bigint_set_uint64(&n, 2000U) == BIGINT_OK &&
+        bigint_factorial(&input, &n) == BIGINT_OK && bigint_copy(&expected, &input) == BIGINT_OK &&
+        bigint_strip_decimal_zeros_classic(&expected, &count) == BIGINT_OK;
+    const char *ops[] = {"strip", "strip19", "strip27"};
+    for (size_t op = 0U; good && op < 3U; ++op)
+    for (unsigned alias = 0U; good && alias < 2U; ++alias)
+    for (unsigned deadline = 0U; good && deadline < 2U; ++deadline)
+    {
+        bool completed = false;
+        for (size_t index = 1U; good && index < 4096U; ++index)
+        {
+            BigInt a = {0}, b = {0}, result = {0}, rem = {0};
+            good = bigint_copy(&a, &input) == BIGINT_OK && bigint_set_uint64(&result, 123U) == BIGINT_OK;
+            BigInt *out = alias ? &a : &result;
+            size_t baseline = numforge_alloc_stats_live();
+            Case c = {NULL, (char *)ops[op], "reuse", NULL, NULL, NULL, NULL};
+            if (deadline) { good = good && numforge_budget_begin(UINT64_MAX, SIZE_MAX, SIZE_MAX); numforge_test_budget_expire_after(index); }
+            else numforge_test_allocator_begin(index);
+            BigIntStatus status = good ? operate(&c, out, &rem, &a, &b) : BIGINT_INVALID_ARGUMENT;
+            bool interrupted = deadline ? numforge_budget_failure() != NUMFORGE_BUDGET_OK : numforge_test_allocator_did_fail();
+            numforge_budget_end(); numforge_test_allocator_end();
+            if (status == BIGINT_OK)
+            {
+                good = !interrupted && bigint_compare(out, &expected) == 0 && rem.size == 1U && rem.limbs[0] == count;
+                completed = good;
+            }
+            else good = good && interrupted && status == BIGINT_OUT_OF_MEMORY &&
+                (alias ? bigint_compare(out, &input) == 0 : out->size == 1U && out->limbs[0] == 123U) &&
+                numforge_alloc_stats_live() == baseline;
+            free(a.limbs); free(b.limbs); free(result.limbs); free(rem.limbs);
+            if (completed) break;
+        }
+        good = good && completed;
+    }
+    free(n.limbs); free(input.limbs); free(expected.limbs);
+    return good && numforge_alloc_stats_live() == 0U && numforge_alloc_stats_complete() && numforge_alloc_stats_track(false);
+}
+
 static bool check_experiment_failures(void)
 {
     if (!numforge_alloc_stats_track(true)) return false;
@@ -310,7 +367,8 @@ static bool measure(const Case *c, bool memory, double target, Measurement *m, b
         m->live = numforge_alloc_stats_live(); m->peak = numforge_alloc_stats_peak();
         if (status != BIGINT_OK || begin < 0.0 || end < begin ||
             bigint_compare(out, c->expected) != 0 ||
-            (!strcmp(c->op, "divmod") && bigint_compare(rem, c->remainder) != 0)) goto cleanup;
+            ((!strcmp(c->op, "divmod") || !strncmp(c->op, "strip", 5U)) &&
+                bigint_compare(rem, c->remainder) != 0)) goto cleanup;
         m->seconds += end - begin;
         m->iterations++;
     } while (!memory && m->seconds < target && m->iterations < 65536U);
@@ -351,6 +409,8 @@ static bool run(const Case *c, bool quick, bool validate)
 int main(int argc, char **argv)
 {
 #ifdef NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING
+    if (argc == 2 && !strcmp(argv[1], "--normalization-check"))
+        return check_normalization_failures() ? 0 : 1;
     if (argc == 2 && !strcmp(argv[1], "--karatsuba-check"))
         return benchmark_karatsuba_fault_checks() ? 0 : 1;
     if (argc == 2 && !strcmp(argv[1], "--multiply-check"))

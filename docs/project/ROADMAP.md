@@ -50,6 +50,9 @@ see [factorial tree integration](../benchmarks/FACTORIAL_TREE_INTEGRATION_2026_1
 The [larger factorial stress matrix](../benchmarks/FACTORIAL_STRESS_2026_10_11.md)
 identifies decimal zero stripping as the dominant successful-path cost and
 separates conservative admission from real scratch allocation constraints.
+Large decimal coefficients now use exact 27-zero inverse division with optional
+scratch; see [normalization integration](../benchmarks/ZERO_NORMALIZATION_2026_10_11.md).
+Tighter factorial admission remains a separate checked follow-up.
 The [private Karatsuba experiment](../benchmarks/KARATSUBA_EXPERIMENT_2026_10_11.md)
 adds bounded scratch, exact references and cancellation/failure checks, with
 threshold and grouped product-tree comparisons preceding the integration.

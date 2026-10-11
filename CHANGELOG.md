@@ -7,6 +7,11 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Normalize large decimal coefficients with exact 27-zero inverse division and
+  reusable bounded scratch, retaining scalar tails and constrained fallback.
+  Add complete coefficient/count references, cancellation/alias/failure checks
+  and whole-calculator measurements under unchanged API and application limits.
+
 - Add serial factorial stress references through 300000 and opt-in calculator
   phase/normalization diagnostics; document admission and memory boundaries
   under unchanged production budgets.
