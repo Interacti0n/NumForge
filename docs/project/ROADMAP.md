@@ -82,6 +82,10 @@ Measured arithmetic optimizations can proceed independently of these tools.
 
 ## Later, according to use cases
 
+- [Accounts and authentication](../design/ACCOUNT_DESIGN.md): proposed private
+  C application operations and HTTP contracts for verified registration, login,
+  session revocation and password recovery. Storage, crypto and mail adapters
+  precede implementation; account-bound saved values remain a separate stage.
 - Stable serialization and language bindings; BigInt numeral bases 2–36 are implemented.
 - Further numerical analysis and graphing beyond the basic tools above.
 - Improvements to directed rounding of approximate functions, supported by

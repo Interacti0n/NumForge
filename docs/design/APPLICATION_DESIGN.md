@@ -58,6 +58,8 @@ are requested explicitly without silently rounding exact values.
 A future storage
 adapter/database belongs behind the application layer, independent of math
 algorithms. Accounts, ownership and authorization also belong there.
+The [account proposal](ACCOUNT_DESIGN.md) defines provisional service operations,
+HTTP routes and storage boundaries without adding an account backend.
 
 ## Verification
 

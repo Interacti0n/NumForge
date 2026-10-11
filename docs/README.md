@@ -30,6 +30,7 @@ Start with the [API guide](API.md), or open a specific reference:
 
 - [Architecture](design/ARCHITECTURE.md): dependency flow and source map.
 - [Application design](design/APPLICATION_DESIGN.md): sessions, adapters and future storage.
+- [Account proposal](design/ACCOUNT_DESIGN.md): planned C/HTTP login, registration, recovery and storage contracts; not implemented.
 - [BigInt](design/BIGINT_DESIGN.md) and [BigDecimal](design/BIGDECIMAL_DESIGN.md): representation and arithmetic.
 - [Calculator](design/CALCULATOR_DESIGN.md): modules, evaluation and budgets.
 - [Expression parser](design/EXPRESSION_PARSER.md): grammar and name resolution.
