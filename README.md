@@ -305,6 +305,16 @@ Node.js enables the optional CLI, numeric-oracle, and web-script tests; the
 browser suite additionally uses Playwright. See the [testing guide](docs/TESTING.md)
 for individual checks, CI coverage, and benchmarks.
 
+For a build without tests:
+
+```sh
+cmake -DNUMFORGE_LOCAL_TESTS=OFF -P cmake/LocalBuild.cmake
+```
+
+On Windows, add `-DNUMFORGE_LOCAL_RUN=both` before `-P` to open the CLI and web
+calculator after building; `cli` and `web` open just one. The web browser opens
+on local port 8765, configurable with `-DNUMFORGE_LOCAL_PORT=8767`.
+
 ## Contributing
 
 Bug reports, small fixes, documentation and independently checked numerical

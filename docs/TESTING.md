@@ -22,6 +22,29 @@ CI CTest jobs do this.
 Unity is a pinned, test-only dependency. Testing tools are not installed with
 the production library.
 
+## Build without tests and open the apps
+
+```sh
+cmake -DNUMFORGE_LOCAL_TESTS=OFF -P cmake/LocalBuild.cmake
+```
+
+This uses a separate `build/local-apps-*` Release tree, without Unity or test
+executables. Subsequent runs reuse it and rebuild only changed dependencies.
+On Windows, build and open the CLI and web calculator together:
+
+```sh
+cmake -DNUMFORGE_LOCAL_TESTS=OFF -DNUMFORGE_LOCAL_RUN=both -P cmake/LocalBuild.cmake
+```
+
+Use `cli` or `web` instead of `both` to open only one app. Web mode starts a
+local server in a visible console and opens the default browser after it is
+ready. Close that console or press Ctrl+C to stop the server. An occupied port
+is rejected without stopping the existing server; add
+`-DNUMFORGE_LOCAL_PORT=8767` to choose another port (default 8765).
+No tunnel is started. Automatic launching is currently Windows-only; the
+build-only command also supports other hosts. Apps open only after a successful
+build and, when enabled, successful tests.
+
 `bigrational_tests` covers canonical fractions, aliasing, conversions and a
 small independent signed-integer reference grid. Allocation-failure tests check
 that rational arithmetic leaves aliased destinations unchanged. Installed C

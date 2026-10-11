@@ -4,6 +4,8 @@ cmake_minimum_required(VERSION 3.20)
 #   cmake -P path/to/NumForge/cmake/LocalBuild.cmake
 # For a library/app build without tests:
 #   cmake -DNUMFORGE_LOCAL_TESTS=OFF -P path/to/NumForge/cmake/LocalBuild.cmake
+# Build and open both Windows apps:
+#   cmake -DNUMFORGE_LOCAL_TESTS=OFF -DNUMFORGE_LOCAL_RUN=both -P cmake/LocalBuild.cmake
 
 get_filename_component(numforge_local_source "${CMAKE_CURRENT_LIST_DIR}/.." REALPATH)
 file(TO_CMAKE_PATH "${numforge_local_source}" numforge_local_source)
@@ -12,6 +14,23 @@ string(SUBSTRING "${numforge_local_source_hash}" 0 12 numforge_local_source_key)
 
 if(NOT DEFINED NUMFORGE_LOCAL_TESTS)
     set(NUMFORGE_LOCAL_TESTS ON)
+endif()
+
+if(NOT DEFINED NUMFORGE_LOCAL_RUN)
+    set(NUMFORGE_LOCAL_RUN none)
+endif()
+if(NOT NUMFORGE_LOCAL_RUN MATCHES "^(none|cli|web|both)$")
+    message(FATAL_ERROR "NUMFORGE_LOCAL_RUN must be none, cli, web or both.")
+endif()
+if(NOT NUMFORGE_LOCAL_RUN STREQUAL "none" AND NOT CMAKE_HOST_WIN32)
+    message(FATAL_ERROR "Automatic app launching currently supports Windows only.")
+endif()
+if(NOT DEFINED NUMFORGE_LOCAL_PORT)
+    set(NUMFORGE_LOCAL_PORT 8765)
+endif()
+if(NOT NUMFORGE_LOCAL_PORT MATCHES "^[0-9]+$" OR
+   NUMFORGE_LOCAL_PORT LESS 1 OR NUMFORGE_LOCAL_PORT GREATER 65535)
+    message(FATAL_ERROR "NUMFORGE_LOCAL_PORT must be an integer from 1 to 65535.")
 endif()
 
 if(NUMFORGE_LOCAL_TESTS)
@@ -96,5 +115,16 @@ if(NUMFORGE_LOCAL_TESTS)
         -C Release --output-on-failure RESULT_VARIABLE numforge_local_result)
     if(NOT numforge_local_result EQUAL 0)
         message(FATAL_ERROR "Tests failed (${numforge_local_result}).")
+    endif()
+endif()
+
+if(NOT NUMFORGE_LOCAL_RUN STREQUAL "none")
+    find_program(numforge_local_powershell NAMES powershell pwsh REQUIRED)
+    execute_process(COMMAND "${numforge_local_powershell}" -NoProfile
+        -ExecutionPolicy Bypass -File "${CMAKE_CURRENT_LIST_DIR}/RunLocalApps.ps1"
+        -BuildDirectory "${numforge_local_build}" -Mode "${NUMFORGE_LOCAL_RUN}"
+        -Port "${NUMFORGE_LOCAL_PORT}" RESULT_VARIABLE numforge_local_result)
+    if(NOT numforge_local_result EQUAL 0)
+        message(FATAL_ERROR "App launch failed (${numforge_local_result}).")
     endif()
 endif()
