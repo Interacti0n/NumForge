@@ -182,18 +182,20 @@ static BigIntStatus operate(const Case *c, BigInt *out, BigInt *rem, BigInt *a, 
     if (!strcmp(c->op, "pow")) return bigint_pow(out, a, b);
     if (!strcmp(c->op, "pow_square")) return power_square(out, a, b);
     if (!strcmp(c->op, "factorial")) return bigint_factorial(out, a);
-    if (!strcmp(c->op, "mul_workspace"))
+    if (!strcmp(c->op, "mul_workspace") || !strcmp(c->op, "mul_workspace_split"))
     {
         BigIntMultiplicationWorkspace workspace = {0};
+        workspace.split = !strcmp(c->op, "mul_workspace_split");
         BigIntStatus status = bigint_mul_workspace(out, a, !strcmp(c->mode, "alias_all") ? a : b, &workspace);
         bigint_multiplication_workspace_free(&workspace);
         return status;
     }
-    if (!strcmp(c->op, "tree_workspace") || !strcmp(c->op, "factorial_grouped"))
+    if (!strcmp(c->op, "tree_workspace") || !strcmp(c->op, "tree_split") || !strcmp(c->op, "factorial_grouped"))
     {
         if (a->is_negative || a->size > 1U) return BIGINT_INVALID_ARGUMENT;
         uint64_t n = a->size ? a->limbs[0] : 0U;
-        return !strcmp(c->op, "tree_workspace") ? bigint_factorial_tree(out, n) : bigint_factorial_grouped(out, n);
+        if (!strcmp(c->op, "tree_split")) return bigint_factorial_tree_split(out, n);
+        return !strcmp(c->op, "tree_workspace") ? bigint_factorial_tree_unsplit(out, n) : bigint_factorial_grouped(out, n);
     }
     if (!strcmp(c->op, "tree")) return product_tree(out, 2U, a->size ? a->limbs[0] : 0U);
     if (!strcmp(c->op, "tree_grouped") || !strncmp(c->op, "tree_karatsuba", 14U))
@@ -261,8 +263,8 @@ static bool check_normalization_failures(void)
 static bool check_experiment_failures(void)
 {
     if (!numforge_alloc_stats_track(true)) return false;
-    const char *operations[] = {"square", "tree", "pow_square", "tree_grouped", "tree_karatsuba64", "tree_karatsuba16", "tree_workspace"};
-    for (size_t op = 0U; op < 7U; op++) for (unsigned alias = 0U; alias < 2U; alias++)
+    const char *operations[] = {"square", "tree", "pow_square", "tree_grouped", "tree_karatsuba64", "tree_karatsuba16", "tree_workspace", "tree_split"};
+    for (size_t op = 0U; op < 8U; op++) for (unsigned alias = 0U; alias < 2U; alias++)
     {
         BigInt a = {0}, b = {0}, result = {0}, remainder = {0}, original = {0};
         Case c = {NULL, (char *)operations[op], "reuse", NULL, NULL, NULL, NULL};
@@ -289,7 +291,7 @@ static bool check_experiment_failures(void)
             if (!failed || status != BIGINT_OUT_OF_MEMORY || bigint_compare(out, &original) != 0 ||
                 numforge_alloc_stats_live() != baseline) good = false;
         }
-        if (good && op == 6U)
+        if (good && op >= 6U)
         {
             bool completed = false;
             for (size_t checkpoint = 1U; good && checkpoint < 50000U; ++checkpoint)
@@ -357,7 +359,7 @@ static bool measure(const Case *c, bool memory, double target, Measurement *m, b
             size_t cumulative = 64U * 1024U * 1024U, single = 512U * 1024U;
             if (enforce_factorial_plan &&
                 (c->a->size > 1U || c->a->is_negative ||
-                 (strcmp(c->op, "factorial") && strcmp(c->op, "tree_workspace")) ||
+                 (strcmp(c->op, "factorial") && strcmp(c->op, "tree_split")) ||
                  !bigint_factorial_tree_plan(c->a->size ? c->a->limbs[0] : 0U, &cumulative, &single))) goto cleanup;
             owner = numforge_budget_begin(5000U, cumulative, single);
             if (!owner) goto cleanup;

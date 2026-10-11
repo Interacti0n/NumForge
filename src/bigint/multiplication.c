@@ -137,7 +137,8 @@ static BigIntStatus multiply(uint64_t *out, const uint64_t *a, size_t na,
         available = workspace->capacities[depth];
     }
     if (frame > available) return BIGINT_VALUE_TOO_LARGE;
-    uint64_t *as = scratch, *bs = as + sa, *middle = bs + sb;
+    uint64_t *as = scratch, *bs = as + sa;
+    uint64_t *middle = workspace && workspace->split ? workspace->cross_frames[depth] : bs + sb;
     size_t nas = 0U, nbs = 0U;
     status = sum_halves(as, a, na, k, &nas);
     if (status == BIGINT_OK) status = sum_halves(bs, b, nb, k, &nbs);
@@ -214,7 +215,9 @@ bool bigint_multiplication_workspace_plan(size_t n, size_t *total, size_t *large
         if (depth >= 64U || workspace_frame(n, &next, &capacity, &bytes) != BIGINT_OK ||
             bigint_size_mul(bytes, 2U, &requests) != BIGINT_OK ||
             bigint_size_add(*total, requests, total) != BIGINT_OK) return false;
-        if (*largest < bytes) *largest = bytes;
+        /* The factorial layout has equal sum and cross allocations. Their
+         * combined geometric requests are unchanged; each request is half. */
+        if (*largest < bytes / 2U) *largest = bytes / 2U;
         n = next;
     }
     return true;
@@ -229,9 +232,16 @@ static BigIntStatus prepare_workspace(BigIntMultiplicationWorkspace *workspace, 
             return BIGINT_VALUE_TOO_LARGE;
         if (workspace->capacities[depth] < capacity)
         {
-            uint64_t *frame = numforge_realloc(workspace->frames[depth], bytes);
+            size_t allocation = workspace->split ? bytes / 2U : bytes;
+            uint64_t *frame = numforge_realloc(workspace->frames[depth], allocation);
             if (!frame) return BIGINT_OUT_OF_MEMORY;
             workspace->frames[depth] = frame;
+            if (workspace->split)
+            {
+                frame = numforge_realloc(workspace->cross_frames[depth], allocation);
+                if (!frame) return BIGINT_OUT_OF_MEMORY;
+                workspace->cross_frames[depth] = frame;
+            }
             workspace->capacities[depth] = capacity;
         }
         n = h;
@@ -245,7 +255,9 @@ void bigint_multiplication_workspace_free(BigIntMultiplicationWorkspace *workspa
     for (size_t i = 0U; i < 64U; ++i)
     {
         free(workspace->frames[i]);
+        free(workspace->cross_frames[i]);
         workspace->frames[i] = NULL;
+        workspace->cross_frames[i] = NULL;
         workspace->capacities[i] = 0U;
     }
 }

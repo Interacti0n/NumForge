@@ -109,15 +109,31 @@ static BigIntStatus range_product(BigInt *out, uint64_t low, uint64_t high,
     return status;
 }
 
-BigIntStatus bigint_factorial_tree(BigInt *out, uint64_t n)
+static BigIntStatus factorial_tree(BigInt *out, uint64_t n, bool split)
 {
     if (!out) return BIGINT_NULL_ARGUMENT;
     BigInt temporary = {0};
     BigIntMultiplicationWorkspace workspace = {0};
+    workspace.split = split;
     BigIntStatus status = range_product(&temporary, 2U, n, counter_bits(n), &workspace);
     if (status == BIGINT_OK && !numforge_budget_check()) status = BIGINT_OUT_OF_MEMORY;
     if (status == BIGINT_OK) bigint_commit(out, &temporary);
     bigint_multiplication_workspace_free(&workspace);
     free(temporary.limbs);
     return status;
+}
+
+BigIntStatus bigint_factorial_tree(BigInt *out, uint64_t n)
+{
+    return factorial_tree(out, n, true);
+}
+
+BigIntStatus bigint_factorial_tree_unsplit(BigInt *out, uint64_t n)
+{
+    return factorial_tree(out, n, false);
+}
+
+BigIntStatus bigint_factorial_tree_split(BigInt *out, uint64_t n)
+{
+    return factorial_tree(out, n, true);
 }

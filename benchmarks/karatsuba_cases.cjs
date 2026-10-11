@@ -14,7 +14,7 @@ function makeCases(quick = false, timing = false) {
         return value | (1n << BigInt(n * 64 - 1));
     };
     const operations = ['mul', 'karatsuba16', 'karatsuba32', 'karatsuba64', 'karatsuba128', 'karatsuba256'];
-    if (!timing) operations.push('mul_workspace');
+    if (!timing) operations.push('mul_workspace', 'mul_workspace_split');
     function add(name, a, b, modes = ['reuse']) {
         for (const mode of modes) for (const op of operations) {
             const product = mode === 'alias_all' ? a * a : a * b;

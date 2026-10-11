@@ -7,6 +7,11 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Split factorial Karatsuba scratch into separate sum/cross-product buffers,
+  preserving growth and failure guarantees while reducing each allocation.
+  Verify wider admission and complete calculator results under unchanged limits;
+  close the bounded factorial optimization experiment.
+
 - Tighten factorial tree admission using checked factor-range bit bounds and
   shared workspace capacity planning. Verify adjacent admission boundaries,
   complete results and calculator/HTTP requests without raising resource limits.

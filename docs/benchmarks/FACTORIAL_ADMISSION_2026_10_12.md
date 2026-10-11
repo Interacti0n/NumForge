@@ -1,5 +1,9 @@
 # Checked factorial tree admission, 12 October 2026
 
+This records admission before the subsequent
+[split-scratch experiment](SPLIT_WORKSPACE_2026_10_12.md). Its measurements and
+boundary remain historical; current scratch uses two allocations per depth.
+
 This follows [factorial stress](FACTORIAL_STRESS_2026_10_11.md) and
 [zero normalization](ZERO_NORMALIZATION_2026_10_11.md). The former coarse
 `n*bit_length(n)` allocation estimate rejected 233,000 and 234,000 despite

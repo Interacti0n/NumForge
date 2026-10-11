@@ -121,6 +121,9 @@ precondition and quotient/remainder semantics; public conversion is unchanged.
   Admission sums integer factor bit lengths over power-of-two ranges and plans
   scratch with the shared allocation capacity rule; see
   [checked admission bounds](../benchmarks/FACTORIAL_ADMISSION_2026_10_12.md).
+  Factorial scratch at each depth uses separate equal sum/cross buffers to
+  reduce the largest request while retaining combined capacity and growth;
+  see [split-workspace verification](../benchmarks/SPLIT_WORKSPACE_2026_10_12.md).
   In both paths consecutive leaf factors are packed into a `uint64_t`
   product, checking `product > UINT64_MAX / factor` before multiplying. Each
   completed group multiplies a private BigInt accumulator once. The budget is

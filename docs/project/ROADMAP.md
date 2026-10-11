@@ -54,7 +54,10 @@ Large decimal coefficients now use exact 27-zero inverse division with optional
 scratch; see [normalization integration](../benchmarks/ZERO_NORMALIZATION_2026_10_11.md).
 Checked factor-range bounds and shared workspace planning now tighten admission;
 see [the boundary verification](../benchmarks/FACTORIAL_ADMISSION_2026_10_12.md).
-Further range-bound refinement and smaller/split scratch requests remain candidates.
+Split sum/cross scratch is now implemented and measured in the
+[bounded final factorial experiment](../benchmarks/SPLIT_WORKSPACE_2026_10_12.md).
+Further factorial/bound/multiplication research is deferred; next work is the
+overall regression, UX and CI review followed by release preparation.
 The [private Karatsuba experiment](../benchmarks/KARATSUBA_EXPERIMENT_2026_10_11.md)
 adds bounded scratch, exact references and cancellation/failure checks, with
 threshold and grouped product-tree comparisons preceding the integration.

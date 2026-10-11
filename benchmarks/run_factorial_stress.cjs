@@ -59,7 +59,7 @@ for (const c of cases) measureCalculator(c, 0, false);
 for (let run = 1; run <= 3; ++run)
     for (const c of run === 2 ? [...cases].reverse() : cases) measureCalculator(c, run, true);
 // Isolate budgeted BigInt calculation, comparing every successful entire integer.
-for (const c of cases) for (const operation of ['factorial','tree_workspace']) {
+for (const c of cases) for (const operation of ['factorial','tree_split']) {
     const name = `${operation}-${c.n}-reuse`;
     const result = spawnSync(bigint, [fixture, '--budget', '--case', name],
         {encoding:'utf8', windowsHide:true, timeout:30000, maxBuffer:1024*1024});

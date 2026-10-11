@@ -54,6 +54,10 @@ records checked range/workspace bounds. Generate `--workspace --admission`
 fixtures; the arithmetic harness exposes `--factorial-plan n` and diagnostic
 `--plan-budget` to check allocations against those bounds. Application-limit
 measurements use `--budget` or the serial factorial stress runner.
+The [split workspace report](../docs/benchmarks/SPLIT_WORKSPACE_2026_10_12.md)
+closes this factorial experiment. Generate `--workspace --split` fixtures;
+`--timing` compares unsplit and split buffers. Stress/admission fixtures now
+compare production with the current `tree_split` layout.
 Use `generate_karatsuba_factorials.py output.tsv --workspace` for public,
 grouped and workspace-tree references; add `--timing` for the serial speed matrix.
 Use `run_karatsuba.cjs executable empty-directory --focused` for a serial

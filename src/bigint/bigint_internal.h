@@ -64,7 +64,11 @@ bool bigint_karatsuba_fits(size_t na, size_t nb, size_t threshold);
  * on every exit. Buffers grow geometrically and are reused across products. */
 typedef struct BigIntMultiplicationWorkspace {
     uint64_t *frames[64];
+    uint64_t *cross_frames[64];
     size_t capacities[64];
+    /* Layout stays fixed while buffers are owned. Split frames use two
+     * equal allocations; capacities record their combined limb count. */
+    bool split;
 } BigIntMultiplicationWorkspace;
 BigIntStatus bigint_mul_workspace(BigInt *out, const BigInt *a, const BigInt *b,
     BigIntMultiplicationWorkspace *workspace);
@@ -73,6 +77,8 @@ bool bigint_factorial_tree_fits(uint64_t n);
 bool bigint_factorial_tree_plan(uint64_t n, size_t *total, size_t *largest);
 bool bigint_multiplication_workspace_plan(size_t n, size_t *total, size_t *largest);
 BigIntStatus bigint_factorial_tree(BigInt *out, uint64_t n);
+BigIntStatus bigint_factorial_tree_split(BigInt *out, uint64_t n);
+BigIntStatus bigint_factorial_tree_unsplit(BigInt *out, uint64_t n);
 BigIntStatus bigint_factorial_grouped(BigInt *out, uint64_t n);
 /* Owned scratch for repeated magnitude division. Zero-initialize and free both
  * buffers after use. Output must not alias inputs/scratch and may change on
