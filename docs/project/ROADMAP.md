@@ -86,6 +86,10 @@ Measured arithmetic optimizations can proceed independently of these tools.
   C application operations and HTTP contracts for verified registration, login,
   session revocation and password recovery. Storage, crypto and mail adapters
   precede implementation; account-bound saved values remain a separate stage.
+  The [post-login product proposal](../design/ACCOUNT_DESIGN.md#proposed-benefits-after-login--product-review)
+  prioritizes settings, named workspaces, favorite calculations/conversions and
+  cross-device continuation with explicit revision conflicts. Export/deletion
+  precedes public rollout; saved graphs/functions and explicit sharing follow later.
 - Stable serialization and language bindings; BigInt numeral bases 2–36 are implemented.
 - Further numerical analysis and graphing beyond the basic tools above.
 - Improvements to directed rounding of approximate functions, supported by

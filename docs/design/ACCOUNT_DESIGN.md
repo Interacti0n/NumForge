@@ -12,6 +12,49 @@ version provides registration, verified email, login, logout, session management
 and password recovery. Persisted history, variables and settings follow as a
 separate feature; creating an account does not imply synchronization exists.
 
+## Proposed benefits after login — product review
+
+Status: proposal only. Authentication and saved-work features are separate
+implementation stages; the first useful account release should include the
+initial benefits below once their application and HTTP contracts are verified.
+Guest users retain the calculator, converter and mathematical functions.
+Accounts add persistence and continuity rather than restricting arithmetic.
+
+| Priority | Feature | Proposed behavior |
+| --- | --- | --- |
+| Initial | Personal settings | Restore language, precision, rounding, RAD/DEG, notation and complex display form on another device. |
+| Initial | Named work sessions | Save a workspace such as School or Project with confirmed calculator/conversion history, variables and `ans`; list, rename, reopen and delete it. |
+| Initial | Favorite calculations and conversions | Save a named expression or conversion with an optional note; opening it restores the inputs/settings without silently evaluating or committing it. |
+| Initial | Cross-device continuation | Open the latest saved workspace on PC or phone, with explicit revision conflict handling. |
+| Before public rollout | Account and data management | Change password, revoke device sessions, export saved data and delete the account with its owned data; define retention and backup handling. |
+| Later | Own functions, graphs and equations | Save definitions, graph configurations and solving inputs when those tools have their own implemented contracts. |
+| Later | Explicit sharing | Private by default; sharing requires a deliberate action and a separate access/revocation contract. |
+
+Start synchronization with confirmed results and explicit workspace changes.
+Do not send every keystroke or transient preview into account history. Keep the
+unfinished input local in version one, and make save status visible. Failed saves
+must not claim success or silently discard work. Reading a saved result uses its
+stored typed snapshot, not reevaluation under a different precision or new RNG.
+
+Each saved workspace has an owner, schema version and revision. A write supplies
+its expected revision and commits atomically. Concurrent PC/phone changes must
+produce an explicit conflict rather than silently replacing newer work; offer
+reload or save as a separate workspace. Automatic merging is deferred until its
+semantics are defined. Set bounded, paginated history and storage quotas before
+implementation; accounts do not imply unlimited retention.
+
+Existing anonymous calculator IDs cannot prove account ownership. Importing a
+guest workspace is an explicit action using a validated snapshot from the
+current guest context, not a claim on arbitrary sessions by ID. Login/logout
+switches account-specific UI state without exposing another account's data.
+All saved-work operations must have matching C application and documented HTTP
+operations; the SK/EN web interface consumes those same operations.
+
+Next design step: define settings, workspace and favorite schemas, their CRUD
+operations, revision conflicts and quotas. This section does not add database
+tables, routes or working UI. Export/deletion details, conflict UX and the precise
+initial release scope remain review decisions.
+
 Place the service behind `src/application/`, with injected storage, password
 hashing, secure randomness, clock and email delivery adapters. HTTP translates
 requests into these same application operations. The numerical library and its
