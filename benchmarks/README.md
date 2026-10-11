@@ -22,6 +22,8 @@ compares the current cross-layer results and prioritizes remaining allocation
 failures, high-precision work and large multiplication experiments.
 The [GCD workspace report](../docs/benchmarks/GCD_WORKSPACE_2026_10_11.md)
 records reusable remainder/normalization scratch and restored large rational requests.
+The [decimal workspace report](../docs/benchmarks/DECIMAL_WORKSPACE_2026_10_11.md)
+records ln/exp allocation reduction and remaining high-precision CPU limits.
 
 | Files | Purpose |
 | --- | --- |

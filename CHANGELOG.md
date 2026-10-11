@@ -7,6 +7,9 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Reuse per-call ln/exp arithmetic, alignment, rounding and division scratch,
+  with bounded power caching and atomic aliases; reduce high-precision allocation
+  traffic without changing guard digits, rounding or calculator budgets.
 - Reuse private GCD remainder/normalization buffers and omit unused quotient
   storage, allowing large rational calculations within unchanged memory budgets.
   Preserve atomic aliases and cancellation; extend exact/failure/32-bit checks.

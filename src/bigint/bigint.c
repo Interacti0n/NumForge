@@ -915,6 +915,12 @@ BigIntStatus bigint_divmod_abs(BigInt *quotient, BigInt *remainder, const BigInt
     return bigint_divmod_abs_core(quotient, remainder, a, b, NULL);
 }
 
+BigIntStatus bigint_divmod_abs_workspace(BigInt *quotient, BigInt *remainder,
+    const BigInt *a, const BigInt *b, BigIntDivisionWorkspace *workspace)
+{
+    return bigint_divmod_abs_core(quotient, remainder, a, b, workspace);
+}
+
 BigIntStatus bigint_mod_abs_workspace(BigInt *remainder, const BigInt *a, const BigInt *b,
     BigIntDivisionWorkspace *workspace)
 {

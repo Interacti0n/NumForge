@@ -61,6 +61,8 @@ typedef struct BigIntDivisionWorkspace
     BigInt numerator;
     BigInt divisor;
 } BigIntDivisionWorkspace;
+BigIntStatus bigint_divmod_abs_workspace(BigInt *quotient, BigInt *remainder,
+    const BigInt *a, const BigInt *b, BigIntDivisionWorkspace *workspace);
 BigIntStatus bigint_mod_abs_workspace(BigInt *remainder, const BigInt *a, const BigInt *b,
     BigIntDivisionWorkspace *workspace);
 BigIntStatus bigint_divmod_abs(BigInt *quotient, BigInt *remainder, const BigInt *a, const BigInt *b);

@@ -7,6 +7,7 @@
 
 #include <numforge/bigint.h>
 #include <numforge/bigdecimal.h>
+#include "../bigint/bigint_internal.h"
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
@@ -83,6 +84,35 @@ BigDecimalStatus bigdecimal_round_significant(
     int64_t digits,
     BigDecimalRoundingMode rounding
 );
+
+/* Per-call owned workspace: zero-initialize, clear once after the series.
+ * Inputs/outputs must not refer to workspace fields. Output may alias input;
+ * only completed, normalized coefficients are published. No shared cache. */
+typedef struct BigDecimalWorkspace
+{
+    BigInt quotient, remainder, aligned, scaled, power, twice, arithmetic;
+    BigIntDivisionWorkspace division;
+    uint64_t power_exponent;
+    bool power_valid;
+} BigDecimalWorkspace;
+void bigdecimal_workspace_clear(BigDecimalWorkspace *workspace);
+BigDecimalStatus bigdecimal_mul_significant_workspace(BigDecimal *result,
+    const BigDecimal *a, const BigDecimal *b, int64_t digits,
+    BigDecimalRoundingMode rounding, BigDecimalWorkspace *workspace);
+BigDecimalStatus bigdecimal_add_significant_workspace(BigDecimal *result,
+    const BigDecimal *a, const BigDecimal *b, int64_t digits,
+    BigDecimalRoundingMode rounding, BigDecimalWorkspace *workspace);
+BigDecimalStatus bigdecimal_round_significant_workspace(BigDecimal *result,
+    const BigDecimal *value, int64_t digits, BigDecimalRoundingMode rounding,
+    BigDecimalWorkspace *workspace);
+BigDecimalStatus bigdecimal_div_significant_workspace(BigDecimal *result,
+    const BigDecimal *a, const BigDecimal *b, int64_t digits,
+    BigDecimalRoundingMode rounding, BigDecimalWorkspace *workspace);
+BigDecimalStatus bigdecimal_align_coefficient_digits(BigInt *aligned, const BigInt *value, uint64_t places);
+BigDecimalStatus bigdecimal_significant_target(const BigDecimal *a, const BigDecimal *b,
+    int64_t digits, BigInt *aligned, int64_t *target);
+BigDecimalStatus bigdecimal_round_quotient_scratch(BigInt *quotient, const BigInt *remainder,
+    const BigInt *divisor, bool negative, BigDecimalRoundingMode rounding, BigInt *scratch);
 
 /* Private paired evaluations matching their separate public calls. Outputs
  * must be distinct; either may alias value. Both remain unchanged on error. */

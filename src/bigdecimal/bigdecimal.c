@@ -382,12 +382,13 @@ int bigdecimal_compare_exponents(BigDecimalExponent a, BigDecimalExponent b)
 }
 
 // Apply one rounding decision to a truncation-toward-zero quotient.
-BigDecimalStatus bigdecimal_round_quotient(
+BigDecimalStatus bigdecimal_round_quotient_scratch(
     BigInt *quotient,
     const BigInt *remainder,
     const BigInt *divisor,
     bool negative,
-    BigDecimalRoundingMode rounding
+    BigDecimalRoundingMode rounding,
+    BigInt *scratch
 )
 {
     bool adjust = false;
@@ -412,7 +413,7 @@ BigDecimalStatus bigdecimal_round_quotient(
         case BIGDECIMAL_ROUND_HALF_UP:
         case BIGDECIMAL_ROUND_HALF_EVEN:
         {
-            BigInt *twice_remainder = bigint_create();
+            BigInt *twice_remainder = scratch != NULL ? scratch : bigint_create();
             int comparison;
 
             if (twice_remainder == NULL)
@@ -435,7 +436,7 @@ BigDecimalStatus bigdecimal_round_quotient(
                            !bigint_is_even(quotient)));
             }
 
-            bigint_destroy(twice_remainder);
+            if (scratch == NULL) bigint_destroy(twice_remainder);
             break;
         }
         default:
@@ -444,6 +445,13 @@ BigDecimalStatus bigdecimal_round_quotient(
 
     if (status != BIGDECIMAL_OK || !adjust)
     {
+        return status;
+    }
+
+    if (scratch != NULL)
+    {
+        status = bigdecimal_from_bigint_status(bigint_add_uint64(quotient, 1U));
+        if (status == BIGDECIMAL_OK) quotient->is_negative = negative;
         return status;
     }
 
@@ -457,6 +465,12 @@ BigDecimalStatus bigdecimal_round_quotient(
     }
 
     return status;
+}
+
+BigDecimalStatus bigdecimal_round_quotient(BigInt *quotient, const BigInt *remainder,
+    const BigInt *divisor, bool negative, BigDecimalRoundingMode rounding)
+{
+    return bigdecimal_round_quotient_scratch(quotient, remainder, divisor, negative, rounding, NULL);
 }
 
 /*

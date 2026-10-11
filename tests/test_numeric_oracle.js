@@ -190,6 +190,27 @@ for(let i=0;i<80;i++) {
   for(let mode=0;mode<6;mode++)add('rroot',`${c}e${-s}`,k,p,mode,rootReference(c,s,k,p,mode));
   if(i<40){const r=BigInt(1+rnd(100000)),t=rnd(11)-5;add('rroot',`${r**BigInt(k)}e${-t*k}`,k,1,5,decimal(r,t));}
 }
+// Exercise one persistent workspace through changing precision/cache/operation.
+for (const c of [...cases]) {
+  if (c.input.startsWith('dsig ')) cases.push({...c, input: c.input.replace(/^dsig /, 'dwdiv ')});
+  if (c.input.startsWith('droundsig ')) cases.push({...c, input: c.input.replace(/^droundsig /, 'dwround ')});
+}
+function roundedSignificant(n, scale, digits, mode) {
+  if (!n) return '0';
+  const discarded = Math.max(0, abs(n).toString().length - digits);
+  return decimal(round(n, pow(discarded), mode), scale - discarded);
+}
+for (const [a,b,sa,sb] of [[123456789555n,37n,3,0],[-123456789555n,37n,3,0],
+    [999999999999n,-999999999998n,12,12],[25n,4n,-10,10],
+    [0n,-37n,0,3],[5n,2n,18,-3],[-5n,2n,18,-3],
+    [12500n,2n,4,1],[(1n<<1024n)+7n,3n,0,19]]) {
+  for(const digits of [1,2,9,34]) for(let mode=0;mode<6;mode++) {
+    const scale=Math.max(sa,sb),sum=a*pow(scale-sa)+b*pow(scale-sb);
+    add('dwadd',`${a}e${-sa}`,`${b}e${-sb}`,digits,mode,roundedSignificant(sum,scale,digits,mode));
+    add('dwmul',`${a}e${-sa}`,`${b}e${-sb}`,digits,mode,roundedSignificant(a*b,sa+sb,digits,mode));
+  }
+}
+
 // Frozen high-precision references are generated independently by mpmath.
 const referenceFile = path.join(__dirname, 'transcendental_references.tsv');
 let referenceCases = 0;

@@ -37,7 +37,14 @@ BigIntStatus numforge_decimal_mod(BigInt *, const BigInt *, const BigInt *);
 BigIntStatus numforge_decimal_pow(BigInt *, const BigInt *, const BigInt *);
 BigIntStatus numforge_decimal_gcd(BigInt *, const BigInt *, const BigInt *);
 BigIntStatus numforge_decimal_div_mod(BigInt *, BigInt *, const BigInt *, const BigInt *);
+BigIntStatus numforge_decimal_add_abs(BigInt *, const BigInt *, const BigInt *);
+BigIntStatus numforge_decimal_subtract_abs(BigInt *, const BigInt *, const BigInt *);
+struct BigIntDivisionWorkspace;
+BigIntStatus numforge_decimal_divmod_abs_workspace(BigInt *, BigInt *, const BigInt *,
+    const BigInt *, struct BigIntDivisionWorkspace *);
 #ifndef NUMFORGE_DECIMAL_PROFILE_NO_REDIRECT
+#define bigint_add_abs numforge_decimal_add_abs
+#define bigint_subtract_abs numforge_decimal_subtract_abs
 #define bigint_add numforge_decimal_add
 #define bigint_sub numforge_decimal_sub
 #define bigint_mul numforge_decimal_mul
@@ -46,6 +53,7 @@ BigIntStatus numforge_decimal_div_mod(BigInt *, BigInt *, const BigInt *, const 
 #define bigint_pow numforge_decimal_pow
 #define bigint_gcd numforge_decimal_gcd
 #define bigint_div_mod numforge_decimal_div_mod
+#define bigint_divmod_abs_workspace numforge_decimal_divmod_abs_workspace
 #endif
 #else
 #define numforge_decimal_enter(phase) ((void)(phase), NUMFORGE_DECIMAL_OTHER)

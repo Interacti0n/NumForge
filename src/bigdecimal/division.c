@@ -231,7 +231,7 @@ cleanup:
 
 // The destination is a fresh private magnitude. Multiply decimal chunks
 // directly instead of allocating/parsing the text of a power of ten.
-static BigDecimalStatus align_coefficient_digits(BigInt *aligned, const BigInt *value, size_t places)
+static BigDecimalStatus align_coefficient_digits_unprofiled(BigInt *aligned, const BigInt *value, uint64_t places)
 {
     BigIntStatus status = bigint_copy(aligned, value);
     uint64_t last = 1U;
@@ -251,6 +251,72 @@ static BigDecimalStatus align_coefficient_digits(BigInt *aligned, const BigInt *
     return bigdecimal_from_bigint_status(status);
 }
 
+BigDecimalStatus bigdecimal_align_coefficient_digits(BigInt *aligned, const BigInt *value, uint64_t places)
+{
+    NumForgeDecimalPhase previous = numforge_decimal_enter(NUMFORGE_DECIMAL_ALIGNMENT);
+    BigDecimalStatus status = align_coefficient_digits_unprofiled(aligned, value, places);
+    numforge_decimal_leave(previous);
+    return status;
+}
+
+BigDecimalStatus bigdecimal_significant_target(const BigDecimal *a, const BigDecimal *b,
+    int64_t digits, BigInt *aligned, int64_t *target)
+{
+    size_t a_length = 0U, b_length = 0U;
+    int comparison = 0;
+    int64_t exponent, selected_target;
+    BigDecimalStatus status;
+    status = bigdecimal_from_bigint_status(bigint_decimal_digits(a->coefficient, &a_length));
+    if (status == BIGDECIMAL_OK)
+    {
+        status = bigdecimal_from_bigint_status(bigint_decimal_digits(b->coefficient, &b_length));
+    }
+    if (status != BIGDECIMAL_OK) return status;
+#if SIZE_MAX > INT64_MAX
+    if (a_length > INT64_MAX || b_length > INT64_MAX)
+    {
+        return BIGDECIMAL_VALUE_TOO_LARGE;
+    }
+#endif
+    // Compare mantissas exactly by aligning just the shorter coefficient.
+    // External scales are applied only after coefficient division below.
+    if (a_length == b_length)
+    {
+        comparison = bigint_compare_abs(a->coefficient, b->coefficient);
+    }
+    else if (a_length < b_length)
+    {
+        status = bigdecimal_align_coefficient_digits(aligned, a->coefficient, b_length - a_length);
+        if (status == BIGDECIMAL_OK)
+        {
+            comparison = bigint_compare_abs(aligned, b->coefficient);
+        }
+    }
+    else
+    {
+        status = bigdecimal_align_coefficient_digits(aligned, b->coefficient, a_length - b_length);
+        if (status == BIGDECIMAL_OK)
+        {
+            comparison = bigint_compare_abs(a->coefficient, aligned);
+        }
+    }
+    if (status != BIGDECIMAL_OK) return status;
+    exponent = (int64_t)a_length - (int64_t)b_length;
+
+    if (comparison < 0)
+    {
+        exponent--;
+    }
+
+    if (!bigdecimal_i64_sub(digits - 1, exponent, &selected_target))
+    {
+        return BIGDECIMAL_SCALE_OVERFLOW;
+    }
+
+    *target = selected_target;
+    return BIGDECIMAL_OK;
+}
+
 BigDecimalStatus bigdecimal_div_significant(
     BigDecimal *result,
     const BigDecimal *a,
@@ -259,11 +325,7 @@ BigDecimalStatus bigdecimal_div_significant(
     BigDecimalRoundingMode rounding
 )
 {
-    size_t a_length = 0U;
-    size_t b_length = 0U;
     BigInt aligned = { NULL, 0U, 0U, false };
-    int comparison = 0;
-    int64_t exponent;
     int64_t target;
     int64_t scale;
     BigDecimal numerator;
@@ -291,53 +353,9 @@ BigDecimalStatus bigdecimal_div_significant(
         return bigdecimal_copy(result, a);
     }
 
-    status = bigdecimal_from_bigint_status(bigint_decimal_digits(a->coefficient, &a_length));
-    if (status == BIGDECIMAL_OK)
-    {
-        status = bigdecimal_from_bigint_status(bigint_decimal_digits(b->coefficient, &b_length));
-    }
-    if (status != BIGDECIMAL_OK) return status;
-#if SIZE_MAX > INT64_MAX
-    if (a_length > INT64_MAX || b_length > INT64_MAX)
-    {
-        return BIGDECIMAL_VALUE_TOO_LARGE;
-    }
-#endif
-    // Compare mantissas exactly by aligning just the shorter coefficient.
-    // External scales are applied only after coefficient division below.
-    if (a_length == b_length)
-    {
-        comparison = bigint_compare_abs(a->coefficient, b->coefficient);
-    }
-    else if (a_length < b_length)
-    {
-        status = align_coefficient_digits(&aligned, a->coefficient, b_length - a_length);
-        if (status == BIGDECIMAL_OK)
-        {
-            comparison = bigint_compare_abs(&aligned, b->coefficient);
-        }
-    }
-    else
-    {
-        status = align_coefficient_digits(&aligned, b->coefficient, a_length - b_length);
-        if (status == BIGDECIMAL_OK)
-        {
-            comparison = bigint_compare_abs(a->coefficient, &aligned);
-        }
-    }
+    status = bigdecimal_significant_target(a, b, digits, &aligned, &target);
     free(aligned.limbs);
     if (status != BIGDECIMAL_OK) return status;
-    exponent = (int64_t)a_length - (int64_t)b_length;
-
-    if (comparison < 0)
-    {
-        exponent--;
-    }
-
-    if (!bigdecimal_i64_sub(digits - 1, exponent, &target))
-    {
-        return BIGDECIMAL_SCALE_OVERFLOW;
-    }
 
     // Divide coefficients, then apply the external scales. This avoids huge
     // powers of ten when the ratio has a tiny or huge but compact magnitude.

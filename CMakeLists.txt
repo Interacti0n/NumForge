@@ -115,6 +115,7 @@ add_library(numforge STATIC
     src/bigdecimal/comparison.c
     src/bigdecimal/conversion.c
     src/bigdecimal/division.c
+    src/bigdecimal/workspace.c
     src/bigdecimal/operations.c
     src/bigdecimal/roots.c
     src/bigdecimal/transcendental.c

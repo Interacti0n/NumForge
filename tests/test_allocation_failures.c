@@ -2074,6 +2074,128 @@ static void test_equal_scale_comparison_without_allocations(void)
     }
 }
 
+static BigDecimalStatus workspace_operation(unsigned operation, BigDecimal *result,
+    const BigDecimal *a, const BigDecimal *b, int64_t digits, BigDecimalWorkspace *workspace)
+{
+    switch (operation)
+    {
+        case 0: return bigdecimal_round_significant_workspace(result, a, digits, BIGDECIMAL_ROUND_HALF_EVEN, workspace);
+        case 1: return bigdecimal_div_significant_workspace(result, a, b, digits, BIGDECIMAL_ROUND_HALF_EVEN, workspace);
+        case 2: return bigdecimal_add_significant_workspace(result, a, b, digits, BIGDECIMAL_ROUND_HALF_EVEN, workspace);
+        default: return bigdecimal_mul_significant_workspace(result, a, b, digits, BIGDECIMAL_ROUND_HALF_EVEN, workspace);
+    }
+}
+
+static void test_decimal_workspace_every_failure_alias_and_retry(void)
+{
+    static const struct { unsigned operation; const char *a, *b; int64_t digits; const char *expected; } cases[] = {
+        { 0U, "1234.56789", "-0.12345", 6, "1234.57" },
+        { 0U, "123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789.5", "37.125", 9, "123456789000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000" },
+        { 1U, "1234.56789", "-0.12345", 6, "-10000.5" },
+        { 1U, "123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789.5", "37.125", 9, "3325435390000000000000000000000000000000000000000000000000000000000000000000000000000000000000000" },
+        { 2U, "1234.56789", "-0.12345", 6, "1234.44" },
+        { 2U, "123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789.5", "37.125", 9, "123456789000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000" },
+        { 3U, "1234.56789", "-0.12345", 6, "-152.407" },
+        { 3U, "123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789.5", "37.125", 9, "4583333290000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000" },
+    };
+    for (size_t c = 0; c < sizeof(cases) / sizeof(cases[0]); c++)
+    for (unsigned alias = 0; alias < 3U; alias++)
+    for (unsigned warm = 0; warm < 3U; warm++)
+    for (unsigned deadline = 0; deadline < 2U; deadline++)
+    {
+        bool completed = false;
+        for (size_t index = 1; index <= ALLOCATION_TEST_MAX_FAILURE_INDEX; index++)
+        {
+            BigDecimalWorkspace workspace = {0};
+            BigDecimal *a = make_bigdecimal(cases[c].a), *b = make_bigdecimal(cases[c].b);
+            BigDecimal *original = make_bigdecimal("7.77"), *warm_result = make_bigdecimal("0");
+            BigDecimal *result = alias == 1 ? a : alias == 2 ? b : original;
+            if (warm == 1)
+            {
+                BigDecimal *seed = make_bigdecimal("1234567890123456789012345678901234567890.5");
+                TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_round_significant_workspace(
+                    warm_result, seed, 5, BIGDECIMAL_ROUND_HALF_EVEN, &workspace));
+                bigdecimal_destroy(seed);
+            }
+            if (warm == 2) TEST_ASSERT_EQUAL(BIGDECIMAL_OK, workspace_operation(
+                cases[c].operation, warm_result, a, b, cases[c].digits, &workspace));
+            if (deadline)
+            {
+                (void)numforge_budget_begin(5000U, SIZE_MAX, SIZE_MAX);
+                numforge_test_budget_expire_after(index);
+            }
+            else numforge_test_allocator_begin(index);
+            BigDecimalStatus status = workspace_operation(cases[c].operation, result, a, b, cases[c].digits, &workspace);
+            bool interrupted = deadline ? numforge_budget_failure() != NUMFORGE_BUDGET_OK : numforge_test_allocator_did_fail();
+            numforge_budget_end(); numforge_test_allocator_end();
+            if (status == BIGDECIMAL_OK)
+            {
+                TEST_ASSERT_FALSE(interrupted);
+                assert_bigdecimal_text(cases[c].expected, result);
+                if (result != a) assert_bigdecimal_text(cases[c].a, a);
+                if (result != b) assert_bigdecimal_text(cases[c].b, b);
+                completed = true;
+            }
+            else
+            {
+                TEST_ASSERT_TRUE(interrupted);
+                TEST_ASSERT_EQUAL(BIGDECIMAL_OUT_OF_MEMORY, status);
+                assert_bigdecimal_text(cases[c].a, a); assert_bigdecimal_text(cases[c].b, b);
+                assert_bigdecimal_text("7.77", original);
+                /* Partial scratch must remain reusable, including invalidated caches. */
+                TEST_ASSERT_EQUAL(BIGDECIMAL_OK, workspace_operation(
+                    cases[c].operation, result, a, b, cases[c].digits, &workspace));
+                assert_bigdecimal_text(cases[c].expected, result);
+            }
+            bigdecimal_workspace_clear(&workspace);
+            bigdecimal_workspace_clear(&workspace);
+            bigdecimal_destroy(a); bigdecimal_destroy(b); bigdecimal_destroy(original); bigdecimal_destroy(warm_result);
+            if (completed) break;
+        }
+        TEST_ASSERT_TRUE(completed);
+    }
+}
+
+static void test_decimal_workspace_scale_boundaries_and_invalid_arguments(void)
+{
+    BigDecimalWorkspace workspace = {0};
+    BigDecimal *a = make_bigdecimal("2"), *b = make_bigdecimal("5"), *result = make_bigdecimal("7.77");
+    a->scale = INT64_MAX; b->scale = 1;
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_mul_significant_workspace(result, a, b, 10,
+        BIGDECIMAL_ROUND_HALF_EVEN, &workspace));
+    TEST_ASSERT_EQUAL_INT64(INT64_MAX, result->scale);
+    assert_bigint_text("1", result->coefficient);
+    a->scale = INT64_MIN; b->scale = INT64_MIN;
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_div_significant_workspace(result, a, b, 10,
+        BIGDECIMAL_ROUND_HALF_EVEN, &workspace));
+    assert_bigdecimal_text("0.4", result);
+    TEST_ASSERT_EQUAL(BIGDECIMAL_SCALE_OVERFLOW, bigdecimal_mul_significant_workspace(result, a, b, 10,
+        BIGDECIMAL_ROUND_HALF_EVEN, &workspace));
+    assert_bigdecimal_text("0.4", result);
+    for (unsigned op = 0; op < 4U; op++)
+    {
+        TEST_ASSERT_EQUAL(BIGDECIMAL_INVALID_ARGUMENT, workspace_operation(op, result, a, b, 0, &workspace));
+        assert_bigdecimal_text("0.4", result);
+    }
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_round_significant_workspace(result, a, 10,
+        BIGDECIMAL_ROUND_HALF_EVEN, NULL));
+    a->scale = 0; b->scale = 1000000000;
+    (void)numforge_budget_begin(UINT64_MAX, 4096U, 2048U);
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OUT_OF_MEMORY, bigdecimal_add_significant_workspace(result, a, b, 10,
+        BIGDECIMAL_ROUND_HALF_EVEN, &workspace));
+    TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_MEMORY, numforge_budget_failure());
+    numforge_budget_end();
+    assert_bigdecimal_text("0.4", result);
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(b, "0"));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_DIVISION_BY_ZERO, bigdecimal_div_significant_workspace(result, a, b, 10,
+        BIGDECIMAL_ROUND_HALF_EVEN, &workspace));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_mul_significant_workspace(result, a, b, 10,
+        BIGDECIMAL_ROUND_HALF_EVEN, &workspace));
+    assert_bigdecimal_text("0", result);
+    bigdecimal_workspace_clear(&workspace);
+    bigdecimal_destroy(a); bigdecimal_destroy(b); bigdecimal_destroy(result);
+}
+
 static void test_decimal_borrowed_coefficients_every_failure(void)
 {
     static const struct {
@@ -2320,6 +2442,8 @@ int main(void)
     RUN_TEST(test_bigdecimal_conversion_and_comparison_failure_paths);
     RUN_TEST(test_bigdecimal_from_bigint_every_allocation_failure);
     RUN_TEST(test_bigdecimal_arithmetic_failure_paths);
+    RUN_TEST(test_decimal_workspace_every_failure_alias_and_retry);
+    RUN_TEST(test_decimal_workspace_scale_boundaries_and_invalid_arguments);
     RUN_TEST(test_decimal_borrowed_coefficients_every_failure);
     RUN_TEST(test_equal_scale_comparison_without_allocations);
     RUN_TEST(test_decimal_digit_count_preserves_output_on_every_failure);

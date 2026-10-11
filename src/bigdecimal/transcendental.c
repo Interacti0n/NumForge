@@ -29,60 +29,6 @@
         }                                    \
     } while (0)
 
-static BigDecimalStatus multiply_significant(
-    BigDecimal *result,
-    const BigDecimal *a,
-    const BigDecimal *b,
-    int64_t digits,
-    BigDecimalRoundingMode rounding
-)
-{
-    BigDecimal *temporary = bigdecimal_create();
-    BigDecimalStatus status;
-
-    if (temporary == NULL)
-    {
-        return BIGDECIMAL_OUT_OF_MEMORY;
-    }
-
-    status = bigdecimal_mul(temporary, a, b);
-
-    if (status == BIGDECIMAL_OK)
-    {
-        status = bigdecimal_round_significant(result, temporary, digits, rounding);
-    }
-
-    bigdecimal_destroy(temporary);
-    return status;
-}
-
-static BigDecimalStatus add_significant(
-    BigDecimal *result,
-    const BigDecimal *a,
-    const BigDecimal *b,
-    int64_t digits,
-    BigDecimalRoundingMode rounding
-)
-{
-    BigDecimal *temporary = bigdecimal_create();
-    BigDecimalStatus status;
-
-    if (temporary == NULL)
-    {
-        return BIGDECIMAL_OUT_OF_MEMORY;
-    }
-
-    status = bigdecimal_add(temporary, a, b);
-
-    if (status == BIGDECIMAL_OK)
-    {
-        status = bigdecimal_round_significant(result, temporary, digits, rounding);
-    }
-
-    bigdecimal_destroy(temporary);
-    return status;
-}
-
 static BigDecimalStatus set_integer(BigDecimal *value, uint64_t integer)
 {
     char text[32];
@@ -142,6 +88,7 @@ static BigDecimalStatus logarithm_series(
     BigDecimalRoundingMode rounding
 )
 {
+    BigDecimalWorkspace workspace = {0};
     BigDecimal *reduced = bigdecimal_create();
     BigDecimal *one = bigdecimal_create();
     BigDecimal *lower_bound = bigdecimal_create();
@@ -204,10 +151,10 @@ static BigDecimalStatus logarithm_series(
 
     TRANSCENDENTAL_TRY(bigdecimal_sub(numerator, reduced, one));
     TRANSCENDENTAL_TRY(bigdecimal_add(denominator, reduced, one));
-    TRANSCENDENTAL_TRY(bigdecimal_div_significant(
-        z, numerator, denominator, work_digits, rounding));
-    TRANSCENDENTAL_TRY(multiply_significant(
-        z_squared, z, z, work_digits, rounding));
+    TRANSCENDENTAL_TRY(bigdecimal_div_significant_workspace(
+        z, numerator, denominator, work_digits, rounding, &workspace));
+    TRANSCENDENTAL_TRY(bigdecimal_mul_significant_workspace(
+        z_squared, z, z, work_digits, rounding, &workspace));
     TRANSCENDENTAL_TRY(bigdecimal_copy(term, z));
     TRANSCENDENTAL_TRY(bigdecimal_copy(sum, z));
 
@@ -226,13 +173,13 @@ static BigDecimalStatus logarithm_series(
         }
 
         index += 2U;
-        TRANSCENDENTAL_TRY(multiply_significant(
-            term, term, z_squared, work_digits, rounding));
+        TRANSCENDENTAL_TRY(bigdecimal_mul_significant_workspace(
+            term, term, z_squared, work_digits, rounding, &workspace));
         TRANSCENDENTAL_TRY(set_integer(order, index));
-        TRANSCENDENTAL_TRY(bigdecimal_div_significant(
-            fraction, term, order, work_digits, rounding));
-        TRANSCENDENTAL_TRY(add_significant(
-            previous, sum, fraction, work_digits, rounding));
+        TRANSCENDENTAL_TRY(bigdecimal_div_significant_workspace(
+            fraction, term, order, work_digits, rounding, &workspace));
+        TRANSCENDENTAL_TRY(bigdecimal_add_significant_workspace(
+            previous, sum, fraction, work_digits, rounding, &workspace));
         TRANSCENDENTAL_TRY(bigdecimal_compare(&comparison, previous, sum));
         // Both values are private. Retain the old sum by exchanging owners
         // rather than copying its entire coefficient on every series step.
@@ -249,18 +196,19 @@ static BigDecimalStatus logarithm_series(
     }
 
     TRANSCENDENTAL_TRY(bigdecimal_set_string(order, "2"));
-    TRANSCENDENTAL_TRY(multiply_significant(
-        sum, sum, order, work_digits, rounding));
+    TRANSCENDENTAL_TRY(bigdecimal_mul_significant_workspace(
+        sum, sum, order, work_digits, rounding, &workspace));
 
     for (unsigned index_reduction = 0U; index_reduction < reductions; index_reduction++)
     {
-        TRANSCENDENTAL_TRY(add_significant(
-            sum, sum, sum, work_digits, rounding));
+        TRANSCENDENTAL_TRY(bigdecimal_add_significant_workspace(
+            sum, sum, sum, work_digits, rounding, &workspace));
     }
 
     TRANSCENDENTAL_TRY(bigdecimal_copy(result, sum));
 
 cleanup:
+    bigdecimal_workspace_clear(&workspace);
     bigdecimal_destroy(reduced);
     bigdecimal_destroy(one);
     bigdecimal_destroy(lower_bound);
@@ -285,6 +233,7 @@ static BigDecimalStatus exponential_series(
     BigDecimalRoundingMode rounding
 )
 {
+    BigDecimalWorkspace workspace = {0};
     BigDecimal *reduced = bigdecimal_create();
     BigDecimal *absolute = bigdecimal_create();
     BigDecimal *half = bigdecimal_create();
@@ -342,13 +291,13 @@ static BigDecimalStatus exponential_series(
         }
 
         index++;
-        TRANSCENDENTAL_TRY(multiply_significant(
-            term, term, reduced, work_digits, rounding));
+        TRANSCENDENTAL_TRY(bigdecimal_mul_significant_workspace(
+            term, term, reduced, work_digits, rounding, &workspace));
         TRANSCENDENTAL_TRY(set_integer(order, index));
-        TRANSCENDENTAL_TRY(bigdecimal_div_significant(
-            term, term, order, work_digits, rounding));
-        TRANSCENDENTAL_TRY(add_significant(
-            previous, sum, term, work_digits, rounding));
+        TRANSCENDENTAL_TRY(bigdecimal_div_significant_workspace(
+            term, term, order, work_digits, rounding, &workspace));
+        TRANSCENDENTAL_TRY(bigdecimal_add_significant_workspace(
+            previous, sum, term, work_digits, rounding, &workspace));
         TRANSCENDENTAL_TRY(bigdecimal_compare(&comparison, previous, sum));
         {
             BigDecimal *swap = sum;
@@ -364,13 +313,14 @@ static BigDecimalStatus exponential_series(
 
     for (unsigned reduction = 0U; reduction < reductions; reduction++)
     {
-        TRANSCENDENTAL_TRY(multiply_significant(
-            sum, sum, sum, work_digits, rounding));
+        TRANSCENDENTAL_TRY(bigdecimal_mul_significant_workspace(
+            sum, sum, sum, work_digits, rounding, &workspace));
     }
 
     TRANSCENDENTAL_TRY(bigdecimal_copy(result, sum));
 
 cleanup:
+    bigdecimal_workspace_clear(&workspace);
     bigdecimal_destroy(reduced);
     bigdecimal_destroy(absolute);
     bigdecimal_destroy(half);

@@ -14,13 +14,15 @@
 
 int main(void)
 {
+    BigDecimalWorkspace workspace = {0};
     char op[16], a[20000], b[20000];
     int scale, rounding;
     BigInt *ia = bigint_create(), *ib = bigint_create(), *ir = bigint_create(), *im = bigint_create();
     BigDecimal *da = bigdecimal_create(), *db = bigdecimal_create(), *dr = bigdecimal_create();
     if (!ia || !ib || !ir || !im || !da || !db || !dr)
     {
-        bigint_destroy(ia); bigint_destroy(ib); bigint_destroy(ir); bigint_destroy(im);
+        bigdecimal_workspace_clear(&workspace);
+    bigint_destroy(ia); bigint_destroy(ib); bigint_destroy(ir); bigint_destroy(im);
         bigdecimal_destroy(da); bigdecimal_destroy(db); bigdecimal_destroy(dr);
         return 2;
     }
@@ -108,6 +110,10 @@ int main(void)
                 else if (!strcmp(op, "ddiv")) status = bigdecimal_div(dr, da, db, scale, (BigDecimalRoundingMode)rounding);
                 else if (!strcmp(op, "dsig")) status = bigdecimal_div_significant(dr, da, db, scale, (BigDecimalRoundingMode)rounding);
                 else if (!strcmp(op, "droundsig")) status = bigdecimal_round_significant(dr, da, scale, (BigDecimalRoundingMode)rounding);
+                else if (!strcmp(op, "dwdiv")) status = bigdecimal_div_significant_workspace(dr, da, db, scale, (BigDecimalRoundingMode)rounding, &workspace);
+                else if (!strcmp(op, "dwround")) status = bigdecimal_round_significant_workspace(dr, da, scale, (BigDecimalRoundingMode)rounding, &workspace);
+                else if (!strcmp(op, "dwadd")) status = bigdecimal_add_significant_workspace(dr, da, db, scale, (BigDecimalRoundingMode)rounding, &workspace);
+                else if (!strcmp(op, "dwmul")) status = bigdecimal_mul_significant_workspace(dr, da, db, scale, (BigDecimalRoundingMode)rounding, &workspace);
                 else if (!strcmp(op, "dcalc")) status = bigdecimal_div_exact_or_significant(dr, da, db, scale, (BigDecimalRoundingMode)rounding);
                 else if (!strcmp(op, "dscale")) status = bigdecimal_rescale(dr, da, scale, (BigDecimalRoundingMode)rounding);
                 else if (!strcmp(op, "rroot")) status = bigdecimal_root(dr, da, (uint32_t)strtoul(b, NULL, 10), scale, (BigDecimalRoundingMode)rounding);

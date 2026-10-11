@@ -3,6 +3,7 @@
 #endif
 #define NUMFORGE_DECIMAL_PROFILE_NO_REDIRECT
 #include "decimal_profile.h"
+#include "../bigint/bigint_internal.h"
 #include <string.h>
 #ifdef _WIN32
 #include <windows.h>
@@ -101,6 +102,37 @@ BigIntStatus numforge_decimal_div_mod(BigInt *out, BigInt *rem, const BigInt *a,
     double begin = active ? clock_seconds() : 0.0;
     BigIntStatus status = bigint_div_mod(out, rem, a, b);
     record_operation(NUMFORGE_DECIMAL_DIV_MOD, begin);
+    numforge_decimal_leave(previous);
+    return status;
+}
+
+BigIntStatus numforge_decimal_divmod_abs_workspace(BigInt *out, BigInt *rem,
+    const BigInt *a, const BigInt *b, BigIntDivisionWorkspace *workspace)
+{
+    NumForgeDecimalPhase previous = numforge_decimal_enter(NUMFORGE_DECIMAL_CORE);
+    double begin = active ? clock_seconds() : 0.0;
+    BigIntStatus status = bigint_divmod_abs_workspace(out, rem, a, b, workspace);
+    record_operation(NUMFORGE_DECIMAL_DIV_MOD, begin);
+    numforge_decimal_leave(previous);
+    return status;
+}
+
+BigIntStatus numforge_decimal_add_abs(BigInt *out, const BigInt *a, const BigInt *b)
+{
+    NumForgeDecimalPhase previous = numforge_decimal_enter(NUMFORGE_DECIMAL_CORE);
+    double begin = active ? clock_seconds() : 0.0;
+    BigIntStatus status = bigint_add_abs(out, a, b);
+    record_operation(NUMFORGE_DECIMAL_ADD, begin);
+    numforge_decimal_leave(previous);
+    return status;
+}
+
+BigIntStatus numforge_decimal_subtract_abs(BigInt *out, const BigInt *a, const BigInt *b)
+{
+    NumForgeDecimalPhase previous = numforge_decimal_enter(NUMFORGE_DECIMAL_CORE);
+    double begin = active ? clock_seconds() : 0.0;
+    BigIntStatus status = bigint_subtract_abs(out, a, b);
+    record_operation(NUMFORGE_DECIMAL_SUB, begin);
     numforge_decimal_leave(previous);
     return status;
 }
