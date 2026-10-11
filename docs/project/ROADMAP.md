@@ -44,6 +44,9 @@ The practical factorial cap is removed; the uint64 counter range and shared
 application time/memory/output budgets remain. See
 [factorial budgets and final text conversion](../benchmarks/FACTORIAL_BUDGETS_2026_10_11.md).
 Product-tree factorial and Karatsuba remain candidates for measured follow-ups.
+The [private Karatsuba experiment](../benchmarks/KARATSUBA_EXPERIMENT_2026_10_11.md)
+adds bounded scratch, exact references and cancellation/failure checks, with
+threshold and grouped product-tree comparisons before any production change.
 Existing experiments are described with their measured tradeoffs in
 [BIGINT_BENCHMARKS.md](../benchmarks/BIGINT_BENCHMARKS.md).
 

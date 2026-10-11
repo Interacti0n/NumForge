@@ -1,4 +1,5 @@
 #include "benchmark_clock.h"
+#include "karatsuba_experiment.h"
 #include "../src/bigint/bigint_internal.h"
 #include "../src/internal/numforge_alloc.h"
 #include "../src/internal/benchmark_profile.h"
@@ -13,6 +14,35 @@ typedef struct Case {
     char *name, *op, *mode;
     BigInt *a, *b, *expected, *remainder;
 } Case;
+static bool enforce_application_budget;
+
+/* Large independent references can use hex: limbs to avoid quadratic decimal
+ * fixture parsing. This is fixture ingestion only, never timed arithmetic. */
+static BigIntStatus parse_fixture(BigInt *out, const char *text)
+{
+    if (strncmp(text, "hex:", 4U)) return bigint_set_string(out, text);
+    text += 4U;
+    bool negative = *text == '-';
+    if (negative) ++text;
+    size_t digits = strlen(text);
+    if (!digits) return BIGINT_INVALID_ARGUMENT;
+    BigInt temporary = {0};
+    temporary.size = temporary.capacity = (digits + 15U) / 16U;
+    temporary.limbs = numforge_calloc(temporary.size, sizeof(uint64_t));
+    if (!temporary.limbs) return BIGINT_OUT_OF_MEMORY;
+    for (size_t i = 0U; i < digits; ++i)
+    {
+        unsigned char c = (unsigned char)text[digits - 1U - i];
+        unsigned nibble = c >= '0' && c <= '9' ? (unsigned)(c - '0') :
+            c >= 'a' && c <= 'f' ? (unsigned)(c - 'a') + 10U :
+            c >= 'A' && c <= 'F' ? (unsigned)(c - 'A') + 10U : 16U;
+        if (nibble == 16U) { free(temporary.limbs); return BIGINT_INVALID_ARGUMENT; }
+        temporary.limbs[i / 16U] |= (uint64_t)nibble << ((i % 16U) * 4U);
+    }
+    temporary.is_negative = negative;
+    bigint_normalize(&temporary); bigint_commit(out, &temporary); free(temporary.limbs);
+    return BIGINT_OK;
+}
 
 static bool add_word(uint64_t *words, size_t count, size_t offset, uint64_t value)
 {
@@ -71,6 +101,37 @@ static BigIntStatus product_tree(BigInt *out, uint64_t low, uint64_t high)
     return status;
 }
 
+/* Compare the same 32-factor leaves with classical versus Karatsuba products.
+ * This is independent of the unchanged production grouped factorial. */
+static BigIntStatus grouped_tree(BigInt *out, uint64_t low, uint64_t high, size_t threshold)
+{
+    if (!numforge_budget_check()) return BIGINT_OUT_OF_MEMORY;
+    if (low > high) return bigint_set_uint64(out, 1U);
+    BigInt left = {0}, right = {0};
+    BigIntStatus status;
+    if (high - low < 32U)
+    {
+        status = bigint_set_uint64(&left, 1U);
+        for (uint64_t factor = low; status == BIGINT_OK; ++factor)
+        {
+            if (!numforge_budget_check()) { status = BIGINT_OUT_OF_MEMORY; break; }
+            status = bigint_multiply_by_uint64(&left, factor);
+            if (factor == high) break;
+        }
+        if (status == BIGINT_OK) bigint_commit(out, &left);
+    }
+    else
+    {
+        uint64_t middle = low + (high - low) / 2U;
+        status = grouped_tree(&left, low, middle, threshold);
+        if (status == BIGINT_OK) status = grouped_tree(&right, middle + 1U, high, threshold);
+        if (status == BIGINT_OK)
+            status = threshold ? benchmark_karatsuba(out, &left, &right, threshold) : bigint_mul(out, &left, &right);
+    }
+    free(left.limbs); free(right.limbs);
+    return status;
+}
+
 static BigIntStatus power_square(BigInt *out, const BigInt *a, const BigInt *b)
 {
     BigInt result = {0}, base = {0};
@@ -91,12 +152,30 @@ static BigIntStatus power_square(BigInt *out, const BigInt *a, const BigInt *b)
 static BigIntStatus operate(const Case *c, BigInt *out, BigInt *rem, BigInt *a, BigInt *b)
 {
     if (!strcmp(c->op, "mul")) return bigint_mul(out, a, !strcmp(c->mode, "alias_all") ? a : b);
+    if (!strncmp(c->op, "karatsuba", 9U))
+    {
+        const char *suffix = c->op + 9U;
+        size_t threshold = !strcmp(suffix, "16") ? 16U : !strcmp(suffix, "32") ? 32U :
+            !strcmp(suffix, "64") ? 64U : !strcmp(suffix, "128") ? 128U :
+            !strcmp(suffix, "256") ? 256U : 0U;
+        return benchmark_karatsuba(out, a, !strcmp(c->mode, "alias_all") ? a : b, threshold);
+    }
     if (!strcmp(c->op, "square")) return square(out, a);
     if (!strcmp(c->op, "copy")) return bigint_copy(out, a);
     if (!strcmp(c->op, "pow")) return bigint_pow(out, a, b);
     if (!strcmp(c->op, "pow_square")) return power_square(out, a, b);
     if (!strcmp(c->op, "factorial")) return bigint_factorial(out, a);
     if (!strcmp(c->op, "tree")) return product_tree(out, 2U, a->size ? a->limbs[0] : 0U);
+    if (!strcmp(c->op, "tree_grouped") || !strncmp(c->op, "tree_karatsuba", 14U))
+    {
+        if (a->is_negative || a->size > 1U) return BIGINT_INVALID_ARGUMENT;
+        size_t threshold = !strcmp(c->op, "tree_grouped") ? 0U :
+            !strcmp(c->op, "tree_karatsuba16") ? 16U :
+            !strcmp(c->op, "tree_karatsuba32") ? 32U : !strcmp(c->op, "tree_karatsuba64") ? 64U :
+            !strcmp(c->op, "tree_karatsuba128") ? 128U : 0U;
+        if (!threshold && strcmp(c->op, "tree_grouped")) return BIGINT_INVALID_ARGUMENT;
+        return grouped_tree(out, 2U, a->size ? a->limbs[0] : 0U, threshold);
+    }
     if (!strcmp(c->op, "divmod")) return bigint_div_mod(out, rem, a, b);
     if (!strcmp(c->op, "div")) return bigint_div(out, a, b);
     if (!strcmp(c->op, "mod")) return bigint_mod(out, a, b);
@@ -109,13 +188,13 @@ static BigIntStatus operate(const Case *c, BigInt *out, BigInt *rem, BigInt *a, 
  * aliased output. Checks remain active under NDEBUG. Never time this work. */
 static bool check_experiment_failures(void)
 {
-    const char *operations[] = {"square", "tree", "pow_square"};
-    for (size_t op = 0U; op < 3U; op++) for (unsigned alias = 0U; alias < 2U; alias++)
+    const char *operations[] = {"square", "tree", "pow_square", "tree_grouped", "tree_karatsuba64", "tree_karatsuba16"};
+    for (size_t op = 0U; op < 6U; op++) for (unsigned alias = 0U; alias < 2U; alias++)
     {
         BigInt a = {0}, b = {0}, result = {0}, remainder = {0}, original = {0};
         Case c = {NULL, (char *)operations[op], "reuse", NULL, NULL, NULL, NULL};
         BigInt *out = alias ? &a : &result;
-        const char *input = op == 1U ? "20" : "340282366920938463463374607431768211455";
+        const char *input = op >= 3U ? "2000" : op == 1U ? "20" : "340282366920938463463374607431768211455";
         bool good = bigint_set_string(&a, input) == BIGINT_OK && bigint_set_uint64(&b, 17U) == BIGINT_OK &&
             bigint_set_uint64(&result, 123U) == BIGINT_OK;
         numforge_test_allocator_begin(0U);
@@ -176,9 +255,20 @@ static bool measure(const Case *c, bool memory, double target, Measurement *m, b
         if (!strcmp(c->mode, "cold")) { free(result.limbs); memset(&result, 0, sizeof(result)); }
         m->baseline = numforge_alloc_stats_live();
         numforge_alloc_stats_reset();
+        bool owner = false;
+        if (enforce_application_budget)
+        {
+            owner = numforge_budget_begin(5000U, 64U * 1024U * 1024U, 512U * 1024U);
+            if (!owner) goto cleanup;
+        }
         double begin = benchmark_seconds();
         BigIntStatus status = operate(c, out, rem, &a, &b);
         double end = benchmark_seconds();
+        NumForgeBudgetFailure reason = numforge_budget_failure();
+        if (owner) numforge_budget_end();
+        if (status != BIGINT_OK && enforce_application_budget)
+            fprintf(stderr, "Budget rejection: %s status=%d reason=%d elapsed_ms=%.3f\n",
+                    c->name, (int)status, (int)reason, (end - begin) * 1000.0);
         m->calls = numforge_alloc_stats_calls(); m->bytes = numforge_alloc_stats_bytes();
         m->live = numforge_alloc_stats_live(); m->peak = numforge_alloc_stats_peak();
         if (status != BIGINT_OK || begin < 0.0 || end < begin ||
@@ -223,18 +313,24 @@ static bool run(const Case *c, bool quick, bool validate)
 
 int main(int argc, char **argv)
 {
+#ifdef NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING
+    if (argc == 2 && !strcmp(argv[1], "--karatsuba-check"))
+        return benchmark_karatsuba_fault_checks() ? 0 : 1;
+#endif
     bool quick = false, validate = false, success = true, found = false;
     bool check = false;
     const char *selected = NULL;
-    if (argc < 2) { fputs("Usage: bigint_arithmetic_benchmark fixtures.tsv [--quick] [--validate] [--check] [--case name]\n", stderr); return 1; }
+    if (argc < 2) { fputs("Usage: bigint_arithmetic_benchmark fixtures.tsv [--quick] [--validate] [--budget] [--check] [--case name]\n", stderr); return 1; }
     for (int i = 2; i < argc; i++)
     {
         if (!strcmp(argv[i], "--quick")) quick = true;
+        else if (!strcmp(argv[i], "--budget")) enforce_application_budget = true;
         else if (!strcmp(argv[i], "--validate")) validate = true;
         else if (!strcmp(argv[i], "--check")) check = true;
         else if (!strcmp(argv[i], "--case") && i + 1 < argc) selected = argv[++i];
         else return 1;
     }
+    if (enforce_application_budget) validate = true;
 #ifdef NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING
     if (check && !check_experiment_failures()) return 1;
 #else
@@ -258,9 +354,9 @@ int main(int argc, char **argv)
         found = true;
         Case c = {fields[0], fields[1], fields[2], bigint_create(), bigint_create(), bigint_create(), bigint_create()};
         bool valid = c.a && c.b && c.expected && c.remainder;
-        if (valid) valid = bigint_set_string(c.a, fields[3]) == BIGINT_OK &&
-            bigint_set_string(c.b, fields[4]) == BIGINT_OK && bigint_set_string(c.expected, fields[5]) == BIGINT_OK &&
-            bigint_set_string(c.remainder, fields[6]) == BIGINT_OK && run(&c, quick, validate);
+        if (valid) valid = parse_fixture(c.a, fields[3]) == BIGINT_OK &&
+            parse_fixture(c.b, fields[4]) == BIGINT_OK && parse_fixture(c.expected, fields[5]) == BIGINT_OK &&
+            parse_fixture(c.remainder, fields[6]) == BIGINT_OK && run(&c, quick, validate);
         if (!valid) fprintf(stderr, "Failed exact reference or measurement: %s\n", c.name);
         bigint_destroy(c.a); bigint_destroy(c.b); bigint_destroy(c.expected); bigint_destroy(c.remainder);
         if (!valid) { success = false; break; }

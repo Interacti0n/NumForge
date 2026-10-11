@@ -7,6 +7,9 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Add a benchmark-only Karatsuba multiplication experiment with bounded shared
+  scratch, independent exact references, alias/failure/cancellation checks and
+  grouped product-tree comparisons. Keep production arithmetic unchanged.
 - Debounce calculator and unit-converter previews until two seconds after the
   last input or settings change; keep confirmation immediate and cancel pending
   previews on confirmation, clearing or navigation.

@@ -39,6 +39,8 @@ text-conversion timing for logarithms.
 
 | Files | Purpose |
 | --- | --- |
+| `karatsuba_experiment.c`, `karatsuba_cases.cjs`, `check_karatsuba.cjs`, `run_karatsuba.cjs` | Private bounded-scratch multiplication experiment, complete Node BigInt oracles, failure checks and serial threshold measurements; see the [experiment report](../docs/benchmarks/KARATSUBA_EXPERIMENT_2026_10_11.md). |
+| `generate_karatsuba_factorials.py` | Independent Python factorial references for grouped product-tree comparisons. |
 | `*_benchmark.c` | C timing harnesses for arithmetic, formatting and calculator/cache behavior. |
 | `logarithm_agm_benchmark.c`, `check_logarithm_agm_benchmark.cjs` | Fixed-guard experiment, interval/public/series logarithm comparisons, exact-reference checks and opt-in allocation/deadline injection. |
 | `generate_logarithm_agm_cases.py`, `data/logarithm_agm_smoke.tsv` | Standard-library Decimal references checked at two extra precisions; Python is needed only to regenerate fixtures. |

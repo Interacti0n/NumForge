@@ -47,6 +47,7 @@ numerical references, session/unit regressions, browser/CI checks and profiling.
 - [Harnesses and reference data](../benchmarks/README.md).
 - [Formatting/cache measurements](benchmarks/BENCHMARKS.md).
 - [BigInt measurements](benchmarks/BIGINT_BENCHMARKS.md).
+- [Karatsuba experiment](benchmarks/KARATSUBA_EXPERIMENT_2026_10_11.md): private threshold measurements, whole-product references and bounded scratch.
 - [Decimal/math measurements](benchmarks/DECIMAL_MATH_BENCHMARKS.md).
 - [Performance audit, 10 October 2026](benchmarks/PERFORMANCE_AUDIT_2026_10_10.md): current measurements, five-second risks and optimization priorities.
 - [Logarithm algorithm review](benchmarks/LOGARITHM_ALGORITHM_REVIEW_2026_10_11.md) and
