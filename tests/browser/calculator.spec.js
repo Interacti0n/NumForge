@@ -1,14 +1,14 @@
 const { test, expect } = require('@playwright/test');
 
-test('HTTP factorial accepts larger inputs and preserves state above the new limit',async({request})=>{
+test('HTTP factorial preserves state above its counter representation range',async({request})=>{
     const client='faca0000faca0000faca0000faca0000';
     const base='/api/evaluate?precision=10&notation=auto&client='+client;
     const send=async(input,revision,action='commit')=>(await request.post(base+'&revision='+revision+'&action='+action,{data:input})).json();
     expect((await send('',1,'start')).ok).toBe(true);
-    const large=await send('n=factorial(20000)',2);
-    expect(large.ok).toBe(true);expect(large.result).toBe('1.8192063202E+77337');
-    expect((await send('n=100001!',3)).ok).toBe(false);
-    expect((await send('n=factorial(100001)',4)).ok).toBe(false);
+    const large=await send('n=factorial(100001)',2);
+    expect(large.ok).toBe(true);expect(large.result).toBe('2.8242576503E+456578');
+    expect((await send('n=18446744073709551616!',3)).ok).toBe(false);
+    expect((await send('n=factorial(18446744073709551616)',4)).ok).toBe(false);
     expect((await send('ans',5,'preview')).result).toBe(large.result);
     expect((await send('n',6,'preview')).result).toBe(large.result);
 });

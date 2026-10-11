@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,9 +33,9 @@ typedef enum BigIntStatus
                                   * range or practical limits of the operation */
 } BigIntStatus;
 
-/* Largest input accepted by bigint_factorial(). The limit prevents an
- * unbounded calculation from exhausting the caller's CPU or memory. */
-#define BIGINT_FACTORIAL_MAX_N 100000ULL
+/* Representation bound, not a practical input cap. Factorial uses a uint64_t
+ * counter; callers should install a runtime budget for expensive requests. */
+#define BIGINT_FACTORIAL_MAX_N UINT64_MAX
 
 const char *bigint_status_to_string( /*Human-readable description of a BigIntStatus, for logging/debugging*/
     BigIntStatus status

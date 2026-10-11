@@ -100,7 +100,7 @@ its original explicit decimal-scale policy, independent of this calculator mode.
 
 | Resource | Limit |
 | --- | --- |
-| Factorial input | Integer 0–100000 |
+| Factorial input | Non-negative integer up to UINT64_MAX; time and memory budgets apply |
 | Root degree | Integer 1–10000 |
 | Output decimal places | 0–10000; default 10 |
 | Calculation time | 5 s, including parsing and output |

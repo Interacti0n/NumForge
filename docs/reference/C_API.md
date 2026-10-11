@@ -74,8 +74,9 @@ optional leading sign and digits only.
 | Bit operations | `bigint_and`, `bigint_or`, `bigint_xor`, `bigint_not`, `bigint_shift_left`, `bigint_shift_right` |
 
 Division truncates toward zero and the remainder has the dividend's sign.
-`bigint_pow()` rejects negative exponents. `BIGINT_FACTORIAL_MAX_N` limits
-factorial input to 100000. AND, OR, and XOR accept only non-negative values;
+`bigint_pow()` rejects negative exponents. `BIGINT_FACTORIAL_MAX_N` is the `UINT64_MAX` representation bound for the
+factorial counter, not a practical 100000-input cap. Install a runtime budget
+for expensive calls; standalone C API calls have no automatic time limit. AND, OR, and XOR accept only non-negative values;
 `bigint_not(x)` is defined as `-(x + 1)`. The probable-prime and
 perfect-square checks return `BigIntStatus` and write their boolean answer
 through an output pointer, so allocation failure cannot be confused with a

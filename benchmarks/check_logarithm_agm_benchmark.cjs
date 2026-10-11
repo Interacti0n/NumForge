@@ -32,6 +32,7 @@ try {
       assert.equal(row.reference_match,'1', JSON.stringify(row));
       assert.equal(row.budget_reason,'none');
       assert(Number(row.elapsed_ms)>=0 && Number(row.alloc_calls)>0);
+      assert(Number(row.format_ms)>=0);
       if (optional[0]==='--memory') assert(Number(row.peak_live)>0);
       checks++;
     }

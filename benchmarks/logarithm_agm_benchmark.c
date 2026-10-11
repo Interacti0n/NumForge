@@ -251,23 +251,28 @@ int main(int argc, char **argv)
     NumForgeBudgetFailure failure = numforge_budget_failure();
     numforge_budget_end();
     bool checked = false;
+    double format_ms = 0.0;
     if (status == BIGDECIMAL_OK)
     {
         if (strcmp(argv[7], "-"))
             checked = bigdecimal_compare(&comparison, destination, expected) == BIGDECIMAL_OK && comparison == 0;
+        double format_begin = benchmark_seconds();
         if (bigdecimal_to_string(destination, &formatted) != BIGDECIMAL_OK) goto cleanup;
+        double format_end = benchmark_seconds();
+        if (format_begin < 0 || format_end < format_begin) goto cleanup;
+        format_ms = (format_end - format_begin) * 1000.0;
     }
     else
     {
         if (bigdecimal_compare(&comparison, destination, original) != BIGDECIMAL_OK || comparison != 0) goto cleanup;
     }
     if (begin < 0 || end < begin) goto cleanup;
-    printf("algorithm,digits,extra,rounding,status,elapsed_ms,alloc_calls,requested_bytes,peak_live,expansions,agm_iterations,budget_reason,reference_match,output_bytes\n");
-    printf("%s,%" PRId64 ",%" PRId64 ",%" PRId64 ",%d,%.6f,%zu,%zu,%zu,%u,%u,%s,%d,%zu\n",
+    printf("algorithm,digits,extra,rounding,status,elapsed_ms,alloc_calls,requested_bytes,peak_live,expansions,agm_iterations,budget_reason,reference_match,output_bytes,format_ms\n");
+    printf("%s,%" PRId64 ",%" PRId64 ",%" PRId64 ",%d,%.6f,%zu,%zu,%zu,%u,%u,%s,%d,%zu,%.6f\n",
         argv[1], digits, extra, rounding, (int)status, (end-begin)*1000.0,
         calls, bytes, memory ? peak : 0U, expansions, iterations,
         failure == NUMFORGE_BUDGET_TIME ? "time" : failure == NUMFORGE_BUDGET_MEMORY ? "allocation" : "none",
-        checked ? 1 : 0, formatted ? strlen(formatted) : 0U);
+        checked ? 1 : 0, formatted ? strlen(formatted) : 0U, format_ms);
     exit_code = !strcmp(argv[7], "-") || checked ? EXIT_SUCCESS : EXIT_FAILURE;
 cleanup:
     free(formatted);

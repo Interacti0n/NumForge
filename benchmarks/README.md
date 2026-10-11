@@ -31,6 +31,9 @@ the unchanged public logarithm, with independent references and failure checks;
 the [prototype results](../docs/benchmarks/LOGARITHM_AGM_PROTOTYPE_2026_10_11.md)
 record its precision crossover and remaining integration work. It is not used
 by the calculator or installed C API.
+The [factorial budget report](../docs/benchmarks/FACTORIAL_BUDGETS_2026_10_11.md)
+records inputs above the former cap, deadline cancellation and separate final
+text-conversion timing for logarithms.
 
 | Files | Purpose |
 | --- | --- |

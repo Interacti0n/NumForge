@@ -62,7 +62,8 @@ does not run them inside the measured process.
   carry propagation. Random, maximal, sparse, alternating, zero, sign and alias
   cases have exact references. This is a simple experimental kernel, not a
   production recommendation.
-- Factorial: 0, 1, 20, 100, 500, 1000, 5000, 10000, 20000, 50000 and 100000. Compare the public
+- Factorial: 0, 1, 20, 100, 500, 1000, 5000, 10000, 20000, 50000, 100000,
+  100001 and 150000. Compare the public
   implementation, which multiplies by a small integer in place, against a private
   recursive balanced product tree composed from public multiplication.
   `--factorial-only` generates/records just this sweep; `--quick` retains

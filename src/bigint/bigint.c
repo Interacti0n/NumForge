@@ -465,6 +465,10 @@ BigIntStatus bigint_multiply_by_uint64( /*Multiply a BigInt by a uint64_t (magni
 
     for (size_t i = 0; i < value->size; i++)
     {
+        /* This private in-place helper can leave partial scratch on failure.
+         * Its callers publish only after success. Bound cancellation latency
+         * even when a factorial/combinatorial accumulator has many limbs. */
+        if ((i & 255U) == 0U && !numforge_budget_check()) return BIGINT_OUT_OF_MEMORY;
         uint64_t high;
         uint64_t low;
 

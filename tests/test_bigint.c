@@ -1523,9 +1523,9 @@ void test_factorial_alias_input(void)
     bigint_destroy(value);
 }
 
-void test_factorial_above_practical_limit(void)
+void test_factorial_above_counter_range(void)
 {
-    BigInt *n = make_bigint("100001");
+    BigInt *n = make_bigint("18446744073709551616");
     BigInt *result = bigint_create();
 
     TEST_ASSERT_EQUAL(BIGINT_VALUE_TOO_LARGE, bigint_factorial(result, n));
@@ -2585,7 +2585,7 @@ int main(void)
     RUN_TEST(test_factorial_alias_input);
     RUN_TEST(test_factorial_negative);
     RUN_TEST(test_factorial_overflow);
-    RUN_TEST(test_factorial_above_practical_limit);
+    RUN_TEST(test_factorial_above_counter_range);
 
     /* Permutations and combinations */
     RUN_TEST(test_permutations_and_combinations);

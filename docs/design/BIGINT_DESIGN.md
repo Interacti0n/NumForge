@@ -109,11 +109,13 @@ precondition and quotient/remainder semantics; public conversion is unchanged.
 - The modulo result has the dividend's sign, matching C `%` semantics.
 - `0^0` is defined as `1`.
 - Powers reject negative exponents.
-- Factorial accepts `0 <= n <= BIGINT_FACTORIAL_MAX_N`; the limit prevents an
-  unbounded resource request. Consecutive factors are packed into a `uint64_t`
+- Factorial accepts `0 <= n <= BIGINT_FACTORIAL_MAX_N`; this is the `UINT64_MAX`
+  counter representation bound. Runtime budgets govern practical work. Consecutive factors are packed into a `uint64_t`
   product, checking `product > UINT64_MAX / factor` before multiplying. Each
   completed group multiplies a private BigInt accumulator once. The budget is
-  checked for every factor; only the successful final value is committed.
+  checked for every factor, every 256 limbs of grouped multiplication and before
+  publishing. The counter exits before overflowing; only a successful final
+  value is committed.
 - Permutations and combinations require `0 <= r <= n`. Permutations use the
   falling product directly. Combinations use symmetry and exact division after
   each multiplication, avoiding full factorial intermediates.

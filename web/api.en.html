@@ -66,7 +66,7 @@
   <tr><td>Scientific notation</td><td><code>1.25E-3</code>, <code>6E4</code>; uppercase <code>E</code> is required</td></tr>
   <tr><td>Operators</td><td><code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>^</code>; power has the highest binary-operator precedence and postfix operations bind more tightly. Real and complex exponents are supported; negative real bases with noninteger exponents automatically use principal complex powers.</td></tr>
   <tr><td>Parentheses and signs</td><td><code>(2 + 3) * 4</code>, <code>-(2.5E-1) * 8</code></td></tr>
-  <tr><td>Postfix operations</td><td><code>12²</code>, <code>2³</code>, <code>5!</code>; factorial requires a non-negative integer no greater than 100000</td></tr>
+  <tr><td>Postfix operations</td><td><code>12²</code>, <code>2³</code>, <code>5!</code>; factorial requires a non-negative integer; time and memory budgets apply</td></tr>
   <tr><td>Constants</td><td><code>π</code>, <code>e</code>, <code>φ</code>; imaginary unit <code>i</code></td></tr>
   <tr><td>Implicit multiplication</td><td><code>2π</code>, <code>πe</code>, <code>2(3 + 4)</code></td></tr></table>
   <p><code>%</code> is not supported yet.</p>
@@ -95,7 +95,7 @@
 <p><code>median(a;b;…)</code> returns the exact median. <code>geomean(a;b;…)</code> accepts non-negative values and <code>harmean(a;b;…)</code> only positive nonzero values.</p>
 <p><code>floor(x)</code>, <code>ceil(x)</code>, and <code>trunc(x)</code> return an integer. <code>round(x)</code> rounds to an integer and <code>round(x;n)</code> to integer n decimal places using half-even; negative n selects tens, hundreds, and larger powers of ten.</p>
 <p>Names use lowercase letters only, parentheses are mandatory, and <code>;</code> separates arguments. Comma remains a decimal separator: <code>pow(1,5;2)</code> = <code>2.25</code>. At most 256 arguments per call.</p>
-<p><code>pow(x;y)</code> works like <code>x^y</code> (real integer exponents use the reciprocal when negative; noninteger real exponents are accepted and negative bases promote to principal complex powers); <code>factorial(n)</code> works like <code>n!</code> (integer n from 0 to 100000).</p>
+<p><code>pow(x;y)</code> works like <code>x^y</code> (real integer exponents use the reciprocal when negative; noninteger real exponents are accepted and negative bases promote to principal complex powers); <code>factorial(n)</code> works like <code>n!</code> (non-negative integer n; time and memory budgets apply).</p>
 <p>Also available: <code>exp(x)</code>, <code>ln(x)</code>, common <code>log(x)</code>, and <code>log(x;b)</code> with base b. Real logarithm arguments must be positive; a custom real base must be positive and different from 1. <code>ln</code> also accepts explicit nonzero complex inputs as described in <a href="#complex">Complex numbers</a>.</p>
 <p><code>sin(x)</code>, <code>cos(x)</code>, <code>tan(x)</code>, <code>asin(x)</code>, <code>acos(x)</code>, and one-argument <code>atan(x)</code> are active. Inverse calls also accept <code>arc</code> and <code>arcus</code> names, such as <code>arcsin(x)</code>, <code>arcussin(x)</code>, <code>arctan(x)</code>, and <code>arcustan(x)</code>. The RAD/DEG selector applies to real trigonometric calls; real inverse calls return the selected unit. Complex trigonometric inputs and inverse results use radians, including automatic promotion. <code>asin</code>/<code>acos</code> return real results for x from -1 to 1 and principal complex results outside that interval; <code>tan(90)</code> is an error in DEG mode.</p>
 <p>Hyperbolic <code>sinh</code>, <code>cosh</code>, <code>tanh</code>, <code>asinh</code>, <code>acosh</code>, and <code>atanh</code> are independent of RAD/DEG. Their inverse calls also accept both longer forms, such as <code>arcsinh(x)</code>, <code>arcussinh(x)</code>, <code>arccosh(x)</code>, and <code>arcuscosh(x)</code>. <code>acosh(x &lt; 1)</code> and <code>atanh(|x| &gt; 1)</code> automatically return complex values; <code>atanh(±1)</code> is undefined. Function search recognizes every alias as well as the prefixes <code>arc</code> and <code>arcus</code>.</p>
@@ -140,7 +140,7 @@
 <h2 id="limits">Limits and constraints</h2>
 <p><code>100000!</code> has 456574 decimal digits. Use scientific/auto notation with finite precision; its full plain/fraction output exceeds the 65536-byte display limit. The five-second and memory budgets still apply.</p>
   <table><thead><tr><th>Resource</th><th>Limit</th></tr></thead><tbody>
-    <tr><td>Factorial input</td><td>Integer 0–100000</td></tr>
+    <tr><td>Factorial input</td><td>Non-negative integer up to 18446744073709551615; time and memory budgets apply</td></tr>
     <tr><td>Root degree</td><td>Integer 1–10000</td></tr>
     <tr><td>Output decimal places</td><td>0–10000; default 10</td></tr>
     <tr><td>Calculation time</td><td>5 s, including parsing and output</td></tr>

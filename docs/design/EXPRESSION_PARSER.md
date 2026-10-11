@@ -123,8 +123,9 @@ Postfix operators bind tighter than unary signs and multiplication, so `-2²`
 is `-(2²)` and `(2 + 3)!` is valid. Square and cube preserve an exact
 rational operand; `x²` is `x * x`, and `x³` is `(x * x) * x`.
 Factorial delegates to `bigint_factorial`; it accepts only a non-negative whole
-number up to 10000 in the calculator, and reports an invalid-argument error for
-other inputs or `VALUE_TOO_LARGE` above that calculator limit.
+number in the uint64 counter range, and reports an invalid-argument error for
+other domains or `VALUE_TOO_LARGE` above that representation bound. There is no
+practical factorial input cap; the shared time and memory budgets limit work.
 
 Adjacent primaries, except two numeric tokens, imply multiplication at the normal multiplicative
 precedence. This covers `πe`, `10π`, `5e`, `2(2 + 2)`, and `(1 + 2)(3 + 4)`.

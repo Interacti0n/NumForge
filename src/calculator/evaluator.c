@@ -10,11 +10,10 @@
 #include <numforge/runtime.h>
 
 #include <inttypes.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#define CALCULATOR_STRINGIFY_VALUE(value) #value
-#define CALCULATOR_STRINGIFY(value) CALCULATOR_STRINGIFY_VALUE(value)
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
@@ -279,6 +278,7 @@ static CalculatorStatus calculator_check_factorial_limit(
     BigDecimal *limit;
     CalculatorStatus status;
     int comparison = 0;
+    char limit_text[32];
 
     if (!calculator_nonnegative_integer(value))
     {
@@ -292,8 +292,8 @@ static CalculatorStatus calculator_check_factorial_limit(
         return CALCULATOR_OUT_OF_MEMORY;
     }
 
-    status = calculator_from_bigdecimal_status(
-        bigdecimal_set_string(limit, CALCULATOR_STRINGIFY(CALCULATOR_FACTORIAL_MAX_N)));
+    (void)snprintf(limit_text, sizeof(limit_text), "%" PRIu64, (uint64_t)CALCULATOR_FACTORIAL_MAX_N);
+    status = calculator_from_bigdecimal_status(bigdecimal_set_string(limit, limit_text));
 
     if (status == CALCULATOR_OK)
     {

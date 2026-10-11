@@ -194,8 +194,7 @@ BigIntStatus bigint_factorial( /*Calculate factorial of a BigInt (n!)*/
         return BIGINT_NEGATIVE_ARGUMENT; // factorial is undefined for negative numbers
     }
 
-    if (value->size > 1 ||
-        (value->size == 1 && value->limbs[0] > BIGINT_FACTORIAL_MAX_N))
+    if (value->size > 1)
     {
         return BIGINT_VALUE_TOO_LARGE;
     }
@@ -211,7 +210,7 @@ BigIntStatus bigint_factorial( /*Calculate factorial of a BigInt (n!)*/
     {
         uint64_t group = 1U;
 
-        for (uint64_t i = 2U; i <= n; i++)
+        for (uint64_t i = 2U;; i++)
         {
             if (!numforge_budget_check())
             {
@@ -230,11 +229,15 @@ BigIntStatus bigint_factorial( /*Calculate factorial of a BigInt (n!)*/
             {
                 group *= i;
             }
+            /* Exit before incrementing UINT64_MAX; the counter must not wrap
+             * to zero and become the divisor in the grouping test. */
+            if (i == n) break;
         }
         if (status == BIGINT_OK)
             status = bigint_multiply_by_uint64(&temporary, group);
     }
 
+    if (status == BIGINT_OK && !numforge_budget_check()) status = BIGINT_OUT_OF_MEMORY;
     if (status == BIGINT_OK)
     {
         temporary.is_negative = false;

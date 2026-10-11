@@ -66,7 +66,7 @@
   <tr><td>Vedecký zápis</td><td><code>1.25E-3</code>, <code>6E4</code>; veľké <code>E</code> je povinné</td></tr>
   <tr><td>Operátory</td><td><code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>^</code>; mocnina má najvyššiu prioritu medzi binárnymi operátormi a postfixové operácie sa viažu ešte silnejšie. Fungujú reálne aj komplexné exponenty; záporný reálny základ s neceločíselným exponentom sa automaticky rozšíri na hlavnú komplexnú mocninu.</td></tr>
   <tr><td>Zátvorky a znamienka</td><td><code>(2 + 3) * 4</code>, <code>-(2.5E-1) * 8</code></td></tr>
-  <tr><td>Postfixové operácie</td><td><code>12²</code>, <code>2³</code>, <code>5!</code>; faktoriál vyžaduje nezáporné celé číslo najviac 100000</td></tr>
+  <tr><td>Postfixové operácie</td><td><code>12²</code>, <code>2³</code>, <code>5!</code>; faktoriál vyžaduje nezáporné celé číslo; platia časové a pamäťové limity</td></tr>
   <tr><td>Konštanty</td><td><code>π</code>, <code>e</code>, <code>φ</code>; imaginárna jednotka <code>i</code></td></tr>
   <tr><td>Implicitné násobenie</td><td><code>2π</code>, <code>πe</code>, <code>2(3 + 4)</code></td></tr></table>
   <p>Operátor <code>%</code> zatiaľ nie je podporovaný.</p>
@@ -95,7 +95,7 @@
 <p><code>median(a;b;…)</code> vracia presný medián. <code>geomean(a;b;…)</code> prijíma nezáporné hodnoty a <code>harmean(a;b;…)</code> iba kladné nenulové hodnoty.</p>
 <p><code>floor(x)</code>, <code>ceil(x)</code> a <code>trunc(x)</code> vracajú celé číslo. <code>round(x)</code> zaokrúhľuje na celé číslo a <code>round(x;n)</code> na celé n desatinných miest pravidlom half-even; záporné n znamená desiatky, stovky a vyššie rády.</p>
 <p>Názvy používajú iba malé písmená, zátvorky sú povinné a argumenty oddeľuje <code>;</code>. Čiarka zostáva desatinná: <code>pow(1,5;2)</code> = <code>2.25</code>. Najviac 256 argumentov na volanie.</p>
-<p>Fungujú <code>pow(x;y)</code> (ako <code>x^y</code>, záporný celočíselný exponent používa recipročnú hodnotu; neceločíselné exponenty sú povolené a záporné základy sa automaticky rozšíria na hlavné komplexné mocniny) a <code>factorial(n)</code> (ako <code>n!</code>, celé n od 0 do 100000).</p>
+<p>Fungujú <code>pow(x;y)</code> (ako <code>x^y</code>, záporný celočíselný exponent používa recipročnú hodnotu; neceločíselné exponenty sú povolené a záporné základy sa automaticky rozšíria na hlavné komplexné mocniny) a <code>factorial(n)</code> (ako <code>n!</code>, nezáporné celé n; platia časové a pamäťové limity).</p>
 <p>Fungujú aj <code>exp(x)</code>, <code>ln(x)</code>, dekadický <code>log(x)</code> a <code>log(x;b)</code> so základom b. Reálny logaritmovaný výraz musí byť kladný; vlastný reálny základ musí byť kladný a nesmie byť 1. <code>ln</code> prijíma aj explicitný nenulový komplexný vstup podľa sekcie <a href="#complex">Komplexné čísla</a>.</p>
 <p>Fungujú <code>sin(x)</code>, <code>cos(x)</code>, <code>tan(x)</code>, <code>asin(x)</code>, <code>acos(x)</code> a jednoargumentový <code>atan(x)</code>. Inverzné funkcie prijímajú aj názvy s <code>arc</code> alebo <code>arcus</code>: napríklad <code>arcsin(x)</code>, <code>arcussin(x)</code>, <code>arctan(x)</code> a <code>arcustan(x)</code>. Prepínač RAD/DEG platí pre reálne trigonometrické volania; reálne inverzné funkcie vracajú výsledok v zvolenej jednotke. Komplexné trigonometrické vstupy a inverzné výsledky používajú radiány, aj pri automatickom rozšírení. <code>asin</code>/<code>acos</code> vracajú reálny výsledok pre x od -1 po 1 a hlavnú komplexnú vetvu mimo intervalu; <code>tan(90)</code> je v DEG režime chyba.</p>
 <p>Hyperbolické <code>sinh</code>, <code>cosh</code>, <code>tanh</code>, <code>asinh</code>, <code>acosh</code> a <code>atanh</code> nezávisia od RAD/DEG. Aj inverzné hyperbolické funkcie prijímajú oba dlhšie tvary, napríklad <code>arcsinh(x)</code>, <code>arcussinh(x)</code>, <code>arccosh(x)</code> a <code>arcuscosh(x)</code>. <code>acosh(x &lt; 1)</code> a <code>atanh(|x| &gt; 1)</code> automaticky vracajú komplexné hodnoty; <code>atanh(±1)</code> nie je definované. Vyhľadávanie v knižnici funkcií rozpoznáva všetky tieto názvy aj samotné <code>arc</code> a <code>arcus</code>.</p>
@@ -140,7 +140,7 @@
 <h2 id="limits">Limity a obmedzenia</h2>
 <p><code>100000!</code> má 456574 desatinných číslic. Použi vedecký/automatický zápis s konečnou presnosťou; úplný bežný/zlomkový výpis prekročí limit 65536 bajtov. Naďalej platí časový rozpočet päť sekúnd a pamäťové limity.</p>
   <table><thead><tr><th>Zdroj</th><th>Limit</th></tr></thead><tbody>
-    <tr><td>Vstup faktoriálu</td><td>Celé číslo 0–100000</td></tr>
+    <tr><td>Vstup faktoriálu</td><td>Nezáporné celé číslo najviac 18446744073709551615; platia časové a pamäťové limity</td></tr>
     <tr><td>Stupeň odmocniny</td><td>Celé číslo 1–10000</td></tr>
     <tr><td>Desatinné miesta výstupu</td><td>0–10000; predvolene 10</td></tr>
     <tr><td>Čas výpočtu</td><td>5 s vrátane parsovania a výstupu</td></tr>

@@ -209,7 +209,8 @@ Repeated decimal separators (`1.2.3`, `1,2,3`) and adjacent numeric tokens
 remain valid. Implicit multiplication shares the left-associative precedence
 of `*` and `/`, so `6/2(1+2)` is `9`.
 Factorial uses `bigint_factorial` and requires a non-negative whole number no
-greater than 100000, matching the underlying BigInt API.
+greater than UINT64_MAX (18446744073709551615), matching the counter range
+of the underlying BigInt API. There is no separate practical input cap.
 Non-terminating division defaults to 34 significant digits with half-even
 rounding. The complete CLI/HTTP calculation has a five-second monotonic time
 budget, including parsing and output formatting. Expensive BigInt parsing,
@@ -223,8 +224,9 @@ selected output places. These byte limits are not character counts.
 Freed allocations still count toward the cumulative work budget; it is not a
 measurement of process RSS. Resource limits return `value too large`, not TLE.
 These limits do not change unrestricted public BigInt/BigDecimal calls.
-An allowed factorial input (including 100000) may still exceed the time or
-memory budget; the input limit is not a completion guarantee.
+An allowed factorial input may still exceed the time or memory budget.
+Cancellation is checked for every factor and within long limb multiplications;
+representable input is not a completion guarantee.
 For example, 100000! has 456574 decimal digits: use scientific/auto notation
 with finite output precision. Its complete plain/fraction output exceeds the
 65536-byte display limit. Full precision does not remove resource limits.

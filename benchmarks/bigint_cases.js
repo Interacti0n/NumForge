@@ -36,7 +36,7 @@ function makeCases(quick, factorialOnly = false) {
         rows.push([name, op, mode, a, b, expected, remainder].map(String).join('\t'));
     }
     function factorials() {
-        for (const n of quick ? [0, 1, 20, 100] : [0, 1, 20, 100, 500, 1000, 5000, 10000, 20000, 50000, 100000])
+        for (const n of quick ? [0, 1, 20, 100] : [0, 1, 20, 100, 500, 1000, 5000, 10000, 20000, 50000, 100000, 100001, 150000])
             for (const op of ['factorial', 'tree']) add(`${op}-${n}`, op, 'reuse', BigInt(n));
     }
     if (factorialOnly) { factorials(); return rows; }

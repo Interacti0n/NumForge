@@ -7,6 +7,9 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Remove the practical 100000 factorial input cap; retain the uint64 counter
+  range and shared time/memory/output budgets. Check cancellation within grouped
+  limb multiplication and avoid counter wrap; update C API, web help and guides.
 - Reuse per-call ln/exp arithmetic, alignment, rounding and division scratch,
   with bounded power caching and atomic aliases; reduce high-precision allocation
   traffic without changing guard digits, rounding or calculator budgets.

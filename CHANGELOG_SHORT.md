@@ -5,6 +5,7 @@ details and the [2.2 release record](docs/project/RELEASE_2_2.md) for validation
 
 ## Unreleased
 
+- Allow larger factorial inputs under existing time and memory budgets.
 - Reduce ln/exp allocations; 5000-place exp now fits existing resource limits.
 - Cut GCD allocation churn so large real/complex fractions fit existing limits.
 - Expand benchmark coverage and refresh performance/limit diagnostics.

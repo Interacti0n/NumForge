@@ -2413,6 +2413,49 @@ static void test_sinh_cosh_pair_atomic_on_every_failure(void)
     check_forward_pair_failures(true);
 }
 
+void test_large_factorial_cancellation_preserves_destination(void)
+{
+    const char *inputs[] = { "100001", "1000000", "18446744073709551615" };
+    for (size_t i = 0U; i < sizeof(inputs) / sizeof(inputs[0]); i++)
+    for (unsigned alias = 0U; alias < 2U; alias++)
+    {
+        BigInt *n = make_bigint(inputs[i]), *out = make_bigint("77");
+        numforge_test_budget_expire_after(1000U);
+        TEST_ASSERT_TRUE(numforge_budget_begin(UINT64_MAX, SIZE_MAX, SIZE_MAX));
+        BigIntStatus status = bigint_factorial(alias ? n : out, n);
+        TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_TIME, numforge_budget_failure());
+        numforge_budget_end();
+        TEST_ASSERT_EQUAL(BIGINT_OUT_OF_MEMORY, status);
+        assert_bigint_text(inputs[i], n);
+        assert_bigint_text("77", out);
+        bigint_destroy(n); bigint_destroy(out);
+    }
+    /* Expire inside, rather than before, a long private limb multiplication. */
+    BigInt scratch = {0};
+    scratch.size = scratch.capacity = 1024U;
+    scratch.limbs = calloc(scratch.capacity, sizeof(uint64_t));
+    TEST_ASSERT_NOT_NULL(scratch.limbs);
+    for (size_t i = 0U; i < scratch.size; i++) scratch.limbs[i] = UINT64_MAX;
+    numforge_test_budget_expire_after(2U);
+    TEST_ASSERT_TRUE(numforge_budget_begin(UINT64_MAX, SIZE_MAX, SIZE_MAX));
+    TEST_ASSERT_EQUAL(BIGINT_OUT_OF_MEMORY, bigint_multiply_by_uint64(&scratch, 3U));
+    TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_TIME, numforge_budget_failure());
+    numforge_budget_end();
+    free(scratch.limbs);
+    const char *expressions[] = { "100001!", "factorial(100001)", "1000000!", "18446744073709551615!" };
+    for (size_t i = 0U; i < sizeof(expressions) / sizeof(expressions[0]); i++)
+    {
+        CalculatorContext context;
+        CalculatorError error;
+        char *text = NULL;
+        calculator_context_init(&context);
+        numforge_test_budget_expire_after(1000U);
+        TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT, calculator_compute(expressions[i], &context, &text, &error));
+        TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT, error.status);
+        TEST_ASSERT_NULL(text);
+    }
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -2463,5 +2506,6 @@ int main(void)
     RUN_TEST(test_bigrational_preserves_aliases_on_every_allocation_failure);
     RUN_TEST(test_bigrational_conversion_preserves_outputs_on_allocation_failure);
 
+    RUN_TEST(test_large_factorial_cancellation_preserves_destination);
     return UNITY_END();
 }

@@ -313,7 +313,7 @@ const functionHelp = {
     mod: ["mod","mod(x;y)","Zvyšok celočíselného delenia; y ≠ 0.","Integer division remainder; y ≠ 0."],
     npr: ["nPr","npr(n;r)","Permutácie bez opakovania; celé 0 ≤ r ≤ n.","Permutations without repetition; integers 0 ≤ r ≤ n."],
     ncr: ["nCr","ncr(n;r)","Kombinácie bez opakovania; celé 0 ≤ r ≤ n.","Combinations without repetition; integers 0 ≤ r ≤ n."],
-    factorial: ["n!","factorial(n)","Celé n od 0 do 100000; platia časové a pamäťové limity.","Integer n from 0 to 100000; time and memory limits apply."],
+    factorial: ["n!","factorial(n)","Nezáporné celé n; platia časové a pamäťové limity.","Non-negative integer n; time and memory limits apply."],
     isqrt: ["isqrt","isqrt(n)","Celá časť odmocniny; celé n ≥ 0.","Integer square root; integer n ≥ 0."],
     rand: ["rand","rand() / rand(x) / rand(x;y)","Náhodná hodnota v [0,1), [0,x) alebo [x,y); x > 0 a x < y.","Random value in [0,1), [0,x) or [x,y); x > 0 and x < y."],
     pow: ["xʸ","pow(x;n)","Reálne aj komplexné exponenty; záporný základ s neceločíselným exponentom dá hlavnú komplexnú mocninu.","Real and complex exponents; a negative base with a noninteger exponent gives a principal complex power."],
