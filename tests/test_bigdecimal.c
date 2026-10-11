@@ -55,6 +55,39 @@ static void assert_decimal_format(
     bigdecimal_destroy(value);
 }
 
+void test_integer_conversion_preserves_exact_value_and_source(void)
+{
+    static const char *const inputs[] = {
+        "0", "1", "-1", "1200", "-1200",
+        "18446744073709551616",
+        "-123456789012345678901234567890000000000000000000000"
+    };
+    BigDecimal *result = make_decimal("7.77");
+    BigInt *source = bigint_create();
+    BigInt *restored = bigint_create();
+    TEST_ASSERT_NOT_NULL(source);
+    TEST_ASSERT_NOT_NULL(restored);
+    for (size_t index = 0; index < sizeof(inputs) / sizeof(inputs[0]); index++)
+    {
+        char *text;
+        TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(source, inputs[index]));
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_from_bigint(result, source));
+        assert_decimal_equals(inputs[index], result);
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_to_bigint(restored, result));
+        TEST_ASSERT_EQUAL_INT(0, bigint_compare(source, restored));
+        text = bigint_to_string(source);
+        TEST_ASSERT_NOT_NULL(text);
+        TEST_ASSERT_EQUAL_STRING(inputs[index], text);
+        free(text);
+    }
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_from_bigint(NULL, source));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_from_bigint(result, NULL));
+    assert_decimal_equals(inputs[sizeof(inputs) / sizeof(inputs[0]) - 1], result);
+    bigint_destroy(source);
+    bigint_destroy(restored);
+    bigdecimal_destroy(result);
+}
+
 void test_lifetime_and_status_strings(void)
 {
     BigDecimal *value = bigdecimal_create();
@@ -933,6 +966,7 @@ int main(void)
     UNITY_BEGIN();
 
     RUN_TEST(test_lifetime_and_status_strings);
+    RUN_TEST(test_integer_conversion_preserves_exact_value_and_source);
     RUN_TEST(test_parse_format_and_canonical_form);
     RUN_TEST(test_readable_format_thresholds_and_rounding_carry);
     RUN_TEST(test_format_modes_share_rounded_value_and_respect_limits);

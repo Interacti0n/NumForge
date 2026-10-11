@@ -54,6 +54,10 @@ population/sample statistics, real roots, significant and exact-first division,
 constants and readable formatting; see [Public C API](../reference/C_API.md#additional-numeric-operations).
 The calculator calls public APIs without accessing the representation.
 
+`bigdecimal_from_bigint` copies the exact integer coefficient into a temporary
+decimal and normalizes it before committing. It does not serialize the integer
+to text; allocation or normalization failure leaves both inputs unchanged.
+
 Roots preserve exact finite results. For canonical `C * 10^-s`, a finite kth
 root exists iff s is divisible by k and abs(C) is a perfect kth power. Otherwise
 exponent division normalizes the radicand independently of the absolute scale.

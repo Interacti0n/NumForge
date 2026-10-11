@@ -31,7 +31,7 @@ BigDecimalStatus bigdecimal_from_bigint(
     const BigInt *value
 )
 {
-    char *text;
+    BigDecimal *temporary;
     BigDecimalStatus status;
 
     if (result == NULL || value == NULL)
@@ -39,17 +39,24 @@ BigDecimalStatus bigdecimal_from_bigint(
         return BIGDECIMAL_NULL_ARGUMENT;
     }
 
-    text = bigint_to_string(value);
+    temporary = bigdecimal_create();
 
-    if (text == NULL)
+    if (temporary == NULL)
     {
         return BIGDECIMAL_OUT_OF_MEMORY;
     }
 
-    status = bigdecimal_set_string(result, text);
-    free(text);
+    status = from_integer_status(bigint_copy(temporary->coefficient, value));
+    if (status != BIGDECIMAL_OK)
+    {
+        bigdecimal_destroy(temporary);
+        return status;
+    }
 
-    return status;
+    /* Copy the exact coefficient without materializing its decimal text.
+     * Finish owns the temporary and preserves result if normalization fails. */
+    temporary->scale = 0;
+    return bigdecimal_finish(result, temporary);
 }
 
 BigDecimalStatus bigdecimal_to_bigint(

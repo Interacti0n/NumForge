@@ -7,6 +7,8 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Convert BigInt to BigDecimal directly from its exact coefficient, avoiding
+  full decimal text serialization while preserving atomic failure guarantees.
 - Split exhaustive complex allocation-failure tests into eight disjoint shards
   per suite and reference checks by precision. Keep all cases enabled in CTest;
   CI runs allocation shards on two workers with optimized diagnostic builds.

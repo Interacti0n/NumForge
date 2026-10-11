@@ -941,6 +941,37 @@ void test_bigdecimal_format_size_overflow_preserves_output(void)
 }
 #endif
 
+void test_bigdecimal_from_bigint_every_allocation_failure(void)
+{
+    static const char input[] = "-123456789012345678901234567890000000000000000000000";
+    BigInt *source = make_bigint(input);
+    bool completed = false;
+    for (size_t index = 1; index <= ALLOCATION_TEST_MAX_FAILURE_INDEX; index++)
+    {
+        BigDecimal *result = make_bigdecimal("7.77");
+        numforge_test_allocator_begin(index);
+        BigDecimalStatus status = bigdecimal_from_bigint(result, source);
+        bool failed = numforge_test_allocator_did_fail();
+        numforge_test_allocator_end();
+        assert_bigint_text(input, source);
+        if (failed)
+        {
+            TEST_ASSERT_EQUAL(BIGDECIMAL_OUT_OF_MEMORY, status);
+            assert_bigdecimal_text("7.77", result);
+        }
+        else
+        {
+            TEST_ASSERT_EQUAL(BIGDECIMAL_OK, status);
+            assert_bigdecimal_text(input, result);
+            completed = true;
+        }
+        bigdecimal_destroy(result);
+        if (completed) break;
+    }
+    bigint_destroy(source);
+    TEST_ASSERT_TRUE(completed);
+}
+
 void test_bigdecimal_conversion_and_comparison_failure_paths(void)
 {
     static const char large_value[] =
@@ -1799,6 +1830,7 @@ int main(void)
     RUN_TEST(test_bigdecimal_format_size_overflow_preserves_output);
 #endif
     RUN_TEST(test_bigdecimal_conversion_and_comparison_failure_paths);
+    RUN_TEST(test_bigdecimal_from_bigint_every_allocation_failure);
     RUN_TEST(test_bigdecimal_arithmetic_failure_paths);
     RUN_TEST(test_bigdecimal_aliasing_preserves_destination_on_allocation_failure);
     RUN_TEST(test_dynamic_constant_sampled_allocation_failures);
