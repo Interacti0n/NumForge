@@ -1,4 +1,5 @@
 #include "bigdecimal_internal.h"
+#include "../internal/numforge_alloc.h"
 
 #include <numforge/bigdecimal.h>
 #include <numforge/bigint.h>
@@ -56,6 +57,17 @@ BigDecimalStatus bigdecimal_compare(
             *comparison = bigint_is_zero(a->coefficient) ? -1 : 1;
         }
 
+        return BIGDECIMAL_OK;
+    }
+
+    // Equal scales need no decimal serialization or coefficient alignment.
+    if (a->scale == b->scale)
+    {
+        if (!numforge_budget_check())
+        {
+            return BIGDECIMAL_OUT_OF_MEMORY;
+        }
+        *comparison = bigint_compare(a->coefficient, b->coefficient);
         return BIGDECIMAL_OK;
     }
 

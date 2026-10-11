@@ -7,6 +7,9 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Reduce decimal arithmetic allocation churn by borrowing unscaled coefficients,
+  comparing equal scales directly, simplifying quotient rounding and exchanging
+  private series sums; preserve aliases, rounding and atomic failure handling.
 - Replace bit-serial BigInt division with normalized 64-bit limb division and
   a single-limb fast path; avoid redundant input copies while preserving aliases
   and atomic error handling. Add independent division and portability checks.

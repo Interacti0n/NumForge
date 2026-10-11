@@ -9,6 +9,8 @@ The [factor grouping report](../docs/benchmarks/FACTORIAL_GROUPING_2026_10_11.md
 compares the next factorial optimization with the recursive product tree.
 The [division report](../docs/benchmarks/DIVISION_2026_10_11.md) records the
 radix-2^64 division change and its effects on high-precision calculations.
+The [decimal allocation report](../docs/benchmarks/DECIMAL_ALLOCATIONS_2026_10_11.md)
+records coefficient borrowing and private series-sum reuse under unchanged limits.
 
 | Files | Purpose |
 | --- | --- |

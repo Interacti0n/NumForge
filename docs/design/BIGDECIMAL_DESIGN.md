@@ -48,6 +48,14 @@ All listed operations are implemented. Every mutating operation computes into
 a temporary value and commits only on success, so its destination is unchanged
 after an error.
 
+Addition/subtraction borrow coefficients already at the common scale; fixed-scale
+division allocates only the coefficient that needs scaling. These read-only
+borrows end before the private result is committed, including output aliases.
+Equal-scale comparisons use signed integer comparison without decimal text.
+Half rounding doubles one private remainder and compares magnitudes directly.
+Logarithmic and exponential series exchange two private sum owners instead of
+copying the old sum on each iteration. No shared scratch state is introduced.
+
 Additive APIs also provide exact integer conversions, sign/integer predicates,
 min/max, sequence aggregates, floor/ceil/trunc/half-even round, integer powers,
 population/sample statistics, real roots, significant and exact-first division,

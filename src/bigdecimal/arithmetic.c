@@ -92,8 +92,10 @@ static BigDecimalStatus bigdecimal_add_or_subtract(
     BigDecimal *temporary;
     BigInt *scaled_a = NULL;
     BigInt *scaled_b = NULL;
+    const BigInt *left = a->coefficient;
+    const BigInt *right = b->coefficient;
     int64_t scale = a->scale >= b->scale ? a->scale : b->scale;
-    uint64_t difference;
+    uint64_t difference = 0U;
     BigDecimalStatus status;
 
     if (bigint_is_zero(a->coefficient))
@@ -106,9 +108,7 @@ static BigDecimalStatus bigdecimal_add_or_subtract(
     }
 
     temporary = bigdecimal_create();
-    scaled_a = bigint_create();
-    scaled_b = bigint_create();
-    if (temporary == NULL || scaled_a == NULL || scaled_b == NULL)
+    if (temporary == NULL)
     {
         bigdecimal_destroy(temporary);
         bigint_destroy(scaled_a);
@@ -116,24 +116,36 @@ static BigDecimalStatus bigdecimal_add_or_subtract(
         return BIGDECIMAL_OUT_OF_MEMORY;
     }
 
-    status = bigdecimal_scale_difference(scale, a->scale, &difference);
-    if (status == BIGDECIMAL_OK)
+    status = BIGDECIMAL_OK;
+    // Borrow coefficients already at the target scale. Inputs remain intact
+    // until the private result is normalized and committed, including aliases.
+    if (a->scale != scale)
     {
-        status = bigdecimal_multiply_power_of_ten(scaled_a, a->coefficient, difference);
+        scaled_a = bigint_create();
+        status = scaled_a == NULL ? BIGDECIMAL_OUT_OF_MEMORY
+                                 : bigdecimal_scale_difference(scale, a->scale, &difference);
+        if (status == BIGDECIMAL_OK)
+        {
+            status = bigdecimal_multiply_power_of_ten(scaled_a, left, difference);
+            left = scaled_a;
+        }
     }
-    if (status == BIGDECIMAL_OK)
+    if (status == BIGDECIMAL_OK && b->scale != scale)
     {
-        status = bigdecimal_scale_difference(scale, b->scale, &difference);
-    }
-    if (status == BIGDECIMAL_OK)
-    {
-        status = bigdecimal_multiply_power_of_ten(scaled_b, b->coefficient, difference);
+        scaled_b = bigint_create();
+        status = scaled_b == NULL ? BIGDECIMAL_OUT_OF_MEMORY
+                                 : bigdecimal_scale_difference(scale, b->scale, &difference);
+        if (status == BIGDECIMAL_OK)
+        {
+            status = bigdecimal_multiply_power_of_ten(scaled_b, right, difference);
+            right = scaled_b;
+        }
     }
     if (status == BIGDECIMAL_OK)
     {
         status = bigdecimal_from_bigint_status(
-            subtract ? bigint_sub(temporary->coefficient, scaled_a, scaled_b)
-                     : bigint_add(temporary->coefficient, scaled_a, scaled_b));
+            subtract ? bigint_sub(temporary->coefficient, left, right)
+                     : bigint_add(temporary->coefficient, left, right));
     }
 
     bigint_destroy(scaled_a);

@@ -510,8 +510,9 @@ BigDecimalStatus bigdecimal_div(
 )
 {
     BigDecimal *temporary;
-    BigInt *numerator;
-    BigInt *divisor;
+    BigInt *scaled = NULL;
+    const BigInt *numerator;
+    const BigInt *divisor;
     BigInt *remainder;
     int64_t exponent;
     uint64_t power;
@@ -549,43 +550,40 @@ BigDecimalStatus bigdecimal_div(
     }
 
     temporary = bigdecimal_create();
-    numerator = bigint_create();
-    divisor = bigint_create();
+    numerator = a->coefficient;
+    divisor = b->coefficient;
+    if (exponent != 0)
+    {
+        scaled = bigint_create();
+    }
     remainder = bigint_create();
-    if (temporary == NULL || numerator == NULL || divisor == NULL || remainder == NULL)
+    if (temporary == NULL || (exponent != 0 && scaled == NULL) || remainder == NULL)
     {
         bigdecimal_destroy(temporary);
-        bigint_destroy(numerator);
-        bigint_destroy(divisor);
+        bigint_destroy(scaled);
         bigint_destroy(remainder);
         return BIGDECIMAL_OUT_OF_MEMORY;
     }
 
-    if (exponent >= 0)
+    status = BIGDECIMAL_OK;
+    // Only one coefficient needs scaling. Borrow the other until commit.
+    if (exponent > 0)
     {
         status = bigdecimal_multiply_power_of_ten(
-            numerator,
+            scaled,
             a->coefficient,
             (uint64_t)exponent);
 
-        if (status == BIGDECIMAL_OK)
-        {
-            status = bigdecimal_from_bigint_status(
-                bigint_copy(divisor, b->coefficient));
-        }
+        numerator = scaled;
     }
-    else
+    else if (exponent < 0)
     {
         power = bigdecimal_abs_i64(exponent);
-        status = bigdecimal_from_bigint_status(bigint_copy(numerator, a->coefficient));
-
-        if (status == BIGDECIMAL_OK)
-        {
-            status = bigdecimal_multiply_power_of_ten(
-                divisor,
-                b->coefficient,
-                power);
-        }
+        status = bigdecimal_multiply_power_of_ten(
+            scaled,
+            b->coefficient,
+            power);
+        divisor = scaled;
     }
 
     if (status == BIGDECIMAL_OK)
@@ -610,8 +608,7 @@ BigDecimalStatus bigdecimal_div(
             rounding);
     }
 
-    bigint_destroy(numerator);
-    bigint_destroy(divisor);
+    bigint_destroy(scaled);
     bigint_destroy(remainder);
     if (status == BIGDECIMAL_OK)
     {

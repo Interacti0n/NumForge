@@ -231,10 +231,16 @@ static BigDecimalStatus logarithm_series(
         TRANSCENDENTAL_TRY(set_integer(order, index));
         TRANSCENDENTAL_TRY(bigdecimal_div_significant(
             fraction, term, order, work_digits, rounding));
-        TRANSCENDENTAL_TRY(bigdecimal_copy(previous, sum));
         TRANSCENDENTAL_TRY(add_significant(
-            sum, sum, fraction, work_digits, rounding));
-        TRANSCENDENTAL_TRY(bigdecimal_compare(&comparison, sum, previous));
+            previous, sum, fraction, work_digits, rounding));
+        TRANSCENDENTAL_TRY(bigdecimal_compare(&comparison, previous, sum));
+        // Both values are private. Retain the old sum by exchanging owners
+        // rather than copying its entire coefficient on every series step.
+        {
+            BigDecimal *swap = sum;
+            sum = previous;
+            previous = swap;
+        }
 
         if (comparison == 0)
         {
@@ -341,10 +347,14 @@ static BigDecimalStatus exponential_series(
         TRANSCENDENTAL_TRY(set_integer(order, index));
         TRANSCENDENTAL_TRY(bigdecimal_div_significant(
             term, term, order, work_digits, rounding));
-        TRANSCENDENTAL_TRY(bigdecimal_copy(previous, sum));
         TRANSCENDENTAL_TRY(add_significant(
-            sum, sum, term, work_digits, rounding));
-        TRANSCENDENTAL_TRY(bigdecimal_compare(&comparison, sum, previous));
+            previous, sum, term, work_digits, rounding));
+        TRANSCENDENTAL_TRY(bigdecimal_compare(&comparison, previous, sum));
+        {
+            BigDecimal *swap = sum;
+            sum = previous;
+            previous = swap;
+        }
 
         if (comparison == 0)
         {

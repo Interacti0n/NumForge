@@ -412,48 +412,29 @@ BigDecimalStatus bigdecimal_round_quotient(
         case BIGDECIMAL_ROUND_HALF_UP:
         case BIGDECIMAL_ROUND_HALF_EVEN:
         {
-            BigInt *absolute_remainder = bigint_create();
-            BigInt *absolute_divisor = bigint_create();
-            BigInt *two = bigint_create();
             BigInt *twice_remainder = bigint_create();
             int comparison;
 
-            if (absolute_remainder == NULL || absolute_divisor == NULL ||
-                two == NULL || twice_remainder == NULL)
+            if (twice_remainder == NULL)
             {
-                bigint_destroy(absolute_remainder);
-                bigint_destroy(absolute_divisor);
-                bigint_destroy(two);
-                bigint_destroy(twice_remainder);
                 return BIGDECIMAL_OUT_OF_MEMORY;
             }
 
-            status = bigdecimal_from_bigint_status(bigint_abs(absolute_remainder, remainder));
+            status = bigdecimal_from_bigint_status(bigint_copy(twice_remainder, remainder));
             if (status == BIGDECIMAL_OK)
             {
-                status = bigdecimal_from_bigint_status(bigint_abs(absolute_divisor, divisor));
-            }
-            if (status == BIGDECIMAL_OK)
-            {
-                status = bigdecimal_from_bigint_status(bigint_set_string(two, "2"));
-            }
-            if (status == BIGDECIMAL_OK)
-            {
-                status = bigdecimal_from_bigint_status(bigint_mul(twice_remainder, absolute_remainder, two));
+                status = bigdecimal_from_bigint_status(bigint_multiply_by_uint64(twice_remainder, 2U));
             }
 
             if (status == BIGDECIMAL_OK)
             {
-                comparison = bigint_compare(twice_remainder, absolute_divisor);
+                comparison = bigint_compare_abs(twice_remainder, divisor);
                 adjust = comparison > 0 ||
                          (comparison == 0 &&
                           (rounding == BIGDECIMAL_ROUND_HALF_UP ||
                            !bigint_is_even(quotient)));
             }
 
-            bigint_destroy(absolute_remainder);
-            bigint_destroy(absolute_divisor);
-            bigint_destroy(two);
             bigint_destroy(twice_remainder);
             break;
         }
@@ -467,22 +448,12 @@ BigDecimalStatus bigdecimal_round_quotient(
     }
 
     {
-        BigInt *one = bigint_create();
-
-        if (one == NULL)
-        {
-            return BIGDECIMAL_OUT_OF_MEMORY;
-        }
-
-        status = bigdecimal_from_bigint_status(bigint_set_string(one, "1"));
-        if (status == BIGDECIMAL_OK)
-        {
-            status = bigdecimal_from_bigint_status(
-                negative ? bigint_sub(quotient, quotient, one)
-                         : bigint_add(quotient, quotient, one));
-        }
-
-        bigint_destroy(one);
+        BigInt one;
+        uint64_t storage;
+        (void)bigint_wrap_uint64(&one, &storage, 1U);
+        status = bigdecimal_from_bigint_status(
+            negative ? bigint_sub(quotient, quotient, &one)
+                     : bigint_add(quotient, quotient, &one));
     }
 
     return status;
