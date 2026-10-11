@@ -40,6 +40,11 @@ The [Karatsuba integration](../docs/benchmarks/KARATSUBA_INTEGRATION_2026_10_11.
 records compiler/operand-shape checks and the production budget-aware dispatcher.
 The [factorial tree integration](../docs/benchmarks/FACTORIAL_TREE_INTEGRATION_2026_10_11.md)
 records reusable workspace, budget admission and complete calculator results.
+The [factorial stress report](../docs/benchmarks/FACTORIAL_STRESS_2026_10_11.md)
+separates the admission cliff from actual scratch limits and decimal normalization.
+Generate `--workspace --stress` fixtures and use `run_factorial_stress.cjs`
+for serial budgeted whole-request/phase/tree diagnostics. Calculator limit
+benchmark `--phases-profile` additionally measures exclusive normalization time.
 Use `generate_karatsuba_factorials.py output.tsv --workspace` for public,
 grouped and workspace-tree references; add `--timing` for the serial speed matrix.
 Use `run_karatsuba.cjs executable empty-directory --focused` for a serial

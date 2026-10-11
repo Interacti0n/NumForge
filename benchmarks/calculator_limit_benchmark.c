@@ -1,6 +1,7 @@
 #include "calculator_internal.h"
 #include "benchmark_clock.h"
 #include "../src/internal/numforge_alloc.h"
+#include "../src/internal/decimal_profile.h"
 #include <errno.h>
 #include <inttypes.h>
 #include <stdio.h>
@@ -48,12 +49,14 @@ int main(int argc, char **argv)
     char *result = NULL;
     char input[CALCULATOR_MAX_INPUT_BYTES + 2U];
     bool from_file = argc == 6 && !strcmp(argv[1], "--input-file");
+    bool profile = argc == 6 && !strcmp(argv[5], "--phases-profile") && !from_file;
+    bool phases = argc == 6 && (!strcmp(argv[5], "--phases") || profile) && !from_file;
     int settings = from_file ? 3 : 2;
-    if ((!from_file && argc != 5) || !integer_argument(argv[settings], &places) ||
+    if ((!from_file && !phases && argc != 5) || !integer_argument(argv[settings], &places) ||
         !integer_argument(argv[settings + 1], &notation) || !integer_argument(argv[settings + 2], &deadline) ||
         notation < CALCULATOR_NOTATION_AUTO || notation > CALCULATOR_NOTATION_FRACTION || deadline < 0)
     {
-        fputs("Usage: calculator_limit_benchmark expression places notation time-limit-ms\n"
+        fputs("Usage: calculator_limit_benchmark expression places notation time-limit-ms [--phases|--phases-profile]\n"
               "   or: calculator_limit_benchmark --input-file UTF8-file places notation time-limit-ms\n", stderr);
         return EXIT_FAILURE;
     }
@@ -74,23 +77,56 @@ int main(int argc, char **argv)
     context.notation = (CalculatorNotation)notation;
     context.time_limit_ms = deadline;
     numforge_alloc_stats_reset();
+    if (profile) numforge_decimal_profile_reset();
     double begin = benchmark_seconds();
     /* Own the same production scope so its reason remains observable after
      * calculator_compute returns. Nested compute/format stages reuse it. */
     if (!numforge_budget_begin((uint64_t)deadline,
             CALCULATOR_ALLOCATION_BUDGET, CALCULATOR_SINGLE_ALLOCATION)) return EXIT_FAILURE;
-    CalculatorStatus status = calculator_compute(expression, &context, &result, &error);
+    double evaluated = begin, formatted = begin;
+    CalculatorStatus status;
+    if (phases)
+    {
+        /* Mirror compute's value/format pipeline inside one shared scope.
+         * Evaluation includes parsing and value projection, not only BigInt
+         * factorial. Destruction is included in total, outside both phases. */
+        CalculatorValue value = {0};
+        status = calculator_compute_value(expression, &context, &value, &error);
+        evaluated = benchmark_seconds();
+        if (status == CALCULATOR_OK)
+        {
+            status = calculator_format_value(&value, &context, &result);
+            status = calculator_budget_status(status);
+            if (status != CALCULATOR_OK) { free(result); result = NULL; }
+        }
+        formatted = benchmark_seconds();
+        calculator_value_destroy(&value);
+    }
+    else status = calculator_compute(expression, &context, &result, &error);
     double end = benchmark_seconds();
+    if (profile) numforge_decimal_profile_stop();
     NumForgeBudgetFailure budget_failure = numforge_budget_failure();
     numforge_budget_end();
-    if (begin < 0.0 || end < begin || (status == CALCULATOR_OK && !result) ||
+    if (begin < 0.0 || end < begin ||
+        (phases && (evaluated < begin || formatted < evaluated || end < formatted)) ||
+        (profile && !numforge_decimal_profile_complete()) ||
+        (status == CALCULATOR_OK && !result) ||
         (status != CALCULATOR_OK && result != NULL)) { free(result); return EXIT_FAILURE; }
-    printf("status,status_code,elapsed_ms,output_bytes,alloc_calls,requested_bytes,budget_reason\n");
-    printf("%s,%d,%.6f,%zu,%zu,%zu,%s\n",
+    printf("status,status_code,elapsed_ms,output_bytes,alloc_calls,requested_bytes,budget_reason%s%s\n",
+        phases ? ",evaluate_ms,format_ms" : "",
+        profile ? ",normalize_ms,decimal_core_ms,profile_complete" : "");
+    printf("%s,%d,%.6f,%zu,%zu,%zu,%s",
         calculator_status_to_string(status), (int)status, (end - begin) * 1000.0,
         result ? strlen(result) : 0U, numforge_alloc_stats_calls(), numforge_alloc_stats_bytes(),
         budget_failure == NUMFORGE_BUDGET_TIME ? "time" :
         budget_failure == NUMFORGE_BUDGET_MEMORY ? "allocation" : "none");
+    if (phases) printf(",%.6f,%.6f", (evaluated - begin) * 1000.0,
+        (formatted - evaluated) * 1000.0);
+    if (profile) printf(",%.6f,%.6f,%d",
+        numforge_decimal_profile_seconds(NUMFORGE_DECIMAL_NORMALIZE) * 1000.0,
+        numforge_decimal_profile_seconds(NUMFORGE_DECIMAL_CORE) * 1000.0,
+        numforge_decimal_profile_complete());
+    putchar('\n');
     /* Optional independently known result for smoke tests; never dump huge or
      * user-provided expressions/results into CSV. */
     const char *expected = getenv("NUMFORGE_BENCH_EXPECTED");

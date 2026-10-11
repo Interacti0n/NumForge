@@ -376,9 +376,9 @@ int main(int argc, char **argv)
     if (check) { fputs("--check requires BUILD_TESTING\n", stderr); return 1; }
 #endif
     FILE *input = fopen(argv[1], "r");
-    /* 100000! has 456574 decimal digits; allow the complete exact reference.
+    /* Stress factorial fixtures use complete hexadecimal references.
      * Reject truncated/overlong records rather than silently measuring them. */
-    size_t capacity = 1048576U;
+    size_t capacity = 8U * 1048576U;
     char *line = malloc(capacity);
     if (input == NULL || line == NULL) { if (input) fclose(input); free(line); return 1; }
     puts("case,operation,mode,a_bits,b_bits,samples,min_ns_per_op,median_ns_per_op,max_ns_per_op,alloc_calls,requested_bytes,baseline_live_bytes,live_bytes,peak_live_bytes,process_peak_bytes");

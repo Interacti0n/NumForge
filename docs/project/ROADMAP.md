@@ -47,6 +47,9 @@ Budget-aware Karatsuba now serves sufficiently large balanced products;
 see the [integration report](../benchmarks/KARATSUBA_INTEGRATION_2026_10_11.md).
 Budget-admitted product-tree factorial now reuses per-depth Karatsuba frames;
 see [factorial tree integration](../benchmarks/FACTORIAL_TREE_INTEGRATION_2026_10_11.md).
+The [larger factorial stress matrix](../benchmarks/FACTORIAL_STRESS_2026_10_11.md)
+identifies decimal zero stripping as the dominant successful-path cost and
+separates conservative admission from real scratch allocation constraints.
 The [private Karatsuba experiment](../benchmarks/KARATSUBA_EXPERIMENT_2026_10_11.md)
 adds bounded scratch, exact references and cancellation/failure checks, with
 threshold and grouped product-tree comparisons preceding the integration.

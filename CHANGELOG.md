@@ -7,6 +7,10 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Add serial factorial stress references through 300000 and opt-in calculator
+  phase/normalization diagnostics; document admission and memory boundaries
+  under unchanged production budgets.
+
 - Use a budget-admitted factorial product tree from 8192 with reusable Karatsuba
   workspace; retain grouped multiplication for small or constrained requests.
   Verify complete values through 200000, failure cleanup, aliases and HTTP
