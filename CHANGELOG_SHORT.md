@@ -5,6 +5,7 @@ details and the [2.2 release record](docs/project/RELEASE_2_2.md) for validation
 
 ## Unreleased
 
+- Avoid full integer text conversion when choosing decimal precision.
 - Reduce temporary decimal allocations and improve high-precision limit headroom.
 - Speed up integer division and dependent GCD, logarithm and trigonometry work.
 - Give large factorials more time-limit headroom by grouping small factors.

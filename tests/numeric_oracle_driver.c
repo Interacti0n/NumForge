@@ -9,6 +9,7 @@
 #include <numforge/bigint.h>
 #include <numforge/bigdecimal.h>
 #include "bigdecimal_internal.h"
+#include "../src/bigint/bigint_internal.h"
 #include "../src/calculator/evaluator.h"
 
 int main(void)
@@ -34,6 +35,18 @@ int main(void)
             {
                 if (!strcmp(op, "ibase")) status = bigint_to_string_base(ia, (unsigned)scale, rounding != 0, &text);
                 else text = bigint_to_string(ia);
+            }
+        }
+        else if (!strcmp(op, "idigits"))
+        {
+            size_t count = 0U;
+            status = bigint_set_string(ia, a);
+            if (!status) status = bigint_decimal_digits(ia, &count);
+            if (!status)
+            {
+                text = malloc(32U);
+                if (text) (void)snprintf(text, 32U, "%zu", count);
+                else status = BIGINT_OUT_OF_MEMORY;
             }
         }
         else if (!strcmp(op, "calc"))
@@ -94,6 +107,7 @@ int main(void)
                 else if (!strcmp(op, "dmul")) status = bigdecimal_mul(dr, da, db);
                 else if (!strcmp(op, "ddiv")) status = bigdecimal_div(dr, da, db, scale, (BigDecimalRoundingMode)rounding);
                 else if (!strcmp(op, "dsig")) status = bigdecimal_div_significant(dr, da, db, scale, (BigDecimalRoundingMode)rounding);
+                else if (!strcmp(op, "droundsig")) status = bigdecimal_round_significant(dr, da, scale, (BigDecimalRoundingMode)rounding);
                 else if (!strcmp(op, "dcalc")) status = bigdecimal_div_exact_or_significant(dr, da, db, scale, (BigDecimalRoundingMode)rounding);
                 else if (!strcmp(op, "dscale")) status = bigdecimal_rescale(dr, da, scale, (BigDecimalRoundingMode)rounding);
                 else if (!strcmp(op, "rroot")) status = bigdecimal_root(dr, da, (uint32_t)strtoul(b, NULL, 10), scale, (BigDecimalRoundingMode)rounding);

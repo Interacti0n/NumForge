@@ -10,6 +10,56 @@
 
 #define BIGINT_LIMB_BITS 64U
 
+BigIntStatus bigint_decimal_digits(const BigInt *value, size_t *digits)
+{
+    size_t bits, lower, upper, count = 0U;
+    uint64_t leading;
+    BigInt scratch = { NULL, 0U, 0U, false };
+    BigIntStatus status;
+    if (value == NULL || digits == NULL) return BIGINT_NULL_ARGUMENT;
+    if (!numforge_budget_check()) return BIGINT_OUT_OF_MEMORY;
+    if (value->size <= 1U)
+    {
+        leading = value->size == 0U ? 0U : value->limbs[0];
+        count = 1U;
+        while (leading >= 10U) { leading /= 10U; count++; }
+        *digits = count;
+        return BIGINT_OK;
+    }
+    bits = bigint_bit_length(value);
+    // 0.30102 < log10(2) < 0.30103. Split the products to avoid
+    // overflow even on 32-bit targets. Matching bounds prove the count.
+    lower = ((bits - 1U) / 100000U) * 30102U
+          + (((bits - 1U) % 100000U) * 30102U) / 100000U + 1U;
+    upper = (bits / 100000U) * 30103U
+          + ((bits % 100000U) * 30103U + 99999U) / 100000U;
+    if (lower == upper)
+    {
+        *digits = lower;
+        return BIGINT_OK;
+    }
+    // Ambiguous bit bounds: peel decimal chunks from one private magnitude.
+    // No chunk array or character buffer is needed to count the digits.
+    status = bigint_copy(&scratch, value);
+    if (status != BIGINT_OK) return status;
+    while (scratch.size > 1U)
+    {
+        if (!numforge_budget_check())
+        {
+            free(scratch.limbs);
+            return BIGINT_OUT_OF_MEMORY;
+        }
+        (void)bigint_divide_by_uint64(&scratch, 10000000000000000000ULL);
+        count += 19U;
+    }
+    leading = scratch.size == 0U ? 0U : scratch.limbs[0];
+    count++;
+    while (leading >= 10U) { leading /= 10U; count++; }
+    free(scratch.limbs);
+    *digits = count;
+    return BIGINT_OK;
+}
+
 /*
 ------------------------------------------------------------------------------------------------------------------------------
     Parsing, formatting, and comparison functions for BigInt.

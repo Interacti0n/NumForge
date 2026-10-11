@@ -56,6 +56,13 @@ Half rounding doubles one private remainder and compares magnitudes directly.
 Logarithmic and exponential series exchange two private sum owners instead of
 copying the old sum on each iteration. No shared scratch state is introduced.
 
+Significant rounding counts coefficient digits through a private BigInt helper:
+integer bit-length bounds either prove the exact count, or one private magnitude
+is divided into base-10^19 chunks without creating strings. Significant division
+aligns the shorter coefficient to compare mantissas exactly, multiplying private
+decimal chunks without parsing the text of a power of ten. Signs and external
+scales do not affect magnitude counting; original inputs remain immutable.
+
 Additive APIs also provide exact integer conversions, sign/integer predicates,
 min/max, sequence aggregates, floor/ceil/trunc/half-even round, integer powers,
 population/sample statistics, real roots, significant and exact-first division,

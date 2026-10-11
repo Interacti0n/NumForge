@@ -55,6 +55,8 @@ BigIntStatus bigint_subtract_abs(BigInt *result, const BigInt *a, const BigInt *
 void bigint_multiply_u64_u64(uint64_t a, uint64_t b, uint64_t *high, uint64_t *low);
 BigIntStatus bigint_divmod_abs(BigInt *quotient, BigInt *remainder, const BigInt *a, const BigInt *b);
 size_t bigint_bit_length(const BigInt *value);
+/* Exact decimal magnitude length; no output serialization, unchanged on error. */
+BigIntStatus bigint_decimal_digits(const BigInt *value, size_t *digits);
 int bigint_get_bit(const BigInt *value, size_t bit_index);
 BigIntStatus bigint_set_bit(BigInt *value, size_t bit_index);
 

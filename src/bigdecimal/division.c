@@ -1,5 +1,6 @@
 #include "../internal/benchmark_profile.h"
 #include "bigdecimal_internal.h"
+#include "../bigint/bigint_internal.h"
 #include "../internal/numforge_alloc.h"
 
 #include <numforge/bigdecimal.h>
@@ -23,11 +24,10 @@ BigDecimalStatus bigdecimal_round_significant(
     BigDecimalRoundingMode rounding
 )
 {
-    char *coefficient;
-    const char *number;
     size_t length;
     size_t discarded;
     int64_t target_scale;
+    BigDecimalStatus status;
 
     if (result == NULL || value == NULL)
     {
@@ -44,24 +44,18 @@ BigDecimalStatus bigdecimal_round_significant(
         return bigdecimal_copy(result, value);
     }
 
-    coefficient = bigint_to_string(value->coefficient);
-
-    if (coefficient == NULL)
+    status = bigdecimal_from_bigint_status(bigint_decimal_digits(value->coefficient, &length));
+    if (status != BIGDECIMAL_OK)
     {
-        return BIGDECIMAL_OUT_OF_MEMORY;
+        return status;
     }
-
-    number = coefficient[0] == '-' ? coefficient + 1 : coefficient;
-    length = strlen(number);
 
     if ((uint64_t)length <= (uint64_t)digits)
     {
-        free(coefficient);
         return bigdecimal_copy(result, value);
     }
 
     discarded = length - (size_t)digits;
-    free(coefficient);
 
 #if SIZE_MAX > INT64_MAX
     if (discarded > (size_t)INT64_MAX)
@@ -235,6 +229,28 @@ cleanup:
     return bigdecimal_div_significant(result, a, b, digits, rounding);
 }
 
+// The destination is a fresh private magnitude. Multiply decimal chunks
+// directly instead of allocating/parsing the text of a power of ten.
+static BigDecimalStatus align_coefficient_digits(BigInt *aligned, const BigInt *value, size_t places)
+{
+    BigIntStatus status = bigint_copy(aligned, value);
+    uint64_t last = 1U;
+    while (status == BIGINT_OK && places >= 19U)
+    {
+        if (!numforge_budget_check()) return BIGDECIMAL_OUT_OF_MEMORY;
+        status = bigint_multiply_by_uint64(aligned, 10000000000000000000ULL);
+        places -= 19U;
+    }
+    if (status != BIGINT_OK) return bigdecimal_from_bigint_status(status);
+    while (places > 0U) { last *= 10U; places--; }
+    if (status == BIGINT_OK)
+    {
+        if (!numforge_budget_check()) return BIGDECIMAL_OUT_OF_MEMORY;
+        status = bigint_multiply_by_uint64(aligned, last);
+    }
+    return bigdecimal_from_bigint_status(status);
+}
+
 BigDecimalStatus bigdecimal_div_significant(
     BigDecimal *result,
     const BigDecimal *a,
@@ -243,12 +259,9 @@ BigDecimalStatus bigdecimal_div_significant(
     BigDecimalRoundingMode rounding
 )
 {
-    char *a_text;
-    char *b_text;
-    const char *a_digits;
-    const char *b_digits;
-    size_t a_length;
-    size_t b_length;
+    size_t a_length = 0U;
+    size_t b_length = 0U;
+    BigInt aligned = { NULL, 0U, 0U, false };
     int comparison = 0;
     int64_t exponent;
     int64_t target;
@@ -278,46 +291,48 @@ BigDecimalStatus bigdecimal_div_significant(
         return bigdecimal_copy(result, a);
     }
 
-    a_text = bigint_to_string(a->coefficient);
-    b_text = bigint_to_string(b->coefficient);
-    if (a_text == NULL || b_text == NULL)
+    status = bigdecimal_from_bigint_status(bigint_decimal_digits(a->coefficient, &a_length));
+    if (status == BIGDECIMAL_OK)
     {
-        free(a_text);
-        free(b_text);
-        return BIGDECIMAL_OUT_OF_MEMORY;
+        status = bigdecimal_from_bigint_status(bigint_decimal_digits(b->coefficient, &b_length));
     }
-    a_digits = a_text + (a_text[0] == '-' ? 1U : 0U);
-    b_digits = b_text + (b_text[0] == '-' ? 1U : 0U);
-    a_length = strlen(a_digits);
-    b_length = strlen(b_digits);
+    if (status != BIGDECIMAL_OK) return status;
 #if SIZE_MAX > INT64_MAX
     if (a_length > INT64_MAX || b_length > INT64_MAX)
     {
-        free(a_text);
-        free(b_text);
         return BIGDECIMAL_VALUE_TOO_LARGE;
     }
 #endif
-    for (size_t i = 0U; i < a_length || i < b_length; i++)
+    // Compare mantissas exactly by aligning just the shorter coefficient.
+    // External scales are applied only after coefficient division below.
+    if (a_length == b_length)
     {
-        char left = i < a_length ? a_digits[i] : '0';
-        char right = i < b_length ? b_digits[i] : '0';
-        if (left != right)
+        comparison = bigint_compare_abs(a->coefficient, b->coefficient);
+    }
+    else if (a_length < b_length)
+    {
+        status = align_coefficient_digits(&aligned, a->coefficient, b_length - a_length);
+        if (status == BIGDECIMAL_OK)
         {
-            comparison = left < right ? -1 : 1;
-            break;
+            comparison = bigint_compare_abs(&aligned, b->coefficient);
         }
     }
-
+    else
+    {
+        status = align_coefficient_digits(&aligned, b->coefficient, a_length - b_length);
+        if (status == BIGDECIMAL_OK)
+        {
+            comparison = bigint_compare_abs(a->coefficient, &aligned);
+        }
+    }
+    free(aligned.limbs);
+    if (status != BIGDECIMAL_OK) return status;
     exponent = (int64_t)a_length - (int64_t)b_length;
 
     if (comparison < 0)
     {
         exponent--;
     }
-
-    free(a_text);
-    free(b_text);
 
     if (!bigdecimal_i64_sub(digits - 1, exponent, &target))
     {

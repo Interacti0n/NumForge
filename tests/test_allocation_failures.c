@@ -13,6 +13,7 @@
 #include "parser.h"
 #include "calculator_internal.h"
 #include "web_api.h"
+#include "../src/bigint/bigint_internal.h"
 
 #ifndef NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING
 #error "allocation_failure_tests requires NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING"
@@ -2000,7 +2001,7 @@ static void test_decimal_borrowed_coefficients_every_failure(void)
 {
     static const struct {
         const char *a, *b, *expected;
-        unsigned operation; // 0 add, 1 subtract, 2 divide
+        unsigned operation; // 0 add, 1 subtract, 2 fixed, 3 significant division
         int64_t scale;
         BigDecimalRoundingMode rounding;
     } cases[] = {
@@ -2017,7 +2018,10 @@ static void test_decimal_borrowed_coefficients_every_failure(void)
         { "-7", "2", "-3", 2, 0, BIGDECIMAL_ROUND_CEILING },
         { "-7", "2", "-4", 2, 0, BIGDECIMAL_ROUND_HALF_UP },
         { "-5", "2", "-2", 2, 0, BIGDECIMAL_ROUND_HALF_EVEN },
-        { "5", "-2", "-2", 2, 0, BIGDECIMAL_ROUND_HALF_EVEN }
+        { "5", "-2", "-2", 2, 0, BIGDECIMAL_ROUND_HALF_EVEN },
+        { "100000000000000000001", "1", "100000000000000000000", 3, 19, BIGDECIMAL_ROUND_HALF_EVEN },
+        { "1", "100000000000000000001", "0.00000000000000000001", 3, 3, BIGDECIMAL_ROUND_HALF_EVEN },
+        { "100000000000000000001", "100000000000000000003", "1", 3, 19, BIGDECIMAL_ROUND_HALF_EVEN }
     };
     for (size_t c = 0U; c < sizeof(cases) / sizeof(cases[0]); c++)
     for (unsigned alias = 0U; alias < 3U; alias++)
@@ -2040,7 +2044,8 @@ static void test_decimal_borrowed_coefficients_every_failure(void)
             else numforge_test_allocator_begin(index);
             status = cases[c].operation == 0U ? bigdecimal_add(result, a, b)
                    : cases[c].operation == 1U ? bigdecimal_sub(result, a, b)
-                   : bigdecimal_div(result, a, b, cases[c].scale, cases[c].rounding);
+                   : cases[c].operation == 2U ? bigdecimal_div(result, a, b, cases[c].scale, cases[c].rounding)
+                   : bigdecimal_div_significant(result, a, b, cases[c].scale, cases[c].rounding);
             interrupted = deadline ? numforge_budget_failure() != NUMFORGE_BUDGET_OK
                                    : numforge_test_allocator_did_fail();
             numforge_budget_end();
@@ -2066,6 +2071,53 @@ static void test_decimal_borrowed_coefficients_every_failure(void)
             bigdecimal_destroy(original);
             if (completed) break;
         }
+        TEST_ASSERT_TRUE(completed);
+    }
+}
+
+static void test_decimal_digit_count_preserves_output_on_every_failure(void)
+{
+    char large[2002];
+    memset(large, '0', sizeof(large));
+    large[0] = '1'; large[2000] = '1'; large[2001] = '\0';
+    const char *inputs[] = { "0", "18446744073709551616", "-100000000000000000001", large };
+    const size_t expected[] = { 1U, 20U, 21U, 2001U };
+    for (size_t c = 0U; c < sizeof(inputs) / sizeof(inputs[0]); c++)
+    for (unsigned deadline = 0U; deadline < 2U; deadline++)
+    {
+        bool completed = false;
+        BigInt *value = make_bigint(inputs[c]);
+        for (size_t index = 1U; index <= ALLOCATION_TEST_MAX_FAILURE_INDEX; index++)
+        {
+            size_t count = 42U;
+            BigIntStatus status;
+            bool interrupted;
+            if (deadline)
+            {
+                (void)numforge_budget_begin(5000U, SIZE_MAX, SIZE_MAX);
+                numforge_test_budget_expire_after(index);
+            }
+            else numforge_test_allocator_begin(index);
+            status = bigint_decimal_digits(value, &count);
+            interrupted = deadline ? numforge_budget_failure() != NUMFORGE_BUDGET_OK
+                                   : numforge_test_allocator_did_fail();
+            numforge_budget_end(); numforge_test_allocator_end();
+            assert_bigint_text(inputs[c], value);
+            if (status == BIGINT_OK)
+            {
+                TEST_ASSERT_FALSE(interrupted);
+                TEST_ASSERT_EQUAL_UINT64(expected[c], count);
+                completed = true;
+            }
+            else
+            {
+                TEST_ASSERT_TRUE(interrupted);
+                TEST_ASSERT_EQUAL(BIGINT_OUT_OF_MEMORY, status);
+                TEST_ASSERT_EQUAL_UINT64(42U, count);
+            }
+            if (completed) break;
+        }
+        bigint_destroy(value);
         TEST_ASSERT_TRUE(completed);
     }
 }
@@ -2099,6 +2151,7 @@ int main(void)
     RUN_TEST(test_bigdecimal_arithmetic_failure_paths);
     RUN_TEST(test_decimal_borrowed_coefficients_every_failure);
     RUN_TEST(test_equal_scale_comparison_without_allocations);
+    RUN_TEST(test_decimal_digit_count_preserves_output_on_every_failure);
     RUN_TEST(test_series_sum_owners_preserve_alias_on_every_failure);
     RUN_TEST(test_bigdecimal_aliasing_preserves_destination_on_allocation_failure);
     RUN_TEST(test_dynamic_constant_sampled_allocation_failures);

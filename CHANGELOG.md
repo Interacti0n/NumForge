@@ -7,6 +7,9 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Count decimal coefficient digits without text serialization using proven bit
+  bounds and an exact chunk fallback; choose significant-division precision by
+  integer mantissa alignment. Extend independent boundary and failure checks.
 - Reduce decimal arithmetic allocation churn by borrowing unscaled coefficients,
   comparing equal scales directly, simplifying quotient rounding and exchanging
   private series sums; preserve aliases, rounding and atomic failure handling.

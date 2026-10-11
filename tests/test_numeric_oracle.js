@@ -31,6 +31,38 @@ function round(n,d,mode) {
 const cases=[];
 function add(op,a,b,s,m,expected){cases.push({input:`${op} ${a} ${b} ${s} ${m}`,expected:String(expected)});}
 
+// Exact magnitude length at decimal/binary boundaries, including both signs.
+for (const k of [...Array.from({length:256}, (_, i) => i + 1), 500, 2000, 10000, 19000]) {
+  for (const n of [pow(k)-1n, pow(k), pow(k)+1n]) for (const sign of [1n,-1n])
+    add('idigits',sign*n,0,0,0,n.toString().length);
+}
+add('idigits',0,0,0,0,1);
+for (let bits=1; bits<=1024; bits++) {
+  for (const n of [1n<<BigInt(bits), (1n<<BigInt(bits))-1n])
+    add('idigits',n,0,0,0,n.toString().length);
+}
+// Guard digit rounding and carries across powers of ten, all rounding modes.
+for (const k of [1,2,18,19,20,38,39,64,100,500,2000])
+  for (const n of [pow(k)+5n, pow(k+1)-5n]) for (const sign of [1n,-1n])
+    for (let mode=0; mode<6; mode++) {
+      const input=sign*n, precision=k, discarded=abs(input).toString().length-precision;
+      add('droundsig',input,0,precision,mode,decimal(round(input,pow(discarded),mode),-discarded));
+    }
+// Mantissa alignment in either direction, equal and near-equal mantissas.
+for (const k of [1,19,20,38,39,100,500,2000]) {
+  for (const [a,b] of [[pow(k)-1n,1n],[1n,pow(k)+1n],[pow(k)+1n,10n],
+                        [pow(k)-1n,pow(k)+1n],[pow(k)+1n,pow(k)-1n]])
+    for (const sign of [1n,-1n]) for (let mode=0; mode<6; mode++) {
+      let n=a, d=b, exponent=0;
+      while(n>=d*10n){d*=10n;exponent++;}
+      while(n<d){n*=10n;exponent--;}
+      const scale=18-exponent;
+      const numerator=scale>=0?sign*a*pow(scale):sign*a;
+      const denominator=scale<0?b*pow(-scale):b;
+      add('dsig',sign*a,b,19,mode,decimal(round(numerator,denominator,mode),scale));
+    }
+}
+
 // Independent standard BigInt base conversion, including signs and chunk edges.
 for (let base=2; base<=36; base++) {
   for (const n of [0n, -255n, 1n<<64n, (1n<<1024n)+123456789n]) {
