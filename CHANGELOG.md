@@ -9,6 +9,9 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 - Convert BigInt to BigDecimal directly from its exact coefficient, avoiding
   full decimal text serialization while preserving atomic failure guarantees.
+- Reuse verified exact integer projections during calculator formatting.
+- Reduce permutation and combination allocation churn with private single-limb
+  multiplication and exact division; retain arbitrary-size factor support.
 - Split exhaustive complex allocation-failure tests into eight disjoint shards
   per suite and reference checks by precision. Keep all cases enabled in CTest;
   CI runs allocation shards on two workers with optimized diagnostic builds.

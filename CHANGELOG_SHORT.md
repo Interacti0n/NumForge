@@ -5,6 +5,7 @@ details and the [2.2 release record](docs/project/RELEASE_2_2.md) for validation
 
 ## Unreleased
 
+- Speed up integer-to-decimal conversion and large permutations/combinations.
 - Stabilize CI with exhaustive complex test shards, deterministic resource-limit
   checks and browser synchronization; prevent small desktop layout shifts.
 

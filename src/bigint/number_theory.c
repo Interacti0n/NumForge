@@ -316,11 +316,22 @@ static BigIntStatus bigint_combinatorial(
 
         if (status == BIGINT_OK)
         {
-            status = bigint_mul(&temporary, &temporary, &factor);
+            status = factor.size == 1U
+                ? bigint_multiply_by_uint64(&temporary, factor.limbs[0])
+                : bigint_mul(&temporary, &temporary, &factor);
         }
 
         if (status == BIGINT_OK && combination)
         {
+            if (counter.size == 1U)
+            {
+                /* Only mutate our private temporary. The recurrence must
+                 * divide exactly even when using the single-limb fast path. */
+                uint64_t rest = bigint_divide_by_uint64(&temporary, counter.limbs[0]);
+                if (!numforge_budget_check()) status = BIGINT_OUT_OF_MEMORY;
+                else if (rest != 0U) status = BIGINT_INVALID_ARGUMENT;
+                continue;
+            }
             status = bigint_div_mod(
                 &quotient,
                 &remainder,

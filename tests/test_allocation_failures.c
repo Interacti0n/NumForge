@@ -406,6 +406,8 @@ static void assert_bigint_binary_failure_safety(
         status = operation(result, a, b);
         injected = numforge_test_allocator_did_fail();
         numforge_test_allocator_end();
+        assert_bigint_text(a_text, a);
+        assert_bigint_text(b_text, b);
 
         if (injected)
         {
@@ -802,6 +804,8 @@ void test_bigint_divmod_and_number_theory_failure_paths(void)
     assert_bigint_binary_failure_safety(bigint_lcm, a_text, b_text);
     assert_bigint_binary_failure_safety(bigint_permutation, "100", "30");
     assert_bigint_binary_failure_safety(bigint_combination, "100", "30");
+    assert_bigint_binary_failure_safety(bigint_permutation, "18446744073709551617", "3");
+    assert_bigint_binary_failure_safety(bigint_combination, "18446744073709551617", "3");
     assert_bigint_unary_failure_safety(bigint_factorial, "50");
 }
 

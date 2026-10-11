@@ -3,6 +3,8 @@
 These opt-in tools measure the production library and calculator. Build with
 `NUMFORGE_BUILD_BENCHMARKS=ON`; ordinary builds omit the private instrumentation.
 See [the benchmark guide](../docs/benchmarks/BENCHMARKS.md) for setup and recording commands.
+The [11 October optimization report](../docs/benchmarks/PERFORMANCE_OPTIMIZATIONS_2026_10_11.md)
+compares direct integer conversion and combinatorial arithmetic with the audit.
 
 | Files | Purpose |
 | --- | --- |
@@ -17,6 +19,7 @@ See [the benchmark guide](../docs/benchmarks/BENCHMARKS.md) for setup and record
 | `run_performance_audit.js`, `summarize_performance_audit.js` | Record and check a cross-layer audit with production resource outcomes. |
 | `calculator_limit_benchmark.c` | Time the complete calculator pipeline with shared time/allocation/output budgets. |
 | `bigint_materialization_benchmark.c` | Isolate integer-to-decimal conversion; verify an exact round trip outside timing. |
+| `check_combinatorial_optimization.cjs` | Check large permutations/combinations against independent JavaScript BigInt factorial quotients. |
 | `summarize_decimal_baseline.js` | Check completed decimal recordings and summarize their outcomes. |
 | `references/` | Frozen high-precision decimal/math expectations and their developer-only generator. |
 
