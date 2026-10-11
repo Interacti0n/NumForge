@@ -24,6 +24,8 @@ The [GCD workspace report](../docs/benchmarks/GCD_WORKSPACE_2026_10_11.md)
 records reusable remainder/normalization scratch and restored large rational requests.
 The [decimal workspace report](../docs/benchmarks/DECIMAL_WORKSPACE_2026_10_11.md)
 records ln/exp allocation reduction and remaining high-precision CPU limits.
+The [logarithm algorithm review](../docs/benchmarks/LOGARITHM_ALGORITHM_REVIEW_2026_10_11.md)
+compares high-precision alternatives and proposes a theta/AGM prototype.
 
 | Files | Purpose |
 | --- | --- |
