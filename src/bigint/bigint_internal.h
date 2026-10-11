@@ -57,6 +57,18 @@ void bigint_multiply_u64_u64(uint64_t a, uint64_t b, uint64_t *high, uint64_t *l
  * Dispatch checks optional workspace against the active resource budget. */
 BigIntStatus bigint_mul_karatsuba(BigInt *out, const BigInt *a, const BigInt *b, size_t threshold);
 bool bigint_karatsuba_fits(size_t na, size_t nb, size_t threshold);
+/* Per-factorial scratch, split by recursion depth. Zero-initialize, then free
+ * on every exit. Buffers grow geometrically and are reused across products. */
+typedef struct BigIntMultiplicationWorkspace {
+    uint64_t *frames[64];
+    size_t capacities[64];
+} BigIntMultiplicationWorkspace;
+BigIntStatus bigint_mul_workspace(BigInt *out, const BigInt *a, const BigInt *b,
+    BigIntMultiplicationWorkspace *workspace);
+void bigint_multiplication_workspace_free(BigIntMultiplicationWorkspace *workspace);
+bool bigint_factorial_tree_fits(uint64_t n);
+BigIntStatus bigint_factorial_tree(BigInt *out, uint64_t n);
+BigIntStatus bigint_factorial_grouped(BigInt *out, uint64_t n);
 /* Owned scratch for repeated magnitude division. Zero-initialize and free both
  * buffers after use. Output must not alias inputs/scratch and may change on
  * failure; callers publish only completed results. The divisor must be nonzero. */

@@ -103,6 +103,7 @@ add_library(numforge STATIC
     src/bigint/bigint.c
     src/bigint/arithmetic.c
     src/bigint/multiplication.c
+    src/bigint/factorial.c
     src/bigint/bitwise.c
     src/bigint/comparison.c
     src/bigint/conversion.c

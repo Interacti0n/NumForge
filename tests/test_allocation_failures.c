@@ -2456,6 +2456,77 @@ void test_large_factorial_cancellation_preserves_destination(void)
     }
 }
 
+static void test_factorial_tree_failure_cleanup_and_budget_fallback(void)
+{
+    BigInt *input = make_bigint("8192"), *expected = bigint_create();
+    TEST_ASSERT_NOT_NULL(expected);
+    /* Scalar path supplies an additional independent algorithm;
+     * complete external factorial references are checked by the harness. */
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_factorial_grouped(expected, 8192U));
+    for (unsigned alias = 0U; alias < 2U; ++alias)
+    {
+        bool completed = false;
+        for (size_t fail = 1U; fail < ALLOCATION_TEST_MAX_FAILURE_INDEX; ++fail)
+        {
+            BigInt *out = make_bigint(alias ? "8192" : "77");
+            numforge_test_allocator_begin(fail);
+            BigIntStatus status = bigint_factorial_tree(out, 8192U);
+            bool failed = numforge_test_allocator_did_fail();
+            numforge_test_allocator_end();
+            if (status == BIGINT_OK)
+            {
+                TEST_ASSERT_FALSE(failed);
+                TEST_ASSERT_EQUAL_INT(0, bigint_compare(out, expected));
+                completed = true;
+            }
+            else
+            {
+                TEST_ASSERT_TRUE(failed);
+                TEST_ASSERT_EQUAL(BIGINT_OUT_OF_MEMORY, status);
+                assert_bigint_text(alias ? "8192" : "77", out);
+            }
+            bigint_destroy(out);
+            if (completed) break;
+        }
+        TEST_ASSERT_TRUE(completed);
+    }
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_uint64(input, 2000U));
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_factorial_grouped(expected, 2000U));
+    bool completed = false;
+    for (size_t fail = 1U; fail < 50000U; ++fail)
+    {
+        BigInt *out = make_bigint("2000");
+        TEST_ASSERT_TRUE(numforge_budget_begin(UINT64_MAX, SIZE_MAX, SIZE_MAX));
+        numforge_test_budget_expire_after(fail);
+        BigIntStatus status = bigint_factorial_tree(out, 2000U);
+        NumForgeBudgetFailure reason = numforge_budget_failure();
+        numforge_budget_end();
+        if (status == BIGINT_OK)
+        {
+            TEST_ASSERT_EQUAL_INT(0, bigint_compare(out, expected));
+            completed = true;
+        }
+        else
+        {
+            TEST_ASSERT_EQUAL(BIGINT_OUT_OF_MEMORY, status);
+            TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_TIME, reason);
+            assert_bigint_text("2000", out);
+        }
+        bigint_destroy(out);
+        if (completed) break;
+    }
+    TEST_ASSERT_TRUE(completed);
+    /* Optional tree planning must neither consume nor poison a scope. */
+    TEST_ASSERT_TRUE(numforge_budget_begin(UINT64_MAX, 65536U, 65536U));
+    TEST_ASSERT_FALSE(bigint_factorial_tree_fits(8192U));
+    TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_OK, numforge_budget_failure());
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_uint64(input, 8192U));
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_factorial(expected, input));
+    TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_OK, numforge_budget_failure());
+    numforge_budget_end();
+    bigint_destroy(input); bigint_destroy(expected);
+}
+
 static void test_production_agm_cancellation_preserves_destination(void)
 {
     for (unsigned alias = 0; alias < 2; alias++) {
@@ -2548,6 +2619,7 @@ int main(void)
     RUN_TEST(test_application_budget_is_cumulative_and_scoped);
     RUN_TEST(test_numeric_loops_cancel_without_changing_destinations);
     RUN_TEST(test_grouped_factorial_preserves_alias_on_every_failure);
+    RUN_TEST(test_factorial_tree_failure_cleanup_and_budget_fallback);
     RUN_TEST(test_pipeline_deadline_covers_all_checkpoints);
     RUN_TEST(test_roots_preserve_aliases_on_every_allocation_failure);
     RUN_TEST(test_root_call_allocation_and_deadline_failures);

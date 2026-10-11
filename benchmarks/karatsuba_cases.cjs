@@ -14,6 +14,7 @@ function makeCases(quick = false, timing = false) {
         return value | (1n << BigInt(n * 64 - 1));
     };
     const operations = ['mul', 'karatsuba16', 'karatsuba32', 'karatsuba64', 'karatsuba128', 'karatsuba256'];
+    if (!timing) operations.push('mul_workspace');
     function add(name, a, b, modes = ['reuse']) {
         for (const mode of modes) for (const op of operations) {
             const product = mode === 'alias_all' ? a * a : a * b;
@@ -44,10 +45,10 @@ function makeCases(quick = false, timing = false) {
         for (const a of [0n, 1n, -1n, (1n << 193n) - 1n])
             for (const b of [0n, -1n, (1n << 129n) - 1n])
                 add(`edge-${a}-${b}`, a, b, ['reuse', 'alias_a', 'alias_b', 'alias_all']);
-        for (const n of [0, 1, 20, 100, 2000]) {
+        for (const n of [0, 1, 20, 100, 2000, 8191, 8192, 8193]) {
             let expected = 1n;
             for (let i = 2n; i <= BigInt(n); ++i) expected *= i;
-            for (const op of ['factorial', 'tree_grouped', 'tree_karatsuba16', 'tree_karatsuba32', 'tree_karatsuba64', 'tree_karatsuba128'])
+            for (const op of ['factorial', 'factorial_grouped', 'tree_workspace', 'tree_grouped', 'tree_karatsuba16', 'tree_karatsuba32', 'tree_karatsuba64', 'tree_karatsuba128'])
                 for (const mode of ['reuse', 'alias_a'])
                     rows.push([`${op}-${n}-${mode}`, op, mode, n, 0, expected, 0].join('\t'));
         }

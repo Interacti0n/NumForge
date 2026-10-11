@@ -165,6 +165,19 @@ static BigIntStatus operate(const Case *c, BigInt *out, BigInt *rem, BigInt *a, 
     if (!strcmp(c->op, "pow")) return bigint_pow(out, a, b);
     if (!strcmp(c->op, "pow_square")) return power_square(out, a, b);
     if (!strcmp(c->op, "factorial")) return bigint_factorial(out, a);
+    if (!strcmp(c->op, "mul_workspace"))
+    {
+        BigIntMultiplicationWorkspace workspace = {0};
+        BigIntStatus status = bigint_mul_workspace(out, a, !strcmp(c->mode, "alias_all") ? a : b, &workspace);
+        bigint_multiplication_workspace_free(&workspace);
+        return status;
+    }
+    if (!strcmp(c->op, "tree_workspace") || !strcmp(c->op, "factorial_grouped"))
+    {
+        if (a->is_negative || a->size > 1U) return BIGINT_INVALID_ARGUMENT;
+        uint64_t n = a->size ? a->limbs[0] : 0U;
+        return !strcmp(c->op, "tree_workspace") ? bigint_factorial_tree(out, n) : bigint_factorial_grouped(out, n);
+    }
     if (!strcmp(c->op, "tree")) return product_tree(out, 2U, a->size ? a->limbs[0] : 0U);
     if (!strcmp(c->op, "tree_grouped") || !strncmp(c->op, "tree_karatsuba", 14U))
     {
@@ -188,8 +201,9 @@ static BigIntStatus operate(const Case *c, BigInt *out, BigInt *rem, BigInt *a, 
  * aliased output. Checks remain active under NDEBUG. Never time this work. */
 static bool check_experiment_failures(void)
 {
-    const char *operations[] = {"square", "tree", "pow_square", "tree_grouped", "tree_karatsuba64", "tree_karatsuba16"};
-    for (size_t op = 0U; op < 6U; op++) for (unsigned alias = 0U; alias < 2U; alias++)
+    if (!numforge_alloc_stats_track(true)) return false;
+    const char *operations[] = {"square", "tree", "pow_square", "tree_grouped", "tree_karatsuba64", "tree_karatsuba16", "tree_workspace"};
+    for (size_t op = 0U; op < 7U; op++) for (unsigned alias = 0U; alias < 2U; alias++)
     {
         BigInt a = {0}, b = {0}, result = {0}, remainder = {0}, original = {0};
         Case c = {NULL, (char *)operations[op], "reuse", NULL, NULL, NULL, NULL};
@@ -208,11 +222,33 @@ static bool check_experiment_failures(void)
             free(result.limbs); memset(&result, 0, sizeof(result));
             good = bigint_set_string(&a, input) == BIGINT_OK && bigint_set_uint64(&result, 123U) == BIGINT_OK &&
                 bigint_copy(&original, out) == BIGINT_OK;
+            size_t baseline = numforge_alloc_stats_live();
             numforge_test_allocator_begin(i);
             status = good ? operate(&c, out, &remainder, &a, &b) : BIGINT_OUT_OF_MEMORY;
             bool failed = numforge_test_allocator_did_fail();
             numforge_test_allocator_end();
-            if (!failed || status != BIGINT_OUT_OF_MEMORY || bigint_compare(out, &original) != 0) good = false;
+            if (!failed || status != BIGINT_OUT_OF_MEMORY || bigint_compare(out, &original) != 0 ||
+                numforge_alloc_stats_live() != baseline) good = false;
+        }
+        if (good && op == 6U)
+        {
+            bool completed = false;
+            for (size_t checkpoint = 1U; good && checkpoint < 50000U; ++checkpoint)
+            {
+                good = bigint_set_string(&a, input) == BIGINT_OK && bigint_set_uint64(&result, 123U) == BIGINT_OK &&
+                    bigint_copy(&original, out) == BIGINT_OK;
+                size_t baseline = numforge_alloc_stats_live();
+                bool owner = numforge_budget_begin(UINT64_MAX, SIZE_MAX, SIZE_MAX);
+                if (!owner) { good = false; break; }
+                numforge_test_budget_expire_after(checkpoint);
+                status = operate(&c, out, &remainder, &a, &b);
+                NumForgeBudgetFailure reason = numforge_budget_failure();
+                numforge_budget_end();
+                if (status == BIGINT_OK) { completed = true; break; }
+                good = status == BIGINT_OUT_OF_MEMORY && reason == NUMFORGE_BUDGET_TIME &&
+                    bigint_compare(out, &original) == 0 && numforge_alloc_stats_live() == baseline;
+            }
+            if (!completed) good = false;
         }
         if (good)
         {
@@ -226,7 +262,8 @@ static bool check_experiment_failures(void)
         free(a.limbs); free(b.limbs); free(result.limbs); free(remainder.limbs); free(original.limbs);
         if (!good) { fprintf(stderr, "Private experiment failure contract: %s alias=%u\n", operations[op], alias); return false; }
     }
-    return true;
+    return numforge_alloc_stats_live() == 0U && numforge_alloc_stats_complete() &&
+        numforge_alloc_stats_track(false);
 }
 #endif
 

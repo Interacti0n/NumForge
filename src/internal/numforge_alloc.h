@@ -10,6 +10,7 @@
 /* Non-consuming optional-workspace preflight. Does not set a sticky budget
  * failure: callers may select an algorithm with smaller allocation demands. */
 bool numforge_budget_can_allocate_pair(size_t first, size_t second);
+bool numforge_budget_can_allocate_plan(size_t total, size_t largest);
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------

@@ -7,6 +7,11 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Use a budget-admitted factorial product tree from 8192 with reusable Karatsuba
+  workspace; retain grouped multiplication for small or constrained requests.
+  Verify complete values through 200000, failure cleanup, aliases and HTTP
+  session storage without changing API or calculator limits.
+
 - Select Karatsuba for large, sufficiently balanced BigInt products through the
   existing C API. Reuse bounded per-call scratch, retain classical multiplication
   for small/unbalanced inputs and preflight optional workspace against active

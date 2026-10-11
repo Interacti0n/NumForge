@@ -175,31 +175,11 @@ BigIntStatus bigint_lcm( /*Least common multiple for BigInts: lcm(a,b) = (|a| / 
     return status;
 }
 
-BigIntStatus bigint_factorial( /*Calculate factorial of a BigInt (n!)*/
-    BigInt *result,
-    const BigInt *value
-)
+BigIntStatus bigint_factorial_grouped(BigInt *result, uint64_t n)
 {
     BigInt temporary;
     BigIntStatus status;
-    uint64_t n;
-
-    if (result == NULL || value == NULL)
-    {
-        return BIGINT_NULL_ARGUMENT;
-    }
-
-    if (value->is_negative)
-    {
-        return BIGINT_NEGATIVE_ARGUMENT; // factorial is undefined for negative numbers
-    }
-
-    if (value->size > 1)
-    {
-        return BIGINT_VALUE_TOO_LARGE;
-    }
-
-    n = value->size == 0 ? 0U : value->limbs[0];
+    if (!result) return BIGINT_NULL_ARGUMENT;
     temporary.limbs = NULL;
     temporary.size = 0U;
     temporary.capacity = 0U;
@@ -246,6 +226,17 @@ BigIntStatus bigint_factorial( /*Calculate factorial of a BigInt (n!)*/
 
     free(temporary.limbs);
     return status;
+}
+
+BigIntStatus bigint_factorial(BigInt *result, const BigInt *value)
+{
+    if (!result || !value) return BIGINT_NULL_ARGUMENT;
+    if (value->is_negative) return BIGINT_NEGATIVE_ARGUMENT;
+    if (value->size > 1U) return BIGINT_VALUE_TOO_LARGE;
+    uint64_t n = value->size ? value->limbs[0] : 0U;
+    if (n >= 8192U && bigint_factorial_tree_fits(n))
+        return bigint_factorial_tree(result, n);
+    return bigint_factorial_grouped(result, n);
 }
 
 /* Compute a falling product directly. For combinations, divide by each next

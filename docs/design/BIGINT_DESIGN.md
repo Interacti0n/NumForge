@@ -16,6 +16,7 @@ root without floating-point conversion and preserves the destination on error.
 | `comparison.c` | Signed comparison and basic value predicates. |
 | `arithmetic.c` | Sign operations, arithmetic, division, modulo, and integer powers. |
 | `multiplication.c` | Private bounded-scratch Karatsuba kernel and workspace preflight. |
+| `factorial.c` | Budget-admitted product tree and per-call multiplication workspace ownership. |
 | `bitwise.c` | Bitwise operations and shifts. |
 | `number_theory.c` | GCD, LCM, factorial, permutations, and combinations. |
 | `primality.c` | Parity, Miller-Rabin primality testing, and perfect-square detection. |
@@ -111,7 +112,12 @@ precondition and quotient/remainder semantics; public conversion is unchanged.
 - `0^0` is defined as `1`.
 - Powers reject negative exponents.
 - Factorial accepts `0 <= n <= BIGINT_FACTORIAL_MAX_N`; this is the `UINT64_MAX`
-  counter representation bound. Runtime budgets govern practical work. Consecutive factors are packed into a `uint64_t`
+  counter representation bound. Runtime budgets govern practical work. From
+  8192 a conservative allocation preflight selects a balanced product tree with
+  reusable per-depth Karatsuba scratch. Smaller or constrained requests retain
+  grouped scalar multiplication. See the
+  [integration measurements](../benchmarks/FACTORIAL_TREE_INTEGRATION_2026_10_11.md).
+  In both paths consecutive leaf factors are packed into a `uint64_t`
   product, checking `product > UINT64_MAX / factor` before multiplying. Each
   completed group multiplies a private BigInt accumulator once. The budget is
   checked for every factor, every 256 limbs of grouped multiplication and before

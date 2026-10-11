@@ -111,7 +111,8 @@ static BigIntStatus add_shifted(uint64_t *a, size_t na, const uint64_t *b,
 
 static BigIntStatus multiply(uint64_t *out, const uint64_t *a, size_t na,
                              const uint64_t *b, size_t nb, size_t threshold,
-                             uint64_t *scratch, size_t available)
+                             uint64_t *scratch, size_t available,
+                             BigIntMultiplicationWorkspace *workspace, size_t depth)
 {
     if (!numforge_budget_check()) return BIGINT_OUT_OF_MEMORY;
     memset(out, 0, (na + nb) * sizeof(*out));
@@ -122,13 +123,19 @@ static BigIntStatus multiply(uint64_t *out, const uint64_t *a, size_t na,
         return school(out, a, na, b, nb);
     size_t k = n / 2U, al = na < k ? na : k, bl = nb < k ? nb : k;
     size_t ah = na - al, bh = nb - bl;
-    BigIntStatus status = multiply(out, a, al, b, bl, threshold, scratch, available);
+    BigIntStatus status = multiply(out, a, al, b, bl, threshold, scratch, available, workspace, depth + 1U);
     if (status == BIGINT_OK)
         status = multiply(out + 2U * k, a + al, ah, b + bl, bh,
-                          threshold, scratch, available);
+                          threshold, scratch, available, workspace, depth + 1U);
     if (status != BIGINT_OK) return status;
     size_t sa = (al > ah ? al : ah) + 1U, sb = (bl > bh ? bl : bh) + 1U;
     size_t cross = sa + sb, frame = 2U * cross;
+    if (workspace)
+    {
+        if (depth >= 64U) return BIGINT_VALUE_TOO_LARGE;
+        scratch = workspace->frames[depth];
+        available = workspace->capacities[depth];
+    }
     if (frame > available) return BIGINT_VALUE_TOO_LARGE;
     uint64_t *as = scratch, *bs = as + sa, *middle = bs + sb;
     size_t nas = 0U, nbs = 0U;
@@ -136,7 +143,8 @@ static BigIntStatus multiply(uint64_t *out, const uint64_t *a, size_t na,
     if (status == BIGINT_OK) status = sum_halves(bs, b, nb, k, &nbs);
     if (status == BIGINT_OK)
         status = multiply(middle, as, nas, bs, nbs, threshold,
-                          scratch + frame, available - frame);
+                          workspace ? NULL : scratch + frame, workspace ? 0U : available - frame,
+                          workspace, depth + 1U);
     /* Only the initialized cross product is used, not spare arena capacity. */
     cross = status == BIGINT_OK ? nas + nbs : 0U;
     if (status == BIGINT_OK) status = subtract(middle, cross, out, trimmed(out, al + bl));
@@ -172,7 +180,7 @@ BigIntStatus bigint_mul_karatsuba(BigInt *out, const BigInt *a, const BigInt *b,
     uint64_t *scratch = count ? numforge_malloc(bytes) : NULL;
     if (count && !scratch) { free(temporary.limbs); return BIGINT_OUT_OF_MEMORY; }
     BigIntStatus status = multiply(temporary.limbs, a->limbs, a->size, b->limbs, b->size,
-                                  threshold, scratch, count);
+                                  threshold, scratch, count, NULL, 0U);
     if (status == BIGINT_OK && !numforge_budget_check()) status = BIGINT_OUT_OF_MEMORY;
     if (status == BIGINT_OK)
     {
@@ -182,5 +190,71 @@ BigIntStatus bigint_mul_karatsuba(BigInt *out, const BigInt *a, const BigInt *b,
         bigint_commit(out, &temporary);
     }
     free(scratch); free(temporary.limbs);
+    return status;
+}
+
+static BigIntStatus prepare_workspace(BigIntMultiplicationWorkspace *workspace, size_t n)
+{
+    for (size_t depth = 0U; n >= 32U; ++depth)
+    {
+        size_t h = n - n / 2U + 1U, needed, bytes;
+        if (depth >= 64U || bigint_size_mul(h, 4U, &needed) != BIGINT_OK)
+            return BIGINT_VALUE_TOO_LARGE;
+        if (workspace->capacities[depth] < needed)
+        {
+            size_t capacity = workspace->capacities[depth] ? workspace->capacities[depth] : 32U;
+            while (capacity < needed)
+                if (bigint_size_mul(capacity, 2U, &capacity) != BIGINT_OK)
+                    return BIGINT_VALUE_TOO_LARGE;
+            if (bigint_size_mul(capacity, sizeof(uint64_t), &bytes) != BIGINT_OK)
+                return BIGINT_VALUE_TOO_LARGE;
+            uint64_t *frame = numforge_realloc(workspace->frames[depth], bytes);
+            if (!frame) return BIGINT_OUT_OF_MEMORY;
+            workspace->frames[depth] = frame;
+            workspace->capacities[depth] = capacity;
+        }
+        n = h;
+    }
+    return BIGINT_OK;
+}
+
+void bigint_multiplication_workspace_free(BigIntMultiplicationWorkspace *workspace)
+{
+    if (!workspace) return;
+    for (size_t i = 0U; i < 64U; ++i)
+    {
+        free(workspace->frames[i]);
+        workspace->frames[i] = NULL;
+        workspace->capacities[i] = 0U;
+    }
+}
+
+BigIntStatus bigint_mul_workspace(BigInt *out, const BigInt *a, const BigInt *b,
+                                  BigIntMultiplicationWorkspace *workspace)
+{
+    if (!out || !a || !b || !workspace) return BIGINT_NULL_ARGUMENT;
+    size_t larger = a->size > b->size ? a->size : b->size;
+    size_t smaller = a->size < b->size ? a->size : b->size;
+    if (smaller < 128U || smaller <= larger / 2U) return bigint_mul(out, a, b);
+    if (!numforge_budget_check()) return BIGINT_OUT_OF_MEMORY;
+    size_t length;
+    if (bigint_size_add(a->size, b->size, &length) != BIGINT_OK || length > BIGINT_MAX_LIMBS)
+        return BIGINT_VALUE_TOO_LARGE;
+    BigInt temporary = {0};
+    BigIntStatus status = prepare_workspace(workspace, larger);
+    if (status != BIGINT_OK) return status;
+    temporary.limbs = numforge_calloc(length, sizeof(uint64_t));
+    if (!temporary.limbs) return BIGINT_OUT_OF_MEMORY;
+    status = multiply(temporary.limbs, a->limbs, a->size, b->limbs, b->size,
+                      32U, NULL, 0U, workspace, 0U);
+    if (status == BIGINT_OK && !numforge_budget_check()) status = BIGINT_OUT_OF_MEMORY;
+    if (status == BIGINT_OK)
+    {
+        temporary.size = temporary.capacity = length;
+        temporary.is_negative = a->is_negative != b->is_negative;
+        bigint_normalize(&temporary);
+        bigint_commit(out, &temporary);
+    }
+    free(temporary.limbs);
     return status;
 }

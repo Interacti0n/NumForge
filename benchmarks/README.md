@@ -38,6 +38,10 @@ records inputs above the former cap, deadline cancellation and separate final
 text-conversion timing for logarithms.
 The [Karatsuba integration](../docs/benchmarks/KARATSUBA_INTEGRATION_2026_10_11.md)
 records compiler/operand-shape checks and the production budget-aware dispatcher.
+The [factorial tree integration](../docs/benchmarks/FACTORIAL_TREE_INTEGRATION_2026_10_11.md)
+records reusable workspace, budget admission and complete calculator results.
+Use `generate_karatsuba_factorials.py output.tsv --workspace` for public,
+grouped and workspace-tree references; add `--timing` for the serial speed matrix.
 Use `run_karatsuba.cjs executable empty-directory --focused` for a serial
 three-run balanced/square/3:2/4:3/near-2:1 crossover recording. The ordinary
 matrix includes intermediate ratios too; all products are compared in full.

@@ -330,6 +330,12 @@ bool numforge_budget_can_allocate_pair(size_t first, size_t second)
         first <= budget_remaining && second <= budget_remaining - first;
 }
 
+bool numforge_budget_can_allocate_plan(size_t total, size_t largest)
+{
+    return !budget_active || (budget_failure == NUMFORGE_BUDGET_OK &&
+        largest <= budget_single && total <= budget_remaining);
+}
+
 static bool numforge_budget_allocate(
     size_t size
 )

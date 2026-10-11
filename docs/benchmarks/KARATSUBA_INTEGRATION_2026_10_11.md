@@ -1,5 +1,9 @@
 # Budget-aware Karatsuba integration, 11 October 2026
 
+This report records the initial multiplication integration. The subsequent
+[factorial tree integration](FACTORIAL_TREE_INTEGRATION_2026_10_11.md) implements
+the workspace follow-up described below; timings here remain historical.
+
 This follows the [private experiment](KARATSUBA_EXPERIMENT_2026_10_11.md).
 `bigint_mul` now selects Karatsuba when the smaller magnitude has at least
 128 radix-2^64 limbs and is greater than half the larger magnitude. Recursive
