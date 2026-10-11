@@ -56,6 +56,14 @@ Half rounding doubles one private remainder and compares magnitudes directly.
 Logarithmic and exponential series exchange two private sum owners instead of
 copying the old sum on each iteration. No shared scratch state is introduced.
 
+The production ln/exp series also own one private `BigDecimalWorkspace` per
+call. It reuses coefficient, alignment, rounding and normalized-division
+buffers, with a bounded power-of-ten cache. Cleanup runs on success and failure;
+only a successful result is published. Guard digits, rounding and application
+budgets are unchanged. The theta/AGM logarithm is still an
+[isolated benchmark prototype](../benchmarks/LOGARITHM_AGM_PROTOTYPE_2026_10_11.md),
+not the implementation selected by the public API or calculator.
+
 Significant rounding counts coefficient digits through a private BigInt helper:
 integer bit-length bounds either prove the exact count, or one private magnitude
 is divided into base-10^19 chunks without creating strings. Significant division
@@ -250,19 +258,20 @@ fails each allocation in conversion, comparison, exact and rounded arithmetic,
 then verifies out-of-memory propagation and unchanged destinations. Its
 end-to-end case also covers parser, evaluator, and formatter cleanup.
 
-The most useful next work is larger generated decimal vectors and optional
-external-oracle checks, followed by profiling-guided optimization such as
-reusable small powers of ten inside one operation. Any narrow `BigInt` helper
-added for performance must preserve the public layering and be independently
-tested.
+Independent generated vectors and per-call scratch/power reuse are implemented.
+The next logarithm work is conservative error bounds and adaptive precision for
+the AGM prototype, difficult rounding/conditioning references and a measured
+production dispatcher that retains the existing series fallback. Any narrow
+`BigInt` helper added for performance must preserve the public layering and be
+independently tested.
 
 ## BigInt boundary
 
-Most decimal operations use the public `BigInt` API. There are two internal
-dependencies within the numeric library: normalization calls the private
-`bigint_strip_decimal_zeros` helper, and the root implementation reads the
-coefficient's limbs to determine its bit length. These dependencies stay in
-`src/`; installed headers keep both numeric representations opaque.
+Decimal operations use the public `BigInt` API alongside private helpers for
+normalization, exact coefficient projection, digit counting, small-factor
+arithmetic and reusable division scratch. Roots inspect coefficient limbs for
+bit length. These dependencies stay within the numeric library in `src/`;
+installed headers keep both numeric representations opaque.
 Power-of-ten construction and normalization are centralized behind private
 helpers. The calculator and web clients use only public numeric APIs and
 must not include either numeric internal header.

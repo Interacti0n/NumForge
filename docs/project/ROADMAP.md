@@ -38,10 +38,23 @@ approximate functions remain a separate goal. Some high-precision cases exceed
 the collection deadline and need dedicated longer measurements.
 
 Short scientific formatting now uses bounded prefix conversion with exact
-fallback. Buffer reuse, product-tree factorial, normalized division and
-Karatsuba remain candidates for measured follow-ups.
+fallback. Normalized limb division, grouped factorial multiplication, private
+GCD remainder buffers and per-call ln/exp arithmetic workspaces are implemented.
+The practical factorial cap is removed; the uint64 counter range and shared
+application time/memory/output budgets remain. See
+[factorial budgets and final text conversion](../benchmarks/FACTORIAL_BUDGETS_2026_10_11.md).
+Product-tree factorial and Karatsuba remain candidates for measured follow-ups.
 Existing experiments are described with their measured tradeoffs in
 [BIGINT_BENCHMARKS.md](../benchmarks/BIGINT_BENCHMARKS.md).
+
+The nearest numerical priority is the
+[theta/AGM logarithm prototype](../benchmarks/LOGARITHM_AGM_PROTOTYPE_2026_10_11.md).
+It has independent high-precision and failure checks, but is not selected by
+production APIs. Before integration, derive conservative error bounds/adaptive
+precision, extend difficult rounding and near-one inputs, then choose a private
+precision-dependent dispatcher with the current series as fallback. Recheck
+complete calculator requests and real/complex compositions on all supported
+division paths. Public correct-rounding guarantees must not exceed the evidence.
 
 ## Planned tool development
 

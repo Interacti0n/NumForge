@@ -122,6 +122,11 @@ precondition and quotient/remainder semantics; public conversion is unchanged.
 - GCD is non-negative; LCM is computed as `(|a| / gcd(a, b)) × |b|` to reduce
   intermediate growth.
 
+GCD reuses private remainder and normalized-division buffers across Euclidean
+steps. It computes only the remainder and rotates owned magnitudes rather than
+allocating an unused quotient on every step. Cleanup and cancellation preserve
+the original destination, including aliases. The installed API is unchanged.
+
 ## Bitwise operations
 
 AND, OR, and XOR currently accept only non-negative operands. This avoids

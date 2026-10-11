@@ -120,6 +120,9 @@ plain output bound and may exceed the five-second calculation budget even
 with scientific notation. Full precision does not disable resource limits.
 
 These are application limits, not implicit budgets of the public numeric C API.
+Factorial no longer has a practical 100000-input cap. Its uint64 counter range
+is a representation bound, not a promise that every accepted argument completes.
+Cancellation is cooperative and can return slightly after the nominal deadline.
 See [expression rules](../reference/CALCULATOR_EXPRESSIONS.md),
 [HTTP transport](../reference/HTTP_API.md) and
 [session API](../reference/SESSION_HTTP_API.md) for domains, errors and pagination.

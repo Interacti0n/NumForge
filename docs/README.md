@@ -48,6 +48,9 @@ numerical references, session/unit regressions, browser/CI checks and profiling.
 - [BigInt measurements](benchmarks/BIGINT_BENCHMARKS.md).
 - [Decimal/math measurements](benchmarks/DECIMAL_MATH_BENCHMARKS.md).
 - [Performance audit, 10 October 2026](benchmarks/PERFORMANCE_AUDIT_2026_10_10.md): current measurements, five-second risks and optimization priorities.
+- [Logarithm algorithm review](benchmarks/LOGARITHM_ALGORITHM_REVIEW_2026_10_11.md) and
+  [theta/AGM prototype](benchmarks/LOGARITHM_AGM_PROTOTYPE_2026_10_11.md): experimental path, independent checks and production prerequisites.
+- [Factorial budgets and text conversion](benchmarks/FACTORIAL_BUDGETS_2026_10_11.md): removal of the practical cap, cancellation and calculation versus formatting timings.
 
 Measurements retain their dates, environments and limitations. They are evidence
 for specific source snapshots, not promises about every machine.

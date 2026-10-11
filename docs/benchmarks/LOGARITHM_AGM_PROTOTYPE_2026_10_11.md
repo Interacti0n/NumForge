@@ -143,6 +143,11 @@ calculation. A required reference mismatch returns a failed process status.
 `--memory` enables the live ledger and checks complete cleanup; keep it separate
 from ordinary timing. `--alias` evaluates into the input object.
 
+The CSV `format_ms` column separately times canonical `bigdecimal_to_string`
+after calculation, outside its timer. It excludes browser rendering and HTTP
+transport. The [subsequent factorial/formatting report](FACTORIAL_BUDGETS_2026_10_11.md)
+compares calculation and final text conversion with fresh serial measurements.
+
 Raw CSV, independent high-precision fixtures, the serial recording script and
 `measurements.json` are retained in ignored
 `build/logarithm-research-2026-10-11`.
