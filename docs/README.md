@@ -69,6 +69,7 @@ for specific source snapshots, not promises about every machine.
 - [Roadmap](project/ROADMAP.md): available features and future work.
 - [Presentation](project/PROJECT_PRESENTATION.md): README assets and screenshots.
 - [Release packaging](project/RELEASE_PACKAGING.md): archives and automation.
+- [Release readiness, 12 October 2026](project/RELEASE_READINESS_2026_10_12.md): local regression and archive checks before the next release.
 - [Release 2.1 record](project/RELEASE_2_1.md): scope, validation and limitations.
 - [Release 2.2 record](project/RELEASE_2_2.md): stability scope and publication checks.
 - [Short changelog](../CHANGELOG_SHORT.md) or [full changelog](../CHANGELOG.md).

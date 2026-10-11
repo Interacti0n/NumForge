@@ -1,4 +1,5 @@
 const {test, expect}=require('@playwright/test');
+// Confirm long function catalogues immediately; preview.spec.js checks idle scheduling.
 test('HTTP complex logarithm preserves a tiny component after cancellation',async({request})=>{
     const client='bcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbc';
     const base='/api/evaluate?precision=10&client='+client;
@@ -50,7 +51,7 @@ for(const lang of ['sk','en']) for(const width of [390,1280]) {
             ['asinh(1+i)','1.0612750619 + 0.6662394325*i'],
             ['2^0.5','1.4142135624'],['(-1)^0.3','0.5877852523 + 0.8090169944*i'],
             ['root(-4;2)','2*i'],['root(-8;3)','-2']
-        ]) {await input.fill(expression);await expect(result).toHaveText(expected);}
+        ]) {await input.fill(expression);await input.press('Enter');await expect(result).toHaveText(expected);}
     });
 }
 
@@ -67,7 +68,7 @@ for(const lang of ['sk','en']) for(const width of [390,1280]) {
             ['acos(1-1E-60+0i)','1.4142135624E-30'],
             ['asin(2+0i)','1.5707963268 - 1.3169578969*i'],
             ['arcsin(0.5+0i)','0.5235987756'],['asin(0.5)','30']
-        ]) {await input.fill(expression);await expect(result).toHaveText(expected);}
+        ]) {await input.fill(expression);await input.press('Enter');await expect(result).toHaveText(expected);}
     });
 }
 test('HTTP complex inverse trigonometry preserves domains and failed commits',async({request})=>{
@@ -139,7 +140,7 @@ for(const lang of ['sk','en']) for(const width of [390,1280]) {
             ['sinh(1+i)','0.6349639148 + 1.2984575814*i'],
             ['cosh(1+i)','0.8337300251 + 0.9888977058*i'],
             ['tanh(1+i)','1.0839233273 + 0.2717525853*i']
-        ]) {await input.fill(expression);await expect(result).toHaveText(expected);}
+        ]) {await input.fill(expression);await input.press('Enter');await expect(result).toHaveText(expected);}
     });
 }
 for(const lang of ['sk','en']) for(const width of [390,1280]) {
@@ -152,7 +153,7 @@ for(const lang of ['sk','en']) for(const width of [390,1280]) {
             ['sin(1+i)','1.2984575814 + 0.6349639148*i'],
             ['cos(1+i)','0.8337300251 - 0.9888977058*i'],
             ['tan(1+i)','0.2717525853 + 1.0839233273*i'],['sin(90)','1']
-        ]) {await input.fill(expression);await expect(result).toHaveText(expected);}
+        ]) {await input.fill(expression);await input.press('Enter');await expect(result).toHaveText(expected);}
     });
 }
 for(const lang of ['sk','en']) for(const width of [390,1280]) {
@@ -189,7 +190,7 @@ for(const lang of ['sk','en']) for(const width of [390,1280]) {
             ['(-1+0i)^0.3','0.5877852523 + 0.8090169944*i'],['pow(2;i)','0.7692389014 + 0.6389612763*i'],
             ['log(i)','0.6821881769*i'],['log(-1+0i;i)','2'],['log(-i;i)','-1'],
             ['log(1+i;2+i)','0.7455202636 + 0.5464509967*i']
-        ]) {await input.fill(expression);await expect(result).toHaveText(expected);}
+        ]) {await input.fill(expression);await input.press('Enter');await expect(result).toHaveText(expected);}
         const search=page.locator('#function-search');
         await search.fill(lang==='sk'?'imaginárna jednotka':'imaginary unit');
         await input.fill('');await page.locator('.function-groups [data-insert="i"]').click();

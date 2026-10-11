@@ -17,7 +17,8 @@ form controls and background. All assets are embedded in `numforge_web`.
 3. Choose source and destination units. Common units appear first, followed by
    the remaining catalogue entries and prefixes. Both menus contain only units
    in the selected compatible category.
-4. The result previews automatically. Press Enter or **Convert / Previesť** to
+4. The result previews after two seconds without edits. Press Enter or
+   **Convert / Previesť** to calculate immediately and
    confirm the displayed conversion. **Swap** exchanges units and keeps the input
    value. **Copy** copies the result number; the destination symbol is displayed
    separately. Long results wrap and can be scrolled with keyboard focus.

@@ -5,11 +5,13 @@ of development, not a schedule or promise of a particular release.
 
 ## Available today
 
-- C17 BigInt, BigDecimal and BigRational APIs with opaque types, explicit
+- C17 BigInt, BigDecimal, BigRational and BigComplex APIs with opaque types, explicit
   ownership, documented aliasing and strong failure guarantees.
 - Exact integer/decimal/rational arithmetic; configurable precision/rounding for
   approximations; roots, logarithms, trigonometric/hyperbolic functions,
   constants, statistics and selected integer operations.
+- [Complex arithmetic](../reference/BIGCOMPLEX.md), principal-branch functions,
+  automatic domain promotion and Cartesian/trigonometric/exponential display.
 - Shared CLI/local browser calculator with English/Slovak UI, confirmed `ans`,
   [session variables](../guides/VARIABLES.md),
   session history, stable random previews and a bounded loopback HTTP API.
@@ -68,8 +70,8 @@ The [bounded theta/AGM logarithm](../benchmarks/LOGARITHM_AGM_INTEGRATION_2026_1
 is integrated with outward-rounded theta tails, AGM/pi enclosures, adaptive
 precision and a private precision-dependent dispatcher. The original series
 remains for low precision and near-one inputs. Next numerical candidates are
-lower interval allocation traffic, tighter factorial workspace admission
-estimates, and enclosure-based rounding for further functions. Composed
+lower interval allocation traffic and enclosure-based rounding for further
+functions after release validation. Composed
 complex functions retain their existing approximation contracts.
 
 ## Planned tool development
