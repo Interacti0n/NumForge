@@ -6,6 +6,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#if defined(NUMFORGE_TEST_PORTABLE_DIVISION) && !defined(NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
+#error "NUMFORGE_TEST_PORTABLE_DIVISION is restricted to test builds"
+#endif
 #if defined(_MSC_VER) && defined(_M_X64)
 #include <intrin.h>
 #endif
@@ -58,14 +61,14 @@ static uint64_t bigint_divide_128_by_u64( /*Divide a 128-bit value by a uint64_t
     assert(divisor != 0);
     assert(high < divisor);
 
-#if defined(__SIZEOF_INT128__)
+#if defined(__SIZEOF_INT128__) && !defined(NUMFORGE_TEST_PORTABLE_DIVISION)
     {
         __uint128_t dividend = ((__uint128_t)high << 64) | (__uint128_t)low;
 
         *remainder = (uint64_t)(dividend % divisor);
         return (uint64_t)(dividend / divisor);
     }
-#elif defined(_MSC_VER) && defined(_M_X64)
+#elif defined(_MSC_VER) && defined(_M_X64) && !defined(NUMFORGE_TEST_PORTABLE_DIVISION)
     return _udiv128(high, low, divisor, remainder);
 #else
 
@@ -740,55 +743,6 @@ BigIntStatus bigint_set_bit( /*Set a single bit of |value|, growing the BigInt a
     return BIGINT_OK;
 }
 
-static BigIntStatus bigint_shift_left_one_bit( /*Multiply |value| by 2 in place*/
-    BigInt *value
-)
-{
-    if (value == NULL)
-    {
-        return BIGINT_NULL_ARGUMENT;
-    }
-
-    if (value->size == 0)
-    {
-        return BIGINT_OK;
-    }
-
-    uint64_t overflow = value->limbs[value->size - 1] >> 63;
-
-    if (overflow)
-    {
-        size_t needed;
-        BigIntStatus status = bigint_size_add(value->size, 1, &needed);
-
-        if (status == BIGINT_OK)
-        {
-            status = bigint_ensure_capacity(value, needed);
-        }
-
-        if (status != BIGINT_OK)
-        {
-            return status;
-        }
-    }
-
-    for (size_t i = value->size; i > 1; i--)
-    {
-        value->limbs[i - 1] =
-            (value->limbs[i - 1] << 1) | (value->limbs[i - 2] >> 63);
-    }
-
-    value->limbs[0] <<= 1;
-
-    if (overflow)
-    {
-        value->limbs[value->size] = overflow;
-        value->size++;
-    }
-
-    return BIGINT_OK;
-}
-
 BigIntStatus bigint_divmod_abs( /*Long division on magnitudes only: quotient = |a|/|b|, remainder = |a|%|b|.
                                           Always called with a fresh, non-aliased quotient/remainder pair - see bigint_div_mod.*/
     BigInt *quotient,
@@ -800,60 +754,137 @@ BigIntStatus bigint_divmod_abs( /*Long division on magnitudes only: quotient = |
     quotient->size = 0;
     remainder->size = 0;
 
-    size_t bits = bigint_bit_length(a);
+    if (!numforge_budget_check()) return BIGINT_OUT_OF_MEMORY;
+    if (a->size == 0U) return BIGINT_OK;
+    int comparison = bigint_compare_abs(a, b);
+    if (comparison < 0) return bigint_copy(remainder, a);
+    if (comparison == 0) return bigint_set_uint64(quotient, 1U);
 
-    if (bits == 0)
+    if (b->size == 1U)
     {
-        return BIGINT_OK;
+        BigIntStatus status = bigint_ensure_capacity(quotient, a->size);
+        if (status != BIGINT_OK) return status;
+        uint64_t rest = 0U;
+        for (size_t i = a->size; i > 0U; i--)
+        {
+            if (!numforge_budget_check()) return BIGINT_OUT_OF_MEMORY;
+            quotient->limbs[i - 1U] = bigint_divide_128_by_u64(
+                rest, a->limbs[i - 1U], b->limbs[0], &rest);
+        }
+        quotient->size = a->size;
+        bigint_normalize(quotient);
+        return bigint_set_uint64(remainder, rest);
     }
 
-    BigIntStatus status = bigint_ensure_capacity(quotient, a->size);
-
-    if (status != BIGINT_OK)
+    /* Normalized long division in radix 2^64 (Algorithm D). An extra high
+     * numerator limb permits quotient estimation without losing a carry. */
+    size_t n = b->size, m = a->size - n, u_count = 0U, u_bytes = 0U, v_bytes = 0U;
+    uint64_t *u = NULL, *v = NULL;
+    BigIntStatus status = bigint_size_add(a->size, 1U, &u_count);
+    if (status == BIGINT_OK) status = bigint_size_mul(u_count, sizeof(*u), &u_bytes);
+    if (status == BIGINT_OK) status = bigint_size_mul(n, sizeof(*v), &v_bytes);
+    if (status != BIGINT_OK) return status;
+    status = bigint_ensure_capacity(quotient, m + 1U);
+    if (status == BIGINT_OK) status = bigint_ensure_capacity(remainder, n);
+    if (status != BIGINT_OK) return status;
+    u = numforge_malloc(u_bytes);
+    v = numforge_malloc(v_bytes);
+    if (u == NULL || v == NULL) { status = BIGINT_OUT_OF_MEMORY; goto cleanup_division; }
+    unsigned shift = 0U;
+    for (uint64_t top = b->limbs[n - 1U]; (top >> 63) == 0U; top <<= 1) shift++;
+    uint64_t carry = 0U;
+    for (size_t i = 0; i < n; i++)
     {
-        return status;
+        if ((i & 255U) == 0U && !numforge_budget_check())
+        { status = BIGINT_OUT_OF_MEMORY; goto cleanup_division; }
+        v[i] = (b->limbs[i] << shift) | carry;
+        carry = shift == 0U ? 0U : b->limbs[i] >> (64U - shift);
     }
-
-    for (size_t i = bits; i > 0; i--)
+    carry = 0U;
+    for (size_t i = 0; i < a->size; i++)
     {
-        if (!numforge_budget_check()) return BIGINT_OUT_OF_MEMORY;
-        size_t bit_index = i - 1;
-
-        status = bigint_shift_left_one_bit(remainder);
-
-        if (status != BIGINT_OK)
+        if ((i & 255U) == 0U && !numforge_budget_check())
+        { status = BIGINT_OUT_OF_MEMORY; goto cleanup_division; }
+        u[i] = (a->limbs[i] << shift) | carry;
+        carry = shift == 0U ? 0U : a->limbs[i] >> (64U - shift);
+    }
+    u[a->size] = carry;
+    for (size_t position = m + 1U; position > 0U; position--)
+    {
+        if (!numforge_budget_check()) { status = BIGINT_OUT_OF_MEMORY; goto cleanup_division; }
+        size_t j = position - 1U;
+        uint64_t high = u[j + n], low = u[j + n - 1U], rest, estimate;
+        bool rest_overflow = false;
+        assert(high <= v[n - 1U]);
+        if (high == v[n - 1U])
         {
-            return status;
+            estimate = UINT64_MAX;
+            rest = low + v[n - 1U];
+            rest_overflow = rest < low;
         }
-
-        status = bigint_add_uint64(remainder, (uint64_t)bigint_get_bit(a, bit_index));
-
-        if (status != BIGINT_OK)
+        else estimate = bigint_divide_128_by_u64(high, low, v[n - 1U], &rest);
+        while (!rest_overflow)
         {
-            return status;
+            uint64_t ph, pl;
+            bigint_multiply_u64_u64(estimate, v[n - 2U], &ph, &pl);
+            if (ph < rest || (ph == rest && pl <= u[j + n - 2U])) break;
+            estimate--;
+            uint64_t old_rest = rest;
+            rest += v[n - 1U];
+            rest_overflow = rest < old_rest;
         }
-
-        if (bigint_compare_abs(remainder, b) >= 0)
+        uint64_t borrow = 0U;
+        carry = 0U;
+        for (size_t i = 0; i < n; i++)
         {
-            status = bigint_subtract_abs(remainder, remainder, b);
-
-            if (status != BIGINT_OK)
+            if ((i & 255U) == 0U && !numforge_budget_check())
+            { status = BIGINT_OUT_OF_MEMORY; goto cleanup_division; }
+            uint64_t ph, pl;
+            bigint_multiply_u64_u64(estimate, v[i], &ph, &pl);
+            uint64_t old_pl = pl;
+            pl += carry;
+            carry = ph + (pl < old_pl);
+            uint64_t original = u[j + i], difference = original - pl;
+            u[j + i] = difference - borrow;
+            borrow = (original < pl) || (difference < borrow);
+        }
+        uint64_t original = u[j + n], difference = original - carry;
+        bool negative = original < carry || difference < borrow;
+        u[j + n] = difference - borrow;
+        if (negative)
+        {
+            /* Lower divisor limbs can require one final correction. Add
+             * the divisor back and decrement the quotient digit. */
+            estimate--;
+            carry = 0U;
+            for (size_t i = 0; i < n; i++)
             {
-                return status;
+                if ((i & 255U) == 0U && !numforge_budget_check())
+                { status = BIGINT_OUT_OF_MEMORY; goto cleanup_division; }
+                uint64_t sum = u[j + i] + v[i];
+                uint64_t first_carry = sum < u[j + i];
+                u[j + i] = sum + carry;
+                carry = first_carry || u[j + i] < sum;
             }
-
-            status = bigint_set_bit(quotient, bit_index);
-
-            if (status != BIGINT_OK)
-            {
-                return status;
-            }
+            u[j + n] += carry;
         }
+        quotient->limbs[j] = estimate;
     }
-
+    for (size_t i = 0; i < n; i++)
+    {
+        if ((i & 255U) == 0U && !numforge_budget_check())
+        { status = BIGINT_OUT_OF_MEMORY; goto cleanup_division; }
+        remainder->limbs[i] = shift == 0U ? u[i]
+            : (u[i] >> shift) | (u[i + 1U] << (64U - shift));
+    }
+    quotient->size = m + 1U;
+    remainder->size = n;
     bigint_normalize(quotient);
-
-    return BIGINT_OK;
+    bigint_normalize(remainder);
+cleanup_division:
+    free(u);
+    free(v);
+    return status;
 }
 
 int bigint_compare_abs( /*Compare two absolute values of BigInts*/

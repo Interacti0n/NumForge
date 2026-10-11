@@ -253,18 +253,6 @@ BigIntStatus bigint_div_mod( /*Divide and modulo operation for BigInts (a/b and 
     // Everything is computed into independent local temporaries first, then
     // committed to the caller's quotient and remainder at the very end.
     // This keeps every allowed output/input aliasing combination safe.
-    BigInt a_copy;
-    a_copy.limbs = NULL;
-    a_copy.size = 0;
-    a_copy.capacity = 0;
-    a_copy.is_negative = false;
-
-    BigInt b_copy;
-    b_copy.limbs = NULL;
-    b_copy.size = 0;
-    b_copy.capacity = 0;
-    b_copy.is_negative = false;
-
     BigInt temp_quotient;
     temp_quotient.limbs = NULL;
     temp_quotient.size = 0;
@@ -280,17 +268,9 @@ BigIntStatus bigint_div_mod( /*Divide and modulo operation for BigInts (a/b and 
     bool a_negative = a->is_negative;
     bool b_negative = b->is_negative;
 
-    BigIntStatus status = bigint_copy(&a_copy, a);
-
-    if (status == BIGINT_OK)
-    {
-        status = bigint_copy(&b_copy, b);
-    }
-
-    if (status == BIGINT_OK)
-    {
-        status = bigint_divmod_abs(&temp_quotient, &temp_remainder, &a_copy, &b_copy);
-    }
+    /* The magnitude kernel only reads the inputs and writes fresh outputs.
+     * Read both signs before committing either output, preserving all aliases. */
+    BigIntStatus status = bigint_divmod_abs(&temp_quotient, &temp_remainder, a, b);
 
     if (status == BIGINT_OK)
     {
@@ -304,8 +284,6 @@ BigIntStatus bigint_div_mod( /*Divide and modulo operation for BigInts (a/b and 
         bigint_commit(remainder, &temp_remainder);
     }
 
-    free(a_copy.limbs);
-    free(b_copy.limbs);
     free(temp_quotient.limbs);
     free(temp_remainder.limbs);
 

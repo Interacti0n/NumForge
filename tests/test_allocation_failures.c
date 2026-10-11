@@ -758,6 +758,69 @@ void test_bigint_arithmetic_failure_paths(void)
     assert_bigint_binary_failure_safety(bigint_pow, "12345678901234567890", "13");
 }
 
+void test_limb_division_every_failure_and_alias(void)
+{
+    static const struct { const char *a; const char *b; const char *q; const char *r; } cases[] = {
+        { "0", "97", "0", "0" },
+        { "10", "97", "0", "10" },
+        { "97", "97", "1", "0" },
+        { "6277101735386680763835789423207666416102355444464034512895", "97",
+          "64712389024604956328204014672243983671158303551175613535", "0" },
+        { "340282366920938463500268095579187314685", "170141183460469231750134047789593657343",
+          "1", "170141183460469231750134047789593657342" },
+        { "36893488147419103233", "18446744073709551617", "1", "18446744073709551616" },
+        { "6277101735386680763835789423207666416102355444464034512897",
+          "3138550867693340381917894711603833208051177722232017256449",
+          "1", "3138550867693340381917894711603833208051177722232017256448" }
+    };
+    for (size_t c = 0; c < sizeof(cases) / sizeof(cases[0]); c++)
+    for (unsigned alias = 0; alias < 7U; alias++)
+    for (unsigned deadline = 0; deadline < 2U; deadline++)
+    {
+        bool completed = false;
+        for (size_t index = 1; index <= ALLOCATION_TEST_MAX_FAILURE_INDEX; index++)
+        {
+            BigInt *a = make_bigint(cases[c].a), *b = make_bigint(cases[c].b);
+            BigInt *original_q = make_bigint("111"), *original_r = make_bigint("222");
+            BigInt *q = alias == 1 || alias == 5 ? a : alias == 2 || alias == 6 ? b : original_q;
+            BigInt *r = alias == 3 || alias == 6 ? a : alias == 4 || alias == 5 ? b : original_r;
+            if (deadline)
+            {
+                (void)numforge_budget_begin(5000U, SIZE_MAX, SIZE_MAX);
+                numforge_test_budget_expire_after(index);
+            }
+            else numforge_test_allocator_begin(index);
+            BigIntStatus status = bigint_div_mod(q, r, a, b);
+            bool interrupted = deadline ? numforge_budget_failure() != NUMFORGE_BUDGET_OK
+                : numforge_test_allocator_did_fail();
+            numforge_budget_end();
+            numforge_test_allocator_end();
+            if (status == BIGINT_OK)
+            {
+                TEST_ASSERT_FALSE(interrupted);
+                assert_bigint_text(cases[c].q, q);
+                assert_bigint_text(cases[c].r, r);
+                if (a != q && a != r) assert_bigint_text(cases[c].a, a);
+                if (b != q && b != r) assert_bigint_text(cases[c].b, b);
+                completed = true;
+            }
+            else
+            {
+                TEST_ASSERT_TRUE(interrupted);
+                TEST_ASSERT_EQUAL(BIGINT_OUT_OF_MEMORY, status);
+                assert_bigint_text(cases[c].a, a);
+                assert_bigint_text(cases[c].b, b);
+                assert_bigint_text("111", original_q);
+                assert_bigint_text("222", original_r);
+            }
+            bigint_destroy(a); bigint_destroy(b);
+            bigint_destroy(original_q); bigint_destroy(original_r);
+            if (completed) break;
+        }
+        TEST_ASSERT_TRUE(completed);
+    }
+}
+
 void test_bigint_divmod_and_number_theory_failure_paths(void)
 {
     static const char a_text[] = "12345678901234567890123456789012345678901234567890";
@@ -1869,6 +1932,7 @@ int main(void)
     RUN_TEST(test_bigint_conversion_failure_paths);
     RUN_TEST(test_bigint_arithmetic_failure_paths);
     RUN_TEST(test_bigint_divmod_and_number_theory_failure_paths);
+    RUN_TEST(test_limb_division_every_failure_and_alias);
     RUN_TEST(test_bigint_bitwise_and_shift_failure_paths);
     RUN_TEST(test_bigint_aliasing_preserves_destination_on_allocation_failure);
     RUN_TEST(test_bigint_boolean_number_theory_handles_every_allocation_failure);

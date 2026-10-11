@@ -7,6 +7,9 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Replace bit-serial BigInt division with normalized 64-bit limb division and
+  a single-limb fast path; avoid redundant input copies while preserving aliases
+  and atomic error handling. Add independent division and portability checks.
 - Pack factorial factors into overflow-checked 64-bit products before multiplying
   the large accumulator, reducing repeated limb scans without changing limits.
 - Convert BigInt to BigDecimal directly from its exact coefficient, avoiding

@@ -98,6 +98,14 @@ precondition and quotient/remainder semantics; public conversion is unchanged.
 
 - Addition, subtraction, multiplication, division, and modulo are signed.
 - Division truncates toward zero.
+- Magnitude division handles zero, smaller and equal operands directly. A
+  single-limb divisor uses successive 128-by-64-bit divisions. Larger divisors
+  use normalized radix-2^64 long division, quotient-estimate correction and
+  add-back when needed. Portable builds retain the scalar bit-serial 128-by-64
+  helper; the complete large-number division no longer runs bit by bit.
+- Division reads its inputs without duplicating them, writes fresh quotient
+  and remainder temporaries and commits only after all reads succeed. Budget
+  checkpoints cover normalization, quotient digits and blocks of inner work.
 - The modulo result has the dividend's sign, matching C `%` semantics.
 - `0^0` is defined as `1`.
 - Powers reject negative exponents.

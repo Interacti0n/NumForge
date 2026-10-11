@@ -930,6 +930,22 @@ void test_mod_negative(void)
 }
 
 
+void test_division_with_identical_input_pointers(void)
+{
+    for (unsigned alias = 0; alias < 3U; alias++)
+    {
+        BigInt *value = make_bigint("-340282366920938463463374607431768211457");
+        BigInt *original_q = make_bigint("111"), *original_r = make_bigint("222");
+        BigInt *q = alias == 1U ? value : original_q;
+        BigInt *r = alias == 2U ? value : original_r;
+        TEST_ASSERT_EQUAL(BIGINT_OK, bigint_div_mod(q, r, value, value));
+        assert_bigint_string(q, "1");
+        assert_bigint_string(r, "0");
+        if (alias == 0U) assert_bigint_string(value, "-340282366920938463463374607431768211457");
+        bigint_destroy(value); bigint_destroy(original_q); bigint_destroy(original_r);
+    }
+}
+
 void test_div_mod(void)
 {
     BigInt *a = make_bigint("100");
@@ -2532,6 +2548,7 @@ int main(void)
     RUN_TEST(test_mod_positive);
     RUN_TEST(test_mod_negative);
     RUN_TEST(test_div_mod);
+    RUN_TEST(test_division_with_identical_input_pointers);
     RUN_TEST(test_div_mod_negative);
     RUN_TEST(test_div_mod_same_output);
     RUN_TEST(test_div_alias_quotient);

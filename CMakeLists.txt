@@ -722,6 +722,9 @@ if(BUILD_TESTING)
         add_test(NAME numeric_oracle_tests COMMAND "${NUMFORGE_NODE_EXECUTABLE}"
             "${PROJECT_SOURCE_DIR}/tests/test_numeric_oracle.js" $<TARGET_FILE:numeric_oracle_driver>)
         set_tests_properties(numeric_oracle_tests PROPERTIES TIMEOUT 120)
+        add_test(NAME division_oracle_tests COMMAND "${NUMFORGE_NODE_EXECUTABLE}"
+            "${PROJECT_SOURCE_DIR}/tests/test_division_oracle.js" $<TARGET_FILE:numeric_oracle_driver>)
+        set_tests_properties(division_oracle_tests PROPERTIES TIMEOUT 120)
         add_test(NAME web_ui_tests COMMAND "${NUMFORGE_NODE_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tests/test_web_ui.js")
         set_tests_properties(web_ui_tests PROPERTIES TIMEOUT 30)
     else()

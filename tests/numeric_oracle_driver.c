@@ -15,11 +15,11 @@ int main(void)
 {
     char op[16], a[20000], b[20000];
     int scale, rounding;
-    BigInt *ia = bigint_create(), *ib = bigint_create(), *ir = bigint_create();
+    BigInt *ia = bigint_create(), *ib = bigint_create(), *ir = bigint_create(), *im = bigint_create();
     BigDecimal *da = bigdecimal_create(), *db = bigdecimal_create(), *dr = bigdecimal_create();
-    if (!ia || !ib || !ir || !da || !db || !dr)
+    if (!ia || !ib || !ir || !im || !da || !db || !dr)
     {
-        bigint_destroy(ia); bigint_destroy(ib); bigint_destroy(ir);
+        bigint_destroy(ia); bigint_destroy(ib); bigint_destroy(ir); bigint_destroy(im);
         bigdecimal_destroy(da); bigdecimal_destroy(db); bigdecimal_destroy(dr);
         return 2;
     }
@@ -53,7 +53,25 @@ int main(void)
             if (!status) status = bigint_set_string(ib, b);
             if (!status)
             {
-                if (!strcmp(op, "iadd")) status = bigint_add(ir, ia, ib);
+                if (!strcmp(op, "idivpair"))
+                {
+                    BigInt *q = scale == 1 || scale == 5 ? ia : scale == 2 || scale == 6 ? ib : ir;
+                    BigInt *r = scale == 3 || scale == 6 ? ia : scale == 4 || scale == 5 ? ib : im;
+                    status = scale < 0 || scale > 6 ? BIGINT_INVALID_ARGUMENT : bigint_div_mod(q, r, ia, ib);
+                    if (!status)
+                    {
+                        char *qt = bigint_to_string(q), *rt = bigint_to_string(r);
+                        if (qt && rt)
+                        {
+                            size_t size = strlen(qt) + strlen(rt) + 2U;
+                            text = malloc(size);
+                            if (text) (void)snprintf(text, size, "%s;%s", qt, rt);
+                        }
+                        free(qt); free(rt);
+                        if (!text) status = BIGINT_OUT_OF_MEMORY;
+                    }
+                }
+                else if (!strcmp(op, "iadd")) status = bigint_add(ir, ia, ib);
                 else if (!strcmp(op, "isub")) status = bigint_sub(ir, ia, ib);
                 else if (!strcmp(op, "imul")) status = bigint_mul(ir, ia, ib);
                 else if (!strcmp(op, "idiv")) status = bigint_div(ir, ia, ib);
@@ -62,7 +80,7 @@ int main(void)
                 else if (!strcmp(op, "ipow")) status = bigint_pow(ir, ia, ib);
                 else status = 99;
             }
-            if (!status) text = bigint_to_string(ir);
+            if (!status && strcmp(op, "idivpair")) text = bigint_to_string(ir);
         }
         else
         {
@@ -103,7 +121,7 @@ int main(void)
         else puts(text);
         free(text);
     }
-    bigint_destroy(ia); bigint_destroy(ib); bigint_destroy(ir);
+    bigint_destroy(ia); bigint_destroy(ib); bigint_destroy(ir); bigint_destroy(im);
     bigdecimal_destroy(da); bigdecimal_destroy(db); bigdecimal_destroy(dr);
     return 0;
 }
