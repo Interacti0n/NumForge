@@ -9,7 +9,7 @@ assert.ok(manifest.completedAt, 'Collection is incomplete');
 function csv(command) {
     const lines = fs.readFileSync(path.join(directory, command.name + '.csv'), 'utf8').trim().split(/\r?\n/);
     // The complex oracle emits a human-readable validation summary first.
-    const at = lines.findIndex(line => /^(case|operation|status),/.test(line));
+    const at = lines.findIndex(line => /^(case|operation|status|sample),/.test(line));
     if (at < 0) return [];
     const keys = lines[at].split(',');
     return lines.slice(at + 1).filter(Boolean).map(line => {
@@ -27,7 +27,8 @@ for (const command of manifest.commands) {
     (groups[key] ||= []).push({...command, rows: command.status === 'completed' ? csv(command) : []});
 }
 const counts = manifest.fixtureCounts;
-assert.equal(manifest.commands.length, 3 * (counts.decimal + counts.bigint + counts.application + 23) + 3,
+assert.equal(manifest.commands.length, 3 * (counts.decimal + counts.bigint + counts.application + 23) + 3 +
+    3 * (manifest.profileCases?.length || 0) + (manifest.queueRecorded ? 1 : 0),
     'Unexpected attempt count');
 for (const [file, family] of [['decimal-cases.tsv', 'decimal'], ['bigint-cases.tsv', 'bigint']]) {
     const fixtures = fs.readFileSync(path.join(directory, file), 'utf8').trim().split(/\r?\n/);
@@ -58,11 +59,22 @@ const applications = manifest.applications.map(([name, expression, places, notat
         statusCodes: rows.map(x => +x.status_code), medianMs: median(rows.map(x => +x.elapsed_ms)),
         lowMs: Math.min(...rows.map(x => +x.elapsed_ms)), highMs: Math.max(...rows.map(x => +x.elapsed_ms)),
         requestedBytes: Math.max(...rows.map(x => +x.requested_bytes)),
+        budgetReasons: rows.map(x => x.budget_reason || 'unrecorded'),
         outputBytes: Math.max(...rows.map(x => +x.output_bytes))};
 });
 const complex = Object.entries(groups).filter(([name]) => name.startsWith('complex-')).flatMap(([name, attempts]) =>
     attempts.flatMap(x => x.rows).map(row => ({...row, source: name})));
+const profiles = (manifest.profileCases || []).map(name => {
+    const attempts = groups['profile-' + name]; assert.equal(attempts?.length, 3, name);
+    assert.ok(attempts.every(x => x.rows.length === 1), name + ': incomplete profile');
+    return {name, rows: attempts.flatMap(x => x.rows)};
+});
+const queue = manifest.queueRecorded ? groups['http-queue'] : [];
+if (manifest.queueRecorded) {
+    assert.equal(queue?.length, 1); assert.equal(queue[0].rows.length, 3);
+}
 console.log(JSON.stringify({commit: manifest.commit, recordedAt: manifest.recordedAt,
     completedAt: manifest.completedAt, fixtureCounts: counts, attemptCount: manifest.commands.length,
     outcomes, results: results.sort((a, b) => (b.medianMs || 0) - (a.medianMs || 0)),
-    applications: applications.sort((a, b) => b.medianMs - a.medianMs), complex}, null, 2));
+    applications: applications.sort((a, b) => b.medianMs - a.medianMs), complex,
+    profiles, queue: queue.flatMap(x => x.rows)}, null, 2));

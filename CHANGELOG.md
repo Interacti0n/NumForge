@@ -7,6 +7,9 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Extend the performance audit with large multiplication/division shapes,
+  complex function and precision sweeps, isolated per-operation decimal core
+  profiles and dedicated HTTP queue diagnostics; retain independent oracles.
 - Share exponential and reciprocal evaluation for scalar sinh/cosh inside
   complex forward functions, preserving small-argument sinh precision and
   independently rounded, atomic outputs.

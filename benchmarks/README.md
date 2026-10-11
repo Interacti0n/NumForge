@@ -17,6 +17,9 @@ The [complex paired evaluation report](../docs/benchmarks/COMPLEX_PAIR_2026_10_1
 records shared scalar sine/cosine work and high-precision calculator outcomes.
 The [hyperbolic paired evaluation report](../docs/benchmarks/HYPERBOLIC_PAIR_2026_10_11.md)
 records shared sinh/cosh work while preserving the stable small-argument series.
+The [performance refresh](../docs/benchmarks/PERFORMANCE_REFRESH_2026_10_11.md)
+compares the current cross-layer results and prioritizes remaining allocation
+failures, high-precision work and large multiplication experiments.
 
 | Files | Purpose |
 | --- | --- |
@@ -42,6 +45,20 @@ and strict comparison rules are in [the decimal/math report](../docs/benchmarks/
 Save raw recordings under ignored `build/` directories. Keep timing, allocation
 and phase probes separate, and validate results before drawing performance
 conclusions. Timeouts and reference mismatches remain explicit outcomes.
+
+The audit also measures 128–1,024-limb division shapes and 2,048–8,192-limb
+balanced/unbalanced multiplication. Complex pipeline probes include forward and
+inverse functions, tiny/boundary/scaled arguments and intermediate 5,000-place
+settings. Separate decimal profiles attribute core time and call counts to
+add/sub/mul/div/mod/pow/GCD/divmod; those extra clocks run only during profiling,
+never in ordinary timing samples or production builds. A dedicated server
+records queue waiting without touching the user's server or tunnel.
+Large squaring compares the same operands through generic multiplication and
+the private experiment. The 100,000-bit GCD case uses `--validate` (one verified
+API timing and a separate memory probe) instead of the ordinary seven-sample
+protocol. Calculator CSV includes `budget_reason` (`none`, `time`, `allocation`);
+allocation covers either cumulative or single-allocation exhaustion, while
+`none` does not imply that an unsuccessful call passed its output/domain limits.
 
 Read the [BigInt report](../docs/benchmarks/BIGINT_BENCHMARKS.md) and
 [formatting/cache report](../docs/benchmarks/BENCHMARKS.md) for existing measurements.

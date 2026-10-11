@@ -156,7 +156,7 @@ typedef struct Measurement {
     size_t calls, bytes, baseline, live, peak, iterations;
 } Measurement;
 
-static bool measure(const Case *c, bool memory, double target, Measurement *m)
+static bool measure(const Case *c, bool memory, double target, Measurement *m, bool warm)
 {
     BigInt a = {0}, b = {0}, result = {0}, remainder = {0};
     BigInt *out = &result, *rem = &remainder;
@@ -168,7 +168,7 @@ static bool measure(const Case *c, bool memory, double target, Measurement *m)
     if (!strcmp(c->mode, "alias_b")) out = &b;
     if (!strcmp(c->mode, "alias_pair")) rem = &b;
     /* Warm destination outside timing, except explicit fresh-output cases. */
-    if (out == &result && strcmp(c->mode, "cold") &&
+    if (warm && out == &result && strcmp(c->mode, "cold") &&
         operate(c, out, rem, &a, &b) != BIGINT_OK) goto cleanup;
     do
     {
@@ -198,21 +198,22 @@ cleanup:
     return success;
 }
 
-static bool run(const Case *c, bool quick)
+static bool run(const Case *c, bool quick, bool validate)
 {
     Measurement m;
     double samples[7];
-    size_t count = quick ? 3U : 7U;
-    for (size_t i = 0U; i < 3U; i++) if (!measure(c, false, 0.0, &m)) return false;
+    size_t count = validate ? 1U : quick ? 3U : 7U;
+    if (!validate)
+        for (size_t i = 0U; i < 3U; i++) if (!measure(c, false, 0.0, &m, true)) return false;
     for (size_t i = 0U; i < count; i++)
     {
-        if (!measure(c, false, quick ? 0.001 : 0.005, &m)) return false;
+        if (!measure(c, false, validate ? 0.0 : quick ? 0.001 : 0.005, &m, !validate)) return false;
         samples[i] = m.seconds * 1e9 / (double)m.iterations;
     }
     for (size_t i = 1U; i < count; i++)
         for (size_t j = i; j > 0U && samples[j] < samples[j - 1U]; j--)
         { double t = samples[j]; samples[j] = samples[j - 1U]; samples[j - 1U] = t; }
-    if (!measure(c, true, 0.0, &m)) return false;
+    if (!measure(c, true, 0.0, &m, !validate)) return false;
     printf("%s,%s,%s,%zu,%zu,%zu,%.3f,%.3f,%.3f,%zu,%zu,%zu,%zu,%zu,%llu\n",
         c->name, c->op, c->mode, bigint_bit_length(c->a), bigint_bit_length(c->b), count,
         samples[0], samples[count / 2U], samples[count - 1U], m.calls, m.bytes,
@@ -222,13 +223,14 @@ static bool run(const Case *c, bool quick)
 
 int main(int argc, char **argv)
 {
-    bool quick = false, success = true, found = false;
+    bool quick = false, validate = false, success = true, found = false;
     bool check = false;
     const char *selected = NULL;
-    if (argc < 2) { fputs("Usage: bigint_arithmetic_benchmark fixtures.tsv [--quick] [--check] [--case name]\n", stderr); return 1; }
+    if (argc < 2) { fputs("Usage: bigint_arithmetic_benchmark fixtures.tsv [--quick] [--validate] [--check] [--case name]\n", stderr); return 1; }
     for (int i = 2; i < argc; i++)
     {
         if (!strcmp(argv[i], "--quick")) quick = true;
+        else if (!strcmp(argv[i], "--validate")) validate = true;
         else if (!strcmp(argv[i], "--check")) check = true;
         else if (!strcmp(argv[i], "--case") && i + 1 < argc) selected = argv[++i];
         else return 1;
@@ -258,7 +260,7 @@ int main(int argc, char **argv)
         bool valid = c.a && c.b && c.expected && c.remainder;
         if (valid) valid = bigint_set_string(c.a, fields[3]) == BIGINT_OK &&
             bigint_set_string(c.b, fields[4]) == BIGINT_OK && bigint_set_string(c.expected, fields[5]) == BIGINT_OK &&
-            bigint_set_string(c.remainder, fields[6]) == BIGINT_OK && run(&c, quick);
+            bigint_set_string(c.remainder, fields[6]) == BIGINT_OK && run(&c, quick, validate);
         if (!valid) fprintf(stderr, "Failed exact reference or measurement: %s\n", c.name);
         bigint_destroy(c.a); bigint_destroy(c.b); bigint_destroy(c.expected); bigint_destroy(c.remainder);
         if (!valid) { success = false; break; }

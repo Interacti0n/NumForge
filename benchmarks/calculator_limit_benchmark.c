@@ -55,14 +55,22 @@ int main(int argc, char **argv)
     context.time_limit_ms = deadline;
     numforge_alloc_stats_reset();
     double begin = benchmark_seconds();
+    /* Own the same production scope so its reason remains observable after
+     * calculator_compute returns. Nested compute/format stages reuse it. */
+    if (!numforge_budget_begin((uint64_t)deadline,
+            CALCULATOR_ALLOCATION_BUDGET, CALCULATOR_SINGLE_ALLOCATION)) return EXIT_FAILURE;
     CalculatorStatus status = calculator_compute(expression, &context, &result, &error);
     double end = benchmark_seconds();
+    NumForgeBudgetFailure budget_failure = numforge_budget_failure();
+    numforge_budget_end();
     if (begin < 0.0 || end < begin || (status == CALCULATOR_OK && !result) ||
         (status != CALCULATOR_OK && result != NULL)) { free(result); return EXIT_FAILURE; }
-    printf("status,status_code,elapsed_ms,output_bytes,alloc_calls,requested_bytes\n");
-    printf("%s,%d,%.6f,%zu,%" PRIu64 ",%" PRIu64 "\n",
+    printf("status,status_code,elapsed_ms,output_bytes,alloc_calls,requested_bytes,budget_reason\n");
+    printf("%s,%d,%.6f,%zu,%" PRIu64 ",%" PRIu64 ",%s\n",
         calculator_status_to_string(status), (int)status, (end - begin) * 1000.0,
-        result ? strlen(result) : 0U, numforge_alloc_stats_calls(), numforge_alloc_stats_bytes());
+        result ? strlen(result) : 0U, numforge_alloc_stats_calls(), numforge_alloc_stats_bytes(),
+        budget_failure == NUMFORGE_BUDGET_TIME ? "time" :
+        budget_failure == NUMFORGE_BUDGET_MEMORY ? "allocation" : "none");
     /* Optional independently known result for smoke tests; never dump huge or
      * user-provided expressions/results into CSV. */
     const char *expected = getenv("NUMFORGE_BENCH_EXPECTED");

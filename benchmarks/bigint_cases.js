@@ -81,6 +81,27 @@ function makeCases(quick, factorialOnly = false) {
         for (const mode of ['reuse', 'alias_a']) add(`edge-square-${a}-${mode}`, 'square', mode, a);
         for (const b of [0n, 1n, -1n]) add(`edge-gcd-${a}-${b}`, 'gcd', 'reuse', a, b);
     }
+    if (!quick) {
+        // Large normalized division was previously capped at 64 limbs. Keep
+        // full native BigInt quotient/remainder references for each shape.
+        for (const n of [128, 256, 512, 1024]) {
+            const a = random(n), b = random(n / 2);
+            for (const [shape, x, y] of [['single', a, 97n], ['unequal', a, b],
+                ['exact', a * b, b], ['remainder', a * b + 1n, b]])
+                add(`divmod-large-${shape}-${n}`, 'divmod', 'reuse', x, y);
+        }
+        // Target the range where an asymptotically faster multiply could help,
+        // including reversed/unbalanced operands and existing square experiment.
+        for (const n of [2048, 4096, 8192]) {
+            const a = random(n), b = random(n), small = random(n / 8);
+            add(`mul-balanced-large-${n}`, 'mul', 'reuse', a, b);
+            add(`square-mul-large-${n}`, 'mul', 'reuse', a, a);
+            add(`mul-ratio-large-${n}-${n / 8}`, 'mul', 'reuse', a, small);
+            add(`mul-reverse-large-${n / 8}-${n}`, 'mul', 'reuse', small, a);
+            add(`square-special-large-${n}`, 'square', 'reuse', a);
+        }
+        add('gcd-large-power-pair-100000', 'gcd', 'reuse', (1n << 100000n) - 1n, 3n ** 63000n);
+    }
     factorials();
     for (const n of quick ? [1, 8] : [1, 4, 16, 64]) for (const exponent of quick ? [0, 2, 17] : [0, 1, 2, 3, 16, 17, 64]) {
         const base = random(n);

@@ -37,8 +37,13 @@ try {
     assert.match(wrong.stderr, /Reference mismatch/);
     const sum = row(invoke(calculator, ['1+2', '10', '0', '5000'], {NUMFORGE_BENCH_EXPECTED: '3'}));
     assert.equal(+sum.status_code, 0);
+    assert.equal(sum.budget_reason, 'none');
     assert.equal(+sum.output_bytes, 1);
     assert.ok(+sum.alloc_calls > 0 && +sum.requested_bytes > 0);
+    const expired = row(invoke(calculator, ['1+2', '10', '0', '0']));
+    assert.notEqual(+expired.status_code, 0);
+    assert.equal(expired.budget_reason, 'time');
+    assert.equal(+expired.output_bytes, 0);
     const quantity = row(invoke(calculator, ['qty(1/3;"m")+qty(1/6;"m")', '10', '0', '5000'],
         {NUMFORGE_BENCH_EXPECTED: '0.5 m'}));
     assert.equal(+quantity.status_code, 0);
@@ -52,6 +57,7 @@ try {
     assert.equal(+oversized.output_bytes, 0);
     const invalid = row(invoke(calculator, ['1/0', '10', '0', '5000']));
     assert.notEqual(+invalid.status_code, 0);
+    assert.equal(invalid.budget_reason, 'none');
     assert.equal(+invalid.output_bytes, 0);
     assert.notEqual(invoke(calculator, ['1+2', '10', '0', '-1']).status, 0);
     assert.notEqual(invoke(calculator, ['1+2', '10', '0', '5000'], {NUMFORGE_BENCH_EXPECTED: '4'}).status, 0);

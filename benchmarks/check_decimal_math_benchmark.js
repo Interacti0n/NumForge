@@ -24,6 +24,16 @@ function checkRows(output, rows) {
         assert.ok(+values.min_ns_per_op <= +values.median_ns_per_op && +values.median_ns_per_op <= +values.max_ns_per_op);
         assert.ok(+values.peak_live_bytes >= +values.baseline_live_bytes && +values.peak_live_bytes >= +values.live_bytes);
         assert.ok(['exact', 'bounded_directed'].includes(values.validation));
+        let operationTime = 0;
+        for (const op of ['add', 'sub', 'mul', 'div', 'mod', 'pow', 'gcd', 'divmod']) {
+            assert.ok(`diagnostic_${op}_ns` in values && `diagnostic_${op}_calls` in values);
+            operationTime += +values[`diagnostic_${op}_ns`];
+        }
+        // Operation intervals are disjoint and enclosed by the core scope.
+        // CSV rounding contributes at most 0.001 ns per printed field.
+        assert.ok(operationTime <= +values.diagnostic_core_ns + 0.01);
+        if (values.operation === 'mul' && +values.expected_status === 0)
+            assert.ok(+values.diagnostic_mul_calls > 0, 'Missing multiplication profile');
         if (values.validation === 'bounded_directed') {
             assert.ok(values.case.startsWith('legacy_') && +values.rounding < 4);
             bounded++;

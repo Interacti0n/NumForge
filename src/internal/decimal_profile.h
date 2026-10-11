@@ -14,11 +14,19 @@ typedef enum NumForgeDecimalPhase {
     NUMFORGE_DECIMAL_PHASES
 } NumForgeDecimalPhase;
 
+typedef enum NumForgeDecimalOperation {
+    NUMFORGE_DECIMAL_ADD, NUMFORGE_DECIMAL_SUB, NUMFORGE_DECIMAL_MUL,
+    NUMFORGE_DECIMAL_DIV, NUMFORGE_DECIMAL_MOD, NUMFORGE_DECIMAL_POW,
+    NUMFORGE_DECIMAL_GCD, NUMFORGE_DECIMAL_DIV_MOD, NUMFORGE_DECIMAL_OPERATIONS
+} NumForgeDecimalOperation;
+
 #ifdef NUMFORGE_ENABLE_ALLOC_STATS
 void numforge_decimal_profile_reset(void);
 void numforge_decimal_profile_stop(void);
 int numforge_decimal_profile_complete(void);
 double numforge_decimal_profile_seconds(NumForgeDecimalPhase phase);
+double numforge_decimal_operation_seconds(NumForgeDecimalOperation operation);
+size_t numforge_decimal_operation_calls(NumForgeDecimalOperation operation);
 NumForgeDecimalPhase numforge_decimal_enter(NumForgeDecimalPhase phase);
 void numforge_decimal_leave(NumForgeDecimalPhase previous);
 BigIntStatus numforge_decimal_add(BigInt *, const BigInt *, const BigInt *);

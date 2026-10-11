@@ -19,6 +19,8 @@ typedef struct Case {
 } Case;
 typedef struct Measurement {
     double seconds, phases[NUMFORGE_DECIMAL_PHASES];
+    double operations[NUMFORGE_DECIMAL_OPERATIONS];
+    size_t operation_calls[NUMFORGE_DECIMAL_OPERATIONS];
     size_t calls, bytes, baseline, live, peak, iterations;
     int bounded;
 } Measurement;
@@ -128,6 +130,11 @@ static bool measure(const Case *c, int probe, double target, bool warm, Measurem
         if (!numforge_decimal_profile_complete()) goto cleanup;
         for (int phase = 0; phase < NUMFORGE_DECIMAL_PHASES; phase++)
             m->phases[phase] = numforge_decimal_profile_seconds((NumForgeDecimalPhase)phase);
+        for (int op = 0; op < NUMFORGE_DECIMAL_OPERATIONS; op++)
+        {
+            m->operations[op] = numforge_decimal_operation_seconds((NumForgeDecimalOperation)op);
+            m->operation_calls[op] = numforge_decimal_operation_calls((NumForgeDecimalOperation)op);
+        }
     }
     success = true;
 cleanup:
@@ -162,11 +169,14 @@ static bool run(const Case *c, bool quick, bool validate, bool timing_only)
     }
     if (!measure(c, 1, 0.0, true, &memory) || !measure(c, 2, 0.0, true, &phases)) return false;
     bounded |= memory.bounded | phases.bounded;
-    printf("%s,%s,%s,%lld,%d,%d,%s,%zu,%.3f,%.3f,%.3f,%zu,%zu,%zu,%zu,%zu,%llu,%.3f,%.3f,%.3f,%.3f\n",
+    printf("%s,%s,%s,%lld,%d,%d,%s,%zu,%.3f,%.3f,%.3f,%zu,%zu,%zu,%zu,%zu,%llu,%.3f,%.3f,%.3f,%.3f",
         c->name, c->op, c->mode, (long long)c->parameter, (int)c->rounding, (int)c->expected_status,
         bounded ? "bounded_directed" : "exact", count, samples[0], samples[count / 2U], samples[count - 1],
         memory.calls, memory.bytes, memory.baseline, memory.live, memory.peak, numforge_profile_process_peak(),
         phases.phases[0] * 1e9, phases.phases[1] * 1e9, phases.phases[2] * 1e9, phases.phases[3] * 1e9);
+    for (int op = 0; op < NUMFORGE_DECIMAL_OPERATIONS; op++)
+        printf(",%.3f,%zu", phases.operations[op] * 1e9, phases.operation_calls[op]);
+    putchar('\n');
     return true;
 }
 
@@ -190,7 +200,13 @@ int main(int argc, char **argv)
     if (timing_only)
         puts("case,operation,mode,parameter,rounding,expected_status,validation,samples,min_ns_per_op,median_ns_per_op,max_ns_per_op");
     else
-        puts("case,operation,mode,parameter,rounding,expected_status,validation,samples,min_ns_per_op,median_ns_per_op,max_ns_per_op,alloc_calls,requested_bytes,baseline_live_bytes,live_bytes,peak_live_bytes,process_peak_bytes,diagnostic_other_ns,diagnostic_alignment_ns,diagnostic_normalize_ns,diagnostic_core_ns");
+    {
+        const char *operations[] = {"add", "sub", "mul", "div", "mod", "pow", "gcd", "divmod"};
+        printf("case,operation,mode,parameter,rounding,expected_status,validation,samples,min_ns_per_op,median_ns_per_op,max_ns_per_op,alloc_calls,requested_bytes,baseline_live_bytes,live_bytes,peak_live_bytes,process_peak_bytes,diagnostic_other_ns,diagnostic_alignment_ns,diagnostic_normalize_ns,diagnostic_core_ns");
+        for (int op = 0; op < NUMFORGE_DECIMAL_OPERATIONS; op++)
+            printf(",diagnostic_%s_ns,diagnostic_%s_calls", operations[op], operations[op]);
+        putchar('\n');
+    }
     while (fgets(line, (int)capacity, input))
     {
         if (line[0] == '#') continue;

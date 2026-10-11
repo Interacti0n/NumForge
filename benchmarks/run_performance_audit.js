@@ -27,11 +27,12 @@ const manifest = {recordedAt: new Date().toISOString(), commit: optional('git', 
     status: optional('git', ['status', '--short']), cpus: os.cpus(), platform: process.platform,
     os: os.release(), node: process.version, totalMemory: os.totalmem(),
     powerScheme: process.platform === 'win32' ? optional('powercfg', ['/getactivescheme']) : 'unavailable',
-    note: 'Serial; no affinity/frequency lock. Request counters enabled; live tracking only in separate probes. Local live server remains idle.',
+    note: 'Serial; no affinity/frequency lock or control of unrelated background processes. Request counters enabled; live tracking only in separate probes.',
     commands: []};
 fs.writeFileSync(path.join(output, 'working-tree.patch'), optional('git', ['diff', 'HEAD']));
 fs.mkdirSync(path.join(output, 'sources'));
-for (const file of ['run_performance_audit.js', 'calculator_limit_benchmark.c', 'decimal_math_benchmark.c'])
+for (const file of ['run_performance_audit.js', 'summarize_performance_audit.js', 'bigint_cases.js',
+    'decimal_math_cases.js', 'calculator_limit_benchmark.c', 'decimal_math_benchmark.c'])
     fs.copyFileSync(path.join(__dirname, file), path.join(output, 'sources', file));
 const cache = path.resolve(binaries, '..', 'CMakeCache.txt');
 if (fs.existsSync(cache)) {
@@ -71,17 +72,21 @@ for (let run = 1; run <= 3; run++) for (const row of decimals) {
         [decimalFile, '--validate', '--timing-only', '--case', name], 12000);
 }
 // Representative size sweeps retain the existing full seven-sample protocol.
+// The very large GCD uses one verified call per fresh process and a separate
+// memory probe, rather than repeatedly warming a long Euclidean chain.
 const integers = bigintCases(false).filter(row => {
     const [name, op, mode] = row.split('\t');
     return mode === 'reuse' && (name.startsWith('mul-balanced-') || name.startsWith('mul-ratio-') ||
-        /^square-special-\d+$/.test(name) || ['divmod', 'gcd', 'pow'].includes(op) ||
+        name.startsWith('mul-reverse-large-') || name.startsWith('square-mul-large-') ||
+        /^square-special-(large-)?\d+$/.test(name) || ['divmod', 'gcd', 'pow'].includes(op) ||
         /^(factorial|tree)-(20|10000|50000|100000)$/.test(name));
 });
 const integerFile = path.join(output, 'bigint-cases.tsv');
 fs.writeFileSync(integerFile, integers.join('\n') + '\n');
 for (let run = 1; run <= 3; run++) for (const row of integers)
     record(`bigint-${row.split('\t')[0]}-run${run}`, binary('bigint_arithmetic_benchmark'),
-        [integerFile, '--case', row.split('\t')[0]], 120000);
+        [integerFile, ...(row.startsWith('gcd-large-power-pair-') ? ['--validate'] : []),
+            '--case', row.split('\t')[0]], 120000);
 const formats = ['bigint_full', 'auto_10', 'scientific_100', 'mode_scientific_full', 'fixed_10'];
 const caches = ['legacy_cold', 'legacy_hit', 'legacy_approx_precision', 'session_cold', 'session_hit', 'session_commit'];
 for (let run = 1; run <= 3; run++) {
@@ -132,12 +137,48 @@ applications.push(
     ['complex_auto_output_limit', '2^110000+2^110000*i', 10, 0],
     ['complex_scientific_same', '2^110000+2^110000*i', 10, 2]);
 manifest.applications = applications;
+// Fill the forward/inverse complex and intermediate-precision gaps. These
+// remain resource diagnostics; independent mathematical references are checked
+// by the decimal and complex oracle families, not inferred from a success code.
+for (const places of [100, 1000, 2000, 5000, 10000])
+    for (const op of ['sin', 'cos', 'sinh', 'cosh', 'tanh'])
+        applications.push([`complex_${op}_p${places}`, `${op}(1+i)`, places]);
+for (const op of ['exp', 'sqrt', 'asin', 'acos', 'atan', 'asinh', 'acosh', 'atanh'])
+    applications.push([`complex_${op}_p2000`, `${op}(1+i)`, 2000]);
+for (const [name, expression] of [
+    ['complex_tan_scaled', 'tan(1+100*i)'], ['complex_tanh_scaled', 'tanh(100+i)'],
+    ['complex_sinh_tiny', 'sinh(1E-100+1E-100*i)'],
+    ['complex_sinh_boundary', 'sinh(0.5+0.5*i)'],
+    ['complex_log_branch', 'ln(-1+1E-100*i)'],
+    ['complex_power', '(1+i)^(0.5+0.25*i)'],
+    ['rational_complex', '(2^10000+i)/(3^6300-i)'],
+    ['quantity_sum', 'qty(1/3;"m")+qty(1/6;"m")'],
+]) applications.push([`${name}_p2000`, expression, 2000]);
+for (const [name, expression] of [['ln', 'ln(2)'], ['exp', 'exp(1)'],
+    ['sin_large_angle', 'sin(1E100)'], ['root', 'root(2;7)'], ['pi', 'π']])
+    applications.push([`${name}_p5000`, expression, 5000]);
+const profiles = ['mul_2000_reuse', 'large_division_2000_dense_divsig_reuse',
+    'exp_ordinary_p2000', 'ln_ordinary_p2000', 'log10_ordinary_p2000',
+    'sin_large_angle_p2000', 'tan_resolved_pole_p2000', 'sinh_ordinary_p2000',
+    'sqrt_ordinary_p2000', 'root_degree7_p2000', 'atanh_near_boundary_p2000',
+    'pi_factory_p2000'];
+for (const name of profiles)
+    if (!decimals.some(row => row.startsWith(name + '\t'))) throw Error('Missing profile fixture ' + name);
+manifest.profileCases = profiles;
 saveManifest();
 for (const [name, expression] of applications)
     fs.writeFileSync(path.join(output, `input-${name}.txt`), expression, 'utf8');
 for (let run = 1; run <= 3; run++) for (const [name, expression, places, notation = 0] of applications)
     record(`limit-${name}-run${run}`, binary('calculator_limit_benchmark'),
         ['--input-file', path.join(output, `input-${name}.txt`), String(places), String(notation), '5000'], 12000);
+// Separate memory/phase calls: profiling clocks do not contaminate headline
+// API timers. Every probe still checks its full independent decimal reference.
+for (let run = 1; run <= 3; run++) for (const name of profiles)
+    record(`profile-${name}-run${run}`, binary('decimal_math_benchmark'),
+        [decimalFile, '--validate', '--case', name], 60000);
+record('http-queue', process.execPath,
+    [path.join(__dirname, 'http_queue_benchmark.js'), binary('numforge_web')], 60000);
+manifest.queueRecorded = true;
 manifest.completedAt = new Date().toISOString();
 manifest.fixtureCounts = {decimal: decimals.length, bigint: integers.length, application: applications.length};
 saveManifest();

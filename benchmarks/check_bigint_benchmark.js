@@ -30,6 +30,15 @@ try {
     const bad = spawnSync(process.argv[2], [fixtures, '--quick'], { encoding: 'utf8', windowsHide: true });
     if (bad.error || bad.status !== 1 || !bad.stderr.includes('Failed exact reference'))
         throw Error('Corrupted oracle accepted');
+    fs.writeFileSync(fixtures, 'single\tdivmod\treuse\t100\t7\t14\t2\n');
+    const single = spawnSync(process.argv[2], [fixtures, '--validate'], {encoding: 'utf8', windowsHide: true});
+    if (single.error || single.status !== 0) throw single.error || Error(single.stderr);
+    const singleRows = single.stdout.trim().split(/\r?\n/);
+    if (singleRows.length !== 2 || singleRows[1].split(',')[5] !== '1')
+        throw Error('Single-call validation must emit one verified timing sample');
+    fs.writeFileSync(fixtures, 'bad_single\tdivmod\treuse\t100\t7\t14\t3\n');
+    const badSingle = spawnSync(process.argv[2], [fixtures, '--validate'], {encoding: 'utf8', windowsHide: true});
+    if (badSingle.error || badSingle.status !== 1) throw Error('Single-call validation accepted a wrong remainder');
     // A record above the 1 MiB buffer must be rejected before parsing a
     // truncated BigInt reference. Large complete references are checked by
     // the full factorial sweep, not added to fast CI timings.
