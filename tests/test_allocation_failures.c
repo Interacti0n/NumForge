@@ -1165,7 +1165,9 @@ static void test_large_zero_normalization_failures_alias_and_scale(void)
     TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_OK, numforge_budget_failure()); numforge_budget_end();
     TEST_ASSERT_EQUAL_UINT64(4096U, removed); assert_bigint_text("-12345", &copy); free(copy.limbs);
     char overflow[4130];
-    memcpy(overflow, input, sizeof(input)); strcat(overflow, "e9223372036854775807");
+    memcpy(overflow, input, sizeof(input) - 1U);
+    memcpy(overflow + sizeof(input) - 1U, "e9223372036854775807",
+           sizeof("e9223372036854775807"));
     BigDecimal *result = make_bigdecimal("42");
     TEST_ASSERT_EQUAL(BIGDECIMAL_SCALE_OVERFLOW, bigdecimal_set_string(result, overflow));
     assert_bigdecimal_text("42", result);
