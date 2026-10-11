@@ -26,6 +26,8 @@ BigIntStatus bigint_gcd( /*Greatest common divisor for BigInts (gcd(a,b)) via th
         return BIGINT_NULL_ARGUMENT;
     }
 
+    if (!numforge_budget_check()) return BIGINT_OUT_OF_MEMORY;
+
     BigInt x;
     x.limbs = NULL;
     x.size = 0;
@@ -44,6 +46,7 @@ BigIntStatus bigint_gcd( /*Greatest common divisor for BigInts (gcd(a,b)) via th
     remainder.capacity = 0;
     remainder.is_negative = false;
 
+    BigIntDivisionWorkspace workspace = {0};
     BigIntStatus status = bigint_abs(&x, a);
 
     if (status == BIGINT_OK)
@@ -53,7 +56,7 @@ BigIntStatus bigint_gcd( /*Greatest common divisor for BigInts (gcd(a,b)) via th
 
     while (status == BIGINT_OK && y.size != 0)
     {
-        status = bigint_mod(&remainder, &x, &y);
+        status = bigint_mod_abs_workspace(&remainder, &x, &y, &workspace);
 
         if (status == BIGINT_OK)
         {
@@ -78,6 +81,8 @@ BigIntStatus bigint_gcd( /*Greatest common divisor for BigInts (gcd(a,b)) via th
     free(x.limbs);
     free(y.limbs);
     free(remainder.limbs);
+    free(workspace.numerator.limbs);
+    free(workspace.divisor.limbs);
 
     return status;
 }

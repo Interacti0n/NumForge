@@ -20,6 +20,26 @@ static bool integer_argument(const char *text, int64_t *value)
     return true;
 }
 
+/* File expectations avoid environment-size limits for exact large fractions.
+ * Check bytes after timing; never serialize reference contents into metrics. */
+static bool matches_expected_file(const char *result, const char *path)
+{
+    FILE *file = fopen(path, "rb");
+    if (file == NULL) return false;
+    size_t position = 0U;
+    int byte;
+    bool matches = true;
+    while ((byte = fgetc(file)) != EOF)
+    {
+        if (result[position] == '\0' || (unsigned char)result[position] != (unsigned char)byte)
+        { matches = false; break; }
+        position++;
+    }
+    matches = matches && !ferror(file) && result[position] == '\0';
+    fclose(file);
+    return matches;
+}
+
 int main(int argc, char **argv)
 {
     CalculatorContext context;
@@ -75,6 +95,9 @@ int main(int argc, char **argv)
      * user-provided expressions/results into CSV. */
     const char *expected = getenv("NUMFORGE_BENCH_EXPECTED");
     bool matches = expected == NULL || (status == CALCULATOR_OK && !strcmp(result, expected));
+    const char *expected_file = getenv("NUMFORGE_BENCH_EXPECTED_FILE");
+    if (expected_file != NULL)
+        matches = matches && status == CALCULATOR_OK && matches_expected_file(result, expected_file);
     free(result);
     return matches ? EXIT_SUCCESS : EXIT_FAILURE;
 }

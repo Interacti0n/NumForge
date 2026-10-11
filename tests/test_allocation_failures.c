@@ -823,6 +823,82 @@ void test_limb_division_every_failure_and_alias(void)
     }
 }
 
+void test_gcd_workspace_every_failure_and_alias(void)
+{
+    static const struct { const char *a; const char *b; const char *g; } cases[] = {
+        { "0", "0", "0" }, { "0", "-97", "97" }, { "-97", "0", "97" },
+        { "-97", "-97", "97" }, { "10", "97", "1" },
+        { "-6277101735386680763835789423207666416102355444464034512895", "97", "97" },
+        /* Consecutive Fibonacci numbers force repeated multi-limb remainders. */
+        { "-354224848179261915075", "573147844013817084101", "1" }
+    };
+    for (size_t c = 0; c < sizeof(cases) / sizeof(cases[0]); c++)
+    for (unsigned alias = 0; alias < 4U; alias++)
+    for (unsigned deadline = 0; deadline < 2U; deadline++)
+    {
+        bool completed = false;
+        for (size_t index = 1; index <= ALLOCATION_TEST_MAX_FAILURE_INDEX; index++)
+        {
+            BigInt *a = make_bigint(cases[c].a), *b = make_bigint(cases[c].b);
+            BigInt *original = make_bigint("111");
+            BigInt *result = alias == 1 || alias == 3 ? a : alias == 2 ? b : original;
+            const BigInt *right = alias == 3 ? a : b;
+            if (deadline)
+            {
+                (void)numforge_budget_begin(5000U, SIZE_MAX, SIZE_MAX);
+                numforge_test_budget_expire_after(index);
+            }
+            else numforge_test_allocator_begin(index);
+            BigIntStatus status = bigint_gcd(result, a, right);
+            bool interrupted = deadline ? numforge_budget_failure() != NUMFORGE_BUDGET_OK
+                : numforge_test_allocator_did_fail();
+            numforge_budget_end(); numforge_test_allocator_end();
+            if (status == BIGINT_OK)
+            {
+                TEST_ASSERT_FALSE(interrupted);
+                const char *expected = alias == 3 ? cases[c].a : cases[c].g;
+                if (*expected == '-') expected++;
+                assert_bigint_text(expected, result);
+                if (result != a) assert_bigint_text(cases[c].a, a);
+                if (result != b) assert_bigint_text(cases[c].b, b);
+                completed = true;
+            }
+            else
+            {
+                TEST_ASSERT_TRUE(interrupted);
+                TEST_ASSERT_EQUAL(BIGINT_OUT_OF_MEMORY, status);
+                assert_bigint_text(cases[c].a, a);
+                assert_bigint_text(cases[c].b, b);
+                assert_bigint_text("111", original);
+            }
+            bigint_destroy(a); bigint_destroy(b); bigint_destroy(original);
+            if (completed) break;
+        }
+        TEST_ASSERT_TRUE(completed);
+    }
+}
+
+void test_gcd_large_pair_fits_production_allocation_budget(void)
+{
+    BigInt *a = make_bigint("2"), *b = make_bigint("3"), *one = make_bigint("1");
+    BigInt *power = make_bigint("100000"), *result = make_bigint("111");
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_pow(a, a, power));
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_sub(a, a, one));
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(power, "63000"));
+    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_pow(b, b, power));
+    /* Known exact gcd is 3. This previously requested over 1 GiB cumulatively.
+     * Enforce production memory caps without a machine-dependent timing test. */
+    (void)numforge_budget_begin(UINT64_MAX, CALCULATOR_ALLOCATION_BUDGET, CALCULATOR_SINGLE_ALLOCATION);
+    BigIntStatus status = bigint_gcd(result, a, b);
+    NumForgeBudgetFailure failure = numforge_budget_failure();
+    numforge_budget_end();
+    TEST_ASSERT_EQUAL(BIGINT_OK, status);
+    TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_OK, failure);
+    assert_bigint_text("3", result);
+    bigint_destroy(a); bigint_destroy(b); bigint_destroy(one);
+    bigint_destroy(power); bigint_destroy(result);
+}
+
 void test_bigint_divmod_and_number_theory_failure_paths(void)
 {
     static const char a_text[] = "12345678901234567890123456789012345678901234567890";
@@ -2233,6 +2309,8 @@ int main(void)
     RUN_TEST(test_bigint_arithmetic_failure_paths);
     RUN_TEST(test_bigint_divmod_and_number_theory_failure_paths);
     RUN_TEST(test_limb_division_every_failure_and_alias);
+    RUN_TEST(test_gcd_workspace_every_failure_and_alias);
+    RUN_TEST(test_gcd_large_pair_fits_production_allocation_budget);
     RUN_TEST(test_bigint_bitwise_and_shift_failure_paths);
     RUN_TEST(test_bigint_aliasing_preserves_destination_on_allocation_failure);
     RUN_TEST(test_bigint_boolean_number_theory_handles_every_allocation_failure);

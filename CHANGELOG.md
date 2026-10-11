@@ -7,6 +7,9 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Reuse private GCD remainder/normalization buffers and omit unused quotient
+  storage, allowing large rational calculations within unchanged memory budgets.
+  Preserve atomic aliases and cancellation; extend exact/failure/32-bit checks.
 - Extend the performance audit with large multiplication/division shapes,
   complex function and precision sweeps, isolated per-operation decimal core
   profiles and dedicated HTTP queue diagnostics; retain independent oracles.

@@ -53,6 +53,16 @@ int bigint_compare_abs(const BigInt *a, const BigInt *b);
 BigIntStatus bigint_add_abs(BigInt *result, const BigInt *a, const BigInt *b);
 BigIntStatus bigint_subtract_abs(BigInt *result, const BigInt *a, const BigInt *b);
 void bigint_multiply_u64_u64(uint64_t a, uint64_t b, uint64_t *high, uint64_t *low);
+/* Owned scratch for repeated magnitude division. Zero-initialize and free both
+ * buffers after use. Output must not alias inputs/scratch and may change on
+ * failure; callers publish only completed results. The divisor must be nonzero. */
+typedef struct BigIntDivisionWorkspace
+{
+    BigInt numerator;
+    BigInt divisor;
+} BigIntDivisionWorkspace;
+BigIntStatus bigint_mod_abs_workspace(BigInt *remainder, const BigInt *a, const BigInt *b,
+    BigIntDivisionWorkspace *workspace);
 BigIntStatus bigint_divmod_abs(BigInt *quotient, BigInt *remainder, const BigInt *a, const BigInt *b);
 size_t bigint_bit_length(const BigInt *value);
 /* Exact decimal magnitude length; no output serialization, unchanged on error. */

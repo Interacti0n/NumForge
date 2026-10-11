@@ -20,6 +20,8 @@ records shared sinh/cosh work while preserving the stable small-argument series.
 The [performance refresh](../docs/benchmarks/PERFORMANCE_REFRESH_2026_10_11.md)
 compares the current cross-layer results and prioritizes remaining allocation
 failures, high-precision work and large multiplication experiments.
+The [GCD workspace report](../docs/benchmarks/GCD_WORKSPACE_2026_10_11.md)
+records reusable remainder/normalization scratch and restored large rational requests.
 
 | Files | Purpose |
 | --- | --- |
@@ -62,3 +64,8 @@ allocation covers either cumulative or single-allocation exhaustion, while
 
 Read the [BigInt report](../docs/benchmarks/BIGINT_BENCHMARKS.md) and
 [formatting/cache report](../docs/benchmarks/BENCHMARKS.md) for existing measurements.
+
+Complete calculator references can use `NUMFORGE_BENCH_EXPECTED` or
+`NUMFORGE_BENCH_EXPECTED_FILE` (exact UTF-8 bytes, no trailing newline). Both
+checks run after timing; file expectations avoid environment-size limits for
+large exact fractions. Neither setting changes production calculator limits.

@@ -40,6 +40,16 @@ try {
     assert.equal(sum.budget_reason, 'none');
     assert.equal(+sum.output_bytes, 1);
     assert.ok(+sum.alloc_calls > 0 && +sum.requested_bytes > 0);
+    const expectedFile = path.join(directory, 'expected.txt');
+    fs.writeFileSync(expectedFile, '3');
+    row(invoke(calculator, ['1+2', '10', '0', '5000'], {NUMFORGE_BENCH_EXPECTED_FILE: expectedFile}));
+    for (const expected of ['4', '', '33', '3\n']) {
+        fs.writeFileSync(expectedFile, expected);
+        assert.equal(invoke(calculator, ['1+2', '10', '0', '5000'],
+            {NUMFORGE_BENCH_EXPECTED_FILE: expectedFile}).status, 1);
+    }
+    assert.equal(invoke(calculator, ['1+2', '10', '0', '5000'],
+        {NUMFORGE_BENCH_EXPECTED_FILE: expectedFile + '.missing'}).status, 1);
     const expired = row(invoke(calculator, ['1+2', '10', '0', '0']));
     assert.notEqual(+expired.status_code, 0);
     assert.equal(expired.budget_reason, 'time');

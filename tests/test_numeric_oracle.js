@@ -95,6 +95,18 @@ for (const text of ['123456789005'+'0'.repeat(1987)+'1','999999999995'+'0'.repea
   }
 }
 
+// Repeated GCD scratch reuse, exact independent JS modulo references. Keep
+// operand text below the test driver's 20,000-byte per-token protocol limit.
+let fa = 0n, fb = 1n;
+for (let i = 0; i < 450; i++) [fa, fb] = [fb, fa + fb];
+for (const [a, b] of [[fa, fb], [fa*97n, fb*97n],
+    [(1n<<16000n)-1n, 3n**10080n], [(1n<<4096n)+17n, (1n<<2048n)-1n]]) {
+  const expected = gcd(a, b);
+  for (const signA of [1n, -1n]) for (const signB of [1n, -1n])
+    add('igcd', signA*a, signB*b, 0, 0, expected);
+  add('igcd', b, a, 0, 0, expected);
+}
+
 for(let i=0;i<180;i++) {
   const a=integer(),b=integer();
   add('iadd',a,b,0,0,a+b);add('isub',a,b,0,0,a-b);add('imul',a,b,0,0,a*b);

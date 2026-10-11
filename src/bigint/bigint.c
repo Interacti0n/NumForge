@@ -743,36 +743,42 @@ BigIntStatus bigint_set_bit( /*Set a single bit of |value|, growing the BigInt a
     return BIGINT_OK;
 }
 
-BigIntStatus bigint_divmod_abs( /*Long division on magnitudes only: quotient = |a|/|b|, remainder = |a|%|b|.
-                                          Always called with a fresh, non-aliased quotient/remainder pair - see bigint_div_mod.*/
+/* Shared magnitude division on non-aliased private outputs, nonzero divisor.
+ * A NULL quotient omits storage; owned workspace survives between calls. */
+static BigIntStatus bigint_divmod_abs_core(
     BigInt *quotient,
     BigInt *remainder,
     const BigInt *a,
-    const BigInt *b
+    const BigInt *b,
+    BigIntDivisionWorkspace *workspace
 )
 {
-    quotient->size = 0;
+    if (quotient != NULL) quotient->size = 0;
     remainder->size = 0;
 
     if (!numforge_budget_check()) return BIGINT_OUT_OF_MEMORY;
     if (a->size == 0U) return BIGINT_OK;
     int comparison = bigint_compare_abs(a, b);
     if (comparison < 0) return bigint_copy(remainder, a);
-    if (comparison == 0) return bigint_set_uint64(quotient, 1U);
+    if (comparison == 0) return quotient == NULL ? BIGINT_OK : bigint_set_uint64(quotient, 1U);
 
     if (b->size == 1U)
     {
-        BigIntStatus status = bigint_ensure_capacity(quotient, a->size);
+        BigIntStatus status = quotient == NULL ? BIGINT_OK : bigint_ensure_capacity(quotient, a->size);
         if (status != BIGINT_OK) return status;
         uint64_t rest = 0U;
         for (size_t i = a->size; i > 0U; i--)
         {
             if (!numforge_budget_check()) return BIGINT_OUT_OF_MEMORY;
-            quotient->limbs[i - 1U] = bigint_divide_128_by_u64(
+            uint64_t digit = bigint_divide_128_by_u64(
                 rest, a->limbs[i - 1U], b->limbs[0], &rest);
+            if (quotient != NULL) quotient->limbs[i - 1U] = digit;
         }
-        quotient->size = a->size;
-        bigint_normalize(quotient);
+        if (quotient != NULL)
+        {
+            quotient->size = a->size;
+            bigint_normalize(quotient);
+        }
         return bigint_set_uint64(remainder, rest);
     }
 
@@ -784,11 +790,22 @@ BigIntStatus bigint_divmod_abs( /*Long division on magnitudes only: quotient = |
     if (status == BIGINT_OK) status = bigint_size_mul(u_count, sizeof(*u), &u_bytes);
     if (status == BIGINT_OK) status = bigint_size_mul(n, sizeof(*v), &v_bytes);
     if (status != BIGINT_OK) return status;
-    status = bigint_ensure_capacity(quotient, m + 1U);
+    status = quotient == NULL ? BIGINT_OK : bigint_ensure_capacity(quotient, m + 1U);
     if (status == BIGINT_OK) status = bigint_ensure_capacity(remainder, n);
     if (status != BIGINT_OK) return status;
-    u = numforge_malloc(u_bytes);
-    v = numforge_malloc(v_bytes);
+    if (workspace != NULL)
+    {
+        status = bigint_ensure_capacity(&workspace->numerator, u_count);
+        if (status == BIGINT_OK) status = bigint_ensure_capacity(&workspace->divisor, n);
+        if (status != BIGINT_OK) return status;
+        u = workspace->numerator.limbs;
+        v = workspace->divisor.limbs;
+    }
+    else
+    {
+        u = numforge_malloc(u_bytes);
+        v = numforge_malloc(v_bytes);
+    }
     if (u == NULL || v == NULL) { status = BIGINT_OUT_OF_MEMORY; goto cleanup_division; }
     unsigned shift = 0U;
     for (uint64_t top = b->limbs[n - 1U]; (top >> 63) == 0U; top <<= 1) shift++;
@@ -868,7 +885,7 @@ BigIntStatus bigint_divmod_abs( /*Long division on magnitudes only: quotient = |
             }
             u[j + n] += carry;
         }
-        quotient->limbs[j] = estimate;
+        if (quotient != NULL) quotient->limbs[j] = estimate;
     }
     for (size_t i = 0; i < n; i++)
     {
@@ -877,14 +894,31 @@ BigIntStatus bigint_divmod_abs( /*Long division on magnitudes only: quotient = |
         remainder->limbs[i] = shift == 0U ? u[i]
             : (u[i] >> shift) | (u[i + 1U] << (64U - shift));
     }
-    quotient->size = m + 1U;
+    if (quotient != NULL)
+    {
+        quotient->size = m + 1U;
+        bigint_normalize(quotient);
+    }
     remainder->size = n;
-    bigint_normalize(quotient);
     bigint_normalize(remainder);
 cleanup_division:
-    free(u);
-    free(v);
+    if (workspace == NULL)
+    {
+        free(u);
+        free(v);
+    }
     return status;
+}
+
+BigIntStatus bigint_divmod_abs(BigInt *quotient, BigInt *remainder, const BigInt *a, const BigInt *b)
+{
+    return bigint_divmod_abs_core(quotient, remainder, a, b, NULL);
+}
+
+BigIntStatus bigint_mod_abs_workspace(BigInt *remainder, const BigInt *a, const BigInt *b,
+    BigIntDivisionWorkspace *workspace)
+{
+    return bigint_divmod_abs_core(NULL, remainder, a, b, workspace);
 }
 
 int bigint_compare_abs( /*Compare two absolute values of BigInts*/
