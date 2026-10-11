@@ -79,3 +79,26 @@ The ZIP files and their checksum files remain in ignored audit directories.
 
 The existing 2.2.0 tag/assets should be preserved. These local audit archives
 must not be attached as replacements for that release.
+
+## CI follow-up
+
+The [CI run for 42886e5](https://github.com/Interacti0n/NumForge/actions/runs/38181949184)
+completed with three failed jobs. Linux GCC and Clang sanitizers both reported
+7,568 leaked bytes in nine allocations owned by the test-only numeric oracle
+driver's reusable decimal workspace. Normal process exit now clears that
+workspace. Allocation-instrumented oracle builds also assert a complete ledger
+and zero live allocations after cleanup. This was test-driver ownership, not a
+missing cleanup in the public numeric operation.
+
+Chromium passed 165/166 checks. The Units geometry test compared a textarea's
+pre-resize height (46 px) with its post-resize height (49 px) after switching
+from the compact desktop breakpoint to 1100 x 700. It now waits for two render
+frames before capturing the baseline; exact card-geometry equality is retained.
+
+Focused local verification: numeric/division reference checks passed with MSVC
+and GCC, including the GCC allocation ledger check; the MSVC allocation-failure
+suite also passed. The exact Units geometry test passed all ten consecutive
+Chromium repetitions, each covering both languages and all three desktop sizes.
+Linux LeakSanitizer verification still requires the next CI
+run. The unchanged Windows, Linux 32-bit, Linux/macOS ARM64, coverage and all
+three numeric benchmark jobs succeeded in the failed CI run.

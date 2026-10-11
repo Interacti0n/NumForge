@@ -132,6 +132,9 @@ test('desktop precision settings keep converter and result geometry stable',asyn
         await expect(page.locator('.unit-example-card')).toHaveCount(0);
         for(const [width,height] of [[1920,1080],[1366,768],[1100,700]]) {
             await page.setViewportSize({width,height});
+            // Resize delivery updates textarea height at desktop breakpoints.
+            // Measure after rendering, rather than comparing against the old height.
+            await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
             await expect(page.locator('.unit-settings h3')).toBeVisible();
             const geometry=()=>page.locator('.units-column > .card').evaluateAll(cards=>cards.map(n=>{
                 const r=n.getBoundingClientRect();return {top:r.top,height:r.height};

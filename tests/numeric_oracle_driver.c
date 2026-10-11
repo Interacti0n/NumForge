@@ -11,9 +11,13 @@
 #include "bigdecimal_internal.h"
 #include "../src/bigint/bigint_internal.h"
 #include "../src/calculator/evaluator.h"
+#include "../src/internal/numforge_alloc.h"
 
 int main(void)
 {
+#ifdef NUMFORGE_ENABLE_ALLOC_STATS
+    if (!numforge_alloc_stats_track(true)) return 3;
+#endif
     BigDecimalWorkspace workspace = {0};
     char op[16], a[20000], b[20000];
     int scale, rounding;
@@ -22,7 +26,7 @@ int main(void)
     if (!ia || !ib || !ir || !im || !da || !db || !dr)
     {
         bigdecimal_workspace_clear(&workspace);
-    bigint_destroy(ia); bigint_destroy(ib); bigint_destroy(ir); bigint_destroy(im);
+        bigint_destroy(ia); bigint_destroy(ib); bigint_destroy(ir); bigint_destroy(im);
         bigdecimal_destroy(da); bigdecimal_destroy(db); bigdecimal_destroy(dr);
         return 2;
     }
@@ -141,7 +145,16 @@ int main(void)
         else puts(text);
         free(text);
     }
+    bigdecimal_workspace_clear(&workspace);
     bigint_destroy(ia); bigint_destroy(ib); bigint_destroy(ir); bigint_destroy(im);
     bigdecimal_destroy(da); bigdecimal_destroy(db); bigdecimal_destroy(dr);
+#ifdef NUMFORGE_ENABLE_ALLOC_STATS
+    if (!numforge_alloc_stats_complete() || numforge_alloc_stats_live() != 0U)
+    {
+        fprintf(stderr, "Numeric oracle retained tracked allocations after cleanup\n");
+        return 3;
+    }
+    if (!numforge_alloc_stats_track(false)) return 3;
+#endif
     return 0;
 }
