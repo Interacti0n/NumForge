@@ -339,7 +339,8 @@ function initGraph() {
     }
     function moveView(low,high) {
         if(!Number.isFinite(low)||!Number.isFinite(high)||high<=low||!Number.isFinite(high-low))return;
-        if(high-low<Math.max(Math.abs(low),Math.abs(high))*Number.EPSILON*256){message(text.range,true);return;}
+        // Keep ample coordinate precision for pixel positions, not just endpoints.
+        if(high-low<Math.max(1,Math.abs(low),Math.abs(high))*1e-8){message(text.range,true);return;}
         ++generation;request?.abort();request=null;root.removeAttribute('aria-busy');
         viewport=[low,high];$('graph-min').value=String(low);$('graph-max').value=String(high);
         stopPrefetch();pendingView=true;

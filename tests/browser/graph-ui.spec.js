@@ -1,4 +1,15 @@
 const {test,expect}=require('@playwright/test');
+test('zoom stops before coordinate precision becomes unreliable and reset still works',async({page})=>{
+ await page.goto('/graph?lang=en');
+ await page.evaluate(()=>{for(let i=0;i<80;i++)document.querySelector('#graph-zoom-in').click();});
+ const low=Number(await page.locator('#graph-min').inputValue()),high=Number(await page.locator('#graph-max').inputValue());
+ expect(high-low).toBeGreaterThanOrEqual(1e-8);
+ await page.locator('#graph-zoom-in').click();
+ expect(Number(await page.locator('#graph-min').inputValue())).toBe(low);
+ expect(Number(await page.locator('#graph-max').inputValue())).toBe(high);
+ await page.locator('#graph-reset').click();
+ await expect(page.locator('#graph-min')).toHaveValue('-10');await expect(page.locator('#graph-max')).toHaveValue('10');
+});
 test('deep sine peak zoom has distinct axes and no projection staircase',async({page})=>{
  await page.goto('/graph?lang=en');
  const center=-3*Math.PI/2,low=center+1e-6,high=center+8e-6;

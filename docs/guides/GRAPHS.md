@@ -65,7 +65,10 @@ At deep zoom, repeated axis labels are replaced with a base plus Δ offsets:
 for example `y = 1 + Δ` and ticks showing small differences from 1. This does
 not change calculated values. Automatic scaling avoids magnifying numerical
 rounding into a false staircase, and zoom cannot exceed browser coordinate
-resolution. Extremely close to a sine maximum the curve is almost horizontal.
+resolution. Interactive zoom stops when the x span would fall below
+`1e-8 * max(1, abs(x_min), abs(x_max))`, leaving precision for individual pixels.
+The last valid view stays visible and zooming out or resetting remains available.
+Extremely close to a sine maximum the curve is almost horizontal.
 
 ## Moving the view
 
