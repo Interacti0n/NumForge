@@ -1,6 +1,6 @@
-# Local working roadmap (not part of published documentation)
-/PROJECT_REVIEW.md
-/PROJECT_CONTEXT.md
+# Personal local notes and collaboration preferences
+/info/
+/AGENTS.md
 
 # Reversible local cleanup snapshots (never publish)
 /.local-backups/
