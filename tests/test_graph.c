@@ -1,4 +1,5 @@
 #include "graph.h"
+#include "fast_graph.h"
 #include "session_api.h"
 #include "web_api.h"
 #include "../src/internal/numforge_alloc.h"
@@ -9,6 +10,7 @@
 static CalculatorContext context;
 static BigRational *minimum, *maximum;
 static ApplicationGraph *graph;
+static ApplicationFastGraph *screen_graph;
 static ApplicationClientStore store;
 static const char *client = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
@@ -25,6 +27,7 @@ void tearDown(void)
 {
     numforge_test_allocator_end(); numforge_budget_end();
     application_graph_destroy(graph); graph = NULL;
+    application_fast_graph_destroy(screen_graph);screen_graph=NULL;
     bigrational_destroy(minimum); bigrational_destroy(maximum);
     minimum = NULL; maximum = NULL;
     application_client_store_destroy(&store);
@@ -343,9 +346,38 @@ static void test_resolution_experiment_preserves_budget_and_atomic_output(void)
     TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY,application_graph_adaptive_limit(&graph,"x",NULL,minimum,maximum,2048U,NULL,&context,&error));
     numforge_test_allocator_end();TEST_ASSERT_EQUAL_PTR(original,graph);
 }
+static void test_fast_screen_sampler_connections_and_atomic_failure(void)
+{
+    CalculatorError error;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_graph_sample(&screen_graph,"sin(33x)",NULL,-10,10,800U,440U,false,NULL,&context,&error));
+    TEST_ASSERT_FALSE(screen_graph->limited);TEST_ASSERT_LESS_OR_EQUAL(APPLICATION_FAST_GRAPH_MAX_POINTS,screen_graph->count);
+    for(size_t i=1;i<screen_graph->count;++i){TEST_ASSERT_TRUE(screen_graph->points[i].x>screen_graph->points[i-1U].x);TEST_ASSERT_TRUE(screen_graph->points[i].connect);}
+    application_fast_graph_destroy(screen_graph);screen_graph=NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_graph_sample(&screen_graph,"1/(x-0.1)",NULL,-10,10,320U,300U,false,NULL,&context,&error));
+    for(size_t i=1;i<screen_graph->count;++i)if(screen_graph->points[i-1U].x<0.1&&screen_graph->points[i].x>0.1)TEST_ASSERT_FALSE(screen_graph->points[i].connect);
+    ApplicationFastGraph *original=screen_graph;
+    TEST_ASSERT_EQUAL(CALCULATOR_NOT_IMPLEMENTED,application_fast_graph_sample(&screen_graph,"floor(x)",NULL,-10,10,320U,300U,false,NULL,&context,&error));
+    TEST_ASSERT_EQUAL_PTR(original,screen_graph);
+    numforge_test_allocator_begin(1U);
+    TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY,application_fast_graph_sample(&screen_graph,"x",NULL,-10,10,320U,300U,false,NULL,&context,&error));
+    numforge_test_allocator_end();TEST_ASSERT_EQUAL_PTR(original,screen_graph);
+    application_fast_graph_destroy(screen_graph);screen_graph=NULL;
+    numforge_test_allocator_begin(0U);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_graph_sample(&screen_graph,"sin(x)",NULL,-10,10,320U,300U,false,NULL,&context,&error));
+    size_t calls=numforge_test_allocator_call_count();numforge_test_allocator_end();
+    application_fast_graph_destroy(screen_graph);screen_graph=NULL;
+    for(size_t failure=1;failure<=calls;++failure){numforge_test_allocator_begin(failure);
+        TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY,application_fast_graph_sample(&screen_graph,"sin(x)",NULL,-10,10,320U,300U,false,NULL,&context,&error));
+        numforge_test_allocator_end();TEST_ASSERT_NULL(screen_graph);
+    }
+    TEST_ASSERT_TRUE(numforge_budget_begin(5000U,1U,CALCULATOR_SINGLE_ALLOCATION));
+    TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE,application_fast_graph_sample(&screen_graph,"x",NULL,-10,10,320U,300U,false,NULL,&context,&error));
+    numforge_budget_end();TEST_ASSERT_NULL(screen_graph);
+}
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_fast_screen_sampler_connections_and_atomic_failure);
     RUN_TEST(test_resolution_experiment_preserves_budget_and_atomic_output);
     RUN_TEST(test_peak_work_allocation_failures_are_atomic);
     RUN_TEST(test_adaptive_view_includes_discovered_extrema);

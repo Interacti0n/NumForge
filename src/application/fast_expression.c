@@ -15,7 +15,7 @@ typedef enum FastOp { F_CONSTANT,F_X,F_NEGATE,F_SQUARE,F_CUBE,
     F_SIN,F_COS,F_TAN,F_EXP,F_LN,F_SQRT,F_CBRT,F_ABS } FastOp;
 typedef struct FastInstruction { FastOp operation;double value;double error; } FastInstruction;
 struct ApplicationFastExpression {
-    FastInstruction *code;size_t count;CalculatorContext context;
+    FastInstruction *code;size_t count,phase_count,guard_count;CalculatorContext context;
 };
 typedef struct FastCell { double value,error;ApplicationFastKind kind; } FastCell;
 
@@ -25,6 +25,8 @@ void application_fast_expression_destroy(ApplicationFastExpression *expression)
 static CalculatorStatus emit(ApplicationFastExpression *program,FastOp operation,double value,double error)
 {
     if(program->count>=FAST_INSTRUCTIONS)return CALCULATOR_VALUE_TOO_LARGE;
+    if(operation>=F_SIN&&operation<=F_TAN){if(program->phase_count>=64U)return CALCULATOR_INVALID_ARGUMENT;++program->phase_count;}
+    if(operation==F_DIVIDE||operation==F_POWER||operation==F_SQRT||operation==F_LN){if(program->guard_count>=64U)return CALCULATOR_INVALID_ARGUMENT;++program->guard_count;}
     program->code[program->count++]=(FastInstruction){operation,value,error};return CALCULATOR_OK;
 }
 static CalculatorStatus decimal_constant(ApplicationFastExpression *program,const BigDecimal *value)
@@ -135,7 +137,7 @@ CalculatorStatus application_fast_compile_tree(ApplicationFastExpression **resul
 
 /* Error propagation is a conservative fallback heuristic, not certified interval
  * arithmetic. Libm values are only for experimental screen-space plotting. */
-static ApplicationFastSample evaluate(const ApplicationFastExpression *program,double x)
+static ApplicationFastSample evaluate(const ApplicationFastExpression *program,double x,ApplicationFastProbe *probe)
 {
     FastCell stack[CALCULATOR_MAX_EXPRESSION_DEPTH+1U];size_t used=0;
     for(size_t i=0;i<program->count;++i){
@@ -152,6 +154,10 @@ static ApplicationFastSample evaluate(const ApplicationFastExpression *program,d
         // Only the exact evaluator may resolve such composed expressions.
         if(a.kind!=APPLICATION_FAST_REAL||b.kind!=APPLICATION_FAST_REAL){r.kind=APPLICATION_FAST_UNCERTAIN;stack[used++]=r;continue;}
         double av=a.value,bv=b.value;
+        if(probe&&(op.operation==F_DIVIDE||op.operation==F_POWER||op.operation==F_SQRT||op.operation==F_LN)){
+            int kind=op.operation==F_DIVIDE?1:op.operation==F_LN?2:op.operation==F_SQRT?3:4;
+            probe->guards[probe->guard_count++]=(ApplicationFastGuard){op.operation==F_DIVIDE?bv:av,bv,kind};
+        }
         switch(op.operation){
         case F_NEGATE:r.value=-av;r.error=a.error;
         break;
@@ -180,6 +186,7 @@ static ApplicationFastSample evaluate(const ApplicationFastExpression *program,d
         case F_SIN:case F_COS:case F_TAN:{
             double factor=program->context.angle_unit==CALCULATOR_ANGLE_DEGREES?0.017453292519943295:1;
             double angle=av*factor,uncertainty=a.error*fabs(factor)+fabs(angle)*4*DBL_EPSILON;
+            if(probe){size_t slot=probe->phase_count++;probe->phases[slot]=angle;probe->phase_kinds[slot]=op.operation==F_COS?0:op.operation==F_SIN?1:-1;}
             if(fabs(angle)>1e6){r.kind=APPLICATION_FAST_UNCERTAIN;
         break;}
             if(op.operation==F_TAN){double cosine=cos(angle);if(fabs(cosine)<1e-8){r.kind=APPLICATION_FAST_UNCERTAIN;
@@ -207,7 +214,7 @@ static ApplicationFastSample evaluate(const ApplicationFastExpression *program,d
         default:r.kind=APPLICATION_FAST_UNCERTAIN;
         break;
         }
-        r.error+=fabs(r.value)*4*DBL_EPSILON;
+        if(op.operation!=F_NEGATE&&op.operation!=F_ABS)r.error+=fabs(r.value)*4*DBL_EPSILON;
         if(!isfinite(r.value)||!isfinite(r.error)||r.error>1e-8*fmax(DBL_MIN,fabs(r.value)))r.kind=APPLICATION_FAST_UNCERTAIN;
         stack[used++]=r;
     }
@@ -225,10 +232,23 @@ CalculatorStatus application_fast_expression_sample(const ApplicationFastExpress
     for(size_t i=0;status==CALCULATOR_OK&&i<count;++i){
         if(!numforge_budget_check()){status=calculator_budget_status(CALCULATOR_OUT_OF_MEMORY);
         break;}
-        pending[i]=evaluate(expression,coordinates[i]);
+        pending[i]=evaluate(expression,coordinates[i],NULL);
     }
     status=calculator_budget_status(status);
     if(status==CALCULATOR_OK)memcpy(result,pending,count*sizeof(*pending));
     free(pending);if(owner)numforge_budget_end();
+    return status;
+}
+CalculatorStatus application_fast_expression_probe(const ApplicationFastExpression *expression,
+    double coordinate,ApplicationFastProbe *result)
+{
+    if(!expression||!result)return CALCULATOR_NULL_ARGUMENT;
+    if(!isfinite(coordinate))return CALCULATOR_INVALID_ARGUMENT;
+    bool owner=numforge_budget_begin((uint64_t)expression->context.time_limit_ms,CALCULATOR_ALLOCATION_BUDGET,CALCULATOR_SINGLE_ALLOCATION);
+    CalculatorStatus status=CALCULATOR_OK;ApplicationFastProbe pending={0};
+    if(!numforge_budget_check())status=calculator_budget_status(CALCULATOR_OUT_OF_MEMORY);
+    if(status==CALCULATOR_OK){pending.sample=evaluate(expression,coordinate,&pending);pending.complete=pending.phase_count==expression->phase_count&&pending.guard_count==expression->guard_count;}
+    status=calculator_budget_status(status);if(status==CALCULATOR_OK)*result=pending;
+    if(owner)numforge_budget_end();
     return status;
 }

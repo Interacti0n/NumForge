@@ -165,6 +165,7 @@ if(NUMFORGE_BUILD_APPS OR BUILD_TESTING OR NUMFORGE_BUILD_FUZZERS OR NUMFORGE_BU
     add_library(numforge_application STATIC
         src/application/expression.c
         src/application/fast_expression.c
+        src/application/fast_graph.c
         src/application/graph.c
         src/application/conversion.c
         src/application/session.c

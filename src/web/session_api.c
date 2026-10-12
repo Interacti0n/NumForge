@@ -3,6 +3,9 @@
 #include "web_api.h"
 #include "functions.h"
 #include "graph.h"
+#include "fast_graph.h"
+#include <errno.h>
+#include <math.h>
 #include "exact_functions.h"
 #include "evaluator_internal.h"
 #include <numforge/runtime.h>
@@ -13,6 +16,7 @@
 
 #define RESPONSE_CAPACITY (128U * 1024U)
 #define GRAPH_RESPONSE_CAPACITY (256U * 1024U)
+#define FAST_GRAPH_RESPONSE_CAPACITY (512U * 1024U)
 typedef struct Json { char *data; size_t used; CalculatorStatus status; size_t capacity; } Json;
 
 static void append(Json *json, const char *format, ...)
@@ -85,10 +89,10 @@ static void snapshot(Json *json, const CalculatorValue *value, bool full)
 
 enum { CLIENT, ACTION, REVISION, OFFSET, LIMIT, AT, ID, NAME, FULL,
        FROM, TO, PRECISION, PLACES, ROUNDING, ANGLE, NOTATION,
-       MINIMUM, MAXIMUM, POINTS, PARAMETER, QUERY_COUNT };
+       MINIMUM, MAXIMUM, POINTS, PARAMETER, MODE, WIDTH, HEIGHT, QUALITY, QUERY_COUNT };
 static const char *keys[] = {"client", "action", "revision", "offset", "limit", "at", "id", "name", "full",
     "from", "to", "precision", "places", "rounding", "angle", "notation",
-    "min", "max", "points", "parameter"};
+    "min", "max", "points", "parameter", "mode", "width", "height", "quality"};
 typedef struct Query { char values[QUERY_COUNT][48]; unsigned int seen; } Query;
 #define BIT(field) (1U << (field))
 
@@ -215,14 +219,20 @@ static CalculatorStatus graph_request(ApplicationClientStore *store, const char 
     const Query *query, const char *body, char **response, CalculatorError *error, const char **code, bool adaptive)
 {
     const unsigned int allowed = BIT(CLIENT) | BIT(AT) | BIT(MINIMUM) | BIT(MAXIMUM) |
-        (adaptive ? 0U : BIT(POINTS)) | BIT(PARAMETER) | BIT(PRECISION) | BIT(ANGLE);
-    uint64_t points, precision, at;
+        (adaptive ? BIT(MODE)|BIT(WIDTH)|BIT(HEIGHT)|BIT(QUALITY) : BIT(POINTS)) | BIT(PARAMETER) | BIT(PRECISION) | BIT(ANGLE);
+    uint64_t points, precision, at,width,height;
     if (strcmp(method, "POST") != 0 || (query->seen & ~allowed) ||
         !(query->seen & BIT(MINIMUM)) || !(query->seen & BIT(MAXIMUM)) ||
         !number(query, POINTS, 129U, &points) || points < 2U || points > APPLICATION_EXPRESSION_MAX_SAMPLES ||
         !number(query, PRECISION, CALCULATOR_DEFAULT_DIVISION_SCALE, &precision) ||
         precision == 0U || precision > CALCULATOR_MAX_OUTPUT_SCALE || !number(query, AT, 0U, &at) ||
         ((query->seen & BIT(AT)) && !(query->seen & BIT(CLIENT)))) return CALCULATOR_INVALID_ARGUMENT;
+    bool fast_mode=(query->seen&BIT(MODE))!=0U;
+    if(fast_mode&&strcmp(query->values[MODE],"fast")!=0)return CALCULATOR_INVALID_ARGUMENT;
+    if(!fast_mode&&(query->seen&(BIT(WIDTH)|BIT(HEIGHT)|BIT(QUALITY))))return CALCULATOR_INVALID_ARGUMENT;
+    if(!number(query,WIDTH,800U,&width)||width<320U||width>2048U||!number(query,HEIGHT,440U,&height)||height<160U||height>1200U)return CALCULATOR_INVALID_ARGUMENT;
+    bool coarse=(query->seen&BIT(QUALITY))&&strcmp(query->values[QUALITY],"coarse")==0;
+    if((query->seen&BIT(QUALITY))&&!coarse&&strcmp(query->values[QUALITY],"refined")!=0)return CALCULATOR_INVALID_ARGUMENT;
     CalculatorContext context; calculator_context_init(&context);
     context.division_scale = (int64_t)precision;
     if (query->seen & BIT(ANGLE))
@@ -252,6 +262,33 @@ static CalculatorStatus graph_request(ApplicationClientStore *store, const char 
     if (status == CALCULATOR_OK) status = calculator_from_bigdecimal_status(bigdecimal_set_string(decimal, query->values[MAXIMUM]));
     if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_from_bigdecimal(maximum, decimal));
     const char *parameter = query->seen & BIT(PARAMETER) ? query->values[PARAMETER] : adaptive ? NULL : "x";
+    if(status==CALCULATOR_OK&&fast_mode&&precision==CALCULATOR_DEFAULT_DIVISION_SCALE){
+        char *end=NULL;errno=0;double low=strtod(query->values[MINIMUM],&end);
+        bool usable=errno!=ERANGE&&isfinite(low)&&end!=query->values[MINIMUM]&&*end=='\0';
+        errno=0;double high=strtod(query->values[MAXIMUM],&end);usable=usable&&errno!=ERANGE&&isfinite(high)&&end!=query->values[MAXIMUM]&&*end=='\0';
+        ApplicationFastGraph *fast=NULL;
+        if(usable&&high>low)status=application_fast_graph_sample(&fast,body,parameter,low,high,(size_t)width,(size_t)height,coarse,session,&context,error);
+        else status=CALCULATOR_NOT_IMPLEMENTED;
+        if(status==CALCULATOR_OK){
+            json.capacity=FAST_GRAPH_RESPONSE_CAPACITY;json.data=numforge_malloc(json.capacity);
+            if(!json.data)status=CALCULATOR_OUT_OF_MEMORY;
+            else{
+                append(&json,"{\"ok\":true,\"schema_version\":3,\"sampling\":\"screen\",\"evaluation\":\"double\",\"parameter\":");string(&json,fast->parameter);
+                append(&json,",\"quality\":\"%s\",\"width\":%llu,\"height\":%llu,\"limited\":%s,\"exact_probes\":%zu,\"y_min\":",coarse?"coarse":"refined",(unsigned long long)width,(unsigned long long)height,fast->limited?"true":"false",fast->exact_probes);
+                if(isfinite(fast->minimum))append(&json,"%.17g",fast->minimum);else append(&json,"null");
+                append(&json,",\"y_max\":");if(isfinite(fast->maximum))append(&json,"%.17g",fast->maximum);else append(&json,"null");
+                append(&json,",\"count\":%zu,\"plot_places\":16,\"points\":[",fast->count);
+                for(size_t i=0;i<fast->count&&json.status==CALCULATOR_OK;++i){const ApplicationFastGraphPoint *p=&fast->points[i];
+                    append(&json,"%s[%.17g,",i?",":"",p->x);if(isfinite(p->y))append(&json,"%.17g",p->y);else append(&json,"null");
+                    append(&json,",%u,%u,%u]",p->connect?1U:0U,(unsigned)p->kind,p->approximate?1U:0U);
+                }
+                append(&json,"]}");status=json.status;
+            }
+            application_fast_graph_destroy(fast);goto graph_done;
+        }
+        application_fast_graph_destroy(fast);
+        if(status==CALCULATOR_NOT_IMPLEMENTED)status=CALCULATOR_OK;
+    }
     if (status == CALCULATOR_OK) status = adaptive ?
         application_graph_adaptive(&graph, body, parameter, minimum, maximum, session, &context, error) :
         application_graph_sample(&graph, body, parameter, minimum, maximum, (size_t)points, session, &context, error);
@@ -266,7 +303,7 @@ static CalculatorStatus graph_request(ApplicationClientStore *store, const char 
     {
         append(&json, "{\"ok\":true,\"schema_version\":%u,\"parameter\":", adaptive ? 2U : 1U); string(&json, parameter);
         if (adaptive) {
-            append(&json, ",\"sampling\":\"adaptive\",\"limited\":%s,\"y_min\":", graph->limited ? "true" : "false");
+            append(&json, ",\"sampling\":\"adaptive\",\"evaluation\":\"precision\",\"limited\":%s,\"y_min\":", graph->limited ? "true" : "false");
             CalculatorValue view = {0};view.number = graph->view_minimum;
             if (view.number != NULL) plot_number(&json, &view,16);else append(&json,"null");
             append(&json, ",\"y_max\":");view.number = graph->view_maximum;
@@ -296,6 +333,7 @@ static CalculatorStatus graph_request(ApplicationClientStore *store, const char 
         }
         append(&json, "]}"); status = json.status;
     }
+graph_done:
     status = calculator_budget_status(status);
     application_graph_destroy(graph); bigdecimal_destroy(decimal);
     bigrational_destroy(minimum); bigrational_destroy(maximum);

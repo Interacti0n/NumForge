@@ -20,7 +20,8 @@ typedef enum ApplicationGraphPointKind
     APPLICATION_GRAPH_REAL,
     APPLICATION_GRAPH_DOMAIN_ERROR,
     APPLICATION_GRAPH_COMPLEX,
-    APPLICATION_GRAPH_QUANTITY
+    APPLICATION_GRAPH_QUANTITY,
+    APPLICATION_GRAPH_UNRESOLVED /* compact sampler: exact fallback reserve reached */
 } ApplicationGraphPointKind;
 
 /* Exact inclusive uniform grid, 2..1024 points, minimum < maximum. Preparation,

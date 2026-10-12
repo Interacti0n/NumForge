@@ -17,10 +17,10 @@ are AST nodes, not candidate letters. Names remain case-sensitive.
 calculation precision (1–10000 significant digits, default 34) and radians/degrees.
 Bounds are finite decimal literals, including scientific notation, not expressions
 such as `pi` or `1/3`. They describe the displayed interval, not a domain restriction.
-Precision controls approximate C mathematics; it does not control graph density.
-Some functions retain at least 34 working digits. Plot coordinates still use the
-rounded 16-place scientific projection (17 significant digits), regardless of
-a higher calculation precision. The uniform API retains its 12-place output.
+Default precision 34 permits fast approximate drawing in C. Another precision
+value uses the precision evaluator; unsupported or uncertain expressions also
+retain that path. Coordinates have at most 17 significant digits regardless of
+calculation precision. Density is automatic. The uniform API retains 12 places.
 
 ## Calculator variables
 
@@ -31,18 +31,18 @@ with the same spelling. A changed session revision rejects the graph request.
 
 ## Curves and gaps
 
-The [adaptive C HTTP sampler](../reference/ADAPTIVE_GRAPH_HTTP_API.md) evaluates
+The [screen-space C sampler](../reference/SCREEN_GRAPH_HTTP_API.md) evaluates
 midpoints and refines intervals with curvature or mixed point classifications.
 The browser draws only connections accepted by the sampler. Domain errors,
 complex values (including zero imaginary components), quantities and intervals
 still unresolved at refinement bounds remain gaps. There are no point markers
 or manual connection/sample-count controls. The sample table stays accessible.
 
-Recognized continuous expressions, such as `sin(33*x)` or combinations of
-sin/cos, polynomials and exp, permit a coarser line once intervals are small
-relative to the selected x range. This favors a connected visual overview over
-strict interpolation accuracy; calculation precision controls the sampled values,
-not the accuracy of the line between them. Pole/jump operations keep stricter checks.
+Screen-space refinement follows visible curvature and captured trig/domain
+checks. Precision fallback can use coarser chords for recognized continuous
+expressions such as sin/cos, polynomials and exp. Neither calculation precision
+nor point count alone guarantees interpolation accuracy. Pole/jump operations
+keep stricter checks; unsupported operations retain the precision sampler.
 
 Coarse trigonometric curves also evaluate points near sin/cos phase extrema, so
 missed peaks do not create a false changing amplitude. These are actual C samples;
@@ -97,7 +97,9 @@ and a wider overview during idle time, one request at a time. Slow/limited/faile
 requests stop optional background work. Every request retains the C API's normal
 time, allocation and output limits; unprepared intervals cannot be instantaneous.
 
-Each adaptive request uses at most 2048 points. The cache is bounded to 12 sampled
+Fast refined requests use at most 8192 points; precision fallback uses at most
+2048. Unprepared settled moves display coarse data before adding detail.
+The cache is bounded to 12 sampled
 ranges, 12288 total cached points and an estimated 8 MiB weight, and lives only
 in the current page and clears on expression/precision/angle/session changes or
 navigation. Session revisions are rechecked before settled cache reuse, so

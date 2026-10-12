@@ -1,4 +1,5 @@
 #include "graph.h"
+#include "fast_graph.h"
 #include "session_api.h"
 #include "benchmark_clock.h"
 #include "../src/internal/numforge_alloc.h"
@@ -57,31 +58,41 @@ int main(int argc,char **argv){
   point_limit*sizeof(CalculatorValue),point_limit*sizeof(ApplicationExpressionSample),(unsigned)CALCULATOR_SINGLE_ALLOCATION);
  int inaccurate=0;
  puts("case,mode,repeat,status,ms,calls,bytes,points,limited,point_error,chord_error,screen_error,connected_fraction,point_cap,projected_point_bytes");
- for(size_t c=0;c<sizeof(cases)/sizeof(cases[0]);++c)for(int mode=0;mode<3;++mode)for(int run=0;run<repeats;++run){
+ for(size_t c=0;c<sizeof(cases)/sizeof(cases[0]);++c)for(int mode=0;mode<5;++mode)for(int run=0;run<repeats;++run){
   if(argc>2&&mode!=1)continue;
   const GraphCase *item=&cases[c];CalculatorContext context;calculator_context_init(&context);
   context.division_scale=item->precision;
   BigDecimal *value=bigdecimal_create();BigRational *low=bigrational_create(),*high=bigrational_create();
   if(!value||!low||!high)return 2;
   if(bigdecimal_set_string(value,item->low)!=BIGDECIMAL_OK||bigrational_from_bigdecimal(low,value)!=BIGRATIONAL_OK||bigdecimal_set_string(value,item->high)!=BIGDECIMAL_OK||bigrational_from_bigdecimal(high,value)!=BIGRATIONAL_OK)return 2;
-  ApplicationGraph *graph=NULL;CalculatorError error;char *response=NULL;ApplicationClientStore store={0};
+  ApplicationGraph *graph=NULL;ApplicationFastGraph *screen=NULL;CalculatorError error;char *response=NULL;ApplicationClientStore store={0};
   numforge_alloc_stats_reset();double start=benchmark_seconds();
   CalculatorStatus status;
   if(mode==0)status=application_graph_sample(&graph,item->expression,"x",low,high,129,NULL,&context,&error);
   else if(mode==1)status=application_graph_adaptive_limit(&graph,item->expression,NULL,low,high,point_limit,NULL,&context,&error);
-  else{char target[160];snprintf(target,sizeof(target),"/api/graph/plot?min=%s&max=%s&precision=%d",item->low,item->high,item->precision);status=numforge_web_session_request(&store,"POST",target,item->expression,&response);}
+  else if(mode==3){status=item->precision==34?application_fast_graph_sample(&screen,item->expression,NULL,strtod(item->low,NULL),strtod(item->high,NULL),800U,440U,false,NULL,&context,&error):CALCULATOR_NOT_IMPLEMENTED;
+   if(status==CALCULATOR_NOT_IMPLEMENTED)status=application_graph_adaptive(&graph,item->expression,NULL,low,high,NULL,&context,&error);}
+  else{char target[192];snprintf(target,sizeof(target),"/api/graph/plot?min=%s&max=%s&precision=%d%s",item->low,item->high,item->precision,mode==4?"&mode=fast&width=800&height=440":"");status=numforge_web_session_request(&store,"POST",target,item->expression,&response);}
   double elapsed=(benchmark_seconds()-start)*1000;size_t calls=numforge_alloc_stats_calls(),bytes=numforge_alloc_stats_bytes();
   double point_error=0,chord_error=0,screen_error=0,connected_fraction=0;
   double view_span=graph&&graph->view_minimum&&graph->view_maximum?project(graph->view_maximum)-project(graph->view_minimum):0;
   if(status==CALCULATOR_OK&&graph){for(size_t i=0;i<graph->count;++i){if(application_graph_point_kind(&graph->samples[i])!=APPLICATION_GRAPH_REAL)continue;double x=project(graph->coordinates[i].number),y=project(graph->samples[i].value.number),expected=reference(item->reference,x);double e=fabs(y-expected)/fmax(1,fabs(expected));if(e>point_error)point_error=e;
    if(!isfinite(e)||e>1e-9)inaccurate=1;
-   if(i&&mode==1&&graph->connect[i]){double a=project(graph->coordinates[i-1].number),ya=project(graph->samples[i-1].value.number);connected_fraction+=(x-a)/(strtod(item->high,NULL)-strtod(item->low,NULL));for(int probe=1;probe<=3;++probe){double t=(double)probe/4,xx=a+(x-a)*t,yy=ya+(y-ya)*t,truth=reference(item->reference,xx);double gap=fabs(yy-truth)/fmax(1,fabs(truth));if(gap>chord_error)chord_error=gap;double screen=fabs(yy-truth)/fmax(1,view_span);if(screen>screen_error)screen_error=screen;}}
+   if(i&&(mode==1||mode==3)&&graph->connect[i]){double a=project(graph->coordinates[i-1].number),ya=project(graph->samples[i-1].value.number);connected_fraction+=(x-a)/(strtod(item->high,NULL)-strtod(item->low,NULL));for(int probe=1;probe<=3;++probe){double t=(double)probe/4,xx=a+(x-a)*t,yy=ya+(y-ya)*t,truth=reference(item->reference,xx);double gap=fabs(yy-truth)/fmax(1,fabs(truth));if(gap>chord_error)chord_error=gap;double screen_error_probe=fabs(yy-truth)/fmax(1,view_span);if(screen_error_probe>screen_error)screen_error=screen_error_probe;}}
   }}
-  size_t points=graph?graph->count:0;bool limited=graph?graph->limited:false;
+  if(status==CALCULATOR_OK&&screen)for(size_t i=0;i<screen->count;++i){const ApplicationFastGraphPoint *p=&screen->points[i];if(p->kind!=APPLICATION_GRAPH_REAL||!isfinite(p->y))continue;
+   double truth=reference(item->reference,p->x),gap=fabs(p->y-truth)/fmax(1,fabs(truth));if(!isfinite(gap)||gap>1e-9)inaccurate=1;if(gap>point_error)point_error=gap;
+   if(i&&p->connect){const ApplicationFastGraphPoint *a=&screen->points[i-1];connected_fraction+=(p->x-a->x)/(strtod(item->high,NULL)-strtod(item->low,NULL));
+    for(int probe=1;probe<=3;++probe){double t=(double)probe/4,x=a->x+(p->x-a->x)*t,y=a->y+(p->y-a->y)*t,expected=reference(item->reference,x);
+     double chord=fabs(y-expected)/fmax(1,fabs(expected));if(chord>chord_error)chord_error=chord;
+     double pixel=fabs(y-expected)/fmax(1,screen->maximum-screen->minimum);if(pixel>screen_error)screen_error=pixel;}
+   }
+  }
+  size_t points=graph?graph->count:screen?screen->count:0;bool limited=graph?graph->limited:screen?screen->limited:false;
   if(response&&status==CALCULATOR_OK){const char *count=strstr(response,"\"count\":");if(count)points=(size_t)strtoull(count+8,NULL,10);limited=strstr(response,"\"limited\":true")!=NULL;}
   size_t projection=mode==1&&graph?projected_bytes(graph,item->expression):0;
-  printf("%s,%s,%d,%d,%.3f,%zu,%zu,%zu,%d,%.6g,%.6g,%.6g,%.6g,%zu,%zu\n",item->name,mode==0?"uniform129":mode==1?"adaptive":"http",run,(int)status,elapsed,calls,bytes,points,limited,point_error,chord_error,screen_error,connected_fraction,mode==1?point_limit:mode==0?129U:APPLICATION_GRAPH_MAX_ADAPTIVE_SAMPLES,projection);fflush(stdout);
-  application_graph_destroy(graph);free(response);bigdecimal_destroy(value);bigrational_destroy(low);bigrational_destroy(high);application_client_store_destroy(&store);
+  printf("%s,%s,%d,%d,%.3f,%zu,%zu,%zu,%d,%.6g,%.6g,%.6g,%.6g,%zu,%zu\n",item->name,mode==0?"uniform129":mode==1?"adaptive":mode==2?"http":mode==3?"screen":"screen_http",run,(int)status,elapsed,calls,bytes,points,limited,point_error,chord_error,screen_error,connected_fraction,mode==1?point_limit:mode==0?129U:mode>=3?APPLICATION_FAST_GRAPH_MAX_POINTS:APPLICATION_GRAPH_MAX_ADAPTIVE_SAMPLES,projection);fflush(stdout);
+  application_graph_destroy(graph);application_fast_graph_destroy(screen);free(response);bigdecimal_destroy(value);bigrational_destroy(low);bigrational_destroy(high);application_client_store_destroy(&store);
  }
  return inaccurate;
 }

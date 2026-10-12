@@ -43,7 +43,7 @@
         <h1 id="graph-title">Grafy funkcií</h1>
         <form id="graph-form">
           <label class="graph-expression">Funkcia · y =<input id="graph-expression" value="sin(x)" maxlength="4096" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
-          <details class="graph-settings"><summary>Rozsah a nastavenia</summary><p class="graph-note">Zobrazený rozsah začína od −10 do 10. Nie je to definičný obor funkcie. Presnosť určuje významné číslice výpočtu, nie hustotu grafu.</p><div class="graph-fields">
+          <details class="graph-settings"><summary>Rozsah a nastavenia</summary><p class="graph-note">Zobrazený rozsah začína od −10 do 10. Predvolená presnosť uprednostňuje plynulé približné kreslenie; iná hodnota použije presnejší výpočet bodov. Hustota bodov je automatická.</p><div class="graph-fields">
             <label>Od<input id="graph-min" value="-10" inputmode="decimal" required></label>
             <label>Do<input id="graph-max" value="10" inputmode="decimal" required></label>
             <label>Výpočtová presnosť<input id="graph-precision" type="number" min="1" max="10000" step="1" value="34" required></label>

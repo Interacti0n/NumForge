@@ -1,11 +1,54 @@
 const {test,expect}=require('@playwright/test');
-test('2048 points render while the detail table stays bounded',async({page})=>{
- await page.goto('/graph?lang=en');const data=await sample(page,'tan(x)');expect(data.count).toBe(2048);
+const normalize=data=>data.schema_version===3?{...data,points:data.points.map(p=>({x:String(p[0]),y:p[1]===null?null:String(p[1]),connect:!!p[2],kind:['real','domain_error','complex','quantity','unresolved'][p[3]],source_approximate:!!p[4]}))}:data;
+test('dense background preparation preserves the active cached viewport',async({page})=>{
+ let initial=0,neighbors=0;
+ await page.route('**/api/graph/plot?**',route=>{
+  const q=new URL(route.request().url()).searchParams,low=Number(q.get('min')),high=Number(q.get('max'));
+  if(low===-10&&high===10)++initial;else ++neighbors;
+  return route.fulfill({json:{ok:true,schema_version:3,evaluation:'double',parameter:'x',quality:'refined',width:800,height:440,
+   limited:false,count:8192,y_min:-1,y_max:1,points:Array.from({length:8192},(_,i)=>{const x=low+(high-low)*i/8191;return [x,Math.sin(x),i?1:0,0,1];})}});
+ });
+ await page.goto('/graph?lang=en');await sample(page,'sin(x)');
+ await expect.poll(()=>neighbors,{timeout:10000}).toBeGreaterThanOrEqual(2);
+ await page.locator('#graph-submit').click();await expect(page.locator('path.graph-line')).toBeVisible();expect(initial).toBe(1);
+});
+test('dense cached camera motion keeps the curve visible across animation frames',async({page})=>{
+ await page.goto('/graph?lang=en');await sample(page,'sin(33x)');
+ const gaps=await page.evaluate(async()=>{
+  const svg=document.querySelector('#graph-plot'),rect=svg.getBoundingClientRect(),frames=[];
+  let last=await new Promise(resolve=>requestAnimationFrame(resolve));
+  for(let i=0;i<20;++i){svg.dispatchEvent(new WheelEvent('wheel',{deltaY:i%2?1:-1,clientX:rect.left+rect.width/2,bubbles:true,cancelable:true}));
+   const now=await new Promise(resolve=>requestAnimationFrame(resolve));frames.push(now-last);last=now;
+   if(!svg.querySelector('path.graph-line'))throw Error('curve disappeared during camera movement');
+  }return frames;
+ });
+ require('node:fs').writeFileSync('C:/Incoming/Projekty/NumForge/build/graph-motion-frames.json',JSON.stringify(gaps));
+ expect(gaps).toHaveLength(20);await expect(page.locator('path.graph-line')).toBeVisible();
+});
+test('viewport refinement shows coarse data before the final response and cancels obsolete work',async({page})=>{
+ await page.goto('/graph?lang=en');await sample(page,'sin(33x)');
+ let release;const held=new Promise(resolve=>release=resolve);
+ await page.route('**/api/graph/plot?**',async route=>{
+  const q=new URL(route.request().url()).searchParams;
+  if(q.get('min')==='-5'&&q.get('quality')==='refined'){
+   const response=await route.fetch();await held;try{await route.fulfill({response});}catch(_){}
+  }else await route.continue();
+ });
+ const coarse=page.waitForResponse(r=>r.url().includes('/api/graph/plot?')&&new URL(r.url()).searchParams.get('min')==='-5'&&new URL(r.url()).searchParams.get('quality')==='coarse');
+ await page.locator('#graph-zoom-in').click();const draft=await (await coarse).json();expect(draft.quality).toBe('coarse');
+ await expect(page.locator('.graph-workspace')).toHaveAttribute('aria-busy','true');
+ await expect(page.locator('path.graph-line')).toBeVisible();
+ await page.locator('#graph-expression').fill('x*x');release();
+ await expect(page.locator('#graph-status')).toHaveText('Enter a function and plot it.');
+ await expect(page.locator('path.graph-line')).toHaveCount(0);
+});
+test('dense screen samples render while the detail table stays bounded',async({page})=>{
+ await page.goto('/graph?lang=en');const data=await sample(page,'tan(x)');expect(data.count).toBeGreaterThan(1024);expect(data.count).toBeLessThanOrEqual(8192);
  await expect(page.locator('path.graph-line')).toBeVisible();
  expect(await page.locator('#graph-plot').evaluate(svg=>/NaN|Infinity/.test(svg.innerHTML))).toBe(false);
  await page.locator('#graph-values summary').click();
  await expect(page.locator('#graph-table-body tr')).toHaveCount(1025);
- await expect(page.locator('#graph-table-body tr').last()).toContainText('First 1024 of 2048');
+ await expect(page.locator('#graph-table-body tr').last()).toContainText(`First 1024 of ${data.count}`);
 });
 for(const [name,count,digits,ranges] of [['points',2048,0,8],['estimated bytes',1024,80,12]])test(`dense range cache evicts old samples by ${name}`,async({page})=>{
  let firstCalls=0;
@@ -67,8 +110,10 @@ test('cached tile composition preserves reciprocal gaps',async({page})=>{
  const paths=await page.locator('path.graph-line').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('d')));
  const width=await page.locator('#graph-plot').evaluate(svg=>svg.viewBox.baseVal.width);
  const zero=64+6/20*(width-86);
- for(const path of paths)for(const chord of path.matchAll(/M([^,]+),([^L]+)L([^,]+),([^M]+)/g)){
-  expect(Number(chord[1])<zero&&Number(chord[3])>zero).toBe(false);
+ for(const path of paths){let previous;
+  for(const command of path.matchAll(/([ML])([^,]+),([^ML]+)/g)){
+   const x=Number(command[2]);if(command[1]==='L')expect(previous<zero&&x>zero).toBe(false);previous=x;
+  }
  }
 });
 test('partial cache requests only the missing interval and setting changes recompute',async({page})=>{
@@ -123,7 +168,7 @@ test('session cache validates the current revision before reusing results',async
  const state=await (await request.get('/api/session?client='+client)).json();
  const commit=await request.post(`/api/evaluate?precision=full&angle=rad&client=${client}&revision=${Number(state.revision)+1}&action=commit`,{data:'a=3'});expect(commit.ok()).toBe(true);
  const response=page.waitForResponse(r=>r.url().includes('/api/graph/plot?')&&r.request().postData()==='a*x'&&new URL(r.url()).searchParams.get('min')==='-10');
- await page.locator('#graph-reset').click();const data=await (await response).json();
+ await page.locator('#graph-reset').click();const data=normalize(await (await response).json());
  expect(Number(data.points.at(-1).y)).toBe(30);
 });
 test('near-zero axis ticks snap to zero without hiding genuinely tiny values',async({page})=>{
@@ -213,7 +258,7 @@ async function sample(page,expression,min='-10',max='10') {
  await page.locator('#graph-min').fill(min);await page.locator('#graph-max').fill(max);
  const ready=page.waitForResponse(r=>r.url().includes('/api/graph/plot?'));
  await page.locator('#graph-submit').click();const response=await ready;
- await expect(page.locator('.graph-workspace')).not.toHaveAttribute('aria-busy','true');return response.json();
+ await expect(page.locator('.graph-workspace')).not.toHaveAttribute('aria-busy','true');return normalize(await response.json());
 }
 for(const [lang,width] of [['sk',390],['en',1280]])test(`adaptive graph draws lines and typed gaps ${lang}`,async({page})=>{
  await page.setViewportSize({width,height:844});await page.goto('/graph?lang='+lang);
@@ -224,7 +269,7 @@ for(const [lang,width] of [['sk',390],['en',1280]])test(`adaptive graph draws li
  const reciprocal=await sample(page,'1/x');await expect(page.locator('path.graph-line')).toBeVisible();
  reciprocal.points.forEach((p,i)=>{if(p.connect){expect(p.kind).toBe('real');expect(reciprocal.points[i-1].kind).toBe('real');}});
  expect(reciprocal.points.some(p=>p.kind==='domain_error')).toBe(true);
- await page.locator('#graph-values summary').click();await expect(page.locator('#graph-table-body tr')).toHaveCount(reciprocal.count);
+ await page.locator('#graph-values summary').click();await expect(page.locator('#graph-table-body tr')).toHaveCount(Math.min(reciprocal.count,1024)+(reciprocal.count>1024?1:0));
  await sample(page,'sqrt(t)');await expect(page.locator('#graph-status')).toContainText('f(t)');
  await expect(page.locator('#graph-table-body tr').first()).toContainText(lang==='en'?'Complex':'Komplexné');
  await sample(page,'qty(t;"m")');await expect(page.locator('#graph-plot')).toBeVisible();
@@ -263,7 +308,8 @@ test('default view, automatic t, degree angles and resize',async({page})=>{
  await expect(page.locator('#graph-min')).toHaveValue('-10');await expect(page.locator('#graph-max')).toHaveValue('10');
  await page.locator('#graph-submit').click();await expect(page.locator('path.graph-line')).toBeVisible();
  await sample(page,'sin(t)','0','90');await page.locator('#graph-angle').selectOption('deg');await page.locator('#graph-submit').click();
- await expect(page.locator('#graph-status')).toContainText('f(t)');await page.locator('#graph-values summary').click();await expect(page.locator('#graph-table-body tr').last()).toContainText('1E+0');
+ await expect(page.locator('#graph-status')).toContainText('f(t)');await page.locator('#graph-values summary').click();
+ await expect.poll(async()=>Number(await page.locator('#graph-table-body tr').last().locator('td').nth(1).textContent())).toBe(1);
  await page.locator('.graph-settings summary').click();await page.locator('#graph-values summary').click();
  await page.screenshot({path:'C:/Incoming/Projekty/NumForge/build/adaptive-graph-desktop.png',fullPage:true});
  await page.setViewportSize({width:390,height:844});await expect(page.locator('#graph-plot')).toBeVisible();

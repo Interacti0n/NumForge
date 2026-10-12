@@ -1,5 +1,9 @@
 # Experimental C double graph evaluator, 2026-10-12
 
+This records the initial unconnected experiment. The subsequent
+[screen-space rollout](GRAPH_SCREEN_ROLLOUT_2026_10_13.md) integrates it into the
+web through an explicit approximate mode and precision fallback.
+
 The internal `ApplicationFastExpression` compiles the existing prepared parser
 tree into owned stack bytecode. Constants and referenced session values are
 copied once; evaluation never borrows the AST or mutates the session. There is

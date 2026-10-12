@@ -101,8 +101,10 @@ projected-payload constraints. The production adaptive HTTP/browser cap is now
 The opt-in `graph_fast_benchmark [1..10]` compares an experimental C double
 bytecode evaluator with exact C points and libm compositions. See the
 [fast graph audit](benchmarks/GRAPH_FAST_EXPERIMENT_2026_10_12.md). It is not
-routed through the production API; tests include snapshots, uncertainty and
-atomic resource failures.
+routed directly through the precision API. The web now uses the
+[screen-space adapter](reference/SCREEN_GRAPH_HTTP_API.md), with pixel/chord,
+periodic-extremum, pole/domain, coarse/refined cancellation and cache tests.
+Atomic resource/fault checks include both evaluators and the compact sampler.
 
 Graph interaction regressions exercise wheel debounce, pointer panning, touch
 pinch, keyboard/reset controls, empty-view navigation and y-axis rescaling.

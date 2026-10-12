@@ -3,6 +3,9 @@
 `POST /api/graph/plot?min=-10&max=10` accepts one text expression. It is an internal
 C application adapter, not an installed public SDK addition. The original
 [uniform sampler](GRAPH_HTTP_API.md) and its schema 1 remain unchanged.
+The web opts into [screen-space mode](SCREEN_GRAPH_HTTP_API.md), which returns
+compact schema 3 or falls back to this precision schema 2. Requests without
+`mode=fast` retain the sampler described here.
 
 ## Query and parameter selection
 
