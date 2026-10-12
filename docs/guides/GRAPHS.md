@@ -97,7 +97,8 @@ and a wider overview during idle time, one request at a time. Slow/limited/faile
 requests stop optional background work. Every request retains the C API's normal
 time, allocation and output limits; unprepared intervals cannot be instantaneous.
 
-The cache is bounded to 12 sampled ranges (each at most 1024 points), lives only
+Each adaptive request uses at most 2048 points. The cache is bounded to 12 sampled
+ranges, 12288 total cached points and an estimated 8 MiB weight, and lives only
 in the current page and clears on expression/precision/angle/session changes or
 navigation. Session revisions are rechecked before settled cache reuse, so
 changed coefficients/ans trigger new calculations. At most 1024 cached sample

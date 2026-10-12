@@ -1,5 +1,13 @@
 const {test,expect}=require('@playwright/test');
 const {randomBytes}=require('node:crypto');
+test('adaptive 2048-point response exceeds old capacity safely and retains pole gaps',async({request})=>{
+ const response=await request.post('/api/graph/plot?min=-10&max=10',{data:'tan(x)'});
+ expect(response.ok()).toBe(true);const payload=await response.text();
+ expect(Buffer.byteLength(payload)).toBeGreaterThan(128*1024);expect(Buffer.byteLength(payload)).toBeLessThan(256*1024);
+ const data=JSON.parse(payload);expect(data.count).toBe(2048);expect(data.limited).toBe(true);
+ const crossing=data.points.some((p,i)=>p.connect&&Array.from({length:6},(_,k)=>(k-3)*Math.PI+Math.PI/2).some(pole=>Number(data.points[i-1].x)<pole&&Number(p.x)>pole));
+ expect(crossing).toBe(false);
+});
 test('domain boundaries and poles stay disconnected on shifted and broad ranges',async({request})=>{
  test.setTimeout(30000);
  for(const [expression,poles,reference,domain] of [
@@ -8,7 +16,7 @@ test('domain boundaries and poles stay disconnected on shifted and broad ranges'
   ['sqrt(x)',[],Math.sqrt,x=>x>=0],['ln(x)',[0],Math.log,x=>x>0]]){
   for(const [min,max] of [['-10','10'],['-3.7','5.3']]){
    const response=await request.post('/api/graph/plot?'+new URLSearchParams({min,max}),{data:expression});
-   expect(response.ok()).toBe(true);const data=await response.json();expect(data.count).toBeLessThanOrEqual(1024);
+   expect(response.ok()).toBe(true);const data=await response.json();expect(data.count).toBeLessThanOrEqual(2048);
    expect(data.points.some(p=>p.connect)).toBe(true);
    const violations=[];let maximumError=0;
    data.points.forEach((p,i)=>{
@@ -39,7 +47,7 @@ test('sin and cos preserve every periodic peak on coarse wide views',async({requ
   const factor=expression.includes('33')?33:1,min=expression.includes('33')?-10:-100,max=expression.includes('33')?10:611;
   const response=await request.post('/api/graph/plot?'+new URLSearchParams({min:String(min),max:String(max),angle}),{data:expression});
   expect(response.ok()).toBe(true);const data=await response.json();expect(data.ok).toBe(true);expect(data.limited).toBe(false);
-  expect(data.count).toBeLessThanOrEqual(1024);expect(data.points.slice(1).every(p=>p.connect)).toBe(true);
+  expect(data.count).toBeLessThanOrEqual(2048);expect(data.points.slice(1).every(p=>p.connect)).toBe(true);
   for(let k=Math.ceil((min*factor-offset)/period);offset+k*period<max*factor;++k){
    const x=(offset+k*period)/factor,point=data.points.find(p=>Math.abs(Number(p.x)-x)<1e-7);
    expect(point,`${expression} missing extremum ${x}`).toBeTruthy();expect(Math.abs(Number(point.y))).toBeCloseTo(1,9);
@@ -59,7 +67,7 @@ test('adaptive harder functions, broad ranges and oscillation safeguards',async(
  const sample=async(expression,min,max,precision='34')=>{
   const response=await request.post('/api/graph/plot?'+new URLSearchParams({min,max,precision}),{data:expression});
   expect(response.ok()).toBe(true);const data=await response.json();expect(data.ok).toBe(true);
-  expect(data.count).toBeLessThanOrEqual(1024);return data;
+  expect(data.count).toBeLessThanOrEqual(2048);return data;
  };
  const sine=await sample('sin(3x)','-10','10');expect(sine.limited).toBe(false);
  expect(sine.points.slice(1).every(p=>p.connect)).toBe(true);

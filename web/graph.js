@@ -11,6 +11,7 @@ function initGraph() {
     const pointers=new Map();let gesture=null;
     let cache=[],cacheIdentity=null,chunks=null,prefetchTimer=null,prefetchRequest=null,prefetchToken=0,cacheMissing=[];
     const prefetchAttempts=new Set();
+    const maxPoints=2048,maxCachePoints=12288,maxCacheBytes=8*1024*1024;
     let drawFrame=null;
     function drawSoon() {if(drawFrame===null)drawFrame=requestAnimationFrame(()=>{drawFrame=null;if(!disposed)draw();});}
     const text = english ? {
@@ -181,7 +182,7 @@ function initGraph() {
         svg.append(group);svg.removeAttribute('hidden');
     }
     function decode(body) {
-        if(body.schema_version!==2 || !Array.isArray(body.points) || body.count!==body.points.length || body.count<2 || body.count>1024)throw Error(text.invalid);
+        if(body.schema_version!==2 || !Array.isArray(body.points) || body.count!==body.points.length || body.count<2 || body.count>maxPoints)throw Error(text.invalid);
         if(typeof body.parameter!=='string'||!/^[A-Za-z]{1,31}$/.test(body.parameter)||typeof body.limited!=='boolean')throw Error(text.invalid);
         const points=body.points.map(point=>{
             if(!point || typeof point.connect!=='boolean' || !['real','domain_error','complex','quantity'].includes(point.kind) || typeof point.x!=='string' || (point.kind==='real'?typeof point.y!=='string':point.y!==null))throw Error(text.invalid);
@@ -193,9 +194,11 @@ function initGraph() {
     async function fetchPlot(query,expression,signal) {
         const start=performance.now();
         const response=await fetch('/api/graph/plot?'+query,{method:'POST',headers:{'Content-Type':'text/plain; charset=utf-8'},body:expression,signal});
-        const body=await response.json();
+        const payload=await response.text();if(payload.length>256*1024)throw Error(text.invalid);
+        const body=JSON.parse(payload);
         if(!response.ok||!body.ok)throw Error((body.code==='graph_parameter_ambiguous'?text.ambiguous:errors[body.status]||body.error||body.status||text.invalid)+(Number.isSafeInteger(body.column)?` · ${text.column} ${body.column}`:''));
-        return {...decode(body),cost:performance.now()-start,requestedLow:numeric(query.get('min')),requestedHigh:numeric(query.get('max'))};
+        // Conservative cache weight, not an engine-specific heap measurement.
+        return {...decode(body),cacheBytes:payload.length*2+body.points.length*256,cost:performance.now()-start,requestedLow:numeric(query.get('min')),requestedHigh:numeric(query.get('max'))};
     }
     function remember(entry) {
         let low=entry.points[0].nx,high=entry.points.at(-1).nx;
@@ -209,7 +212,7 @@ function initGraph() {
         }
         entry.low=low;entry.high=high;entry.span=high-low;
         cache=cache.filter(e=>e.low!==low||e.high!==high);cache.push(entry);
-        if(cache.length>12)cache.shift();
+        while(cache.length>12||cache.reduce((n,e)=>n+e.points.length,0)>maxCachePoints||cache.reduce((n,e)=>n+e.cacheBytes,0)>maxCacheBytes)cache.shift();
         return true;
     }
     function showCached(low,high,paint=true) {

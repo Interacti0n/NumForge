@@ -5,6 +5,8 @@ details and the [2.2.1 release record](docs/project/RELEASE_2_2_1.md) for valida
 
 ## Unreleased
 
+- Allow more adaptive graph detail with bounded API responses and cache.
+
 - Fix fake staircases and repeated axis labels at deep graph zoom.
 
 - Smooth cached graph movement with bounded background range preparation.

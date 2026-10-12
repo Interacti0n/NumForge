@@ -1,5 +1,8 @@
 # Adaptive graph point-cap experiment, 2026-10-12
 
+This section records the pre-rollout experiment. The follow-up below describes
+the subsequent production change to 2048 adaptive points.
+
 The [raw CSV](graph_point_caps_2026_10_12.csv) compares 1024, 2048, 4096 and
 8192-point caps across 21 cases with three repetitions (252 rows). GCC Release
 uses the same independent libm references, 34/100-digit calculation precision,
@@ -70,3 +73,26 @@ GCC tracked-allocation and MSVC graph tests cover invalid caps, successful 2048
 work, oversized-array rejection and unchanged previously owned output on
 allocation failure. Normal adapter/browser regression checks retain the
 existing 1024-point contract.
+
+## Follow-up: bounded 2048-point rollout
+
+The adaptive wrapper, HTTP adapter and browser now allow 2048 points. Adaptive
+JSON uses a separate 256 KiB capacity; uniform graph and other session responses
+still use 128 KiB. The inherited 5 s / 64 MiB / 512 KiB guards are unchanged.
+Cache FIFO eviction checks 12 ranges, 12288 total points and an 8 MiB conservative
+weight (twice response characters plus 256 bytes per point). This weight is not
+an exact heap measurement; visible chunks may retain evicted ranges until the
+next redraw. Detail tables still render at most 1024 samples plus a truncation row.
+
+The [rollout CSV](graph_2048_rollout_2026_10_12.csv) repeats all 21 cases in
+uniform/adaptive/full-adapter modes three times (189 rows). All statuses are OK;
+the slowest measured full adapter repetition is 453.19 ms. Median adapter times
+are 441.63 ms for tangent, 348.66 ms for wide sine, 333.92 ms for sin(x*x), and
+303.02 ms for million-range sine. These runs include formatting and allocation
+statistics, and are machine-specific. Dense unresolved sine views remain gaps;
+increasing the cap is not sufficient to render every oscillation.
+
+Browser tests verify real 2048-point responses exceeding 128 KiB, pole gaps,
+bounded table rendering and separate eviction by total points and estimated
+bytes. Existing cache/refinement/session/precision and guide regressions pass.
+MSVC and GCC graph suites, including allocation failure cleanup, also pass.

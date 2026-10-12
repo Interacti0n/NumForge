@@ -474,5 +474,5 @@ CalculatorStatus application_graph_adaptive(ApplicationGraph **result,
     const CalculatorContext *context, CalculatorError *error)
 {
     return application_graph_adaptive_limit(result,input,parameter,minimum,maximum,
-        APPLICATION_EXPRESSION_MAX_SAMPLES,session,context,error);
+        APPLICATION_GRAPH_MAX_ADAPTIVE_SAMPLES,session,context,error);
 }

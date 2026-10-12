@@ -2,6 +2,8 @@
 #define NUMFORGE_APPLICATION_GRAPH_H
 #include "expression.h"
 
+#define APPLICATION_GRAPH_MAX_ADAPTIVE_SAMPLES 2048U
+
 typedef struct ApplicationGraph
 {
     size_t count;
@@ -28,7 +30,7 @@ CalculatorStatus application_graph_sample(ApplicationGraph **result,
     const char *input, const char *parameter, const BigRational *minimum,
     const BigRational *maximum, size_t count, const CalculatorSession *session,
     const CalculatorContext *context, CalculatorError *error);
-/* Breadth-first midpoint refinement: 33 seeds, <=1024 samples, depth <=12.
+/* Breadth-first midpoint refinement: 33 seeds, <=2048 samples, depth <=12.
  * parameter=NULL infers it from the AST. All work shares one operation budget.
  * connect flags are heuristic, not mathematical continuity proofs. */
 CalculatorStatus application_graph_adaptive(ApplicationGraph **result,
@@ -36,7 +38,7 @@ CalculatorStatus application_graph_adaptive(ApplicationGraph **result,
     const BigRational *maximum, const CalculatorSession *session,
     const CalculatorContext *context, CalculatorError *error);
 /* Internal bounded-resolution experiment; 33..8192 points. Default adapter
- * remains unchanged. Existing memory/time/single-allocation budgets apply. */
+ * uses 2048. Existing memory/time/single-allocation budgets apply. */
 CalculatorStatus application_graph_adaptive_limit(ApplicationGraph **result,
     const char *input, const char *parameter, const BigRational *minimum,
     const BigRational *maximum, size_t point_limit, const CalculatorSession *session,

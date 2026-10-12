@@ -55,7 +55,7 @@ All-real triples compare absolute midpoint/chord error with 0.001 of the seeded
 y span (constant span uses absolute seed magnitude, or 1 if zero). A rejected
 interval is bisected; mixed real/non-real triples are refined to locate boundaries.
 All-non-real triples stop with gaps. Intervals are processed breadth-first across
-the whole view, limited to depth 12 and 1024 total samples. For real arguments of
+the whole view, limited to depth 12 and 2048 total samples. For real arguments of
 forward sin/cos/tan calls, corresponding phase probes must also differ by at most
 0.5 radians (30 degrees). Nested calls are checked too; unknown phases are never
 accepted solely because their output values happen to agree. This avoids obvious
@@ -84,7 +84,7 @@ near-extremum endpoints are not duplicated. No synthetic ±1 results are inserte
 This prevents false amplitude modulation from coarse uniform grids, including
 sin(x) on −100..611. For composite/nonlinear phases these are component anchors,
 not a proof that every extremum of the complete expression was found.
-They share the original 1024-sample/request budget. Insufficient remaining points,
+They share the 2048-sample/request budget. Insufficient remaining points,
 3 MiB allocation reserve or 300 ms time reserve mark the graph limited while
 preserving already accepted chords; actual allocation/time failures remain atomic.
 
@@ -93,7 +93,8 @@ reserving 2 MiB and 200 ms for finishing/serialization plus twice the largest
 observed probe cost. It can stop with `limited:true` before exhausting the budget.
 This is an estimate, not a guarantee for an unexpectedly expensive next sample.
 One five-second/64 MiB cumulative/512 KiB single-allocation budget covers the
-whole operation and serialization; JSON still must fit 128 KiB. Resource failure
+whole operation and serialization; adaptive graph JSON must fit 256 KiB.
+Uniform graph and other session responses retain their 128 KiB limits. Resource failure
 still returns no partial success. No per-point budgets or binary floating-point math
 are used in the C sampler.
 
@@ -124,7 +125,11 @@ browser requests and reject obsolete responses; aborting a fetch does not promis
 to interrupt a C evaluation already running on the server. Each server request
 still independently shares the original five-second/allocation budget.
 
-The current page retains at most 12 ranges and 48 bounded prefetch-attempt keys;
+The current page retains at most 12 ranges, 12288 cached points, an 8 MiB estimated
+cache weight, and 48 bounded prefetch-attempt keys. Weight is twice the JSON
+character count plus 256 bytes per point, not a browser heap measurement.
+Oldest ranges are evicted when any bound is exceeded; visible chunks can still
+retain references until the next view is drawn. The table renders at most 1024 rows;
 data is not persisted in sessionStorage. The finest available cached range is
 chosen per visible segment, retaining independent C connection/gap flags.
 Coordinates at endpoints may be aligned to the requested camera coverage within

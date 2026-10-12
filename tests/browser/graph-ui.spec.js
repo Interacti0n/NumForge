@@ -1,4 +1,25 @@
 const {test,expect}=require('@playwright/test');
+test('2048 points render while the detail table stays bounded',async({page})=>{
+ await page.goto('/graph?lang=en');const data=await sample(page,'tan(x)');expect(data.count).toBe(2048);
+ await expect(page.locator('path.graph-line')).toBeVisible();
+ expect(await page.locator('#graph-plot').evaluate(svg=>/NaN|Infinity/.test(svg.innerHTML))).toBe(false);
+ await page.locator('#graph-values summary').click();
+ await expect(page.locator('#graph-table-body tr')).toHaveCount(1025);
+ await expect(page.locator('#graph-table-body tr').last()).toContainText('First 1024 of 2048');
+});
+for(const [name,count,digits,ranges] of [['points',2048,0,8],['estimated bytes',1024,80,12]])test(`dense range cache evicts old samples by ${name}`,async({page})=>{
+ let firstCalls=0;
+ await page.route('**/api/graph/plot?**',route=>{
+  const query=new URL(route.request().url()).searchParams,low=Number(query.get('min')),high=Number(query.get('max'));
+  if(low===0)++firstCalls;
+  return route.fulfill({json:{ok:true,schema_version:2,parameter:'x',limited:true,count,y_min:String(low),y_max:String(high),
+   points:Array.from({length:count},(_,i)=>{const value=low+(high-low)*i/(count-1),x=digits?value.toFixed(digits):String(value);return {x,y:x,kind:'real',connect:i>0};})}});
+ });
+ await page.goto('/graph?lang=en');
+ for(let i=0;i<ranges;++i)await sample(page,'x',String(i*20),String(i*20+10));
+ await sample(page,'x','0','10');expect(firstCalls).toBe(2);
+ await expect(page.locator('path.graph-line')).toBeVisible();
+});
 test('returning to a cached viewport preserves curve geometry and axis labels',async({page})=>{
  await page.goto('/graph?lang=en');await sample(page,'x*x');
  const snapshot=()=>page.locator('#graph-plot').evaluate(svg=>({

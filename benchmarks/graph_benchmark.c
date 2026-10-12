@@ -51,7 +51,7 @@ static size_t projected_bytes(const ApplicationGraph *graph,const char *expressi
 }
 int main(int argc,char **argv){
  int repeats=argc>1?atoi(argv[1]):3;if(repeats<1||repeats>10||argc>3)return 2;
- size_t point_limit=argc>2?(size_t)strtoul(argv[2],NULL,10):1024U;
+ size_t point_limit=argc>2?(size_t)strtoul(argv[2],NULL,10):APPLICATION_GRAPH_MAX_ADAPTIVE_SAMPLES;
  if(point_limit!=1024U&&point_limit!=2048U&&point_limit!=4096U&&point_limit!=8192U)return 2;
  if(argc>2)fprintf(stderr,"cap=%zu coordinate_bytes=%zu sample_bytes=%zu single_allocation_limit=%u\n",point_limit,
   point_limit*sizeof(CalculatorValue),point_limit*sizeof(ApplicationExpressionSample),(unsigned)CALCULATOR_SINGLE_ALLOCATION);
@@ -80,7 +80,7 @@ int main(int argc,char **argv){
   size_t points=graph?graph->count:0;bool limited=graph?graph->limited:false;
   if(response&&status==CALCULATOR_OK){const char *count=strstr(response,"\"count\":");if(count)points=(size_t)strtoull(count+8,NULL,10);limited=strstr(response,"\"limited\":true")!=NULL;}
   size_t projection=mode==1&&graph?projected_bytes(graph,item->expression):0;
-  printf("%s,%s,%d,%d,%.3f,%zu,%zu,%zu,%d,%.6g,%.6g,%.6g,%.6g,%zu,%zu\n",item->name,mode==0?"uniform129":mode==1?"adaptive":"http",run,(int)status,elapsed,calls,bytes,points,limited,point_error,chord_error,screen_error,connected_fraction,mode==1?point_limit:mode==0?129U:1024U,projection);fflush(stdout);
+  printf("%s,%s,%d,%d,%.3f,%zu,%zu,%zu,%d,%.6g,%.6g,%.6g,%.6g,%zu,%zu\n",item->name,mode==0?"uniform129":mode==1?"adaptive":"http",run,(int)status,elapsed,calls,bytes,points,limited,point_error,chord_error,screen_error,connected_fraction,mode==1?point_limit:mode==0?129U:APPLICATION_GRAPH_MAX_ADAPTIVE_SAMPLES,projection);fflush(stdout);
   application_graph_destroy(graph);free(response);bigdecimal_destroy(value);bigrational_destroy(low);bigrational_destroy(high);application_client_store_destroy(&store);
  }
  return inaccurate;

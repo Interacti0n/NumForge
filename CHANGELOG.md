@@ -7,6 +7,10 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Increase adaptive graph capacity to 2048 points with a graph-only 256 KiB
+  response bound. Keep uniform/session limits unchanged and bound range cache
+  by aggregate points and estimated memory as well as range count.
+
 - Preserve close adaptive graph coordinates with a 16-place scientific projection
   while retaining uniform API output. Add distinct deep-zoom axis offset labels,
   a minimal relative y span and a browser-resolution camera bound to prevent

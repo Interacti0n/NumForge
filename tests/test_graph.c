@@ -220,7 +220,7 @@ static void test_adaptive_linear_curvature_and_poles(void)
         if(left<0 && right>0){TEST_ASSERT_FALSE(graph->connect[i]);found=true;}
     }
     TEST_ASSERT_TRUE(found);TEST_ASSERT_TRUE(graph->limited);
-    TEST_ASSERT_LESS_OR_EQUAL(APPLICATION_EXPRESSION_MAX_SAMPLES,graph->count);
+    TEST_ASSERT_LESS_OR_EQUAL(APPLICATION_GRAPH_MAX_ADAPTIVE_SAMPLES,graph->count);
     bigrational_destroy(pole);bigdecimal_destroy(decimal);
 }
 static void test_adaptive_automatic_parameter_and_read_only_session(void)

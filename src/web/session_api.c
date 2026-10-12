@@ -12,15 +12,16 @@
 #include <string.h>
 
 #define RESPONSE_CAPACITY (128U * 1024U)
-typedef struct Json { char *data; size_t used; CalculatorStatus status; } Json;
+#define GRAPH_RESPONSE_CAPACITY (256U * 1024U)
+typedef struct Json { char *data; size_t used; CalculatorStatus status; size_t capacity; } Json;
 
 static void append(Json *json, const char *format, ...)
 {
     if (json->status != CALCULATOR_OK) return;
     va_list args; va_start(args, format);
-    int count = vsnprintf(json->data + json->used, RESPONSE_CAPACITY - json->used, format, args);
+    int count = vsnprintf(json->data + json->used, json->capacity - json->used, format, args);
     va_end(args);
-    if (count < 0 || (size_t)count >= RESPONSE_CAPACITY - json->used) json->status = CALCULATOR_VALUE_TOO_LARGE;
+    if (count < 0 || (size_t)count >= json->capacity - json->used) json->status = CALCULATOR_VALUE_TOO_LARGE;
     else json->used += (size_t)count;
 }
 
@@ -244,7 +245,7 @@ static CalculatorStatus graph_request(ApplicationClientStore *store, const char 
     BigDecimal *decimal = bigdecimal_create();
     BigRational *minimum = bigrational_create(), *maximum = bigrational_create();
     ApplicationGraph *graph = NULL;
-    Json json = {NULL, 0U, CALCULATOR_OK};
+    Json json = {NULL, 0U, CALCULATOR_OK, adaptive ? GRAPH_RESPONSE_CAPACITY : RESPONSE_CAPACITY};
     CalculatorStatus status = decimal == NULL || minimum == NULL || maximum == NULL ? CALCULATOR_OUT_OF_MEMORY : CALCULATOR_OK;
     if (status == CALCULATOR_OK) status = calculator_from_bigdecimal_status(bigdecimal_set_string(decimal, query->values[MINIMUM]));
     if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_from_bigdecimal(minimum, decimal));
@@ -258,7 +259,7 @@ static CalculatorStatus graph_request(ApplicationClientStore *store, const char 
     if (status == CALCULATOR_OK && adaptive) parameter = graph->parameter;
     if (status == CALCULATOR_OK)
     {
-        json.data = numforge_malloc(RESPONSE_CAPACITY);
+        json.data = numforge_malloc(json.capacity);
         if (json.data == NULL) status = CALCULATOR_OUT_OF_MEMORY;
     }
     if (status == CALCULATOR_OK)
@@ -350,7 +351,7 @@ static CalculatorStatus session_request(ApplicationClientStore *store,
     if (session != NULL && session->released && !(post && summary && strcmp(query.values[ACTION], "release") == 0)) return CALCULATOR_SESSION_EXPIRED;
     if (get && session != NULL && (query.seen & BIT(AT)) && at != (conversions ? session->conversion_revision : session->revision)) return CALCULATOR_STALE_REQUEST;
     bool owner = numforge_budget_begin(CALCULATOR_DEFAULT_TIME_LIMIT_MS, CALCULATOR_ALLOCATION_BUDGET, CALCULATOR_SINGLE_ALLOCATION);
-    Json json = {numforge_malloc(RESPONSE_CAPACITY), 0, CALCULATOR_OK};
+    Json json = {numforge_malloc(RESPONSE_CAPACITY), 0, CALCULATOR_OK, RESPONSE_CAPACITY};
     CalculatorStatus status = json.data == NULL ? CALCULATOR_OUT_OF_MEMORY : CALCULATOR_OK;
     if (status != CALCULATOR_OK) goto done;
     if (registry) { functions(&json); goto done; }
@@ -454,7 +455,7 @@ CalculatorStatus numforge_web_session_request(ApplicationClientStore *store,
     const char *code = "request_error";
     CalculatorStatus status = session_request(store, method, target, body, response, &error, &code);
     if (status != CALCULATOR_OK && response != NULL) {
-        Json json = {numforge_malloc(RESPONSE_CAPACITY), 0, CALCULATOR_OK};
+        Json json = {numforge_malloc(RESPONSE_CAPACITY), 0, CALCULATOR_OK, RESPONSE_CAPACITY};
         if (json.data != NULL) {
             append(&json, "{\"ok\":false,\"schema_version\":1,\"status\":"); string(&json, calculator_status_to_string(status));
             append(&json, ",\"error\":"); string(&json, calculator_status_to_string(status));
