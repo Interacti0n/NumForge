@@ -7,6 +7,8 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Organize the SK/EN Guide / API page into Calculator, Units, Graphs and API parts with focused user instructions, per-part navigation, context links from tools and preserved legacy anchors/language/history.
+
 - Add responsive SK/EN function graphs with range/precision/angle controls, read-only calculator snapshots, sampled points, axes and an accessible value table. Domain/complex/quantity gaps and browser numeric range limits remain explicit; optional lines never bridge classified gaps.
 
 - Display subtle server calculation timing below calculator and unit conversion results only when computation exceeds 0.5 seconds.

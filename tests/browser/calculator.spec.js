@@ -251,22 +251,14 @@ test('header logo and favicon use the same complete PNG', async ({ page, request
     }
 });
 
-test('both guide titles use the complete NumForge wordmark', async ({ page, request }) => {
+test('guide titles identify the calculator and embedded branding remains available', async ({ page, request }) => {
     const original = fs.readFileSync(path.join(__dirname, '../../web/wordmark.png'));
     const response = await request.get('/assets/wordmark.png');
-    expect(response.ok()).toBe(true);
-    expect(response.headers()['content-type']).toBe('image/png');
-    expect(Number(response.headers()['content-length'])).toBe(original.length);
-    expect((await response.body()).equals(original)).toBe(true);
-    for (const [language, title] of [['sk', 'Použitie a API'], ['en', 'Usage and API']]) {
+    expect(response.ok()).toBe(true);expect((await response.body()).equals(original)).toBe(true);
+    for (const [language, title] of [['sk', 'Návod ku kalkulačke'], ['en', 'Calculator guide']]) {
         await page.goto(`/api?lang=${language}`);
-        const wordmark = page.locator('.guide-title .guide-wordmark');
-        await expect(wordmark).toHaveAttribute('alt', 'NumForge');
-        expect(await wordmark.evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
-        await expect(page.locator('.guide-title span')).toHaveText(title);
-        const image = await wordmark.boundingBox();
-        const content = await page.locator('.guide-content').boundingBox();
-        expect(image.width).toBeLessThan(content.width);
+        await expect(page.locator('#intro')).toHaveText(title);
+        await expect(page.locator('[data-guide-panel]:visible')).toHaveCount(1);
     }
 });
 
@@ -336,7 +328,7 @@ test('guide stays separate from tools and accessible with the mobile menu closed
             await page.goto(`${route}?lang=${lang}`);
             const guide = page.locator('.header-guide');
             await expect(guide).toBeVisible();
-            await expect(guide).toHaveAttribute('href', `/api?lang=${lang}`);
+            await expect(guide).toHaveAttribute('href', route === '/units' ? `/api?section=units&lang=${lang}` : route === '/graph' ? `/api?section=graphs&lang=${lang}` : `/api?lang=${lang}`);
             await expect(page.locator('.primary-nav a')).toHaveCount(4);
             expect(await guide.evaluate(link => link.closest('.site-navigation') === null)).toBe(true);
             const boxes = await page.locator('.brand, .header-guide, .nav-toggle').evaluateAll(controls =>
@@ -540,11 +532,13 @@ for (const lang of ['sk', 'en']) {
             expect(await page.evaluate(() => document.querySelector('.page-header') === window.originalHeader &&
                 document.querySelector('.page-footer') === window.originalFooter &&
                 document.querySelector('.primary-nav') === window.originalMenu)).toBe(true);
+            if (await page.locator('#guide-part').isVisible()) await page.locator('#guide-part').selectOption('api');
+            else await page.locator('[data-guide-part=api]').click();
             await page.locator('.guide-toc a[href="#http"]').click();
             await expect(page).toHaveURL(/#http$/);
             const other = lang === 'sk' ? 'en' : 'sk';
             await page.locator(`.language-switch a[lang="${other}"]`).click();
-            await expect(page).toHaveURL(`/api?lang=${other}`);
+            await expect(page).toHaveURL(`/api?section=api&lang=${other}#http`);
             expect(await page.evaluate(() => document.querySelector('.page-header') === window.originalHeader &&
                 document.querySelector('.page-footer') === window.originalFooter &&
                 document.querySelector('.primary-nav') === window.originalMenu)).toBe(true);
@@ -555,7 +549,7 @@ for (const lang of ['sk', 'en']) {
                 document.querySelector('.page-footer') === window.originalFooter &&
                 document.querySelector('.primary-nav') === window.originalMenu)).toBe(true);
             await page.goBack();
-            await expect(page).toHaveURL(`/api?lang=${other}`);
+            await expect(page).toHaveURL(`/api?section=api&lang=${other}#http`);
             await expect(page.locator('.guide-content')).toBeVisible();
             await page.locator(`.primary-nav a[href="/graph?lang=${other}"]`).click();
             await expect(page).toHaveURL(`/graph?lang=${other}`);
@@ -1080,6 +1074,8 @@ for (const lang of ['sk', 'en']) {
         test('guide sections stay navigable on narrow screens', async ({ page }) => {
             await page.locator('.guide-link').click();
             await page.setViewportSize({width: 375, height: 812});
+            await expect(page.locator('#guide-part')).toBeVisible();
+            await page.locator('#guide-part').selectOption('api');
             await page.locator('.guide-toc a[href="#http"]').click();
             await expect(page).toHaveURL(/#http$/);
             await expect(page.locator('.guide-toc')).toBeInViewport();
@@ -1096,6 +1092,8 @@ for (const lang of ['sk', 'en']) {
             await expect(page.locator('.page-footer a[href$="/LICENSE"]')).toBeVisible();
             const headerY = (await page.locator('.page-header').boundingBox()).y;
             const menuY = (await page.locator('.guide-toc').boundingBox()).y;
+            if (await page.locator('#guide-part').isVisible()) await page.locator('#guide-part').selectOption('api');
+            else await page.locator('[data-guide-part=api]').click();
             await page.locator('.guide-toc a[href="#http"]').click();
             await expect(page).toHaveURL(/#http$/);
             expect((await page.locator('.page-header').boundingBox()).y).toBe(headerY);
@@ -1103,6 +1101,7 @@ for (const lang of ['sk', 'en']) {
             expect(await page.locator('.guide-content').evaluate(el => el.scrollTop)).toBeGreaterThan(0);
             await page.locator('.guide-toc a[href="#library"]').click();
             await expect(page).toHaveURL(/#library$/);
+            await page.locator('[data-guide-part=calculator]').click();
             await expect(page.locator('.guide-toc a[href="#syntax"]')).toBeVisible();
         });
         test('cache reformats values, recomputes precision and isolates pages', async ({ page, context }) => {

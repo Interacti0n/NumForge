@@ -15,7 +15,7 @@ CMake embeds the web assets and the root `LICENSE` when building
 `/solve`, `/units`, `/login`, and `/register`), the registered
 `/assets/` routes and the license text at `/LICENSE` from the executable.
 The same `logo.png` is displayed in all page headers and linked as their
-PNG favicon. `wordmark.png` appears in the SK/EN guide introduction. The
+PNG favicon. The wordmark asset remains available at `/assets/wordmark.png`. The
 server sends both images with their exact binary lengths.
 The installed executable needs no asset directory, Node.js, or working-directory
 setup. Adding a new asset requires a CMake dependency and a symbol/route in
@@ -101,3 +101,10 @@ The SK/EN `/graph` page uses `graph.css` and `graph.js` to display points from
 validates finite browser coordinates. Form settings survive in-place navigation,
 requests are canceled on edits/disposal, and sample values are accessible in a
 table. See the [graph guide](../docs/guides/GRAPHS.md).
+
+Guide content is organized into four `data-guide-panel` articles in the SK/EN
+`api.*.html` files. `navigation.js` selects the part and builds its active section
+menu, handles legacy hash links, language links and history, and hides inactive
+parts. Keep part keys and section IDs aligned between languages. The C guide
+route accepts `section=calculator|units|graphs|api` and `lang=sk|en` in either
+order; other page routes retain their existing query contracts.

@@ -206,20 +206,62 @@ function setupGuideNavigation()
     const toc = document.querySelector('.guide-toc');
     if (!content || !toc) return null;
     const lifecycle = new AbortController();
+    const panels = [...content.querySelectorAll('[data-guide-panel]')];
     const links = [...toc.querySelectorAll('a[href^="#"]')];
-    const sections = [...content.querySelectorAll('h1[id], h2[id]')].map(heading => ({heading,
+    const partLinks = [...document.querySelectorAll('[data-guide-part]')];
+    const select = document.querySelector('#guide-part');
+    const allSections = [...content.querySelectorAll('h1[id], h2[id]')].map(heading => ({heading,
+        owner: heading.closest('[data-guide-panel]').dataset.guidePanel,
         link: links.find(link => link.hash === '#' + heading.id)})).filter(section => section.link);
-    sections.forEach(section => toc.append(section.link));
     const heading = document.createElement('div');
     heading.className = 'guide-nav-heading';
     const label = document.createElement('span');
-    label.textContent = document.documentElement.lang === 'sk' ? 'Obsah príručky' : 'Guide contents';
+    label.textContent = document.documentElement.lang === 'sk' ? 'Obsah časti' : 'Part contents';
     const position = document.createElement('span');
     position.className = 'guide-position';
     heading.append(label, position);
     toc.before(heading);
     const compact = window.matchMedia('(max-width: 930px)');
-    let active = null, frame = 0;
+    let active = null, frame = 0, sections = [], part = null;
+    function hashSection(url) {
+        try { return allSections.find(section => section.heading.id === decodeURIComponent(url.hash.slice(1))); }
+        catch (_) { return null; }
+    }
+    function syncLanguageLinks() {
+        const hash = hashSection(new URL(window.location.href));
+        document.querySelectorAll('.language-switch a[lang]').forEach(link => {
+            const destination = new URL('/api', window.location.origin);
+            destination.search = new URLSearchParams({section:part, lang:link.lang});
+            if (hash?.owner === part) destination.hash = hash.heading.id;
+            link.href = destination.pathname + destination.search + destination.hash;
+        });
+    }
+    function show(destination, focus = false) {
+        const hash = hashSection(destination);
+        const requested = destination.searchParams.get('section') || 'calculator';
+        const next = hash?.owner || (panels.some(panel => panel.dataset.guidePanel === requested) ? requested : 'calculator');
+        if (next !== part) {
+            part = next;
+            panels.forEach(panel => { panel.hidden = panel.dataset.guidePanel !== part; });
+            links.forEach(link => { link.hidden = link.dataset.guideOwner !== part; });
+            partLinks.forEach(link => {
+                if (link.dataset.guidePart === part) link.setAttribute('aria-current', 'page');
+                else link.removeAttribute('aria-current');
+            });
+            select.value = part;
+            sections = allSections.filter(section => section.owner === part);
+            active = null; content.scrollTo({top:0,behavior:'instant'});
+            toc.scrollTo({left:0,top:0,behavior:'instant'});
+        }
+        if (hash) hash.heading.scrollIntoView({block:'start',behavior:'instant'});
+        else content.scrollTo({top:0,behavior:'instant'});
+        syncLanguageLinks();
+        if (focus && !compact.matches) {
+            const title = sections[0]?.heading;
+            title?.setAttribute('tabindex','-1');title?.focus({preventScroll:true});
+        }
+        update();
+    }
     function update()
     {
         frame = 0;
@@ -245,29 +287,42 @@ function setupGuideNavigation()
                     behavior: reducedMotion.matches ? 'auto' : 'smooth'});
         }
     }
-    function schedule()
-    {
-        if (!frame) frame = requestAnimationFrame(update);
-    }
+    function schedule() { if (!frame) frame = requestAnimationFrame(update); }
     content.addEventListener('scroll', schedule, {passive:true, signal:lifecycle.signal});
     window.addEventListener('resize', () => {active = null; schedule();}, {signal:lifecycle.signal});
+    window.addEventListener('hashchange', () => {show(new URL(window.location.href));}, {signal:lifecycle.signal});
+    select.addEventListener('change', () => {
+        const destination = new URL('/api', window.location.origin);
+        destination.search = new URLSearchParams({section:select.value,lang:document.documentElement.lang});
+        navigate(destination);
+    }, {signal:lifecycle.signal});
     const observer = new ResizeObserver(() => {
-        if (scrollSource === content && scrollViewportHeight !== content.clientHeight)
-        {
-            scrollPosition = Math.max(0, content.scrollTop);
-            scrollViewportHeight = content.clientHeight;
+        if (scrollSource === content && scrollViewportHeight !== content.clientHeight) {
+            scrollPosition = Math.max(0, content.scrollTop);scrollViewportHeight = content.clientHeight;
         }
         schedule();
     });
     observer.observe(content);
-    update();
-    return () => {lifecycle.abort();observer.disconnect();cancelAnimationFrame(frame);};
+    show(new URL(window.location.href));
+    const dispose = () => {lifecycle.abort();observer.disconnect();cancelAnimationFrame(frame);};
+    dispose.navigate = (destination, addHistory) => {
+        if (addHistory) history.pushState(null, '', destination.href);
+        show(destination, addHistory);
+    };
+    return dispose;
 }
 let disposeGuideNavigation = setupGuideNavigation();
 let activePageKey = window.location.pathname + window.location.search;
 async function navigate(destination, addHistory = true)
 {
     if (navigating) return;
+    if (destination.pathname === '/api' && window.location.pathname === '/api' &&
+        (destination.searchParams.get('lang') || 'sk') === document.documentElement.lang &&
+        disposeGuideNavigation?.navigate) {
+        disposeGuideNavigation.navigate(destination, addHistory);
+        activePageKey = destination.pathname + destination.search;
+        return;
+    }
     navigating = true;
     let stagedStyle = null;
     try

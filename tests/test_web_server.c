@@ -482,6 +482,12 @@ int main(int argc, char **argv)
         const char *status;
         const char *body;
     } extra_cases[] = {
+        { "GET /api?section=units&lang=en HTTP/1.1\r\nHost: localhost\r\n\r\n",
+          "HTTP/1.1 200 OK", "Unit converter guide" },
+        { "GET /api?lang=sk&section=graphs HTTP/1.1\r\nHost: localhost\r\n\r\n",
+          "HTTP/1.1 200 OK", "id=\"graph-settings\"" },
+        { "GET /api?section=unknown HTTP/1.1\r\nHost: localhost\r\n\r\n",
+          "HTTP/1.1 404 Not Found", "Not found." },
         { "GET /graph?lang=sk HTTP/1.1\r\nHost: localhost\r\n\r\n",
           "HTTP/1.1 200 OK", "id=\"graph-form\"" },
         { "GET /graph?lang=en HTTP/1.1\r\nHost: localhost\r\n\r\n",

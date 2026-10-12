@@ -449,6 +449,35 @@ static bool numforge_parse_page_language(
     return false;
 }
 
+/* The guide keeps all panels in one document; only its language is server-side. */
+static bool numforge_parse_guide_page(const char *target, bool *english)
+{
+    if (strncmp(target, "/api", 4U) != 0 || (target[4] != '\0' && target[4] != '?')) return false;
+    *english = false;
+    if (target[4] == '\0') return true;
+    const char *field = target + 5U;
+    unsigned int seen = 0U;
+    while (*field != '\0') {
+        const char *end = strchr(field, '&');
+        size_t length = end == NULL ? strlen(field) : (size_t)(end - field);
+        unsigned int flag;
+        if (length == 7U && (strncmp(field, "lang=sk", length) == 0 || strncmp(field, "lang=en", length) == 0)) {
+            flag = 1U;
+            *english = field[5] == 'e';
+        } else if ((length == 18U && strncmp(field, "section=calculator", length) == 0) ||
+                   (length == 13U && strncmp(field, "section=units", length) == 0) ||
+                   (length == 14U && strncmp(field, "section=graphs", length) == 0) ||
+                   (length == 11U && strncmp(field, "section=api", length) == 0)) {
+            flag = 2U;
+        } else return false;
+        if ((seen & flag) != 0U) return false;
+        seen |= flag;
+        if (end == NULL) return true;
+        field = end + 1U;
+    }
+    return false;
+}
+
 /*
 ------------------------------------------------------------------------------------------------------------------------------
     Application-owned session/cache pools. HTTP borrows values; creation and FIFO eviction live in src/application/.
@@ -946,7 +975,7 @@ void numforge_handle_connection_with_origin(
     {
         numforge_send_page(socket, english ? NUMFORGE_WEB_PAGE_EN : NUMFORGE_WEB_PAGE);
     }
-    else if (strcmp(method, "GET") == 0 && numforge_parse_page_language(target, "/api", &english))
+    else if (strcmp(method, "GET") == 0 && numforge_parse_guide_page(target, &english))
     {
         numforge_send_page(socket, english ? NUMFORGE_API_PAGE_EN : NUMFORGE_API_PAGE);
     }

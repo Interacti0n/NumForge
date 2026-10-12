@@ -2,8 +2,8 @@
 
 ## Controls and behavior
 
-The shared header links the calculator, unit converter and guide and previews
-future graph and equation areas. Sign-in and registration
+The shared header links the calculator, unit converter, function graphs and guide.
+The equation area remains a preview. Sign-in and registration
 currently show informational pages; there is no authentication or payment API.
 
 The local browser page has active keypad buttons for this grammar, including
@@ -18,8 +18,8 @@ the browser. There is no separate angle indicator beside the expression.
 The active mode is highlighted in the shared purple palette; the inactive mode is dark.
 Switching language or visiting the guide and returning in the same tab keeps
 the server session, confirmed `ans`, history, expression, output settings and
-recent tools through session storage when available. A normal reload or New
-session starts fresh. Server restart or eviction still loses the in-memory value.
+recent tools through session storage when available. Reload retains an existing session; New
+session explicitly resets it. Server restart or eviction still loses the in-memory value.
 Web history numbers successful confirmations in order, retains the last 16
 entries, and keeps the sequence when navigating within the same tab.
 Function buttons show mathematical labels where useful and expose signatures
@@ -151,3 +151,26 @@ principal complex results. Valid real results remain real; real odd roots
 remain real. Complex outputs use radians even in DEG. Poles and integer-only
 or ordering/statistical constraints remain errors. See
 [domain and branch rules](../reference/CALCULATOR_EXPRESSIONS.md#automatic-complex-domains).
+
+## Guide and API parts
+
+The shared **Guide / API** page stays under `/api`. It now separates four parts:
+Calculator, Units, Graphs and API. Desktop uses part links; mobile uses a compact
+part selector. Each part has its own section menu and scroll position indicator.
+Calculator is the default; Units and Graphs link directly to their own guides.
+
+Use `/api?section=calculator&lang=en`, `section=units`, `section=graphs` or
+`section=api`. The fields may appear in either order. Unsupported/duplicate
+fields and values are rejected. English and Slovak contain matching sections.
+The page loads all parts together; switching parts does not fetch HTML or reload.
+Only the selected part appears in navigation and the accessibility tree.
+Without JavaScript the complete reference remains readable.
+
+Existing anchors remain supported: `/api?lang=en#variables` opens Calculator,
+`#units` opens Units, and `#http`, `#limits` or `#library` open API. Anchor targets
+take precedence over the part field so older links continue to work. Language
+switching preserves the part and explicit anchor; Back/Forward restores parts.
+
+User guides explain controls, results and relevant limits. HTTP endpoints,
+protocol/session details, resource tables and C library documentation belong to
+the API part. Detailed mathematical examples remain expandable in Calculator.

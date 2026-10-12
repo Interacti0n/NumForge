@@ -5,6 +5,8 @@ details and the [2.2.1 release record](docs/project/RELEASE_2_2_1.md) for valida
 
 ## Unreleased
 
+- Split the guide into focused Calculator, Units, Graphs and API parts.
+
 - Add the graph sampling HTTP API with bounded grids and explicit point errors;
   preserve calculator sessions.
 - Add responsive SK/EN graphs with axes, sample tables, explicit typed gaps
