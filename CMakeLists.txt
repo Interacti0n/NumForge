@@ -164,11 +164,15 @@ if(NUMFORGE_BUILD_APPS OR BUILD_TESTING OR NUMFORGE_BUILD_FUZZERS OR NUMFORGE_BU
 
     add_library(numforge_application STATIC
         src/application/expression.c
+        src/application/fast_expression.c
         src/application/graph.c
         src/application/conversion.c
         src/application/session.c
         src/application/client_store.c)
     target_link_libraries(numforge_application PUBLIC numforge_calculator)
+    if(NOT MSVC)
+        target_link_libraries(numforge_application PUBLIC m)
+    endif()
     target_include_directories(numforge_application PUBLIC ${PROJECT_SOURCE_DIR}/src/application)
     numforge_enable_diagnostics(numforge_application)
 
@@ -386,6 +390,9 @@ if(NUMFORGE_BUILD_BENCHMARKS)
         target_link_libraries(graph_benchmark PRIVATE m)
     endif()
     numforge_enable_diagnostics(graph_benchmark)
+    add_executable(graph_fast_benchmark benchmarks/graph_fast_benchmark.c benchmarks/benchmark_clock.c)
+    target_link_libraries(graph_fast_benchmark PRIVATE numforge_application)
+    numforge_enable_diagnostics(graph_fast_benchmark)
     add_executable(calculator_benchmark benchmarks/calculator_benchmark.c benchmarks/benchmark_clock.c)
     target_compile_definitions(calculator_benchmark PRIVATE NUMFORGE_ENABLE_ALLOC_STATS)
     target_include_directories(calculator_benchmark PRIVATE ${PROJECT_SOURCE_DIR}/src/calculator)

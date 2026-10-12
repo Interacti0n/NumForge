@@ -1,4 +1,5 @@
 #include "expression.h"
+#include "fast_expression_internal.h"
 #include "expression_internal.h"
 #include "evaluator.h"
 #include <numforge/runtime.h>
@@ -228,6 +229,13 @@ CalculatorStatus application_expression_prepare_auto(ApplicationExpression **res
 const char *application_expression_parameter(const ApplicationExpression *expression)
 {
     return expression == NULL ? NULL : expression->parameter_name;
+}
+CalculatorStatus application_expression_fast_compile(ApplicationFastExpression **result,
+    const ApplicationExpression *expression,CalculatorError *error)
+{
+    if(expression==NULL){calculator_error_set(error,CALCULATOR_NULL_ARGUMENT,0U);return CALCULATOR_NULL_ARGUMENT;}
+    return application_fast_compile_tree(result,expression->tree,&expression->parameter,
+        &expression->answer,&expression->context,error);
 }
 
 static bool graph_smooth_node(const CalculatorExpression *node)

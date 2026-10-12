@@ -1,4 +1,6 @@
 #include "expression.h"
+#include "fast_expression.h"
+#include <math.h>
 #include "../src/internal/numforge_alloc.h"
 #include <unity.h>
 #include <stdlib.h>
@@ -10,6 +12,7 @@ static ApplicationExpression *prepared;
 static CalculatorValue arguments[3];
 static ApplicationExpressionSample *samples;
 static size_t sample_count;
+static ApplicationFastExpression *fast;
 
 void setUp(void)
 {
@@ -25,6 +28,7 @@ void tearDown(void)
     application_expression_samples_destroy(samples, sample_count);
     samples = NULL; sample_count = 0U;
     application_expression_destroy(prepared); prepared = NULL;
+    application_fast_expression_destroy(fast);fast=NULL;
     for (size_t i = 0; i < 3U; ++i) calculator_value_destroy(&arguments[i]);
     calculator_session_destroy(&session);
 #ifdef NUMFORGE_ENABLE_ALLOC_STATS
@@ -264,9 +268,91 @@ static void test_coarse_graph_classification_rejects_poles_and_jumps(void)
     }
     prepare("sin(3*x)*exp(-x*x/20)");TEST_ASSERT_TRUE(application_expression_graph_smooth(prepared));
 }
+static void compile_fast(const char *input)
+{
+    CalculatorError error;
+    application_expression_destroy(prepared);prepared=NULL;
+    application_fast_expression_destroy(fast);fast=NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_expression_prepare_auto(&prepared,input,&session,&context,&error));
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_expression_fast_compile(&fast,prepared,&error));
+}
+static void test_fast_graph_values_domains_and_angle_units(void)
+{
+    const double x[]={-2,0,2};ApplicationFastSample output[3];
+    compile_fast("sin(3x)+cos(2x)");
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_expression_sample(fast,x,3U,output));
+    for(size_t i=0;i<3U;++i){TEST_ASSERT_EQUAL(APPLICATION_FAST_REAL,output[i].kind);TEST_ASSERT_TRUE(fabs(sin(3*x[i])+cos(2*x[i])-output[i].value)<1e-13);}
+    compile_fast("sqrt(x)");TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_expression_sample(fast,x,3U,output));
+    TEST_ASSERT_EQUAL(APPLICATION_FAST_NON_REAL,output[0].kind);TEST_ASSERT_EQUAL(APPLICATION_FAST_REAL,output[1].kind);
+    compile_fast("ln(x)");TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_expression_sample(fast,x,3U,output));
+    TEST_ASSERT_EQUAL(APPLICATION_FAST_NON_REAL,output[0].kind);TEST_ASSERT_EQUAL(APPLICATION_FAST_UNCERTAIN,output[1].kind);
+    compile_fast("1/x");TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_expression_sample(fast,x,3U,output));
+    TEST_ASSERT_EQUAL(APPLICATION_FAST_UNCERTAIN,output[1].kind);
+    context.angle_unit=CALCULATOR_ANGLE_DEGREES;compile_fast("sin(x)");const double degrees[]={90};
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_expression_sample(fast,degrees,1U,output));
+    TEST_ASSERT_EQUAL(APPLICATION_FAST_REAL,output[0].kind);TEST_ASSERT_TRUE(fabs(1-output[0].value)<1e-14);
+}
+static void test_fast_graph_uncertainty_and_unsupported_syntax(void)
+{
+    CalculatorError error;ApplicationFastSample output[1];const double x[]={1};
+    compile_fast("(10000000000000000+x)-10000000000000000");
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_expression_sample(fast,x,1U,output));TEST_ASSERT_EQUAL(APPLICATION_FAST_UNCERTAIN,output[0].kind);
+    compile_fast("sin(x)");const double large[]={1e12};
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_expression_sample(fast,large,1U,output));TEST_ASSERT_EQUAL(APPLICATION_FAST_UNCERTAIN,output[0].kind);
+    compile_fast("tan(x)");const double pole[]={1.5707963267948966};
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_expression_sample(fast,pole,1U,output));TEST_ASSERT_EQUAL(APPLICATION_FAST_UNCERTAIN,output[0].kind);
+    compile_fast("abs(sqrt(-1))+x");
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_expression_sample(fast,x,1U,output));TEST_ASSERT_EQUAL(APPLICATION_FAST_UNCERTAIN,output[0].kind);
+    compile_fast("x*x");const double tiny_coordinate[]={1e-200};
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_expression_sample(fast,tiny_coordinate,1U,output));TEST_ASSERT_EQUAL(APPLICATION_FAST_UNCERTAIN,output[0].kind);
+    ApplicationFastExpression *original=fast;
+    application_expression_destroy(prepared);prepared=NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_expression_prepare_auto(&prepared,"x!",NULL,&context,&error));
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,application_expression_fast_compile(&fast,prepared,&error));TEST_ASSERT_EQUAL_PTR(original,fast);
+    application_expression_destroy(prepared);prepared=NULL;
+    char tiny[406];memcpy(tiny,"0.",2U);memset(tiny+2,'0',400U);memcpy(tiny+402,"1*x",4U);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_expression_prepare_auto(&prepared,tiny,NULL,&context,&error));
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,application_expression_fast_compile(&fast,prepared,&error));TEST_ASSERT_EQUAL_PTR(original,fast);
+}
+static void test_fast_graph_snapshot_and_arithmetic_contract(void)
+{
+    assign(1U,true,"y=1/3");CalculatorSession before=session;
+    compile_fast("x+y+ans");TEST_ASSERT_EQUAL_MEMORY(&before,&session,sizeof(session));
+    calculator_session_destroy(&session);application_expression_destroy(prepared);prepared=NULL;
+    const double x[]={-2,0,2};ApplicationFastSample output[3];
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_expression_sample(fast,x,3U,output));
+    for(size_t i=0;i<3U;++i){TEST_ASSERT_EQUAL(APPLICATION_FAST_REAL,output[i].kind);TEST_ASSERT_TRUE(fabs(output[i].value-x[i]-2.0/3)<1e-14);}
+    compile_fast("x^2+pow(x;3)+abs(x)");
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_expression_sample(fast,x,3U,output));
+    for(size_t i=0;i<3U;++i){TEST_ASSERT_EQUAL(APPLICATION_FAST_REAL,output[i].kind);TEST_ASSERT_TRUE(fabs(output[i].value-(x[i]*x[i]+x[i]*x[i]*x[i]+fabs(x[i])))<1e-14);}
+    output[0].value=123;const double invalid[]={NAN};
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,application_fast_expression_sample(fast,invalid,1U,output));TEST_ASSERT_TRUE(output[0].value==123);
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,application_fast_expression_sample(fast,x,8193U,output));TEST_ASSERT_TRUE(output[0].value==123);
+}
+static void test_fast_graph_ownership_faults_and_shared_budget(void)
+{
+    CalculatorError error;compile_fast("sin(x)+1/3");
+    application_expression_destroy(prepared);prepared=NULL;
+    const double x[]={0};ApplicationFastSample output[1]={{123,APPLICATION_FAST_REAL}};
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_expression_sample(fast,x,1U,output));TEST_ASSERT_TRUE(fabs(1.0/3-output[0].value)<1e-14);
+    output[0].value=123;numforge_test_allocator_begin(1U);
+    TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY,application_fast_expression_sample(fast,x,1U,output));numforge_test_allocator_end();TEST_ASSERT_TRUE(output[0].value==123);
+    TEST_ASSERT_TRUE(numforge_budget_begin(5000U,1U,CALCULATOR_SINGLE_ALLOCATION));
+    TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE,application_fast_expression_sample(fast,x,1U,output));numforge_budget_end();TEST_ASSERT_TRUE(output[0].value==123);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_expression_prepare_auto(&prepared,"sin(x)+1/3",NULL,&context,&error));
+    ApplicationFastExpression *original=fast;numforge_test_allocator_begin(0U);
+    ApplicationFastExpression *other=NULL;TEST_ASSERT_EQUAL(CALCULATOR_OK,application_expression_fast_compile(&other,prepared,&error));
+    size_t calls=numforge_test_allocator_call_count();numforge_test_allocator_end();application_fast_expression_destroy(other);
+    for(size_t failure=1U;failure<=calls;++failure){numforge_test_allocator_begin(failure);
+        TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY,application_expression_fast_compile(&fast,prepared,&error));numforge_test_allocator_end();TEST_ASSERT_EQUAL_PTR(original,fast);}
+}
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_fast_graph_values_domains_and_angle_units);
+    RUN_TEST(test_fast_graph_snapshot_and_arithmetic_contract);
+    RUN_TEST(test_fast_graph_uncertainty_and_unsupported_syntax);
+    RUN_TEST(test_fast_graph_ownership_faults_and_shared_budget);
     RUN_TEST(test_coarse_graph_classification_rejects_poles_and_jumps);
     RUN_TEST(test_graph_phases_ownership_and_faults);
     RUN_TEST(test_snapshots_parameter_shadowing_and_session_lifetime);

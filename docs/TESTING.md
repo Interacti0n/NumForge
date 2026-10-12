@@ -98,6 +98,11 @@ adaptive C-only point-cap experiment (1024/2048/4096/8192). See the
 [point-cap audit](benchmarks/GRAPH_POINT_CAPS_2026_10_12.md) for allocation and
 projected-payload constraints. The production adaptive HTTP/browser cap is now
 2048 with a graph-only 256 KiB response; uniform sampling stays at 1024.
+The opt-in `graph_fast_benchmark [1..10]` compares an experimental C double
+bytecode evaluator with exact C points and libm compositions. See the
+[fast graph audit](benchmarks/GRAPH_FAST_EXPERIMENT_2026_10_12.md). It is not
+routed through the production API; tests include snapshots, uncertainty and
+atomic resource failures.
 
 Graph interaction regressions exercise wheel debounce, pointer panning, touch
 pinch, keyboard/reset controls, empty-view navigation and y-axis rescaling.

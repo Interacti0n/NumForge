@@ -7,6 +7,10 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Add an internal experimental double graph evaluator using the existing parser,
+  owned bytecode and conservative exact-fallback markers. Benchmark it against
+  exact C points; production graph arithmetic is unchanged.
+
 - Increase adaptive graph capacity to 2048 points with a graph-only 256 KiB
   response bound. Keep uniform/session limits unchanged and bound range cache
   by aggregate points and estimated memory as well as range count.
