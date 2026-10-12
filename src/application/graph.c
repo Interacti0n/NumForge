@@ -1,6 +1,7 @@
 #include "graph.h"
 #include "exact_functions.h"
 #include "value_internal.h"
+#include "../internal/numforge_alloc.h"
 #include <numforge/runtime.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -118,7 +119,7 @@ typedef struct GraphRefinement {
     CalculatorError *error;
     BigRational *two;
     BigDecimal *half, *sum, *delta, *tolerance;
-    size_t quota;
+    BigDecimal *phase_span;
 } GraphRefinement;
 
 static CalculatorStatus adaptive_coordinate(CalculatorValue *value,
@@ -155,16 +156,13 @@ static CalculatorStatus adaptive_view(ApplicationGraph *graph, bool *any)
     return CALCULATOR_OK;
 }
 
-/* Return the final index of the original right endpoint after ordered insertions. */
+/* One probe; breadth-first scheduling below distributes work over the viewport. */
 static CalculatorStatus adaptive_interval(GraphRefinement *work, size_t left,
-    unsigned int depth, size_t *end)
+    bool *accepted, bool *empty)
 {
     ApplicationGraph *graph = work->graph;
-    *end = left + 1U;
+    *accepted = false;*empty = false;
     if (!numforge_budget_check()) return calculator_budget_status(CALCULATOR_OUT_OF_MEMORY);
-    if (depth >= 12U || graph->count >= work->quota) {
-        graph->connect[*end] = false;graph->limited = true;return CALCULATOR_OK;
-    }
     CalculatorValue midpoint = {0};
     BigRational *middle = bigrational_create();
     ApplicationExpressionSample *evaluated = NULL;
@@ -182,11 +180,11 @@ static CalculatorStatus adaptive_interval(GraphRefinement *work, size_t left,
     graph->coordinates[left + 1U] = midpoint;
     graph->samples[left + 1U] = evaluated[0];free(evaluated);
     graph->connect[left + 1U] = false;++graph->count;
-    *end = left + 2U;
+    graph->connect[left + 2U] = false;
     bool a = application_graph_point_kind(&graph->samples[left]) == APPLICATION_GRAPH_REAL;
     bool b = application_graph_point_kind(&graph->samples[left + 1U]) == APPLICATION_GRAPH_REAL;
     bool c = application_graph_point_kind(&graph->samples[left + 2U]) == APPLICATION_GRAPH_REAL;
-    if (!a && !b && !c) { graph->connect[*end] = false;return CALCULATOR_OK; }
+    if (!a && !b && !c) { *empty = true;return CALCULATOR_OK; }
     if (a && b && c) {
         status = calculator_from_decimal_status(bigdecimal_add(work->sum, graph->samples[left].value.number, graph->samples[left + 2U].value.number));
         if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_mul(work->sum, work->sum, work->half));
@@ -195,12 +193,69 @@ static CalculatorStatus adaptive_interval(GraphRefinement *work, size_t left,
         int comparison = 0;
         if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_compare(&comparison, work->delta, work->tolerance));
         if (status != CALCULATOR_OK) return status;
-        if (comparison <= 0) { graph->connect[left + 1U] = true;graph->connect[left + 2U] = true;return CALCULATOR_OK; }
+        bool phases_safe = true;
+        for (size_t i = left; i <= left + 2U; ++i)
+            if (graph->samples[i].phase_unknown || graph->samples[i].phase_count != graph->samples[left].phase_count) phases_safe = false;
+        /* Small phase steps avoid accepting a chord that hides whole periods.
+         * This is a sampled safeguard, not a proof of continuity. */
+        for (size_t phase = 0; phases_safe && phase < graph->samples[left].phase_count; ++phase)
+            for (size_t i = left; phases_safe && i < left + 2U; ++i)
+                for (size_t j = i + 1U; phases_safe && j <= left + 2U; ++j) {
+                    const BigDecimal *p = graph->samples[i].phases[phase], *q = graph->samples[j].phases[phase];
+                    if (p == NULL || q == NULL) { phases_safe = false;break; }
+                    status = calculator_from_decimal_status(bigdecimal_sub(work->delta, p, q));
+                    if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_abs(work->delta, work->delta));
+                    int phase_comparison = 0;
+                    if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_compare(&phase_comparison, work->delta, work->phase_span));
+                    if (status != CALCULATOR_OK) return status;
+                    if (phase_comparison > 0) phases_safe = false;
+                }
+        if (comparison <= 0 && phases_safe) {
+            graph->connect[left + 1U] = true;graph->connect[left + 2U] = true;*accepted = true;
+        }
     }
-    size_t midpoint_end;
-    status = adaptive_interval(work, left, depth + 1U, &midpoint_end);
-    if (status == CALCULATOR_OK) status = adaptive_interval(work, midpoint_end, depth + 1U, end);
     return status;
+}
+
+static CalculatorStatus adaptive_refine(GraphRefinement *work)
+{
+    typedef struct { size_t left;unsigned int depth; } Interval;
+    Interval queue[APPLICATION_EXPRESSION_MAX_SAMPLES];
+    size_t head = 0U, pending = 32U, max_bytes = 0U;
+    uint64_t max_ms = 0U;
+    for (size_t i = 0; i < pending; ++i) queue[i] = (Interval){i, 0U};
+    while (pending != 0U) {
+        ApplicationGraph *graph = work->graph;
+        size_t bytes = numforge_budget_available_bytes();
+        uint64_t ms = numforge_budget_available_ms();
+        /* Leave room for projection/JSON and stop before a known next probe
+         * would exhaust the shared budget. Never reset a caller's budget. */
+        if (graph->count >= APPLICATION_EXPRESSION_MAX_SAMPLES ||
+            bytes <= 2U * 1024U * 1024U || max_bytes > (bytes - 2U * 1024U * 1024U) / 2U ||
+            ms <= 200U || max_ms > (ms - 200U) / 2U) {
+            graph->limited = true;break;
+        }
+        Interval current = queue[head];head = (head + 1U) % APPLICATION_EXPRESSION_MAX_SAMPLES;--pending;
+        if (current.depth >= 12U) { graph->limited = true;continue; }
+        bool accepted, empty;
+        CalculatorStatus status = adaptive_interval(work, current.left, &accepted, &empty);
+        if (status != CALCULATOR_OK) return status;
+        size_t after_bytes = numforge_budget_available_bytes();
+        uint64_t after_ms = numforge_budget_available_ms();
+        if (bytes >= after_bytes && bytes - after_bytes > max_bytes) max_bytes = bytes - after_bytes;
+        if (ms >= after_ms && ms - after_ms > max_ms) max_ms = ms - after_ms;
+        for (size_t i = 0; i < pending; ++i) {
+            Interval *item = &queue[(head + i) % APPLICATION_EXPRESSION_MAX_SAMPLES];
+            if (item->left > current.left) ++item->left;
+        }
+        if (!accepted && !empty) {
+            /* Active intervals are disjoint edges, so capacity follows the
+             * point cap; two children replace their single parent. */
+            queue[(head + pending++) % APPLICATION_EXPRESSION_MAX_SAMPLES] = (Interval){current.left, current.depth + 1U};
+            queue[(head + pending++) % APPLICATION_EXPRESSION_MAX_SAMPLES] = (Interval){current.left + 1U, current.depth + 1U};
+        }
+    }
+    return CALCULATOR_OK;
 }
 
 CalculatorStatus application_graph_adaptive(ApplicationGraph **result,
@@ -228,6 +283,7 @@ CalculatorStatus application_graph_adaptive(ApplicationGraph **result,
     if (status == CALCULATOR_OK) status = parameter == NULL ?
         application_expression_prepare_auto(&expression, input, session, context, error) :
         application_expression_prepare(&expression, input, parameter, session, context, error);
+    if (status == CALCULATOR_OK) application_expression_enable_graph_phases(expression);
     if (status == CALCULATOR_OK) {
         graph = numforge_calloc(1U, sizeof(*graph));
         if (graph == NULL) status = CALCULATOR_OUT_OF_MEMORY;
@@ -241,10 +297,10 @@ CalculatorStatus application_graph_adaptive(ApplicationGraph **result,
         graph->view_minimum = bigdecimal_create();graph->view_maximum = bigdecimal_create();
         step = bigrational_create();divisor = bigrational_create();cursor = bigrational_create();
         number = bigdecimal_create();factor = bigdecimal_create();
-        work.half = bigdecimal_create();work.sum = bigdecimal_create();work.delta = bigdecimal_create();work.tolerance = bigdecimal_create();
+        work.half = bigdecimal_create();work.sum = bigdecimal_create();work.delta = bigdecimal_create();work.tolerance = bigdecimal_create();work.phase_span = bigdecimal_create();
         if (graph->coordinates == NULL || graph->samples == NULL || graph->connect == NULL || graph->view_minimum == NULL ||
             graph->view_maximum == NULL || step == NULL || divisor == NULL || cursor == NULL || number == NULL || factor == NULL ||
-            work.half == NULL || work.sum == NULL || work.delta == NULL || work.tolerance == NULL) status = CALCULATOR_OUT_OF_MEMORY;
+            work.half == NULL || work.sum == NULL || work.delta == NULL || work.tolerance == NULL || work.phase_span == NULL) status = CALCULATOR_OUT_OF_MEMORY;
     }
     if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_set_string(number, "32"));
     if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_from_bigdecimal(divisor, number));
@@ -269,16 +325,12 @@ CalculatorStatus application_graph_adaptive(ApplicationGraph **result,
     if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_set_string(factor, "0.001"));
     if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_mul(work.tolerance, work.tolerance, factor));
     if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_set_string(work.half, "0.5"));
+    if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_set_string(work.phase_span,
+        context->angle_unit == CALCULATOR_ANGLE_DEGREES ? "30" : "0.5"));
     if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_set_string(number, "2"));
     if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_from_bigdecimal(divisor, number));
     work.graph = graph;work.expression = expression;work.context = context;work.error = error;work.two = divisor;
-    size_t left = 0U;
-    for (size_t interval = 0; status == CALCULATOR_OK && interval < 32U; ++interval) {
-        /* A local quota prevents one pole consuming every other visible interval. */
-        work.quota = graph->count + 30U;
-        if (work.quota > APPLICATION_EXPRESSION_MAX_SAMPLES) work.quota = APPLICATION_EXPRESSION_MAX_SAMPLES;
-        status = adaptive_interval(&work, left, 0U, &left);
-    }
+    if (status == CALCULATOR_OK) status = adaptive_refine(&work);
     if (status == CALCULATOR_OK && !any) status = adaptive_view(graph, &any);
     if (status == CALCULATOR_OK && !any) {
         bigdecimal_destroy(graph->view_minimum);graph->view_minimum = NULL;
@@ -289,6 +341,7 @@ CalculatorStatus application_graph_adaptive(ApplicationGraph **result,
     bigrational_destroy(step);bigrational_destroy(divisor);bigrational_destroy(cursor);
     bigdecimal_destroy(number);bigdecimal_destroy(factor);bigdecimal_destroy(work.half);
     bigdecimal_destroy(work.sum);bigdecimal_destroy(work.delta);bigdecimal_destroy(work.tolerance);
+    bigdecimal_destroy(work.phase_span);
     if (status == CALCULATOR_OK) *result = graph;
     else { application_graph_destroy(graph);calculator_error_set(error, status, error == NULL ? 0U : error->offset); }
     if (owner) numforge_budget_end();

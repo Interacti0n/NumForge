@@ -1,5 +1,35 @@
 const {test,expect}=require('@playwright/test');
 const {randomBytes}=require('node:crypto');
+test('adaptive harder functions, broad ranges and oscillation safeguards',async({request})=>{
+ test.setTimeout(30000);
+ const sample=async(expression,min,max,precision='34')=>{
+  const response=await request.post('/api/graph/plot?'+new URLSearchParams({min,max,precision}),{data:expression});
+  expect(response.ok()).toBe(true);const data=await response.json();expect(data.ok).toBe(true);
+  expect(data.count).toBeLessThanOrEqual(1024);return data;
+ };
+ const sine=await sample('sin(3x)','-10','10');expect(sine.limited).toBe(false);
+ expect(sine.points.slice(1).every(p=>p.connect)).toBe(true);
+ for(const [expression,reference] of [
+  ['sin(3x)',x=>Math.sin(3*x)],['sin(3x)+cos(2x)',x=>Math.sin(3*x)+Math.cos(2*x)],
+  ['sin(3x)*exp(-x*x/20)',x=>Math.sin(3*x)*Math.exp(-x*x/20)]]){
+  const data=await sample(expression,'-10','10');let edges=0;expect(data.limited).toBe(false);
+  const span=Number(data.y_max)-Number(data.y_min);
+  data.points.forEach((p,i)=>{
+   const x=Number(p.x),y=Number(p.y);expect(Math.abs(y-reference(x))).toBeLessThan(1e-10);
+   if(p.connect){++edges;const a=data.points[i-1],ax=Number(a.x),ay=Number(a.y);
+    for(const t of [.25,.5,.75])expect(Math.abs(ay+(y-ay)*t-reference(ax+(x-ax)*t))/span).toBeLessThan(.0011);
+   }
+  });expect(edges).toBe(data.count-1);
+ }
+ for(const expression of ['3*x+2','x*x','ln(1+x*x)']){
+  const data=await sample(expression,'-1000000000000','1000000000000');expect(data.points.some(p=>p.connect)).toBe(true);
+ }
+ const precise=await sample('sin(3x)','-1','1','100');expect(precise.points.some(p=>p.connect)).toBe(true);
+ for(const expression of ['sin(x)','sin(sin(1000000*x))']){
+  const data=await sample(expression,'-1000000','1000000');expect(data.limited).toBe(true);
+  expect(data.points.every(p=>!p.connect)).toBe(true);
+ }
+});
 const route=(extra={})=>'/api/graph/sample?'+new URLSearchParams({min:'-1',max:'1',points:'3',...extra});
 async function graph(request,input,extra={}) {
     const response=await request.post(route(extra),{data:input});

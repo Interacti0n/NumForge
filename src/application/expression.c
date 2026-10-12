@@ -19,6 +19,9 @@ struct ApplicationExpression
     CalculatorVariable variables[CALCULATOR_VARIABLE_CAPACITY];
     size_t variable_count;
     bool uses_variables;
+    bool graph_phases, phase_overflow;
+    const CalculatorExpression *phase_nodes[64];
+    size_t phase_count;
 };
 
 void application_expression_destroy(ApplicationExpression *expression)
@@ -226,10 +229,63 @@ const char *application_expression_parameter(const ApplicationExpression *expres
     return expression == NULL ? NULL : expression->parameter_name;
 }
 
+static void collect_graph_phases(ApplicationExpression *expression, const CalculatorExpression *node)
+{
+    switch (node->type) {
+        case CALCULATOR_EXPRESSION_UNARY: collect_graph_phases(expression,node->data.unary.operand);break;
+        case CALCULATOR_EXPRESSION_POSTFIX: collect_graph_phases(expression,node->data.postfix.operand);break;
+        case CALCULATOR_EXPRESSION_BINARY:
+            collect_graph_phases(expression,node->data.binary.left);collect_graph_phases(expression,node->data.binary.right);break;
+        case CALCULATOR_EXPRESSION_CALL:
+            if (node->data.call.function->implementation == CALCULATOR_FUNCTION_SIN ||
+                node->data.call.function->implementation == CALCULATOR_FUNCTION_COS ||
+                node->data.call.function->implementation == CALCULATOR_FUNCTION_TAN) {
+                if (expression->phase_count < 64U) expression->phase_nodes[expression->phase_count++] = node->data.call.arguments[0];
+                else expression->phase_overflow = true;
+            }
+            for (size_t i=0;i<node->data.call.count;++i) collect_graph_phases(expression,node->data.call.arguments[i]);
+            break;
+        default: break;
+    }
+}
+void application_expression_enable_graph_phases(ApplicationExpression *expression)
+{
+    if (expression == NULL || expression->graph_phases) return;
+    expression->graph_phases = true;collect_graph_phases(expression,expression->tree);
+}
+static CalculatorStatus sample_graph_phases(ApplicationExpression *expression,
+    ApplicationExpressionSample *sample)
+{
+    sample->phase_unknown = expression->phase_overflow;
+    if (expression->phase_count == 0U || sample->error.status != CALCULATOR_OK ||
+        calculator_value_is_complex(&sample->value) || sample->value.quantity) return CALCULATOR_OK;
+    sample->phase_count = expression->phase_count;
+    sample->phases = numforge_calloc(sample->phase_count,sizeof(*sample->phases));
+    if (sample->phases == NULL) return CALCULATOR_OUT_OF_MEMORY;
+    for (size_t i=0;i<sample->phase_count;++i) {
+        CalculatorValue phase = {0};CalculatorError error;
+        CalculatorStatus status = calculator_evaluate_parsed_value(expression->phase_nodes[i],&expression->context,
+            expression->answer.number == NULL ? NULL : &expression->answer,NULL,&phase,&error);
+        if (status == CALCULATOR_OK && !calculator_value_is_complex(&phase) && !phase.quantity) {
+            sample->phases[i] = phase.number;phase.number = NULL;
+        } else if (status == CALCULATOR_OK || status == CALCULATOR_DIVISION_BY_ZERO ||
+            status == CALCULATOR_INVALID_ARGUMENT || status == CALCULATOR_DIMENSION_ERROR || status == CALCULATOR_NOT_IMPLEMENTED) {
+            sample->phase_unknown = true;status = CALCULATOR_OK;
+        }
+        calculator_value_destroy(&phase);
+        if (status != CALCULATOR_OK) return status;
+    }
+    return CALCULATOR_OK;
+}
+
 void application_expression_samples_destroy(ApplicationExpressionSample *samples, size_t count)
 {
     if (samples == NULL) return;
-    for (size_t i = 0; i < count; ++i) calculator_value_destroy(&samples[i].value);
+    for (size_t i = 0; i < count; ++i) {
+        calculator_value_destroy(&samples[i].value);
+        if (samples[i].phases != NULL) for (size_t j=0;j<samples[i].phase_count;++j) bigdecimal_destroy(samples[i].phases[j]);
+        free(samples[i].phases);
+    }
     free(samples);
 }
 
@@ -259,6 +315,7 @@ CalculatorStatus application_expression_sample(ApplicationExpression *expression
         status = calculator_evaluate_parsed_value(expression->tree, &expression->context,
             expression->answer.number == NULL ? NULL : &expression->answer, NULL,
             &samples[i].value, &samples[i].error);
+        if (status == CALCULATOR_OK && expression->graph_phases) status = sample_graph_phases(expression,&samples[i]);
         memset(&expression->parameter, 0, sizeof(expression->parameter));
         if (status == CALCULATOR_DIVISION_BY_ZERO || status == CALCULATOR_INVALID_ARGUMENT ||
             status == CALCULATOR_DIMENSION_ERROR || status == CALCULATOR_NOT_IMPLEMENTED)

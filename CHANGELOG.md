@@ -7,6 +7,12 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Reduce forward trigonometric temporary allocations without lowering precision;
+  distribute adaptive graph probes across the view, guard against whole-period
+  aliasing and stop optional refinement before budget exhaustion. Add graph
+  benchmarks and independent curve/point regressions for harder expressions and
+  wide ranges. Empty/editing/error states now retain the default coordinate grid.
+
 - Add bounded adaptive C graph refinement and automatic AST parameter inference. Web graphs now draw curves with conservative unresolved gaps, omit manual sample-count/parameter/connection controls and place view/precision options in advanced settings. Uniform HTTP sampling remains available.
 
 - Organize the SK/EN Guide / API page into Calculator, Units, Graphs and API parts with focused user instructions, per-part navigation, context links from tools and preserved legacy anchors/language/history.

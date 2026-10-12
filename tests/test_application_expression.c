@@ -230,9 +230,34 @@ static void test_maximum_batch_owns_values_independently(void)
     application_expression_destroy(prepared); prepared = NULL;
     text(0U, "2/3"); text(APPLICATION_EXPRESSION_MAX_SAMPLES - 1U, "2/3");
 }
+static void test_graph_phases_ownership_and_faults(void)
+{
+    prepare("sin(3*x)+cos(x)");argument(0U,"0");
+    application_expression_enable_graph_phases(prepared);
+    application_expression_enable_graph_phases(prepared);
+    sample(1U);
+    TEST_ASSERT_EQUAL_UINT64(2U,samples[0].phase_count);
+    TEST_ASSERT_FALSE(samples[0].phase_unknown);
+    for (size_t i=0U;i<2U;++i) {
+        bool zero=false;
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK,bigdecimal_is_zero(&zero,samples[0].phases[i]));TEST_ASSERT_TRUE(zero);
+    }
+    CalculatorError error;bool complete=false;
+    for (size_t failure=1U;failure<10000U;++failure) {
+        ApplicationExpressionSample *attempt=samples;
+        numforge_test_allocator_begin(failure);
+        CalculatorStatus status=application_expression_sample(prepared,arguments,1U,&attempt,&error);
+        numforge_test_allocator_end();
+        if (status==CALCULATOR_OK) { application_expression_samples_destroy(attempt,1U);complete=true;break; }
+        TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY,status);TEST_ASSERT_EQUAL_PTR(samples,attempt);
+    }
+    TEST_ASSERT_TRUE(complete);
+    text(0U,"1");
+}
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_graph_phases_ownership_and_faults);
     RUN_TEST(test_snapshots_parameter_shadowing_and_session_lifetime);
     RUN_TEST(test_typed_complex_and_quantity_parameters);
     RUN_TEST(test_domain_gaps_do_not_abort_later_points);

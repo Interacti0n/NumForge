@@ -13,7 +13,7 @@ function initGraph() {
         range:'These coordinates cannot be distinguished in the browser’s numeric range. Choose a smaller range.',
         real:'Real', domain_error:'Domain error', complex:'Complex', quantity:'Quantity', outside:'Outside plotting range',
         summary:(shown,total)=>`y = f(${parameter}) · ${shown}/${total} real samples`, column:'column',
-        limited:'Some uncertain intervals were omitted.', ambiguous:'Use one unknown variable, or save the other variables in the calculator and enable its session.',
+        limited:'Some intervals could not be resolved. Try a smaller x range.', ambiguous:'Use one unknown variable, or save the other variables in the calculator and enable its session.',
         caption:'Rounded plotting values. Complex values and quantities are not projected onto the real axis.'
     } : {
         ready:'Zadaj funkciu a vykresli ju.', busy:'Počítam body…', network:'Server nie je dostupný. Skús to znova.',
@@ -21,7 +21,7 @@ function initGraph() {
         range:'Tieto súradnice prehliadač nedokáže rozlíšiť vo svojom číselnom rozsahu. Zvoľ menší rozsah.',
         real:'Reálne', domain_error:'Chyba definičného oboru', complex:'Komplexné', quantity:'Veličina', outside:'Mimo rozsahu grafu',
         summary:(shown,total)=>`y = f(${parameter}) · reálne body: ${shown}/${total}`, column:'pozícia',
-        limited:'Niektoré nejasné úseky boli vynechané.', ambiguous:'Použi jednu neznámu, alebo ulož ostatné premenné v kalkulačke a zapni použitie sedenia.',
+        limited:'Niektoré úseky sa nepodarilo rozlíšiť. Skús menší rozsah x.', ambiguous:'Použi jednu neznámu, alebo ulož ostatné premenné v kalkulačke a zapni použitie sedenia.',
         caption:'Zaokrúhlené hodnoty pre graf. Komplexné čísla a veličiny sa nepremietajú na reálnu os.'
     };
     const errors = english ? {} : {
@@ -46,7 +46,7 @@ function initGraph() {
     } catch (_) {}
     function invalidate() {
         ++generation;request?.abort();request=null;samples=null;
-        svg.setAttribute('hidden','');svg.querySelectorAll('.graph-drawing').forEach(el=>el.remove());
+        view=null;limited=false;parameter='x';draw();
         $('graph-values').hidden=true;table.replaceChildren();root.removeAttribute('aria-busy');
         message(text.ready);save();
     }
@@ -79,26 +79,26 @@ function initGraph() {
     }
     function draw() {
         svg.querySelectorAll('.graph-drawing').forEach(el=>el.remove());
-        const valid=samples.filter(p=>p.plottable);
-        message(text.summary(valid.length,samples.length)+(limited?' · '+text.limited:''));
-        $('graph-values').hidden=false;
+        const points=samples||[],valid=points.filter(p=>p.plottable);
+        if(samples)message(text.summary(valid.length,points.length)+(limited?' · '+text.limited:''));
+        $('graph-values').hidden=!samples;
         $('graph-table-caption').textContent=text.caption;
         if($('graph-values').open)renderTable();
-        if(!valid.length){svg.setAttribute('hidden','');return;}
-        const xs=samples.map(p=>p.nx),ys=valid.map(p=>p.ny);
+        let xs=valid.length?points.map(p=>p.nx):[-10,10];
+        const ys=valid.map(p=>p.ny);
         if(xs.some(x=>x===null) || xs.some((x,i)=>i>0 && x<=xs[i-1])) {
-            message(text.range,true);svg.setAttribute('hidden','');return;
+            samples=null;draw();message(text.range,true);return;
         }
         // Scale before subtraction so finite extreme values cannot overflow.
         const xScale=Math.max(Math.abs(xs[0]),Math.abs(xs.at(-1)),Number.MIN_VALUE);
-        const projectedView=view?.every(y=>y!==null) ? view : [Math.min(...ys),Math.max(...ys)];
+        const projectedView=!valid.length?[-10,10]:view?.every(y=>y!==null) ? view : [Math.min(...ys),Math.max(...ys)];
         const rawScale=Math.max(...projectedView.map(Math.abs));
         const yScale=rawScale===0?1:Math.max(rawScale,Number.MIN_VALUE);
         const xLow=xs[0]/xScale,xHigh=xs.at(-1)/xScale;
-        if(xHigh<=xLow){message(text.range,true);svg.setAttribute('hidden','');return;}
+        if(xHigh<=xLow){samples=null;draw();message(text.range,true);return;}
         let yLow=projectedView[0]/yScale,yHigh=projectedView[1]/yScale;
         if(yLow===yHigh){yLow-=.5;yHigh+=.5;}
-        const padding=(yHigh-yLow)*.08;yLow-=padding;yHigh+=padding;
+        const padding=valid.length?(yHigh-yLow)*.08:0;yLow-=padding;yHigh+=padding;
         yLow=Math.max(yLow,-Number.MAX_VALUE/yScale);
         yHigh=Math.min(yHigh,Number.MAX_VALUE/yScale);
         const width=Math.max(320,Math.min(800,root.querySelector('.graph-result').clientWidth-48));
@@ -123,18 +123,19 @@ function initGraph() {
         clip.append(element('rect',{x:64,y:22,width:right-64,height:bottom-22}));defs.append(clip);group.append(defs);
         const curve=element('path',{class:'graph-line','clip-path':'url(#graph-clip)'});
         let path='',previous=null;
-        for(const point of samples) {
+        for(const point of points) {
             if(!point.plottable){previous=null;continue;}
             const x=px(point.nx),y=py(point.ny);
             if(point.connect && previous)path+=`M${previous.x},${previous.y}L${x},${y}`;
             previous={x,y};
         }
         if(path){curve.setAttribute('d',path);group.append(curve);}
-        $('graph-svg-description').textContent=$('graph-expression').value+'; '+text.summary(valid.length,samples.length);
+        $('graph-svg-description').textContent=samples?$('graph-expression').value+'; '+text.summary(valid.length,points.length):text.ready;
         svg.append(group);svg.removeAttribute('hidden');
     }
     async function plot(event) {
         event.preventDefault();invalidate();const id=generation;
+        if(!$('graph-expression').value.trim())return;
         if(!$('graph-form').reportValidity())return;
         request=new AbortController();const signal=request.signal;
         root.setAttribute('aria-busy','true');message(text.busy);
@@ -171,9 +172,10 @@ function initGraph() {
     let previousWidth=0;
     const resize=new ResizeObserver(entries=>{
         const width=entries[0].contentRect.width;
-        if(width!==previousWidth){previousWidth=width;if(samples&&!disposed)draw();}
+        if(width!==previousWidth){previousWidth=width;if(!disposed)draw();}
     });
     resize.observe(root.querySelector('.graph-result'));
+    draw();
     return ()=>{save();disposed=true;request?.abort();resize.disconnect();lifecycle.abort();};
 }
 window.numforgeInitGraph=initGraph;

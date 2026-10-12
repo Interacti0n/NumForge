@@ -2,7 +2,9 @@
 
 Open **Graphs / Grafy** (`/graph?lang=en` or `/graph?lang=sk`). Enter an expression
 such as `x*x`, `sin(t)` or `1/x`, then press **Plot / Vykresliť**. Computation runs
-only on submission. The view starts at −10 to 10 around zero.
+only on submission. Empty input, editing and request errors retain a coordinate
+grid from −10 to 10 on both axes; empty submissions do not contact the server.
+The requested x view starts at −10 to 10 around zero.
 
 Sample density and the parameter are automatic. The C parser chooses the unique
 variable not present in the selected calculator session. `sin(t)` uses `t`;
@@ -38,14 +40,19 @@ or manual connection/sample-count controls. The sample table stays accessible.
 Connections are heuristic, not proofs of continuity. Narrow poles, discontinuities,
 isolated valid values or oscillations can escape finite sampling. Gaps can also
 omit a continuous but unresolved steep curve. A message reports exhausted
-refinement. Initial real samples suggest y bounds; newly discovered poles do not
+refinement. Forward trigonometric phases receive an extra check against hidden
+whole periods. If a wide range contains too many oscillations, narrow the x range;
+the plot may omit all connections rather than draw misleading chords.
+Initial real samples suggest y bounds; newly discovered poles do not
 inflate the view. The curve is clipped to those bounds, which can also omit newly
 discovered extrema. Pan/zoom and explicit y control remain future work.
 
 Coordinates are rounded scientific strings from C. Browser overflow or underflow
 is omitted, never plotted as a false zero. Collapsed x coordinates prevent drawing.
 One five-second budget includes preparation, every sample and serialization, with
-existing allocation and response bounds; expensive requests fail atomically.
+existing allocation and response bounds. Refinement can finish early with a
+limited plot when its remaining budget is too small for another probe. Actual
+resource failures still fail atomically.
 
 Settings persist per tab across language/navigation. Editing cancels pending work
 and clears stale results. The original uniform sampling HTTP endpoint remains

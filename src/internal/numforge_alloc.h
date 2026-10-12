@@ -7,6 +7,10 @@
 
 #include <numforge/runtime.h>
 
+/* Non-consuming telemetry for bounded adaptive work; never clears failures. */
+size_t numforge_budget_available_bytes(void);
+uint64_t numforge_budget_available_ms(void);
+
 /* Non-consuming optional-workspace preflight. Does not set a sticky budget
  * failure: callers may select an algorithm with smaller allocation demands. */
 bool numforge_budget_can_allocate_pair(size_t first, size_t second);

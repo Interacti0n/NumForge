@@ -29,7 +29,7 @@ Success retains `ok`, `parameter`, `count`, `plot_places:12`, and classified
 - `schema_version:2`, `sampling:"adaptive"`.
 - Per-point `connect`: whether a sampled chord from the previous point met the
   heuristic error criterion. The first is false. Classified gaps never connect.
-- `limited`: refinement encountered a depth/local evaluation bound; unresolved
+- `limited`: refinement encountered a depth, point or remaining resource bound; unresolved
   intervals are disconnected instead of being silently joined.
 - `y_min`/`y_max`: rounded scientific strings from real seed samples, or discovered
   real samples if the seeds had none; null when there are no real samples. These
@@ -48,15 +48,30 @@ coordinates. Every new sample uses the same typed C evaluator and inherited scop
 All-real triples compare absolute midpoint/chord error with 0.001 of the seeded
 y span (constant span uses absolute seed magnitude, or 1 if zero). A rejected
 interval is bisected; mixed real/non-real triples are refined to locate boundaries.
-All-non-real triples stop with gaps. Work is limited to depth 12 and at most 30
-new evaluations per initial interval, preventing one pole from consuming every
-other interval. The hard sample-array bound is 1024; this policy uses at most 993.
+All-non-real triples stop with gaps. Intervals are processed breadth-first across
+the whole view, limited to depth 12 and 1024 total samples. For real arguments of
+forward sin/cos/tan calls, corresponding phase probes must also differ by at most
+0.5 radians (30 degrees). Nested calls are checked too; unknown phases are never
+accepted solely because their output values happen to agree. This avoids obvious
+whole-period aliasing on wide intervals without projecting C mathematics to double.
+Phase arguments are evaluated through the same prepared C AST; at most 64 forward
+call sites are captured, with overflow/unsupported arguments treated as unknown.
+
+Before each new probe the sampler checks remaining cumulative bytes and time,
+reserving 2 MiB and 200 ms for finishing/serialization plus twice the largest
+observed probe cost. It can stop with `limited:true` before exhausting the budget.
+This is an estimate, not a guarantee for an unexpectedly expensive next sample.
 One five-second/64 MiB cumulative/512 KiB single-allocation budget covers the
 whole operation and serialization; JSON still must fit 128 KiB. Resource failure
-returns no partial success. No per-point budgets or binary floating-point math
+still returns no partial success. No per-point budgets or binary floating-point math
 are used in the C sampler.
 
 Finite midpoint sampling cannot prove continuity or find every narrow feature,
 pole, isolated domain island or oscillation. It may miss an oscillation that
 aliases its probes; it may omit a steep continuous interval. `connect` describes
 the sampled heuristic only. It must never be advertised as a continuity proof.
+An interval containing too many oscillations may have no accepted connections:
+choose narrower x bounds rather than interpreting an empty curve as a zero function.
+
+See the [graph performance audit](../benchmarks/GRAPH_AUDIT_2026_10_12.md)
+for allocation/time measurements and independent point/chord comparisons.

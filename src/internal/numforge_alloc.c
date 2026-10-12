@@ -322,6 +322,21 @@ void numforge_budget_end(
 #endif
 }
 
+size_t numforge_budget_available_bytes(void)
+{
+    if (!budget_active) return SIZE_MAX;
+    return budget_failure == NUMFORGE_BUDGET_OK ? budget_remaining : 0U;
+}
+uint64_t numforge_budget_available_ms(void)
+{
+    if (!budget_active) return UINT64_MAX;
+    if (budget_failure != NUMFORGE_BUDGET_OK) return 0U;
+    uint64_t now = numforge_monotonic_ms();
+    if (now == UINT64_MAX || budget_started == UINT64_MAX || now < budget_started) return 0U;
+    uint64_t elapsed = now - budget_started;
+    return elapsed < budget_duration ? budget_duration - elapsed : 0U;
+}
+
 bool numforge_budget_can_allocate_pair(size_t first, size_t second)
 {
     if (!budget_active) return true;

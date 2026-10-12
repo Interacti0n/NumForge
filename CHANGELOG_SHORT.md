@@ -5,6 +5,9 @@ details and the [2.2.1 release record](docs/project/RELEASE_2_2_1.md) for valida
 
 ## Unreleased
 
+- Faster, bounded graph refinement with oscillation safeguards, performance
+  benchmarks and persistent empty coordinate axes.
+
 - Plot adaptive curves with automatic variables and simpler graph controls.
 
 - Split the guide into focused Calculator, Units, Graphs and API parts.

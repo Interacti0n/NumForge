@@ -100,3 +100,18 @@ reuse. Short scientific output now uses bounded leading-limb conversion with
 an exact fallback at rounding boundaries. Compare its scaling against
 `scientific_full`; see the [formatting follow-up](../benchmarks/BENCHMARKS.md#bounded-prefix-formatting-follow-up)
 for the measured optimization and its limits.
+
+### Adaptive graphs
+
+The same opt-in build provides `graph_benchmark [repeats]` (default 3, range 1–10).
+It separately measures a uniform 129-point C batch, the adaptive C operation and
+the full HTTP adapter with serialization. Fifteen expressions/ranges cover
+smooth polynomials, trigonometric combinations, exponential damping, logarithms,
+poles, hidden oscillations, trillion-wide intervals and 100-digit precision.
+CSV includes cumulative allocation calls/bytes, points, `limited`, independent
+libm point/chord errors, screen-normalized chord error and accepted x coverage.
+Live allocation tracking is off; stats counters remain enabled. C point
+references are checked outside timing and errors above 1e-9 return a failure.
+Resource statuses remain diagnostic rows rather than universal timing gates.
+No connected chords means zero chord error **and zero coverage**, not a perfect
+curve. See the [graph audit](../benchmarks/GRAPH_AUDIT_2026_10_12.md).

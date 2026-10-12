@@ -3,6 +3,9 @@
 For independently validated complex function timings, see
 [complex performance diagnostics](COMPLEX_BENCHMARKS.md).
 
+For uniform/adaptive/HTTP graph sampling, independent curve checks and persistent
+coordinate axes, see the [graph audit](GRAPH_AUDIT_2026_10_12.md).
+
 For the arithmetic suite, exact references, factorial/square experiments and
 three-run recording, see [BigInt benchmarks](BIGINT_BENCHMARKS.md).
 

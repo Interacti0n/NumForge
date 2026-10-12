@@ -80,3 +80,12 @@ See [release record](project/RELEASE_2_1.md) for the 2.1 checks and
 Adaptive graph tests compare linear/curved density, offset poles, automatic AST
 parameters, read-only sessions, stratified allocator failures and deterministic
 deadlines. Allocation-stat builds require zero live allocations after cleanup.
+
+Graph regressions also cover `sin(3x)`, mixed/nested functions, 100-digit requests,
+trillion-wide smooth ranges, high-frequency phase safeguards, inherited budget
+admission, phase ownership/faults and empty axes without HTTP requests. Browser
+checks compare real points and quarter/mid/three-quarter chord probes against
+independent JavaScript references; numeric C suites retain high-precision oracles.
+The opt-in `graph_benchmark [1..10]` reports uniform/adaptive/HTTP timings,
+cumulative allocations, resolution limits, independent libm point/chord errors
+and accepted interval coverage. See the [graph audit](benchmarks/GRAPH_AUDIT_2026_10_12.md).

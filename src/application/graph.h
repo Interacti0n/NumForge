@@ -28,7 +28,7 @@ CalculatorStatus application_graph_sample(ApplicationGraph **result,
     const char *input, const char *parameter, const BigRational *minimum,
     const BigRational *maximum, size_t count, const CalculatorSession *session,
     const CalculatorContext *context, CalculatorError *error);
-/* Bounded midpoint refinement: 33 seeds, <=1024 evaluations, depth <=12.
+/* Breadth-first midpoint refinement: 33 seeds, <=1024 samples, depth <=12.
  * parameter=NULL infers it from the AST. All work shares one operation budget.
  * connect flags are heuristic, not mathematical continuity proofs. */
 CalculatorStatus application_graph_adaptive(ApplicationGraph **result,

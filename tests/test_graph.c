@@ -261,9 +261,36 @@ static void test_adaptive_faults_deadline_and_http_contract(void)
     TEST_ASSERT_EQUAL(CALCULATOR_UNDEFINED_VARIABLE,numforge_web_session_request(&store,"POST","/api/graph/plot?min=-1&max=1","x+y",&response));
     TEST_ASSERT_NOT_NULL(strstr(response,"graph_parameter_ambiguous"));free(response);
 }
+static void test_wide_smooth_ranges_and_shared_budget_admission(void)
+{
+    range("-1000000000000", "1000000000000");CalculatorError error;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_graph_adaptive(&graph,"3*x+2",NULL,minimum,maximum,NULL,&context,&error));
+    TEST_ASSERT_FALSE(graph->limited);
+    for (size_t i=1U;i<graph->count;++i) TEST_ASSERT_TRUE(graph->connect[i]);
+    application_graph_destroy(graph);graph=NULL;
+    TEST_ASSERT_EQUAL_UINT64(SIZE_MAX,numforge_budget_available_bytes());
+    TEST_ASSERT_EQUAL_UINT64(UINT64_MAX,numforge_budget_available_ms());
+    TEST_ASSERT_TRUE(numforge_budget_begin(60000U,2U*1024U*1024U+100000U,CALCULATOR_SINGLE_ALLOCATION));
+    size_t before=numforge_budget_available_bytes();
+    TEST_ASSERT_EQUAL_UINT64(before,numforge_budget_available_bytes());
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_graph_adaptive(&graph,"x*x",NULL,minimum,maximum,NULL,&context,&error));
+    TEST_ASSERT_TRUE(graph->limited);
+    TEST_ASSERT_GREATER_THAN(0U,numforge_budget_available_bytes());
+    TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_OK,numforge_budget_failure());
+    TEST_ASSERT_FALSE(numforge_budget_begin(60000U,SIZE_MAX,SIZE_MAX));
+    TEST_ASSERT_LESS_THAN(before,numforge_budget_available_bytes());
+    numforge_budget_end();
+    TEST_ASSERT_TRUE(numforge_budget_begin(0U,SIZE_MAX,SIZE_MAX));
+    TEST_ASSERT_EQUAL_UINT64(0U,numforge_budget_available_ms());
+    TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_OK,numforge_budget_failure());
+    TEST_ASSERT_FALSE(numforge_budget_check());
+    TEST_ASSERT_EQUAL_UINT64(0U,numforge_budget_available_bytes());
+    TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_TIME,numforge_budget_failure());
+}
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_wide_smooth_ranges_and_shared_budget_admission);
     RUN_TEST(test_adaptive_linear_curvature_and_poles);
     RUN_TEST(test_adaptive_automatic_parameter_and_read_only_session);
     RUN_TEST(test_adaptive_faults_deadline_and_http_contract);

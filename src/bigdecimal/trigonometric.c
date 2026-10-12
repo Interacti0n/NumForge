@@ -11,7 +11,7 @@
 /*
 ------------------------------------------------------------------------------------------------------------------------------
     Radian trigonometric functions. Forward functions reduce by pi/2 and
-    evaluate sine and cosine together on [-pi/4, pi/4]. Inverse functions use
+    evaluate the requested sine/cosine series on [-pi/4, pi/4]. Inverse functions use
     a guarded arctangent series after reciprocal and half-angle reduction.
 ------------------------------------------------------------------------------------------------------------------------------
 */
@@ -49,24 +49,11 @@ static BigDecimalStatus trig_binary_rounded(
     bool subtract
 )
 {
-    BigDecimal *temporary = bigdecimal_create();
-    BigDecimalStatus status;
-
-    if (temporary == NULL)
-    {
-        return BIGDECIMAL_OUT_OF_MEMORY;
-    }
-
-    status = subtract ? bigdecimal_sub(temporary, a, b)
-                      : bigdecimal_add(temporary, a, b);
-
+    /* Outputs are private work values. Public callers publish only after the
+     * complete operation succeeds, so no extra transaction object is needed. */
+    BigDecimalStatus status = subtract ? bigdecimal_sub(result, a, b) : bigdecimal_add(result, a, b);
     if (status == BIGDECIMAL_OK)
-    {
-        status = bigdecimal_round_significant(
-            result, temporary, digits, BIGDECIMAL_ROUND_HALF_EVEN);
-    }
-
-    bigdecimal_destroy(temporary);
+        status = bigdecimal_round_significant(result, result, digits, BIGDECIMAL_ROUND_HALF_EVEN);
     return status;
 }
 
@@ -77,23 +64,9 @@ static BigDecimalStatus trig_multiply_rounded(
     int64_t digits
 )
 {
-    BigDecimal *temporary = bigdecimal_create();
-    BigDecimalStatus status;
-
-    if (temporary == NULL)
-    {
-        return BIGDECIMAL_OUT_OF_MEMORY;
-    }
-
-    status = bigdecimal_mul(temporary, a, b);
-
+    BigDecimalStatus status = bigdecimal_mul(result, a, b);
     if (status == BIGDECIMAL_OK)
-    {
-        status = bigdecimal_round_significant(
-            result, temporary, digits, BIGDECIMAL_ROUND_HALF_EVEN);
-    }
-
-    bigdecimal_destroy(temporary);
+        status = bigdecimal_round_significant(result, result, digits, BIGDECIMAL_ROUND_HALF_EVEN);
     return status;
 }
 
@@ -343,29 +316,30 @@ static BigDecimalStatus trig_series(
 )
 {
     BigDecimal *square = bigdecimal_create();
-    BigDecimal *sin_term = bigdecimal_create();
-    BigDecimal *cos_term = bigdecimal_create();
-    BigDecimal *next_sine = bigdecimal_create();
-    BigDecimal *next_cosine = bigdecimal_create();
+    BigDecimal *sin_term = sine != NULL ? bigdecimal_create() : NULL;
+    BigDecimal *cos_term = cosine != NULL ? bigdecimal_create() : NULL;
+    BigDecimal *next_sine = sine != NULL ? bigdecimal_create() : NULL;
+    BigDecimal *next_cosine = cosine != NULL ? bigdecimal_create() : NULL;
     BigDecimal *denominator = bigdecimal_create();
-    BigDecimal *one = bigdecimal_create();
+    BigDecimal *one = cosine != NULL ? bigdecimal_create() : NULL;
+    BigDecimalWorkspace workspace = {0};
     BigDecimalStatus status = BIGDECIMAL_OUT_OF_MEMORY;
-    bool sine_done = false;
-    bool cosine_done = false;
+    bool sine_done = sine == NULL;
+    bool cosine_done = cosine == NULL;
     int comparison;
 
-    if (square == NULL || sin_term == NULL || cos_term == NULL || next_sine == NULL ||
-        next_cosine == NULL || denominator == NULL || one == NULL)
+    if (square == NULL || denominator == NULL ||
+        (sine != NULL && (sin_term == NULL || next_sine == NULL)) ||
+        (cosine != NULL && (cos_term == NULL || next_cosine == NULL || one == NULL)))
     {
         goto cleanup;
     }
 
-    TRIG_TRY(bigdecimal_set_string(one, "1"));
-    TRIG_TRY(trig_multiply_rounded(square, value, value, digits));
-    TRIG_TRY(bigdecimal_copy(sin_term, value));
-    TRIG_TRY(bigdecimal_copy(sine, value));
-    TRIG_TRY(bigdecimal_copy(cos_term, one));
-    TRIG_TRY(bigdecimal_copy(cosine, one));
+    if (cosine != NULL) { TRIG_TRY(bigdecimal_set_string(one, "1")); }
+    TRIG_TRY(bigdecimal_mul_significant_workspace(square, value, value, digits,
+        BIGDECIMAL_ROUND_HALF_EVEN, &workspace));
+    if (sine != NULL) { TRIG_TRY(bigdecimal_copy(sin_term, value)); TRIG_TRY(bigdecimal_copy(sine, value)); }
+    if (cosine != NULL) { TRIG_TRY(bigdecimal_copy(cos_term, one)); TRIG_TRY(bigdecimal_copy(cosine, one)); }
 
     for (uint64_t iteration = 1U; iteration <= (uint64_t)digits + 32U; iteration++)
     {
@@ -397,25 +371,35 @@ static BigDecimalStatus trig_series(
         sin_denominator = twice * (twice + 1U);
         cos_denominator = (twice - 1U) * twice;
 
-        TRIG_TRY(trig_multiply_rounded(sin_term, sin_term, square, digits));
-        TRIG_TRY(bigdecimal_negate(sin_term, sin_term));
-        TRIG_TRY(trig_set_u64(denominator, sin_denominator));
-        TRIG_TRY(bigdecimal_div_significant(
-            sin_term, sin_term, denominator, digits, BIGDECIMAL_ROUND_HALF_EVEN));
-        TRIG_TRY(trig_binary_rounded(next_sine, sine, sin_term, digits, false));
-        TRIG_TRY(bigdecimal_compare(&comparison, next_sine, sine));
-        sine_done = comparison == 0;
-        TRIG_TRY(bigdecimal_copy(sine, next_sine));
+        if (!sine_done) {
+            TRIG_TRY(bigdecimal_mul_significant_workspace(sin_term, sin_term, square,
+                digits, BIGDECIMAL_ROUND_HALF_EVEN, &workspace));
+            TRIG_TRY(bigdecimal_negate(sin_term, sin_term));
+            TRIG_TRY(trig_set_u64(denominator, sin_denominator));
+            TRIG_TRY(bigdecimal_div_significant_workspace(sin_term, sin_term, denominator,
+                digits, BIGDECIMAL_ROUND_HALF_EVEN, &workspace));
+            TRIG_TRY(bigdecimal_add_significant_workspace(next_sine, sine, sin_term,
+                digits, BIGDECIMAL_ROUND_HALF_EVEN, &workspace));
+            TRIG_TRY(bigdecimal_compare(&comparison, next_sine, sine));
+            sine_done = comparison == 0;
+            /* Both values are private and independently owned. Swap their
+             * coefficients instead of allocating another transaction copy. */
+            BigDecimal swap = *sine;*sine = *next_sine;*next_sine = swap;
+        }
 
-        TRIG_TRY(trig_multiply_rounded(cos_term, cos_term, square, digits));
-        TRIG_TRY(bigdecimal_negate(cos_term, cos_term));
-        TRIG_TRY(trig_set_u64(denominator, cos_denominator));
-        TRIG_TRY(bigdecimal_div_significant(
-            cos_term, cos_term, denominator, digits, BIGDECIMAL_ROUND_HALF_EVEN));
-        TRIG_TRY(trig_binary_rounded(next_cosine, cosine, cos_term, digits, false));
-        TRIG_TRY(bigdecimal_compare(&comparison, next_cosine, cosine));
-        cosine_done = comparison == 0;
-        TRIG_TRY(bigdecimal_copy(cosine, next_cosine));
+        if (!cosine_done) {
+            TRIG_TRY(bigdecimal_mul_significant_workspace(cos_term, cos_term, square,
+                digits, BIGDECIMAL_ROUND_HALF_EVEN, &workspace));
+            TRIG_TRY(bigdecimal_negate(cos_term, cos_term));
+            TRIG_TRY(trig_set_u64(denominator, cos_denominator));
+            TRIG_TRY(bigdecimal_div_significant_workspace(cos_term, cos_term, denominator,
+                digits, BIGDECIMAL_ROUND_HALF_EVEN, &workspace));
+            TRIG_TRY(bigdecimal_add_significant_workspace(next_cosine, cosine, cos_term,
+                digits, BIGDECIMAL_ROUND_HALF_EVEN, &workspace));
+            TRIG_TRY(bigdecimal_compare(&comparison, next_cosine, cosine));
+            cosine_done = comparison == 0;
+            BigDecimal swap = *cosine;*cosine = *next_cosine;*next_cosine = swap;
+        }
 
         if (sine_done && cosine_done)
         {
@@ -427,6 +411,7 @@ static BigDecimalStatus trig_series(
     status = BIGDECIMAL_VALUE_TOO_LARGE;
 
 cleanup:
+    bigdecimal_workspace_clear(&workspace);
     bigdecimal_destroy(square);
     bigdecimal_destroy(sin_term);
     bigdecimal_destroy(cos_term);
@@ -446,36 +431,41 @@ static BigDecimalStatus calculate_sin_cos(
 )
 {
     BigDecimal *remainder = bigdecimal_create();
-    BigDecimal *reduced_sine = bigdecimal_create();
-    BigDecimal *reduced_cosine = bigdecimal_create();
+    BigDecimal *reduced_sine = NULL;
+    BigDecimal *reduced_cosine = NULL;
     BigDecimalStatus status = BIGDECIMAL_OUT_OF_MEMORY;
     unsigned quadrant = 0U;
 
-    if (remainder == NULL || reduced_sine == NULL || reduced_cosine == NULL)
+    if (remainder == NULL)
     {
         goto cleanup;
     }
 
     TRIG_TRY(trig_reduce(remainder, &quadrant, value, digits, adaptive));
+    bool need_sine = (quadrant & 1U) == 0U ? sine != NULL : cosine != NULL;
+    bool need_cosine = (quadrant & 1U) == 0U ? cosine != NULL : sine != NULL;
+    if (need_sine) reduced_sine = bigdecimal_create();
+    if (need_cosine) reduced_cosine = bigdecimal_create();
+    if ((need_sine && reduced_sine == NULL) || (need_cosine && reduced_cosine == NULL)) { status = BIGDECIMAL_OUT_OF_MEMORY; goto cleanup; }
     TRIG_TRY(trig_series(reduced_sine, reduced_cosine, remainder, digits));
 
     switch (quadrant)
     {
         case 0U:
-            TRIG_TRY(bigdecimal_copy(sine, reduced_sine));
-            TRIG_TRY(bigdecimal_copy(cosine, reduced_cosine));
+            if (sine != NULL) { TRIG_TRY(bigdecimal_copy(sine, reduced_sine)); }
+            if (cosine != NULL) { TRIG_TRY(bigdecimal_copy(cosine, reduced_cosine)); }
             break;
         case 1U:
-            TRIG_TRY(bigdecimal_copy(sine, reduced_cosine));
-            TRIG_TRY(bigdecimal_negate(cosine, reduced_sine));
+            if (sine != NULL) { TRIG_TRY(bigdecimal_copy(sine, reduced_cosine)); }
+            if (cosine != NULL) { TRIG_TRY(bigdecimal_negate(cosine, reduced_sine)); }
             break;
         case 2U:
-            TRIG_TRY(bigdecimal_negate(sine, reduced_sine));
-            TRIG_TRY(bigdecimal_negate(cosine, reduced_cosine));
+            if (sine != NULL) { TRIG_TRY(bigdecimal_negate(sine, reduced_sine)); }
+            if (cosine != NULL) { TRIG_TRY(bigdecimal_negate(cosine, reduced_cosine)); }
             break;
         default:
-            TRIG_TRY(bigdecimal_negate(sine, reduced_cosine));
-            TRIG_TRY(bigdecimal_copy(cosine, reduced_sine));
+            if (sine != NULL) { TRIG_TRY(bigdecimal_negate(sine, reduced_cosine)); }
+            if (cosine != NULL) { TRIG_TRY(bigdecimal_copy(cosine, reduced_sine)); }
             break;
     }
 
@@ -562,11 +552,11 @@ static BigDecimalStatus trig_forward(
         return bigdecimal_set_string(result, operation == 1U ? "1" : "0");
     }
 
-    sine = bigdecimal_create();
-    cosine = bigdecimal_create();
+    if (operation != 1U) sine = bigdecimal_create();
+    if (operation != 0U) cosine = bigdecimal_create();
     temporary = bigdecimal_create();
 
-    if (sine == NULL || cosine == NULL || temporary == NULL)
+    if ((operation != 1U && sine == NULL) || (operation != 0U && cosine == NULL) || temporary == NULL)
     {
         status = BIGDECIMAL_OUT_OF_MEMORY;
         goto cleanup;

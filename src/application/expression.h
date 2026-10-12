@@ -14,6 +14,9 @@ typedef struct ApplicationExpression ApplicationExpression;
 typedef struct ApplicationExpressionSample
 {
     CalculatorValue value;
+    BigDecimal **phases; /* graph-only forward trig arguments, owned */
+    size_t phase_count;
+    bool phase_unknown;
     CalculatorError error; /* OK or a recoverable numeric-domain error. */
 } ApplicationExpressionSample;
 
@@ -29,6 +32,8 @@ CalculatorStatus application_expression_prepare_auto(ApplicationExpression **res
     const char *input, const CalculatorSession *session,
     const CalculatorContext *context, CalculatorError *error);
 const char *application_expression_parameter(const ApplicationExpression *expression);
+/* Capture forward-trigonometric arguments for graph anti-alias checks. */
+void application_expression_enable_graph_phases(ApplicationExpression *expression);
 void application_expression_destroy(ApplicationExpression *expression);
 
 /* Inputs are borrowed typed values with a populated number marker. Results are

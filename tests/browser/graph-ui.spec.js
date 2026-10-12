@@ -1,4 +1,16 @@
 const {test,expect}=require('@playwright/test');
+for(const lang of ['sk','en'])test(`empty graph retains default axes without requests ${lang}`,async({page})=>{
+ let calls=0;page.on('request',r=>{if(r.url().includes('/api/graph/'))++calls;});
+ await page.setViewportSize({width:390,height:844});await page.goto('/graph?lang='+lang);
+ await expect(page.locator('#graph-plot')).toBeVisible();await expect(page.locator('.graph-axis')).toHaveCount(2);
+ await page.locator('#graph-expression').fill('');await page.locator('#graph-submit').click();
+ expect(calls).toBe(0);await expect(page.locator('path.graph-line')).toHaveCount(0);
+ await expect(page.locator('.graph-tick').filter({hasText:/^-10$/})).toHaveCount(2);
+ await expect(page.locator('.graph-tick').filter({hasText:/^10$/})).toHaveCount(2);
+ await page.setViewportSize({width:1280,height:900});await expect(page.locator('.graph-axis')).toHaveCount(2);
+ await sample(page,'x+y');await expect(page.locator('#graph-status')).toHaveClass(/error/);
+ await expect(page.locator('#graph-plot')).toBeVisible();await expect(page.locator('path.graph-line')).toHaveCount(0);
+});
 async function sample(page,expression,min='-10',max='10') {
  await page.locator('#graph-expression').fill(expression);
  if((await page.locator('.graph-settings').getAttribute('open'))===null)await page.locator('.graph-settings summary').click();
@@ -19,16 +31,16 @@ for(const [lang,width] of [['sk',390],['en',1280]])test(`adaptive graph draws li
  await page.locator('#graph-values summary').click();await expect(page.locator('#graph-table-body tr')).toHaveCount(reciprocal.count);
  await sample(page,'sqrt(t)');await expect(page.locator('#graph-status')).toContainText('f(t)');
  await expect(page.locator('#graph-table-body tr').first()).toContainText(lang==='en'?'Complex':'Komplexné');
- await sample(page,'qty(t;"m")');await expect(page.locator('#graph-plot')).toBeHidden();
+ await sample(page,'qty(t;"m")');await expect(page.locator('#graph-plot')).toBeVisible();
  await expect(page.locator('#graph-table-body tr').first()).toContainText(lang==='en'?'Quantity':'Veličina');
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
  await sample(page,'rand()');await expect(page.locator('#graph-status')).toHaveClass(/error/);
  await expect(page.locator('#graph-values')).toBeHidden();
 });
 test('adaptive browser numeric boundaries remain finite',async({page})=>{
- await page.goto('/graph?lang=en');await sample(page,'10^400');await expect(page.locator('#graph-plot')).toBeHidden();
+ await page.goto('/graph?lang=en');await sample(page,'10^400');await expect(page.locator('#graph-plot')).toBeVisible();
  await page.locator('#graph-values summary').click();await expect(page.locator('#graph-table-body tr').first()).toContainText('Outside plotting range');
- await sample(page,'10^(-400)');await expect(page.locator('#graph-plot')).toBeHidden();
+ await sample(page,'10^(-400)');await expect(page.locator('#graph-plot')).toBeVisible();
  await sample(page,'10^308*x','-1','1');await expect(page.locator('path.graph-line')).toBeVisible();
  expect(await page.locator('#graph-plot').evaluate(svg=>!/NaN|Infinity/.test(svg.innerHTML))).toBe(true);
  await sample(page,'0');await expect(page.locator('#graph-plot')).toBeVisible();await expect(page.locator('path.graph-line')).toHaveCount(1);
@@ -48,7 +60,7 @@ test('editing cancels a pending adaptive plot',async({page})=>{
  let release;const paused=new Promise(resolve=>release=resolve);
  await page.route('**/api/graph/plot?**',async route=>{const response=await route.fetch();await paused;try{await route.fulfill({response});}catch(_) {}});
  await page.goto('/graph?lang=en');await page.locator('#graph-submit').click();await expect(page.locator('.graph-workspace')).toHaveAttribute('aria-busy','true');
- await page.locator('#graph-expression').fill('x*x');release();await expect(page.locator('#graph-status')).toHaveText('Enter a function and plot it.');await expect(page.locator('#graph-plot')).toBeHidden();
+ await page.locator('#graph-expression').fill('x*x');release();await expect(page.locator('#graph-status')).toHaveText('Enter a function and plot it.');await expect(page.locator('#graph-plot')).toBeVisible();
 });
 test('default view, automatic t, degree angles and resize',async({page})=>{
  await page.goto('/graph?lang=en');await expect(page.locator('.graph-settings')).not.toHaveAttribute('open','');
