@@ -7,6 +7,8 @@ function initGraph() {
     const fields = ['expression','min','max','precision','angle','session'];
     const status = $('graph-status'), svg = $('graph-plot'), table = $('graph-table-body');
     let generation = 0, request = null, samples = null, disposed = false, parameter = 'x', view = null, limited = false;
+    let viewport=null, viewportTimer=null, pendingView=false;
+    const pointers=new Map();let gesture=null;
     const text = english ? {
         ready:'Enter a function and plot it.', busy:'Sampling…', network:'Cannot reach the server. Try again.',
         invalid:'The server returned invalid graph data.', session:'Start a calculator session before using its variables.',
@@ -45,6 +47,7 @@ function initGraph() {
         }
     } catch (_) {}
     function invalidate() {
+        clearTimeout(viewportTimer);viewportTimer=null;viewport=null;pendingView=false;
         ++generation;request?.abort();request=null;samples=null;
         view=null;limited=false;parameter='x';draw();
         $('graph-values').hidden=true;table.replaceChildren();root.removeAttribute('aria-busy');
@@ -80,14 +83,15 @@ function initGraph() {
     function draw() {
         svg.querySelectorAll('.graph-drawing').forEach(el=>el.remove());
         const points=samples||[],valid=points.filter(p=>p.plottable);
-        if(samples)message(text.summary(valid.length,points.length)+(limited?' · '+text.limited:''));
-        $('graph-values').hidden=!samples;
+        if(samples&&!pendingView)message(text.summary(valid.length,points.length)+(limited?' · '+text.limited:''));
+        $('graph-values').hidden=!samples||pendingView;
         $('graph-table-caption').textContent=text.caption;
         if($('graph-values').open)renderTable();
-        let xs=valid.length?points.map(p=>p.nx):[-10,10];
+        const sampleXs=valid.length?points.map(p=>p.nx):[];
+        let xs=viewport|| (valid.length?sampleXs:[-10,10]);
         const ys=valid.map(p=>p.ny);
-        if(xs.some(x=>x===null) || xs.some((x,i)=>i>0 && x<=xs[i-1])) {
-            samples=null;draw();message(text.range,true);return;
+        if(sampleXs.some(x=>x===null) || sampleXs.some((x,i)=>i>0 && x<=sampleXs[i-1])) {
+            samples=null;viewport=null;draw();message(text.range,true);return;
         }
         // Scale before subtraction so finite extreme values cannot overflow.
         const xScale=Math.max(Math.abs(xs[0]),Math.abs(xs.at(-1)),Number.MIN_VALUE);
@@ -95,7 +99,7 @@ function initGraph() {
         const rawScale=Math.max(...projectedView.map(Math.abs));
         const yScale=rawScale===0?1:Math.max(rawScale,Number.MIN_VALUE);
         const xLow=xs[0]/xScale,xHigh=xs.at(-1)/xScale;
-        if(xHigh<=xLow){samples=null;draw();message(text.range,true);return;}
+        if(xHigh<=xLow){samples=null;viewport=null;draw();message(text.range,true);return;}
         let yLow=projectedView[0]/yScale,yHigh=projectedView[1]/yScale;
         if(yLow===yHigh){yLow-=.5;yHigh+=.5;}
         const padding=valid.length?(yHigh-yLow)*.08:0;yLow-=padding;yHigh+=padding;
@@ -104,7 +108,7 @@ function initGraph() {
         const width=Math.max(320,Math.min(800,root.querySelector('.graph-result').clientWidth-48));
         const height=width<600?300:440, right=width-22, bottom=height-46;
         svg.setAttribute('viewBox',`0 0 ${width} ${height}`);
-        const px=x=>64+(x/xScale-xLow)/(xHigh-xLow)*(right-64);
+        const px=x=>Math.max(-1e6,Math.min(1e6,64+(x/xScale-xLow)/(xHigh-xLow)*(right-64)));
         const py=y=>Math.max(-1e6,Math.min(1e6,bottom-(y/yScale-yLow)/(yHigh-yLow)*(bottom-22)));
         const group=element('g',{class:'graph-drawing'});
         const label=value=>value===0?'0':value.toLocaleString(english?'en':'sk',
@@ -133,8 +137,9 @@ function initGraph() {
         $('graph-svg-description').textContent=samples?$('graph-expression').value+'; '+text.summary(valid.length,points.length):text.ready;
         svg.append(group);svg.removeAttribute('hidden');
     }
-    async function plot(event) {
-        event.preventDefault();invalidate();const id=generation;
+    async function plot(event,keepView=false) {
+        event?.preventDefault();
+        const retained=keepView?viewport:null;invalidate();viewport=retained;draw();const id=generation;
         if(!$('graph-expression').value.trim())return;
         if(!$('graph-form').reportValidity())return;
         request=new AbortController();const signal=request.signal;
@@ -155,7 +160,7 @@ function initGraph() {
             if(!response.ok||!body.ok)throw Error((body.code==='graph_parameter_ambiguous'?text.ambiguous:errors[body.status]||body.error||body.status||text.invalid)+(Number.isSafeInteger(body.column)?` · ${text.column} ${body.column}`:''));
             if(body.schema_version!==2 || !Array.isArray(body.points) || body.count!==body.points.length || body.count<2 || body.count>1024)throw Error(text.invalid);
             if(typeof body.parameter!=='string'||!/^[A-Za-z]{1,31}$/.test(body.parameter)||typeof body.limited!=='boolean')throw Error(text.invalid);
-            parameter=body.parameter;view=[numeric(body.y_min),numeric(body.y_max)];limited=body.limited;
+            parameter=body.parameter;view=[numeric(body.y_min),numeric(body.y_max)];limited=body.limited;pendingView=false;
             samples=body.points.map(point=>{
                 if(!point || typeof point.connect!=='boolean' || !['real','domain_error','complex','quantity'].includes(point.kind) || typeof point.x!=='string' || (point.kind==='real'?typeof point.y!=='string':point.y!==null))throw Error(text.invalid);
                 const nx=numeric(point.x),ny=numeric(point.y);
@@ -165,6 +170,70 @@ function initGraph() {
             if(id===generation && !disposed && error.name!=='AbortError')message(error instanceof TypeError?text.network:error.message,true);
         } finally {if(id===generation && !disposed){root.removeAttribute('aria-busy');request=null;}}
     }
+    function bounds() {
+        if(viewport)return viewport;
+        const low=numeric($('graph-min').value.trim()),high=numeric($('graph-max').value.trim());
+        return low!==null&&high!==null&&high>low?[low,high]:[-10,10];
+    }
+    function horizontal(clientX) {
+        const rect=svg.getBoundingClientRect(),width=svg.viewBox.baseVal.width;
+        return Math.max(0,Math.min(1,((clientX-rect.left)/rect.width*width-64)/(width-86)));
+    }
+    function moveView(low,high) {
+        if(!Number.isFinite(low)||!Number.isFinite(high)||high<=low||!Number.isFinite(high-low))return;
+        ++generation;request?.abort();request=null;root.removeAttribute('aria-busy');
+        viewport=[low,high];$('graph-min').value=String(low);$('graph-max').value=String(high);
+        pendingView=true;draw();message($('graph-expression').value.trim()?text.busy:text.ready);save();
+        clearTimeout(viewportTimer);
+        viewportTimer=setTimeout(()=>{viewportTimer=null;if(!disposed)plot(null,true);},300);
+    }
+    function zoom(factor,anchor=.5) {
+        const [low,high]=bounds(),span=high-low,center=low+span*anchor;
+        moveView(center-span*factor*anchor,center+span*factor*(1-anchor));
+    }
+    $('graph-zoom-in').addEventListener('click',()=>zoom(.5),{signal:lifecycle.signal});
+    $('graph-zoom-out').addEventListener('click',()=>zoom(2),{signal:lifecycle.signal});
+    $('graph-reset').addEventListener('click',()=>moveView(-10,10),{signal:lifecycle.signal});
+    svg.addEventListener('wheel',event=>{
+        if(!event.deltaY)return;
+        event.preventDefault();zoom(event.deltaY<0?.8:1.25,horizontal(event.clientX));
+    },{passive:false,signal:lifecycle.signal});
+    function startGesture() {
+        const points=[...pointers.values()];
+        gesture=points.length?{bounds:bounds().slice(),center:points.reduce((sum,p)=>sum+p.x,0)/points.length,
+            distance:points.length>1?Math.hypot(points[1].x-points[0].x,points[1].y-points[0].y):0}:null;
+    }
+    svg.addEventListener('pointerdown',event=>{
+        if(event.pointerType==='mouse'&&event.button!==0)return;
+        pointers.set(event.pointerId,{x:event.clientX,y:event.clientY});svg.setPointerCapture(event.pointerId);startGesture();
+    },{signal:lifecycle.signal});
+    svg.addEventListener('pointermove',event=>{
+        if(!pointers.has(event.pointerId)||!gesture)return;
+        pointers.set(event.pointerId,{x:event.clientX,y:event.clientY});
+        const points=[...pointers.values()],center=points.reduce((sum,p)=>sum+p.x,0)/points.length;
+        const [low,high]=gesture.bounds,span=high-low;
+        const rect=svg.getBoundingClientRect(),width=svg.viewBox.baseVal.width;
+        const shift=(gesture.center-center)/(rect.width*(width-86)/width)*span;
+        const distance=points.length>1?Math.hypot(points[1].x-points[0].x,points[1].y-points[0].y):0;
+        const factor=gesture.distance>0&&distance>0?gesture.distance/distance:1;
+        const anchor=horizontal(gesture.center),origin=low+span*anchor+shift;
+        moveView(origin-span*factor*anchor,origin+span*factor*(1-anchor));
+        // Hold sampling until a drag/pinch settles or the pointers are released.
+        clearTimeout(viewportTimer);viewportTimer=null;
+    },{signal:lifecycle.signal});
+    function endGesture(event) {
+        pointers.delete(event.pointerId);startGesture();
+        if(!pointers.size&&pendingView){clearTimeout(viewportTimer);viewportTimer=setTimeout(()=>{viewportTimer=null;if(!disposed)plot(null,true);},300);}
+    }
+    for(const name of ['pointerup','pointercancel','lostpointercapture'])svg.addEventListener(name,endGesture,{signal:lifecycle.signal});
+    svg.addEventListener('keydown',event=>{
+        if(event.key==='+'||event.key==='='){event.preventDefault();zoom(.5);}
+        else if(event.key==='-'){event.preventDefault();zoom(2);}
+        else if(event.key==='Home'){event.preventDefault();moveView(-10,10);}
+        else if(event.key==='ArrowLeft'||event.key==='ArrowRight'){
+            event.preventDefault();const [low,high]=bounds(),shift=(high-low)*(event.key==='ArrowLeft'?-.2:.2);moveView(low+shift,high+shift);
+        }
+    },{signal:lifecycle.signal});
     $('graph-form').addEventListener('submit',plot,{signal:lifecycle.signal});
     for(const name of fields)$('graph-'+name).addEventListener('input',invalidate,{signal:lifecycle.signal});
     $('graph-values').addEventListener('toggle',()=>{if($('graph-values').open)renderTable();},{signal:lifecycle.signal});
@@ -176,7 +245,7 @@ function initGraph() {
     });
     resize.observe(root.querySelector('.graph-result'));
     draw();
-    return ()=>{save();disposed=true;request?.abort();resize.disconnect();lifecycle.abort();};
+    return ()=>{save();disposed=true;clearTimeout(viewportTimer);request?.abort();pointers.clear();resize.disconnect();lifecycle.abort();};
 }
 window.numforgeInitGraph=initGraph;
 window.numforgeDisposeGraph=initGraph();

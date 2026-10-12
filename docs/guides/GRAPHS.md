@@ -49,9 +49,24 @@ omit a continuous but unresolved steep curve. A message reports exhausted
 refinement. Forward trigonometric phases receive an extra check against hidden
 whole periods. If a wide range contains too many oscillations, narrow the x range;
 the plot may omit all connections rather than draw misleading chords.
-Initial real samples suggest y bounds; newly discovered poles do not
-inflate the view. The curve is clipped to those bounds, which can also omit newly
-discovered extrema. Pan/zoom and explicit y control remain future work.
+The y axis automatically fits discovered real extrema for resolved/recognized
+continuous curves, with padding. Unresolved pole/domain trees retain the initial
+overview so values near an asymptote do not flatten the rest of the plot. The
+curve is clipped to that view. These are sampled extrema, not guaranteed global
+maxima/minima; explicit y control remains future work.
+
+## Moving the view
+
+Use the mouse wheel, the +/− buttons or a two-finger pinch to change the x range.
+Drag horizontally to pan. **Reset view / Obnoviť pohľad** restores x to −10..10;
+y fits the resulting curve automatically. The focused plot also accepts +/−,
+Left/Right arrows and Home. Empty plots support view controls without computing.
+
+Sampling waits 300 ms after wheel/button changes or pointer release. During a
+gesture the previous curve is projected into the new view; after sampling the
+visible interval and automatic y bounds are refreshed. Edits/navigation cancel
+pending work and old responses cannot replace a newer view. Bounds changes are
+saved in the same per-tab settings used by advanced controls.
 
 Coordinates are rounded scientific strings from C. Browser overflow or underflow
 is omitted, never plotted as a false zero. Collapsed x coordinates prevent drawing.

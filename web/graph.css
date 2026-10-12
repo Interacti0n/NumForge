@@ -15,6 +15,11 @@ body { height: auto; min-height: 100dvh; overflow: auto; }
 #graph-submit { width: 100%; margin-top: 20px; }
 .graph-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 .graph-heading h2 { margin: 0; font-size: 1.1rem; }
+.graph-view-controls { display: flex; gap: 6px; }
+.graph-view-controls button { min-width: 36px; min-height: 36px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-input); color: var(--text); cursor: pointer; }
+#graph-plot { touch-action: none; cursor: grab; }
+#graph-plot:active { cursor: grabbing; }
+#graph-plot:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 #graph-status { min-height: 1.5em; font-size: .85rem; color: var(--quiet); overflow-wrap: anywhere; }
 #graph-status.error { color: var(--danger); }
 #graph-plot { display: block; width: 100%; height: auto; border: 1px solid var(--border-soft); border-radius: 12px; background: #17002f; }

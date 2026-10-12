@@ -1,5 +1,13 @@
 const {test,expect}=require('@playwright/test');
 const {randomBytes}=require('node:crypto');
+test('adaptive y view fits discovered extrema and keeps pole overview bounded',async({request})=>{
+ const sample=async expression=>(await request.post('/api/graph/plot?min=-10&max=10',{data:expression})).json();
+ const peak=await sample('-(x-0.3125)^2');expect(peak.ok).toBe(true);expect(Number(peak.y_max)).toBe(0);
+ for(const p of peak.points){expect(Number(p.y)).toBeGreaterThanOrEqual(Number(peak.y_min));expect(Number(p.y)).toBeLessThanOrEqual(Number(peak.y_max));}
+ const pole=await sample('1/(x-0.1)');expect(pole.ok).toBe(true);expect(pole.limited).toBe(true);
+ expect(Math.max(Math.abs(Number(pole.y_min)),Math.abs(Number(pole.y_max)))).toBeLessThan(20);
+ expect(pole.points.some(p=>Math.abs(Number(p.y))>100)).toBe(true);
+});
 test('adaptive harder functions, broad ranges and oscillation safeguards',async({request})=>{
  test.setTimeout(30000);
  const sample=async(expression,min,max,precision='34')=>{

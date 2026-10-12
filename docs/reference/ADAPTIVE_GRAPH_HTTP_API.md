@@ -31,13 +31,16 @@ Success retains `ok`, `parameter`, `count`, `plot_places:12`, and classified
   heuristic error criterion. The first is false. Classified gaps never connect.
 - `limited`: refinement encountered a depth, point or remaining resource bound; unresolved
   intervals are disconnected instead of being silently joined.
-- `y_min`/`y_max`: rounded scientific strings from real seed samples, or discovered
-  real samples if the seeds had none; null when there are no real samples. These
+- `y_min`/`y_max`: rounded scientific strings covering all discovered real samples
+  for resolved or recognized smooth trees. Unresolved pole/domain trees retain
+  the real seed overview (or discovered real samples if the seeds had none);
+  null when there are no real samples. These
   suggest a display view, not a domain/continuity/range certificate.
 
 The browser adds padding to the suggested view, clips curves, rejects unsupported
 binary numeric projections and shows an accessible table. Newly discovered poles
-cannot inflate the seeded y range, but newly discovered extrema can be clipped.
+cannot inflate the seeded overview for unresolved pole/domain trees. Smooth
+curves include newly discovered extrema instead of clipping them to the seeds.
 
 ## Bounded C refinement
 

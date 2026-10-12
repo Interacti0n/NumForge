@@ -89,3 +89,7 @@ independent JavaScript references; numeric C suites retain high-precision oracle
 The opt-in `graph_benchmark [1..10]` reports uniform/adaptive/HTTP timings,
 cumulative allocations, resolution limits, independent libm point/chord errors
 and accepted interval coverage. See the [graph audit](benchmarks/GRAPH_AUDIT_2026_10_12.md).
+
+Graph interaction regressions exercise wheel debounce, pointer panning, touch
+pinch, keyboard/reset controls, empty-view navigation and y-axis rescaling.
+C/HTTP checks verify newly discovered extrema and bounded unresolved pole views.

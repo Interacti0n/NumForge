@@ -55,9 +55,9 @@
         <noscript><p>Graphs require JavaScript.</p></noscript>
       </section>
       <section class="card graph-result" aria-labelledby="graph-result-title">
-        <div class="graph-heading"><h2 id="graph-result-title">Graph</h2></div>
+        <div class="graph-heading"><h2 id="graph-result-title">Graph</h2><div class="graph-view-controls"><button type="button" id="graph-zoom-in" aria-label="Zoom in">+</button><button type="button" id="graph-zoom-out" aria-label="Zoom out">−</button><button type="button" id="graph-reset">Reset view</button></div></div><p class="graph-note" id="graph-interaction-hint">Scroll or pinch to zoom; drag left/right to move. The y axis fits the curve automatically.</p>
         <p id="graph-status" role="status" aria-live="polite">Enter a function and plot it.</p>
-        <svg id="graph-plot" viewBox="0 0 800 440" role="img" aria-labelledby="graph-svg-title graph-svg-description" hidden><title id="graph-svg-title">Graph</title><desc id="graph-svg-description"></desc></svg>
+        <svg id="graph-plot" tabindex="0" aria-describedby="graph-interaction-hint" viewBox="0 0 800 440" role="img" aria-labelledby="graph-svg-title graph-svg-description" hidden><title id="graph-svg-title">Graph</title><desc id="graph-svg-description"></desc></svg>
         <p class="graph-note">The curve adapts to the function. Gaps mark domain errors or unresolved intervals; sampling cannot prove continuity everywhere.</p>
         <details id="graph-values" hidden><summary>Sample values</summary><div class="graph-table-wrap" tabindex="0" role="region" aria-label="Sample values"><table><caption id="graph-table-caption"></caption><thead><tr><th scope="col">x</th><th scope="col">y</th><th scope="col">Result type</th></tr></thead><tbody id="graph-table-body"></tbody></table></div></details>
       </section>

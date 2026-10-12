@@ -8,7 +8,7 @@ typedef struct ApplicationGraph
     CalculatorValue *coordinates; /* exact rational x, with a decimal projection */
     ApplicationExpressionSample *samples;
     bool *connect; /* adaptive: midpoint criterion met; no continuity proof */
-    BigDecimal *view_minimum, *view_maximum; /* seeded real y range, never a domain bound */
+    BigDecimal *view_minimum, *view_maximum; /* sampled extrema; unresolved poles retain seeds */
     bool limited;
     char parameter[CALCULATOR_VARIABLE_NAME_BYTES + 1U];
 } ApplicationGraph;

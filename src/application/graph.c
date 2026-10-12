@@ -356,7 +356,9 @@ CalculatorStatus application_graph_adaptive(ApplicationGraph **result,
     if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_from_bigdecimal(divisor, number));
     work.graph = graph;work.expression = expression;work.context = context;work.error = error;work.two = divisor;
     if (status == CALCULATOR_OK) status = adaptive_refine(&work);
-    if (status == CALCULATOR_OK && !any) status = adaptive_view(graph, &any);
+    /* Include newly discovered extrema for resolved/smooth curves. Unresolved
+     * pole/domain trees retain the seed overview instead of chasing infinity. */
+    if (status == CALCULATOR_OK && (!any || !graph->limited || work.smooth)) status = adaptive_view(graph, &any);
     if (status == CALCULATOR_OK && !any) {
         bigdecimal_destroy(graph->view_minimum);graph->view_minimum = NULL;
         bigdecimal_destroy(graph->view_maximum);graph->view_maximum = NULL;

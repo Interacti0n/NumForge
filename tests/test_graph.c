@@ -287,9 +287,24 @@ static void test_wide_smooth_ranges_and_shared_budget_admission(void)
     TEST_ASSERT_EQUAL_UINT64(0U,numforge_budget_available_bytes());
     TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_TIME,numforge_budget_failure());
 }
+static void test_adaptive_view_includes_discovered_extrema(void)
+{
+    range("-10","10");CalculatorError error;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_graph_adaptive(&graph,"-(x-0.3125)^2",NULL,minimum,maximum,NULL,&context,&error));
+    bool zero=false;
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK,bigdecimal_is_zero(&zero,graph->view_maximum));TEST_ASSERT_TRUE(zero);
+    for(size_t i=0U;i<graph->count;++i){
+        if(application_graph_point_kind(&graph->samples[i])!=APPLICATION_GRAPH_REAL)continue;
+        int low=0,high=0;
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK,bigdecimal_compare(&low,graph->samples[i].value.number,graph->view_minimum));
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK,bigdecimal_compare(&high,graph->samples[i].value.number,graph->view_maximum));
+        TEST_ASSERT_TRUE(low>=0);TEST_ASSERT_TRUE(high<=0);
+    }
+}
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_adaptive_view_includes_discovered_extrema);
     RUN_TEST(test_wide_smooth_ranges_and_shared_budget_admission);
     RUN_TEST(test_adaptive_linear_curvature_and_poles);
     RUN_TEST(test_adaptive_automatic_parameter_and_read_only_session);

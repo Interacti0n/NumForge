@@ -1,4 +1,54 @@
 const {test,expect}=require('@playwright/test');
+test('editing cancels queued view resampling',async({page})=>{
+ await page.goto('/graph?lang=en');await sample(page,'x*x');let calls=0;
+ page.on('request',r=>{if(r.url().includes('/api/graph/plot?'))++calls;});
+ await page.evaluate(()=>{
+  document.querySelector('#graph-zoom-in').click();
+  const input=document.querySelector('#graph-expression');input.value='sin(x)';input.dispatchEvent(new Event('input',{bubbles:true}));
+ });
+ await page.waitForTimeout(450);expect(calls).toBe(0);
+ await expect(page.locator('#graph-status')).toHaveText('Enter a function and plot it.');
+ await expect(page.locator('path.graph-line')).toHaveCount(0);
+});
+test('zoom, pan, keyboard and reset resample the view and fit y extrema',async({page})=>{
+ await page.goto('/graph?lang=en');await sample(page,'x*x');
+ await expect(page.locator('.graph-tick').filter({hasText:/^108$/})).toHaveCount(1);
+ let ready=page.waitForResponse(r=>r.url().includes('/api/graph/plot?'));
+ await page.locator('#graph-zoom-in').click();let data=await (await ready).json();expect(Number(data.y_max)).toBe(25);
+ await expect(page.locator('.graph-tick').filter({hasText:/^27$/})).toHaveCount(1);
+ await expect(page.locator('#graph-min')).toHaveValue('-5');await expect(page.locator('#graph-max')).toHaveValue('5');
+ const svg=page.locator('#graph-plot');await svg.scrollIntoViewIfNeeded();let box=await svg.boundingBox();
+ ready=page.waitForResponse(r=>r.url().includes('/api/graph/plot?'));
+ await page.mouse.move(box.x+box.width*.6,box.y+box.height*.5);await page.mouse.down();
+ await page.mouse.move(box.x+box.width*.4,box.y+box.height*.5,{steps:6});await page.mouse.up();await ready;
+ expect(Number(await page.locator('#graph-min').inputValue())).toBeGreaterThan(-5);
+ ready=page.waitForResponse(r=>r.url().includes('/api/graph/plot?'));await svg.focus();await svg.press('Home');await ready;
+ await expect(page.locator('#graph-min')).toHaveValue('-10');
+ ready=page.waitForResponse(r=>r.url().includes('/api/graph/plot?'));await svg.press('+');await ready;
+ await expect(page.locator('#graph-max')).toHaveValue('5');
+ let calls=0;page.on('request',r=>{if(r.url().includes('/api/graph/plot?'))++calls;});
+ ready=page.waitForResponse(r=>r.url().includes('/api/graph/plot?'));
+ for(let i=0;i<3;++i)await svg.dispatchEvent('wheel',{deltaY:-100,clientX:box.x+box.width*.5});
+ await ready;expect(calls).toBe(1);expect(Number(await page.locator('#graph-max').inputValue())-Number(await page.locator('#graph-min').inputValue())).toBeLessThan(10);
+ ready=page.waitForResponse(r=>r.url().includes('/api/graph/plot?'));await page.locator('#graph-reset').click();await ready;
+ await expect(page.locator('#graph-min')).toHaveValue('-10');await expect(page.locator('#graph-max')).toHaveValue('10');
+ expect(await svg.evaluate(el=>!/NaN|Infinity/.test(el.innerHTML))).toBe(true);
+});
+test('touch pinch zooms and empty view controls do not evaluate',async({page})=>{
+ await page.setViewportSize({width:390,height:844});await page.goto('/graph?lang=sk');await sample(page,'sin(x)');
+ const svg=page.locator('#graph-plot');await svg.scrollIntoViewIfNeeded();const box=await svg.boundingBox();
+ const cdp=await page.context().newCDPSession(page),x=Math.round(box.x+box.width/2),y=Math.round(box.y+box.height/2);
+ const ready=page.waitForResponse(r=>r.url().includes('/api/graph/plot?'));
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:x-40,y,id:1},{x:x+40,y,id:2}]});
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x-70,y,id:1},{x:x+70,y,id:2}]});
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await ready;await cdp.detach();
+ expect(Number(await page.locator('#graph-max').inputValue())-Number(await page.locator('#graph-min').inputValue())).toBeCloseTo(20*80/140,6);
+ await page.locator('#graph-expression').fill('');let calls=0;page.on('request',r=>{if(r.url().includes('/api/graph/plot?'))++calls;});
+ await page.locator('#graph-zoom-in').click();await expect(page.locator('#graph-values')).toBeHidden();
+ await page.locator('#graph-reset').click();await expect(page.locator('#graph-min')).toHaveValue('-10');
+ await expect(page.locator('#graph-status')).toHaveText('Zadaj funkciu a vykresli ju.');expect(calls).toBe(0);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});
 for(const lang of ['sk','en'])test(`empty graph retains default axes without requests ${lang}`,async({page})=>{
  let calls=0;page.on('request',r=>{if(r.url().includes('/api/graph/'))++calls;});
  await page.setViewportSize({width:390,height:844});await page.goto('/graph?lang='+lang);

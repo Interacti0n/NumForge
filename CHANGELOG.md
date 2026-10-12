@@ -7,6 +7,10 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Add horizontal graph pan/zoom with mouse, touch, keyboard and reset controls;
+  debounce resampling and cancel stale work. Fit automatic y bounds to newly
+  discovered extrema for resolved/smooth curves while retaining bounded pole views.
+
 - Permit coarser connected graph chords for restricted continuous expression
   trees at widths proportional to the selected x range. Preserve strict checks
   for poles/jumps/domains and exact sample precision; regress sin(33x) explicitly.

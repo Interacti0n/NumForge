@@ -55,9 +55,9 @@
         <noscript><p>Graf vyžaduje JavaScript.</p></noscript>
       </section>
       <section class="card graph-result" aria-labelledby="graph-result-title">
-        <div class="graph-heading"><h2 id="graph-result-title">Graf</h2></div>
+        <div class="graph-heading"><h2 id="graph-result-title">Graf</h2><div class="graph-view-controls"><button type="button" id="graph-zoom-in" aria-label="Priblížiť">+</button><button type="button" id="graph-zoom-out" aria-label="Oddialiť">−</button><button type="button" id="graph-reset">Obnoviť pohľad</button></div></div><p class="graph-note" id="graph-interaction-hint">Kolieskom alebo dvoma prstami priblíž; potiahnutím do strán posuň. Os y sa prispôsobí krivke automaticky.</p>
         <p id="graph-status" role="status" aria-live="polite">Zadaj funkciu a vykresli ju.</p>
-        <svg id="graph-plot" viewBox="0 0 800 440" role="img" aria-labelledby="graph-svg-title graph-svg-description" hidden><title id="graph-svg-title">Graf</title><desc id="graph-svg-description"></desc></svg>
+        <svg id="graph-plot" tabindex="0" aria-describedby="graph-interaction-hint" viewBox="0 0 800 440" role="img" aria-labelledby="graph-svg-title graph-svg-description" hidden><title id="graph-svg-title">Graf</title><desc id="graph-svg-description"></desc></svg>
         <p class="graph-note">Krivka sa prispôsobuje funkcii. Medzery označujú chyby alebo nejasné úseky; vzorkovanie nedokazuje spojitosť všade.</p>
         <details id="graph-values" hidden><summary>Hodnoty bodov</summary><div class="graph-table-wrap" tabindex="0" role="region" aria-label="Hodnoty bodov"><table><caption id="graph-table-caption"></caption><thead><tr><th scope="col">x</th><th scope="col">y</th><th scope="col">Typ výsledku</th></tr></thead><tbody id="graph-table-body"></tbody></table></div></details>
       </section>
