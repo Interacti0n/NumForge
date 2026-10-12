@@ -233,6 +233,7 @@ static void test_maximum_batch_owns_values_independently(void)
 static void test_graph_phases_ownership_and_faults(void)
 {
     prepare("sin(3*x)+cos(x)");argument(0U,"0");
+    TEST_ASSERT_TRUE(application_expression_graph_smooth(prepared));
     application_expression_enable_graph_phases(prepared);
     application_expression_enable_graph_phases(prepared);
     sample(1U);
@@ -254,9 +255,19 @@ static void test_graph_phases_ownership_and_faults(void)
     TEST_ASSERT_TRUE(complete);
     text(0U,"1");
 }
+static void test_coarse_graph_classification_rejects_poles_and_jumps(void)
+{
+    const char *unsafe[]={"1/x","tan(x)","floor(x)","sin(1/x)","sqrt(x)","x^(-2)","x^0.5"};
+    for(size_t i=0;i<sizeof(unsafe)/sizeof(unsafe[0]);++i){
+        prepare(unsafe[i]);TEST_ASSERT_FALSE(application_expression_graph_smooth(prepared));
+        application_expression_destroy(prepared);prepared=NULL;
+    }
+    prepare("sin(3*x)*exp(-x*x/20)");TEST_ASSERT_TRUE(application_expression_graph_smooth(prepared));
+}
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_coarse_graph_classification_rejects_poles_and_jumps);
     RUN_TEST(test_graph_phases_ownership_and_faults);
     RUN_TEST(test_snapshots_parameter_shadowing_and_session_lifetime);
     RUN_TEST(test_typed_complex_and_quantity_parameters);

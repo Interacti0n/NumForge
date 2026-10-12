@@ -229,6 +229,41 @@ const char *application_expression_parameter(const ApplicationExpression *expres
     return expression == NULL ? NULL : expression->parameter_name;
 }
 
+static bool graph_smooth_node(const CalculatorExpression *node)
+{
+    switch (node->type) {
+        case CALCULATOR_EXPRESSION_NUMBER:
+        case CALCULATOR_EXPRESSION_CONSTANT:
+        case CALCULATOR_EXPRESSION_ANSWER:
+        case CALCULATOR_EXPRESSION_VARIABLE: return true;
+        case CALCULATOR_EXPRESSION_UNARY: return graph_smooth_node(node->data.unary.operand);
+        case CALCULATOR_EXPRESSION_POSTFIX:
+            return node->data.postfix.operation != CALCULATOR_POSTFIX_FACTORIAL && graph_smooth_node(node->data.postfix.operand);
+        case CALCULATOR_EXPRESSION_BINARY: {
+            CalculatorBinaryOperator operation = node->data.binary.operation;
+            if (operation == CALCULATOR_BINARY_DIVIDE && node->data.binary.right->type != CALCULATOR_EXPRESSION_NUMBER) return false;
+            if (operation == CALCULATOR_BINARY_POWER) {
+                if (node->data.binary.right->type != CALCULATOR_EXPRESSION_NUMBER) return false;
+                const char *power = node->data.binary.right->data.number.text;
+                for (size_t i=0;power[i];++i) if (power[i]<'0' || power[i]>'9') return false;
+            }
+            return graph_smooth_node(node->data.binary.left) && graph_smooth_node(node->data.binary.right);
+        }
+        case CALCULATOR_EXPRESSION_CALL:
+            if (node->data.call.function->implementation != CALCULATOR_FUNCTION_SIN &&
+                node->data.call.function->implementation != CALCULATOR_FUNCTION_COS &&
+                node->data.call.function->implementation != CALCULATOR_FUNCTION_EXP &&
+                node->data.call.function->implementation != CALCULATOR_FUNCTION_ABS) return false;
+            for (size_t i=0;i<node->data.call.count;++i) if (!graph_smooth_node(node->data.call.arguments[i])) return false;
+            return true;
+        default: return false;
+    }
+}
+bool application_expression_graph_smooth(const ApplicationExpression *expression)
+{
+    return expression != NULL && graph_smooth_node(expression->tree);
+}
+
 static void collect_graph_phases(ApplicationExpression *expression, const CalculatorExpression *node)
 {
     switch (node->type) {

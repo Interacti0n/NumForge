@@ -34,6 +34,9 @@ CalculatorStatus application_expression_prepare_auto(ApplicationExpression **res
 const char *application_expression_parameter(const ApplicationExpression *expression);
 /* Capture forward-trigonometric arguments for graph anti-alias checks. */
 void application_expression_enable_graph_phases(ApplicationExpression *expression);
+/* Restricted globally continuous operations; excludes unknown domain/pole/jump
+ * operations. Used only to permit coarser display chords, never domain claims. */
+bool application_expression_graph_smooth(const ApplicationExpression *expression);
 void application_expression_destroy(ApplicationExpression *expression);
 
 /* Inputs are borrowed typed values with a populated number marker. Results are

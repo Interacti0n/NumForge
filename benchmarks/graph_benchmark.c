@@ -13,6 +13,7 @@ typedef struct GraphCase {const char *name,*expression,*low,*high;int reference,
 static const GraphCase cases[]={
  {"line","3*x+2","-10","10",0,34},{"square","x*x","-10","10",1,34},
  {"sine","sin(x)","-10","10",2,34},{"sine3","sin(3*x)","-10","10",3,34},
+ {"sine33","sin(33*x)","-10","10",10,34},
  {"mixed","sin(3*x)+cos(2*x)","-10","10",4,34},
  {"nested","sin(3*x)*exp(-x*x/20)","-10","10",5,34},
  {"log","ln(1+x*x)","-1000","1000",6,34},
@@ -24,7 +25,7 @@ static const GraphCase cases[]={
  {"sine100","sin(3*x)","-1","1",3,100},
  {"line_trillion","3*x+2","-1000000000000","1000000000000",0,34},
  {"log_trillion","ln(1+x*x)","-1000000000000","1000000000000",6,34}};
-static double reference(int kind,double x){switch(kind){case 0:return 3*x+2;case 1:return x*x;case 2:return sin(x);case 3:return sin(3*x);case 4:return sin(3*x)+cos(2*x);case 5:return sin(3*x)*exp(-x*x/20);case 6:return log1p(x*x);case 7:return sin(x*x);case 8:return 1/(x-.1);default:return tan(x);}}
+static double reference(int kind,double x){switch(kind){case 0:return 3*x+2;case 1:return x*x;case 2:return sin(x);case 3:return sin(3*x);case 4:return sin(3*x)+cos(2*x);case 5:return sin(3*x)*exp(-x*x/20);case 6:return log1p(x*x);case 7:return sin(x*x);case 8:return 1/(x-.1);case 10:return sin(33*x);default:return tan(x);}}
 static double project(const BigDecimal *value){char *text=NULL;double result=NAN;if(bigdecimal_to_string(value,&text)==BIGDECIMAL_OK){result=strtod(text,NULL);free(text);}return result;}
 int main(int argc,char **argv){
  int repeats=argc>1?atoi(argv[1]):3;if(repeats<1||repeats>10||argc>2)return 2;

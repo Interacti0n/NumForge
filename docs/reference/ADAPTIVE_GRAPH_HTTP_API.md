@@ -57,6 +57,18 @@ whole-period aliasing on wide intervals without projecting C mathematics to doub
 Phase arguments are evaluated through the same prepared C AST; at most 64 forward
 call sites are captured, with overflow/unsupported arguments treated as unknown.
 
+For a restricted continuous expression tree, the ordinary display error tolerance
+is relaxed to 0.005 of the seeded y span. A parent interval no wider than
+1/256 of the requested x span can instead accept a coarser pair of chords. The
+whitelist contains constants/variables, unary signs, sums/products, nonnegative
+literal integer powers, square/cube postfixes, division by a literal constant,
+sin/cos, exp and abs, recursively composed. All three samples must still be real;
+captured phases must stay within 3 rad / 170 deg. The ordinary tighter phase
+check continues to apply to early error-based acceptance. Variable denominators,
+tan, domain-restricted functions and jump operations do not use this fallback.
+This trades line-interpolation precision for connected, useful display curves;
+individual C sample precision is unchanged. It is not a general continuity solver.
+
 Before each new probe the sampler checks remaining cumulative bytes and time,
 reserving 2 MiB and 200 ms for finishing/serialization plus twice the largest
 observed probe cost. It can stop with `limited:true` before exhausting the budget.

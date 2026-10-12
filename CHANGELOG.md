@@ -7,6 +7,10 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Permit coarser connected graph chords for restricted continuous expression
+  trees at widths proportional to the selected x range. Preserve strict checks
+  for poles/jumps/domains and exact sample precision; regress sin(33x) explicitly.
+
 - Reduce forward trigonometric temporary allocations without lowering precision;
   distribute adaptive graph probes across the view, guard against whole-period
   aliasing and stop optional refinement before budget exhaustion. Add graph

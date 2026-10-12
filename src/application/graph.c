@@ -120,6 +120,9 @@ typedef struct GraphRefinement {
     BigRational *two;
     BigDecimal *half, *sum, *delta, *tolerance;
     BigDecimal *phase_span;
+    BigDecimal *coarse_width;
+    BigDecimal *strict_phase_span;
+    bool smooth;
 } GraphRefinement;
 
 static CalculatorStatus adaptive_coordinate(CalculatorValue *value,
@@ -193,7 +196,7 @@ static CalculatorStatus adaptive_interval(GraphRefinement *work, size_t left,
         int comparison = 0;
         if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_compare(&comparison, work->delta, work->tolerance));
         if (status != CALCULATOR_OK) return status;
-        bool phases_safe = true;
+        bool phases_safe = true, phases_tight = true;
         for (size_t i = left; i <= left + 2U; ++i)
             if (graph->samples[i].phase_unknown || graph->samples[i].phase_count != graph->samples[left].phase_count) phases_safe = false;
         /* Small phase steps avoid accepting a chord that hides whole periods.
@@ -209,8 +212,23 @@ static CalculatorStatus adaptive_interval(GraphRefinement *work, size_t left,
                     if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_compare(&phase_comparison, work->delta, work->phase_span));
                     if (status != CALCULATOR_OK) return status;
                     if (phase_comparison > 0) phases_safe = false;
+                    if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_compare(&phase_comparison,work->delta,work->strict_phase_span));
+                    if (status != CALCULATOR_OK) return status;
+                    if (phase_comparison > 0) phases_tight = false;
                 }
-        if (comparison <= 0 && phases_safe) {
+        bool coarse = false;
+        /* Display approximation for a restricted continuous AST: a parent
+         * narrower than 1/256 of the view contributes two short chords.
+         * Domain/pole/jump operations keep the original strict criterion. */
+        if (work->smooth && phases_safe && (comparison > 0 || !phases_tight)) {
+            status = calculator_from_decimal_status(bigdecimal_sub(work->delta,
+                graph->coordinates[left + 2U].number, graph->coordinates[left].number));
+            int width_comparison = 0;
+            if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_compare(&width_comparison,work->delta,work->coarse_width));
+            if (status != CALCULATOR_OK) return status;
+            coarse = width_comparison <= 0;
+        }
+        if (((comparison <= 0 && phases_tight) || coarse) && phases_safe) {
             graph->connect[left + 1U] = true;graph->connect[left + 2U] = true;*accepted = true;
         }
     }
@@ -284,6 +302,7 @@ CalculatorStatus application_graph_adaptive(ApplicationGraph **result,
         application_expression_prepare_auto(&expression, input, session, context, error) :
         application_expression_prepare(&expression, input, parameter, session, context, error);
     if (status == CALCULATOR_OK) application_expression_enable_graph_phases(expression);
+    work.smooth = application_expression_graph_smooth(expression);
     if (status == CALCULATOR_OK) {
         graph = numforge_calloc(1U, sizeof(*graph));
         if (graph == NULL) status = CALCULATOR_OUT_OF_MEMORY;
@@ -297,10 +316,10 @@ CalculatorStatus application_graph_adaptive(ApplicationGraph **result,
         graph->view_minimum = bigdecimal_create();graph->view_maximum = bigdecimal_create();
         step = bigrational_create();divisor = bigrational_create();cursor = bigrational_create();
         number = bigdecimal_create();factor = bigdecimal_create();
-        work.half = bigdecimal_create();work.sum = bigdecimal_create();work.delta = bigdecimal_create();work.tolerance = bigdecimal_create();work.phase_span = bigdecimal_create();
+        work.half = bigdecimal_create();work.sum = bigdecimal_create();work.delta = bigdecimal_create();work.tolerance = bigdecimal_create();work.phase_span = bigdecimal_create();work.coarse_width = bigdecimal_create();work.strict_phase_span = bigdecimal_create();
         if (graph->coordinates == NULL || graph->samples == NULL || graph->connect == NULL || graph->view_minimum == NULL ||
             graph->view_maximum == NULL || step == NULL || divisor == NULL || cursor == NULL || number == NULL || factor == NULL ||
-            work.half == NULL || work.sum == NULL || work.delta == NULL || work.tolerance == NULL || work.phase_span == NULL) status = CALCULATOR_OUT_OF_MEMORY;
+            work.half == NULL || work.sum == NULL || work.delta == NULL || work.tolerance == NULL || work.phase_span == NULL || work.coarse_width == NULL || work.strict_phase_span == NULL) status = CALCULATOR_OUT_OF_MEMORY;
     }
     if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_set_string(number, "32"));
     if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_from_bigdecimal(divisor, number));
@@ -322,11 +341,17 @@ CalculatorStatus application_graph_adaptive(ApplicationGraph **result,
     if (status == CALCULATOR_OK && zero) status = calculator_from_decimal_status(bigdecimal_abs(work.tolerance, graph->view_maximum));
     if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_is_zero(&zero, work.tolerance));
     if (status == CALCULATOR_OK && zero) status = calculator_from_decimal_status(bigdecimal_set_string(work.tolerance, "1"));
-    if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_set_string(factor, "0.001"));
+    if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_set_string(factor, work.smooth ? "0.005" : "0.001"));
     if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_mul(work.tolerance, work.tolerance, factor));
     if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_set_string(work.half, "0.5"));
-    if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_set_string(work.phase_span,
+    if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_set_string(work.strict_phase_span,
         context->angle_unit == CALCULATOR_ANGLE_DEGREES ? "30" : "0.5"));
+    if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_set_string(work.phase_span,
+        context->angle_unit == CALCULATOR_ANGLE_DEGREES ? (work.smooth ? "170" : "30") : (work.smooth ? "3" : "0.5")));
+    if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_sub(work.coarse_width,
+        graph->coordinates[32U].number,graph->coordinates[0U].number));
+    if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_set_string(factor,"0.00390625"));
+    if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_mul(work.coarse_width,work.coarse_width,factor));
     if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_set_string(number, "2"));
     if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_from_bigdecimal(divisor, number));
     work.graph = graph;work.expression = expression;work.context = context;work.error = error;work.two = divisor;
@@ -342,6 +367,8 @@ CalculatorStatus application_graph_adaptive(ApplicationGraph **result,
     bigdecimal_destroy(number);bigdecimal_destroy(factor);bigdecimal_destroy(work.half);
     bigdecimal_destroy(work.sum);bigdecimal_destroy(work.delta);bigdecimal_destroy(work.tolerance);
     bigdecimal_destroy(work.phase_span);
+    bigdecimal_destroy(work.coarse_width);
+    bigdecimal_destroy(work.strict_phase_span);
     if (status == CALCULATOR_OK) *result = graph;
     else { application_graph_destroy(graph);calculator_error_set(error, status, error == NULL ? 0U : error->offset); }
     if (owner) numforge_budget_end();

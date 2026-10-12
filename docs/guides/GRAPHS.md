@@ -37,6 +37,12 @@ complex values (including zero imaginary components), quantities and intervals
 still unresolved at refinement bounds remain gaps. There are no point markers
 or manual connection/sample-count controls. The sample table stays accessible.
 
+Recognized continuous expressions, such as `sin(33*x)` or combinations of
+sin/cos, polynomials and exp, permit a coarser line once intervals are small
+relative to the selected x range. This favors a connected visual overview over
+strict interpolation accuracy; calculation precision controls the sampled values,
+not the accuracy of the line between them. Pole/jump operations keep stricter checks.
+
 Connections are heuristic, not proofs of continuity. Narrow poles, discontinuities,
 isolated valid values or oscillations can escape finite sampling. Gaps can also
 omit a continuous but unresolved steep curve. A message reports exhausted

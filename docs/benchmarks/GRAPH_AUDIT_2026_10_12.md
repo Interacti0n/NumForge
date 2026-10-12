@@ -118,3 +118,27 @@ not mathematical continuity or domain proofs.
 The next useful work is viewport pan/zoom and a display-resolution contract.
 For dense oscillations, a separately defined envelope/overview mode could be
 useful; it must not pretend to be an accurately sampled individual curve.
+
+## Follow-up: coarser connected display
+
+At the user's request, the line now prioritizes a connected overview for
+recognized continuous expressions instead of strict interpolation everywhere.
+The table above records the earlier optimization; the subsequent
+[coarse display CSV](graph_coarse_after_2026_10_12.csv) records the same three-mode
+sweep with an additional `sin(33*x)` case (144 rows, three repetitions).
+
+The restricted continuous-tree classifier relaxes ordinary display tolerance to
+0.005 of the seeded y span and permits a coarse fallback below 1/256 of the x view.
+Those short intervals use a wider sampled phase check, 3 rad / 170 deg; larger
+intervals retain the original strict phase guard. Unknown/domain/pole/jump trees
+keep strict sampling. No C point precision or operation budget changed.
+
+`sin(33*x)` at ±10 now returns 513 samples, full connected coverage and no limit
+flag. Independent point errors remain below 1e-9. Its worst probed chord error
+is about 0.201 in function value (0.101 of the seeded y span): this is a visibly
+coarse overview of 105 periods, **not** a high-accuracy interpolant. The HTTP
+regression checks every connection and bounds independent chord error by 0.21.
+Ordinary `sin(x)` drops from 381 to 177 points; `sin(3*x)` drops from 921 to 457.
+Pole, tangent, floor, mixed-domain and nested fast-phase checks remain covered.
+Truly excessive oscillations still retain unresolved gaps and the smaller-range
+message rather than becoming a misleading flat line.
