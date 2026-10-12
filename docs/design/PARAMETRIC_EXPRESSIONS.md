@@ -7,7 +7,8 @@ units and approximation metadata follow the existing calculator contracts.
 
 The [bounded HTTP graph sampler](../reference/GRAPH_HTTP_API.md) now calls this
 foundation through the C application operation in `src/application/graph.h`.
-Graph UI, solvers and an installed public SDK evaluator are still future work.
+The [browser graph page](../guides/GRAPHS.md) now displays sampled real points.
+Adaptive sampling, solvers and an installed public SDK evaluator remain future work.
 The installed SDK remains the numeric C API. Graph sampling does not implement
 mathematics in JavaScript or reparse the expression for every point.
 
@@ -65,8 +66,9 @@ also remain inside that adapter's outer operation budget.
 1. The application sampler and HTTP contract now generate exact inclusive
    uniform grids, classify domain/complex/quantity points and preserve sessions.
    Adaptive sampling and continuity/pole detection remain separate work.
-2. Add responsive 2D `y = f(x)` plotting, axes, accessible point data and adaptive
-   discontinuity handling. A finite grid alone does not prove continuity.
+2. Responsive 2D `y = f(x)` plotting, axes and accessible point data are available.
+   Add bounded adaptive sampling and discontinuity handling next. A finite grid
+   alone does not prove continuity.
 3. Reuse the prepared evaluator for a bounded real root solver with residuals,
    convergence/error reporting and one budget for the complete solve.
 

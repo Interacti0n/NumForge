@@ -559,7 +559,7 @@ for (const lang of ['sk', 'en']) {
             await expect(page.locator('.guide-content')).toBeVisible();
             await page.locator(`.primary-nav a[href="/graph?lang=${other}"]`).click();
             await expect(page).toHaveURL(`/graph?lang=${other}`);
-            await expect(page.locator('#upcoming-title')).toBeVisible();
+            await expect(page.locator('#graph-title')).toBeVisible();
             await page.locator('.register-link').click();
             await expect(page).toHaveURL(`/register?lang=${other}`);
             expect(await page.evaluate(() => document.querySelector('.page-header') === window.originalHeader &&
@@ -824,7 +824,7 @@ for (const lang of ['sk', 'en']) {
             await expect(page.locator('.primary-nav a[href^="/graph"]'))
                 .toHaveAttribute('href', `/graph?lang=${other}`);
             await page.locator('.primary-nav a[href^="/graph"]').click();
-            await expect(page.locator('#upcoming-title')).toHaveText(other === 'sk' ? 'Grafická kalkulačka' : 'Graphing calculator');
+            await expect(page.locator('#graph-title')).toHaveText(other === 'sk' ? 'Grafy funkcií' : 'Function graphs');
             await page.locator('.primary-nav a[href^="/solve"]').click();
             await expect(page.locator('#upcoming-title')).toHaveText(other === 'sk' ? 'Riešenie rovníc' : 'Equation solver');
             await page.locator('.primary-nav a[href^="/units"]').click();
@@ -839,7 +839,7 @@ for (const lang of ['sk', 'en']) {
             await calculate(page, 'ans', '4/3');
         });
         test('future tools have localized pages and the menu remains usable on mobile', async ({ page, request }) => {
-            for (const tool of ['graph', 'solve', 'login', 'register']) {
+            for (const tool of ['solve', 'login', 'register']) {
                 const response = await request.get(`/${tool}?lang=${lang}`);
                 expect(response.ok()).toBe(true);
                 await page.goto(`/${tool}?lang=${lang}`);
@@ -874,7 +874,7 @@ for (const lang of ['sk', 'en']) {
             await expect(page.locator('.nav-toggle')).toHaveAttribute('aria-expanded', 'false');
             await page.locator('.nav-toggle').click();
             await page.locator('[data-nav="graph"]').click();
-            await expect(page.locator('#upcoming-title')).toHaveText(lang === 'sk' ? 'Grafická kalkulačka' : 'Graphing calculator');
+            await expect(page.locator('#graph-title')).toHaveText(lang === 'sk' ? 'Grafy funkcií' : 'Function graphs');
             await page.setViewportSize({width: 320, height: 667});
             expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
             await page.locator('.nav-toggle').click();

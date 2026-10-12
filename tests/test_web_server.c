@@ -482,6 +482,14 @@ int main(int argc, char **argv)
         const char *status;
         const char *body;
     } extra_cases[] = {
+        { "GET /graph?lang=sk HTTP/1.1\r\nHost: localhost\r\n\r\n",
+          "HTTP/1.1 200 OK", "id=\"graph-form\"" },
+        { "GET /graph?lang=en HTTP/1.1\r\nHost: localhost\r\n\r\n",
+          "HTTP/1.1 200 OK", "Function graphs" },
+        { "GET /assets/graph.js HTTP/1.1\r\nHost: localhost\r\n\r\n",
+          "HTTP/1.1 200 OK", "window.numforgeInitGraph" },
+        { "GET /assets/graph.css HTTP/1.1\r\nHost: localhost\r\n\r\n",
+          "HTTP/1.1 200 OK", ".graph-workspace" },
         { "GET /units?lang=sk HTTP/1.1\r\nHost: localhost\r\n\r\n",
           "HTTP/1.1 200 OK", "id=\"unit-converter\"" },
         { "GET /units?lang=en HTTP/1.1\r\nHost: localhost\r\n\r\n",

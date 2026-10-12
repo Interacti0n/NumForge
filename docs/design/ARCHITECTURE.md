@@ -48,10 +48,11 @@ history and cache. Decimal/approximate branches use BigDecimal. Formatting
 projects the stored value for display without replacing it with rounded text.
 
 The [parametric expression foundation](PARAMETRIC_EXPRESSIONS.md) owns a parsed
-AST and snapshots of referenced session values. Future graph/solver adapters
-will reuse the typed evaluator with a local parameter and one operation budget,
+AST and snapshots of referenced session values. Graph sampling and future solver
+adapters reuse the typed evaluator with a local parameter and one operation budget,
 without modifying the source session. The [HTTP sampler](../reference/GRAPH_HTTP_API.md)
-is implemented; graph UI and numerical solving remain future work.
+and [browser graph page](../guides/GRAPHS.md) are implemented. Adaptive sampling
+and numerical solving remain future work.
 
 The browser handles input, navigation and presentation in JavaScript. Expressions
 are sent to the local C server for numerical evaluation. The server embeds the

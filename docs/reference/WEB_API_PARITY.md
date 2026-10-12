@@ -34,15 +34,15 @@ is added; saved values remain bounded application-owned memory.
 | Show/retrieve calculator history | `GET /api/session/history`, optional saved `id` | Available, original values/settings |
 | Reset/release/clear history | `POST /api/session`, `action=reset`, `release` or `clear-history` | Available; clearing history preserves ans |
 | Discover functions, aliases and arities | `GET /api/functions` | Available; web consumes the registry |
-| Sample an expression over a real interval | `POST /api/graph/sample` | Available in development; exact C grid, plotting projections and point errors; plotting UI remains planned |
+| Sample an expression over a real interval | `POST /api/graph/sample` | Available in development; exact C grid, plotting projections and point errors; SK/EN browser graphs with axes and sample table |
 | List unit catalogue and sources | `GET /api/units` | Available |
 | Validate compatibility, preview a conversion | `POST /api/convert` | Available |
 | Confirm a conversion | `POST /api/conversions?action=commit` | Available, independent ordered history |
 | List/restore/clear conversion history | `GET /api/conversions`, optional saved `id`; `POST` with `action=clear` | Available, no reevaluation |
 
 See [API](../API.md), [Variables](../guides/VARIABLES.md) and [Unit HTTP API](UNIT_HTTP_API.md)
-for the implemented parameter grammar, limits and errors. Graphs, equation
-solving and accounts are placeholders and have no implemented web/API behavior.
+for the implemented parameter grammar, limits and errors. The [graph page](../guides/GRAPHS.md) is implemented. Equation
+solving and accounts remain placeholders without implemented web/API behavior.
 
 Input editing, caret insertion, clipboard access, language, tab selection,
 expansion and scrolling are client presentation actions. HTTP clients receive

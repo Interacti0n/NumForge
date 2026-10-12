@@ -63,6 +63,9 @@ isolation, inherited budgets and allocation failures through HTTP serialization.
 Playwright `graph.spec.js` verifies the [graph HTTP contract](reference/GRAPH_HTTP_API.md)
 against the real server, including query schemas, Unicode columns and Origin
 protection; the guide suite checks its localized navigation entry.
+`graph-ui.spec.js` verifies responsive axes, gap-safe optional lines, typed sample
+data, finite browser projection/underflow, read-only session snapshots, navigation
+state and cancellation of stale requests.
 
 | Guide | Checks |
 | --- | --- |

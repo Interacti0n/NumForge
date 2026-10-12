@@ -240,6 +240,10 @@ set(NUMFORGE_WEB_ASSETS
     web/units.en.html
     web/units.css
     web/units.js
+    web/graph.sk.html
+    web/graph.en.html
+    web/graph.css
+    web/graph.js
     web/logo.png
     web/wordmark.png
 )

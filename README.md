@@ -293,7 +293,9 @@ and opt-in benchmarks.
 Direct [BigDecimal and higher-function measurements](docs/benchmarks/DECIMAL_MATH_BENCHMARKS.md)
 include strict references and explicit stress-case limitations.
 Session variables and BigInt conversion in bases 2–36 are implemented.
-User functions and language bindings are future work. Graphs, equations and
+[Browser graphs](docs/guides/GRAPHS.md) now display real samples with ranges, axes
+and point data through the C HTTP sampler. Adaptive sampling remains future work.
+User functions and language bindings are future work. Equation and
 account links currently lead to informational pages. See the
 [roadmap](docs/project/ROADMAP.md) for scope and prerequisites; no delivery dates are promised.
 

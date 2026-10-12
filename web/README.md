@@ -1,11 +1,12 @@
 # Local web source
 
-The calculator, API guide and upcoming-tools page have separate Slovak and English HTML files.
+The calculator, unit converter, function graphs, API guide and upcoming-tools
+page have separate Slovak and English HTML files.
 `calculator.css` and `api.css` style their respective pages, while `chrome.css`
 styles the shared header. `calculator.js` implements calculator behavior, and
 `navigation.js` handles
 transitions between the calculator, guide, future-tool pages and language versions.
-It also fills the shared upcoming page with graph, equation,
+It also fills the shared upcoming page with equation,
 sign-in or registration text based on the route. Change these source
 files directly; do not edit the generated `web_page.h` under the build tree.
 
@@ -94,3 +95,9 @@ embedding the pages, so the displayed version follows the build configuration.
 The footer shows the exact English MIT text from the root license in a local
 dialog; GitHub opens in a new tab. Header and footer dimensions match between
 the calculator and guide.
+
+The SK/EN `/graph` page uses `graph.css` and `graph.js` to display points from
+`POST /api/graph/sample`. C owns expression evaluation; JavaScript projects and
+validates finite browser coordinates. Form settings survive in-place navigation,
+requests are canceled on edits/disposal, and sample values are accessible in a
+table. See the [graph guide](../docs/guides/GRAPHS.md).

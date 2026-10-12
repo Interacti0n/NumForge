@@ -8,6 +8,7 @@ testing entry points remain directly under `docs/`.
 - [Browser calculator](guides/CALCULATOR_WEB.md): controls, results and precision.
 - [Remote hosting](guides/HOSTING.md): HTTPS tunnels, reverse proxies and capacity.
 - [Variables](guides/VARIABLES.md): assignments, deletion, snapshots and lifetime.
+- [Function graphs](guides/GRAPHS.md): sample controls, typed gaps, axes and point values.
 - [Unit converter](guides/UNIT_CONVERTER.md): categories, preview, swap and history.
 - [C library guide](guides/LIBRARY_GUIDE.md): build, install and consume the library.
 - [Developer SDK](guides/SDK.md): prebuilt C/C++ library, toolchains and quick start.

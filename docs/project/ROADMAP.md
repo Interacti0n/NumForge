@@ -87,8 +87,10 @@ documented HTTP contract alongside the web implementation, using the versioned
    values. Typed batches share one budget and preserve calculator state.
    The [HTTP graph sampler](../reference/GRAPH_HTTP_API.md) now adds bounded exact
    uniform coordinates, plotting projections and point classifications.
-2. Add basic 2D `y = f(x)` graphs with ranges, axes, discontinuity handling,
-   accessible point data and responsive controls.
+2. [Basic browser graphs](../guides/GRAPHS.md) now display sampled `y = f(x)`
+   points with ranges, axes, read-only session snapshots and accessible data.
+   Add bounded adaptive sampling, discontinuity detection, pan/zoom and multiple
+   curves next. Uniform sampling and optional lines do not prove continuity.
 3. Add real linear/quadratic equation solving, then bounded numerical root
    finding on a specified interval, with residuals and clear convergence limits.
 4. Add session user functions, local parameters and definition management,
@@ -118,8 +120,8 @@ Measured arithmetic optimizations can proceed independently of these tools.
 - Additional constants and mathematical types/functions where there is a
   concrete application need.
 
-Graph, equation, sign-in and sign-up navigation entries currently
-open informational pages. Accounts, synchronization and those tools are not
+Equation, sign-in and account-creation navigation entries currently
+open informational pages. Accounts, synchronization and equation solving are not
 implemented. The app has no Premium feature or subscription system.
 
 ## Distribution and project presentation

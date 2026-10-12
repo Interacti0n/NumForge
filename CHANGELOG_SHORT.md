@@ -6,7 +6,10 @@ details and the [2.2.1 release record](docs/project/RELEASE_2_2_1.md) for valida
 ## Unreleased
 
 - Add the graph sampling HTTP API with bounded grids and explicit point errors;
-  preserve calculator sessions and leave plotting UI for the next stage.
+  preserve calculator sessions.
+- Add responsive SK/EN graphs with axes, sample tables, explicit typed gaps
+  and optional connecting lines. Adaptive sampling remains future work.
+- Show subtle server calculation timing only above 0.5 seconds.
 
 - Add the C application foundation for future graphs/solvers: reusable expressions,
   isolated session snapshots, typed samples and shared resource limits.

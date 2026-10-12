@@ -1,0 +1,34 @@
+@import url('/assets/calculator.css');
+body { height: auto; min-height: 100dvh; overflow: auto; }
+.graph-shell { min-height: 100dvh; display: flex; flex-direction: column; }
+.graph-workspace { flex: 1; display: grid; grid-template-columns: 300px minmax(0,1fr); gap: 24px; padding: 28px 0 40px; align-items: start; }
+.graph-workspace .card { padding: 24px; min-width: 0; }
+.graph-controls h1 { margin: 0 0 24px; font-size: 1.45rem; letter-spacing: -.025em; }
+.graph-controls label { color: var(--muted); font-size: .8rem; }
+.graph-expression { display: grid; gap: 10px; }
+.graph-controls input:not([type=checkbox]), .graph-controls select { width: 100%; min-width: 0; height: 44px; border: 1px solid var(--border); border-radius: 9px; padding: 9px; color: var(--text); background: var(--surface-input); }
+#graph-expression { font: 1rem var(--font-math); }
+.graph-fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; margin: 20px 0; }
+.graph-fields label { display: grid; gap: 7px; }
+.graph-option { display: flex; align-items: center; gap: 8px; font-size: .8rem; color: var(--quiet); }
+.graph-option input { flex-shrink: 0; accent-color: var(--accent); width: 17px; height: 17px; }
+#graph-submit { width: 100%; margin-top: 20px; }
+.graph-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.graph-heading h2 { margin: 0; font-size: 1.1rem; }
+#graph-status { min-height: 1.5em; font-size: .85rem; color: var(--quiet); overflow-wrap: anywhere; }
+#graph-status.error { color: var(--danger); }
+#graph-plot { display: block; width: 100%; height: auto; border: 1px solid var(--border-soft); border-radius: 12px; background: #17002f; }
+.graph-grid { stroke: #c994f020; stroke-width: 1; }
+.graph-axis { stroke: #c994f075; stroke-width: 1; }
+.graph-tick { fill: #bd9bd8; font: 12px var(--font-math); }
+.graph-point { fill: #dfafff; }
+.graph-line { stroke: #dfafff99; stroke-width: 1.5; fill: none; }
+.graph-note { color: var(--quiet); font-size: .75rem; line-height: 1.6; margin: 16px 0; }
+#graph-values { border-top: 1px solid var(--border-soft); padding-top: 14px; }
+#graph-values summary { cursor: pointer; font-size: .85rem; color: var(--muted); }
+.graph-table-wrap { max-height: 320px; overflow: auto; margin-top: 12px; }
+.graph-table-wrap table { border-collapse: collapse; width: 100%; font: .75rem var(--font-math); }
+.graph-table-wrap th, .graph-table-wrap td { padding: 9px; text-align: left; border-bottom: 1px solid var(--border-soft); overflow-wrap: anywhere; }
+.graph-table-wrap caption { text-align: left; color: var(--quiet); padding: 0 0 10px; font: .75rem var(--font-ui); }
+@media (max-width: 960px) { .graph-workspace { grid-template-columns: minmax(0,1fr); gap: 16px; } .graph-controls .graph-fields { grid-template-columns: repeat(3,minmax(0,1fr)); } }
+@media (max-width: 600px) { .graph-workspace { padding: 18px 0 28px; } .graph-workspace .card { padding: 18px; } .graph-controls .graph-fields { grid-template-columns: repeat(2,minmax(0,1fr)); } }

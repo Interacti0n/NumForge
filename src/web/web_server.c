@@ -954,13 +954,24 @@ void numforge_handle_connection_with_origin(
     {
         numforge_send_page(socket, english ? NUMFORGE_UNITS_PAGE_EN : NUMFORGE_UNITS_PAGE);
     }
+    else if (strcmp(method, "GET") == 0 && numforge_parse_page_language(target, "/graph", &english))
+    {
+        numforge_send_page(socket, english ? NUMFORGE_GRAPH_PAGE_EN : NUMFORGE_GRAPH_PAGE);
+    }
     else if (strcmp(method, "GET") == 0 &&
-             (numforge_parse_page_language(target, "/graph", &english) ||
-              numforge_parse_page_language(target, "/solve", &english) ||
+             (numforge_parse_page_language(target, "/solve", &english) ||
               numforge_parse_page_language(target, "/login", &english) ||
               numforge_parse_page_language(target, "/register", &english)))
     {
         numforge_send_page(socket, english ? NUMFORGE_UPCOMING_PAGE_EN : NUMFORGE_UPCOMING_PAGE);
+    }
+    else if (strcmp(method, "GET") == 0 && strcmp(target, "/assets/graph.css") == 0)
+    {
+        numforge_send_response(socket, 200, "OK", "text/css; charset=utf-8", (const char *)NUMFORGE_GRAPH_CSS);
+    }
+    else if (strcmp(method, "GET") == 0 && strcmp(target, "/assets/graph.js") == 0)
+    {
+        numforge_send_response(socket, 200, "OK", "text/javascript; charset=utf-8", (const char *)NUMFORGE_GRAPH_JS);
     }
     else if (strcmp(method, "GET") == 0 && strcmp(target, "/assets/units.css") == 0)
     {
