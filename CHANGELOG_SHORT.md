@@ -5,6 +5,9 @@ details and the [2.2.1 release record](docs/project/RELEASE_2_2_1.md) for valida
 
 ## Unreleased
 
+- Add the C application foundation for future graphs/solvers: reusable expressions,
+  isolated session snapshots, typed samples and shared resource limits.
+
 ## 2.2.1 — 12 October 2026
 
 - Accelerate large balanced multiplication with budget-aware Karatsuba.

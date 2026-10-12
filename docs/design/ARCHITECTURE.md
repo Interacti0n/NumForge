@@ -32,6 +32,8 @@ flowchart LR
     Store --> Session
     Session --> Parser[Tokenizer and parser / AST]
     Parser --> Evaluator[Typed evaluator]
+    Prepared[Prepared parametric expression] --> Parser
+    Prepared --> Evaluator
     Evaluator --> Library[Public numeric library]
     Evaluator --> Value[Owned calculator value]
     Value --> Formatter[Display and copy formatting]
@@ -42,6 +44,12 @@ history and preview state; parsing and evaluation are shared by CLI/web. Exact
 branches use BigRational and retain their internal value through confirmation,
 history and cache. Decimal/approximate branches use BigDecimal. Formatting
 projects the stored value for display without replacing it with rounded text.
+
+The [parametric expression foundation](PARAMETRIC_EXPRESSIONS.md) owns a parsed
+AST and snapshots of referenced session values. Future graph/solver adapters
+will reuse the typed evaluator with a local parameter and one operation budget,
+without modifying the source session. HTTP and UI adapters are not implemented
+for this foundation yet.
 
 The browser handles input, navigation and presentation in JavaScript. Expressions
 are sent to the local C server for numerical evaluation. The server embeds the

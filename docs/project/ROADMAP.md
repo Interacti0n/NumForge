@@ -82,9 +82,10 @@ mathematical/session features must expose their application operation and
 documented HTTP contract alongside the web implementation, using the versioned
 [session value schema](../reference/SESSION_HTTP_API.md) where appropriate.
 
-1. Share a parameterized expression evaluator between graphs and solvers: parse
-   once, bind a local variable, snapshot session values and bound the total work.
-   Sampling and solving must leave calculator state unchanged.
+1. The [parametric C application foundation](../design/PARAMETRIC_EXPRESSIONS.md)
+   now parses once, binds a local parameter and snapshots referenced session
+   values. Typed batches share one budget and preserve calculator state.
+   Next add bounded graph coordinates and the documented HTTP sampling operation.
 2. Add basic 2D `y = f(x)` graphs with ranges, axes, discontinuity handling,
    accessible point data and responsive controls.
 3. Add real linear/quadratic equation solving, then bounded numerical root

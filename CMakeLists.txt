@@ -163,6 +163,7 @@ if(NUMFORGE_BUILD_APPS OR BUILD_TESTING OR NUMFORGE_BUILD_FUZZERS OR NUMFORGE_BU
     numforge_enable_diagnostics(numforge_calculator)
 
     add_library(numforge_application STATIC
+        src/application/expression.c
         src/application/conversion.c
         src/application/session.c
         src/application/client_store.c)
@@ -690,6 +691,11 @@ if(BUILD_TESTING)
     target_link_libraries(application_tests PRIVATE numforge_application unity)
     numforge_enable_diagnostics(application_tests)
     add_test(NAME application_tests COMMAND application_tests)
+    add_executable(application_expression_tests tests/test_application_expression.c)
+    target_link_libraries(application_expression_tests PRIVATE numforge_application unity)
+    target_compile_definitions(application_expression_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
+    numforge_enable_diagnostics(application_expression_tests)
+    add_test(NAME application_expression_tests COMMAND application_expression_tests)
     target_include_directories(session_tests PRIVATE ${PROJECT_SOURCE_DIR}/src/internal)
     target_compile_definitions(session_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
     target_link_libraries(session_tests PRIVATE numforge_client unity)

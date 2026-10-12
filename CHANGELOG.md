@@ -7,6 +7,12 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Add a reusable parametric expression foundation in the C application layer:
+  parse once, snapshot referenced session values, shadow a local parameter and
+  evaluate typed batches under one shared resource budget. Preserve session state
+  and atomic failure cleanup; report per-point domain errors. Graph/solver UI,
+  HTTP adapters and a public SDK evaluator remain future work.
+
 ## 2.2.1 — 12 October 2026
 
 - Fix numeric-oracle workspace cleanup detected by Linux sanitizers and stabilize

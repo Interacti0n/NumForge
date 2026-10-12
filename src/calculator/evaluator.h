@@ -22,6 +22,14 @@ CalculatorStatus calculator_evaluate(
     CalculatorError *error
 );
 
+/* Private shared typed evaluation stage. The AST has bound variable pointers;
+ * result is empty (uses_variables may be set), and context has been validated.
+ * Caller owns the AST and the enclosing operation's resource budget. */
+CalculatorStatus calculator_evaluate_parsed_value(
+    const CalculatorExpression *expression, const CalculatorContext *context,
+    const CalculatorValue *answer, uint64_t *random_state,
+    CalculatorValue *result, CalculatorError *error);
+
 CalculatorStatus calculator_evaluate_with_answer(
     BigDecimal *result,
     const CalculatorExpression *expression,

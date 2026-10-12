@@ -350,37 +350,9 @@ static CalculatorStatus calculator_bind_variables(CalculatorExpression *expressi
     return CALCULATOR_OK;
 }
 
-static CalculatorStatus calculator_compute_value_with_answer_profile_impl(
-    const char *input,
-    const CalculatorContext *context,
-    const CalculatorValue *answer,
-    uint64_t *random_state,
-    const CalculatorVariable *variables, size_t variable_count,
-    CalculatorValue *result,
-    CalculatorError *error
-)
+CalculatorStatus calculator_context_validate(const CalculatorContext *context, CalculatorError *error)
 {
-    CalculatorExpression *expression = NULL;
-    BigDecimal *value = NULL;
-    BigDecimal *answer_decimal = NULL;
-    BigRational *exact = NULL;
-    CalculatorStatus status;
-    bool owner;
-    bool exact_candidate = false;
-    size_t length = 0U;
-
-    if (result != NULL)
-    {
-        memset(result, 0, sizeof(*result));
-    }
-
-    if (input == NULL || context == NULL || result == NULL)
-    {
-        calculator_error_set(error, CALCULATOR_NULL_ARGUMENT, 0U);
-
-        return CALCULATOR_NULL_ARGUMENT;
-    }
-
+    if (context == NULL) { calculator_error_set(error, CALCULATOR_NULL_ARGUMENT, 0U); return CALCULATOR_NULL_ARGUMENT; }
     if (context->time_limit_ms < 0)
     {
         calculator_error_set(error, CALCULATOR_INVALID_ARGUMENT, 0U);
@@ -402,25 +374,26 @@ static CalculatorStatus calculator_compute_value_with_answer_profile_impl(
         return CALCULATOR_VALUE_TOO_LARGE;
     }
 
-    owner = numforge_budget_begin(
-        (uint64_t)context->time_limit_ms, CALCULATOR_ALLOCATION_BUDGET, CALCULATOR_SINGLE_ALLOCATION);
+    return CALCULATOR_OK;
+}
+
+/* Evaluate a bound AST without parsing or starting a per-point budget. */
+CalculatorStatus calculator_evaluate_parsed_value(
+    const CalculatorExpression *expression, const CalculatorContext *context,
+    const CalculatorValue *answer, uint64_t *random_state,
+    CalculatorValue *result, CalculatorError *error)
+{
+    BigDecimal *value = NULL;
+    BigDecimal *answer_decimal = NULL;
+    BigRational *exact = NULL;
+    CalculatorStatus status = CALCULATOR_OK;
+    bool exact_candidate = false;
+    if (expression == NULL || context == NULL || result == NULL)
+    {
+        calculator_error_set(error, CALCULATOR_NULL_ARGUMENT, 0U);
+        return CALCULATOR_NULL_ARGUMENT;
+    }
     calculator_error_clear(error);
-
-    while (length <= CALCULATOR_MAX_INPUT_BYTES && input[length] != '\0')
-    {
-        length++;
-    }
-
-    status = length > CALCULATOR_MAX_INPUT_BYTES ? CALCULATOR_VALUE_TOO_LARGE : CALCULATOR_OK;
-
-    if (status == CALCULATOR_OK)
-    {
-        status = variables != NULL ? calculator_parse_variables(input, &expression, error)
-            : calculator_parse(input, &expression, error);
-        if (status == CALCULATOR_OK && variables != NULL)
-            status = calculator_bind_variables(expression, variables, variable_count, &result->uses_variables, error);
-    }
-
     if (status == CALCULATOR_OK &&
         (calculator_expression_has_complex(expression, answer) ||
          (calculator_expression_may_be_complex(expression, answer) &&
@@ -549,7 +522,6 @@ static CalculatorStatus calculator_compute_value_with_answer_profile_impl(
         result->uses_answer = calculator_expression_uses_answer(expression);
         result->uses_random = calculator_expression_uses_random(expression);
     }
-    calculator_expression_destroy(expression);
     bigdecimal_destroy(answer_decimal);
     status = calculator_budget_status(status);
 
@@ -572,11 +544,70 @@ static CalculatorStatus calculator_compute_value_with_answer_profile_impl(
         calculator_error_clear(error);
     }
 
-    if (owner)
+    return status;
+}
+
+static CalculatorStatus calculator_compute_value_with_answer_profile_impl(
+    const char *input,
+    const CalculatorContext *context,
+    const CalculatorValue *answer,
+    uint64_t *random_state,
+    const CalculatorVariable *variables, size_t variable_count,
+    CalculatorValue *result,
+    CalculatorError *error
+)
+{
+    CalculatorExpression *expression = NULL;
+    CalculatorStatus status;
+    bool owner;
+    size_t length = 0U;
+
+    if (result != NULL)
     {
-        numforge_budget_end();
+        memset(result, 0, sizeof(*result));
     }
 
+    if (input == NULL || context == NULL || result == NULL)
+    {
+        calculator_error_set(error, CALCULATOR_NULL_ARGUMENT, 0U);
+
+        return CALCULATOR_NULL_ARGUMENT;
+    }
+
+    status = calculator_context_validate(context, error);
+    if (status != CALCULATOR_OK) return status;
+
+    owner = numforge_budget_begin(
+        (uint64_t)context->time_limit_ms, CALCULATOR_ALLOCATION_BUDGET, CALCULATOR_SINGLE_ALLOCATION);
+    calculator_error_clear(error);
+
+    while (length <= CALCULATOR_MAX_INPUT_BYTES && input[length] != '\0')
+    {
+        length++;
+    }
+
+    status = length > CALCULATOR_MAX_INPUT_BYTES ? CALCULATOR_VALUE_TOO_LARGE : CALCULATOR_OK;
+
+    if (status == CALCULATOR_OK)
+    {
+        status = variables != NULL ? calculator_parse_variables(input, &expression, error)
+            : calculator_parse(input, &expression, error);
+        if (status == CALCULATOR_OK && variables != NULL)
+            status = calculator_bind_variables(expression, variables, variable_count, &result->uses_variables, error);
+    }
+
+    if (status == CALCULATOR_OK)
+        status = calculator_evaluate_parsed_value(expression, context, answer,
+            random_state, result, error);
+    else
+    {
+        status = calculator_budget_status(status);
+        calculator_value_destroy(result);
+        if (error == NULL || error->status != status)
+            calculator_error_set(error, status, error == NULL ? 0U : error->offset);
+    }
+    calculator_expression_destroy(expression);
+    if (owner) numforge_budget_end();
     return status;
 }
 

@@ -209,6 +209,8 @@ CalculatorStatus calculator_budget_status(
 void calculator_context_init(
     CalculatorContext *context
 );
+CalculatorStatus calculator_context_validate(const CalculatorContext *context,
+    CalculatorError *error);
 CalculatorStatus calculator_context_set_output_scale(
     CalculatorContext *context,
     int64_t output_scale

@@ -52,6 +52,12 @@ and C++ package consumers compile and call the public rational API.
 
 ## Choose a focused check
 
+`application_expression_tests` covers the
+[parametric C application foundation](design/PARAMETRIC_EXPRESSIONS.md), including
+snapshot lifetime, typed samples, per-point errors and shared resource budgets.
+Opt-in allocation-instrumented builds also check zero live allocations and
+cumulative allocation limits across points.
+
 | Guide | Checks |
 | --- | --- |
 | [Numerical references and parser limits](testing/NUMERIC_TESTING.md) | Independent oracle, transcendental references, fuzzing and precision contracts. |
