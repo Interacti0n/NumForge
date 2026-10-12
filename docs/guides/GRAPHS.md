@@ -73,9 +73,29 @@ visible interval and automatic y bounds are refreshed. Edits/navigation cancel
 pending work and old responses cannot replace a newer view. Bounds changes are
 saved in the same per-tab settings used by advanced controls.
 
+## Prepared ranges
+
+The current page caches sampled ranges at several densities. Moving inside a
+prepared range redraws immediately without another graph calculation. Zooming
+uses available points immediately and refines them only when their range is too
+coarse for the new view. Missing regions are requested separately; the existing
+curve stays visible while those regions are calculated. Independently sampled
+ranges retain their own connection/gap flags and are clipped at their boundaries.
+
+After a quick, resolved request the page prepares adjacent left/right regions
+and a wider overview during idle time, one request at a time. Slow/limited/failed
+requests stop optional background work. Every request retains the C API's normal
+time, allocation and output limits; unprepared intervals cannot be instantaneous.
+
+The cache is bounded to 12 sampled ranges (each at most 1024 points), lives only
+in the current page and clears on expression/precision/angle/session changes or
+navigation. Session revisions are rechecked before settled cache reuse, so
+changed coefficients/ans trigger new calculations. At most 1024 cached sample
+rows are displayed in the value table, with an explicit truncation message.
+
 Coordinates are rounded scientific strings from C. Browser overflow or underflow
 is omitted, never plotted as a false zero. Collapsed x coordinates prevent drawing.
-One five-second budget includes preparation, every sample and serialization, with
+Each C sampling request has one five-second budget for preparation, every sample and serialization, with
 existing allocation and response bounds. Refinement can finish early with a
 limited plot when its remaining budget is too small for another probe. Actual
 resource failures still fail atomically.

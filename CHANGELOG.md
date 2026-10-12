@@ -7,6 +7,11 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Cache bounded graph ranges across resolution levels and prepare adjacent/wider
+  views during idle time. Reuse prepared data immediately, sample missing pieces
+  without clearing the curve and validate session revisions before cache reuse.
+  Bound/cancel optional background work and preserve C gap flags at tile seams.
+
 - Display near-zero graph axis ticks as 0 and align their gridlines with the zero
   axis, using a view-relative threshold that preserves genuinely tiny scales.
 

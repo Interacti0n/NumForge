@@ -97,3 +97,9 @@ C/HTTP checks verify newly discovered extrema and bounded unresolved pole views.
 Periodic-extremum regressions check every sin/cos peak on −100..611, reversed
 phases, sin(33x), degree mode and rendered y bounds. Peak-work allocator failures
 verify atomic cleanup; the graph benchmark includes the reported wide sine case.
+
+Range-cache browser tests verify immediate prepared pan, requests for missing
+pieces only, retained curves during refinement, current session-revision checks
+and cache invalidation on expression/precision/angle edits. Interaction rendering
+is coalesced to animation frames; delayed foreground/background work is canceled
+by edits and page disposal. The server mathematics and SDK remain unchanged.

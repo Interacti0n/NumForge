@@ -103,3 +103,27 @@ choose narrower x bounds rather than interpreting an empty curve as a zero funct
 
 See the [graph performance audit](../benchmarks/GRAPH_AUDIT_2026_10_12.md)
 for allocation/time measurements and independent point/chord comparisons.
+
+## Browser range cache
+
+The browser reuses this same endpoint for bounded range tiles; no new numeric
+evaluator or HTTP schema is introduced. Cache identity includes the expression,
+precision, angle and, when selected, client/session revision. The browser checks
+session state before accepting a settled cached view. A missing or too-coarse
+range is sampled through the existing endpoint (up to four foreground pieces,
+otherwise a complete view); cached data remains as a clipped preview meanwhile.
+
+After 700 ms idle, quick resolved responses may trigger at most three sequential
+prefetches for missing adjacent regions and a wider overview. Responses taking
+more than 1500 ms including transport, limited responses and errors stop that
+batch. There is no repeated timer/polling loop. Moves, edits and disposal abort
+browser requests and reject obsolete responses; aborting a fetch does not promise
+to interrupt a C evaluation already running on the server. Each server request
+still independently shares the original five-second/allocation budget.
+
+The current page retains at most 12 ranges and 48 bounded prefetch-attempt keys;
+data is not persisted in sessionStorage. The finest available cached range is
+chosen per visible segment, retaining independent C connection/gap flags.
+Coordinates at endpoints may be aligned to the requested camera coverage within
+the 12-place projection tolerance, without changing sample values. Cached views
+fit visible samples, while limited ranges retain their server-provided y overview.
