@@ -19,7 +19,8 @@ Bounds are finite decimal literals, including scientific notation, not expressio
 such as `pi` or `1/3`. They describe the displayed interval, not a domain restriction.
 Precision controls approximate C mathematics; it does not control graph density.
 Some functions retain at least 34 working digits. Plot coordinates still use the
-rounded 12-place projection, regardless of a higher calculation precision.
+rounded 16-place scientific projection (17 significant digits), regardless of
+a higher calculation precision. The uniform API retains its 12-place output.
 
 ## Calculator variables
 
@@ -59,6 +60,12 @@ continuous curves, with padding. Unresolved pole/domain trees retain the initial
 overview so values near an asymptote do not flatten the rest of the plot. The
 curve is clipped to that view. These are sampled extrema, not guaranteed global
 maxima/minima; explicit y control remains future work.
+
+At deep zoom, repeated axis labels are replaced with a base plus Δ offsets:
+for example `y = 1 + Δ` and ticks showing small differences from 1. This does
+not change calculated values. Automatic scaling avoids magnifying numerical
+rounding into a false staircase, and zoom cannot exceed browser coordinate
+resolution. Extremely close to a sine maximum the curve is almost horizontal.
 
 ## Moving the view
 

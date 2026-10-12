@@ -1,5 +1,13 @@
 const {test,expect}=require('@playwright/test');
 const {randomBytes}=require('node:crypto');
+test('adaptive projection retains close sine values and uniform projection remains twelve places',async({request})=>{
+ const response=await request.post('/api/graph/plot?min=-4.71238798038469&max=-4.71238098038469',{data:'sin(x)'});
+ expect(response.ok()).toBe(true);const data=await response.json();expect(data.plot_places).toBe(16);
+ expect(new Set(data.points.map(p=>p.y)).size).toBeGreaterThan(40);
+ for(const p of data.points)expect(Math.abs(Number(p.y)-Math.sin(Number(p.x)))).toBeLessThan(4e-16);
+ const uniform=await request.post('/api/graph/sample?min=-1&max=1&points=3',{data:'sin(x)'});
+ expect((await uniform.json()).plot_places).toBe(12);
+});
 test('sin and cos preserve every periodic peak on coarse wide views',async({request})=>{
  test.setTimeout(30000);
  for(const [expression,offset,angle,period] of [['sin(x)',Math.PI/2,'rad',Math.PI],['cos(-x)',0,'rad',Math.PI],['sin(33x)',Math.PI/2,'rad',Math.PI],['sin(x)',90,'deg',180]]) {

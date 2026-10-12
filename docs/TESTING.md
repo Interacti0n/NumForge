@@ -103,3 +103,8 @@ pieces only, retained curves during refinement, current session-revision checks
 and cache invalidation on expression/precision/angle edits. Interaction rendering
 is coalesced to animation frames; delayed foreground/background work is canceled
 by edits and page disposal. The server mathematics and SDK remain unchanged.
+
+Deep-zoom regressions compare sine near −3π/2 with independent references,
+require distinct projected values and axis labels, check that negative tick
+labels fit inside the SVG, and keep near-flat quantization below a visible pixel.
+Adaptive output uses 16 scientific places; uniform output remains at 12.

@@ -200,12 +200,12 @@ bool numforge_web_is_session_target(const char *target)
         strncmp(target, "/api/functions", 14U) == 0 || strncmp(target, "/api/graph", 10U) == 0;
 }
 
-static void plot_number(Json *json, const CalculatorValue *value)
+static void plot_number(Json *json, const CalculatorValue *value, int places)
 {
     if (json->status != CALCULATOR_OK) return;
     char *text = NULL;
     json->status = calculator_from_bigdecimal_status(bigdecimal_format_mode(value->number,
-        12, BIGDECIMAL_ROUND_HALF_EVEN, BIGDECIMAL_FORMAT_SCIENTIFIC, 128U, &text));
+        places, BIGDECIMAL_ROUND_HALF_EVEN, BIGDECIMAL_FORMAT_SCIENTIFIC, 128U, &text));
     if (json->status == CALCULATOR_OK) string(json, text);
     free(text);
 }
@@ -267,11 +267,11 @@ static CalculatorStatus graph_request(ApplicationClientStore *store, const char 
         if (adaptive) {
             append(&json, ",\"sampling\":\"adaptive\",\"limited\":%s,\"y_min\":", graph->limited ? "true" : "false");
             CalculatorValue view = {0};view.number = graph->view_minimum;
-            if (view.number != NULL) plot_number(&json, &view);else append(&json,"null");
+            if (view.number != NULL) plot_number(&json, &view,16);else append(&json,"null");
             append(&json, ",\"y_max\":");view.number = graph->view_maximum;
-            if (view.number != NULL) plot_number(&json, &view);else append(&json,"null");
+            if (view.number != NULL) plot_number(&json, &view,16);else append(&json,"null");
         }
-        append(&json, ",\"count\":%zu,\"plot_places\":12,\"points\":[", graph->count);
+        append(&json, ",\"count\":%zu,\"plot_places\":%u,\"points\":[", graph->count,adaptive?16U:12U);
         static const char *kinds[] = {"real", "domain_error", "complex", "quantity"};
         for (size_t i = 0; i < graph->count && json.status == CALCULATOR_OK; ++i)
         {
@@ -279,9 +279,9 @@ static CalculatorStatus graph_request(ApplicationClientStore *store, const char 
             ApplicationGraphPointKind kind = application_graph_point_kind(sample);
             append(&json, "%s{", i == 0U ? "" : ",");
             if (adaptive) append(&json, "\"connect\":%s,", graph->connect[i] ? "true" : "false");
-            append(&json,"\"x\":"); plot_number(&json, &graph->coordinates[i]);
+            append(&json,"\"x\":"); plot_number(&json, &graph->coordinates[i],adaptive?16:12);
             append(&json, ",\"kind\":\"%s\",\"y\":", kinds[kind]);
-            if (kind == APPLICATION_GRAPH_REAL) plot_number(&json, &sample->value);
+            if (kind == APPLICATION_GRAPH_REAL) plot_number(&json, &sample->value,adaptive?16:12);
             else append(&json, "null");
             append(&json, ",\"source_approximate\":%s", sample->error.status == CALCULATOR_OK &&
                 (sample->value.kind == CALCULATOR_VALUE_DECIMAL || sample->value.kind == CALCULATOR_VALUE_COMPLEX_DECIMAL)

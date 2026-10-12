@@ -1,4 +1,18 @@
 const {test,expect}=require('@playwright/test');
+test('deep sine peak zoom has distinct axes and no projection staircase',async({page})=>{
+ await page.goto('/graph?lang=en');
+ const center=-3*Math.PI/2,low=center+1e-6,high=center+8e-6;
+ const data=await sample(page,'sin(x)',String(low),String(high));expect(data.plot_places).toBe(16);
+ expect(new Set(data.points.map(p=>p.y)).size).toBeGreaterThan(40);
+ for(const p of data.points)expect(Math.abs(Number(p.y)-Math.sin(Number(p.x)))).toBeLessThan(4e-16);
+ const ticks=await page.locator('.graph-tick[x="56"]').allTextContents();expect(new Set(ticks).size).toBe(5);
+ const left=await page.locator('.graph-tick[x="56"]').evaluateAll(nodes=>Math.min(...nodes.map(n=>n.getBBox().x)));expect(left).toBeGreaterThanOrEqual(0);
+ await expect(page.locator('.graph-offset')).toHaveCount(2);
+ expect(await page.locator('#graph-plot').evaluate(el=>!/NaN|Infinity/.test(el.innerHTML))).toBe(true);
+ await page.locator('.graph-result').screenshot({path:'C:/Incoming/Projekty/NumForge/build/graph-sine-deep-zoom-fixed.png'});
+ await sample(page,'sin(x)',String(center+1e-8),String(center+4e-8));
+ const height=await page.locator('path.graph-line').evaluate(el=>el.getBBox().height);expect(height).toBeLessThan(1);
+});
 test('cached tile composition preserves reciprocal gaps',async({page})=>{
  await page.goto('/graph?lang=en');await sample(page,'1/x');
  const ready=page.waitForResponse(r=>r.url().includes('/api/graph/plot?')&&new URL(r.url()).searchParams.get('min')==='10');

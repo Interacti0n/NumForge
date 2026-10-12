@@ -7,6 +7,11 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Preserve close adaptive graph coordinates with a 16-place scientific projection
+  while retaining uniform API output. Add distinct deep-zoom axis offset labels,
+  a minimal relative y span and a browser-resolution camera bound to prevent
+  false staircases around flat extrema.
+
 - Cache bounded graph ranges across resolution levels and prepare adjacent/wider
   views during idle time. Reuse prepared data immediately, sample missing pieces
   without clearing the curve and validate session revisions before cache reuse.

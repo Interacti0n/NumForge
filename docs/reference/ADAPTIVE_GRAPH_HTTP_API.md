@@ -11,7 +11,8 @@ and must be increasing. Optional `precision` (1–10000, default 34), `angle`
 (rad/deg), retained `client` and pinned `at` have the same contracts. `points`
 is rejected: the C sampler determines density. Many approximate functions retain
 at least 34 working digits even when a lower precision is requested. Exact
-arithmetic remains exact; plotting strings still use the 12-place projection. Optional `parameter` explicitly
+arithmetic remains exact; adaptive plotting strings use a 16-place scientific projection
+(17 significant digits) to preserve close values during zoom. Optional `parameter` explicitly
 selects a local name; otherwise it is inferred from the one parsed AST.
 
 Inference selects the unique variable absent from the supplied session. Session
@@ -23,10 +24,12 @@ are never candidates. No session is created, revived or changed.
 
 ## Response schema 2
 
-Success retains `ok`, `parameter`, `count`, `plot_places:12`, and classified
+Success retains `ok`, `parameter`, `count`, and classified
 `points` from the uniform contract. It adds:
 
 - `schema_version:2`, `sampling:"adaptive"`.
+- `plot_places:16` for adaptive x/y and view bounds. The uniform schema 1 still
+  uses `plot_places:12`; clients must honor the field rather than assuming a value.
 - Per-point `connect`: whether a sampled chord from the previous point met the
   heuristic error criterion. The first is false. Classified gaps never connect.
 - `limited`: refinement encountered a depth, point or remaining resource bound; unresolved
@@ -125,5 +128,11 @@ The current page retains at most 12 ranges and 48 bounded prefetch-attempt keys;
 data is not persisted in sessionStorage. The finest available cached range is
 chosen per visible segment, retaining independent C connection/gap flags.
 Coordinates at endpoints may be aligned to the requested camera coverage within
-the 12-place projection tolerance, without changing sample values. Cached views
+the current projection/binary rounding tolerance, without changing sample values. Cached views
 fit visible samples, while limited ranges retain their server-provided y overview.
+
+Deep-zoom axis labels use a displayed base plus Δ offsets when ordinary labels
+would repeat. Automatic y spans have a relative 1e-12 floor to avoid amplifying
+binary/projection quantization into a fake staircase; real tiny values around
+zero still scale normally. Camera zoom stops before x coordinates become
+indistinguishable at the browser's numeric precision.

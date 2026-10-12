@@ -16,7 +16,7 @@ function initGraph() {
     const text = english ? {
         ready:'Enter a function and plot it.', busy:'Sampling…', network:'Cannot reach the server. Try again.',
         invalid:'The server returned invalid graph data.', session:'Start a calculator session before using its variables.',
-        range:'These coordinates cannot be distinguished in the browser’s numeric range. Choose a smaller range.',
+        range:'These coordinates cannot be distinguished in the browser’s numeric range. Adjust or reset the range.',
         real:'Real', domain_error:'Domain error', complex:'Complex', quantity:'Quantity', outside:'Outside plotting range',
         summary:(shown,total)=>`y = f(${parameter}) · ${shown}/${total} real samples`, column:'column',
         limited:'Some intervals could not be resolved. Try a smaller x range.', ambiguous:'Use one unknown variable, or save the other variables in the calculator and enable its session.',
@@ -24,7 +24,7 @@ function initGraph() {
     } : {
         ready:'Zadaj funkciu a vykresli ju.', busy:'Počítam body…', network:'Server nie je dostupný. Skús to znova.',
         invalid:'Server vrátil neplatné údaje grafu.', session:'Pred použitím premenných vytvor sedenie v kalkulačke.',
-        range:'Tieto súradnice prehliadač nedokáže rozlíšiť vo svojom číselnom rozsahu. Zvoľ menší rozsah.',
+        range:'Tieto súradnice prehliadač nedokáže rozlíšiť vo svojom číselnom rozsahu. Uprav rozsah alebo obnov pohľad.',
         real:'Reálne', domain_error:'Chyba definičného oboru', complex:'Komplexné', quantity:'Veličina', outside:'Mimo rozsahu grafu',
         summary:(shown,total)=>`y = f(${parameter}) · reálne body: ${shown}/${total}`, column:'pozícia',
         limited:'Niektoré úseky sa nepodarilo rozlíšiť. Skús menší rozsah x.', ambiguous:'Použi jednu neznámu, alebo ulož ostatné premenné v kalkulačke a zapni použitie sedenia.',
@@ -117,6 +117,8 @@ function initGraph() {
         if(xHigh<=xLow){samples=null;viewport=null;draw();message(text.range,true);return;}
         let yLow=projectedView[0]/yScale,yHigh=projectedView[1]/yScale;
         if(yLow===yHigh){yLow-=.5;yHigh+=.5;}
+        // Never magnify double/projection quantization into a full-height stair.
+        if(yHigh-yLow<1e-12){const center=yLow+(yHigh-yLow)/2;yLow=center-5e-13;yHigh=center+5e-13;}
         const padding=valid.length?(yHigh-yLow)*.08:0;yLow-=padding;yHigh+=padding;
         yLow=Math.max(yLow,-Number.MAX_VALUE/yScale);
         yHigh=Math.min(yHigh,Number.MAX_VALUE/yScale);
@@ -126,8 +128,19 @@ function initGraph() {
         const px=x=>Math.max(-1e6,Math.min(1e6,64+(x/xScale-xLow)/(xHigh-xLow)*(right-64)));
         const py=y=>Math.max(-1e6,Math.min(1e6,bottom-(y/yScale-yLow)/(yHigh-yLow)*(bottom-22)));
         const group=element('g',{class:'graph-drawing'});
-        const label=value=>value===0?'0':value.toLocaleString(english?'en':'sk',
-            {maximumSignificantDigits:3,notation:Math.abs(value)>=1e5 || Math.abs(value)<.001?'scientific':'standard'});
+        const label=(value,digits=3)=>value===0?'0':value.toLocaleString(english?'en':'sk',
+            {maximumSignificantDigits:digits,notation:Math.abs(value)>=1e5 || Math.abs(value)<.001?'scientific':'standard'});
+        const axis=(low,high,scale)=>{
+            const digits=Math.max(3,Math.min(17,Math.ceil(Math.log10(Math.max(Math.abs(low),Math.abs(high))/(high-low)))+2));
+            const offset=digits>7?low+(high-low)/2:0;
+            return {offset,digits:offset?3:digits,base:offset*scale,span:high-low};
+        };
+        const xLabels=axis(xLow,xHigh,xScale),yLabels=axis(yLow,yHigh,yScale);
+        const axisLabel=(value,settings,scale)=>{
+            let difference=value-settings.offset;
+            if(settings.offset&&Math.abs(difference)<=settings.span*1e-4)difference=0;
+            return label(difference*scale,settings.digits);
+        };
         // Snap a near-zero axis tick relative to this view, not to an absolute
         // epsilon: genuine small-scale coordinates must retain their labels.
         const tick=(low,high,fraction)=>{
@@ -137,14 +150,17 @@ function initGraph() {
         for(let i=0;i<=4;i++) {
             const fraction=i/4,tx=tick(xLow,xHigh,fraction),ty=tick(yLow,yHigh,fraction);
             const x=64+(tx-xLow)/(xHigh-xLow)*(right-64),y=bottom-(ty-yLow)/(yHigh-yLow)*(bottom-22);
+            const yText=axisLabel(ty,yLabels,yScale);
             group.append(element('line',{x1:x,x2:x,y1:22,y2:bottom,class:'graph-grid'}),
                 element('line',{x1:64,x2:right,y1:y,y2:y,class:'graph-grid'}),
-                element('text',{x,y:height-22,'text-anchor':'middle',class:'graph-tick'},label(tx*xScale)),
-                element('text',{x:56,y:y+4,'text-anchor':'end',class:'graph-tick'},label(ty*yScale)));
+                element('text',{x,y:height-22,'text-anchor':i===0?'start':i===4?'end':'middle',class:'graph-tick'},axisLabel(tx,xLabels,xScale)),
+                element('text',{x:56,y:y+4,'text-anchor':'end',class:'graph-tick',...(yText.length>7?{textLength:52,lengthAdjust:'spacingAndGlyphs'}:{})},yText));
         }
         if(xLow<=0 && xHigh>=0)group.append(element('line',{x1:px(0),x2:px(0),y1:22,y2:bottom,class:'graph-axis'}));
         if(yLow<=0 && yHigh>=0)group.append(element('line',{x1:64,x2:right,y1:py(0),y2:py(0),class:'graph-axis'}));
         group.append(element('text',{x:right,y:height-4,class:'graph-tick'},parameter),element('text',{x:14,y:16,class:'graph-tick'},'y'));
+        if(xLabels.offset)group.append(element('text',{x:64,y:height-4,class:'graph-tick graph-offset'},`${parameter} = ${label(xLabels.base,17)} + Δ`));
+        if(yLabels.offset)group.append(element('text',{x:64,y:16,class:'graph-tick graph-offset'},`y = ${label(yLabels.base,17)} + Δ`));
         const defs=element('defs'),clip=element('clipPath',{id:'graph-clip'});
         clip.append(element('rect',{x:64,y:22,width:right-64,height:bottom-22}));defs.append(clip);group.append(defs);
         for(const [index,chunk] of (chunks||[{points}]).entries()) {
@@ -186,7 +202,7 @@ function initGraph() {
         if(low===null||high===null||high<=low||!Number.isFinite(high-low)||entry.points.some((p,i)=>p.nx===null||(i>0&&p.nx<=entry.points[i-1].nx)))return false;
         const a=entry.requestedLow,b=entry.requestedHigh;
         if(a!==null&&b!==null&&b>a&&Number.isFinite(b-a)) {
-            const near=(actual,requested)=>Math.abs(actual-requested)<=Math.max((b-a)*1e-9,Math.abs(requested)*1e-12);
+            const near=(actual,requested)=>Math.abs(actual-requested)<=Math.max((b-a)*1e-12,Math.abs(requested)*Number.EPSILON*4);
             // HTTP plotting coordinates are rounded. Use requested coverage
             // when endpoints agree to projection precision, avoiding tiny gaps.
             if(near(low,a)&&near(high,b)){low=a;high=b;}
@@ -323,6 +339,7 @@ function initGraph() {
     }
     function moveView(low,high) {
         if(!Number.isFinite(low)||!Number.isFinite(high)||high<=low||!Number.isFinite(high-low))return;
+        if(high-low<Math.max(Math.abs(low),Math.abs(high))*Number.EPSILON*256){message(text.range,true);return;}
         ++generation;request?.abort();request=null;root.removeAttribute('aria-busy');
         viewport=[low,high];$('graph-min').value=String(low);$('graph-max').value=String(high);
         stopPrefetch();pendingView=true;
