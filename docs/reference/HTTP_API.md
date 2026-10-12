@@ -228,3 +228,7 @@ Its reads do not consume evaluation revisions or alter calculator previews.
 The [graph sampling HTTP API](GRAPH_HTTP_API.md) adds read-only
 `POST /api/graph/sample` with exact internal coordinates, bounded plotting
 projections and per-point classification. The complete request shares one budget.
+
+## Calculation duration
+
+Successful evaluation and conversion responses may include `elapsed_ms` when server computation takes more than 500 milliseconds. Timing uses monotonic clocks and excludes network latency and the preview delay. Cached calculator results and stored history omit it. The web UI displays it below the result in both languages; editing or replacing the result clears it. Timing metadata is best effort and cannot fail an otherwise successful result.

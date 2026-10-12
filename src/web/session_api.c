@@ -298,6 +298,8 @@ static CalculatorStatus session_request(ApplicationClientStore *store,
 {
     if (store == NULL || method == NULL || target == NULL || body == NULL || response == NULL) return CALCULATOR_NULL_ARGUMENT;
     *response = NULL;
+    uint64_t conversion_started = UINT64_MAX;
+    uint64_t conversion_finished = UINT64_MAX;
     Query query; char path[64];
     if (!parse(target, path, &query)) return CALCULATOR_INVALID_ARGUMENT;
     if (strcmp(path, "/api/graph/sample") == 0)
@@ -364,7 +366,9 @@ static CalculatorStatus session_request(ApplicationClientStore *store,
             }
             NumForgeConversionOptions options;
             if (!numforge_web_parse_conversion_options(convert_target, &options)) { status = CALCULATOR_INVALID_ARGUMENT; goto done; }
+            conversion_started = numforge_monotonic_ms();
             status = application_conversion_confirm(session, revision, body, options.from, options.to, &options.context, &confirmed, error, code);
+            conversion_finished = numforge_monotonic_ms();
         } else status = CALCULATOR_INVALID_ARGUMENT;
         if (status != CALCULATOR_OK) goto done;
     }
@@ -426,6 +430,7 @@ done:
     if (status == CALCULATOR_OK) *response = json.data;
     else free(json.data);
     if (owner) numforge_budget_end();
+    if (status == CALCULATOR_OK) numforge_web_result_timing(response, conversion_started, conversion_finished);
     return status;
 }
 

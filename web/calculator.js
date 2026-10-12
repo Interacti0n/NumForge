@@ -121,6 +121,8 @@ function invalidate()
     expandResult.textContent = text.showAll;
     result.textContent = '';
     setResultApproximation('');
+    document.querySelector('#result-time').hidden = true;
+    document.querySelector('#result-time').textContent = '';
     resultCopy = '';
     result.className = '';
     resultMoreMarker.hidden = true;
@@ -1129,6 +1131,11 @@ async function calculate(commit)
         }
         if (id !== generation) return;
         result.textContent = data.result;
+        const timing = document.querySelector('#result-time');
+        const elapsed = data.elapsed_ms;
+        timing.hidden = !Number.isSafeInteger(elapsed) || elapsed <= 500;
+        timing.textContent = timing.hidden ? '' : (english ? 'Calculation time: ' : 'Čas výpočtu: ') +
+            (elapsed / 1000).toLocaleString(english ? 'en' : 'sk', {maximumFractionDigits: 3}) + ' s';
         setResultApproximation(data.approx);
         resultCopy = Object.hasOwn(data, 'copy') ? (typeof data.copy === 'string' ? data.copy : '') :
             (request.notation === 'math' ? '' : data.result);

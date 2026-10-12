@@ -598,6 +598,7 @@ static void numforge_handle_evaluation_impl(
     char *approximation = NULL;
     size_t response_capacity;
     bool reused = false;
+    uint64_t started = numforge_monotonic_ms();
     const CalculatorValue *output_value = NULL;
 
     if (action != NULL)
@@ -646,6 +647,7 @@ static void numforge_handle_evaluation_impl(
         if (status == CALCULATOR_OK && cache != NULL && strcmp(cache->expression,body)==0) output_value = &cache->value;
     }
 
+    uint64_t finished = numforge_monotonic_ms();
     NumForgeProfilePhase serial_previous = numforge_profile_enter(NUMFORGE_PHASE_SERIALIZE);
     if (status == CALCULATOR_OK)
     {
@@ -696,6 +698,7 @@ static void numforge_handle_evaluation_impl(
                 (void)snprintf(response + used - 1U, response_capacity - used + 1U,
                     ",\"approx\":\"%s\"}", approximation);
             }
+            if (!reused) numforge_web_result_timing(&response, started, finished);
             numforge_send_response(socket, 200, "OK", "application/json; charset=utf-8", response);
             free(response);
         }

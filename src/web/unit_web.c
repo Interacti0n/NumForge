@@ -237,6 +237,7 @@ CalculatorStatus numforge_web_convert(const CalculatorSession *session,
         calculator_error_set(error, CALCULATOR_INVALID_ARGUMENT, 0);
         return CALCULATOR_INVALID_ARGUMENT;
     }
+    uint64_t started = numforge_monotonic_ms();
     ApplicationConversion entry = {0};
     bool owner = numforge_budget_begin((uint64_t)options->context.time_limit_ms,
         CALCULATOR_ALLOCATION_BUDGET, CALCULATOR_SINGLE_ALLOCATION);
@@ -249,6 +250,7 @@ CalculatorStatus numforge_web_convert(const CalculatorSession *session,
     else if (status == CALCULATOR_VALUE_TOO_LARGE) *code = "value_too_large";
     else if (status == CALCULATOR_OUT_OF_MEMORY) *code = "out_of_memory";
     if (owner) numforge_budget_end();
+    if (status == CALCULATOR_OK) numforge_web_result_timing(response, started, numforge_monotonic_ms());
     return status;
 }
 CalculatorStatus numforge_web_unit_catalog(char **response)

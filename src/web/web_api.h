@@ -5,6 +5,9 @@
 #include "session.h"
 #include "client_store.h"
 
+/* Best-effort optional metadata; never fails an otherwise successful result. */
+void numforge_web_result_timing(char **response, uint64_t started, uint64_t finished);
+
 CalculatorStatus numforge_web_evaluate_session(
     CalculatorSession *session,
     uint64_t revision,

@@ -296,9 +296,25 @@ void test_web_api_validates_output_scale_before_expression(void)
     TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, error.status);
 }
 
+static void test_optional_result_timing(void)
+{
+    char *json = malloc(12U);
+    TEST_ASSERT_NOT_NULL(json);
+    memcpy(json, "{\"ok\":true}", 12U);
+    numforge_web_result_timing(&json, 100U, 600U);
+    TEST_ASSERT_EQUAL_STRING("{\"ok\":true}", json);
+    numforge_web_result_timing(&json, UINT64_MAX, 800U);
+    numforge_web_result_timing(&json, 800U, 100U);
+    TEST_ASSERT_EQUAL_STRING("{\"ok\":true}", json);
+    numforge_web_result_timing(&json, 100U, 601U);
+    TEST_ASSERT_EQUAL_STRING("{\"ok\":true,\"elapsed_ms\":501}", json);
+    free(json);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_optional_result_timing);
 
     RUN_TEST(test_web_api_evaluates_with_exact_c_bigdecimal);
     RUN_TEST(test_web_api_honors_output_precision);

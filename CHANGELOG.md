@@ -7,6 +7,8 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Display subtle server calculation timing below calculator and unit conversion results only when computation exceeds 0.5 seconds.
+
 - Add bounded exact uniform graph sampling in the C application layer and
   read-only POST /api/graph/sample with strict schemas, session snapshots,
   scientific plotting projections and domain/complex/quantity classifications.

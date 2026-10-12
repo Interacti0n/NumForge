@@ -4,6 +4,20 @@
 #include <numforge/runtime.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
+
+void numforge_web_result_timing(char **response, uint64_t started, uint64_t finished)
+{
+    if (response == NULL || *response == NULL || started == UINT64_MAX ||
+        finished == UINT64_MAX || finished < started || finished - started <= 500U) return;
+    size_t length = strlen(*response);
+    if (length == 0U || length > 128U * 1024U - 48U || (*response)[length - 1U] != '}') return;
+    char *extended = realloc(*response, length + 48U);
+    if (extended == NULL) return;
+    *response = extended;
+    (void)snprintf(extended + length - 1U, 49U, ",\"elapsed_ms\":%llu}",
+        (unsigned long long)(finished - started));
+}
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------

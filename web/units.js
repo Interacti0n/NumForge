@@ -183,6 +183,11 @@ function initUnits() {
         }
     }
     function showResult(body, message) {
+    const timing = document.querySelector('#unit-result-time');
+    const elapsed = body.elapsed_ms;
+    timing.hidden = !Number.isSafeInteger(elapsed) || elapsed <= 500;
+    timing.textContent = timing.hidden ? '' : (english ? 'Calculation time: ' : 'Čas výpočtu: ') +
+        (elapsed / 1000).toLocaleString(english ? 'en' : 'sk', {maximumFractionDigits: 3}) + ' s';
         result.textContent=body.result; $('unit-result-symbol').textContent=body.symbol;
         const approximation = $('unit-result-approx');
         approximation.textContent = body.approx ? '≈ ' + body.approx + ' ' + body.symbol : '';
@@ -242,6 +247,7 @@ function initUnits() {
         ++generation; clearTimeout(timer); conversion?.abort();
         copyValue=''; result.textContent=''; $('unit-result-symbol').textContent='';
         $('unit-result-approx').textContent=''; $('unit-result-approx').hidden=true;
+        $('unit-result-time').textContent=''; $('unit-result-time').hidden=true;
         $('unit-copy').disabled=true; meta.hidden=true; $('unit-retry').hidden=true;
         return generation;
     }
@@ -348,7 +354,7 @@ function initUnits() {
                     updatePlaces();chooseCategory(saved.category,[saved.from,saved.to]);
                     id=invalidate();save();
                 }
-                body=saved.body;
+                body={...saved.body, elapsed_ms:body.elapsed_ms};
             }
             if (typeof body.result!=='string' || typeof body.symbol!=='string') throw Error('Invalid result');
             showResult(body,confirm?text.confirmed:text.preview);

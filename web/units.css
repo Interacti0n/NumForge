@@ -137,3 +137,6 @@ body { height: auto; min-height: 100dvh; overflow: auto; }
     .unit-submit-row { justify-content: flex-end; }
     .units-column > .unit-history-card { min-width: 0; }
 }
+
+.result-time { margin: 12px 0 0; padding-top: 10px; border-top: 1px solid #c994f03d; color: var(--muted, #a99bb7); font-size: .75rem; line-height: 1.4; }
+.result-time[hidden] { display: none; }
