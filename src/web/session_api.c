@@ -89,10 +89,10 @@ static void snapshot(Json *json, const CalculatorValue *value, bool full)
 
 enum { CLIENT, ACTION, REVISION, OFFSET, LIMIT, AT, ID, NAME, FULL,
        FROM, TO, PRECISION, PLACES, ROUNDING, ANGLE, NOTATION,
-       MINIMUM, MAXIMUM, POINTS, PARAMETER, MODE, WIDTH, HEIGHT, QUALITY, QUERY_COUNT };
+       MINIMUM, MAXIMUM, POINTS, PARAMETER, MODE, WIDTH, HEIGHT, QUALITY, YMINIMUM, YMAXIMUM, QUERY_COUNT };
 static const char *keys[] = {"client", "action", "revision", "offset", "limit", "at", "id", "name", "full",
     "from", "to", "precision", "places", "rounding", "angle", "notation",
-    "min", "max", "points", "parameter", "mode", "width", "height", "quality"};
+    "min", "max", "points", "parameter", "mode", "width", "height", "quality", "ymin", "ymax"};
 typedef struct Query { char values[QUERY_COUNT][48]; unsigned int seen; } Query;
 #define BIT(field) (1U << (field))
 
@@ -215,11 +215,28 @@ static void plot_number(Json *json, const CalculatorValue *value, int places)
     free(text);
 }
 
+static bool camera_bound(const char *text, double *value)
+{
+    const char *p=text;
+    if(*p=='+'||*p=='-')++p;
+    bool digits=false;
+    while(*p>='0'&&*p<='9'){digits=true;++p;}
+    if(*p=='.'){++p;while(*p>='0'&&*p<='9'){digits=true;++p;}}
+    if(!digits)return false;
+    if(*p=='e'||*p=='E'){
+        ++p;if(*p=='+'||*p=='-')++p;
+        const char *start=p;while(*p>='0'&&*p<='9')++p;
+        if(p==start)return false;
+    }
+    if(*p)return false;
+    char *end=NULL;errno=0;*value=strtod(text,&end);
+    return errno!=ERANGE&&isfinite(*value)&&end!=text&&*end=='\0';
+}
 static CalculatorStatus graph_request(ApplicationClientStore *store, const char *method,
     const Query *query, const char *body, char **response, CalculatorError *error, const char **code, bool adaptive)
 {
     const unsigned int allowed = BIT(CLIENT) | BIT(AT) | BIT(MINIMUM) | BIT(MAXIMUM) |
-        (adaptive ? BIT(MODE)|BIT(WIDTH)|BIT(HEIGHT)|BIT(QUALITY) : BIT(POINTS)) | BIT(PARAMETER) | BIT(PRECISION) | BIT(ANGLE);
+        (adaptive ? BIT(MODE)|BIT(WIDTH)|BIT(HEIGHT)|BIT(QUALITY)|BIT(YMINIMUM)|BIT(YMAXIMUM) : BIT(POINTS)) | BIT(PARAMETER) | BIT(PRECISION) | BIT(ANGLE);
     uint64_t points, precision, at,width,height;
     if (strcmp(method, "POST") != 0 || (query->seen & ~allowed) ||
         !(query->seen & BIT(MINIMUM)) || !(query->seen & BIT(MAXIMUM)) ||
@@ -229,7 +246,14 @@ static CalculatorStatus graph_request(ApplicationClientStore *store, const char 
         ((query->seen & BIT(AT)) && !(query->seen & BIT(CLIENT)))) return CALCULATOR_INVALID_ARGUMENT;
     bool fast_mode=(query->seen&BIT(MODE))!=0U;
     if(fast_mode&&strcmp(query->values[MODE],"fast")!=0)return CALCULATOR_INVALID_ARGUMENT;
-    if(!fast_mode&&(query->seen&(BIT(WIDTH)|BIT(HEIGHT)|BIT(QUALITY))))return CALCULATOR_INVALID_ARGUMENT;
+    if(!fast_mode&&(query->seen&(BIT(WIDTH)|BIT(HEIGHT)|BIT(QUALITY)|BIT(YMINIMUM)|BIT(YMAXIMUM))))return CALCULATOR_INVALID_ARGUMENT;
+    double vertical_span=0;
+    if(query->seen&(BIT(YMINIMUM)|BIT(YMAXIMUM))){
+        if(!(query->seen&BIT(YMINIMUM))||!(query->seen&BIT(YMAXIMUM)))return CALCULATOR_INVALID_ARGUMENT;
+        double low,high;
+        if(!camera_bound(query->values[YMINIMUM],&low)||!camera_bound(query->values[YMAXIMUM],&high)||high<=low||!isfinite(high-low))return CALCULATOR_INVALID_ARGUMENT;
+        vertical_span=high-low;
+    }
     if(!number(query,WIDTH,800U,&width)||width<320U||width>2048U||!number(query,HEIGHT,440U,&height)||height<160U||height>1200U)return CALCULATOR_INVALID_ARGUMENT;
     bool coarse=(query->seen&BIT(QUALITY))&&strcmp(query->values[QUALITY],"coarse")==0;
     if((query->seen&BIT(QUALITY))&&!coarse&&strcmp(query->values[QUALITY],"refined")!=0)return CALCULATOR_INVALID_ARGUMENT;
@@ -267,7 +291,7 @@ static CalculatorStatus graph_request(ApplicationClientStore *store, const char 
         bool usable=errno!=ERANGE&&isfinite(low)&&end!=query->values[MINIMUM]&&*end=='\0';
         errno=0;double high=strtod(query->values[MAXIMUM],&end);usable=usable&&errno!=ERANGE&&isfinite(high)&&end!=query->values[MAXIMUM]&&*end=='\0';
         ApplicationFastGraph *fast=NULL;
-        if(usable&&high>low)status=application_fast_graph_sample(&fast,body,parameter,low,high,(size_t)width,(size_t)height,coarse,session,&context,error);
+        if(usable&&high>low)status=application_fast_graph_sample_view(&fast,body,parameter,low,high,(size_t)width,(size_t)height,vertical_span,coarse,session,&context,error);
         else status=CALCULATOR_NOT_IMPLEMENTED;
         if(status==CALCULATOR_OK){
             json.capacity=FAST_GRAPH_RESPONSE_CAPACITY;json.data=numforge_malloc(json.capacity);

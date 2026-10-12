@@ -44,3 +44,24 @@ test('unsupported and high precision requests retain the precision sampler',asyn
   const response=await request.post('/api/graph/plot?'+new URLSearchParams({mode:'fast',width:'800',height:'440',min:'-10',max:'10',...extra}),{data:'x'});expect(response.ok()).toBe(false);
  }
 });
+
+test('camera span controls pixel refinement without changing values or pole gaps',async({request})=>{
+ const wide=await plot(request,'sin(33x)',{min:'-30',max:'30',width:'2048',ymin:'-10',ymax:'10'});
+ const narrow=await plot(request,'sin(33x)',{min:'-30',max:'30',width:'2048',ymin:'-1',ymax:'1'});
+ expect(wide.limited).toBe(false);expect(wide.count).toBeLessThan(narrow.count);
+ expect(wide.points.slice(1).every(p=>p[2]===1)).toBe(true);
+ let pixelError=0;
+ wide.points.forEach((p,i)=>{
+  expect(Math.abs(p[1]-Math.sin(33*p[0]))).toBeLessThan(1e-9);
+  if(i&&p[2]){const a=wide.points[i-1];for(const t of [.25,.5,.75])
+   pixelError=Math.max(pixelError,Math.abs(a[1]+(p[1]-a[1])*t-Math.sin(33*(a[0]+(p[0]-a[0])*t)))*440/20);}
+ });expect(pixelError).toBeLessThan(1.2);
+ const poles=await plot(request,'1/x',{ymin:'-10',ymax:'10'});
+ poles.points.forEach((p,i)=>{if(p[2])expect(poles.points[i-1][0]<0&&p[0]>0).toBe(false);});
+ for(const extra of [{ymin:'-10'},{ymax:'10'},{ymin:'10',ymax:'-10'},{ymin:'0',ymax:'0'},
+  {ymin:'nan',ymax:'10'},{ymin:'-1e308',ymax:'1e308'},{ymin:'-10x',ymax:'10'},
+  {ymin:'0x1',ymax:'10'},{ymin:' 0',ymax:'10'},{ymin:'0',ymax:'1e'},{ymin:'-10',ymax:'10',mode:''}]){
+  const response=await request.post('/api/graph/plot?'+new URLSearchParams({mode:'fast',min:'-10',max:'10',...extra}),{data:'x'});
+  expect(response.ok()).toBe(false);
+ }
+});

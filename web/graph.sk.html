@@ -44,8 +44,10 @@
         <form id="graph-form">
           <label class="graph-expression">Funkcia · y =<input id="graph-expression" value="sin(x)" maxlength="4096" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
           <details class="graph-settings"><summary>Rozsah a nastavenia</summary><p class="graph-note">Zobrazený rozsah začína od −10 do 10. Predvolená presnosť uprednostňuje plynulé približné kreslenie; iná hodnota použije presnejší výpočet bodov. Hustota bodov je automatická.</p><div class="graph-fields">
-            <label>Od<input id="graph-min" value="-10" inputmode="decimal" required></label>
-            <label>Do<input id="graph-max" value="10" inputmode="decimal" required></label>
+            <label>X od<input id="graph-min" value="-10" inputmode="decimal" required></label>
+            <label>X do<input id="graph-max" value="10" inputmode="decimal" required></label>
+            <label>Y od<input id="graph-ymin" value="-10" inputmode="decimal" required></label>
+            <label>Y do<input id="graph-ymax" value="10" inputmode="decimal" required></label>
             <label>Výpočtová presnosť<input id="graph-precision" type="number" min="1" max="10000" step="1" value="34" required></label>
             <label>Uhlová jednotka<select id="graph-angle"><option value="rad">Radiány</option><option value="deg">Stupne</option></select></label>
           </div></details>
@@ -55,7 +57,7 @@
         <noscript><p>Graf vyžaduje JavaScript.</p></noscript>
       </section>
       <section class="card graph-result" aria-labelledby="graph-result-title">
-        <div class="graph-heading"><h2 id="graph-result-title">Graf</h2><div class="graph-view-controls"><button type="button" id="graph-zoom-in" aria-label="Priblížiť">+</button><button type="button" id="graph-zoom-out" aria-label="Oddialiť">−</button><button type="button" id="graph-reset">Obnoviť pohľad</button></div></div><p class="graph-note" id="graph-interaction-hint">Kolieskom alebo dvoma prstami priblíž; potiahnutím do strán posuň. Os y sa prispôsobí krivke automaticky.</p>
+        <div class="graph-heading"><h2 id="graph-result-title">Graf</h2><div class="graph-view-controls"><button type="button" id="graph-zoom-in" aria-label="Priblížiť">+</button><button type="button" id="graph-zoom-out" aria-label="Oddialiť">−</button><button type="button" id="graph-reset">Obnoviť pohľad</button></div></div><p class="graph-note" id="graph-interaction-hint">Kolieskom alebo dvoma prstami priblíž; potiahnutím posuň ľubovoľným smerom. Obnovenie vráti obe osi na −10 až 10.</p>
         <p id="graph-status" role="status" aria-live="polite">Zadaj funkciu a vykresli ju.</p>
         <svg id="graph-plot" tabindex="0" aria-describedby="graph-interaction-hint" viewBox="0 0 800 440" role="img" aria-labelledby="graph-svg-title graph-svg-description" hidden><title id="graph-svg-title">Graf</title><desc id="graph-svg-description"></desc></svg>
         <p class="graph-note">Krivka sa prispôsobuje funkcii. Medzery označujú chyby alebo nejasné úseky; vzorkovanie nedokazuje spojitosť všade.</p>

@@ -132,13 +132,13 @@ static CalculatorStatus peaks(Work *work)
     }
     return CALCULATOR_OK;
 }
-CalculatorStatus application_fast_graph_sample(ApplicationFastGraph **result,const char *input,const char *parameter,
-    double minimum,double maximum,size_t width,size_t height,bool coarse,const CalculatorSession *session,
+CalculatorStatus application_fast_graph_sample_view(ApplicationFastGraph **result,const char *input,const char *parameter,
+    double minimum,double maximum,size_t width,size_t height,double vertical_span,bool coarse,const CalculatorSession *session,
     const CalculatorContext *context,CalculatorError *error)
 {
     calculator_error_clear(error);
     if(!result||!input||!context){calculator_error_set(error,CALCULATOR_NULL_ARGUMENT,0U);return CALCULATOR_NULL_ARGUMENT;}
-    if(!isfinite(minimum)||!isfinite(maximum)||maximum<=minimum||width<320U||width>2048U||height<160U||height>1200U)return CALCULATOR_INVALID_ARGUMENT;
+    if(!isfinite(minimum)||!isfinite(maximum)||maximum<=minimum||!isfinite(vertical_span)||vertical_span<0||width<320U||width>2048U||height<160U||height>1200U)return CALCULATOR_INVALID_ARGUMENT;
     if(!isfinite(maximum-minimum))return CALCULATOR_NOT_IMPLEMENTED;
     if(maximum-minimum<fmax(fabs(minimum),fabs(maximum))*DBL_EPSILON*256)return CALCULATOR_NOT_IMPLEMENTED;
     CalculatorStatus status=calculator_context_validate(context,error);if(status!=CALCULATOR_OK)return status;
@@ -161,6 +161,7 @@ CalculatorStatus application_fast_graph_sample(ApplicationFastGraph **result,con
         memcpy(work.graph->parameter,application_expression_parameter(work.exact),strlen(application_expression_parameter(work.exact))+1U);
         work.scale=fmax(fabs(low),fabs(high));if(!isfinite(work.scale)||work.scale==0)work.scale=1;
         double span=(high-low)/work.scale;if(!isfinite(span))span=high/work.scale-low/work.scale;if(!isfinite(span)||span<=0)span=1;
+        if(vertical_span>0)span=vertical_span/work.scale;
         /* Acceptance emits two half-chords. For smooth local curvature their
          * error is about a quarter of the parent midpoint deviation. */
         work.tolerance=span*(coarse?8:2)/(double)height;work.coarse_width=(maximum-minimum)/(double)width;
@@ -174,4 +175,10 @@ CalculatorStatus application_fast_graph_sample(ApplicationFastGraph **result,con
     if(status==CALCULATOR_OK)*result=work.graph;else{application_fast_graph_destroy(work.graph);calculator_error_set(error,status,error?error->offset:0U);}
     if(owner)numforge_budget_end();
     return status;
+}
+CalculatorStatus application_fast_graph_sample(ApplicationFastGraph **result,const char *input,const char *parameter,
+    double minimum,double maximum,size_t width,size_t height,bool coarse,const CalculatorSession *session,
+    const CalculatorContext *context,CalculatorError *error)
+{
+    return application_fast_graph_sample_view(result,input,parameter,minimum,maximum,width,height,0,coarse,session,context,error);
 }

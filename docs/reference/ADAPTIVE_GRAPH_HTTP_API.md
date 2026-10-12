@@ -136,11 +136,11 @@ retain references until the next view is drawn. The table renders at most 1024 r
 data is not persisted in sessionStorage. The finest available cached range is
 chosen per visible segment, retaining independent C connection/gap flags.
 Coordinates at endpoints may be aligned to the requested camera coverage within
-the current projection/binary rounding tolerance, without changing sample values. Cached views
-fit visible samples, while limited ranges retain their server-provided y overview.
-
-Deep-zoom axis labels use a displayed base plus Δ offsets when ordinary labels
-would repeat. Automatic y spans have a relative 1e-12 floor to avoid amplifying
-binary/projection quantization into a fake staircase; real tiny values around
-zero still scale normally. Camera zoom stops before x coordinates become
-indistinguishable at the browser's numeric precision.
+the current projection/binary rounding tolerance, without changing sample values.
+The browser camera starts at −10..10 on both axes and remains independent of
+returned extrema. Dragging pans in both dimensions; reset restores both axes.
+The first request prepares three times the visible x span. The screen API's
+optional camera bounds set the vertical error scale; precision fallback retains
+its own sampling criteria. Nice axis ticks use 1/2/5 steps, exact zero and decimal
+places appropriate to zoom. Camera zoom stops before either axis loses reliable
+pixel coordinate precision.

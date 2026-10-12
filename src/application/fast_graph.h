@@ -17,5 +17,10 @@ CalculatorStatus application_fast_graph_sample(ApplicationFastGraph **result,
     const char *input,const char *parameter,double minimum,double maximum,
     size_t width,size_t height,bool coarse,const CalculatorSession *session,
     const CalculatorContext *context,CalculatorError *error);
+/* A positive vertical_span sets the camera's y scale; zero retains seed scaling. */
+CalculatorStatus application_fast_graph_sample_view(ApplicationFastGraph **result,
+    const char *input,const char *parameter,double minimum,double maximum,
+    size_t width,size_t height,double vertical_span,bool coarse,const CalculatorSession *session,
+    const CalculatorContext *context,CalculatorError *error);
 void application_fast_graph_destroy(ApplicationFastGraph *graph);
 #endif

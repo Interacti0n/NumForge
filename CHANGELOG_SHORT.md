@@ -5,6 +5,9 @@ details and the [2.2.1 release record](docs/project/RELEASE_2_2_1.md) for valida
 
 ## Unreleased
 
+- Move graphs in both directions with fixed initial axes, exact zero labels and
+  a wider prepared region for smooth cached movement.
+
 - Draw graphs through a faster C sampler and refine uncached views progressively.
 
 - Allow more adaptive graph detail with bounded API responses and cache.
@@ -15,7 +18,7 @@ details and the [2.2.1 release record](docs/project/RELEASE_2_2_1.md) for valida
 
 - Preserve periodic sin/cos peaks in coarse graphs without synthesizing results.
 
-- Interactive graph pan/zoom and automatic y scaling to sampled extrema.
+- Interactive graph pan/zoom with mouse, touch and keyboard.
 
 - Favor coarser connected overview curves for recognized continuous functions,
   including sin(33x), while retaining strict pole and domain checks.

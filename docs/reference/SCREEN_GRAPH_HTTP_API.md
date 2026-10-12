@@ -17,6 +17,14 @@ Additional fields require `mode=fast`:
 | `width` | Integer 320–2048 | 800 |
 | `height` | Integer 160–1200 | 440 |
 | `quality` | `coarse`, `refined` | `refined` |
+| `ymin`, `ymax` | Both finite decimal bounds with finite positive difference | Seed-derived vertical scale |
+
+When supplied together, `ymin` and `ymax` define the visible vertical span used
+for pixel error estimates. They do not discard samples outside the camera or
+change returned `y_min`/`y_max` extrema metadata. Missing pairs, nonfinite bounds
+and reversed/equal ranges fail. Precision fallback accepts these camera fields
+but retains its existing adaptive criteria. Without them, fast API clients keep
+the seed-derived vertical scale.
 
 Default calculation precision 34 permits approximate C double arithmetic; this
 does **not** mean 34 accurate digits. Non-default precision, unsupported syntax,
@@ -71,6 +79,14 @@ requests coarse data, paints it for a frame, then requests refined data. A
 precision fallback is already final and is not requested twice. Each HTTP
 operation has its own budget. Browser aborts reject obsolete responses but do
 not promise interruption of C work already running on the server.
+
+The browser camera starts at −10..10 on both axes, independently of the curve.
+Its first request samples −30..30 with proportionally increased width (capped
+at 2048) and the visible y span. Prepared coverage redraws immediately; finer
+zoom may require refinement. Drag/pinch and arrows move in both dimensions;
+vertical translation only reprojects data. Reset restores both axes. Nice ticks
+use 1/2/5 steps and additional decimal places as zoom increases; zero is exact.
+The browser does not use response extrema to resize its camera.
 
 Cache bounds are 12 ranges / 12288 points / 8 MiB estimated weight. Eviction
 prefers off-screen/coarse data over the current fine view. Dense partial jobs

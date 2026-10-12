@@ -374,9 +374,27 @@ static void test_fast_screen_sampler_connections_and_atomic_failure(void)
     TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE,application_fast_graph_sample(&screen_graph,"x",NULL,-10,10,320U,300U,false,NULL,&context,&error));
     numforge_budget_end();TEST_ASSERT_NULL(screen_graph);
 }
+static void test_screen_camera_span_and_failure_preserve_output(void)
+{
+    CalculatorError error;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_graph_sample_view(&screen_graph,"sin(x)",NULL,-30,30,2048U,440U,2,false,NULL,&context,&error));
+    size_t detailed=screen_graph->count;
+    application_fast_graph_destroy(screen_graph);screen_graph=NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_graph_sample_view(&screen_graph,"sin(x)",NULL,-30,30,2048U,440U,20,false,NULL,&context,&error));
+    TEST_ASSERT_LESS_THAN(detailed,screen_graph->count);
+    TEST_ASSERT_FALSE(screen_graph->limited);
+    for(size_t i=1U;i<screen_graph->count;++i)TEST_ASSERT_TRUE(screen_graph->points[i].connect);
+    ApplicationFastGraph *original=screen_graph;
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,application_fast_graph_sample_view(&screen_graph,"x",NULL,-10,10,800U,440U,-1,false,NULL,&context,&error));
+    TEST_ASSERT_EQUAL_PTR(original,screen_graph);
+    numforge_test_allocator_begin(1U);
+    TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY,application_fast_graph_sample_view(&screen_graph,"x",NULL,-10,10,800U,440U,20,false,NULL,&context,&error));
+    numforge_test_allocator_end();TEST_ASSERT_EQUAL_PTR(original,screen_graph);
+}
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_screen_camera_span_and_failure_preserve_output);
     RUN_TEST(test_fast_screen_sampler_connections_and_atomic_failure);
     RUN_TEST(test_resolution_experiment_preserves_budget_and_atomic_output);
     RUN_TEST(test_peak_work_allocation_failures_are_atomic);

@@ -7,6 +7,11 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Start graph cameras at −10..10 on both axes, add vertical pan and explicit y
+  bounds, and precompute a wider x region for immediate cached movement. Use
+  regular 1/2/5 axis steps, exact zero and progressively finer decimal labels;
+  pass the visible y span to screen-space refinement.
+
 - Use an approximate C screen-space graph sampler with the existing parser,
   owned double bytecode, precision fallback and compact schema 3. Add coarse
   then refined viewport requests, bounded active-view cache and shared SVG
@@ -17,25 +22,23 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
   by aggregate points and estimated memory as well as range count.
 
 - Preserve close adaptive graph coordinates with a 16-place scientific projection
-  while retaining uniform API output. Add distinct deep-zoom axis offset labels,
-  a minimal relative y span and a browser-resolution camera bound to prevent
-  false staircases around flat extrema.
+  while retaining uniform API output. Keep distinct deep-zoom axis labels and
+  a browser-resolution camera bound to prevent false staircases around flat extrema.
 
 - Cache bounded graph ranges across resolution levels and prepare adjacent/wider
   views during idle time. Reuse prepared data immediately, sample missing pieces
   without clearing the curve and validate session revisions before cache reuse.
   Bound/cancel optional background work and preserve C gap flags at tile seams.
 
-- Display near-zero graph axis ticks as 0 and align their gridlines with the zero
-  axis, using a view-relative threshold that preserves genuinely tiny scales.
+- Display the exact zero graph axis tick as 0 and align its gridline with the zero
+  axis while preserving genuinely tiny scales.
 
 - Anchor coarse sin/cos curves at actually evaluated phase extrema, preventing
   false amplitude modulation when uniform samples miss periodic peaks. Verify
   every extremum on the reported wide interval, degree/reversed phases and faults.
 
-- Add horizontal graph pan/zoom with mouse, touch, keyboard and reset controls;
-  debounce resampling and cancel stale work. Fit automatic y bounds to newly
-  discovered extrema for resolved/smooth curves while retaining bounded pole views.
+- Add graph pan/zoom with mouse, touch, keyboard and reset controls;
+  debounce resampling and cancel stale work. Return sampled extrema as API metadata.
 
 - Permit coarser connected graph chords for restricted continuous expression
   trees at widths proportional to the selected x range. Preserve strict checks
