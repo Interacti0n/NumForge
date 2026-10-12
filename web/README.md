@@ -96,8 +96,8 @@ The footer shows the exact English MIT text from the root license in a local
 dialog; GitHub opens in a new tab. Header and footer dimensions match between
 the calculator and guide.
 
-The SK/EN `/graph` page uses `graph.css` and `graph.js` to display points from
-`POST /api/graph/sample`. C owns expression evaluation; JavaScript projects and
+The SK/EN `/graph` page uses `graph.css` and `graph.js` to draw adaptive curves from
+`POST /api/graph/plot`. C owns expression evaluation; JavaScript projects and
 validates finite browser coordinates. Form settings survive in-place navigation,
 requests are canceled on edits/disposal, and sample values are accessible in a
 table. See the [graph guide](../docs/guides/GRAPHS.md).

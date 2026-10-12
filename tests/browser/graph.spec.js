@@ -51,3 +51,14 @@ test('graph strict schema and inherited HTTP origin protections',async({request}
     const unicode=await graph(request,'π+missing');
     expect(unicode.response.ok()).toBe(false);expect(unicode.data.column).toBe(3);
 });
+
+test('adaptive sampler leaves tangent poles and step jumps disconnected',async({request})=>{
+ const sample=async expression=>(await request.post('/api/graph/plot?min=-2&max=2',{data:expression})).json();
+ const tangent=await sample('tan(x)');expect(tangent.ok).toBe(true);expect(tangent.limited).toBe(true);
+ for(let i=1;i<tangent.points.length;i++)for(const pole of [-Math.PI/2,Math.PI/2])
+  if(Number(tangent.points[i-1].x)<pole&&Number(tangent.points[i].x)>pole)expect(tangent.points[i].connect).toBe(false);
+ const step=await sample('floor(x)');expect(step.ok).toBe(true);
+ for(let i=1;i<step.points.length;i++)if(step.points[i].connect)expect(step.points[i].y).toBe(step.points[i-1].y);
+ const logarithm=await sample('ln(x)');expect(logarithm.ok).toBe(true);
+ for(let i=1;i<logarithm.points.length;i++)if(logarithm.points[i].connect){expect(logarithm.points[i].kind).toBe('real');expect(logarithm.points[i-1].kind).toBe('real');}
+});

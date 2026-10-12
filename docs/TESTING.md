@@ -63,7 +63,7 @@ isolation, inherited budgets and allocation failures through HTTP serialization.
 Playwright `graph.spec.js` verifies the [graph HTTP contract](reference/GRAPH_HTTP_API.md)
 against the real server, including query schemas, Unicode columns and Origin
 protection; the guide suite checks its localized navigation entry.
-`graph-ui.spec.js` verifies responsive axes, gap-safe optional lines, typed sample
+`graph-ui.spec.js` verifies responsive axes, adaptive lines and inferred parameters, typed sample
 data, finite browser projection/underflow, read-only session snapshots, navigation
 state and cancellation of stale requests.
 
@@ -76,3 +76,7 @@ state and cancellation of stale requests.
 
 See [release record](project/RELEASE_2_1.md) for the 2.1 checks and
 [packaging](project/RELEASE_PACKAGING.md) for extracted binary verification.
+
+Adaptive graph tests compare linear/curved density, offset poles, automatic AST
+parameters, read-only sessions, stratified allocator failures and deterministic
+deadlines. Allocation-stat builds require zero live allocations after cleanup.

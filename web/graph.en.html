@@ -43,24 +43,22 @@
         <h1 id="graph-title">Function graphs</h1>
         <form id="graph-form">
           <label class="graph-expression">Function · y =<input id="graph-expression" value="sin(x)" maxlength="4096" autocomplete="off" autocapitalize="off" spellcheck="false" required></label>
-          <div class="graph-fields">
-            <label>Parameter<input id="graph-parameter" value="x" maxlength="31" pattern="[A-Za-z]+" autocomplete="off" autocapitalize="off" required></label>
+          <details class="graph-settings"><summary>View and settings</summary><p class="graph-note">The initial view is −10 to 10. It is not the function’s domain. Precision controls calculation digits, not graph density.</p><div class="graph-fields">
             <label>From<input id="graph-min" value="-10" inputmode="decimal" required></label>
             <label>To<input id="graph-max" value="10" inputmode="decimal" required></label>
-            <label>Sample count<input id="graph-count" type="number" min="2" max="1024" step="1" value="257" required></label>
-            <label>Precision<input id="graph-precision" type="number" min="1" max="10000" step="1" value="34" required></label>
+            <label>Calculation precision<input id="graph-precision" type="number" min="1" max="10000" step="1" value="34" required></label>
             <label>Angle unit<select id="graph-angle"><option value="rad">Radians</option><option value="deg">Degrees</option></select></label>
-          </div>
+          </div></details>
           <label class="graph-option"><input id="graph-session" type="checkbox">Use calculator variables and ans</label>
           <button class="primary-button" id="graph-submit" type="submit">Plot</button>
         </form>
         <noscript><p>Graphs require JavaScript.</p></noscript>
       </section>
       <section class="card graph-result" aria-labelledby="graph-result-title">
-        <div class="graph-heading"><h2 id="graph-result-title">Graph</h2><label class="graph-option"><input id="graph-connect" type="checkbox">Connect adjacent samples</label></div>
+        <div class="graph-heading"><h2 id="graph-result-title">Graph</h2></div>
         <p id="graph-status" role="status" aria-live="polite">Enter a function and plot it.</p>
         <svg id="graph-plot" viewBox="0 0 800 440" role="img" aria-labelledby="graph-svg-title graph-svg-description" hidden><title id="graph-svg-title">Graph</title><desc id="graph-svg-description"></desc></svg>
-        <p class="graph-note">Sampled points do not prove continuity. Connecting them may cross undetected discontinuities.</p>
+        <p class="graph-note">The curve adapts to the function. Gaps mark domain errors or unresolved intervals; sampling cannot prove continuity everywhere.</p>
         <details id="graph-values" hidden><summary>Sample values</summary><div class="graph-table-wrap" tabindex="0" role="region" aria-label="Sample values"><table><caption id="graph-table-caption"></caption><thead><tr><th scope="col">x</th><th scope="col">y</th><th scope="col">Result type</th></tr></thead><tbody id="graph-table-body"></tbody></table></div></details>
       </section>
     </main>

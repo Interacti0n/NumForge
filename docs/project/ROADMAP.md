@@ -88,9 +88,9 @@ documented HTTP contract alongside the web implementation, using the versioned
    The [HTTP graph sampler](../reference/GRAPH_HTTP_API.md) now adds bounded exact
    uniform coordinates, plotting projections and point classifications.
 2. [Basic browser graphs](../guides/GRAPHS.md) now display sampled `y = f(x)`
-   points with ranges, axes, read-only session snapshots and accessible data.
-   Add bounded adaptive sampling, discontinuity detection, pan/zoom and multiple
-   curves next. Uniform sampling and optional lines do not prove continuity.
+   adaptive curves with automatic parameters, axes, read-only snapshots and data.
+   Add pan/zoom, multiple curves and stronger discontinuity detection next.
+   Adaptive refinement and connection flags remain heuristics, not continuity proofs.
 3. Add real linear/quadratic equation solving, then bounded numerical root
    finding on a specified interval, with residuals and clear convergence limits.
 4. Add session user functions, local parameters and definition management,

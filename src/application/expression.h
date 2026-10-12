@@ -23,6 +23,12 @@ typedef struct ApplicationExpressionSample
 CalculatorStatus application_expression_prepare(ApplicationExpression **result,
     const char *input, const char *parameter, const CalculatorSession *session,
     const CalculatorContext *context, CalculatorError *error);
+/* Infer the unique name absent from the source session, otherwise x if referenced
+ * or a constant graph over x. Multiple free names return UNDEFINED_VARIABLE. */
+CalculatorStatus application_expression_prepare_auto(ApplicationExpression **result,
+    const char *input, const CalculatorSession *session,
+    const CalculatorContext *context, CalculatorError *error);
+const char *application_expression_parameter(const ApplicationExpression *expression);
 void application_expression_destroy(ApplicationExpression *expression);
 
 /* Inputs are borrowed typed values with a populated number marker. Results are

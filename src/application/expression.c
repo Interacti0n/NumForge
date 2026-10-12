@@ -116,21 +116,57 @@ static CalculatorStatus bind_snapshot(ApplicationExpression *prepared,
     return status;
 }
 
-CalculatorStatus application_expression_prepare(ApplicationExpression **result,
+static CalculatorStatus infer_parameter(const CalculatorExpression *node,
+    const CalculatorSession *session, char *name, CalculatorError *error)
+{
+    if (!numforge_budget_check()) return calculator_budget_status(CALCULATOR_OUT_OF_MEMORY);
+    switch (node->type) {
+        case CALCULATOR_EXPRESSION_VARIABLE: {
+            const char *candidate = node->data.variable.name;
+            if (session != NULL) for (size_t i = 0; i < session->variable_count; ++i)
+                if (strcmp(candidate, session->variables[i].name) == 0) return CALCULATOR_OK;
+            if (*name == '\0') memcpy(name, candidate, strlen(candidate) + 1U);
+            else if (strcmp(candidate, name) != 0) {
+                calculator_error_set(error, CALCULATOR_UNDEFINED_VARIABLE, node->offset);
+                return CALCULATOR_UNDEFINED_VARIABLE;
+            }
+            break;
+        }
+        case CALCULATOR_EXPRESSION_UNARY:
+            return infer_parameter(node->data.unary.operand, session, name, error);
+        case CALCULATOR_EXPRESSION_POSTFIX:
+            return infer_parameter(node->data.postfix.operand, session, name, error);
+        case CALCULATOR_EXPRESSION_BINARY: {
+            CalculatorStatus status = infer_parameter(node->data.binary.left, session, name, error);
+            if (status != CALCULATOR_OK) return status;
+            return infer_parameter(node->data.binary.right, session, name, error);
+        }
+        case CALCULATOR_EXPRESSION_CALL:
+            for (size_t i = 0; i < node->data.call.count; ++i) {
+                CalculatorStatus status = infer_parameter(node->data.call.arguments[i], session, name, error);
+                if (status != CALCULATOR_OK) return status;
+            }
+            break;
+        default: break;
+    }
+    return CALCULATOR_OK;
+}
+
+static CalculatorStatus prepare_expression(ApplicationExpression **result,
     const char *input, const char *parameter, const CalculatorSession *session,
-    const CalculatorContext *context, CalculatorError *error)
+    const CalculatorContext *context, CalculatorError *error, bool automatic)
 {
     CalculatorStatus status;
     ApplicationExpression *prepared = NULL;
     calculator_error_clear(error);
-    if (result == NULL || input == NULL || parameter == NULL || context == NULL)
+    if (result == NULL || input == NULL || (!automatic && parameter == NULL) || context == NULL)
     {
         calculator_error_set(error, CALCULATOR_NULL_ARGUMENT, 0U);
         return CALCULATOR_NULL_ARGUMENT;
     }
     status = calculator_context_validate(context, error);
     if (status != CALCULATOR_OK) return status;
-    if (!valid_parameter(parameter) || (session != NULL && session->variable_count > CALCULATOR_VARIABLE_CAPACITY))
+    if ((!automatic && !valid_parameter(parameter)) || (session != NULL && session->variable_count > CALCULATOR_VARIABLE_CAPACITY))
         status = CALCULATOR_INVALID_ARGUMENT;
     else if (session != NULL && session->released) status = CALCULATOR_SESSION_EXPIRED;
     else status = CALCULATOR_OK;
@@ -153,8 +189,13 @@ CalculatorStatus application_expression_prepare(ApplicationExpression **result,
     if (status == CALCULATOR_OK)
     {
         prepared->context = *context;
-        memcpy(prepared->parameter_name, parameter, strlen(parameter) + 1U);
         status = calculator_parse_variables(input, &prepared->tree, error);
+        if (status == CALCULATOR_OK && automatic) {
+            status = infer_parameter(prepared->tree, session, prepared->parameter_name, error);
+            if (status == CALCULATOR_OK && prepared->parameter_name[0] == '\0')
+                memcpy(prepared->parameter_name, "x", 2U);
+        } else if (status == CALCULATOR_OK)
+            memcpy(prepared->parameter_name, parameter, strlen(parameter) + 1U);
         if (status == CALCULATOR_OK) status = bind_snapshot(prepared, prepared->tree, session, error);
     }
     status = calculator_budget_status(status);
@@ -166,6 +207,23 @@ CalculatorStatus application_expression_prepare(ApplicationExpression **result,
     }
     if (owner) numforge_budget_end();
     return status;
+}
+
+CalculatorStatus application_expression_prepare(ApplicationExpression **result,
+    const char *input, const char *parameter, const CalculatorSession *session,
+    const CalculatorContext *context, CalculatorError *error)
+{
+    return prepare_expression(result, input, parameter, session, context, error, false);
+}
+CalculatorStatus application_expression_prepare_auto(ApplicationExpression **result,
+    const char *input, const CalculatorSession *session,
+    const CalculatorContext *context, CalculatorError *error)
+{
+    return prepare_expression(result, input, NULL, session, context, error, true);
+}
+const char *application_expression_parameter(const ApplicationExpression *expression)
+{
+    return expression == NULL ? NULL : expression->parameter_name;
 }
 
 void application_expression_samples_destroy(ApplicationExpressionSample *samples, size_t count)

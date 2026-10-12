@@ -7,6 +7,8 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Add bounded adaptive C graph refinement and automatic AST parameter inference. Web graphs now draw curves with conservative unresolved gaps, omit manual sample-count/parameter/connection controls and place view/precision options in advanced settings. Uniform HTTP sampling remains available.
+
 - Organize the SK/EN Guide / API page into Calculator, Units, Graphs and API parts with focused user instructions, per-part navigation, context links from tools and preserved legacy anchors/language/history.
 
 - Add responsive SK/EN function graphs with range/precision/angle controls, read-only calculator snapshots, sampled points, axes and an accessible value table. Domain/complex/quantity gaps and browser numeric range limits remain explicit; optional lines never bridge classified gaps.

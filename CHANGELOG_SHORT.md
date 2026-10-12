@@ -5,6 +5,8 @@ details and the [2.2.1 release record](docs/project/RELEASE_2_2_1.md) for valida
 
 ## Unreleased
 
+- Plot adaptive curves with automatic variables and simpler graph controls.
+
 - Split the guide into focused Calculator, Units, Graphs and API parts.
 
 - Add the graph sampling HTTP API with bounded grids and explicit point errors;

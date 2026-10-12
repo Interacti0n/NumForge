@@ -85,3 +85,5 @@ Adaptive sampling remains future work.
 
 See the [parametric application design](../design/PARAMETRIC_EXPRESSIONS.md)
 and [general HTTP protections](HTTP_API.md).
+
+See the [adaptive graph API](ADAPTIVE_GRAPH_HTTP_API.md) for the automatic web plotter.

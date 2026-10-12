@@ -35,6 +35,7 @@ is added; saved values remain bounded application-owned memory.
 | Reset/release/clear history | `POST /api/session`, `action=reset`, `release` or `clear-history` | Available; clearing history preserves ans |
 | Discover functions, aliases and arities | `GET /api/functions` | Available; web consumes the registry |
 | Sample an expression over a real interval | `POST /api/graph/sample` | Available in development; exact C grid, plotting projections and point errors; SK/EN browser graphs with axes and sample table |
+| Adaptive curves and automatic local parameter | `POST /api/graph/plot` | Available; schema 2, bounded C refinement and conservative sampled connection flags |
 | List unit catalogue and sources | `GET /api/units` | Available |
 | Validate compatibility, preview a conversion | `POST /api/convert` | Available |
 | Confirm a conversion | `POST /api/conversions?action=commit` | Available, independent ordered history |

@@ -81,3 +81,5 @@ for specific source snapshots, not promises about every machine.
 Screenshots live in `images/`. Generated output and benchmark runs stay in
 ignored build directories. Run documented shell commands from the repository
 root unless a guide explicitly says otherwise.
+
+See the [adaptive graph API](reference/ADAPTIVE_GRAPH_HTTP_API.md) for the automatic web plotter.

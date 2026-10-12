@@ -1,5 +1,6 @@
 #include "graph.h"
 #include "session_api.h"
+#include "web_api.h"
 #include "../src/internal/numforge_alloc.h"
 #include <unity.h>
 #include <stdlib.h>
@@ -183,9 +184,89 @@ static void test_http_allocation_failures_and_deadline_leave_no_partial_response
     TEST_ASSERT_NULL(response);
     TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_TIME, numforge_budget_failure());
 }
+
+static void test_adaptive_linear_curvature_and_poles(void)
+{
+    range("-10", "10");CalculatorError error;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_graph_adaptive(&graph,"2*t+1",NULL,minimum,maximum,NULL,&context,&error));
+    TEST_ASSERT_EQUAL_STRING("t",graph->parameter);
+    size_t linear_count=graph->count;
+    for(size_t i=1U;i<graph->count;++i) {
+        int order=0;
+        TEST_ASSERT_EQUAL(BIGRATIONAL_OK,bigrational_compare(&order,graph->coordinates[i-1U].rational,graph->coordinates[i].rational));
+        TEST_ASSERT_TRUE(order<0);TEST_ASSERT_TRUE(graph->connect[i]);
+    }
+    TEST_ASSERT_FALSE(graph->limited);
+    application_graph_destroy(graph);graph=NULL;
+#ifdef NUMFORGE_ENABLE_ALLOC_STATS
+    /* Live-allocation bookkeeping is deliberately excluded from the production
+     * timing assertion; deterministic deadline tests below retain the 5 s scope. */
+    context.time_limit_ms = 60000;
+#endif
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_graph_adaptive(&graph,"sin(t)",NULL,minimum,maximum,NULL,&context,&error));
+    context.time_limit_ms = CALCULATOR_DEFAULT_TIME_LIMIT_MS;
+    TEST_ASSERT_GREATER_THAN(linear_count,graph->count);
+    TEST_ASSERT_FALSE(graph->limited);
+    application_graph_destroy(graph);graph=NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_graph_adaptive(&graph,"1/(x-0.1)",NULL,minimum,maximum,NULL,&context,&error));
+    BigRational *pole=bigrational_create();BigDecimal *decimal=bigdecimal_create();
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK,bigdecimal_set_string(decimal,"0.1"));
+    TEST_ASSERT_EQUAL(BIGRATIONAL_OK,bigrational_from_bigdecimal(pole,decimal));
+    bool found=false;
+    for(size_t i=1U;i<graph->count;++i) {
+        int left=0,right=0;
+        TEST_ASSERT_EQUAL(BIGRATIONAL_OK,bigrational_compare(&left,graph->coordinates[i-1U].rational,pole));
+        TEST_ASSERT_EQUAL(BIGRATIONAL_OK,bigrational_compare(&right,graph->coordinates[i].rational,pole));
+        if(left<0 && right>0){TEST_ASSERT_FALSE(graph->connect[i]);found=true;}
+    }
+    TEST_ASSERT_TRUE(found);TEST_ASSERT_TRUE(graph->limited);
+    TEST_ASSERT_LESS_OR_EQUAL(APPLICATION_EXPRESSION_MAX_SAMPLES,graph->count);
+    bigrational_destroy(pole);bigdecimal_destroy(decimal);
+}
+static void test_adaptive_automatic_parameter_and_read_only_session(void)
+{
+    range("-1","1");CalculatorError error;
+    TEST_ASSERT_EQUAL(CALCULATOR_UNDEFINED_VARIABLE, application_graph_adaptive(&graph,"x+y",NULL,minimum,maximum,NULL,&context,&error));
+    TEST_ASSERT_NULL(graph);
+    CalculatorSession *session=application_client_session(&store,client,true);bool reused=false;char *display=NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,numforge_web_evaluate_session(session,1U,true,"a=2",10,CALCULATOR_ANGLE_RADIANS,&display,&error,&reused));free(display);
+    CalculatorSession before=*session;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_graph_adaptive(&graph,"a*t+ans",NULL,minimum,maximum,session,&context,&error));
+    TEST_ASSERT_EQUAL_STRING("t",graph->parameter);TEST_ASSERT_EQUAL_MEMORY(&before,session,sizeof(before));
+    application_graph_destroy(graph);graph=NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_graph_adaptive(&graph,"a",NULL,minimum,maximum,session,&context,&error));
+    TEST_ASSERT_EQUAL_STRING("x",graph->parameter);TEST_ASSERT_EQUAL_MEMORY(&before,session,sizeof(before));
+}
+static void test_adaptive_faults_deadline_and_http_contract(void)
+{
+    range("-1","1");CalculatorError error;
+    numforge_test_allocator_begin(0U);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_graph_adaptive(&graph,"x*x",NULL,minimum,maximum,NULL,&context,&error));
+    size_t calls=numforge_test_allocator_call_count();numforge_test_allocator_end();
+    application_graph_destroy(graph);graph=NULL;
+    for(size_t i=1U;i<=96U;++i) {
+        size_t fault=1U+(calls-1U)*(i-1U)/95U;
+        numforge_test_allocator_begin(fault);
+        CalculatorStatus status=application_graph_adaptive(&graph,"x*x",NULL,minimum,maximum,NULL,&context,&error);
+        numforge_test_allocator_end();TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY,status);TEST_ASSERT_NULL(graph);
+    }
+    TEST_ASSERT_TRUE(numforge_budget_begin(5000U,SIZE_MAX,SIZE_MAX));numforge_test_budget_expire_after(400U);
+    TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT, application_graph_adaptive(&graph,"sin(x)",NULL,minimum,maximum,NULL,&context,&error));
+    TEST_ASSERT_NULL(graph);numforge_budget_end();
+    char *response=NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,numforge_web_session_request(&store,"POST","/api/graph/plot?min=-1&max=1","t*t",&response));
+    TEST_ASSERT_NOT_NULL(strstr(response,"\"schema_version\":2"));
+    TEST_ASSERT_NOT_NULL(strstr(response,"\"parameter\":\"t\""));TEST_ASSERT_NOT_NULL(strstr(response,"\"connect\":true"));free(response);response=NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,numforge_web_session_request(&store,"POST","/api/graph/plot?min=-1&max=1&points=5","x",&response));free(response);response=NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_UNDEFINED_VARIABLE,numforge_web_session_request(&store,"POST","/api/graph/plot?min=-1&max=1","x+y",&response));
+    TEST_ASSERT_NOT_NULL(strstr(response,"graph_parameter_ambiguous"));free(response);
+}
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_adaptive_linear_curvature_and_poles);
+    RUN_TEST(test_adaptive_automatic_parameter_and_read_only_session);
+    RUN_TEST(test_adaptive_faults_deadline_and_http_contract);
     RUN_TEST(test_grid_is_exact_and_inclusive);
     RUN_TEST(test_domain_complex_and_quantity_classification);
     RUN_TEST(test_invalid_ranges_count_and_shared_budget);

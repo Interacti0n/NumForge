@@ -211,10 +211,10 @@ static void plot_number(Json *json, const CalculatorValue *value)
 }
 
 static CalculatorStatus graph_request(ApplicationClientStore *store, const char *method,
-    const Query *query, const char *body, char **response, CalculatorError *error, const char **code)
+    const Query *query, const char *body, char **response, CalculatorError *error, const char **code, bool adaptive)
 {
     const unsigned int allowed = BIT(CLIENT) | BIT(AT) | BIT(MINIMUM) | BIT(MAXIMUM) |
-        BIT(POINTS) | BIT(PARAMETER) | BIT(PRECISION) | BIT(ANGLE);
+        (adaptive ? 0U : BIT(POINTS)) | BIT(PARAMETER) | BIT(PRECISION) | BIT(ANGLE);
     uint64_t points, precision, at;
     if (strcmp(method, "POST") != 0 || (query->seen & ~allowed) ||
         !(query->seen & BIT(MINIMUM)) || !(query->seen & BIT(MAXIMUM)) ||
@@ -250,9 +250,12 @@ static CalculatorStatus graph_request(ApplicationClientStore *store, const char 
     if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_from_bigdecimal(minimum, decimal));
     if (status == CALCULATOR_OK) status = calculator_from_bigdecimal_status(bigdecimal_set_string(decimal, query->values[MAXIMUM]));
     if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_from_bigdecimal(maximum, decimal));
-    const char *parameter = query->seen & BIT(PARAMETER) ? query->values[PARAMETER] : "x";
-    if (status == CALCULATOR_OK) status = application_graph_sample(&graph, body, parameter,
-        minimum, maximum, (size_t)points, session, &context, error);
+    const char *parameter = query->seen & BIT(PARAMETER) ? query->values[PARAMETER] : adaptive ? NULL : "x";
+    if (status == CALCULATOR_OK) status = adaptive ?
+        application_graph_adaptive(&graph, body, parameter, minimum, maximum, session, &context, error) :
+        application_graph_sample(&graph, body, parameter, minimum, maximum, (size_t)points, session, &context, error);
+    if (adaptive && parameter == NULL && status == CALCULATOR_UNDEFINED_VARIABLE) *code = "graph_parameter_ambiguous";
+    if (status == CALCULATOR_OK && adaptive) parameter = graph->parameter;
     if (status == CALCULATOR_OK)
     {
         json.data = numforge_malloc(RESPONSE_CAPACITY);
@@ -260,14 +263,23 @@ static CalculatorStatus graph_request(ApplicationClientStore *store, const char 
     }
     if (status == CALCULATOR_OK)
     {
-        append(&json, "{\"ok\":true,\"schema_version\":1,\"parameter\":"); string(&json, parameter);
+        append(&json, "{\"ok\":true,\"schema_version\":%u,\"parameter\":", adaptive ? 2U : 1U); string(&json, parameter);
+        if (adaptive) {
+            append(&json, ",\"sampling\":\"adaptive\",\"limited\":%s,\"y_min\":", graph->limited ? "true" : "false");
+            CalculatorValue view = {0};view.number = graph->view_minimum;
+            if (view.number != NULL) plot_number(&json, &view);else append(&json,"null");
+            append(&json, ",\"y_max\":");view.number = graph->view_maximum;
+            if (view.number != NULL) plot_number(&json, &view);else append(&json,"null");
+        }
         append(&json, ",\"count\":%zu,\"plot_places\":12,\"points\":[", graph->count);
         static const char *kinds[] = {"real", "domain_error", "complex", "quantity"};
         for (size_t i = 0; i < graph->count && json.status == CALCULATOR_OK; ++i)
         {
             const ApplicationExpressionSample *sample = &graph->samples[i];
             ApplicationGraphPointKind kind = application_graph_point_kind(sample);
-            append(&json, "%s{\"x\":", i == 0U ? "" : ","); plot_number(&json, &graph->coordinates[i]);
+            append(&json, "%s{", i == 0U ? "" : ",");
+            if (adaptive) append(&json, "\"connect\":%s,", graph->connect[i] ? "true" : "false");
+            append(&json,"\"x\":"); plot_number(&json, &graph->coordinates[i]);
             append(&json, ",\"kind\":\"%s\",\"y\":", kinds[kind]);
             if (kind == APPLICATION_GRAPH_REAL) plot_number(&json, &sample->value);
             else append(&json, "null");
@@ -302,8 +314,8 @@ static CalculatorStatus session_request(ApplicationClientStore *store,
     uint64_t conversion_finished = UINT64_MAX;
     Query query; char path[64];
     if (!parse(target, path, &query)) return CALCULATOR_INVALID_ARGUMENT;
-    if (strcmp(path, "/api/graph/sample") == 0)
-        return graph_request(store, method, &query, body, response, error, code);
+    if (strcmp(path, "/api/graph/sample") == 0 || strcmp(path, "/api/graph/plot") == 0)
+        return graph_request(store, method, &query, body, response, error, code, strcmp(path, "/api/graph/plot") == 0);
     bool get = strcmp(method, "GET") == 0, post = strcmp(method, "POST") == 0;
     if (!get && !post) return CALCULATOR_INVALID_ARGUMENT;
     bool registry = strcmp(path, "/api/functions") == 0;

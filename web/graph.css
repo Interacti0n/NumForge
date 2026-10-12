@@ -21,8 +21,7 @@ body { height: auto; min-height: 100dvh; overflow: auto; }
 .graph-grid { stroke: #c994f020; stroke-width: 1; }
 .graph-axis { stroke: #c994f075; stroke-width: 1; }
 .graph-tick { fill: #bd9bd8; font: 12px var(--font-math); }
-.graph-point { fill: #dfafff; }
-.graph-line { stroke: #dfafff99; stroke-width: 1.5; fill: none; }
+.graph-line { stroke: #dfafff; stroke-width: 1.8; fill: none; }
 .graph-note { color: var(--quiet); font-size: .75rem; line-height: 1.6; margin: 16px 0; }
 #graph-values { border-top: 1px solid var(--border-soft); padding-top: 14px; }
 #graph-values summary { cursor: pointer; font-size: .85rem; color: var(--muted); }
@@ -32,3 +31,6 @@ body { height: auto; min-height: 100dvh; overflow: auto; }
 .graph-table-wrap caption { text-align: left; color: var(--quiet); padding: 0 0 10px; font: .75rem var(--font-ui); }
 @media (max-width: 960px) { .graph-workspace { grid-template-columns: minmax(0,1fr); gap: 16px; } .graph-controls .graph-fields { grid-template-columns: repeat(3,minmax(0,1fr)); } }
 @media (max-width: 600px) { .graph-workspace { padding: 18px 0 28px; } .graph-workspace .card { padding: 18px; } .graph-controls .graph-fields { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+
+.graph-settings { margin: 18px 0; border-top: 1px solid var(--border-soft); padding-top: 14px; }
+.graph-settings summary { color: var(--accent); cursor: pointer; font-size: .85rem; }

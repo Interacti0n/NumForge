@@ -4,22 +4,24 @@ function initGraph() {
     const $ = id => root.querySelector('#' + id);
     const english = document.documentElement.lang === 'en';
     const lifecycle = new AbortController();
-    const fields = ['expression','parameter','min','max','count','precision','angle','session','connect'];
+    const fields = ['expression','min','max','precision','angle','session'];
     const status = $('graph-status'), svg = $('graph-plot'), table = $('graph-table-body');
-    let generation = 0, request = null, samples = null, disposed = false;
+    let generation = 0, request = null, samples = null, disposed = false, parameter = 'x', view = null, limited = false;
     const text = english ? {
         ready:'Enter a function and plot it.', busy:'Sampling…', network:'Cannot reach the server. Try again.',
         invalid:'The server returned invalid graph data.', session:'Start a calculator session before using its variables.',
         range:'These coordinates cannot be distinguished in the browser’s numeric range. Choose a smaller range.',
         real:'Real', domain_error:'Domain error', complex:'Complex', quantity:'Quantity', outside:'Outside plotting range',
-        summary:(shown,total)=>`${shown} of ${total} samples plotted`, column:'column',
+        summary:(shown,total)=>`y = f(${parameter}) · ${shown}/${total} real samples`, column:'column',
+        limited:'Some uncertain intervals were omitted.', ambiguous:'Use one unknown variable, or save the other variables in the calculator and enable its session.',
         caption:'Rounded plotting values. Complex values and quantities are not projected onto the real axis.'
     } : {
         ready:'Zadaj funkciu a vykresli ju.', busy:'Počítam body…', network:'Server nie je dostupný. Skús to znova.',
         invalid:'Server vrátil neplatné údaje grafu.', session:'Pred použitím premenných vytvor sedenie v kalkulačke.',
         range:'Tieto súradnice prehliadač nedokáže rozlíšiť vo svojom číselnom rozsahu. Zvoľ menší rozsah.',
         real:'Reálne', domain_error:'Chyba definičného oboru', complex:'Komplexné', quantity:'Veličina', outside:'Mimo rozsahu grafu',
-        summary:(shown,total)=>`Vykreslené body: ${shown} z ${total}`, column:'pozícia',
+        summary:(shown,total)=>`y = f(${parameter}) · reálne body: ${shown}/${total}`, column:'pozícia',
+        limited:'Niektoré nejasné úseky boli vynechané.', ambiguous:'Použi jednu neznámu, alebo ulož ostatné premenné v kalkulačke a zapni použitie sedenia.',
         caption:'Zaokrúhlené hodnoty pre graf. Komplexné čísla a veličiny sa nepremietajú na reálnu os.'
     };
     const errors = english ? {} : {
@@ -78,7 +80,7 @@ function initGraph() {
     function draw() {
         svg.querySelectorAll('.graph-drawing').forEach(el=>el.remove());
         const valid=samples.filter(p=>p.plottable);
-        message(text.summary(valid.length,samples.length));
+        message(text.summary(valid.length,samples.length)+(limited?' · '+text.limited:''));
         $('graph-values').hidden=false;
         $('graph-table-caption').textContent=text.caption;
         if($('graph-values').open)renderTable();
@@ -89,10 +91,12 @@ function initGraph() {
         }
         // Scale before subtraction so finite extreme values cannot overflow.
         const xScale=Math.max(Math.abs(xs[0]),Math.abs(xs.at(-1)),Number.MIN_VALUE);
-        const yScale=Math.max(...ys.map(Math.abs),Number.MIN_VALUE);
+        const projectedView=view?.every(y=>y!==null) ? view : [Math.min(...ys),Math.max(...ys)];
+        const rawScale=Math.max(...projectedView.map(Math.abs));
+        const yScale=rawScale===0?1:Math.max(rawScale,Number.MIN_VALUE);
         const xLow=xs[0]/xScale,xHigh=xs.at(-1)/xScale;
         if(xHigh<=xLow){message(text.range,true);svg.setAttribute('hidden','');return;}
-        let yLow=Math.min(...ys.map(y=>y/yScale)),yHigh=Math.max(...ys.map(y=>y/yScale));
+        let yLow=projectedView[0]/yScale,yHigh=projectedView[1]/yScale;
         if(yLow===yHigh){yLow-=.5;yHigh+=.5;}
         const padding=(yHigh-yLow)*.08;yLow-=padding;yHigh+=padding;
         yLow=Math.max(yLow,-Number.MAX_VALUE/yScale);
@@ -101,7 +105,7 @@ function initGraph() {
         const height=width<600?300:440, right=width-22, bottom=height-46;
         svg.setAttribute('viewBox',`0 0 ${width} ${height}`);
         const px=x=>64+(x/xScale-xLow)/(xHigh-xLow)*(right-64);
-        const py=y=>bottom-(y/yScale-yLow)/(yHigh-yLow)*(bottom-22);
+        const py=y=>Math.max(-1e6,Math.min(1e6,bottom-(y/yScale-yLow)/(yHigh-yLow)*(bottom-22)));
         const group=element('g',{class:'graph-drawing'});
         const label=value=>value===0?'0':value.toLocaleString(english?'en':'sk',
             {maximumSignificantDigits:3,notation:Math.abs(value)>=1e5 || Math.abs(value)<.001?'scientific':'standard'});
@@ -114,15 +118,18 @@ function initGraph() {
         }
         if(xLow<=0 && xHigh>=0)group.append(element('line',{x1:px(0),x2:px(0),y1:22,y2:bottom,class:'graph-axis'}));
         if(yLow<=0 && yHigh>=0)group.append(element('line',{x1:64,x2:right,y1:py(0),y2:py(0),class:'graph-axis'}));
-        group.append(element('text',{x:right,y:height-4,class:'graph-tick'},$('graph-parameter').value),element('text',{x:14,y:16,class:'graph-tick'},'y'));
-        let previous=null;
+        group.append(element('text',{x:right,y:height-4,class:'graph-tick'},parameter),element('text',{x:14,y:16,class:'graph-tick'},'y'));
+        const defs=element('defs'),clip=element('clipPath',{id:'graph-clip'});
+        clip.append(element('rect',{x:64,y:22,width:right-64,height:bottom-22}));defs.append(clip);group.append(defs);
+        const curve=element('path',{class:'graph-line','clip-path':'url(#graph-clip)'});
+        let path='',previous=null;
         for(const point of samples) {
             if(!point.plottable){previous=null;continue;}
             const x=px(point.nx),y=py(point.ny);
-            if($('graph-connect').checked && previous)group.append(element('line',{x1:previous.x,y1:previous.y,x2:x,y2:y,class:'graph-line'}));
-            const dot=element('circle',{cx:x,cy:y,r:2.1,class:'graph-point'});
-            dot.append(element('title',{},`${$('graph-parameter').value} = ${point.x}; y = ${point.y}`));group.append(dot);previous={x,y};
+            if(point.connect && previous)path+=`M${previous.x},${previous.y}L${x},${y}`;
+            previous={x,y};
         }
+        if(path){curve.setAttribute('d',path);group.append(curve);}
         $('graph-svg-description').textContent=$('graph-expression').value+'; '+text.summary(valid.length,samples.length);
         svg.append(group);svg.removeAttribute('hidden');
     }
@@ -133,7 +140,6 @@ function initGraph() {
         root.setAttribute('aria-busy','true');message(text.busy);
         try {
             const query=new URLSearchParams({min:$('graph-min').value.trim(),max:$('graph-max').value.trim(),
-                points:$('graph-count').value,parameter:$('graph-parameter').value,
                 precision:$('graph-precision').value,angle:$('graph-angle').value});
             if($('graph-session').checked) {
                 let client='';try{client=sessionStorage.getItem('numforge-client-id')||'';}catch(_){}
@@ -143,12 +149,14 @@ function initGraph() {
                 if(!stateResponse.ok||!state.ok)throw Error(text.session);
                 query.set('client',client);query.set('at',state.revision);
             }
-            const response=await fetch('/api/graph/sample?'+query,{method:'POST',headers:{'Content-Type':'text/plain; charset=utf-8'},body:$('graph-expression').value,signal});
+            const response=await fetch('/api/graph/plot?'+query,{method:'POST',headers:{'Content-Type':'text/plain; charset=utf-8'},body:$('graph-expression').value,signal});
             const body=await response.json();if(id!==generation||disposed)return;
-            if(!response.ok||!body.ok)throw Error((errors[body.status]||body.error||body.status||text.invalid)+(Number.isSafeInteger(body.column)?` · ${text.column} ${body.column}`:''));
-            if(body.schema_version!==1 || !Array.isArray(body.points) || body.count!==body.points.length || body.count<2 || body.count>1024)throw Error(text.invalid);
+            if(!response.ok||!body.ok)throw Error((body.code==='graph_parameter_ambiguous'?text.ambiguous:errors[body.status]||body.error||body.status||text.invalid)+(Number.isSafeInteger(body.column)?` · ${text.column} ${body.column}`:''));
+            if(body.schema_version!==2 || !Array.isArray(body.points) || body.count!==body.points.length || body.count<2 || body.count>1024)throw Error(text.invalid);
+            if(typeof body.parameter!=='string'||!/^[A-Za-z]{1,31}$/.test(body.parameter)||typeof body.limited!=='boolean')throw Error(text.invalid);
+            parameter=body.parameter;view=[numeric(body.y_min),numeric(body.y_max)];limited=body.limited;
             samples=body.points.map(point=>{
-                if(!point || !['real','domain_error','complex','quantity'].includes(point.kind) || typeof point.x!=='string' || (point.kind==='real'?typeof point.y!=='string':point.y!==null))throw Error(text.invalid);
+                if(!point || typeof point.connect!=='boolean' || !['real','domain_error','complex','quantity'].includes(point.kind) || typeof point.x!=='string' || (point.kind==='real'?typeof point.y!=='string':point.y!==null))throw Error(text.invalid);
                 const nx=numeric(point.x),ny=numeric(point.y);
                 return {...point,nx,ny,plottable:point.kind==='real'&&nx!==null&&ny!==null};
             });draw();
@@ -157,8 +165,7 @@ function initGraph() {
         } finally {if(id===generation && !disposed){root.removeAttribute('aria-busy');request=null;}}
     }
     $('graph-form').addEventListener('submit',plot,{signal:lifecycle.signal});
-    for(const name of fields.filter(name=>name!=='connect'))$('graph-'+name).addEventListener('input',invalidate,{signal:lifecycle.signal});
-    $('graph-connect').addEventListener('change',()=>{save();if(samples)draw();},{signal:lifecycle.signal});
+    for(const name of fields)$('graph-'+name).addEventListener('input',invalidate,{signal:lifecycle.signal});
     $('graph-values').addEventListener('toggle',()=>{if($('graph-values').open)renderTable();},{signal:lifecycle.signal});
     window.addEventListener('numforge:navigate',save,{signal:lifecycle.signal});
     let previousWidth=0;
