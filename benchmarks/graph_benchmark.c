@@ -32,11 +32,33 @@ static const GraphCase cases[]={
  {"log_trillion","ln(1+x*x)","-1000000000000","1000000000000",6,34}};
 static double reference(int kind,double x){switch(kind){case 0:return 3*x+2;case 1:return x*x;case 2:return sin(x);case 3:return sin(3*x);case 4:return sin(3*x)+cos(2*x);case 5:return sin(3*x)*exp(-x*x/20);case 6:return log1p(x*x);case 7:return sin(x*x);case 8:return 1/(x-.1);case 10:return sin(33*x);case 11:return 1/x;case 12:return 1/(x-2);case 13:return sqrt(x);case 14:return log(x);default:return tan(x);}}
 static double project(const BigDecimal *value){char *text=NULL;double result=NAN;if(bigdecimal_to_string(value,&text)==BIGDECIMAL_OK){result=strtod(text,NULL);free(text);}return result;}
+/* Point objects only, using the adapter's 16-place projection. Outside timing;
+ * root metadata is additional. This does not bypass or enlarge HTTP limits. */
+static size_t projected_bytes(const ApplicationGraph *graph,const char *expression){
+ size_t bytes=0;
+ for(size_t i=0;i<graph->count;++i){char *x=NULL,*y=NULL;
+  if(bigdecimal_format_mode(graph->coordinates[i].number,16,BIGDECIMAL_ROUND_HALF_EVEN,BIGDECIMAL_FORMAT_SCIENTIFIC,128U,&x)!=BIGDECIMAL_OK)return 0;
+  ApplicationGraphPointKind kind=application_graph_point_kind(&graph->samples[i]);
+  if(kind==APPLICATION_GRAPH_REAL&&bigdecimal_format_mode(graph->samples[i].value.number,16,BIGDECIMAL_ROUND_HALF_EVEN,BIGDECIMAL_FORMAT_SCIENTIFIC,128U,&y)!=BIGDECIMAL_OK){free(x);return 0;}
+  const char *kinds[]={"real","domain_error","complex","quantity"};
+  bytes+=(size_t)snprintf(NULL,0,"%s{\"connect\":%s,\"x\":\"%s\",\"kind\":\"%s\",\"y\":%s%s%s,\"source_approximate\":%s}",
+   i?",":"",graph->connect[i]?"true":"false",x,kinds[kind],y?"\"":"",y?y:"null",y?"\"":"",
+   graph->samples[i].error.status==CALCULATOR_OK&&(graph->samples[i].value.kind==CALCULATOR_VALUE_DECIMAL||graph->samples[i].value.kind==CALCULATOR_VALUE_COMPLEX_DECIMAL)?"true":"false");
+  if(kind==APPLICATION_GRAPH_DOMAIN_ERROR)bytes+=(size_t)snprintf(NULL,0,",\"status\":\"%s\",\"column\":%zu",calculator_status_to_string(graph->samples[i].error.status),calculator_error_column(expression,graph->samples[i].error.offset));
+  free(x);free(y);
+ }
+ return bytes;
+}
 int main(int argc,char **argv){
- int repeats=argc>1?atoi(argv[1]):3;if(repeats<1||repeats>10||argc>2)return 2;
+ int repeats=argc>1?atoi(argv[1]):3;if(repeats<1||repeats>10||argc>3)return 2;
+ size_t point_limit=argc>2?(size_t)strtoul(argv[2],NULL,10):1024U;
+ if(point_limit!=1024U&&point_limit!=2048U&&point_limit!=4096U&&point_limit!=8192U)return 2;
+ if(argc>2)fprintf(stderr,"cap=%zu coordinate_bytes=%zu sample_bytes=%zu single_allocation_limit=%u\n",point_limit,
+  point_limit*sizeof(CalculatorValue),point_limit*sizeof(ApplicationExpressionSample),(unsigned)CALCULATOR_SINGLE_ALLOCATION);
  int inaccurate=0;
- puts("case,mode,repeat,status,ms,calls,bytes,points,limited,point_error,chord_error,screen_error,connected_fraction");
+ puts("case,mode,repeat,status,ms,calls,bytes,points,limited,point_error,chord_error,screen_error,connected_fraction,point_cap,projected_point_bytes");
  for(size_t c=0;c<sizeof(cases)/sizeof(cases[0]);++c)for(int mode=0;mode<3;++mode)for(int run=0;run<repeats;++run){
+  if(argc>2&&mode!=1)continue;
   const GraphCase *item=&cases[c];CalculatorContext context;calculator_context_init(&context);
   context.division_scale=item->precision;
   BigDecimal *value=bigdecimal_create();BigRational *low=bigrational_create(),*high=bigrational_create();
@@ -46,7 +68,7 @@ int main(int argc,char **argv){
   numforge_alloc_stats_reset();double start=benchmark_seconds();
   CalculatorStatus status;
   if(mode==0)status=application_graph_sample(&graph,item->expression,"x",low,high,129,NULL,&context,&error);
-  else if(mode==1)status=application_graph_adaptive(&graph,item->expression,NULL,low,high,NULL,&context,&error);
+  else if(mode==1)status=application_graph_adaptive_limit(&graph,item->expression,NULL,low,high,point_limit,NULL,&context,&error);
   else{char target[160];snprintf(target,sizeof(target),"/api/graph/plot?min=%s&max=%s&precision=%d",item->low,item->high,item->precision);status=numforge_web_session_request(&store,"POST",target,item->expression,&response);}
   double elapsed=(benchmark_seconds()-start)*1000;size_t calls=numforge_alloc_stats_calls(),bytes=numforge_alloc_stats_bytes();
   double point_error=0,chord_error=0,screen_error=0,connected_fraction=0;
@@ -57,7 +79,8 @@ int main(int argc,char **argv){
   }}
   size_t points=graph?graph->count:0;bool limited=graph?graph->limited:false;
   if(response&&status==CALCULATOR_OK){const char *count=strstr(response,"\"count\":");if(count)points=(size_t)strtoull(count+8,NULL,10);limited=strstr(response,"\"limited\":true")!=NULL;}
-  printf("%s,%s,%d,%d,%.3f,%zu,%zu,%zu,%d,%.6g,%.6g,%.6g,%.6g\n",item->name,mode==0?"uniform129":mode==1?"adaptive":"http",run,(int)status,elapsed,calls,bytes,points,limited,point_error,chord_error,screen_error,connected_fraction);fflush(stdout);
+  size_t projection=mode==1&&graph?projected_bytes(graph,item->expression):0;
+  printf("%s,%s,%d,%d,%.3f,%zu,%zu,%zu,%d,%.6g,%.6g,%.6g,%.6g,%zu,%zu\n",item->name,mode==0?"uniform129":mode==1?"adaptive":"http",run,(int)status,elapsed,calls,bytes,points,limited,point_error,chord_error,screen_error,connected_fraction,mode==1?point_limit:mode==0?129U:1024U,projection);fflush(stdout);
   application_graph_destroy(graph);free(response);bigdecimal_destroy(value);bigrational_destroy(low);bigrational_destroy(high);application_client_store_destroy(&store);
  }
  return inaccurate;

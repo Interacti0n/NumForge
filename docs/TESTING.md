@@ -93,6 +93,10 @@ The 21-case reliability sweep includes reciprocal/shifted poles and square-root
 and logarithm domain boundaries. HTTP regressions verify independent real values
 and disconnected poles on centered and shifted intervals; cache tests compare
 curve geometry and axis labels after returning to the same viewport.
+An optional second benchmark argument, `graph_benchmark 3 2048`, selects an
+adaptive C-only point-cap experiment (1024/2048/4096/8192). See the
+[point-cap audit](benchmarks/GRAPH_POINT_CAPS_2026_10_12.md) for allocation and
+projected-payload constraints; the production HTTP/browser cap is unchanged.
 
 Graph interaction regressions exercise wheel debounce, pointer panning, touch
 pinch, keyboard/reset controls, empty-view navigation and y-axis rescaling.

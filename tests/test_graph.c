@@ -326,9 +326,27 @@ static void test_peak_work_allocation_failures_are_atomic(void)
         numforge_test_allocator_end();TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY,status);TEST_ASSERT_NULL(graph);
     }
 }
+static void test_resolution_experiment_preserves_budget_and_atomic_output(void)
+{
+    range("-10","10");CalculatorError error;
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,application_graph_adaptive_limit(&graph,"x",NULL,minimum,maximum,32U,NULL,&context,&error));
+    TEST_ASSERT_NULL(graph);
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,application_graph_adaptive_limit(&graph,"x",NULL,minimum,maximum,8193U,NULL,&context,&error));
+    TEST_ASSERT_NULL(graph);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_graph_adaptive_limit(&graph,"x",NULL,minimum,maximum,2048U,NULL,&context,&error));
+    ApplicationGraph *original=graph;
+    if(4096U*sizeof(ApplicationExpressionSample)>CALCULATOR_SINGLE_ALLOCATION){
+        TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE,application_graph_adaptive_limit(&graph,"x",NULL,minimum,maximum,4096U,NULL,&context,&error));
+        TEST_ASSERT_EQUAL_PTR(original,graph);
+    }
+    numforge_test_allocator_begin(1U);
+    TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY,application_graph_adaptive_limit(&graph,"x",NULL,minimum,maximum,2048U,NULL,&context,&error));
+    numforge_test_allocator_end();TEST_ASSERT_EQUAL_PTR(original,graph);
+}
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_resolution_experiment_preserves_budget_and_atomic_output);
     RUN_TEST(test_peak_work_allocation_failures_are_atomic);
     RUN_TEST(test_adaptive_view_includes_discovered_extrema);
     RUN_TEST(test_wide_smooth_ranges_and_shared_budget_admission);

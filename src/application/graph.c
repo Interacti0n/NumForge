@@ -123,6 +123,7 @@ typedef struct GraphRefinement {
     BigDecimal *coarse_width;
     BigDecimal *strict_phase_span;
     bool smooth;
+    size_t point_limit;
 } GraphRefinement;
 
 static CalculatorStatus adaptive_coordinate(CalculatorValue *value,
@@ -276,7 +277,7 @@ static CalculatorStatus adaptive_peaks(GraphRefinement *work)
             PEAK_TRY(bigdecimal_copy(a,p));PEAK_TRY(bigdecimal_copy(b,q));
             PEAK_RAT(bigrational_copy(lo,graph->coordinates[edge-1U].rational));PEAK_RAT(bigrational_copy(hi,graph->coordinates[edge].rational));
             for(unsigned attempt=0U;attempt<8U;++attempt) {
-                if(graph->count>=APPLICATION_EXPRESSION_MAX_SAMPLES || numforge_budget_available_bytes()<3U*1024U*1024U || numforge_budget_available_ms()<300U) {graph->limited=true;goto cleanup;}
+                if(graph->count>=work->point_limit || numforge_budget_available_bytes()<3U*1024U*1024U || numforge_budget_available_ms()<300U) {graph->limited=true;goto cleanup;}
                 PEAK_TRY(bigdecimal_sub(delta,b,a));PEAK_TRY(bigdecimal_sub(ratio,target,a));
                 PEAK_TRY(bigdecimal_div_significant(ratio,ratio,delta,digits,BIGDECIMAL_ROUND_HALF_EVEN));
                 PEAK_RAT(bigrational_from_bigdecimal(fraction,ratio));PEAK_RAT(bigrational_sub(position,hi,lo));
@@ -324,7 +325,7 @@ cleanup:
 static CalculatorStatus adaptive_refine(GraphRefinement *work)
 {
     typedef struct { size_t left;unsigned int depth; } Interval;
-    Interval queue[APPLICATION_EXPRESSION_MAX_SAMPLES];
+    Interval queue[8192U];
     size_t head = 0U, pending = 32U, max_bytes = 0U;
     uint64_t max_ms = 0U;
     for (size_t i = 0; i < pending; ++i) queue[i] = (Interval){i, 0U};
@@ -334,12 +335,12 @@ static CalculatorStatus adaptive_refine(GraphRefinement *work)
         uint64_t ms = numforge_budget_available_ms();
         /* Leave room for projection/JSON and stop before a known next probe
          * would exhaust the shared budget. Never reset a caller's budget. */
-        if (graph->count >= APPLICATION_EXPRESSION_MAX_SAMPLES ||
+        if (graph->count >= work->point_limit ||
             bytes <= 2U * 1024U * 1024U || max_bytes > (bytes - 2U * 1024U * 1024U) / 2U ||
             ms <= 200U || max_ms > (ms - 200U) / 2U) {
             graph->limited = true;break;
         }
-        Interval current = queue[head];head = (head + 1U) % APPLICATION_EXPRESSION_MAX_SAMPLES;--pending;
+        Interval current = queue[head];head = (head + 1U) % work->point_limit;--pending;
         if (current.depth >= 12U) { graph->limited = true;continue; }
         bool accepted, empty;
         CalculatorStatus status = adaptive_interval(work, current.left, &accepted, &empty);
@@ -349,27 +350,30 @@ static CalculatorStatus adaptive_refine(GraphRefinement *work)
         if (bytes >= after_bytes && bytes - after_bytes > max_bytes) max_bytes = bytes - after_bytes;
         if (ms >= after_ms && ms - after_ms > max_ms) max_ms = ms - after_ms;
         for (size_t i = 0; i < pending; ++i) {
-            Interval *item = &queue[(head + i) % APPLICATION_EXPRESSION_MAX_SAMPLES];
+            Interval *item = &queue[(head + i) % work->point_limit];
             if (item->left > current.left) ++item->left;
         }
         if (!accepted && !empty) {
             /* Active intervals are disjoint edges, so capacity follows the
              * point cap; two children replace their single parent. */
-            queue[(head + pending++) % APPLICATION_EXPRESSION_MAX_SAMPLES] = (Interval){current.left, current.depth + 1U};
-            queue[(head + pending++) % APPLICATION_EXPRESSION_MAX_SAMPLES] = (Interval){current.left + 1U, current.depth + 1U};
+            queue[(head + pending++) % work->point_limit] = (Interval){current.left, current.depth + 1U};
+            queue[(head + pending++) % work->point_limit] = (Interval){current.left + 1U, current.depth + 1U};
         }
     }
     return CALCULATOR_OK;
 }
 
-CalculatorStatus application_graph_adaptive(ApplicationGraph **result,
+CalculatorStatus application_graph_adaptive_limit(ApplicationGraph **result,
     const char *input, const char *parameter, const BigRational *minimum,
-    const BigRational *maximum, const CalculatorSession *session,
+    const BigRational *maximum, size_t point_limit, const CalculatorSession *session,
     const CalculatorContext *context, CalculatorError *error)
 {
     calculator_error_clear(error);
     if (result == NULL || input == NULL || minimum == NULL || maximum == NULL || context == NULL) {
         calculator_error_set(error, CALCULATOR_NULL_ARGUMENT, 0U);return CALCULATOR_NULL_ARGUMENT;
+    }
+    if (point_limit < 33U || point_limit > 8192U) {
+        calculator_error_set(error, CALCULATOR_INVALID_ARGUMENT, 0U);return CALCULATOR_INVALID_ARGUMENT;
     }
     CalculatorStatus status = calculator_context_validate(context, error);
     if (status != CALCULATOR_OK) return status;
@@ -378,7 +382,7 @@ CalculatorStatus application_graph_adaptive(ApplicationGraph **result,
     ApplicationExpression *expression = NULL;
     BigRational *step = NULL, *divisor = NULL, *cursor = NULL;
     BigDecimal *number = NULL, *factor = NULL;
-    GraphRefinement work = {0};
+    GraphRefinement work = {0};work.point_limit = point_limit;
     ApplicationExpressionSample *seeds = NULL;
     bool any = false;
     int comparison = 0;
@@ -396,9 +400,9 @@ CalculatorStatus application_graph_adaptive(ApplicationGraph **result,
     if (status == CALCULATOR_OK) {
         graph->count = 33U;
         memcpy(graph->parameter, application_expression_parameter(expression), strlen(application_expression_parameter(expression)) + 1U);
-        graph->coordinates = numforge_calloc(APPLICATION_EXPRESSION_MAX_SAMPLES, sizeof(*graph->coordinates));
-        graph->samples = numforge_calloc(APPLICATION_EXPRESSION_MAX_SAMPLES, sizeof(*graph->samples));
-        graph->connect = numforge_calloc(APPLICATION_EXPRESSION_MAX_SAMPLES, sizeof(*graph->connect));
+        graph->coordinates = numforge_calloc(point_limit, sizeof(*graph->coordinates));
+        graph->samples = numforge_calloc(point_limit, sizeof(*graph->samples));
+        graph->connect = numforge_calloc(point_limit, sizeof(*graph->connect));
         graph->view_minimum = bigdecimal_create();graph->view_maximum = bigdecimal_create();
         step = bigrational_create();divisor = bigrational_create();cursor = bigrational_create();
         number = bigdecimal_create();factor = bigdecimal_create();
@@ -462,4 +466,13 @@ CalculatorStatus application_graph_adaptive(ApplicationGraph **result,
     else { application_graph_destroy(graph);calculator_error_set(error, status, error == NULL ? 0U : error->offset); }
     if (owner) numforge_budget_end();
     return status;
+}
+
+CalculatorStatus application_graph_adaptive(ApplicationGraph **result,
+    const char *input, const char *parameter, const BigRational *minimum,
+    const BigRational *maximum, const CalculatorSession *session,
+    const CalculatorContext *context, CalculatorError *error)
+{
+    return application_graph_adaptive_limit(result,input,parameter,minimum,maximum,
+        APPLICATION_EXPRESSION_MAX_SAMPLES,session,context,error);
 }

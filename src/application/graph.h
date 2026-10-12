@@ -35,6 +35,12 @@ CalculatorStatus application_graph_adaptive(ApplicationGraph **result,
     const char *input, const char *parameter, const BigRational *minimum,
     const BigRational *maximum, const CalculatorSession *session,
     const CalculatorContext *context, CalculatorError *error);
+/* Internal bounded-resolution experiment; 33..8192 points. Default adapter
+ * remains unchanged. Existing memory/time/single-allocation budgets apply. */
+CalculatorStatus application_graph_adaptive_limit(ApplicationGraph **result,
+    const char *input, const char *parameter, const BigRational *minimum,
+    const BigRational *maximum, size_t point_limit, const CalculatorSession *session,
+    const CalculatorContext *context, CalculatorError *error);
 ApplicationGraphPointKind application_graph_point_kind(const ApplicationExpressionSample *sample);
 void application_graph_destroy(ApplicationGraph *graph);
 #endif
