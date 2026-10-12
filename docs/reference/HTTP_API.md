@@ -224,3 +224,7 @@ and [Unit HTTP API](UNIT_HTTP_API.md) for catalogue and conversion routes.
 The [session HTTP API](SESSION_HTTP_API.md) adds read-only typed variables/history,
 explicit lifecycle actions, a function registry and confirmed conversion history.
 Its reads do not consume evaluation revisions or alter calculator previews.
+
+The [graph sampling HTTP API](GRAPH_HTTP_API.md) adds read-only
+`POST /api/graph/sample` with exact internal coordinates, bounded plotting
+projections and per-point classification. The complete request shares one budget.

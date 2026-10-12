@@ -164,6 +164,7 @@ if(NUMFORGE_BUILD_APPS OR BUILD_TESTING OR NUMFORGE_BUILD_FUZZERS OR NUMFORGE_BU
 
     add_library(numforge_application STATIC
         src/application/expression.c
+        src/application/graph.c
         src/application/conversion.c
         src/application/session.c
         src/application/client_store.c)
@@ -696,6 +697,11 @@ if(BUILD_TESTING)
     target_compile_definitions(application_expression_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
     numforge_enable_diagnostics(application_expression_tests)
     add_test(NAME application_expression_tests COMMAND application_expression_tests)
+    add_executable(graph_tests tests/test_graph.c)
+    target_link_libraries(graph_tests PRIVATE numforge_client unity)
+    target_compile_definitions(graph_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
+    numforge_enable_diagnostics(graph_tests)
+    add_test(NAME graph_tests COMMAND graph_tests)
     target_include_directories(session_tests PRIVATE ${PROJECT_SOURCE_DIR}/src/internal)
     target_compile_definitions(session_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
     target_link_libraries(session_tests PRIVATE numforge_client unity)

@@ -4,7 +4,7 @@ for(const lang of ['sk','en']) test(`guide tracks reading position and keeps mob
     await page.setViewportSize({width:390,height:844});
     await page.goto('/api?lang='+lang);
     await expect(page.locator('.guide-toc a[aria-current="location"]')).toHaveAttribute('href','#intro');
-    const sectionIds = ['intro','syntax','variables','functions','complex','units','precision','cache','random','history','limits','http','session-http','library','documentation'];
+    const sectionIds = ['intro','syntax','variables','functions','complex','units','precision','cache','random','history','limits','http','session-http','graph-http','library','documentation'];
     expect(await page.locator('.guide-toc a').evaluateAll(links=>links.map(link=>link.hash.slice(1))))
         .toEqual(sectionIds);
     expect(await page.locator('.guide-content h1,.guide-content h2').evaluateAll(headings=>headings.map(heading=>heading.id))).toEqual(sectionIds);
@@ -27,7 +27,7 @@ for(const lang of ['sk','en']) test(`guide tracks reading position and keeps mob
     await expect(page.locator('.guide-toc a[aria-current="location"]')).toHaveAttribute('href','#limits');
     await page.locator('.guide-content').evaluate(n=>{n.scrollTop=n.scrollHeight;});
     await expect(page.locator('.guide-toc a[aria-current="location"]')).toHaveAttribute('href','#documentation');
-    await expect(page.locator('.guide-position')).toHaveText('15 / 15');
+    await expect(page.locator('.guide-position')).toHaveText(`${sectionIds.length} / ${sectionIds.length}`);
     await expect.poll(()=>page.evaluate(()=>new Promise(resolve=>{
         const positions=[];
         function sample(){
@@ -41,7 +41,7 @@ for(const lang of ['sk','en']) test(`guide tracks reading position and keeps mob
     await page.locator('.guide-toc').evaluate(n=>n.scrollTo({left:0,behavior:'instant'}));
     await page.locator('.guide-toc a[href="#intro"]').click();
     await expect(page.locator('.guide-toc a[aria-current="location"]')).toHaveAttribute('href','#intro');
-    await expect(page.locator('.guide-position')).toHaveText('01 / 15');
+    await expect(page.locator('.guide-position')).toHaveText('01 / '+sectionIds.length);
     const docsLinks = page.locator('.guide-content a[href^="https://github.com/Interacti0n/NumForge/blob/main/docs/"]');
     expect(await docsLinks.count()).toBeGreaterThanOrEqual(10);
     for(const link of await docsLinks.all()) {

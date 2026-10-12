@@ -11,6 +11,7 @@ have different ownership and compatibility contracts.
 | [Local HTTP API](reference/HTTP_API.md) | Evaluation, preview/confirmation, client IDs, revisions and errors. |
 | [Session HTTP API](reference/SESSION_HTTP_API.md) | Authoritative variables/history, typed snapshots, reset/release, functions and conversion history. |
 | [Unit HTTP API](reference/UNIT_HTTP_API.md) | Catalogue and compatible expression conversions. |
+| [Graph sampling HTTP API](reference/GRAPH_HTTP_API.md) | Bounded uniform grids, plotting projections, point classifications and read-only session snapshots. |
 | [Web/API coverage](reference/WEB_API_PARITY.md) | Supported web actions and application API gaps. |
 
 ## Values and sessions

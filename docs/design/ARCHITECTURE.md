@@ -29,11 +29,13 @@ flowchart LR
     Browser[Browser UI] --> HTTP[Loopback HTTP adapter]
     HTTP --> Session
     HTTP --> Store[Application client/cache store]
+    HTTP --> Prepared
     Store --> Session
     Session --> Parser[Tokenizer and parser / AST]
     Parser --> Evaluator[Typed evaluator]
     Prepared[Prepared parametric expression] --> Parser
     Prepared --> Evaluator
+    Prepared -. read-only snapshot .-> Session
     Evaluator --> Library[Public numeric library]
     Evaluator --> Value[Owned calculator value]
     Value --> Formatter[Display and copy formatting]
@@ -48,8 +50,8 @@ projects the stored value for display without replacing it with rounded text.
 The [parametric expression foundation](PARAMETRIC_EXPRESSIONS.md) owns a parsed
 AST and snapshots of referenced session values. Future graph/solver adapters
 will reuse the typed evaluator with a local parameter and one operation budget,
-without modifying the source session. HTTP and UI adapters are not implemented
-for this foundation yet.
+without modifying the source session. The [HTTP sampler](../reference/GRAPH_HTTP_API.md)
+is implemented; graph UI and numerical solving remain future work.
 
 The browser handles input, navigation and presentation in JavaScript. Expressions
 are sent to the local C server for numerical evaluation. The server embeds the

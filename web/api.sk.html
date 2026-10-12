@@ -52,6 +52,7 @@
           <a href="#limits">Limity a obmedzenia</a>
           <a href="#http">HTTP API</a>
           <a href="#session-http">HTTP API sedenia a prevodov</a>
+          <a href="#graph-http">HTTP API grafov</a>
           <a href="#library">Verejné C API</a>
           <a href="#documentation">Podrobná dokumentácia</a>
         </nav>
@@ -178,7 +179,12 @@ HTTP/1.1 200 OK
 <p>Web pridáva na koniec HTTP parametrov <code>&amp;action=start</code> (prázdne telo), potom <code>&amp;action=preview</code> alebo <code>&amp;action=commit</code>. Start nevykoná výpočet. Opakovanie posledného úspešného potvrdenia s rovnakým revision, výrazom a nastaveniami vráti pôvodný výsledok. Pri neistej odpovedi Enter zopakuje tú istú požiadavku; nové potvrdenie počká. Staršie alebo konfliktné revízie sa odmietnu. API bez action si zachováva pôvodné správanie.</p>
 <p><strong>Mazanie premennej cez HTTP:</strong> <code>POST /api/evaluate?precision=10&amp;angle=rad&amp;client=32_hex_digits&amp;revision=N&amp;action=delete-variable</code>, telo typu <code>text/plain</code> obsahuje iba meno, napríklad <code>x</code>. Použi existujúce sedenie a novú revíziu. Úspech vráti <code>{"ok":true,"result":""}</code>. Pri strate odpovede opakuj rovnaké meno/revíziu pred ďalšou požiadavkou. Výpis premenných, načítanie histórie a reset sedenia nájdeš v <a href="#session-http">HTTP API sedenia</a>. Tento príkaz sa nezadáva ako matematický výraz.</p>
 
+<h2 id="graph-http">HTTP API vzorkovania grafu</h2>
+<p><code>POST /api/graph/sample?min=-1&amp;max=1&amp;points=3</code> s textovým telom, napríklad <code>x*x</code>, vzorkuje rovnomernú mriežku vrátane krajných bodov. Lokálny parameter je predvolene x; parameter, precision a angle sú voliteľné. Existujúci client a revízia at môžu poskytnúť snapshoty premenných a ans iba na čítanie. Vzorkovanie sedenie nemení.</p>
+<p>Odpoveď označí každý bod ako real, domain_error, complex alebo quantity. Reálne súradnice x/y pre zobrazenie sú zaokrúhlené vedecké reťazce; ostatné y sú null. C mriežka zachová presné zlomkové súradnice. Priradenia a náhodné funkcie sú odmietnuté. Celá požiadavka zdieľa päť sekúnd, 64 MiB kumulatívnych alokácií, limit jednej alokácie 512 KiB a odpoveď do 128 KiB; povolených je 2–1024 bodov. Rovnomerná mriežka nedokazuje spojitosť. Vykresľovanie grafu je zatiaľ plánované. Pozri <a href="https://github.com/Interacti0n/NumForge/blob/main/docs/reference/GRAPH_HTTP_API.md" target="_blank" rel="noopener noreferrer">úplný kontrakt API grafov</a>.</p>
+
 <h2 id="library">Verejné C API</h2>
+
   <p>Verejné typy sú <code>BigInt</code>, <code>BigDecimal</code>, <code>BigRational</code> a <code>BigComplex</code>. Sú nepriehľadné: vytvor ich cez <code>*_create()</code>, uvoľni cez <code>*_destroy()</code> a reťazce z <code>*_to_string()</code> uvoľni cez <code>free()</code>.</p>
   <h3>BigInt</h3>
   <p><code>#include &lt;numforge/bigint.h&gt;</code></p>

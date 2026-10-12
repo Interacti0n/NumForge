@@ -24,6 +24,7 @@ Start with the [API guide](API.md), or open a specific reference:
 - [Units](reference/UNITS.md) and [Quantity](reference/QUANTITIES.md): conversion and dimensions.
 - [Unit catalogue](reference/UNIT_CATALOG.md): 233 units, localized names and sources.
 - [Unit HTTP API](reference/UNIT_HTTP_API.md): catalogue and conversion routes.
+- [Graph sampling HTTP API](reference/GRAPH_HTTP_API.md): bounded grids, point errors and session isolation.
 - [Web/API coverage](reference/WEB_API_PARITY.md): implemented calls and remaining gaps.
 
 ## Understand the code — `design/`

@@ -58,6 +58,12 @@ snapshot lifetime, typed samples, per-point errors and shared resource budgets.
 Opt-in allocation-instrumented builds also check zero live allocations and
 cumulative allocation limits across points.
 
+`graph_tests` checks exact inclusive grids, point classifications, session
+isolation, inherited budgets and allocation failures through HTTP serialization.
+Playwright `graph.spec.js` verifies the [graph HTTP contract](reference/GRAPH_HTTP_API.md)
+against the real server, including query schemas, Unicode columns and Origin
+protection; the guide suite checks its localized navigation entry.
+
 | Guide | Checks |
 | --- | --- |
 | [Numerical references and parser limits](testing/NUMERIC_TESTING.md) | Independent oracle, transcendental references, fuzzing and precision contracts. |

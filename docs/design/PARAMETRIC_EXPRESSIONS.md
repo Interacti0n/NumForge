@@ -5,10 +5,11 @@ future graph sampling and numerical solvers. It shares the calculator's typed
 evaluation stage: exact integers/fractions, complex numbers, quantities, angle
 units and approximation metadata follow the existing calculator contracts.
 
-This foundation has no graph UI, solver, HTTP sampling endpoint or installed
-public SDK evaluator yet. The installed SDK remains the numeric C API. Adapters
-will call this same application operation rather than implement mathematics in
-JavaScript or reparse the expression for every point.
+The [bounded HTTP graph sampler](../reference/GRAPH_HTTP_API.md) now calls this
+foundation through the C application operation in `src/application/graph.h`.
+Graph UI, solvers and an installed public SDK evaluator are still future work.
+The installed SDK remains the numeric C API. Graph sampling does not implement
+mathematics in JavaScript or reparse the expression for every point.
 
 ## C application operation
 
@@ -61,15 +62,12 @@ also remain inside that adapter's outer operation budget.
 
 ## Next integration
 
-1. Add an application graph sampler over a bounded real interval, generating
-   parameter coordinates and handling domain gaps/non-real values. Retain exact
-   coordinates where practical and return explicit per-point status.
-2. Define and test an HTTP sampling contract with strict range/point-count/schema
-   validation, bounded output and read-only session access. Document it in the
-   HTTP/API guides before exposing a graph UI.
-3. Add responsive 2D `y = f(x)` plotting, axes, accessible point data and adaptive
+1. The application sampler and HTTP contract now generate exact inclusive
+   uniform grids, classify domain/complex/quantity points and preserve sessions.
+   Adaptive sampling and continuity/pole detection remain separate work.
+2. Add responsive 2D `y = f(x)` plotting, axes, accessible point data and adaptive
    discontinuity handling. A finite grid alone does not prove continuity.
-4. Reuse the prepared evaluator for a bounded real root solver with residuals,
+3. Reuse the prepared evaluator for a bounded real root solver with residuals,
    convergence/error reporting and one budget for the complete solve.
 
 ## Verification

@@ -34,6 +34,7 @@ is added; saved values remain bounded application-owned memory.
 | Show/retrieve calculator history | `GET /api/session/history`, optional saved `id` | Available, original values/settings |
 | Reset/release/clear history | `POST /api/session`, `action=reset`, `release` or `clear-history` | Available; clearing history preserves ans |
 | Discover functions, aliases and arities | `GET /api/functions` | Available; web consumes the registry |
+| Sample an expression over a real interval | `POST /api/graph/sample` | Available in development; exact C grid, plotting projections and point errors; plotting UI remains planned |
 | List unit catalogue and sources | `GET /api/units` | Available |
 | Validate compatibility, preview a conversion | `POST /api/convert` | Available |
 | Confirm a conversion | `POST /api/conversions?action=commit` | Available, independent ordered history |

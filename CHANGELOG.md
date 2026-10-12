@@ -7,6 +7,12 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Add bounded exact uniform graph sampling in the C application layer and
+  read-only POST /api/graph/sample with strict schemas, session snapshots,
+  scientific plotting projections and domain/complex/quantity classifications.
+  Share one budget through serialization; plotting UI and adaptive sampling
+  remain future work.
+
 - Add a reusable parametric expression foundation in the C application layer:
   parse once, snapshot referenced session values, shadow a local parameter and
   evaluate typed batches under one shared resource budget. Preserve session state

@@ -52,6 +52,7 @@
           <a href="#limits">Limits and constraints</a>
           <a href="#http">HTTP API</a>
           <a href="#session-http">Session and conversion HTTP API</a>
+          <a href="#graph-http">Graph HTTP API</a>
           <a href="#library">Public C API</a>
           <a href="#documentation">Detailed documentation</a>
         </nav>
@@ -178,7 +179,12 @@ HTTP/1.1 200 OK
 <p>The browser appends <code>&amp;action=start</code> (empty body), followed by requests with <code>&amp;action=preview</code> or <code>&amp;action=commit</code>. Start performs no calculation. Repeating the latest successful confirmation with the same revision, expression and settings returns the original result. On an uncertain response Enter retries the same request; a new confirmation waits. Older or conflicting revisions are rejected. Requests without action keep the original behavior.</p>
 <p><strong>Delete a variable through HTTP:</strong> <code>POST /api/evaluate?precision=10&amp;angle=rad&amp;client=32_hex_digits&amp;revision=N&amp;action=delete-variable</code>, with a <code>text/plain</code> body containing only its name, for example <code>x</code>. Use an existing session and a fresh revision. Success returns <code>{"ok":true,"result":""}</code>. If the response is lost, retry the same name/revision before another request. See the <a href="#session-http">session HTTP API</a> for listing variables, reading history and resetting the session. This command is not a mathematical expression.</p>
 
+<h2 id="graph-http">Graph sampling HTTP API</h2>
+<p><code>POST /api/graph/sample?min=-1&amp;max=1&amp;points=3</code> with a text body such as <code>x*x</code> samples an inclusive uniform grid. The local parameter defaults to x; parameter, precision and angle are optional. An existing client and at revision may provide read-only snapshots of variables and ans. Sampling does not change the session.</p>
+<p>The response classifies each point as real, domain_error, complex or quantity. Real x/y plotting coordinates are rounded scientific strings; other y values are null. The C grid retains exact rational coordinates. Assignments and random calls are rejected. The complete request shares five seconds, 64 MiB cumulative allocation, a 512 KiB single-allocation limit and a 128 KiB response bound; 2–1024 points are allowed. Uniform sampling does not prove continuity. Plotting UI is still planned. See the <a href="https://github.com/Interacti0n/NumForge/blob/main/docs/reference/GRAPH_HTTP_API.md" target="_blank" rel="noopener noreferrer">complete graph API contract</a>.</p>
+
 <h2 id="library">Public C API</h2>
+
   <p>The public types are <code>BigInt</code>, <code>BigDecimal</code>, <code>BigRational</code> and <code>BigComplex</code>. They are opaque: create them with <code>*_create()</code>, release them with <code>*_destroy()</code>, and release strings from <code>*_to_string()</code> with <code>free()</code>.</p>
   <h3>BigInt</h3>
   <p><code>#include &lt;numforge/bigint.h&gt;</code></p>

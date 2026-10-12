@@ -85,7 +85,8 @@ documented HTTP contract alongside the web implementation, using the versioned
 1. The [parametric C application foundation](../design/PARAMETRIC_EXPRESSIONS.md)
    now parses once, binds a local parameter and snapshots referenced session
    values. Typed batches share one budget and preserve calculator state.
-   Next add bounded graph coordinates and the documented HTTP sampling operation.
+   The [HTTP graph sampler](../reference/GRAPH_HTTP_API.md) now adds bounded exact
+   uniform coordinates, plotting projections and point classifications.
 2. Add basic 2D `y = f(x)` graphs with ranges, axes, discontinuity handling,
    accessible point data and responsive controls.
 3. Add real linear/quadratic equation solving, then bounded numerical root
@@ -96,7 +97,7 @@ documented HTTP contract alongside the web implementation, using the versioned
    further functions and a possible public C API.
    Dimensional equations and graph axes need explicit unit contracts first.
 
-These stages are a proposed order, not implemented features or release dates.
+The remaining stages are a proposed order, not implemented features or release dates.
 Matrices/vectors and dataset statistics follow once their initial scope is set.
 Measured arithmetic optimizations can proceed independently of these tools.
 

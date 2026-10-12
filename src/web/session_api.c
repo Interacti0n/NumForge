@@ -2,6 +2,9 @@
 #include "unit_web.h"
 #include "web_api.h"
 #include "functions.h"
+#include "graph.h"
+#include "exact_functions.h"
+#include "evaluator_internal.h"
 #include <numforge/runtime.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -80,9 +83,11 @@ static void snapshot(Json *json, const CalculatorValue *value, bool full)
 }
 
 enum { CLIENT, ACTION, REVISION, OFFSET, LIMIT, AT, ID, NAME, FULL,
-       FROM, TO, PRECISION, PLACES, ROUNDING, ANGLE, NOTATION, QUERY_COUNT };
+       FROM, TO, PRECISION, PLACES, ROUNDING, ANGLE, NOTATION,
+       MINIMUM, MAXIMUM, POINTS, PARAMETER, QUERY_COUNT };
 static const char *keys[] = {"client", "action", "revision", "offset", "limit", "at", "id", "name", "full",
-    "from", "to", "precision", "places", "rounding", "angle", "notation"};
+    "from", "to", "precision", "places", "rounding", "angle", "notation",
+    "min", "max", "points", "parameter"};
 typedef struct Query { char values[QUERY_COUNT][48]; unsigned int seen; } Query;
 #define BIT(field) (1U << (field))
 
@@ -192,7 +197,99 @@ static void conversion(Json *json, const ApplicationConversion *entry, bool full
 bool numforge_web_is_session_target(const char *target)
 {
     return strncmp(target, "/api/session", 12U) == 0 || strncmp(target, "/api/conversions", 16U) == 0 ||
-        strncmp(target, "/api/functions", 14U) == 0;
+        strncmp(target, "/api/functions", 14U) == 0 || strncmp(target, "/api/graph", 10U) == 0;
+}
+
+static void plot_number(Json *json, const CalculatorValue *value)
+{
+    if (json->status != CALCULATOR_OK) return;
+    char *text = NULL;
+    json->status = calculator_from_bigdecimal_status(bigdecimal_format_mode(value->number,
+        12, BIGDECIMAL_ROUND_HALF_EVEN, BIGDECIMAL_FORMAT_SCIENTIFIC, 128U, &text));
+    if (json->status == CALCULATOR_OK) string(json, text);
+    free(text);
+}
+
+static CalculatorStatus graph_request(ApplicationClientStore *store, const char *method,
+    const Query *query, const char *body, char **response, CalculatorError *error, const char **code)
+{
+    const unsigned int allowed = BIT(CLIENT) | BIT(AT) | BIT(MINIMUM) | BIT(MAXIMUM) |
+        BIT(POINTS) | BIT(PARAMETER) | BIT(PRECISION) | BIT(ANGLE);
+    uint64_t points, precision, at;
+    if (strcmp(method, "POST") != 0 || (query->seen & ~allowed) ||
+        !(query->seen & BIT(MINIMUM)) || !(query->seen & BIT(MAXIMUM)) ||
+        !number(query, POINTS, 129U, &points) || points < 2U || points > APPLICATION_EXPRESSION_MAX_SAMPLES ||
+        !number(query, PRECISION, CALCULATOR_DEFAULT_DIVISION_SCALE, &precision) ||
+        precision == 0U || precision > CALCULATOR_MAX_OUTPUT_SCALE || !number(query, AT, 0U, &at) ||
+        ((query->seen & BIT(AT)) && !(query->seen & BIT(CLIENT)))) return CALCULATOR_INVALID_ARGUMENT;
+    CalculatorContext context; calculator_context_init(&context);
+    context.division_scale = (int64_t)precision;
+    if (query->seen & BIT(ANGLE))
+    {
+        if (strcmp(query->values[ANGLE], "deg") == 0) context.angle_unit = CALCULATOR_ANGLE_DEGREES;
+        else if (strcmp(query->values[ANGLE], "rad") != 0) return CALCULATOR_INVALID_ARGUMENT;
+    }
+    const CalculatorSession *session = NULL;
+    if (query->seen & BIT(CLIENT))
+    {
+        if (strlen(query->values[CLIENT]) != 32U || strspn(query->values[CLIENT], "0123456789abcdef") != 32U)
+            return CALCULATOR_INVALID_ARGUMENT;
+        session = application_client_retained_session(store, query->values[CLIENT]);
+        if (session == NULL || session->released) return CALCULATOR_SESSION_EXPIRED;
+        if ((query->seen & BIT(AT)) && at != session->revision) return CALCULATOR_STALE_REQUEST;
+    }
+    *code = "graph_error";
+    bool owner = numforge_budget_begin(CALCULATOR_DEFAULT_TIME_LIMIT_MS,
+        CALCULATOR_ALLOCATION_BUDGET, CALCULATOR_SINGLE_ALLOCATION);
+    BigDecimal *decimal = bigdecimal_create();
+    BigRational *minimum = bigrational_create(), *maximum = bigrational_create();
+    ApplicationGraph *graph = NULL;
+    Json json = {NULL, 0U, CALCULATOR_OK};
+    CalculatorStatus status = decimal == NULL || minimum == NULL || maximum == NULL ? CALCULATOR_OUT_OF_MEMORY : CALCULATOR_OK;
+    if (status == CALCULATOR_OK) status = calculator_from_bigdecimal_status(bigdecimal_set_string(decimal, query->values[MINIMUM]));
+    if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_from_bigdecimal(minimum, decimal));
+    if (status == CALCULATOR_OK) status = calculator_from_bigdecimal_status(bigdecimal_set_string(decimal, query->values[MAXIMUM]));
+    if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_from_bigdecimal(maximum, decimal));
+    const char *parameter = query->seen & BIT(PARAMETER) ? query->values[PARAMETER] : "x";
+    if (status == CALCULATOR_OK) status = application_graph_sample(&graph, body, parameter,
+        minimum, maximum, (size_t)points, session, &context, error);
+    if (status == CALCULATOR_OK)
+    {
+        json.data = numforge_malloc(RESPONSE_CAPACITY);
+        if (json.data == NULL) status = CALCULATOR_OUT_OF_MEMORY;
+    }
+    if (status == CALCULATOR_OK)
+    {
+        append(&json, "{\"ok\":true,\"schema_version\":1,\"parameter\":"); string(&json, parameter);
+        append(&json, ",\"count\":%zu,\"plot_places\":12,\"points\":[", graph->count);
+        static const char *kinds[] = {"real", "domain_error", "complex", "quantity"};
+        for (size_t i = 0; i < graph->count && json.status == CALCULATOR_OK; ++i)
+        {
+            const ApplicationExpressionSample *sample = &graph->samples[i];
+            ApplicationGraphPointKind kind = application_graph_point_kind(sample);
+            append(&json, "%s{\"x\":", i == 0U ? "" : ","); plot_number(&json, &graph->coordinates[i]);
+            append(&json, ",\"kind\":\"%s\",\"y\":", kinds[kind]);
+            if (kind == APPLICATION_GRAPH_REAL) plot_number(&json, &sample->value);
+            else append(&json, "null");
+            append(&json, ",\"source_approximate\":%s", sample->error.status == CALCULATOR_OK &&
+                (sample->value.kind == CALCULATOR_VALUE_DECIMAL || sample->value.kind == CALCULATOR_VALUE_COMPLEX_DECIMAL)
+                ? "true" : "false");
+            if (kind == APPLICATION_GRAPH_DOMAIN_ERROR)
+            {
+                append(&json, ",\"status\":"); string(&json, calculator_status_to_string(sample->error.status));
+                append(&json, ",\"column\":%zu", calculator_error_column(body, sample->error.offset));
+            }
+            append(&json, "}");
+        }
+        append(&json, "]}"); status = json.status;
+    }
+    status = calculator_budget_status(status);
+    application_graph_destroy(graph); bigdecimal_destroy(decimal);
+    bigrational_destroy(minimum); bigrational_destroy(maximum);
+    if (status == CALCULATOR_OK) *response = json.data;
+    else free(json.data);
+    if (owner) numforge_budget_end();
+    return status;
 }
 
 static CalculatorStatus session_request(ApplicationClientStore *store,
@@ -203,6 +300,8 @@ static CalculatorStatus session_request(ApplicationClientStore *store,
     *response = NULL;
     Query query; char path[64];
     if (!parse(target, path, &query)) return CALCULATOR_INVALID_ARGUMENT;
+    if (strcmp(path, "/api/graph/sample") == 0)
+        return graph_request(store, method, &query, body, response, error, code);
     bool get = strcmp(method, "GET") == 0, post = strcmp(method, "POST") == 0;
     if (!get && !post) return CALCULATOR_INVALID_ARGUMENT;
     bool registry = strcmp(path, "/api/functions") == 0;

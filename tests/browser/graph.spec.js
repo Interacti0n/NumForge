@@ -1,0 +1,53 @@
+const {test,expect}=require('@playwright/test');
+const {randomBytes}=require('node:crypto');
+const route=(extra={})=>'/api/graph/sample?'+new URLSearchParams({min:'-1',max:'1',points:'3',...extra});
+async function graph(request,input,extra={}) {
+    const response=await request.post(route(extra),{data:input});
+    return {response,data:await response.json()};
+}
+test('graph exact grid projections, domains and classifications',async({request})=>{
+    const square=await graph(request,'x*x',{min:'0',points:'4'});
+    expect(square.response.ok()).toBe(true);expect(square.data.count).toBe(4);
+    const expected=[0,1/3,2/3,1];
+    square.data.points.forEach((p,i)=>{
+        expect(p.kind).toBe('real');expect(Number(p.x)).toBeCloseTo(expected[i],11);
+        expect(Number(p.y)).toBeCloseTo(expected[i]**2,11);expect(p.source_approximate).toBe(false);
+    });
+    const reciprocal=(await graph(request,'1/x')).data;
+    expect(reciprocal.points.map(p=>p.kind)).toEqual(['real','domain_error','real']);
+    expect(reciprocal.points[1].y).toBeNull();expect(reciprocal.points[1].status).toBe('division by zero');
+    expect(reciprocal.points[1].column).toBeGreaterThan(0);
+    expect((await graph(request,'sqrt(x)')).data.points[0].kind).toBe('complex');
+    expect((await graph(request,'qty(x;"m")')).data.points.every(p=>p.kind==='quantity'&&p.y===null)).toBe(true);
+    const degrees=(await graph(request,'sin(t)',{parameter:'t',min:'0',max:'90',angle:'deg'})).data;
+    expect(Number(degrees.points[2].y)).toBe(1);
+    const maximum=await graph(request,'x',{points:'1024'});
+    expect(maximum.response.ok()).toBe(true);expect(maximum.data.points).toHaveLength(1024);
+});
+test('graph reads session snapshots without mutations or reviving clients',async({request})=>{
+    const client=randomBytes(16).toString('hex'), missing=randomBytes(16).toString('hex');
+    const base=`/api/evaluate?precision=full&angle=rad&client=${client}`;
+    expect((await request.post(base+'&revision=1&action=start',{data:''})).ok()).toBe(true);
+    expect((await request.post(base+'&revision=2&action=commit',{data:'y=1/3'})).ok()).toBe(true);
+    expect((await request.post(base+'&revision=3&action=preview',{data:'rand()'})).ok()).toBe(true);
+    const read=async()=>Promise.all(['/api/session','/api/session/variables','/api/session/history'].map(async(path)=>(await request.get(`${path}?client=${client}`)).json()));
+    const before=await read();
+    const sampled=await graph(request,'x+y+ans',{client,at:'3'});
+    expect(sampled.response.ok()).toBe(true);expect(Number(sampled.data.points[1].y)).toBeCloseTo(2/3,11);
+    expect(await read()).toEqual(before);
+    expect((await graph(request,'x',{client,at:'2'})).response.status()).toBe(409);
+    expect((await graph(request,'x',{client:missing})).data.ok).toBe(false);
+    expect((await request.get('/api/session?client='+missing)).ok()).toBe(false);
+    expect((await graph(request,'y',{client:missing})).data.ok).toBe(false);
+    expect(await read()).toEqual(before);
+});
+test('graph strict schema and inherited HTTP origin protections',async({request})=>{
+    for(const extra of [{points:'1'},{points:'1025'},{precision:'0'},{min:'1/3'},{max:'-1'},{parameter:'i'},{action:'commit'},{at:'0'}])
+        expect((await graph(request,'x',extra)).response.ok()).toBe(false);
+    for(const input of ['x=7','rand()','x+random()','x+unknown']) expect((await graph(request,input)).response.ok()).toBe(false);
+    expect((await request.post(route()+'&points=4',{data:'x'})).ok()).toBe(false);
+    expect((await request.post(route(),{data:'x',headers:{Origin:'https://untrusted.example'}})).status()).toBe(403);
+    expect((await request.get(route())).ok()).toBe(false);
+    const unicode=await graph(request,'π+missing');
+    expect(unicode.response.ok()).toBe(false);expect(unicode.data.column).toBe(3);
+});
