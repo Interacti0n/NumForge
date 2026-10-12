@@ -235,6 +235,92 @@ static CalculatorStatus adaptive_interval(GraphRefinement *work, size_t left,
     return status;
 }
 
+/* Add actual evaluations at sin/cos phase extrema on already accepted edges.
+ * Interpolation locates an initial candidate; bounded bracket refinement checks
+ * its captured C phase, so no synthetic +/-1 values are put into the graph. */
+static CalculatorStatus adaptive_peaks(GraphRefinement *work)
+{
+    ApplicationGraph *graph=work->graph;
+    if(!work->smooth || graph->samples[0].phase_count==0U)return CALCULATOR_OK;
+    BigDecimal *period=bigdecimal_create(),*offset=bigdecimal_create(),*target=bigdecimal_create();
+    BigDecimal *index=bigdecimal_create(),*delta=bigdecimal_create(),*ratio=bigdecimal_create();
+    BigDecimal *a=bigdecimal_create(),*b=bigdecimal_create(),*epsilon=bigdecimal_create(),*one=bigdecimal_create();
+    BigRational *lo=bigrational_create(),*hi=bigrational_create(),*fraction=bigrational_create(),*position=bigrational_create();
+    CalculatorStatus status=CALCULATOR_OK;
+    if(!period||!offset||!target||!index||!delta||!ratio||!a||!b||!epsilon||!one||!lo||!hi||!fraction||!position)status=CALCULATOR_OUT_OF_MEMORY;
+    int64_t digits=work->context->division_scale<34?34:work->context->division_scale;
+#define PEAK_TRY(op) do { status=calculator_from_decimal_status(op);if(status!=CALCULATOR_OK)goto cleanup; } while(0)
+#define PEAK_RAT(op) do { status=calculator_from_rational_status(op);if(status!=CALCULATOR_OK)goto cleanup; } while(0)
+    if(status!=CALCULATOR_OK)goto cleanup;
+    if(work->context->angle_unit==CALCULATOR_ANGLE_DEGREES) { PEAK_TRY(bigdecimal_set_string(period,"180")); }
+    else { PEAK_TRY(bigdecimal_set_constant_significant(period,BIGDECIMAL_CONSTANT_PI,digits+16,BIGDECIMAL_ROUND_HALF_EVEN)); }
+    PEAK_TRY(bigdecimal_set_string(epsilon,"0.000001"));PEAK_TRY(bigdecimal_set_string(one,"1"));
+    for(size_t edge=1U;edge<graph->count;++edge) {
+        if(!graph->connect[edge])continue;
+        for(size_t phase=0U;phase<graph->samples[edge-1U].phase_count;++phase) {
+            int kind=application_expression_graph_peak_offset(work->expression,phase);
+            if(kind<0 || graph->samples[edge-1U].phase_unknown || graph->samples[edge].phase_unknown)continue;
+            const BigDecimal *p=graph->samples[edge-1U].phases[phase],*q=graph->samples[edge].phases[phase];
+            if(!p||!q)continue;
+            int direction=0;PEAK_TRY(bigdecimal_compare(&direction,p,q));if(direction==0)continue;
+            if(kind) { PEAK_TRY(bigdecimal_mul(offset,period,work->half)); }
+            else { PEAK_TRY(bigdecimal_set_string(offset,"0")); }
+            PEAK_TRY(bigdecimal_sub(delta,direction<0?p:q,offset));
+            PEAK_TRY(bigdecimal_div_significant(index,delta,period,digits,BIGDECIMAL_ROUND_HALF_EVEN));
+            PEAK_TRY(bigdecimal_floor(index,index));PEAK_TRY(bigdecimal_add(index,index,one));
+            PEAK_TRY(bigdecimal_mul(target,index,period));PEAK_TRY(bigdecimal_add(target,target,offset));
+            int inside=0;PEAK_TRY(bigdecimal_compare(&inside,target,direction<0?q:p));if(inside>=0)continue;
+            /* Existing endpoint anchors within a micro-radian need no duplicate. */
+            PEAK_TRY(bigdecimal_sub(delta,target,p));PEAK_TRY(bigdecimal_abs(delta,delta));PEAK_TRY(bigdecimal_compare(&inside,delta,epsilon));if(inside<=0)continue;
+            PEAK_TRY(bigdecimal_sub(delta,target,q));PEAK_TRY(bigdecimal_abs(delta,delta));PEAK_TRY(bigdecimal_compare(&inside,delta,epsilon));if(inside<=0)continue;
+            PEAK_TRY(bigdecimal_copy(a,p));PEAK_TRY(bigdecimal_copy(b,q));
+            PEAK_RAT(bigrational_copy(lo,graph->coordinates[edge-1U].rational));PEAK_RAT(bigrational_copy(hi,graph->coordinates[edge].rational));
+            for(unsigned attempt=0U;attempt<8U;++attempt) {
+                if(graph->count>=APPLICATION_EXPRESSION_MAX_SAMPLES || numforge_budget_available_bytes()<3U*1024U*1024U || numforge_budget_available_ms()<300U) {graph->limited=true;goto cleanup;}
+                PEAK_TRY(bigdecimal_sub(delta,b,a));PEAK_TRY(bigdecimal_sub(ratio,target,a));
+                PEAK_TRY(bigdecimal_div_significant(ratio,ratio,delta,digits,BIGDECIMAL_ROUND_HALF_EVEN));
+                PEAK_RAT(bigrational_from_bigdecimal(fraction,ratio));PEAK_RAT(bigrational_sub(position,hi,lo));
+                PEAK_RAT(bigrational_mul(position,position,fraction));PEAK_RAT(bigrational_add(position,position,lo));
+                CalculatorValue coordinate={0};ApplicationExpressionSample *sample=NULL;
+                status=adaptive_coordinate(&coordinate,position,work->context);
+                if(status==CALCULATOR_OK)status=application_expression_sample(work->expression,&coordinate,1U,&sample,work->error);
+                if(status!=CALCULATOR_OK){calculator_value_destroy(&coordinate);application_expression_samples_destroy(sample,1U);goto cleanup;}
+                bool usable=application_graph_point_kind(sample)==APPLICATION_GRAPH_REAL && !sample->phase_unknown && phase<sample->phase_count && sample->phases[phase]!=NULL;
+                int close=1,side=0;
+                if(usable) {
+                    status=calculator_from_decimal_status(bigdecimal_sub(delta,sample->phases[phase],target));
+                    if(status==CALCULATOR_OK)status=calculator_from_decimal_status(bigdecimal_compare(&side,sample->phases[phase],target));
+                    if(status==CALCULATOR_OK)status=calculator_from_decimal_status(bigdecimal_abs(delta,delta));
+                    if(status==CALCULATOR_OK)status=calculator_from_decimal_status(bigdecimal_compare(&close,delta,epsilon));
+                }
+                if(status==CALCULATOR_OK && usable && close<=0) {
+                    size_t tail=graph->count-edge;
+                    memmove(graph->coordinates+edge+1U,graph->coordinates+edge,tail*sizeof(*graph->coordinates));
+                    memmove(graph->samples+edge+1U,graph->samples+edge,tail*sizeof(*graph->samples));
+                    memmove(graph->connect+edge+1U,graph->connect+edge,tail*sizeof(*graph->connect));
+                    graph->coordinates[edge]=coordinate;graph->samples[edge]=sample[0];free(sample);
+                    graph->connect[edge]=true;++graph->count;++edge;break;
+                }
+                if(status==CALCULATOR_OK && usable) {
+                    bool lower=direction<0?side<0:side>0;
+                    status=calculator_from_decimal_status(bigdecimal_copy(lower?a:b,sample->phases[phase]));
+                    if(status==CALCULATOR_OK)status=calculator_from_rational_status(bigrational_copy(lower?lo:hi,position));
+                }
+                calculator_value_destroy(&coordinate);application_expression_samples_destroy(sample,1U);
+                if(status!=CALCULATOR_OK)goto cleanup;
+                if(!usable)break;
+            }
+        }
+    }
+cleanup:
+    bigdecimal_destroy(period);bigdecimal_destroy(offset);bigdecimal_destroy(target);bigdecimal_destroy(index);bigdecimal_destroy(delta);
+    bigdecimal_destroy(ratio);bigdecimal_destroy(a);bigdecimal_destroy(b);bigdecimal_destroy(epsilon);bigdecimal_destroy(one);
+    bigrational_destroy(lo);bigrational_destroy(hi);bigrational_destroy(fraction);bigrational_destroy(position);
+#undef PEAK_TRY
+#undef PEAK_RAT
+    return status;
+}
+
 static CalculatorStatus adaptive_refine(GraphRefinement *work)
 {
     typedef struct { size_t left;unsigned int depth; } Interval;
@@ -356,6 +442,7 @@ CalculatorStatus application_graph_adaptive(ApplicationGraph **result,
     if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_from_bigdecimal(divisor, number));
     work.graph = graph;work.expression = expression;work.context = context;work.error = error;work.two = divisor;
     if (status == CALCULATOR_OK) status = adaptive_refine(&work);
+    if (status == CALCULATOR_OK) status = adaptive_peaks(&work);
     /* Include newly discovered extrema for resolved/smooth curves. Unresolved
      * pole/domain trees retain the seed overview instead of chasing infinity. */
     if (status == CALCULATOR_OK && (!any || !graph->limited || work.smooth)) status = adaptive_view(graph, &any);

@@ -43,6 +43,11 @@ relative to the selected x range. This favors a connected visual overview over
 strict interpolation accuracy; calculation precision controls the sampled values,
 not the accuracy of the line between them. Pole/jump operations keep stricter checks.
 
+Coarse trigonometric curves also evaluate points near sin/cos phase extrema, so
+missed peaks do not create a false changing amplitude. These are actual C samples;
+they do not replace function values with assumed ±1 results. Complex expressions
+and unresolved detail still have finite sampling limits.
+
 Connections are heuristic, not proofs of continuity. Narrow poles, discontinuities,
 isolated valid values or oscillations can escape finite sampling. Gaps can also
 omit a continuous but unresolved steep curve. A message reports exhausted

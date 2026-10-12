@@ -1,5 +1,18 @@
 const {test,expect}=require('@playwright/test');
 const {randomBytes}=require('node:crypto');
+test('sin and cos preserve every periodic peak on coarse wide views',async({request})=>{
+ test.setTimeout(30000);
+ for(const [expression,offset,angle,period] of [['sin(x)',Math.PI/2,'rad',Math.PI],['cos(-x)',0,'rad',Math.PI],['sin(33x)',Math.PI/2,'rad',Math.PI],['sin(x)',90,'deg',180]]) {
+  const factor=expression.includes('33')?33:1,min=expression.includes('33')?-10:-100,max=expression.includes('33')?10:611;
+  const response=await request.post('/api/graph/plot?'+new URLSearchParams({min:String(min),max:String(max),angle}),{data:expression});
+  expect(response.ok()).toBe(true);const data=await response.json();expect(data.ok).toBe(true);expect(data.limited).toBe(false);
+  expect(data.count).toBeLessThanOrEqual(1024);expect(data.points.slice(1).every(p=>p.connect)).toBe(true);
+  for(let k=Math.ceil((min*factor-offset)/period);offset+k*period<max*factor;++k){
+   const x=(offset+k*period)/factor,point=data.points.find(p=>Math.abs(Number(p.x)-x)<1e-7);
+   expect(point,`${expression} missing extremum ${x}`).toBeTruthy();expect(Math.abs(Number(point.y))).toBeCloseTo(1,9);
+  }
+ }
+});
 test('adaptive y view fits discovered extrema and keeps pole overview bounded',async({request})=>{
  const sample=async expression=>(await request.post('/api/graph/plot?min=-10&max=10',{data:expression})).json();
  const peak=await sample('-(x-0.3125)^2');expect(peak.ok).toBe(true);expect(Number(peak.y_max)).toBe(0);
@@ -18,7 +31,7 @@ test('adaptive harder functions, broad ranges and oscillation safeguards',async(
  const sine=await sample('sin(3x)','-10','10');expect(sine.limited).toBe(false);
  expect(sine.points.slice(1).every(p=>p.connect)).toBe(true);
  const dense=await sample('sin(33x)','-10','10');expect(dense.limited).toBe(false);
- expect(dense.count).toBeLessThan(700);expect(dense.points.slice(1).every(p=>p.connect)).toBe(true);
+ expect(dense.count).toBeLessThan(900);expect(dense.points.slice(1).every(p=>p.connect)).toBe(true);
  dense.points.forEach((p,i)=>{
   const x=Number(p.x),y=Number(p.y);expect(Math.abs(y-Math.sin(33*x))).toBeLessThan(1e-10);
   if(i){const a=dense.points[i-1],ax=Number(a.x),ay=Number(a.y);

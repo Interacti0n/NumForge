@@ -105,7 +105,7 @@ for the measured optimization and its limits.
 
 The same opt-in build provides `graph_benchmark [repeats]` (default 3, range 1–10).
 It separately measures a uniform 129-point C batch, the adaptive C operation and
-the full HTTP adapter with serialization. Sixteen expressions/ranges cover
+the full HTTP adapter with serialization. Seventeen expressions/ranges cover
 smooth polynomials, trigonometric combinations, exponential damping, logarithms,
 poles, hidden oscillations, trillion-wide intervals and 100-digit precision.
 CSV includes cumulative allocation calls/bytes, points, `limited`, independent

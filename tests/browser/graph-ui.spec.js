@@ -1,4 +1,11 @@
 const {test,expect}=require('@playwright/test');
+test('wide sine renders equal sampled extrema',async({page})=>{
+ await page.setViewportSize({width:1440,height:1000});await page.goto('/graph?lang=sk');
+ const data=await sample(page,'sin(x)','-100','611');expect(data.limited).toBe(false);
+ expect(Number(data.y_min)).toBe(-1);expect(Number(data.y_max)).toBe(1);
+ await page.locator('.graph-settings summary').click();await expect(page.locator('path.graph-line')).toBeVisible();
+ await page.locator('.graph-result').screenshot({path:'C:/Incoming/Projekty/NumForge/build/graph-sine-peaks-fixed.png'});
+});
 test('editing cancels queued view resampling',async({page})=>{
  await page.goto('/graph?lang=en');await sample(page,'x*x');let calls=0;
  page.on('request',r=>{if(r.url().includes('/api/graph/plot?'))++calls;});

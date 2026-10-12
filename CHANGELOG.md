@@ -7,6 +7,10 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Anchor coarse sin/cos curves at actually evaluated phase extrema, preventing
+  false amplitude modulation when uniform samples miss periodic peaks. Verify
+  every extremum on the reported wide interval, degree/reversed phases and faults.
+
 - Add horizontal graph pan/zoom with mouse, touch, keyboard and reset controls;
   debounce resampling and cancel stale work. Fit automatic y bounds to newly
   discovered extrema for resolved/smooth curves while retaining bounded pole views.

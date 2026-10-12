@@ -21,6 +21,7 @@ struct ApplicationExpression
     bool uses_variables;
     bool graph_phases, phase_overflow;
     const CalculatorExpression *phase_nodes[64];
+    int phase_kinds[64];
     size_t phase_count;
 };
 
@@ -275,7 +276,12 @@ static void collect_graph_phases(ApplicationExpression *expression, const Calcul
             if (node->data.call.function->implementation == CALCULATOR_FUNCTION_SIN ||
                 node->data.call.function->implementation == CALCULATOR_FUNCTION_COS ||
                 node->data.call.function->implementation == CALCULATOR_FUNCTION_TAN) {
-                if (expression->phase_count < 64U) expression->phase_nodes[expression->phase_count++] = node->data.call.arguments[0];
+                if (expression->phase_count < 64U) {
+                    size_t i=expression->phase_count++;
+                    expression->phase_nodes[i] = node->data.call.arguments[0];
+                    expression->phase_kinds[i] = node->data.call.function->implementation == CALCULATOR_FUNCTION_COS ? 0 :
+                        node->data.call.function->implementation == CALCULATOR_FUNCTION_SIN ? 1 : -1;
+                }
                 else expression->phase_overflow = true;
             }
             for (size_t i=0;i<node->data.call.count;++i) collect_graph_phases(expression,node->data.call.arguments[i]);
@@ -287,6 +293,12 @@ void application_expression_enable_graph_phases(ApplicationExpression *expressio
 {
     if (expression == NULL || expression->graph_phases) return;
     expression->graph_phases = true;collect_graph_phases(expression,expression->tree);
+}
+int application_expression_graph_peak_offset(const ApplicationExpression *expression,size_t phase)
+{
+    if(expression == NULL || phase >= expression->phase_count)return -1;
+    /* Metadata follows the same collection order as the captured arguments. */
+    return expression->phase_kinds[phase];
 }
 static CalculatorStatus sample_graph_phases(ApplicationExpression *expression,
     ApplicationExpressionSample *sample)

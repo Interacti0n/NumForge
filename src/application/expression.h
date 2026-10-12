@@ -37,6 +37,8 @@ void application_expression_enable_graph_phases(ApplicationExpression *expressio
 /* Restricted globally continuous operations; excludes unknown domain/pole/jump
  * operations. Used only to permit coarser display chords, never domain claims. */
 bool application_expression_graph_smooth(const ApplicationExpression *expression);
+/* Forward trig extrema offset: 1 = sin half-period, 0 = cos, -1 = unsupported. */
+int application_expression_graph_peak_offset(const ApplicationExpression *expression,size_t phase);
 void application_expression_destroy(ApplicationExpression *expression);
 
 /* Inputs are borrowed typed values with a populated number marker. Results are

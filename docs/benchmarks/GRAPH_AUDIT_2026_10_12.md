@@ -142,3 +142,27 @@ Ordinary `sin(x)` drops from 381 to 177 points; `sin(3*x)` drops from 921 to 457
 Pole, tangent, floor, mixed-domain and nested fast-phase checks remain covered.
 Truly excessive oscillations still retain unresolved gaps and the smaller-range
 message rather than becoming a misleading flat line.
+
+## Follow-up: preserve periodic extrema
+
+A reported `sin(x)` plot on −100..611 showed false changing amplitude because
+the coarse grid missed different peaks by different amounts. The latest sampler
+adds actual sin/cos phase-extremum evaluations to accepted smooth edges, sharing
+the existing point/memory/time bounds. Phase interpolation is verified through
+the C evaluator and can receive up to eight bounded bracket updates for nonlinear
+arguments. Returned y values are never replaced with assumed ±1 values.
+
+The [peak follow-up CSV](graph_peaks_after_2026_10_12.csv) records 17 cases,
+three modes and three repetitions under the same harness settings (153 rows).
+The reported wide sine now has 739 points, full coverage, sampled extrema ±1,
+median C time 61.12 ms / 14.30 MiB and adapter time 64.52 ms / 14.94 MiB.
+`sin(33*x)` on ±10 has 723 points, full coverage and median C time 75.96 ms /
+16.55 MiB. These supersede the earlier coarse-only counts in the previous section.
+
+Browser regressions check every expected peak/dip for the reported range,
+cos(-x), sin(33x) and degree mode, and capture the rendered result. All 27 focused
+graph/guide browser tests pass. GCC tracked-allocation and MSVC graph regressions
+also pass, including 24 stratified peak-work failures with atomic cleanup.
+For general composite/nonlinear functions these are component anchors, not a
+guarantee that all extrema of the full expression were found. At exhausted
+budgets the existing connected approximation is retained and `limited` is set.

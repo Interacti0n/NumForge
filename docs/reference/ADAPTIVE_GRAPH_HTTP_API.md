@@ -72,6 +72,19 @@ tan, domain-restricted functions and jump operations do not use this fallback.
 This trades line-interpolation precision for connected, useful display curves;
 individual C sample precision is unchanged. It is not a general continuity solver.
 
+Accepted edges in recognized smooth trees receive optional sin/cos extremum
+anchors. Captured phases locate the next half-period extremum (sin: π/2+kπ;
+cos: kπ; degree equivalents 90+180k/180k). A secant coordinate estimate is checked
+by actual C evaluation and, if needed, refined within the phase bracket up to
+eight times. The measured phase must agree within 1e-6 angle units; existing
+near-extremum endpoints are not duplicated. No synthetic ±1 results are inserted.
+This prevents false amplitude modulation from coarse uniform grids, including
+sin(x) on −100..611. For composite/nonlinear phases these are component anchors,
+not a proof that every extremum of the complete expression was found.
+They share the original 1024-sample/request budget. Insufficient remaining points,
+3 MiB allocation reserve or 300 ms time reserve mark the graph limited while
+preserving already accepted chords; actual allocation/time failures remain atomic.
+
 Before each new probe the sampler checks remaining cumulative bytes and time,
 reserving 2 MiB and 200 ms for finishing/serialization plus twice the largest
 observed probe cost. It can stop with `limited:true` before exhausting the budget.

@@ -301,9 +301,35 @@ static void test_adaptive_view_includes_discovered_extrema(void)
         TEST_ASSERT_TRUE(low>=0);TEST_ASSERT_TRUE(high<=0);
     }
 }
+static void test_peak_work_allocation_failures_are_atomic(void)
+{
+    range("1","2");CalculatorError error;
+#ifdef NUMFORGE_ENABLE_ALLOC_STATS
+    context.time_limit_ms=60000;
+#endif
+    numforge_test_allocator_begin(0U);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_graph_adaptive(&graph,"sin(x)",NULL,minimum,maximum,NULL,&context,&error));
+    size_t calls=numforge_test_allocator_call_count();numforge_test_allocator_end();
+    bool near_one=false;
+    for(size_t i=0U;i<graph->count;++i){bool one=false;BigDecimal *delta=bigdecimal_create();TEST_ASSERT_NOT_NULL(delta);
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK,bigdecimal_set_string(delta,"1"));
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK,bigdecimal_sub(delta,graph->samples[i].value.number,delta));
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK,bigdecimal_is_zero(&one,delta));near_one=near_one||one;bigdecimal_destroy(delta);
+    }
+    TEST_ASSERT_TRUE(near_one);application_graph_destroy(graph);graph=NULL;
+    /* Later stratified failures cover optional peak scratch/evaluation/insertion,
+     * including partial owned sample cleanup. Zero-live checks run in tearDown. */
+    for(size_t i=0U;i<24U;++i){
+        size_t fault=1U+(calls-1U)*i/23U;
+        numforge_test_allocator_begin(fault);
+        CalculatorStatus status=application_graph_adaptive(&graph,"sin(x)",NULL,minimum,maximum,NULL,&context,&error);
+        numforge_test_allocator_end();TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY,status);TEST_ASSERT_NULL(graph);
+    }
+}
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_peak_work_allocation_failures_are_atomic);
     RUN_TEST(test_adaptive_view_includes_discovered_extrema);
     RUN_TEST(test_wide_smooth_ranges_and_shared_budget_admission);
     RUN_TEST(test_adaptive_linear_curvature_and_poles);

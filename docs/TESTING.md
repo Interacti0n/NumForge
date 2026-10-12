@@ -93,3 +93,7 @@ and accepted interval coverage. See the [graph audit](benchmarks/GRAPH_AUDIT_202
 Graph interaction regressions exercise wheel debounce, pointer panning, touch
 pinch, keyboard/reset controls, empty-view navigation and y-axis rescaling.
 C/HTTP checks verify newly discovered extrema and bounded unresolved pole views.
+
+Periodic-extremum regressions check every sin/cos peak on −100..611, reversed
+phases, sin(33x), degree mode and rendered y bounds. Peak-work allocator failures
+verify atomic cleanup; the graph benchmark includes the reported wide sine case.
