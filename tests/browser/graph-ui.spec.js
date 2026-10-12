@@ -1,4 +1,18 @@
 const {test,expect}=require('@playwright/test');
+test('returning to a cached viewport preserves curve geometry and axis labels',async({page})=>{
+ await page.goto('/graph?lang=en');await sample(page,'x*x');
+ const snapshot=()=>page.locator('#graph-plot').evaluate(svg=>({
+  paths:[...svg.querySelectorAll('path.graph-line')].map(p=>p.getAttribute('d')),
+  ticks:[...svg.querySelectorAll('.graph-tick')].map(p=>p.textContent)
+ }));
+ const original=await snapshot();
+ await page.locator('#graph-plot').focus();await page.locator('#graph-plot').press('ArrowRight');
+ await expect(page.locator('#graph-min')).toHaveValue('-6');
+ await expect(page.locator('.graph-workspace')).not.toHaveAttribute('aria-busy','true');
+ await page.locator('#graph-plot').press('ArrowLeft');
+ await expect(page.locator('#graph-min')).toHaveValue('-10');
+ await expect.poll(snapshot).toEqual(original);
+});
 test('zoom stops before coordinate precision becomes unreliable and reset still works',async({page})=>{
  await page.goto('/graph?lang=en');
  await page.evaluate(()=>{for(let i=0;i<80;i++)document.querySelector('#graph-zoom-in').click();});

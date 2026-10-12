@@ -1,5 +1,30 @@
 const {test,expect}=require('@playwright/test');
 const {randomBytes}=require('node:crypto');
+test('domain boundaries and poles stay disconnected on shifted and broad ranges',async({request})=>{
+ test.setTimeout(30000);
+ for(const [expression,poles,reference,domain] of [
+  ['tan(x)',[-3*Math.PI/2,-Math.PI/2,Math.PI/2,3*Math.PI/2],Math.tan,()=>true],
+  ['1/x',[0],x=>1/x,x=>x!==0],['1/(x-2)',[2],x=>1/(x-2),x=>x!==2],
+  ['sqrt(x)',[],Math.sqrt,x=>x>=0],['ln(x)',[0],Math.log,x=>x>0]]){
+  for(const [min,max] of [['-10','10'],['-3.7','5.3']]){
+   const response=await request.post('/api/graph/plot?'+new URLSearchParams({min,max}),{data:expression});
+   expect(response.ok()).toBe(true);const data=await response.json();expect(data.count).toBeLessThanOrEqual(1024);
+   expect(data.points.some(p=>p.connect)).toBe(true);
+   const violations=[];let maximumError=0;
+   data.points.forEach((p,i)=>{
+    const x=Number(p.x);if(p.kind==='real'){
+     if(!domain(x))violations.push(`real point outside domain at ${x}`);
+     maximumError=Math.max(maximumError,Math.abs(Number(p.y)-reference(x))/Math.max(1,Math.abs(reference(x))));
+    }
+    if(p.connect){const previous=data.points[i-1];
+     if(!previous||previous.kind!=='real'||p.kind!=='real')violations.push(`invalid edge at ${x}`);
+     for(const pole of poles)if(previous&&Number(previous.x)<pole&&x>pole)violations.push(`edge across pole ${pole}`);
+    }
+   });
+   expect(violations,`${expression} on ${min}..${max}`).toEqual([]);expect(maximumError).toBeLessThan(1e-9);
+  }
+ }
+});
 test('adaptive projection retains close sine values and uniform projection remains twelve places',async({request})=>{
  const response=await request.post('/api/graph/plot?min=-4.71238798038469&max=-4.71238098038469',{data:'sin(x)'});
  expect(response.ok()).toBe(true);const data=await response.json();expect(data.plot_places).toBe(16);

@@ -166,3 +166,53 @@ also pass, including 24 stratified peak-work failures with atomic cleanup.
 For general composite/nonlinear functions these are component anchors, not a
 guarantee that all extrema of the full expression were found. At exhausted
 budgets the existing connected approximation is retained and `limited` is set.
+
+## Follow-up: domain, cache and performance audit
+
+The [reliability sweep](graph_reliability_2026_10_12.csv) extends the harness to
+21 cases, three modes and three repetitions (189 rows). New cases cover `1/x`,
+`1/(x-2)`, `sqrt(x)` and `ln(x)` across negative and positive inputs. Every row
+completed successfully; maximum independently checked relative point error was
+1.02e-13. Non-real/domain-error points are excluded from the real-value oracle.
+HTTP rows measure the whole adapter but do not independently parse its points;
+separate browser/API tests check those projected values and connections.
+
+On this machine, median adaptive / HTTP times in milliseconds were:
+
+| Case | Adaptive | HTTP |
+| --- | ---: | ---: |
+| `sin(x)`, -100..611 | 59.97 | 73.50 |
+| `sin(33*x)`, -10..10 | 93.58 | 85.14 |
+| `tan(x)`, -10..10 | 174.16 | 183.07 |
+| `1/x`, -10..10 | 23.90 | 31.44 |
+| `1/(x-2)`, -10..10 | 20.57 | 25.68 |
+| `sqrt(x)`, -10..10 | 7.31 | 8.96 |
+| `ln(x)`, -10..10 | 49.43 | 47.95 |
+
+The slowest adapter repetition was 184.86 ms, well below the shared 5 s budget.
+This is evidence for these inputs on this machine, not a worst-case timing
+guarantee. Existing injected-deadline tests separately check atomic interruption.
+Compared with the previous peak sweep, wide sine C time is similar (61.12 to
+59.97 ms); sine33 increases from 75.96 to 93.58 ms and tangent from 164.49 to
+174.16 ms. These are separate runs and include machine noise, so they do not
+isolate an implementation regression. Adapter projection now retains 16 places
+instead of 12; no speed improvement is claimed by this follow-up.
+
+All 38 graph/guide browser tests pass, with new independent domain/pole checks
+on -10..10 and shifted -3.7..5.3 ranges, plus identical curve geometry and ticks
+after panning away and returning to a cached viewport. Existing cache tests also
+cover refinement, session invalidation and reciprocal gaps. MSVC graph/web and
+GCC tracked-allocation graph tests pass.
+
+The main remaining limitation is display resolution, not measured runtime:
+`sin(3*x)` on -1000..1000 and `sin(x)` on +/-1e6 exhaust the 1024-point cap and
+have no accepted connections. `sin(x*x)` on -100..100 retains only about 3.9%
+connected coverage. Pole and domain-boundary cases also set `limited` for
+unresolved intervals; this does not mean their computation timed out.
+
+Next, distinguish resolution/domain gaps from resource exhaustion in the user
+message. For densely oscillating functions, an explicitly labelled overview or
+envelope mode would be more useful than silently joining unresolved samples.
+Keep ordinary curve mode strict at poles and domain boundaries. Multiple named
+curves can then share the viewport, with separate sampling/cache identities and
+an explicit total request budget.

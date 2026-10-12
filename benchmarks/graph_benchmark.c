@@ -23,10 +23,14 @@ static const GraphCase cases[]={
  {"oscillation","sin(x*x)","-100","100",7,34},
  {"pole","1/(x-0.1)","-10","10",8,34},
  {"tangent","tan(x)","-10","10",9,34},
+ {"reciprocal","1/x","-10","10",11,34},
+ {"shifted_pole","1/(x-2)","-10","10",12,34},
+ {"sqrt_domain","sqrt(x)","-10","10",13,34},
+ {"log_domain","ln(x)","-10","10",14,34},
  {"sine100","sin(3*x)","-1","1",3,100},
  {"line_trillion","3*x+2","-1000000000000","1000000000000",0,34},
  {"log_trillion","ln(1+x*x)","-1000000000000","1000000000000",6,34}};
-static double reference(int kind,double x){switch(kind){case 0:return 3*x+2;case 1:return x*x;case 2:return sin(x);case 3:return sin(3*x);case 4:return sin(3*x)+cos(2*x);case 5:return sin(3*x)*exp(-x*x/20);case 6:return log1p(x*x);case 7:return sin(x*x);case 8:return 1/(x-.1);case 10:return sin(33*x);default:return tan(x);}}
+static double reference(int kind,double x){switch(kind){case 0:return 3*x+2;case 1:return x*x;case 2:return sin(x);case 3:return sin(3*x);case 4:return sin(3*x)+cos(2*x);case 5:return sin(3*x)*exp(-x*x/20);case 6:return log1p(x*x);case 7:return sin(x*x);case 8:return 1/(x-.1);case 10:return sin(33*x);case 11:return 1/x;case 12:return 1/(x-2);case 13:return sqrt(x);case 14:return log(x);default:return tan(x);}}
 static double project(const BigDecimal *value){char *text=NULL;double result=NAN;if(bigdecimal_to_string(value,&text)==BIGDECIMAL_OK){result=strtod(text,NULL);free(text);}return result;}
 int main(int argc,char **argv){
  int repeats=argc>1?atoi(argv[1]):3;if(repeats<1||repeats>10||argc>2)return 2;

@@ -89,6 +89,10 @@ independent JavaScript references; numeric C suites retain high-precision oracle
 The opt-in `graph_benchmark [1..10]` reports uniform/adaptive/HTTP timings,
 cumulative allocations, resolution limits, independent libm point/chord errors
 and accepted interval coverage. See the [graph audit](benchmarks/GRAPH_AUDIT_2026_10_12.md).
+The 21-case reliability sweep includes reciprocal/shifted poles and square-root
+and logarithm domain boundaries. HTTP regressions verify independent real values
+and disconnected poles on centered and shifted intervals; cache tests compare
+curve geometry and axis labels after returning to the same viewport.
 
 Graph interaction regressions exercise wheel debounce, pointer panning, touch
 pinch, keyboard/reset controls, empty-view navigation and y-axis rescaling.
