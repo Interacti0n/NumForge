@@ -113,12 +113,19 @@ function initGraph() {
         const group=element('g',{class:'graph-drawing'});
         const label=value=>value===0?'0':value.toLocaleString(english?'en':'sk',
             {maximumSignificantDigits:3,notation:Math.abs(value)>=1e5 || Math.abs(value)<.001?'scientific':'standard'});
+        // Snap a near-zero axis tick relative to this view, not to an absolute
+        // epsilon: genuine small-scale coordinates must retain their labels.
+        const tick=(low,high,fraction)=>{
+            const value=low+(high-low)*fraction;
+            return low<=0&&high>=0&&Math.abs(value)<=(high-low)*1e-4?0:value;
+        };
         for(let i=0;i<=4;i++) {
-            const fraction=i/4,x=64+fraction*(right-64),y=bottom-fraction*(bottom-22);
+            const fraction=i/4,tx=tick(xLow,xHigh,fraction),ty=tick(yLow,yHigh,fraction);
+            const x=64+(tx-xLow)/(xHigh-xLow)*(right-64),y=bottom-(ty-yLow)/(yHigh-yLow)*(bottom-22);
             group.append(element('line',{x1:x,x2:x,y1:22,y2:bottom,class:'graph-grid'}),
                 element('line',{x1:64,x2:right,y1:y,y2:y,class:'graph-grid'}),
-                element('text',{x,y:height-22,'text-anchor':'middle',class:'graph-tick'},label((xLow+(xHigh-xLow)*fraction)*xScale)),
-                element('text',{x:56,y:y+4,'text-anchor':'end',class:'graph-tick'},label((yLow+(yHigh-yLow)*fraction)*yScale)));
+                element('text',{x,y:height-22,'text-anchor':'middle',class:'graph-tick'},label(tx*xScale)),
+                element('text',{x:56,y:y+4,'text-anchor':'end',class:'graph-tick'},label(ty*yScale)));
         }
         if(xLow<=0 && xHigh>=0)group.append(element('line',{x1:px(0),x2:px(0),y1:22,y2:bottom,class:'graph-axis'}));
         if(yLow<=0 && yHigh>=0)group.append(element('line',{x1:64,x2:right,y1:py(0),y2:py(0),class:'graph-axis'}));

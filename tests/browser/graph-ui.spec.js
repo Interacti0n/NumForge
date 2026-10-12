@@ -1,4 +1,16 @@
 const {test,expect}=require('@playwright/test');
+test('near-zero axis ticks snap to zero without hiding genuinely tiny values',async({page})=>{
+ let low='-1',high='1.00001';
+ await page.route('**/api/graph/plot?**',route=>route.fulfill({json:{ok:true,schema_version:2,parameter:'x',limited:false,count:2,y_min:low,y_max:high,
+  points:[{x:'-1',y:low,kind:'real',connect:false},{x:'1',y:high,kind:'real',connect:true}]}}));
+ await page.goto('/graph?lang=en');await sample(page,'x');
+ const ticks=page.locator('.graph-tick[x="56"]');
+ await expect(ticks.filter({hasText:/^0$/})).toHaveCount(1);
+ expect(await ticks.allTextContents()).not.toContain('-0');
+ low='-1e-9';high='1e-9';await sample(page,'x');
+ await expect(ticks.filter({hasText:/^0$/})).toHaveCount(1);
+ expect((await ticks.allTextContents()).filter(t=>t.includes('E')||t.includes('e')).length).toBeGreaterThan(1);
+});
 test('wide sine renders equal sampled extrema',async({page})=>{
  await page.setViewportSize({width:1440,height:1000});await page.goto('/graph?lang=sk');
  const data=await sample(page,'sin(x)','-100','611');expect(data.limited).toBe(false);

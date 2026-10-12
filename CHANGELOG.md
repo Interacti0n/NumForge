@@ -7,6 +7,9 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Display near-zero graph axis ticks as 0 and align their gridlines with the zero
+  axis, using a view-relative threshold that preserves genuinely tiny scales.
+
 - Anchor coarse sin/cos curves at actually evaluated phase extrema, preventing
   false amplitude modulation when uniform samples miss periodic peaks. Verify
   every extremum on the reported wide interval, degree/reversed phases and faults.
