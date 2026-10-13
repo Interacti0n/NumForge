@@ -7,6 +7,10 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Insert complete function calls from the graph/calculator library, place the caret
+  inside empty parentheses, wrap selected text and add semicolon placeholders for
+  required extra arguments. Keep explicit closing parentheses in the evaluator.
+
 - Add up to four browser graph functions with individual colors, rows, legend,
   caches and isolated errors. Serialize graph requests with foreground priority.
   Share function-library descriptions/aliases with the calculator, add graph

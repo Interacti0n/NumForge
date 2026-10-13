@@ -5,6 +5,9 @@ details and the [2.2.1 release record](docs/project/RELEASE_2_2_1.md) for valida
 
 ## Unreleased
 
+- Function-library insertion includes parentheses, caret placement, selected-text
+  wrapping and separators for required extra arguments in calculator and graphs.
+
 - Plot up to four colored functions, browse the function library and expand the graph.
 
 - Prevent visible seams between prepared graph tiles when zooming out.

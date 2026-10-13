@@ -765,10 +765,16 @@ function insertText(text, isFunction = false)
     invalidate();
     const start = expression.selectionStart ?? expression.value.length;
     const end = expression.selectionEnd ?? start;
-    const insertion = isFunction ? text + ')' : text;
+    const selected = expression.value.slice(start, end);
+    const arity = isFunction ? functionRegistry.get(text.slice(0, -1))?.minimum_arguments || 1 : 0;
+    const insertion = isFunction ? text + selected + ';'.repeat(Math.max(0, arity - 1)) + ')' : text;
     expression.setRangeText(insertion, start, end, 'end');
-    if (isFunction) expression.setSelectionRange(start + text.length, start + text.length);
     expression.focus();
+    if (isFunction) {
+        const caret = selected ? (arity > 1 ? start + text.length + selected.length + 1
+            : start + insertion.length) : start + text.length;
+        expression.setSelectionRange(caret, caret);
+    }
     scheduleCalculation();
 }
 

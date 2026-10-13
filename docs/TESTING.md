@@ -112,6 +112,9 @@ Atomic resource/fault checks include both evaluators and the compact sampler.
 Multi-curve regressions check four-row limits, color-only repaint, error isolation,
 stale deleted results, selected-row library insertion/aliases, SPA persistence
 and expanded-canvas identity/return on desktop and both mobile orientations.
+Library insertion checks both languages/mobile and desktop: empty calls, caret
+placement, selected/nested expressions, required argument separators, recent
+calculator tools and real calculation/plotting after typing the arguments.
 
 Graph interaction regressions exercise wheel debounce, pointer panning, touch
 pinch, keyboard/reset controls, empty-view navigation and y-axis rescaling.

@@ -43,7 +43,7 @@ test('deleting a curve cancels its result and does not attach it to a new row',a
 for(const lang of ['en','sk'])test(`graph library searches shared aliases and inserts into the selected row ${lang}`,async({page})=>{
  await page.goto('/graph?lang='+lang);await add(page,'');await page.locator('#graph-library summary').click();
  const search=page.locator('#function-search');await search.fill(lang==='sk'?'KVADRATICKA ODMOCNINA':'SQUARE ROOT');
- await page.locator('#graph-functions button[data-function=sqrt]').click();await expect(input(page,1)).toHaveValue('sqrt(x)');await expect(input(page,0)).toHaveValue('sin(x)');
+ await page.locator('#graph-functions button[data-function=sqrt]').click();await expect(input(page,1)).toHaveValue('sqrt()');await expect(input(page,0)).toHaveValue('sin(x)');
  await search.fill(lang==='sk'?'LUDOLFOVO CISLO':"LUDOLPH'S NUMBER");await page.locator('#graph-functions button[data-insert="π"]').click();await expect(input(page,1)).toHaveValue('sqrt(π)');
  await search.fill('ARCTG');await expect(page.locator('#graph-functions button[data-function=atan]')).toBeVisible();
  await search.fill('');await expect(page.locator('#graph-functions button[data-function=rand]')).toHaveCount(0);

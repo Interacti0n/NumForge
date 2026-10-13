@@ -21,10 +21,12 @@ availability. Constants π, e and φ support the same search aliases. Random cal
 are excluded because plotting rejects them.
 
 Clicking inserts into the last focused function row. Selected text is wrapped
-as an argument; without a selection the row's parameter is supplied and selected
-for editing. Calls needing another argument start with an editable numeric default.
-For example, `pow(x;2)`, `root(x;2)` or `complex(x;0)`. Insertion does not calculate;
-press Plot or Enter when the expression is ready. Integer/domain-sensitive calls
+as the first argument. Without a selection, a call such as `sqrt()` is inserted
+with the caret between the parentheses. Required extra arguments get semicolon
+separators, for example `root(;)`; type the first argument, then move past the
+semicolon to enter the second. When wrapping selected text in a multi-argument
+call, the caret moves to the second argument. Closing parentheses remain required.
+Insertion does not calculate; press Plot or Enter when the expression is ready. Integer/domain-sensitive calls
 can produce gaps; use real components to plot complex expressions.
 
 The C parser infers the unique variable in the expression. `sin(t)` uses `t`,

@@ -626,10 +626,10 @@ for (const lang of ['sk', 'en']) {
             await page.locator('#function-tab-3').focus();
             await page.keyboard.press('Enter');
             await page.locator('[data-function="pow"]').click();
-            await expect(page.locator('#expression')).toHaveValue('pow()');
+            await expect(page.locator('#expression')).toHaveValue('pow(;)');
             expect(await page.locator('#expression').evaluate(el => el.selectionStart)).toBe(4);
             await page.locator('[data-insert="2"]').click();
-            await page.locator('[data-insert=";"]').click();
+            await page.locator('#expression').press('ArrowRight');
             await page.locator('[data-insert="3"]').click();
             await page.locator('[data-action=evaluate]').click();
             await expect(page.locator('#result')).toHaveText('8');

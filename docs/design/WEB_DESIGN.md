@@ -77,6 +77,10 @@ the menu becomes a horizontal strip. The full-width settings bar sits above the
 expression and stays compact in height. The function library and session use
 natural card heights inside the sidebar. The calculator and guide use colors
 based on Melanie Brown's Deep Purple VS Code theme.
+Library clicks insert complete calls such as `sqrt()` with the caret inside,
+wrap selected subexpressions and add semicolons for the minimum required argument
+count from the C catalogue. Recent calculator tools use the same insertion path.
+
 The six inverse trigonometric and hyperbolic calculator functions accept
 both `arc` and `arcus` spellings alongside their short `a` names. The web
 function search includes those aliases; all spellings dispatch to the same

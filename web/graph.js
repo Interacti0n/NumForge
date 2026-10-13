@@ -541,11 +541,11 @@ function initGraph() {
     function insertLibrary(value,isFunction=false,name=''){
         const curve=activeCurve||curves[0],input=curve.input,start=input.selectionStart??input.value.length,end=input.selectionEnd??start;
         const selected=input.value.slice(start,end),arity=registry.get(name)?.minimum_arguments||1;
-        const argument=selected||curve.state().parameter||'x';
-        const insertion=isFunction?value+argument+(arity>1?';'+(name==='complex'?'0':name==='min'||name==='max'?'0':'2'):'')+')':value;
+        const separators=';'.repeat(Math.max(0,arity-1));
+        const insertion=isFunction?value+selected+separators+')':value;
         if(input.value.length-(end-start)+insertion.length>4096){curve.message(english?'The expression is too long.':'Zadanie je príliš dlhé.',true);return;}
         input.setRangeText(insertion,start,end,'end');input.dispatchEvent(new Event('input',{bubbles:true}));input.focus();
-        if(isFunction&&!selected)input.setSelectionRange(start+value.length,start+value.length+argument.length);
+        if(isFunction){const caret=selected?(arity>1?start+value.length+selected.length+1:start+insertion.length):start+value.length;input.setSelectionRange(caret,caret);}
     }
     let registry=new Map();
     async function loadLibrary(){
