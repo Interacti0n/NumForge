@@ -5,6 +5,9 @@ details and the [2.2.1 release record](docs/project/RELEASE_2_2_1.md) for valida
 
 ## Unreleased
 
+- Reduce unnecessary graph gaps and off-screen refinement work; show warnings
+  only for unresolved detail in the current camera.
+
 - Move graphs in both directions with fixed initial axes, exact zero labels and
   a wider prepared region for smooth cached movement.
 

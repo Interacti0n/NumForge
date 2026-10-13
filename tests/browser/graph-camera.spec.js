@@ -59,3 +59,15 @@ test('pure vertical pan reprojects the buffered curve without a graph request',a
  await page.waitForTimeout(450);expect(calls.length).toBe(before);
  await page.locator('#graph-plot').press('Home');await expect(page.locator('#graph-plot')).toHaveAttribute('data-ymin','-10');
 });
+
+test('limited warning follows visible gaps rather than the whole prepared region',async({page})=>{
+ await page.route('**/api/graph/plot?**',route=>route.fulfill({json:{ok:true,schema_version:3,evaluation:'double',
+  parameter:'x',quality:'refined',width:2048,height:440,count:9,limited:true,y_min:-.3,y_max:.3,
+  points:[-30,-20,-10,-5,0,5,10,20,30].map((x,i)=>[x,x/100,i&&x!==20?1:0,0,1])}}));
+ await draw(page);await expect(page.locator('#graph-status')).not.toContainText('could not be resolved');
+ await page.locator('#graph-plot').focus();await page.locator('#graph-plot').press('ArrowRight');
+ await expect(page.locator('#graph-status')).toContainText('Some visible intervals could not be resolved');
+ // Moving the same unresolved edge outside the vertical camera also hides the warning.
+ for(let i=0;i<3;++i)await page.locator('#graph-plot').press('ArrowUp');
+ await expect(page.locator('#graph-status')).not.toContainText('could not be resolved');
+});

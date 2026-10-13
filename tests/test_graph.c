@@ -391,9 +391,22 @@ static void test_screen_camera_span_and_failure_preserve_output(void)
     TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY,application_fast_graph_sample_view(&screen_graph,"x",NULL,-10,10,800U,440U,20,false,NULL,&context,&error));
     numforge_test_allocator_end();TEST_ASSERT_EQUAL_PTR(original,screen_graph);
 }
+static void test_screen_floor_keeps_smooth_chords_connected(void)
+{
+    CalculatorError error;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_graph_sample_view(&screen_graph,"x^10",NULL,-30,30,2048U,440U,20,false,NULL,&context,&error));
+    TEST_ASSERT_FALSE(screen_graph->limited);
+    TEST_ASSERT_LESS_OR_EQUAL(4097U,screen_graph->count);
+    for(size_t i=1U;i<screen_graph->count;++i)TEST_ASSERT_TRUE(screen_graph->points[i].connect);
+    application_fast_graph_destroy(screen_graph);screen_graph=NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_graph_sample_view(&screen_graph,"1/(x-0.1)^2",NULL,-10,10,800U,440U,20,false,NULL,&context,&error));
+    for(size_t i=1U;i<screen_graph->count;++i)
+        if(screen_graph->points[i-1U].x<0.1&&screen_graph->points[i].x>0.1)TEST_ASSERT_FALSE(screen_graph->points[i].connect);
+}
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_screen_floor_keeps_smooth_chords_connected);
     RUN_TEST(test_screen_camera_span_and_failure_preserve_output);
     RUN_TEST(test_fast_screen_sampler_connections_and_atomic_failure);
     RUN_TEST(test_resolution_experiment_preserves_budget_and_atomic_output);

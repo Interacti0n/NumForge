@@ -21,7 +21,7 @@ function initGraph() {
         range:'These coordinates cannot be distinguished in the browser’s numeric range. Adjust or reset the range.',
         real:'Real', domain_error:'Domain error', complex:'Complex', quantity:'Quantity', unresolved:'Unresolved', outside:'Outside plotting range',
         summary:(shown,total)=>`y = f(${parameter}) · ${shown}/${total} real samples`, column:'column',
-        limited:'Some intervals could not be resolved. Try a smaller x range.', ambiguous:'Use one unknown variable, or save the other variables in the calculator and enable its session.',
+        limited:'Some visible intervals could not be resolved. Zoom in for more detail.', ambiguous:'Use one unknown variable, or save the other variables in the calculator and enable its session.',
         caption:'Rounded plotting values. Complex values and quantities are not projected onto the real axis.'
     } : {
         ready:'Zadaj funkciu a vykresli ju.', busy:'Počítam body…', network:'Server nie je dostupný. Skús to znova.',
@@ -29,7 +29,7 @@ function initGraph() {
         range:'Tieto súradnice prehliadač nedokáže rozlíšiť vo svojom číselnom rozsahu. Uprav rozsah alebo obnov pohľad.',
         real:'Reálne', domain_error:'Chyba definičného oboru', complex:'Komplexné', quantity:'Veličina', unresolved:'Nevyriešené', outside:'Mimo rozsahu grafu',
         summary:(shown,total)=>`y = f(${parameter}) · reálne body: ${shown}/${total}`, column:'pozícia',
-        limited:'Niektoré úseky sa nepodarilo rozlíšiť. Skús menší rozsah x.', ambiguous:'Použi jednu neznámu, alebo ulož ostatné premenné v kalkulačke a zapni použitie sedenia.',
+        limited:'Niektoré viditeľné úseky sa nepodarilo rozlíšiť. Priblíž graf pre viac detailov.', ambiguous:'Použi jednu neznámu, alebo ulož ostatné premenné v kalkulačke a zapni použitie sedenia.',
         caption:'Zaokrúhlené hodnoty pre graf. Komplexné čísla a veličiny sa nepremietajú na reálnu os.'
     };
     const errors = english ? {} : {
@@ -101,7 +101,7 @@ function initGraph() {
     function draw() {
         svg.querySelectorAll('.graph-drawing').forEach(el=>el.remove());
         const points=samples||[],valid=points.filter(p=>p.plottable);
-        if(samples&&!pendingView)message((approximate?'≈ ':'')+text.summary(valid.length,points.length)+(limited?' · '+text.limited:''));
+        if(samples&&!pendingView)message((approximate?'≈ ':'')+text.summary(valid.length,points.length)+(visibleUnresolved()?' · '+text.limited:''));
         $('graph-values').hidden=!samples||pendingView;
         $('graph-table-caption').textContent=text.caption;
         if($('graph-values').open)renderTable();
@@ -174,6 +174,17 @@ function initGraph() {
         $('graph-svg-description').textContent=samples?$('graph-expression').value+'; '+text.summary(valid.length,points.length):text.ready;
         svg.append(group);svg.removeAttribute('hidden');
     }
+    function visibleUnresolved() {
+        if(!limited||!samples)return false;
+        const [low,high]=bounds(),[bottom,top]=yViewport;
+        return (chunks||[{points:samples,limited}]).some(chunk=>chunk.limited&&chunk.points.some((p,i)=>{
+            const a=Math.max(low,chunk.low??low),b=Math.min(high,chunk.high??high);
+            if(p.kind==='unresolved'&&p.nx>=a&&p.nx<=b)return true;
+            const previous=chunk.points[i-1];
+            return previous&&previous.plottable&&p.plottable&&!p.connect&&previous.nx<b&&p.nx>a&&
+                Math.max(previous.ny,p.ny)>=bottom&&Math.min(previous.ny,p.ny)<=top;
+        }));
+    }
     function decode(body) {
         if(body.schema_version===3){
             const kinds=['real','domain_error','complex','quantity','unresolved'];
@@ -243,7 +254,7 @@ function initGraph() {
             const p=segment.entry.points;
             let start=p.findIndex(point=>point.nx>=segment.low);if(start<0)start=p.length-1;
             let end=p.findIndex(point=>point.nx>segment.high);if(end<0)end=p.length;
-            return {low:segment.low,high:segment.high,points:p.slice(Math.max(0,start-1),Math.min(p.length,end+1))};
+            return {low:segment.low,high:segment.high,limited:segment.entry.limited,points:p.slice(Math.max(0,start-1),Math.min(p.length,end+1))};
         });
         samples=chunks.flatMap(c=>c.points);parameter=segments[0].entry.parameter;
         limited=segments.some(s=>s.entry.limited);

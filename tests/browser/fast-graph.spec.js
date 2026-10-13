@@ -46,15 +46,15 @@ test('unsupported and high precision requests retain the precision sampler',asyn
 });
 
 test('camera span controls pixel refinement without changing values or pole gaps',async({request})=>{
- const wide=await plot(request,'sin(33x)',{min:'-30',max:'30',width:'2048',ymin:'-10',ymax:'10'});
- const narrow=await plot(request,'sin(33x)',{min:'-30',max:'30',width:'2048',ymin:'-1',ymax:'1'});
+ const wide=await plot(request,'sin(x)',{min:'-30',max:'30',width:'2048',ymin:'-10',ymax:'10'});
+ const narrow=await plot(request,'sin(x)',{min:'-30',max:'30',width:'2048',ymin:'-1',ymax:'1'});
  expect(wide.limited).toBe(false);expect(wide.count).toBeLessThan(narrow.count);
  expect(wide.points.slice(1).every(p=>p[2]===1)).toBe(true);
  let pixelError=0;
  wide.points.forEach((p,i)=>{
-  expect(Math.abs(p[1]-Math.sin(33*p[0]))).toBeLessThan(1e-9);
+  expect(Math.abs(p[1]-Math.sin(p[0]))).toBeLessThan(1e-9);
   if(i&&p[2]){const a=wide.points[i-1];for(const t of [.25,.5,.75])
-   pixelError=Math.max(pixelError,Math.abs(a[1]+(p[1]-a[1])*t-Math.sin(33*(a[0]+(p[0]-a[0])*t)))*440/20);}
+   pixelError=Math.max(pixelError,Math.abs(a[1]+(p[1]-a[1])*t-Math.sin(a[0]+(p[0]-a[0])*t))*440/20);}
  });expect(pixelError).toBeLessThan(1.2);
  const poles=await plot(request,'1/x',{ymin:'-10',ymax:'10'});
  poles.points.forEach((p,i)=>{if(p[2])expect(poles.points[i-1][0]<0&&p[0]>0).toBe(false);});
@@ -64,4 +64,25 @@ test('camera span controls pixel refinement without changing values or pole gaps
   const response=await request.post('/api/graph/plot?'+new URLSearchParams({mode:'fast',min:'-10',max:'10',...extra}),{data:'x'});
   expect(response.ok()).toBe(false);
  }
+});
+
+test('screen floor connects smooth steep and dense curves within bounded work',async({request})=>{
+ for(const expression of ['x^10','exp(x)','(x-1)^10','sin(100x)']){
+  const data=await plot(request,expression,{min:'-30',max:'30',width:'2048',ymin:'-10',ymax:'10'});
+  expect(data.schema_version,expression).toBe(3);expect(data.count,expression).toBeLessThan(8192);
+  expect(data.limited,expression).toBe(false);expect(data.points.slice(1).every(p=>p[2]===1),expression).toBe(true);
+  if(expression==='sin(100x)'){
+   let index=0;
+   for(let k=Math.ceil((-3000-Math.PI/2)/Math.PI);(Math.PI/2+k*Math.PI)/100<30;++k){
+    const peak=(Math.PI/2+k*Math.PI)/100;
+    while(index<data.points.length&&data.points[index][0]<peak-1e-7)++index;
+    expect(data.points[index][0]).toBeCloseTo(peak,7);expect(Math.abs(data.points[index][1])).toBeCloseTo(1,9);
+   }
+  }
+ }
+ // Under-resolved whole periods must still remain gaps, even in a smooth AST.
+ const unresolved=await plot(request,'sin(1000x)',{min:'-30',max:'30',width:'2048',ymin:'-10',ymax:'10'});
+ expect(unresolved.limited).toBe(true);expect(unresolved.points.slice(1).some(p=>p[2]===0)).toBe(true);
+ const pole=await plot(request,'1/(x-0.1)^2',{ymin:'-10',ymax:'10'});
+ pole.points.forEach((p,i)=>{if(p[2])expect(pole.points[i-1][0]<.1&&p[0]>.1).toBe(false);});
 });

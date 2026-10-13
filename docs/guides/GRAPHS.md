@@ -44,6 +44,13 @@ expressions such as sin/cos, polynomials and exp. Neither calculation precision
 nor point count alone guarantees interpolation accuracy. Pole/jump operations
 keep stricter checks; unsupported operations retain the precision sampler.
 
+For a restricted continuous expression with explicit camera bounds, short
+segments can remain connected once they are below half a horizontal pixel.
+This avoids spending the point budget on steep off-screen curves such as x^10
+or exp(x). Trigonometric phase checks still reject unresolved whole periods;
+division, tangent and other domain-sensitive expressions keep stricter rules.
+The displayed chord is an approximation, not an accuracy guarantee between samples.
+
 Coarse trigonometric curves also evaluate points near sin/cos phase extrema, so
 missed peaks do not create a false changing amplitude. These are actual C samples;
 they do not replace function values with assumed ±1 results. Complex expressions
@@ -52,7 +59,9 @@ and unresolved detail still have finite sampling limits.
 Connections are heuristic, not proofs of continuity. Narrow poles, discontinuities,
 isolated valid values or oscillations can escape finite sampling. Gaps can also
 omit a continuous but unresolved steep curve. A message reports exhausted
-refinement. Forward trigonometric phases receive an extra check against hidden
+refinement in a visible sampled region; unresolved detail elsewhere in the
+prepared buffer does not show that warning. Known domain/complex gaps alone are
+not a refinement warning. Forward trigonometric phases receive an extra check against hidden
 whole periods. If a wide range contains too many oscillations, narrow the x range;
 the plot may omit all connections rather than draw misleading chords.
 Both axes start at −10..10 and stay independent of the function's extrema.

@@ -7,6 +7,11 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Keep short screen-space chords connected for restricted continuous expressions
+  with camera bounds, while retaining pole/phase checks and legacy precision
+  criteria. Limit graph refinement warnings to visible unresolved samples/edges.
+  Compare steep/dense graph requests with the previous camera sampler.
+
 - Start graph cameras at −10..10 on both axes, add vertical pan and explicit y
   bounds, and precompute a wider x region for immediate cached movement. Use
   regular 1/2/5 axis steps, exact zero and progressively finer decimal labels;

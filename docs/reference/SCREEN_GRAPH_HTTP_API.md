@@ -58,6 +58,17 @@ midpoint acceptance is estimated at 8 pixels coarse / 2 pixels refined. Accepted
 half-chords generally have about a quarter of that error for locally smooth
 curvature; this is a heuristic, not a certified pixel bound.
 
+With explicit camera y bounds, a restricted globally continuous AST can also
+accept a parent no wider than one horizontal pixel, emitting two half-pixel
+chords even when vertical curvature exceeds the usual midpoint tolerance.
+This prevents steep off-screen polynomial/exp sections from consuming the
+entire point budget. Captured phase/domain checks still apply; hidden whole
+periods, poles, non-real and unresolved values are never joined by this rule.
+The horizontal floor is a display approximation and does not certify vertical
+interpolation error. Requests without camera bounds retain their old criterion.
+See the [connected-curve comparison](../benchmarks/GRAPH_CONNECTIONS_2026_10_13.md)
+for before/after work bounds and local HTTP measurements.
+
 Captured trig arguments limit hidden whole periods. Denominator/log/sqrt/power
 guards reject sampled domain crossings and tangent phase regions separate poles.
 Smooth trees receive actual sin/cos extremum evaluations, checked within 1e-6
@@ -95,3 +106,9 @@ Coarse entries cannot satisfy a final cache hit; resizing can request more detai
 without clearing useful old data. SVG commands share only accepted adjacent
 segments; gaps start new paths. The table shows at most 1024 samples plus a
 truncation row.
+
+Response `limited` describes the entire sampled range. The browser warning is
+restricted to unresolved samples and disconnected real edges that overlap the
+camera's x bounds and whose sampled ordinates intersect its y bounds. Known
+complex/domain/quantity gaps do not produce a refinement warning by themselves.
+Panning vertically rechecks this message without reevaluation.

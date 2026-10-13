@@ -14,7 +14,7 @@
 typedef struct Work {
     ApplicationFastGraph *graph;ApplicationExpression *exact;ApplicationFastExpression *fast;
     const CalculatorContext *context;CalculatorError *error;
-    double scale,tolerance,coarse_width;size_t limit;bool smooth;
+    double scale,tolerance,coarse_width;size_t limit;bool smooth,screen_floor;
 } Work;
 static bool real(const ApplicationFastGraphPoint *p){return p->kind==APPLICATION_GRAPH_REAL&&isfinite(p->y);}
 void application_fast_graph_destroy(ApplicationFastGraph *graph){if(graph){free(graph->points);free(graph);}}
@@ -91,8 +91,12 @@ static CalculatorStatus refine(Work *work)
         if(status!=CALCULATOR_OK)break;
         insert(graph,left+1U,b);graph->points[left+2U].connect=false;
         double phase_limit=work->smooth&&c.x-a.x<=work->coarse_width?3:0.5;
+        /* A restricted continuous AST can use two half-pixel chords once
+         * horizontal detail is below the requested screen resolution. Keep
+         * phase/domain checks: this must not join poles or hidden periods. */
+        bool short_smooth=work->screen_floor&&work->smooth&&c.x-a.x<=work->coarse_width;
         bool accepted=real(&a)&&real(&b)&&real(&c)&&safe(&ap,&bp,&cp,phase_limit)&&
-            fabs(b.y/work->scale-(a.y/work->scale+c.y/work->scale)/2)<=work->tolerance;
+            (short_smooth||fabs(b.y/work->scale-(a.y/work->scale+c.y/work->scale)/2)<=work->tolerance);
         bool empty=!real(&a)&&!real(&b)&&!real(&c);
         if(accepted){graph->points[left+1U].connect=true;graph->points[left+2U].connect=true;}
         for(size_t i=0;i<pending;++i)if(queue[(head+i)%work->limit].left>left)++queue[(head+i)%work->limit].left;
@@ -143,7 +147,7 @@ CalculatorStatus application_fast_graph_sample_view(ApplicationFastGraph **resul
     if(maximum-minimum<fmax(fabs(minimum),fabs(maximum))*DBL_EPSILON*256)return CALCULATOR_NOT_IMPLEMENTED;
     CalculatorStatus status=calculator_context_validate(context,error);if(status!=CALCULATOR_OK)return status;
     bool owner=numforge_budget_begin((uint64_t)context->time_limit_ms,CALCULATOR_ALLOCATION_BUDGET,CALCULATOR_SINGLE_ALLOCATION);
-    Work work={0};work.context=context;work.error=error;work.limit=coarse?width*2U:APPLICATION_FAST_GRAPH_MAX_POINTS;
+    Work work={0};work.context=context;work.error=error;work.screen_floor=vertical_span>0;work.limit=coarse?width*2U:APPLICATION_FAST_GRAPH_MAX_POINTS;
     status=parameter?application_expression_prepare(&work.exact,input,parameter,session,context,error):application_expression_prepare_auto(&work.exact,input,session,context,error);
     if(status==CALCULATOR_OK){work.smooth=application_expression_graph_smooth(work.exact);status=application_expression_fast_compile(&work.fast,work.exact,error);if(status==CALCULATOR_INVALID_ARGUMENT)status=CALCULATOR_NOT_IMPLEMENTED;}
     if(status==CALCULATOR_OK){work.graph=numforge_calloc(1U,sizeof(*work.graph));if(!work.graph)status=CALCULATOR_OUT_OF_MEMORY;}
