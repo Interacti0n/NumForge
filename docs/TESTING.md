@@ -156,3 +156,11 @@ times include a fixed 350 ms network quiet interval; mobile-sized Chromium on a 
 is not a physical phone measurement. Warm toggles must make zero graph requests.
 
 Recorded comparison and limitations: [four-function graph benchmark](project/GRAPH_MULTI_BENCHMARK_2026_10_13.md).
+
+Coordinate inspection regressions in `graph-inspector.spec.js` compare the readout
+against independent sin/sqrt/reciprocal references, verify closest-curve ownership
+and color, accepted-edge gaps, touch tracing, second-finger pinch, empty-area pan,
+expanded view, zero labels and both locales/layouts. Mouse and touch inspection
+must issue zero graph HTTP requests. A burst of 200 pointer events must produce
+one coalesced readout update while preserving the original plot DOM/geometry;
+its measured frame latency is recorded diagnostically, without a flaky CI timer.

@@ -5,6 +5,8 @@ details and the [2.2.1 release record](docs/project/RELEASE_2_2_1.md) for valida
 
 ## Unreleased
 
+- Inspect colored graph coordinates with mouse/touch using cached curves only.
+
 - Hide/show graph functions without losing calculated points; benchmark four-curve
   rendering and interactions against the previous version.
 

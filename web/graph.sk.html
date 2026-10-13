@@ -59,9 +59,9 @@
         <noscript><p>Graf vyžaduje JavaScript.</p></noscript>
       </section>
       <section class="card graph-result" aria-labelledby="graph-result-title">
-        <div class="graph-heading"><h2 id="graph-result-title">Graf</h2><div class="graph-view-controls"><button type="button" id="graph-reset">Obnoviť pohľad</button><button type="button" id="graph-expand" aria-expanded="false" aria-controls="graph-expanded">Rozšíriť graf</button></div></div><ul id="graph-legend" class="graph-legend" aria-label="Funkcia" hidden></ul><p class="graph-note" id="graph-interaction-hint">Kolieskom alebo dvoma prstami priblíž; potiahnutím posuň ľubovoľným smerom. Obnovenie vráti obe osi na −10 až 10.</p>
+        <div class="graph-heading"><h2 id="graph-result-title">Graf</h2><div class="graph-view-controls"><button type="button" id="graph-reset">Obnoviť pohľad</button><button type="button" id="graph-expand" aria-expanded="false" aria-controls="graph-expanded">Rozšíriť graf</button></div></div><ul id="graph-legend" class="graph-legend" aria-label="Funkcia" hidden></ul><p class="graph-note" id="graph-interaction-hint">Kolieskom/dvoma prstami priblíž; ťahaním posuň. Pre súradnice ukáž myšou na krivku alebo ťukni a posúvaj bod. Obnoviť: −10 až 10.</p>
         <p id="graph-status" role="status" aria-live="polite">Zadaj funkciu a vykresli ju.</p>
-        <svg id="graph-plot" tabindex="0" aria-describedby="graph-interaction-hint" viewBox="0 0 800 440" role="img" aria-labelledby="graph-svg-title graph-svg-description" hidden><title id="graph-svg-title">Graf</title><desc id="graph-svg-description"></desc></svg>
+        <div class="graph-canvas"><svg id="graph-plot" tabindex="0" aria-describedby="graph-interaction-hint" viewBox="0 0 800 440" role="img" aria-labelledby="graph-svg-title graph-svg-description" hidden><title id="graph-svg-title">Graf</title><desc id="graph-svg-description"></desc></svg><output id="graph-inspector" class="graph-inspector" aria-label="Približné súradnice krivky" aria-live="off" hidden><strong id="graph-inspector-name"></strong><span id="graph-inspector-coordinates"></span></output></div>
       </section>
       <dialog id="graph-expanded" class="graph-expanded" aria-label="Rozšírený graf"></dialog>
     </main>

@@ -167,3 +167,9 @@ restricted to unresolved samples and disconnected real edges that overlap the
 camera's x bounds and whose sampled ordinates intersect its y bounds. Known
 complex/domain/quantity gaps do not produce a refinement warning by themselves.
 Panning vertically rechecks this message without reevaluation.
+
+Mouse/touch coordinate inspection is a client-only overlay on accepted cached
+edges. It uses the exact same limited cubic/linear drawing representation,
+excludes hidden/non-real/rejected edges and labels its values approximate. Hover
+and point tracing do not call the HTTP or C evaluator. Two-finger gestures and
+empty-area dragging retain normal camera sampling behavior.

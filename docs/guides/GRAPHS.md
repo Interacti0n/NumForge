@@ -48,13 +48,31 @@ at most 17 significant digits; this is an approximate drawing, not a promise of 
 accurate digits. There is no precision, angle or range input on the page: zoom and
 pan choose the view, and the sampler adapts its density to that view.
 
+## Coordinate inspection
+
+Move the mouse over the plot to inspect the closest visible curve at the pointer's
+horizontal coordinate. A colored marker/crosshair identifies the function and
+shows approximate `x`, `y` coordinates. On touch/pen input, tap within 32 CSS pixels
+vertically of a curve, then drag the selected point horizontally along that curve.
+The readout remains after release. Drag elsewhere to pan; a second finger switches
+to the normal pinch gesture. Inspection also works in the expanded graph.
+
+Values come from already displayed cached samples, using the same limited cubic
+or linear interpolation as the stroke. No HTTP request or expression evaluation is
+triggered by inspection. These are approximate drawing coordinates, not a separate
+high-precision calculation. Hidden functions, non-real values, off-screen values,
+isolated samples and rejected/unresolved connections are not inspected; the
+marker disappears in gaps rather than joining across them. The display adapts
+its decimal precision to the view and formats rounded zero as `0`. Mouse exit,
+Escape with the canvas focused, and camera gestures dismiss the readout.
+
 ## Curves and gaps
 
 The [screen-space C sampler](../reference/SCREEN_GRAPH_HTTP_API.md) evaluates
 midpoints and refines intervals with curvature or mixed point classifications.
 The browser draws only connections accepted by the sampler. Domain errors,
 complex values (including zero imaginary components), quantities and intervals
-still unresolved at refinement bounds remain gaps. There are no point markers
+still unresolved at refinement bounds remain gaps. Samples have no permanent markers
 or manual connection/sample-count controls. Sample values are not listed below the plot.
 
 Screen-space refinement follows visible curvature and captured trig/domain

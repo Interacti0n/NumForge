@@ -7,6 +7,11 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Inspect approximate graph coordinates with mouse hover or touch/pen tracing.
+  Identify the curve by name/color, reuse accepted cached edges and the drawing
+  interpolation without calculation requests, preserve pinch/pan gestures and
+  exclude domain/pole/unresolved gaps. Add mathematical, touch and coalescing tests.
+
 - Toggle individual graph curves from their row or legend, preserving expressions,
   colors, samples and keyboard focus. Cancel hidden work, skip hidden sampling,
   reuse current/cached views on show and persist visibility across navigation.

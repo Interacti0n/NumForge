@@ -5,6 +5,10 @@ function initGraph() {
     const curves=[],palette=['#dfafff','#20c997','#ffb454','#66b3ff'],maximumCurves=4;
     let disposed=false,viewport=null,yViewport=[-10,10],viewportTimer=null,drawFrame=null,nextId=1,activeCurve=null;
     const pointers=new Map();let gesture=null;
+    let projection=null,inspection=null,inspectionFrame=null,inspectPointer=null;
+    const readout=$('graph-inspector'),inspectionLayer=element('g',{class:'graph-inspection',visibility:'hidden','pointer-events':'none','aria-hidden':'true'});
+    const inspectX=element('line',{class:'graph-inspection-guide'}),inspectY=element('line',{class:'graph-inspection-guide'}),inspectDot=element('circle',{r:4.5,class:'graph-inspection-dot'});
+    inspectionLayer.append(inspectX,inspectY,inspectDot);svg.append(inspectionLayer);
     const text=english?{
         ready:'Enter a function and plot it.',busy:'Sampling…',network:'Cannot reach the server. Try again.',invalid:'The server returned invalid graph data.',
         range:'These coordinates cannot be distinguished in the browser’s numeric range. Adjust or reset the range.',column:'column',
@@ -84,6 +88,66 @@ function initGraph() {
         const norm=Math.hypot(alpha,beta);if(norm>3){alpha*=3/norm;beta*=3/norm;}
         return [a.nx+dx/3,a.ny+dy*alpha/3,b.nx-dx/3,b.ny-dy*beta/3];
     }
+    // Read only accepted cached edges. Binary search and the drawing's own cubic
+    // interpolation keep inspection local, bounded and consistent with the stroke.
+    function inspectAt(curve,x){
+        if(!curve)return null;
+        const state=curve.state();if(!state.visible||!state.samples)return null;
+        for(const chunk of state.chunks||[{points:state.samples}]){
+            if(x<(chunk.low??-Infinity)||x>(chunk.high??Infinity))continue;
+            const points=chunk.points;let low=0,high=points.length;
+            while(low<high){const mid=(low+high)>>>1;if(points[mid].nx<x)low=mid+1;else high=mid;}
+            const b=points[low],a=points[low-1];if(!b?.plottable)continue;
+            if(b.nx===x){
+                const next=points[low+1];
+                if((a?.plottable&&b.connect)||(next?.plottable&&next.connect))return {curve,x,y:b.ny};
+                continue;
+            }
+            if(!a?.plottable||!b.connect||b.nx<=a.nx)continue;
+            const t=(x-a.nx)/(b.nx-a.nx),control=projection.px(b.nx)-projection.px(a.nx)>1?cubic(a,b):null;
+            const y=control?(1-t)**3*a.ny+3*(1-t)**2*t*control[1]+3*(1-t)*t*t*control[3]+t**3*b.ny:a.ny*(1-t)+b.ny*t;
+            if(Number.isFinite(y))return {curve,x,y};
+        }
+        return null;
+    }
+    function inspectionPoint(clientX,clientY,near=false){
+        if(!projection)return null;
+        const matrix=svg.getScreenCTM();if(!matrix)return null;
+        const point=new DOMPoint(clientX,clientY).matrixTransform(matrix.inverse()),p=projection;
+        if(point.x<64||point.x>p.right||point.y<22||point.y>p.bottom)return null;
+        const fraction=(point.x-64)/(p.right-64),x=(p.xLow+(p.xHigh-p.xLow)*fraction)*p.xScale;
+        let best=null,distance=Infinity;
+        for(const curve of curves){
+            const candidate=inspectAt(curve,x);if(!candidate||candidate.y<p.yBounds[0]||candidate.y>p.yBounds[1])continue;
+            const delta=Math.abs(p.py(candidate.y)-point.y)*Math.hypot(matrix.c,matrix.d);
+            if(delta<distance){best=candidate;distance=delta;}
+        }
+        return near&&distance>32?null:best;
+    }
+    function clearInspection(){inspection=null;readout.hidden=true;inspectionLayer.setAttribute('visibility','hidden');}
+    function coordinateLabel(value,span,pixels){
+        const digits=Math.max(0,Math.min(14,Math.ceil(-Math.log10(span/Math.max(1,pixels)))+2));
+        const rounded=Math.abs(value)<.5*10**-digits?0:value;
+        return rounded.toLocaleString(english?'en':'sk',Math.abs(rounded)>=1e9||(rounded!==0&&Math.abs(rounded)<1e-6)?
+            {useGrouping:false,notation:'scientific',maximumSignificantDigits:15}:{useGrouping:false,maximumFractionDigits:digits});
+    }
+    function updateInspection(){
+        if(disposed||!projection||!inspection){readout.hidden=true;inspectionLayer.setAttribute('visibility','hidden');return;}
+        const selected=inspection.kind==='hover'?inspectionPoint(inspection.clientX,inspection.clientY):
+            inspectAt(curves.find(c=>c.id===inspection.curveId),inspection.x);
+        const p=projection;
+        if(!selected||selected.x<p.xBounds[0]||selected.x>p.xBounds[1]||selected.y<p.yBounds[0]||selected.y>p.yBounds[1]){
+            readout.hidden=true;inspectionLayer.setAttribute('visibility','hidden');return;
+        }
+        const {curve,x,y}=selected,screenX=p.px(x),screenY=p.py(y);
+        for(const [node,attrs] of [[inspectX,{x1:screenX,x2:screenX,y1:22,y2:p.bottom}],[inspectY,{x1:64,x2:p.right,y1:screenY,y2:screenY}],[inspectDot,{cx:screenX,cy:screenY}]])for(const [key,value] of Object.entries(attrs))node.setAttribute(key,value);
+        inspectionLayer.style.color=curve.color.value;inspectionLayer.setAttribute('clip-path','url(#graph-clip)');inspectionLayer.setAttribute('visibility','visible');svg.append(inspectionLayer);
+        readout.style.setProperty('--inspection-color',curve.color.value);readout.dataset.curve=String(curve.id);readout.dataset.x=String(x);readout.dataset.y=String(y);
+        $('graph-inspector-name').textContent=`${curves.indexOf(curve)+1}. ${curve.input.value}`;
+        $('graph-inspector-coordinates').textContent=`≈ x = ${coordinateLabel(x,p.xBounds[1]-p.xBounds[0],p.right-64)}, y = ${coordinateLabel(y,p.yBounds[1]-p.yBounds[0],p.bottom-22)}`;
+        readout.hidden=false;
+    }
+    function inspectSoon(){if(inspectionFrame===null)inspectionFrame=requestAnimationFrame(()=>{inspectionFrame=null;updateInspection();});}
     function draw() {
         svg.querySelectorAll('.graph-drawing').forEach(el=>el.remove());
         const states=curves.filter(c=>c.state().visible).map(curve=>({curve,...curve.state()}));
@@ -96,7 +160,7 @@ function initGraph() {
         const rawScale=Math.max(...projectedView.map(Math.abs));
         const yScale=rawScale===0?1:Math.max(rawScale,Number.MIN_VALUE);
         const xLow=xs[0]/xScale,xHigh=xs.at(-1)/xScale;
-        if(xHigh<=xLow){message(text.range,true);return;}
+        if(xHigh<=xLow){projection=null;clearInspection();message(text.range,true);return;}
         let yLow=projectedView[0]/yScale,yHigh=projectedView[1]/yScale;
         const {width,height}=dimensions(),right=width-22,bottom=height-46;
         svg.setAttribute('viewBox',`0 0 ${width} ${height}`);
@@ -168,6 +232,7 @@ function initGraph() {
         }
         $('graph-svg-description').textContent=states.some(s=>s.samples)?states.map(s=>s.curve.input.value).filter(Boolean).join('; '):text.ready;
         svg.append(group);svg.removeAttribute('hidden');
+        projection={px,py,xScale,xLow,xHigh,xBounds:xs,yBounds:projectedView,right,bottom};updateInspection();
     }
     function createCurve(row){
         const input=row.querySelector('input:not([type=color])'),color=row.querySelector('input[type=color]'),controller=new AbortController();
@@ -438,7 +503,7 @@ function initGraph() {
         // Keep ample coordinate precision for pixel positions, not just endpoints.
         if(high-low<Math.max(1,Math.abs(low),Math.abs(high))*1e-8||yHigh-yLow<Math.max(1,Math.abs(yLow),Math.abs(yHigh))*1e-8){message(text.range,true);return;}
         const old=bounds(),verticalOnly=(yLow!==yViewport[0]||yHigh!==yViewport[1])&&low===old[0]&&high===old[1]&&Math.abs((yHigh-yLow)-(yViewport[1]-yViewport[0]))<=(yHigh-yLow)*1e-12;
-        yViewport=[yLow,yHigh];
+        clearInspection();yViewport=[yLow,yHigh];
         if(verticalOnly){drawSoon();return;}
         viewport=[low,high];
         curves.forEach(curve=>curve.cameraChanged());drawSoon();save();scheduleView();
@@ -460,11 +525,23 @@ function initGraph() {
     }
     svg.addEventListener('pointerdown',event=>{
         if(event.pointerType==='mouse'&&event.button!==0)return;
-        pointers.set(event.pointerId,{x:event.clientX,y:event.clientY});svg.setPointerCapture(event.pointerId);startGesture();
+        const selected=event.pointerType!=='mouse'&&!pointers.size?inspectionPoint(event.clientX,event.clientY,true):null;
+        pointers.set(event.pointerId,{x:event.clientX,y:event.clientY});svg.setPointerCapture(event.pointerId);
+        if(selected){inspectPointer=event.pointerId;inspection={kind:'pinned',curveId:selected.curve.id,x:selected.x};updateInspection();gesture=null;return;}
+        inspectPointer=null;clearInspection();startGesture();
     },{signal:lifecycle.signal});
     svg.addEventListener('pointermove',event=>{
-        if(!pointers.has(event.pointerId)||!gesture)return;
+        if(!pointers.has(event.pointerId)){
+            if(event.pointerType==='mouse'||event.pointerType==='pen'){inspection={kind:'hover',clientX:event.clientX,clientY:event.clientY};inspectSoon();}
+            return;
+        }
         pointers.set(event.pointerId,{x:event.clientX,y:event.clientY});
+        if(inspectPointer===event.pointerId){
+            const matrix=svg.getScreenCTM();
+            if(matrix&&projection&&inspection){const point=new DOMPoint(event.clientX,event.clientY).matrixTransform(matrix.inverse());inspection.x=(projection.xLow+(projection.xHigh-projection.xLow)*Math.max(0,Math.min(1,(point.x-64)/(projection.right-64))))*projection.xScale;}
+            inspectSoon();return;
+        }
+        if(!gesture)return;
         const points=[...pointers.values()],center=points.reduce((sum,p)=>sum+p.x,0)/points.length;
         const centerY=points.reduce((sum,p)=>sum+p.y,0)/points.length;
         const [low,high]=gesture.bounds,span=high-low;
@@ -480,12 +557,18 @@ function initGraph() {
         // Hold sampling until a drag/pinch settles or the pointers are released.
         clearTimeout(viewportTimer);viewportTimer=null;
     },{signal:lifecycle.signal});
+    svg.addEventListener('pointerleave',event=>{if(!pointers.size&&event.pointerType==='mouse')clearInspection();},{signal:lifecycle.signal});
     function endGesture(event) {
+        if(!pointers.has(event.pointerId))return;
+        const inspected=inspectPointer===event.pointerId;
+        if(inspected){inspectPointer=null;if(event.type!=='pointerup')clearInspection();}
         pointers.delete(event.pointerId);startGesture();
+        if(inspected)return;
         if(!pointers.size&&curves.some(c=>c.state().pendingView))scheduleView();
     }
     for(const name of ['pointerup','pointercancel','lostpointercapture'])svg.addEventListener(name,endGesture,{signal:lifecycle.signal});
     svg.addEventListener('keydown',event=>{
+        if(event.key==='Escape'){clearInspection();return;}
         if(event.key==='+'||event.key==='='){event.preventDefault();zoom(.5);}
         else if(event.key==='-'){event.preventDefault();zoom(2);}
         else if(event.key==='Home'){event.preventDefault();moveView(-10,10,-10,10);}
@@ -608,7 +691,7 @@ function initGraph() {
         }catch(error){if(!disposed&&error.name!=='AbortError'){$('search-status').hidden=false;$('search-status').textContent=text.unavailable;}}
     }
     loadLibrary();draw();
-    return ()=>{save();disposed=true;leaveExpanded(false);curves.forEach(c=>c.dispose());clearTimeout(viewportTimer);if(drawFrame!==null)cancelAnimationFrame(drawFrame);pointers.clear();resize.disconnect();lifecycle.abort();};
+    return ()=>{save();disposed=true;leaveExpanded(false);curves.forEach(c=>c.dispose());clearTimeout(viewportTimer);if(drawFrame!==null)cancelAnimationFrame(drawFrame);if(inspectionFrame!==null)cancelAnimationFrame(inspectionFrame);clearInspection();inspectionLayer.remove();pointers.clear();resize.disconnect();lifecycle.abort();};
 
 }
 window.numforgeInitGraph=initGraph;
