@@ -103,7 +103,11 @@ bytecode evaluator with exact C points and libm compositions. See the
 [fast graph audit](benchmarks/GRAPH_FAST_EXPERIMENT_2026_10_12.md). It is not
 routed directly through the precision API. The web now uses the
 [screen-space adapter](reference/SCREEN_GRAPH_HTTP_API.md), with pixel/chord,
-periodic-extremum, pole/domain, coarse/refined cancellation and cache tests.
+periodic/stationary-extremum, derivative-domain, pole/domain, coarse/refined
+cancellation and cache tests. Browser geometry is compared with independent
+analytic curves on desktop/mobile; next-zoom cache reuse and malformed optional
+slopes are covered. The reproducible [smooth-zoom comparison](benchmarks/GRAPH_SMOOTH_ZOOM_2026_10_13.md)
+records HTTP work, bytes, reference errors and local frame observations.
 Atomic resource/fault checks include both evaluators and the compact sampler.
 
 Graph interaction regressions exercise wheel debounce, pointer panning, touch

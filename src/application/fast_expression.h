@@ -15,6 +15,7 @@ typedef struct ApplicationFastSample { double value; ApplicationFastKind kind; }
 typedef struct ApplicationFastGuard { double value,exponent; int kind; } ApplicationFastGuard;
 typedef struct ApplicationFastProbe {
     ApplicationFastSample sample;
+    double derivative; /* NAN when unavailable; does not invalidate sample. */
     size_t phase_count,guard_count;
     double phases[64];int phase_kinds[64];
     ApplicationFastGuard guards[64];bool complete;
@@ -29,5 +30,8 @@ CalculatorStatus application_fast_expression_sample(const ApplicationFastExpress
     const double *coordinates,size_t count,ApplicationFastSample *result);
 /* Same evaluator with bounded trig/domain observations for adaptive edges. */
 CalculatorStatus application_fast_expression_probe(const ApplicationFastExpression *expression,
+    double coordinate,ApplicationFastProbe *result);
+/* Forward-mode AD alongside the same value evaluation and domain observations. */
+CalculatorStatus application_fast_expression_probe_derivative(const ApplicationFastExpression *expression,
     double coordinate,ApplicationFastProbe *result);
 #endif

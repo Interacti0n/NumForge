@@ -28,7 +28,7 @@ test('initial buffered interval supports immediate horizontal and vertical movem
  await expect(page.locator('#graph-plot')).toHaveAttribute('data-xmin','2');
  await expect(page.locator('#graph-plot')).toHaveAttribute('data-ymin','-6');
  await expect(page.locator('path.graph-line')).toBeVisible();await page.waitForTimeout(450);
- expect(calls.some(u=>u.searchParams.get('min')==='2'&&u.searchParams.get('max')==='22')).toBe(false);
+ expect(calls.some(u=>u.searchParams.get('min')==='2'&&u.searchParams.get('max')==='22'&&Number(u.searchParams.get('ymax'))-Number(u.searchParams.get('ymin'))===20)).toBe(false);
  await page.locator('#graph-reset').click();
  await expect(page.locator('#graph-plot')).toHaveAttribute('data-xmin','-10');await expect(page.locator('#graph-plot')).toHaveAttribute('data-ymin','-10');
 });
@@ -51,7 +51,8 @@ test('mouse drag moves both axes and a fresh page starts at the origin',async({p
 
 test('pure vertical pan reprojects the buffered curve without a graph request',async({page})=>{
  const calls=[];page.on('request',r=>{if(r.url().includes('/api/graph/plot?'))calls.push(r.url());});
- await draw(page);const before=calls.length;
+ const prepared=page.waitForResponse(r=>r.url().includes('/api/graph/plot?')&&new URL(r.url()).searchParams.get('ymin')==='-5');
+ await draw(page);await prepared;const before=calls.length;
  await page.locator('#graph-plot').focus();
  for(let i=0;i<3;++i)await page.locator('#graph-plot').press('ArrowUp');
  await expect(page.locator('#graph-plot')).toHaveAttribute('data-ymin','2');

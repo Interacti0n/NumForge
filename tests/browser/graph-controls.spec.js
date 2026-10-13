@@ -7,7 +7,8 @@ for(const [lang,width] of [['sk',390],['en',1280]])test(`simple graph controls, 
  await expect(page.locator('#graph-form input')).toHaveCount(2);await expect(page.locator('#graph-form select,#graph-form details')).toHaveCount(0);
  await expect(page.getByLabel(lang==='sk'?'Farba krivky':'Curve color')).toHaveAttribute('type','color');
  const calls=[];page.on('request',r=>{if(r.url().includes('/api/graph/plot?'))calls.push(r);});
- await page.locator('#graph-expression').press('Enter');await expect(page.locator('path.graph-line')).toBeVisible();
+ const prepared=page.waitForResponse(r=>r.url().includes('/api/graph/plot?')&&new URL(r.url()).searchParams.get('ymin')==='-5');
+ await page.locator('#graph-expression').press('Enter');await prepared;await expect(page.locator('path.graph-line')).toBeVisible();
  const before=calls.length;await color(page,'#20c997');
  await expect(page.locator('path.graph-line')).toHaveCSS('stroke','rgb(32, 201, 151)');
  await page.waitForTimeout(350);expect(calls.length).toBe(before);

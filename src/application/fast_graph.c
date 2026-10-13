@@ -17,6 +17,8 @@ typedef struct Work {
     double scale,tolerance,coarse_width;size_t limit;bool smooth,screen_floor;
 } Work;
 static bool real(const ApplicationFastGraphPoint *p){return p->kind==APPLICATION_GRAPH_REAL&&isfinite(p->y);}
+static CalculatorStatus probe(Work *work,double x,ApplicationFastProbe *result)
+{return work->screen_floor?application_fast_expression_probe_derivative(work->fast,x,result):application_fast_expression_probe(work->fast,x,result);}
 void application_fast_graph_destroy(ApplicationFastGraph *graph){if(graph){free(graph->points);free(graph);}}
 static CalculatorStatus project(const BigDecimal *number,double *value)
 {
@@ -27,10 +29,10 @@ static CalculatorStatus project(const BigDecimal *number,double *value)
 }
 static CalculatorStatus point(Work *work,double x,ApplicationFastGraphPoint *result,ApplicationFastProbe *probe)
 {
-    CalculatorStatus status=application_fast_expression_probe(work->fast,x,probe);
+    CalculatorStatus status=work->screen_floor?application_fast_expression_probe_derivative(work->fast,x,probe):application_fast_expression_probe(work->fast,x,probe);
     if(status!=CALCULATOR_OK)return status;
-    *result=(ApplicationFastGraphPoint){x,NAN,APPLICATION_GRAPH_REAL,false,true};
-    if(probe->sample.kind==APPLICATION_FAST_REAL){result->y=probe->sample.value;return CALCULATOR_OK;}
+    *result=(ApplicationFastGraphPoint){x,NAN,APPLICATION_GRAPH_REAL,false,true,NAN};
+    if(probe->sample.kind==APPLICATION_FAST_REAL){result->y=probe->sample.value;result->derivative=probe->derivative;return CALCULATOR_OK;}
     if(work->graph->exact_probes>=128U||numforge_budget_available_bytes()<3U*1024U*1024U||numforge_budget_available_ms()<300U){result->kind=APPLICATION_GRAPH_UNRESOLVED;work->graph->limited=true;return CALCULATOR_OK;}
     ++work->graph->exact_probes;
     char text[32];(void)snprintf(text,sizeof(text),"%.17g",x);
@@ -41,7 +43,7 @@ static CalculatorStatus point(Work *work,double x,ApplicationFastGraphPoint *res
     if(status==CALCULATOR_OK)status=calculator_from_rational_status(bigrational_from_bigdecimal(coordinate.rational,coordinate.number));
     if(status==CALCULATOR_OK)status=application_expression_sample(work->exact,&coordinate,1U,&sample,work->error);
     if(status==CALCULATOR_OK){result->kind=application_graph_point_kind(sample);result->approximate=sample->value.kind==CALCULATOR_VALUE_DECIMAL||sample->value.kind==CALCULATOR_VALUE_COMPLEX_DECIMAL;
-        if(result->kind==APPLICATION_GRAPH_REAL)status=project(sample->value.number,&result->y);}
+        if(result->kind==APPLICATION_GRAPH_REAL){status=project(sample->value.number,&result->y);result->derivative=probe->derivative;}}
     calculator_value_destroy(&coordinate);application_expression_samples_destroy(sample,1U);return status;
 }
 static bool same_sign(double a,double b,double c){return (a>0&&b>0&&c>0)||(a<0&&b<0&&c<0);}
@@ -85,8 +87,8 @@ static CalculatorStatus refine(Work *work)
         size_t left=interval.left;ApplicationFastGraphPoint a=graph->points[left],c=graph->points[left+1U],b={0};
         double middle=a.x+(c.x-a.x)/2;if(middle<=a.x||middle>=c.x||interval.depth>=16U){graph->limited=true;continue;}
         ApplicationFastProbe ap={0},bp={0},cp={0};
-        status=application_fast_expression_probe(work->fast,a.x,&ap);
-        if(status==CALCULATOR_OK)status=application_fast_expression_probe(work->fast,c.x,&cp);
+        status=probe(work,a.x,&ap);
+        if(status==CALCULATOR_OK)status=probe(work,c.x,&cp);
         if(status==CALCULATOR_OK)status=point(work,middle,&b,&bp);
         if(status!=CALCULATOR_OK)break;
         insert(graph,left+1U,b);graph->points[left+2U].connect=false;
@@ -111,8 +113,8 @@ static CalculatorStatus peaks(Work *work)
     for(size_t edge=1;edge<work->graph->count;++edge){
         ApplicationFastGraph *graph=work->graph;if(!graph->points[edge].connect)continue;
         ApplicationFastProbe a={0},b={0};
-        CalculatorStatus status=application_fast_expression_probe(work->fast,graph->points[edge-1U].x,&a);
-        if(status==CALCULATOR_OK)status=application_fast_expression_probe(work->fast,graph->points[edge].x,&b);
+        CalculatorStatus status=probe(work,graph->points[edge-1U].x,&a);
+        if(status==CALCULATOR_OK)status=probe(work,graph->points[edge].x,&b);
         if(status!=CALCULATOR_OK)return status;
         if(!a.complete||!b.complete||a.phase_count!=b.phase_count)continue;
         for(size_t phase=0;phase<a.phase_count;++phase){
@@ -133,6 +135,36 @@ static CalculatorStatus peaks(Work *work)
                 if(lower){lo=x;pa=measured;}else{hi=x;pb=measured;}
             }
         }
+    }
+    return CALCULATOR_OK;
+}
+/* Stationary candidates supplement phase anchors. Only search accepted edges,
+ * keep a derivative sign bracket and insert actual values, never a synthetic y. */
+static CalculatorStatus stationary(Work *work)
+{
+    if(!work->screen_floor||!work->smooth)return CALCULATOR_OK;
+    ApplicationFastGraph *graph=work->graph;
+    for(size_t edge=1U;edge<graph->count;++edge){
+        ApplicationFastGraphPoint a=graph->points[edge-1U],b=graph->points[edge];
+        if(!b.connect||!real(&a)||!real(&b)||!isfinite(a.derivative)||!isfinite(b.derivative))continue;
+        if(!((a.derivative<0&&b.derivative>0)||(a.derivative>0&&b.derivative<0)))continue;
+        double magnitude=fmax(fabs(a.derivative),fabs(b.derivative));
+        if(fmin(fabs(a.derivative),fabs(b.derivative))<=magnitude*1e-8)continue;
+        double left=a.x,right=b.x,dl=a.derivative,dr=b.derivative;
+        ApplicationFastGraphPoint value={0};bool found=false;
+        for(unsigned attempt=0U;attempt<24U;++attempt){
+            if(graph->count>=work->limit||numforge_budget_available_bytes()<3U*1024U*1024U||numforge_budget_available_ms()<300U){graph->limited=true;return CALCULATOR_OK;}
+            double fraction=fabs(dl)/(fabs(dl)+fabs(dr));
+            if(!isfinite(fraction)||fraction<.1||fraction>.9)fraction=.5;
+            double x=left+(right-left)*fraction;if(x<=left||x>=right)break;
+            ApplicationFastProbe observed={0};CalculatorStatus status=point(work,x,&value,&observed);
+            if(status!=CALCULATOR_OK)return status;
+            if(!real(&value)||!observed.complete||!isfinite(value.derivative))break;
+            if(fabs(value.derivative)<=magnitude*1e-8||right-left<=work->coarse_width*1e-4){found=true;break;}
+            if((dl<0&&value.derivative<0)||(dl>0&&value.derivative>0)){left=x;dl=value.derivative;}
+            else{right=x;dr=value.derivative;}
+        }
+        if(found){value.connect=true;insert(graph,edge,value);++edge;}
     }
     return CALCULATOR_OK;
 }
@@ -170,6 +202,7 @@ CalculatorStatus application_fast_graph_sample_view(ApplicationFastGraph **resul
          * error is about a quarter of the parent midpoint deviation. */
         work.tolerance=span*(coarse?8:2)/(double)height;work.coarse_width=(maximum-minimum)/(double)width;
         status=refine(&work);if(status==CALCULATOR_OK)status=peaks(&work);
+        if(status==CALCULATOR_OK)status=stationary(&work);
         if(status==CALCULATOR_OK&&(work.smooth||!work.graph->limited||isnan(low))){
             low=NAN;high=NAN;for(size_t i=0;i<work.graph->count;++i)if(real(&work.graph->points[i])){double y=work.graph->points[i].y;low=isnan(low)?y:fmin(low,y);high=isnan(high)?y:fmax(high,y);}
             work.graph->minimum=low;work.graph->maximum=high;

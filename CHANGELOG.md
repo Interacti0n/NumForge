@@ -7,6 +7,12 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Add internal forward-mode graph derivatives and bounded stationary-point anchors.
+  Draw shape-preserving cubic transitions from optional schema 3 slopes, retain
+  linear fallback and sampler gaps, prepare the next zoom level during idle time,
+  and reduce settled refinement delay. Add independent derivative/rendering tests
+  and a reproducible before/after graph accuracy and HTTP benchmark.
+
 - Simplify browser graphs to a function expression and a persistent curve color.
   Use automatic screen-space sampling, radians and independent calculator state;
   remove range/precision/session controls and sample tables, and update both guides.

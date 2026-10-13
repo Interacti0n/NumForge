@@ -8,7 +8,7 @@ testing entry points remain directly under `docs/`.
 - [Browser calculator](guides/CALCULATOR_WEB.md): controls, results and precision.
 - [Remote hosting](guides/HOSTING.md): HTTPS tunnels, reverse proxies and capacity.
 - [Variables](guides/VARIABLES.md): assignments, deletion, snapshots and lifetime.
-- [Function graphs](guides/GRAPHS.md): sample controls, typed gaps, axes and point values.
+- [Function graphs](guides/GRAPHS.md): function/color controls, typed gaps, smooth curves and axes.
 - [Unit converter](guides/UNIT_CONVERTER.md): categories, preview, swap and history.
 - [C library guide](guides/LIBRARY_GUIDE.md): build, install and consume the library.
 - [Developer SDK](guides/SDK.md): prebuilt C/C++ library, toolchains and quick start.
@@ -49,6 +49,7 @@ numerical references, session/unit regressions, browser/CI checks and profiling.
 
 - [Harnesses and reference data](../benchmarks/README.md).
 - [Formatting/cache measurements](benchmarks/BENCHMARKS.md).
+- [Smooth graph zoom](benchmarks/GRAPH_SMOOTH_ZOOM_2026_10_13.md): derivative anchors, interpolation accuracy and prepared detail.
 - [BigInt measurements](benchmarks/BIGINT_BENCHMARKS.md).
 - [Karatsuba experiment](benchmarks/KARATSUBA_EXPERIMENT_2026_10_11.md): private threshold measurements, whole-product references and bounded scratch.
 - [Karatsuba integration](benchmarks/KARATSUBA_INTEGRATION_2026_10_11.md): compiler/shape crossover, budget-aware dispatch and composition regressions.

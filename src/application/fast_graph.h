@@ -4,6 +4,7 @@
 #define APPLICATION_FAST_GRAPH_MAX_POINTS 8192U
 typedef struct ApplicationFastGraphPoint {
     double x,y;ApplicationGraphPointKind kind;bool connect,approximate;
+    double derivative;
 } ApplicationFastGraphPoint;
 typedef struct ApplicationFastGraph {
     ApplicationFastGraphPoint *points;size_t count,exact_probes;

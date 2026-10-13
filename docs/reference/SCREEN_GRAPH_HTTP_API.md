@@ -17,6 +17,7 @@ Additional fields require `mode=fast`:
 | `width` | Integer 320–2048 | 800 |
 | `height` | Integer 160–1200 | 440 |
 | `quality` | `coarse`, `refined` | `refined` |
+| `interpolation` | `linear`, `hermite` (requires both y bounds) | `linear` |
 | `ymin`, `ymax` | Both finite decimal bounds with finite positive difference | Seed-derived vertical scale |
 
 When supplied together, `ymin` and `ymax` define the visible vertical span used
@@ -49,6 +50,14 @@ range. Fast arithmetic has source approximation 1; precision probes preserve
 their typed source flag but still project coordinates to double. Per-point error
 strings/columns are omitted; structural errors keep the normal API envelope.
 
+With `interpolation=hermite`, schema 3 can also contain a `slopes` array aligned
+with `points`: approximate derivatives dy/dx as finite JSON numbers (up to nine
+significant digits), or null when unavailable. The five-field point rows are
+unchanged. Slopes are omitted if they would exceed the response bound; schema 2
+fallback also omits them. Clients must support linear drawing when slopes are
+absent/null. Slopes do not authorize connections across a false `connect` flag.
+This is drawing metadata, not a public symbolic differentiation API.
+
 ## Sampling and budgets
 
 There are 33 seeds, breadth-first midpoint refinement and depth at most 16.
@@ -73,6 +82,16 @@ Captured trig arguments limit hidden whole periods. Denominator/log/sqrt/power
 guards reject sampled domain crossings and tangent phase regions separate poles.
 Smooth trees receive actual sin/cos extremum evaluations, checked within 1e-6
 radians using up to eight bracket updates. No +/-1 ordinates are synthesized.
+With camera bounds, forward-mode automatic differentiation computes f and f'
+in the same internal bytecode pass. Rules cover arithmetic, powers in their real
+derivative domain, sin/cos/tan (including DEG factors), exp, ln, sqrt/cbrt and abs.
+An unavailable slope does not invalidate a valid function value. Cancellation
+can still require precision classification; slopes remain approximate.
+Accepted edges in restricted smooth trees with opposite finite derivative signs
+receive bounded stationary-point searches: a safeguarded secant/bisection bracket,
+at most 24 probes, and actual function evaluations. Phase/domain and existing
+resource checks remain in force. Endpoint signs cannot discover every interior
+root, and f'=0 alone is not a classification of an extremum.
 Non-real/unresolved points are disconnected. Finite sampling can miss narrow
 features; `limited` does not imply a timeout or prove discontinuity.
 
@@ -85,8 +104,16 @@ resource failure returns no partial success.
 
 ## Browser refinement
 
+The web requests Hermite slopes and draws shape-preserving cubic segments from
+accepted adjacent C samples when their projected horizontal spacing exceeds one
+pixel. Tangents are limited to keep interpolation inside the endpoint ordinates;
+missing/nonfinite slopes, equal ordinates and subpixel segments use straight
+lines. This avoids artificial overshoot while preserving sampler gaps; it is not
+a certified interpolation bound. See the [smooth-zoom audit](../benchmarks/GRAPH_SMOOTH_ZOOM_2026_10_13.md).
+
 Camera movement immediately reuses old cached segments. An uncached settled move
-requests coarse data, paints it for a frame, then requests refined data. A
+requests coarse data after 90 ms idle or pointer release, paints it for a frame,
+then requests refined data. During an active drag/pinch sampling waits for release. A
 precision fallback is already final and is not requested twice. Each HTTP
 operation has its own budget. Browser aborts reject obsolete responses but do
 not promise interruption of C work already running on the server.
@@ -98,6 +125,13 @@ zoom may require refinement. Drag/pinch and arrows move in both dimensions;
 vertical translation only reprojects data. Reset restores both axes. Nice ticks
 use 1/2/5 steps and additional decimal places as zoom increases; zero is exact.
 The browser does not use response extrema to resize its camera.
+
+After 180 ms idle, quick resolved requests prepare the current x range for the
+next zoom level (up to twice the width, half the vertical span), then missing
+adjacent ranges. At most three sequential requests run per batch; slow/limited
+responses stop preparation. Speculative data is rejected if retaining it with
+the active view would exceed point/weight bounds. Fast local calculations do not
+guarantee instantaneous responses over a remote tunnel or for arbitrary functions.
 
 Cache bounds are 12 ranges / 12288 points / 8 MiB estimated weight. Eviction
 prefers off-screen/coarse data over the current fine view. Dense partial jobs

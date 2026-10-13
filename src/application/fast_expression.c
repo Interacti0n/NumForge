@@ -17,7 +17,7 @@ typedef struct FastInstruction { FastOp operation;double value;double error; } F
 struct ApplicationFastExpression {
     FastInstruction *code;size_t count,phase_count,guard_count;CalculatorContext context;
 };
-typedef struct FastCell { double value,error;ApplicationFastKind kind; } FastCell;
+typedef struct FastCell { double value,error;ApplicationFastKind kind;double derivative;bool differentiable; } FastCell;
 
 void application_fast_expression_destroy(ApplicationFastExpression *expression)
 {if(expression){free(expression->code);free(expression);}}
@@ -136,15 +136,15 @@ CalculatorStatus application_fast_compile_tree(ApplicationFastExpression **resul
 }
 
 /* Error propagation is a conservative fallback heuristic, not certified interval
- * arithmetic. Libm values are only for experimental screen-space plotting. */
-static ApplicationFastSample evaluate(const ApplicationFastExpression *program,double x,ApplicationFastProbe *probe)
+ * arithmetic. Libm values are only for approximate screen-space plotting. */
+static ApplicationFastSample evaluate(const ApplicationFastExpression *program,double x,ApplicationFastProbe *probe,bool derive)
 {
     FastCell stack[CALCULATOR_MAX_EXPRESSION_DEPTH+1U];size_t used=0;
     for(size_t i=0;i<program->count;++i){
-        FastInstruction op=program->code[i];FastCell a={0,0,APPLICATION_FAST_REAL},b=a,r=a;
+        FastInstruction op=program->code[i];FastCell a={0},b=a,r=a;
         if(op.operation==F_CONSTANT||op.operation==F_X){
             if(used>=CALCULATOR_MAX_EXPRESSION_DEPTH+1U)return (ApplicationFastSample){0,APPLICATION_FAST_UNCERTAIN};
-            stack[used++]=(FastCell){op.operation==F_X?x:op.value,op.operation==F_X?fabs(x)*4*DBL_EPSILON:op.error,APPLICATION_FAST_REAL};continue;
+            stack[used++]=(FastCell){op.operation==F_X?x:op.value,op.operation==F_X?fabs(x)*4*DBL_EPSILON:op.error,APPLICATION_FAST_REAL,op.operation==F_X?1:0,true};continue;
         }
         if(!used)return (ApplicationFastSample){0,APPLICATION_FAST_UNCERTAIN};
         a=stack[--used];
@@ -152,7 +152,8 @@ static ApplicationFastSample evaluate(const ApplicationFastExpression *program,d
         if(binary){if(!used)return (ApplicationFastSample){0,APPLICATION_FAST_UNCERTAIN};b=a;a=stack[--used];}
         // A complex intermediate can become real again (e.g. abs(sqrt(-1))).
         // Only the exact evaluator may resolve such composed expressions.
-        if(a.kind!=APPLICATION_FAST_REAL||b.kind!=APPLICATION_FAST_REAL){r.kind=APPLICATION_FAST_UNCERTAIN;stack[used++]=r;continue;}
+        bool uncertain=a.kind!=APPLICATION_FAST_REAL||b.kind!=APPLICATION_FAST_REAL;
+        if(uncertain&&(!derive||!a.differentiable||(binary&&!b.differentiable)||!isfinite(a.value)||!isfinite(b.value))){r.kind=APPLICATION_FAST_UNCERTAIN;stack[used++]=r;continue;}
         double av=a.value,bv=b.value;
         if(probe&&(op.operation==F_DIVIDE||op.operation==F_POWER||op.operation==F_SQRT||op.operation==F_LN)){
             int kind=op.operation==F_DIVIDE?1:op.operation==F_LN?2:op.operation==F_SQRT?3:4;
@@ -214,10 +215,51 @@ static ApplicationFastSample evaluate(const ApplicationFastExpression *program,d
         default:r.kind=APPLICATION_FAST_UNCERTAIN;
         break;
         }
+        if(derive){
+            r.differentiable=r.kind==APPLICATION_FAST_REAL&&a.differentiable&&(!binary||b.differentiable);
+            if(r.differentiable)switch(op.operation){
+            case F_NEGATE:r.derivative=-a.derivative;break;
+            case F_SQUARE:r.derivative=2*av*a.derivative;break;
+            case F_CUBE:r.derivative=3*av*av*a.derivative;break;
+            case F_ADD:r.derivative=a.derivative+b.derivative;break;
+            case F_SUBTRACT:r.derivative=a.derivative-b.derivative;break;
+            case F_MULTIPLY:r.derivative=a.derivative*bv+av*b.derivative;break;
+            case F_DIVIDE:r.derivative=(a.derivative-r.value*b.derivative)/bv;break;
+            case F_POWER:
+                if(b.derivative==0&&bv==trunc(bv))
+                    r.derivative=bv==0?0:bv==1?a.derivative:bv*pow(av,bv-1)*a.derivative;
+                else if(av>0)r.derivative=r.value*(b.derivative*log(av)+bv*a.derivative/av);
+                else r.differentiable=false;
+                break;
+            case F_SIN:case F_COS:case F_TAN:{
+                double factor=program->context.angle_unit==CALCULATOR_ANGLE_DEGREES?0.017453292519943295:1;
+                double angle=av*factor;
+                if(op.operation==F_SIN)r.derivative=cos(angle)*factor*a.derivative;
+                else if(op.operation==F_COS)r.derivative=-sin(angle)*factor*a.derivative;
+                else{double cosine=cos(angle);r.derivative=factor*a.derivative/(cosine*cosine);}
+                break;
+            }
+            case F_EXP:r.derivative=r.value*a.derivative;break;
+            case F_LN:r.derivative=a.derivative/av;break;
+            case F_SQRT:case F_CBRT:
+                if(r.value==0)r.differentiable=false;
+                else r.derivative=a.derivative/(op.operation==F_SQRT?2*r.value:3*r.value*r.value);
+                break;
+            case F_ABS:
+                if(av==0)r.differentiable=false;
+                else r.derivative=(av<0?-1:1)*a.derivative;
+                break;
+            default:r.differentiable=false;break;
+            }
+            if(!isfinite(r.derivative))r.differentiable=false;
+        }
         if(op.operation!=F_NEGATE&&op.operation!=F_ABS)r.error+=fabs(r.value)*4*DBL_EPSILON;
         if(!isfinite(r.value)||!isfinite(r.error)||r.error>1e-8*fmax(DBL_MIN,fabs(r.value)))r.kind=APPLICATION_FAST_UNCERTAIN;
+        if(uncertain)r.kind=APPLICATION_FAST_UNCERTAIN;
+        if(!isfinite(r.value)||!isfinite(r.error))r.differentiable=false;
         stack[used++]=r;
     }
+    if(probe&&derive&&used==1&&stack[0].differentiable)probe->derivative=stack[0].derivative;
     return used==1?(ApplicationFastSample){stack[0].value,stack[0].kind}:(ApplicationFastSample){0,APPLICATION_FAST_UNCERTAIN};
 }
 CalculatorStatus application_fast_expression_sample(const ApplicationFastExpression *expression,
@@ -232,23 +274,27 @@ CalculatorStatus application_fast_expression_sample(const ApplicationFastExpress
     for(size_t i=0;status==CALCULATOR_OK&&i<count;++i){
         if(!numforge_budget_check()){status=calculator_budget_status(CALCULATOR_OUT_OF_MEMORY);
         break;}
-        pending[i]=evaluate(expression,coordinates[i],NULL);
+        pending[i]=evaluate(expression,coordinates[i],NULL,false);
     }
     status=calculator_budget_status(status);
     if(status==CALCULATOR_OK)memcpy(result,pending,count*sizeof(*pending));
     free(pending);if(owner)numforge_budget_end();
     return status;
 }
-CalculatorStatus application_fast_expression_probe(const ApplicationFastExpression *expression,
-    double coordinate,ApplicationFastProbe *result)
+static CalculatorStatus derivative_probe(const ApplicationFastExpression *expression,
+    double coordinate,ApplicationFastProbe *result,bool derive)
 {
     if(!expression||!result)return CALCULATOR_NULL_ARGUMENT;
     if(!isfinite(coordinate))return CALCULATOR_INVALID_ARGUMENT;
     bool owner=numforge_budget_begin((uint64_t)expression->context.time_limit_ms,CALCULATOR_ALLOCATION_BUDGET,CALCULATOR_SINGLE_ALLOCATION);
-    CalculatorStatus status=CALCULATOR_OK;ApplicationFastProbe pending={0};
+    CalculatorStatus status=CALCULATOR_OK;ApplicationFastProbe pending={0};pending.derivative=NAN;
     if(!numforge_budget_check())status=calculator_budget_status(CALCULATOR_OUT_OF_MEMORY);
-    if(status==CALCULATOR_OK){pending.sample=evaluate(expression,coordinate,&pending);pending.complete=pending.phase_count==expression->phase_count&&pending.guard_count==expression->guard_count;}
+    if(status==CALCULATOR_OK){pending.sample=evaluate(expression,coordinate,&pending,derive);pending.complete=pending.phase_count==expression->phase_count&&pending.guard_count==expression->guard_count;}
     status=calculator_budget_status(status);if(status==CALCULATOR_OK)*result=pending;
     if(owner)numforge_budget_end();
     return status;
 }
+CalculatorStatus application_fast_expression_probe(const ApplicationFastExpression *expression,double coordinate,ApplicationFastProbe *result)
+{return derivative_probe(expression,coordinate,result,false);}
+CalculatorStatus application_fast_expression_probe_derivative(const ApplicationFastExpression *expression,double coordinate,ApplicationFastProbe *result)
+{return derivative_probe(expression,coordinate,result,true);}

@@ -6,6 +6,7 @@
 #include <unity.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 static CalculatorContext context;
 static BigRational *minimum, *maximum;
@@ -403,9 +404,43 @@ static void test_screen_floor_keeps_smooth_chords_connected(void)
     for(size_t i=1U;i<screen_graph->count;++i)
         if(screen_graph->points[i-1U].x<0.1&&screen_graph->points[i].x>0.1)TEST_ASSERT_FALSE(screen_graph->points[i].connect);
 }
+static void test_stationary_anchors_slopes_and_http_opt_in(void)
+{
+    const char *expressions[]={"x^3-3x","exp(-(x-0.37)^2)","sin(x)+x/5"};
+    const double peaks[]={1,0.37,1.7721542475852274};
+    CalculatorError error;
+    for(size_t c=0;c<3U;++c){
+        TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_graph_sample_view(&screen_graph,expressions[c],NULL,-10,10,800U,440U,20,false,NULL,&context,&error));
+        double nearest=INFINITY;
+        for(size_t i=0;i<screen_graph->count;++i){
+            ApplicationFastGraphPoint p=screen_graph->points[i];
+            if(fabs(p.x-peaks[c])<nearest){nearest=fabs(p.x-peaks[c]);}
+            if(i)TEST_ASSERT_TRUE(p.connect);
+        }
+        TEST_ASSERT_TRUE_MESSAGE(nearest<1e-5,expressions[c]);
+        application_fast_graph_destroy(screen_graph);screen_graph=NULL;
+    }
+    char *response=NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,numforge_web_session_request(&store,"POST",
+        "/api/graph/plot?mode=fast&min=-1&max=1&ymin=-10&ymax=10&interpolation=hermite","x^3",&response));
+    TEST_ASSERT_NOT_NULL(strstr(response,"\"slopes\":["));free(response);response=NULL;
+    const char *invalid[]={
+        "/api/graph/plot?min=-1&max=1&interpolation=hermite",
+        "/api/graph/plot?mode=fast&min=-1&max=1&interpolation=hermite",
+        "/api/graph/plot?mode=fast&min=-1&max=1&ymin=-1&ymax=1&interpolation=bad",
+        "/api/graph/plot?mode=fast&min=-1&max=1&ymin=-1&ymax=1&interpolation=hermite&interpolation=linear"};
+    for(size_t i=0;i<sizeof(invalid)/sizeof(*invalid);++i){
+        TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,numforge_web_session_request(&store,"POST",invalid[i],"x",&response));
+        free(response);response=NULL;
+    }
+    TEST_ASSERT_TRUE(numforge_budget_begin(0U,SIZE_MAX,SIZE_MAX));
+    TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT,application_fast_graph_sample_view(&screen_graph,"x^3-3x",NULL,-10,10,800U,440U,20,false,NULL,&context,&error));
+    TEST_ASSERT_NULL(screen_graph);numforge_budget_end();
+}
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_stationary_anchors_slopes_and_http_opt_in);
     RUN_TEST(test_screen_floor_keeps_smooth_chords_connected);
     RUN_TEST(test_screen_camera_span_and_failure_preserve_output);
     RUN_TEST(test_fast_screen_sampler_connections_and_atomic_failure);

@@ -121,8 +121,11 @@ still select calculation precision, angle and read-only session snapshots. A mis
 range is sampled through the existing endpoint (up to four foreground pieces,
 otherwise a complete view); cached data remains as a clipped preview meanwhile.
 
-After 700 ms idle, quick resolved responses may trigger at most three sequential
-prefetches for missing adjacent regions and a wider overview. Responses taking
+After 180 ms idle, quick resolved responses may trigger at most three sequential
+prefetches: detail for the next zoom level, then missing adjacent regions.
+The current x range is prepared at up to twice the width and half the y span.
+Speculative data cannot evict the active prepared view. Missing foreground detail
+waits 90 ms after a settled camera change; active drag/pinch waits for release. Responses taking
 more than 1500 ms including transport, limited responses and errors stop that
 batch. There is no repeated timer/polling loop. Moves, edits and disposal abort
 browser requests and reject obsolete responses; aborting a fetch does not promise

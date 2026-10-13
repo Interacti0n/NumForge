@@ -89,10 +89,10 @@ static void snapshot(Json *json, const CalculatorValue *value, bool full)
 
 enum { CLIENT, ACTION, REVISION, OFFSET, LIMIT, AT, ID, NAME, FULL,
        FROM, TO, PRECISION, PLACES, ROUNDING, ANGLE, NOTATION,
-       MINIMUM, MAXIMUM, POINTS, PARAMETER, MODE, WIDTH, HEIGHT, QUALITY, YMINIMUM, YMAXIMUM, QUERY_COUNT };
+       MINIMUM, MAXIMUM, POINTS, PARAMETER, MODE, WIDTH, HEIGHT, QUALITY, YMINIMUM, YMAXIMUM, INTERPOLATION, QUERY_COUNT };
 static const char *keys[] = {"client", "action", "revision", "offset", "limit", "at", "id", "name", "full",
     "from", "to", "precision", "places", "rounding", "angle", "notation",
-    "min", "max", "points", "parameter", "mode", "width", "height", "quality", "ymin", "ymax"};
+    "min", "max", "points", "parameter", "mode", "width", "height", "quality", "ymin", "ymax", "interpolation"};
 typedef struct Query { char values[QUERY_COUNT][48]; unsigned int seen; } Query;
 #define BIT(field) (1U << (field))
 
@@ -236,7 +236,7 @@ static CalculatorStatus graph_request(ApplicationClientStore *store, const char 
     const Query *query, const char *body, char **response, CalculatorError *error, const char **code, bool adaptive)
 {
     const unsigned int allowed = BIT(CLIENT) | BIT(AT) | BIT(MINIMUM) | BIT(MAXIMUM) |
-        (adaptive ? BIT(MODE)|BIT(WIDTH)|BIT(HEIGHT)|BIT(QUALITY)|BIT(YMINIMUM)|BIT(YMAXIMUM) : BIT(POINTS)) | BIT(PARAMETER) | BIT(PRECISION) | BIT(ANGLE);
+        (adaptive ? BIT(MODE)|BIT(WIDTH)|BIT(HEIGHT)|BIT(QUALITY)|BIT(YMINIMUM)|BIT(YMAXIMUM)|BIT(INTERPOLATION) : BIT(POINTS)) | BIT(PARAMETER) | BIT(PRECISION) | BIT(ANGLE);
     uint64_t points, precision, at,width,height;
     if (strcmp(method, "POST") != 0 || (query->seen & ~allowed) ||
         !(query->seen & BIT(MINIMUM)) || !(query->seen & BIT(MAXIMUM)) ||
@@ -246,8 +246,11 @@ static CalculatorStatus graph_request(ApplicationClientStore *store, const char 
         ((query->seen & BIT(AT)) && !(query->seen & BIT(CLIENT)))) return CALCULATOR_INVALID_ARGUMENT;
     bool fast_mode=(query->seen&BIT(MODE))!=0U;
     if(fast_mode&&strcmp(query->values[MODE],"fast")!=0)return CALCULATOR_INVALID_ARGUMENT;
-    if(!fast_mode&&(query->seen&(BIT(WIDTH)|BIT(HEIGHT)|BIT(QUALITY)|BIT(YMINIMUM)|BIT(YMAXIMUM))))return CALCULATOR_INVALID_ARGUMENT;
+    if(!fast_mode&&(query->seen&(BIT(WIDTH)|BIT(HEIGHT)|BIT(QUALITY)|BIT(YMINIMUM)|BIT(YMAXIMUM)|BIT(INTERPOLATION))))return CALCULATOR_INVALID_ARGUMENT;
+    bool hermite=(query->seen&BIT(INTERPOLATION))&&strcmp(query->values[INTERPOLATION],"hermite")==0;
+    if((query->seen&BIT(INTERPOLATION))&&!hermite&&strcmp(query->values[INTERPOLATION],"linear")!=0)return CALCULATOR_INVALID_ARGUMENT;
     double vertical_span=0;
+    if(hermite&&(!(query->seen&BIT(YMINIMUM))||!(query->seen&BIT(YMAXIMUM))))return CALCULATOR_INVALID_ARGUMENT;
     if(query->seen&(BIT(YMINIMUM)|BIT(YMAXIMUM))){
         if(!(query->seen&BIT(YMINIMUM))||!(query->seen&BIT(YMAXIMUM)))return CALCULATOR_INVALID_ARGUMENT;
         double low,high;
@@ -306,7 +309,18 @@ static CalculatorStatus graph_request(ApplicationClientStore *store, const char 
                     append(&json,"%s[%.17g,",i?",":"",p->x);if(isfinite(p->y))append(&json,"%.17g",p->y);else append(&json,"null");
                     append(&json,",%u,%u,%u]",p->connect?1U:0U,(unsigned)p->kind,p->approximate?1U:0U);
                 }
-                append(&json,"]}");status=json.status;
+                append(&json,"]");
+                /* Optional slopes must not displace required points or exceed
+                 * the existing response bound. Absence means linear fallback. */
+                if(hermite&&json.status==CALCULATOR_OK&&json.capacity-json.used>fast->count*18U+32U){
+                    append(&json,",\"slopes\":[");
+                    for(size_t i=0U;i<fast->count;++i){
+                        if(isfinite(fast->points[i].derivative))append(&json,"%s%.9g",i?",":"",fast->points[i].derivative);
+                        else append(&json,"%snull",i?",":"");
+                    }
+                    append(&json,"]");
+                }
+                append(&json,"}");status=json.status;
             }
             application_fast_graph_destroy(fast);goto graph_done;
         }

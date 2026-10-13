@@ -45,6 +45,12 @@ or exp(x). Trigonometric phase checks still reject unresolved whole periods;
 division, tangent and other domain-sensitive expressions keep stricter rules.
 The displayed chord is an approximation, not an accuracy guarantee between samples.
 
+Where slopes are available, the browser draws smooth transitions between
+accepted points, with tangent limits to avoid overshoot. The C sampler also
+searches for stationary points inside accepted intervals of supported smooth
+expressions, so shifted peaks and combined functions receive actual evaluated
+anchors. These checks help shape and do not prove that all extrema were found.
+
 Coarse trigonometric curves also evaluate points near sin/cos phase extrema, so
 missed peaks do not create a false changing amplitude. These are actual C samples;
 they do not replace function values with assumed ±1 results. Complex expressions
@@ -79,7 +85,7 @@ Drag in any direction to pan horizontally and vertically.
 The focused plot also accepts +/−, all four arrow keys and Home.
 Empty plots support view controls without computing.
 
-Sampling waits 300 ms after wheel/button changes or pointer release. During a
+Sampling waits 90 ms after wheel/button changes or pointer release. During a
 gesture the previous curve is projected into the new view; after sampling the
 visible interval is refined without changing the camera. Vertical panning
 reprojects cached values without a calculation. Edits/navigation cancel pending
@@ -102,8 +108,11 @@ span supplies the vertical pixel scale. The browser displays only the camera's
 central part. A sufficiently detailed buffered range supports immediate panning
 without another calculation. Zooming farther in still needs additional detail.
 
-After a quick, resolved request the page prepares missing adjacent left/right regions
-and a wider overview during idle time, one request at a time. Slow/limited/failed
+After 180 ms idle following a quick resolved request, the page first prepares
+finer detail over the current x range for the next zoom level, then missing
+adjacent left/right regions, one request at a time. Cached slopes keep curves
+smooth while additional detail arrives. Preparation never evicts the active
+prepared view just to retain speculative data. Slow/limited/failed
 requests stop optional background work. Every request retains the C API's normal
 time, allocation and output limits; unprepared intervals cannot be instantaneous.
 

@@ -1,16 +1,18 @@
 const {test,expect}=require('@playwright/test');
 const normalize=data=>data.schema_version===3?{...data,points:data.points.map(p=>({x:String(p[0]),y:p[1]===null?null:String(p[1]),connect:!!p[2],kind:['real','domain_error','complex','quantity','unresolved'][p[3]],source_approximate:!!p[4]}))}:data;
 test('dense background preparation preserves the active cached viewport',async({page})=>{
- let initial=0,neighbors=0;
+ let calls=0;
  await page.route('**/api/graph/plot?**',route=>{
   const q=new URL(route.request().url()).searchParams,low=Number(q.get('min')),high=Number(q.get('max'));
-  if(low===-10&&high===10)++initial;else ++neighbors;
-  return route.fulfill({json:{ok:true,schema_version:3,evaluation:'double',parameter:'x',quality:'refined',width:800,height:440,
+  ++calls;
+  return route.fulfill({json:{ok:true,schema_version:3,evaluation:'double',parameter:'x',quality:'refined',width:Number(q.get('width')),height:440,
    limited:false,count:8192,y_min:-1,y_max:1,points:Array.from({length:8192},(_,i)=>{const x=low+(high-low)*i/8191;return [x,Math.sin(x),i?1:0,0,1];})}});
  });
  await page.goto('/graph?lang=en');await sample(page,'sin(x)');
- await expect.poll(()=>neighbors,{timeout:10000}).toBeGreaterThanOrEqual(2);
- await page.locator('#graph-submit').click();await expect(page.locator('path.graph-line')).toBeVisible();expect(initial).toBe(1);
+ await expect.poll(()=>calls).toBe(2);
+ const original=await page.locator('path.graph-line').getAttribute('d');
+ await page.locator('#graph-submit').click();await expect(page.locator('path.graph-line')).toBeVisible();
+ await page.waitForTimeout(350);expect(calls).toBe(2);expect(await page.locator('path.graph-line').getAttribute('d')).toBe(original);
 });
 test('dense cached camera motion keeps the curve visible across animation frames',async({page})=>{
  await page.goto('/graph?lang=en');await sample(page,'sin(33x)');
@@ -30,12 +32,12 @@ test('viewport refinement shows coarse data before the final response and cancel
  let release;const held=new Promise(resolve=>release=resolve);
  await page.route('**/api/graph/plot?**',async route=>{
   const q=new URL(route.request().url()).searchParams;
-  if(q.get('min')==='-5'&&q.get('quality')==='refined'){
+  if(q.get('min')==='-2.5'&&q.get('quality')==='refined'){
    const response=await route.fetch();await held;try{await route.fulfill({response});}catch(_){}
   }else await route.continue();
  });
- const coarse=page.waitForResponse(r=>r.url().includes('/api/graph/plot?')&&new URL(r.url()).searchParams.get('min')==='-5'&&new URL(r.url()).searchParams.get('quality')==='coarse');
- await page.locator('#graph-zoom-in').click();const draft=await (await coarse).json();expect(draft.quality).toBe('coarse');
+ const coarse=page.waitForResponse(r=>r.url().includes('/api/graph/plot?')&&new URL(r.url()).searchParams.get('min')==='-2.5'&&new URL(r.url()).searchParams.get('quality')==='coarse');
+ await page.evaluate(()=>{document.querySelector('#graph-zoom-in').click();document.querySelector('#graph-zoom-in').click();});const draft=await (await coarse).json();expect(draft.quality).toBe('coarse');
  await expect(page.locator('.graph-workspace')).toHaveAttribute('aria-busy','true');
  await expect(page.locator('path.graph-line')).toBeVisible();
  await page.locator('#graph-expression').fill('x*x');release();
@@ -110,8 +112,8 @@ test('cached tile composition preserves reciprocal gaps',async({page})=>{
  const width=await page.locator('#graph-plot').evaluate(svg=>svg.viewBox.baseVal.width);
  const zero=64+6/20*(width-86);
  for(const path of paths){let previous;
-  for(const command of path.matchAll(/([ML])([^,]+),([^ML]+)/g)){
-   const x=Number(command[2]);if(command[1]==='L')expect(previous<zero&&x>zero).toBe(false);previous=x;
+  for(const command of path.matchAll(/([MLC])([^MLC]+)/g)){
+   const numbers=command[2].split(/[ ,]+/).map(Number),x=numbers.at(-2);if(command[1]!=='M')expect(previous<zero&&x>zero).toBe(false);previous=x;
   }
  }
 });
@@ -142,18 +144,18 @@ test('prepared neighboring ranges pan immediately without another foreground cal
  await expect(page.locator('#graph-plot')).toHaveAttribute('data-xmin','-6');await expect(page.locator('#graph-plot')).toHaveAttribute('data-xmax','14');
  await expect(page.locator('path.graph-line')).toHaveCount(1);await expect(page.locator('#graph-status')).not.toHaveText('Sampling…');
  await page.waitForTimeout(450);
- expect(responses.slice(before).some(u=>u.searchParams.get('min')==='-6'&&u.searchParams.get('max')==='14')).toBe(false);
+ expect(responses.slice(before).some(u=>u.searchParams.get('min')==='-6'&&u.searchParams.get('max')==='14'&&Number(u.searchParams.get('ymax'))-Number(u.searchParams.get('ymin'))===20)).toBe(false);
 });
 test('uncached refinement keeps the previous curve visible and changes invalidate the cache',async({page})=>{
  await page.goto('/graph?lang=en');await sample(page,'sin(x)');
  let release;const held=new Promise(resolve=>release=resolve);
  await page.route('**/api/graph/plot?**',async route=>{
   const u=new URL(route.request().url());
-  if(u.searchParams.get('min')==='-5'&&u.searchParams.get('max')==='5'){
+  if(u.searchParams.get('min')==='-2.5'&&u.searchParams.get('max')==='2.5'){
    const response=await route.fetch();await held;try{await route.fulfill({response});}catch(_){}
   }else await route.continue();
  });
- await page.locator('#graph-zoom-in').click();await expect(page.locator('path.graph-line')).toBeVisible();
+ await page.evaluate(()=>{document.querySelector('#graph-zoom-in').click();document.querySelector('#graph-zoom-in').click();});await expect(page.locator('path.graph-line')).toBeVisible();
  await expect(page.locator('.graph-workspace')).toHaveAttribute('aria-busy','true');
  await expect(page.locator('path.graph-line')).toBeVisible();release();
  await expect(page.locator('.graph-workspace')).not.toHaveAttribute('aria-busy','true');

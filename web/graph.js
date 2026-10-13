@@ -71,6 +71,16 @@ function initGraph() {
         for(const [key,value] of Object.entries(attributes))el.setAttribute(key,String(value));
         if(content!==undefined)el.textContent=content;return el;
     }
+    // Monotone cubic controls from C slopes. Limiting tangents keeps the curve
+    // inside endpoint ordinates, without inventing overshoot or joining gaps.
+    function cubic(a,b) {
+        const dx=b.nx-a.nx,dy=b.ny-a.ny,secant=dy/dx;
+        if(!Number.isFinite(a.derivative)||!Number.isFinite(b.derivative)||!Number.isFinite(secant)||!Number.isFinite(dy)||dx<=0||dy===0)return null;
+        let alpha=Math.max(0,a.derivative/secant),beta=Math.max(0,b.derivative/secant);
+        if(!Number.isFinite(alpha)||!Number.isFinite(beta))return null;
+        const norm=Math.hypot(alpha,beta);if(norm>3){alpha*=3/norm;beta*=3/norm;}
+        return [a.nx+dx/3,a.ny+dy*alpha/3,b.nx-dx/3,b.ny-dy*beta/3];
+    }
     function draw() {
         svg.querySelectorAll('.graph-drawing').forEach(el=>el.remove());
         const points=samples||[],valid=points.filter(p=>p.plottable);
@@ -136,8 +146,12 @@ function initGraph() {
         for(const point of chunk.points) {
             if(!point.plottable){previous=null;pen=false;continue;}
             const x=px(point.nx),y=py(point.ny);
-            if(point.connect && previous){if(!pen)path+=`M${previous.x},${previous.y}`;path+=`L${x},${y}`;pen=true;}else pen=false;
-            previous={x,y};
+            if(point.connect && previous){
+                if(!pen)path+=`M${previous.x},${previous.y}`;
+                const control=x-previous.x>1?cubic(previous.point,point):null;
+                path+=control?`C${px(control[0])},${py(control[1])},${px(control[2])},${py(control[3])},${x},${y}`:`L${x},${y}`;pen=true;
+            }else pen=false;
+            previous={x,y,point};
         }
         if(path){curve.setAttribute('d',path);group.append(curve);}
         }
@@ -156,6 +170,8 @@ function initGraph() {
         }));
     }
     function decode(body) {
+        const slopes=body.slopes;
+        if(slopes!==undefined&&(body.schema_version!==3||!Array.isArray(slopes)||slopes.length!==body.count||slopes.some(s=>s!==null&&!Number.isFinite(s))))throw Error(text.invalid);
         if(body.schema_version===3){
             const kinds=['real','domain_error','complex','quantity','unresolved'];
             if(body.evaluation!=='double'||!Array.isArray(body.points)||body.count!==body.points.length||body.count<2||body.count>maxPoints)throw Error(text.invalid);
@@ -166,10 +182,10 @@ function initGraph() {
         }
         if(![2,3].includes(body.schema_version) || !Array.isArray(body.points) || body.count!==body.points.length || body.count<2 || body.count>maxPoints)throw Error(text.invalid);
         if(typeof body.parameter!=='string'||!/^[A-Za-z]{1,31}$/.test(body.parameter)||typeof body.limited!=='boolean')throw Error(text.invalid);
-        const points=body.points.map(point=>{
+        const points=body.points.map((point,i)=>{
             if(!point || typeof point.connect!=='boolean' || !['real','domain_error','complex','quantity',...(body.schema_version===3?['unresolved']:[])].includes(point.kind) || typeof point.x!=='string' || (point.kind==='real'?typeof point.y!=='string'&&!(body.schema_version===3&&point.y===null):point.y!==null))throw Error(text.invalid);
             const nx=numeric(point.x),ny=numeric(point.y);
-            return {...point,nx,ny,plottable:point.kind==='real'&&nx!==null&&ny!==null};
+            return {...point,nx,ny,derivative:slopes?.[i]??NaN,plottable:point.kind==='real'&&nx!==null&&ny!==null};
         });
         return {points,parameter:body.parameter,limited:body.limited,approximate:body.evaluation==='double',quality:body.quality||'refined',width:body.width,height:body.height};
     }
@@ -249,32 +265,42 @@ function initGraph() {
     function prefetch(query,expression,identity,low,high) {
         stopPrefetch();
         const span=high-low,token=prefetchToken;
-        const ranges=[[low-span,low],[high,high+span],[low-span/2,high+span/2]];
+        const ranges=[[low,high],[low-span,low],[high,high+span]];
         prefetchTimer=setTimeout(async()=>{
             prefetchTimer=null;
             let fetched=0;
             for(const [index,range] of ranges.entries()) {
-            const jobs=index<2?missingRanges(...range):[range];
+            const jobs=index===0?[range]:missingRanges(...range);
             for(const [a,b] of jobs) {
                 if(disposed||token!==prefetchToken||cacheIdentity!==identity||pointers.size)return;
                 if(fetched>=3)return;
                 if(!Number.isFinite(a)||!Number.isFinite(b)||b<=a||!Number.isFinite(b-a))continue;
-                const key=JSON.stringify([identity,a,b]);
-                if(prefetchAttempts.has(key)||cache.some(e=>e.low<=a&&e.high>=b&&resolutionReady(e,a,b)))continue;
+                const nextZoom=index===0,center=low+span/2;
+                const targetLow=nextZoom?center-span/4:a,targetHigh=nextZoom?center+span/4:b;
+                const key=JSON.stringify([identity,a,b,nextZoom]);
+                if(prefetchAttempts.has(key)||cache.some(e=>e.low<=a&&e.high>=b&&resolutionReady(e,targetLow,targetHigh)&&(!nextZoom||e.verticalSpan<=(yViewport[1]-yViewport[0])*.625)))continue;
                 prefetchAttempts.add(key);if(prefetchAttempts.size>48)prefetchAttempts.delete(prefetchAttempts.values().next().value);
                 prefetchRequest=new AbortController();const signal=prefetchRequest.signal;
                 ++fetched;
                 const next=new URLSearchParams(query);next.set('min',String(a));next.set('max',String(b));
+                if(nextZoom){
+                    next.set('width',String(Math.min(2048,Number(query.get('width'))*2)));
+                    const middle=yViewport[0]+(yViewport[1]-yViewport[0])/2,quarter=(yViewport[1]-yViewport[0])/4;
+                    next.set('ymin',String(middle-quarter));next.set('ymax',String(middle+quarter));
+                }
                 try {
                     const entry=await fetchPlot(next,expression,signal);
                     if(disposed||token!==prefetchToken||cacheIdentity!==identity){prefetchAttempts.delete(key);return;}
+                    // Speculative detail cannot evict the current prepared view.
+                    const retained=cache.filter(e=>e.low<high&&e.high>low);
+                    if(retained.reduce((n,e)=>n+e.points.length,0)+entry.points.length>maxCachePoints||retained.reduce((n,e)=>n+e.cacheBytes,0)+entry.cacheBytes>maxCacheBytes)return;
                     remember(entry);
                     if(entry.limited||entry.cost>1500||!entry.points.some(p=>p.plottable))return;
                 } catch(_){if(signal.aborted)prefetchAttempts.delete(key);return;}
                 finally {if(token===prefetchToken)prefetchRequest=null;}
             }
             }
-        },700);
+        },180);
     }
     async function plot(event,keepView=false) {
         event?.preventDefault();
@@ -292,7 +318,7 @@ function initGraph() {
             // back to the precision evaluator when fast arithmetic is unsuitable.
             const query=new URLSearchParams({min:String(low),max:String(high),angle:'rad',ymin:String(yLow),ymax:String(yHigh)});
             const width=Math.max(320,Math.min(800,root.querySelector('.graph-result').clientWidth-48)),height=width<600?300:440;
-            query.set('mode','fast');query.set('width',String(Math.round(width)));query.set('height',String(height));query.set('quality','refined');
+            query.set('mode','fast');query.set('width',String(Math.round(width)));query.set('height',String(height));query.set('quality','refined');query.set('interpolation','hermite');
             if(id!==generation||disposed)return;
             const identity=expression;
             if(cacheIdentity!==identity){clearCache();cacheIdentity=identity;samples=null;chunks=null;draw();message(text.busy);}
@@ -352,7 +378,7 @@ function initGraph() {
         const hit=showCached(low,high,false);
         drawSoon();if(!hit)message($('graph-expression').value.trim()?text.busy:text.ready);save();
         clearTimeout(viewportTimer);
-        viewportTimer=setTimeout(()=>{viewportTimer=null;if(!disposed)plot(null,true);},300);
+        viewportTimer=setTimeout(()=>{viewportTimer=null;if(!disposed)plot(null,true);},90);
     }
     function zoom(factor,anchor=.5,yAnchor=.5) {
         const [low,high]=bounds(),span=high-low,center=low+span*anchor;
@@ -395,7 +421,7 @@ function initGraph() {
     },{signal:lifecycle.signal});
     function endGesture(event) {
         pointers.delete(event.pointerId);startGesture();
-        if(!pointers.size&&pendingView){clearTimeout(viewportTimer);viewportTimer=setTimeout(()=>{viewportTimer=null;if(!disposed)plot(null,true);},300);}
+        if(!pointers.size&&pendingView){clearTimeout(viewportTimer);viewportTimer=setTimeout(()=>{viewportTimer=null;if(!disposed)plot(null,true);},90);}
     }
     for(const name of ['pointerup','pointercancel','lostpointercapture'])svg.addEventListener(name,endGesture,{signal:lifecycle.signal});
     svg.addEventListener('keydown',event=>{

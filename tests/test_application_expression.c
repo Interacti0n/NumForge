@@ -346,9 +346,41 @@ static void test_fast_graph_ownership_faults_and_shared_budget(void)
     for(size_t failure=1U;failure<=calls;++failure){numforge_test_allocator_begin(failure);
         TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY,application_expression_fast_compile(&fast,prepared,&error));numforge_test_allocator_end();TEST_ASSERT_EQUAL_PTR(original,fast);}
 }
+static void test_forward_derivatives_and_unavailable_slopes(void)
+{
+    const struct {const char *expression;double x,derivative;} cases[]={
+        {"x^3",2,12},{"x*x*x",-2,12},{"x^3",0,0},{"x^0",0,0},{"x^1",0,1},
+        {"1/x",2,-.25},{"exp(x)",1,2.718281828459045},{"ln(x)",2,.5},
+        {"sqrt(x)",4,.25},{"cbrt(x)",-8,1.0/12},{"abs(x)",-2,-1},
+        {"sin(3x)+cos(2x)",.7,3*cos(2.1)-2*sin(1.4)},
+        {"x^x",2,4*(log(2)+1)},{"(x-0.37)^2",.37,0},
+        {"exp(-(x-0.37)^2)",.37,0}
+    };
+    for(size_t i=0U;i<sizeof(cases)/sizeof(cases[0]);++i){
+        compile_fast(cases[i].expression);ApplicationFastProbe sample={0};
+        TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_expression_probe_derivative(fast,cases[i].x,&sample));
+        TEST_ASSERT_TRUE(isfinite(sample.derivative));
+        TEST_ASSERT_TRUE(fabs(sample.derivative-cases[i].derivative)<1e-12*fmax(1,fabs(cases[i].derivative)));
+    }
+    for(size_t i=0U;i<3U;++i){
+        compile_fast(i==0U?"abs(x)":i==1U?"sqrt(x)":"cbrt(x)");ApplicationFastProbe sample={0};
+        TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_expression_probe_derivative(fast,0,&sample));
+        TEST_ASSERT_EQUAL(APPLICATION_FAST_REAL,sample.sample.kind);TEST_ASSERT_TRUE(isnan(sample.derivative));
+    }
+    context.angle_unit=CALCULATOR_ANGLE_DEGREES;compile_fast("sin(x)");ApplicationFastProbe sample={0};
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_expression_probe_derivative(fast,30,&sample));
+    TEST_ASSERT_TRUE(fabs(sample.derivative-cos(3.14159265358979323846/6)*3.14159265358979323846/180)<1e-14);
+    sample.derivative=123;
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,application_fast_expression_probe_derivative(fast,NAN,&sample));
+    TEST_ASSERT_TRUE(sample.derivative==123);
+    TEST_ASSERT_TRUE(numforge_budget_begin(0U,SIZE_MAX,SIZE_MAX));
+    TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT,application_fast_expression_probe_derivative(fast,30,&sample));
+    TEST_ASSERT_TRUE(sample.derivative==123);numforge_budget_end();
+}
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_forward_derivatives_and_unavailable_slopes);
     RUN_TEST(test_fast_graph_values_domains_and_angle_units);
     RUN_TEST(test_fast_graph_snapshot_and_arithmetic_contract);
     RUN_TEST(test_fast_graph_uncertainty_and_unsupported_syntax);
