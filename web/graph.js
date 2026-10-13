@@ -9,16 +9,16 @@ function initGraph() {
         ready:'Enter a function and plot it.',busy:'Sampling…',network:'Cannot reach the server. Try again.',invalid:'The server returned invalid graph data.',
         range:'These coordinates cannot be distinguished in the browser’s numeric range. Adjust or reset the range.',column:'column',
         limited:'Some visible intervals could not be resolved. Zoom in for more detail.',ambiguous:'Use one variable, for example x or t.',
-        function:'Function',color:'Curve color',remove:'Remove function',expand:'Expand graph',collapse:'Return to page',unavailable:'Function catalogue unavailable. Try reopening this page.',noMatch:'No matching function. Try another name.'
+        hidden:'All functions are hidden.',hide:'Hide function',show:'Show function',function:'Function',color:'Curve color',remove:'Remove function',expand:'Expand graph',collapse:'Return to page',unavailable:'Function catalogue unavailable. Try reopening this page.',noMatch:'No matching function. Try another name.'
     }:{
         ready:'Zadaj funkciu a vykresli ju.',busy:'Počítam body…',network:'Server nie je dostupný. Skús to znova.',invalid:'Server vrátil neplatné údaje grafu.',
         range:'Tieto súradnice prehliadač nedokáže rozlíšiť vo svojom číselnom rozsahu. Uprav rozsah alebo obnov pohľad.',column:'pozícia',
         limited:'Niektoré viditeľné úseky sa nepodarilo rozlíšiť. Priblíž graf pre viac detailov.',ambiguous:'Použi jednu premennú, napríklad x alebo t.',
-        function:'Funkcia',color:'Farba krivky',remove:'Odstrániť funkciu',expand:'Rozšíriť graf',collapse:'Vrátiť na stránku',unavailable:'Katalóg funkcií nie je dostupný. Skús znovu otvoriť stránku.',noMatch:'Žiadna funkcia sa nenašla. Skús iný názov.'
+        hidden:'Všetky funkcie sú skryté.',hide:'Skryť funkciu',show:'Zobraziť funkciu',function:'Funkcia',color:'Farba krivky',remove:'Odstrániť funkciu',expand:'Rozšíriť graf',collapse:'Vrátiť na stránku',unavailable:'Katalóg funkcií nie je dostupný. Skús znovu otvoriť stránku.',noMatch:'Žiadna funkcia sa nenašla. Skús iný názov.'
     };
     const errors=english?{'undefined answer':'Graphs do not use calculator ans.'}:{'division by zero':'Delenie nulou','undefined variable':'Nedefinovaná premenná','undefined answer':'Graf nepoužíva ans z kalkulačky','syntax error':'Chyba syntaxe','time limit exceeded':'Prekročený časový limit','invalid argument':'Neplatný argument'};
     function message(value,error=false){status.textContent=value;status.classList.toggle('error',error);}
-    function save(){try{const first=curves[0];sessionStorage.setItem('numforge-graph-state',JSON.stringify({expression:first?.input.value||'',color:first?.color.value||palette[0],curves:curves.map(c=>({expression:c.input.value,color:c.color.value}))}));}catch(_) {}}
+    function save(){try{const first=curves[0];sessionStorage.setItem('numforge-graph-state',JSON.stringify({expression:first?.input.value||'',color:first?.color.value||palette[0],curves:curves.map(c=>({expression:c.input.value,color:c.color.value,visible:c.state().visible}))}));}catch(_) {}}
     function drawSoon(){if(drawFrame===null)drawFrame=requestAnimationFrame(()=>{drawFrame=null;if(!disposed)draw();});}
     function dimensions(){
         const result=root.querySelector('.graph-result');
@@ -28,10 +28,11 @@ function initGraph() {
         return {width,height:Math.round(Math.max(160,Math.min(1200,available*width/rendered)))};
     }
     function syncStatus(){
-        const states=curves.map(c=>c.state());
+        const allStates=curves.map(c=>c.state()),states=allStates.filter(s=>s.visible);
         root.toggleAttribute('aria-busy',states.some(s=>s.busy));if(root.hasAttribute('aria-busy'))root.setAttribute('aria-busy','true');
-        curves.forEach((c,i)=>{const s=states[i],node=c.row.querySelector('.graph-curve-status');node.hidden=curves.length===1||(!s.error&&!s.busy&&!s.message.includes(text.limited));node.textContent=s.message;node.classList.toggle('error',s.error);});
-        if(curves.length===1){message(states[0].message,states[0].error);return;}
+        curves.forEach((c,i)=>{const s=allStates[i],node=c.row.querySelector('.graph-curve-status');node.hidden=!s.visible||curves.length===1||(!s.error&&!s.busy&&!s.message.includes(text.limited));node.textContent=s.message;node.classList.toggle('error',s.error);});
+        if(!states.length){message(text.hidden);return;}
+        if(states.length===1){message(states[0].message,states[0].error);return;}
         const drawn=states.filter(s=>s.samples?.some(p=>p.plottable)).length,failed=states.filter(s=>s.error).length,unresolved=states.filter(s=>s.message.includes(text.limited)).length;
         message(states.some(s=>s.busy)?text.busy:drawn?(english?`${drawn} functions plotted`:`Zobrazené funkcie: ${drawn}`)+(failed?(english?` · ${failed} failed`:` · s chybou: ${failed}`):'')+(unresolved?(english?` · ${unresolved} with unresolved detail`:` · s nevyriešeným detailom: ${unresolved}`):''):states.find(s=>s.error)?.message||text.ready,!drawn&&failed>0);
     }
@@ -56,7 +57,7 @@ function initGraph() {
         event?.preventDefault();clearTimeout(viewportTimer);viewportTimer=null;
         if(!$('graph-form').reportValidity())return;
         ++foregroundBatches;
-        try{await Promise.all(curves.map(c=>c.plot(null,keepView)));}finally{--foregroundBatches;pump();}
+        try{await Promise.all(curves.filter(c=>c.state().visible).map(c=>c.plot(null,keepView)));}finally{--foregroundBatches;pump();}
     }
     function scheduleView(){clearTimeout(viewportTimer);viewportTimer=setTimeout(()=>{viewportTimer=null;if(!disposed)plotAll(null,true);},90);}
     // Projection only: mathematics and sample classification come from the C API.
@@ -85,7 +86,7 @@ function initGraph() {
     }
     function draw() {
         svg.querySelectorAll('.graph-drawing').forEach(el=>el.remove());
-        const states=curves.map(curve=>({curve,...curve.state()}));
+        const states=curves.filter(c=>c.state().visible).map(curve=>({curve,...curve.state()}));
         for(const state of states)if(state.samples&&!state.pendingView)state.curve.message((state.approximate?'≈ ':'')+`y = f(${state.parameter})`+(state.curve.visibleUnresolved()?' · '+text.limited:''));
         let xs=viewport||bounds();
         for(const state of states)if(state.samples&&(state.chunks||[{points:state.samples}]).some(c=>c.points.some((p,i)=>p.nx===null||(i>0&&p.nx<=c.points[i-1].nx)))){state.curve.invalidData();draw();return;}
@@ -165,12 +166,14 @@ function initGraph() {
             if(path){curve.setAttribute('d',path);group.append(curve);}
         }
         }
-        $('graph-svg-description').textContent=states.some(s=>s.samples)?curves.map(c=>c.input.value).filter(Boolean).join('; '):text.ready;
+        $('graph-svg-description').textContent=states.some(s=>s.samples)?states.map(s=>s.curve.input.value).filter(Boolean).join('; '):text.ready;
         svg.append(group);svg.removeAttribute('hidden');
     }
     function createCurve(row){
         const input=row.querySelector('input:not([type=color])'),color=row.querySelector('input[type=color]'),controller=new AbortController();
         const id=nextId++;row.dataset.curve=String(id);
+        let visible=row.querySelector('.graph-visibility').getAttribute('aria-pressed')!=='false',hiddenCamera=null,hiddenReady=false;
+        const cameraKey=()=>JSON.stringify([bounds(),yViewport,dimensions()]);
         let generation=0,request=null,samples=null,disposed=false,parameter='x',limited=false,pendingView=false,approximate=false,busy=false;
         let cache=[],cacheIdentity=null,chunks=null,prefetchTimer=null,prefetchRequest=null,prefetchToken=0,cacheMissing=[];
         const prefetchAttempts=new Set(),maxPoints=8192,maxCachePoints=12288,maxCacheBytes=8*1024*1024;
@@ -314,7 +317,7 @@ function initGraph() {
                 for(const [index,range] of ranges.entries()) {
                 const jobs=index===0?[range]:missingRanges(...range);
                 for(const [a,b] of jobs) {
-                    if(disposed||token!==prefetchToken||cacheIdentity!==identity||pointers.size)return;
+                    if(disposed||!visible||token!==prefetchToken||cacheIdentity!==identity||pointers.size)return;
                     if(fetched>=3)return;
                     if(!Number.isFinite(a)||!Number.isFinite(b)||b<=a||!Number.isFinite(b-a))continue;
                     const nextZoom=index===0,center=low+span/2;
@@ -346,6 +349,7 @@ function initGraph() {
         }
         async function plot(event,keepView=false) {
             event?.preventDefault();
+            if(!visible)return;
             stopPrefetch();
             ++generation;request?.abort();request=null;busy=false;syncStatus();
             if(!keepView){samples=null;chunks=null;pendingView=false;draw();}
@@ -399,14 +403,23 @@ function initGraph() {
         }
 
         const curve={id,row,input,color,plot,message,visibleUnresolved,
-            state:()=>({samples,chunks,parameter,limited,pendingView,approximate,busy,message:lastMessage,error:lastError}),
+            state:()=>({visible,samples,chunks,parameter,limited,pendingView,approximate,busy,message:lastMessage,error:lastError}),
             invalidData(){samples=null;chunks=null;pendingView=false;message(text.range,true);},
-            cameraChanged(){++generation;request?.abort();request=null;busy=false;stopPrefetch();pendingView=!!input.value.trim();const hit=showCached(...bounds(),false);if(!hit)message(input.value.trim()?text.busy:text.ready);syncStatus();},
+            cameraChanged(){if(!visible)return;++generation;request?.abort();request=null;busy=false;stopPrefetch();pendingView=!!input.value.trim();const hit=showCached(...bounds(),false);if(!hit)message(input.value.trim()?text.busy:text.ready);syncStatus();},
+            setVisible(value){
+                if(visible===value)return;
+                if(!value){hiddenCamera=cameraKey();hiddenReady=!!samples&&!pendingView;}
+                visible=value;++generation;request?.abort();request=null;busy=false;stopPrefetch();
+                const retained=visible&&hiddenReady&&!!samples&&hiddenCamera===cameraKey();
+                pendingView=visible&&!!input.value.trim()&&!retained&&!showCached(...bounds(),false);
+                relabel();save();drawSoon();if(pendingView)scheduleView();
+            },
             dispose(){disposed=true;invalidate();controller.abort();}
         };
         input.addEventListener('input',()=>{clearTimeout(viewportTimer);viewportTimer=null;if(curves.length===1){viewport=null;yViewport=[-10,10];}invalidate();save();renderLegend();},{signal:controller.signal});
         row.addEventListener('focusin',()=>{activeCurve=curve;highlightActive();},{signal:controller.signal});
         color.addEventListener('input',()=>{save();renderLegend();drawSoon();},{signal:controller.signal});
+        row.querySelector('.graph-visibility').addEventListener('click',()=>curve.setVisible(!visible),{signal:controller.signal});
         row.querySelector('.graph-remove').addEventListener('click',()=>removeCurve(curve),{signal:controller.signal});
         return curve;
     }
@@ -486,17 +499,18 @@ function initGraph() {
 
     function highlightActive(){curves.forEach(c=>c.row.classList.toggle('active',c===activeCurve));}
     function renderLegend(){
-        const legend=$('graph-legend');legend.replaceChildren();legend.hidden=curves.length<2;
-        curves.forEach((c,i)=>{const item=document.createElement('li'),dot=document.createElement('span'),label=document.createElement('span');dot.className='graph-legend-dot';dot.style.backgroundColor=c.color.value;dot.setAttribute('aria-hidden','true');label.textContent=`${i+1}. ${c.input.value||'…'}`;label.title=c.input.value;item.append(dot,label);legend.append(item);});
+        const legend=$('graph-legend'),focused=legend.contains(document.activeElement)?document.activeElement.dataset.curve:null;legend.replaceChildren();legend.hidden=!curves.some(c=>c.input.value.trim());
+        curves.forEach((c,i)=>{const item=document.createElement('li'),button=document.createElement('button'),dot=document.createElement('span'),label=document.createElement('span');button.type='button';button.className='graph-legend-toggle';button.setAttribute('aria-pressed',String(c.state().visible));button.setAttribute('aria-label',`${c.state().visible?text.hide:text.show} ${i+1}`);button.title=`${c.state().visible?text.hide:text.show} ${i+1}`;button.dataset.curve=String(c.id);dot.className='graph-legend-dot';dot.style.backgroundColor=c.color.value;dot.setAttribute('aria-hidden','true');label.textContent=`${i+1}. ${c.input.value||'…'}`;label.title=c.input.value;button.append(dot,label);item.append(button);legend.append(item);});
+        if(focused)legend.querySelector(`button[data-curve="${focused}"]`)?.focus({preventScroll:true});
     }
     function relabel(){
-        curves.forEach((c,i)=>{c.row.querySelector('.graph-expression span').textContent=`${text.function} ${i+1} · y =`;c.input.id=i?'graph-expression-'+c.id:'graph-expression';c.color.id=i?'graph-color-'+c.id:'graph-color';c.row.querySelector('.graph-color-option span').textContent=`${text.color} ${i+1}`;const remove=c.row.querySelector('.graph-remove');remove.hidden=curves.length===1;remove.setAttribute('aria-label',`${text.remove} ${i+1}`);});
+        curves.forEach((c,i)=>{c.row.querySelector('.graph-expression span').textContent=`${text.function} ${i+1} · y =`;c.input.id=i?'graph-expression-'+c.id:'graph-expression';c.color.id=i?'graph-color-'+c.id:'graph-color';c.row.querySelector('.graph-color-option span').textContent=`${text.color} ${i+1}`;const toggle=c.row.querySelector('.graph-visibility'),visible=c.state().visible;toggle.setAttribute('aria-pressed',String(visible));toggle.setAttribute('aria-label',`${visible?text.hide:text.show} ${i+1}`);toggle.title=`${visible?text.hide:text.show} ${i+1}`;c.row.classList.toggle('curve-hidden',!visible);const remove=c.row.querySelector('.graph-remove');remove.hidden=curves.length===1;remove.setAttribute('aria-label',`${text.remove} ${i+1}`);});
         $('graph-add').textContent=(english?'+ Add function':'+ Pridať funkciu')+` · ${curves.length}/${maximumCurves}`;$('graph-add').disabled=curves.length>=maximumCurves;$('graph-add').title=english?'Up to four functions':'Najviac štyri funkcie';
         highlightActive();renderLegend();syncStatus();
     }
-    function addCurve(expression='',color=null,focus=true){
+    function addCurve(expression='',color=null,focus=true,visible=true){
         if(curves.length>=maximumCurves)return;
-        const row=curves[0].row.cloneNode(true);row.querySelector('.graph-curve-status').hidden=true;
+        const row=curves[0].row.cloneNode(true);row.querySelector('.graph-curve-status').hidden=true;row.querySelector('.graph-visibility').setAttribute('aria-pressed',String(visible));
         row.querySelector('input:not([type=color])').value=expression;
         row.querySelector('input[type=color]').value=color||palette.find(p=>!curves.some(c=>c.color.value===p))||palette[curves.length];
         $('graph-curves').append(row);const curve=createCurve(row);curves.push(curve);activeCurve=curve;relabel();save();if(focus)curve.input.focus();drawSoon();
@@ -510,11 +524,13 @@ function initGraph() {
     const valid=entry=>entry&&typeof entry.expression==='string'&&entry.expression.length<=4096;
     const restoredCurves=Array.isArray(restored?.curves)?restored.curves.filter(valid).slice(0,maximumCurves):valid(restored)?[restored]:[];
     if(restoredCurves.length){initialRow.querySelector('input:not([type=color])').value=restoredCurves[0].expression;if(/^#[0-9a-f]{6}$/i.test(restoredCurves[0].color))initialRow.querySelector('input[type=color]').value=restoredCurves[0].color;}
+    if(restoredCurves.length)initialRow.querySelector('.graph-visibility').setAttribute('aria-pressed',String(restoredCurves[0].visible!==false));
     curves.push(createCurve(initialRow));activeCurve=curves[0];
-    for(const entry of restoredCurves.slice(1))addCurve(entry.expression,/^#[0-9a-f]{6}$/i.test(entry.color)?entry.color:null,false);
+    for(const entry of restoredCurves.slice(1))addCurve(entry.expression,/^#[0-9a-f]{6}$/i.test(entry.color)?entry.color:null,false,entry.visible!==false);
     activeCurve=curves[0];relabel();
     $('graph-form').addEventListener('submit',event=>plotAll(event),{signal:lifecycle.signal});
     $('graph-add').addEventListener('click',()=>addCurve(),{signal:lifecycle.signal});
+    $('graph-legend').addEventListener('click',event=>{const button=event.target.closest('.graph-legend-toggle'),curve=curves.find(c=>String(c.id)===button?.dataset.curve);if(curve)curve.setVisible(!curve.state().visible);},{signal:lifecycle.signal});
     window.addEventListener('numforge:navigate',save,{signal:lifecycle.signal});
 
     // Move the same canvas into a native modal; keep its camera and curve state.

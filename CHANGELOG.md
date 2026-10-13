@@ -7,6 +7,12 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Toggle individual graph curves from their row or legend, preserving expressions,
+  colors, samples and keyboard focus. Cancel hidden work, skip hidden sampling,
+  reuse current/cached views on show and persist visibility across navigation.
+  Add real-browser before/after diagnostics for four-function rendering, pan, zoom,
+  cache-only toggles, HTTP traffic, frame delays and JavaScript heap usage.
+
 - Insert complete function calls from the graph/calculator library, place the caret
   inside empty parentheses, wrap selected text and add semicolon placeholders for
   required extra arguments. Keep explicit closing parentheses in the evaluator.

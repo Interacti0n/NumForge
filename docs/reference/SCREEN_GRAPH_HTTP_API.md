@@ -151,9 +151,12 @@ real edges can be trimmed to the same existing C sample and drawn as one stroke,
 without clipping the stroke at that internal boundary. False connections,
 non-real values and missing coverage prevent joining. Cached entries themselves
 are not mutated. The page has no sample table. Its only function
-controls are expression/color rows, add/remove actions and a searchable library
+controls are expression/color rows, visibility toggles, add/remove actions and a searchable library
 sharing calculator metadata plus C registry availability. Random calls are omitted.
-Color changes repaint without a request. The view controls are reset and a nearly
+Color changes repaint without a request. Row/legend visibility toggles retain
+bounded per-function caches, abort pending hidden work and skip hidden functions
+during camera sampling. Showing an unchanged completed view is a local repaint;
+a changed view reuses cached coverage and samples missing detail if needed. The view controls are reset and a nearly
 full-viewport native dialog, with the same canvas/camera and Escape/button return.
 Wheel, pinch and keyboard +/− zoom remain available; expanded/resized views can
 request detail for their new dimensions (up to the existing 2048×1200 API bounds). Browser requests use radians, default working precision and no retained

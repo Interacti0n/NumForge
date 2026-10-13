@@ -3,8 +3,15 @@
 Open **Graphs / Grafy** (`/graph?lang=en` or `/graph?lang=sk`). Enter an expression
 such as `x*x`, `sin(t)` or `1/x`, then press **Plot / Vykresliť**. Add up to four
 functions with **Add function / Pridať funkciu**; each has its own expression,
-color picker and remove button. The legend identifies their colors. Each function
+color picker, visibility button and remove button. The legend identifies their colors. Each function
 has a different default color, and colors remain adjustable without calculation.
+Toggle the eye button beside a row or click its colored legend entry to hide or
+show it, including in the expanded graph. Hidden functions keep their expressions,
+colors and bounded sample caches; they are skipped by Plot and camera sampling.
+Showing a completed curve in the same view needs no new request. After moving or
+zooming, cached coverage is reused and missing detail is sampled if needed.
+Visibility is saved per tab alongside expressions and colors.
+
 Blank rows are not evaluated. An empty plot still shows axes; a failed function
 shows its own error while valid curves remain visible.
 

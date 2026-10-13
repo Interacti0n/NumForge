@@ -134,3 +134,25 @@ Deep-zoom regressions compare sine near −3π/2 with independent references,
 require distinct projected values and axis labels, check that negative tick
 labels fit inside the SVG, and keep near-flat quantization below a visible pixel.
 Adaptive output uses 16 scientific places; uniform output remains at 12.
+
+## Multi-function graph visibility and performance
+
+`graph-visibility.spec.js` checks cache-only visibility toggles in both languages
+and desktop/mobile layouts, unchanged paths/camera/colors, hidden-request
+cancellation, edited hidden expressions, keyboard focus and persistence.
+
+Run the real-browser diagnostic against two built server executables:
+
+```powershell
+node scripts/benchmark_graph_multi.cjs --before build/server-8ee7e5a/numforge_web.exe --after build/release-audit-2026-10-12/tests/Release/numforge_web.exe --repeats 3 --output build/graph-multi-benchmark.json
+```
+
+Install browser dependencies as described above. The script starts and stops only
+its own servers, compares four mixed and four dense/domain-sensitive functions on
+desktop/mobile-sized Chromium viewports, and records initial/expanded rendering, drag,
+zoom, warm toggles, HTTP requests/data/points, frame timing, long tasks and actual
+Chromium JavaScript heap usage. Times are diagnostics, not CI thresholds. Settled
+times include a fixed 350 ms network quiet interval; mobile-sized Chromium on a PC
+is not a physical phone measurement. Warm toggles must make zero graph requests.
+
+Recorded comparison and limitations: [four-function graph benchmark](project/GRAPH_MULTI_BENCHMARK_2026_10_13.md).
