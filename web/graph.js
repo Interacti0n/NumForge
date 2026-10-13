@@ -4,9 +4,9 @@ function initGraph() {
     const $ = id => root.querySelector('#' + id);
     const english = document.documentElement.lang === 'en';
     const lifecycle = new AbortController();
-    const fields = ['expression','min','max','ymin','ymax','precision','angle','session'];
-    const status = $('graph-status'), svg = $('graph-plot'), table = $('graph-table-body');
-    let generation = 0, request = null, samples = null, disposed = false, parameter = 'x', view = null, limited = false;
+    const fields = ['expression','color'];
+    const status = $('graph-status'), svg = $('graph-plot');
+    let generation = 0, request = null, samples = null, disposed = false, parameter = 'x', limited = false;
     let viewport=null, viewportTimer=null, pendingView=false,approximate=false;
     let yViewport=[-10,10];
     const pointers=new Map();let gesture=null;
@@ -17,42 +17,33 @@ function initGraph() {
     function drawSoon() {if(drawFrame===null)drawFrame=requestAnimationFrame(()=>{drawFrame=null;if(!disposed)draw();});}
     const text = english ? {
         ready:'Enter a function and plot it.', busy:'Sampling…', network:'Cannot reach the server. Try again.',
-        invalid:'The server returned invalid graph data.', session:'Start a calculator session before using its variables.',
+        invalid:'The server returned invalid graph data.',
         range:'These coordinates cannot be distinguished in the browser’s numeric range. Adjust or reset the range.',
-        real:'Real', domain_error:'Domain error', complex:'Complex', quantity:'Quantity', unresolved:'Unresolved', outside:'Outside plotting range',
-        summary:(shown,total)=>`y = f(${parameter}) · ${shown}/${total} real samples`, column:'column',
-        limited:'Some visible intervals could not be resolved. Zoom in for more detail.', ambiguous:'Use one unknown variable, or save the other variables in the calculator and enable its session.',
-        caption:'Rounded plotting values. Complex values and quantities are not projected onto the real axis.'
+        summary:()=>`y = f(${parameter})`, column:'column',
+        limited:'Some visible intervals could not be resolved. Zoom in for more detail.', ambiguous:'Use one variable, for example x or t.'
     } : {
         ready:'Zadaj funkciu a vykresli ju.', busy:'Počítam body…', network:'Server nie je dostupný. Skús to znova.',
-        invalid:'Server vrátil neplatné údaje grafu.', session:'Pred použitím premenných vytvor sedenie v kalkulačke.',
+        invalid:'Server vrátil neplatné údaje grafu.',
         range:'Tieto súradnice prehliadač nedokáže rozlíšiť vo svojom číselnom rozsahu. Uprav rozsah alebo obnov pohľad.',
-        real:'Reálne', domain_error:'Chyba definičného oboru', complex:'Komplexné', quantity:'Veličina', unresolved:'Nevyriešené', outside:'Mimo rozsahu grafu',
-        summary:(shown,total)=>`y = f(${parameter}) · reálne body: ${shown}/${total}`, column:'pozícia',
-        limited:'Niektoré viditeľné úseky sa nepodarilo rozlíšiť. Priblíž graf pre viac detailov.', ambiguous:'Použi jednu neznámu, alebo ulož ostatné premenné v kalkulačke a zapni použitie sedenia.',
-        caption:'Zaokrúhlené hodnoty pre graf. Komplexné čísla a veličiny sa nepremietajú na reálnu os.'
+        summary:()=>`y = f(${parameter})`, column:'pozícia',
+        limited:'Niektoré viditeľné úseky sa nepodarilo rozlíšiť. Priblíž graf pre viac detailov.', ambiguous:'Použi jednu premennú, napríklad x alebo t.'
     };
-    const errors = english ? {} : {
+    const errors = english ? {'undefined answer':'Graphs do not use calculator ans.'} : {
         'division by zero':'Delenie nulou', 'undefined variable':'Nedefinovaná premenná',
-        'undefined answer':'Nie je uložený výsledok ans', 'syntax error':'Chyba syntaxe',
-        'time limit exceeded':'Prekročený časový limit', 'invalid argument':'Neplatný argument',
-        'session expired; reload the page':'Sedenie vypršalo; obnov stránku'
+        'undefined answer':'Graf nepoužíva ans z kalkulačky', 'syntax error':'Chyba syntaxe',
+        'time limit exceeded':'Prekročený časový limit', 'invalid argument':'Neplatný argument'
     };
     function message(value,error=false) {status.textContent=value;status.classList.toggle('error',error);}
     function save() {
-        try {sessionStorage.setItem('numforge-graph-state',JSON.stringify(Object.fromEntries(fields.map(name=>{
-            const el=$('graph-'+name);return [name,el.type==='checkbox'?el.checked:el.value];
-        }))));} catch (_) {}
+        try {sessionStorage.setItem('numforge-graph-state',JSON.stringify(Object.fromEntries(fields.map(name=>[name,$('graph-'+name).value]))));} catch (_) {}
     }
     try {
         const state=JSON.parse(sessionStorage.getItem('numforge-graph-state')||'null');
-        for(const name of fields) {
-            if(['min','max','ymin','ymax'].includes(name))continue;
-            const el=$('graph-'+name),value=state?.[name];
-            if(el.type==='checkbox' && typeof value==='boolean')el.checked=value;
-            else if(typeof value==='string' && value.length<=4096)el.value=value;
-        }
+        if(typeof state?.expression==='string'&&state.expression.length<=4096)$('graph-expression').value=state.expression;
+        if(typeof state?.color==='string'&&/^#[0-9a-f]{6}$/i.test(state.color))$('graph-color').value=state.color;
     } catch (_) {}
+    function applyColor() {svg.style.setProperty('--graph-color',$('graph-color').value);}
+    applyColor();
     function stopPrefetch() {
         ++prefetchToken;clearTimeout(prefetchTimer);prefetchTimer=null;prefetchRequest?.abort();prefetchRequest=null;
     }
@@ -62,8 +53,8 @@ function initGraph() {
         stopPrefetch();if(resetCache)clearCache();chunks=null;
         clearTimeout(viewportTimer);viewportTimer=null;viewport=null;pendingView=false;
         ++generation;request?.abort();request=null;samples=null;
-        view=null;limited=false;parameter='x';draw();
-        $('graph-values').hidden=true;table.replaceChildren();root.removeAttribute('aria-busy');
+        yViewport=[-10,10];limited=false;parameter='x';draw();
+        root.removeAttribute('aria-busy');
         message(text.ready);save();
     }
     // Projection only: mathematics and sample classification come from the C API.
@@ -80,31 +71,10 @@ function initGraph() {
         for(const [key,value] of Object.entries(attributes))el.setAttribute(key,String(value));
         if(content!==undefined)el.textContent=content;return el;
     }
-    function renderTable() {
-        if(!samples || table.childElementCount)return;
-        const fragment=document.createDocumentFragment();
-        for(const point of samples.slice(0,1024)) {
-            const row=document.createElement('tr');
-            for(const value of [point.x,point.y??'—',point.plottable?text.real:point.kind==='real'?text.outside:text[point.kind]]) {
-                const cell=document.createElement('td');cell.textContent=value;row.append(cell);
-            }
-            if(point.status)row.title=errors[point.status]||point.status;
-            fragment.append(row);
-        }
-        if(samples.length>1024) {
-            const row=document.createElement('tr'),cell=document.createElement('td');cell.colSpan=3;
-            cell.textContent=english?`First 1024 of ${samples.length} cached samples.`:`Prvých 1024 z ${samples.length} uložených bodov.`;
-            row.append(cell);fragment.append(row);
-        }
-        table.append(fragment);
-    }
     function draw() {
         svg.querySelectorAll('.graph-drawing').forEach(el=>el.remove());
         const points=samples||[],valid=points.filter(p=>p.plottable);
-        if(samples&&!pendingView)message((approximate?'≈ ':'')+text.summary(valid.length,points.length)+(visibleUnresolved()?' · '+text.limited:''));
-        $('graph-values').hidden=!samples||pendingView;
-        $('graph-table-caption').textContent=text.caption;
-        if($('graph-values').open)renderTable();
+        if(samples&&!pendingView)message((approximate?'≈ ':'')+text.summary()+(visibleUnresolved()?' · '+text.limited:''));
         const sampleXs=valid.length?points.map(p=>p.nx):[];
         let xs=viewport||bounds();
         if(sampleXs.some(x=>x===null) || (chunks||[{points}]).some(c=>c.points.some((p,i)=>i>0&&p.nx<=c.points[i-1].nx))) {
@@ -171,7 +141,7 @@ function initGraph() {
         }
         if(path){curve.setAttribute('d',path);group.append(curve);}
         }
-        $('graph-svg-description').textContent=samples?$('graph-expression').value+'; '+text.summary(valid.length,points.length):text.ready;
+        $('graph-svg-description').textContent=samples?$('graph-expression').value+'; '+text.summary():text.ready;
         svg.append(group);svg.removeAttribute('hidden');
     }
     function visibleUnresolved() {
@@ -201,7 +171,7 @@ function initGraph() {
             const nx=numeric(point.x),ny=numeric(point.y);
             return {...point,nx,ny,plottable:point.kind==='real'&&nx!==null&&ny!==null};
         });
-        return {points,parameter:body.parameter,view:[numeric(body.y_min),numeric(body.y_max)],limited:body.limited,approximate:body.evaluation==='double',quality:body.quality||'refined',width:body.width,height:body.height};
+        return {points,parameter:body.parameter,limited:body.limited,approximate:body.evaluation==='double',quality:body.quality||'refined',width:body.width,height:body.height};
     }
     async function fetchPlot(query,expression,signal) {
         const start=performance.now();
@@ -259,11 +229,7 @@ function initGraph() {
         samples=chunks.flatMap(c=>c.points);parameter=segments[0].entry.parameter;
         limited=segments.some(s=>s.entry.limited);
         approximate=segments.some(s=>s.entry.approximate);
-        const visible=samples.filter(p=>p.plottable&&p.nx>=low&&p.nx<=high).map(p=>p.ny);
-        const suggested=segments.flatMap(s=>s.entry.view).filter(v=>v!==null);
-        const ys=!limited&&visible.length?visible:suggested;
-        view=ys.length?[Math.min(...ys),Math.max(...ys)]:null;
-        pendingView=!(covered&&ready);table.replaceChildren();if(paint)draw();
+        pendingView=!(covered&&ready);if(paint)draw();
         return covered&&ready;
     }
     function resolutionReady(entry,low,high){
@@ -314,32 +280,22 @@ function initGraph() {
         event?.preventDefault();
         clearTimeout(viewportTimer);viewportTimer=null;stopPrefetch();
         ++generation;request?.abort();request=null;
-        if(!keepView){samples=null;chunks=null;view=null;viewport=null;pendingView=false;table.replaceChildren();draw();}
+        if(!keepView){samples=null;chunks=null;pendingView=false;draw();}
         const id=generation,expression=$('graph-expression').value;
         if(!expression.trim()){pendingView=false;draw();message(text.ready);return;}
         if(!$('graph-form').reportValidity())return;
         request=new AbortController();const signal=request.signal;
         root.setAttribute('aria-busy','true');message(text.busy);
         try {
-            const query=new URLSearchParams({min:$('graph-min').value.trim(),max:$('graph-max').value.trim(),
-                precision:$('graph-precision').value,angle:$('graph-angle').value});
+            const [low,high]=bounds(),[yLow,yHigh]=yViewport;
+            // The C screen sampler selects density from the camera and falls
+            // back to the precision evaluator when fast arithmetic is unsuitable.
+            const query=new URLSearchParams({min:String(low),max:String(high),angle:'rad',ymin:String(yLow),ymax:String(yHigh)});
             const width=Math.max(320,Math.min(800,root.querySelector('.graph-result').clientWidth-48)),height=width<600?300:440;
             query.set('mode','fast');query.set('width',String(Math.round(width)));query.set('height',String(height));query.set('quality','refined');
-            const yLow=numeric($('graph-ymin').value.trim()),yHigh=numeric($('graph-ymax').value.trim());
-            if(yLow===null||yHigh===null||yHigh<=yLow||!Number.isFinite(yHigh-yLow))throw Error(text.range);
-            yViewport=[yLow,yHigh];query.set('ymin',String(yLow));query.set('ymax',String(yHigh));
-            if($('graph-session').checked) {
-                let client='';try{client=sessionStorage.getItem('numforge-client-id')||'';}catch(_){}
-                if(!/^[0-9a-f]{32}$/.test(client))throw Error(text.session);
-                const stateResponse=await fetch('/api/session?client='+client,{signal,cache:'no-store'});
-                const state=await stateResponse.json();
-                if(!stateResponse.ok||!state.ok)throw Error(text.session);
-                query.set('client',client);query.set('at',state.revision);
-            }
             if(id!==generation||disposed)return;
-            const identity=JSON.stringify([expression,query.get('precision'),query.get('angle'),query.get('client'),query.get('at')]);
-            if(cacheIdentity!==identity){clearCache();cacheIdentity=identity;samples=null;chunks=null;view=null;draw();message(text.busy);}
-            const low=numeric(query.get('min')),high=numeric(query.get('max'));
+            const identity=expression;
+            if(cacheIdentity!==identity){clearCache();cacheIdentity=identity;samples=null;chunks=null;draw();message(text.busy);}
             if(low!==null&&high!==null&&high>low&&Number.isFinite(high-low))viewport=[low,high];
             if(low!==null&&high!==null&&showCached(low,high)) {
                 const fast=cache.find(e=>!e.limited&&e.cost<=1500&&e.points.some(p=>p.plottable));
@@ -366,18 +322,14 @@ function initGraph() {
                 if(!entry)entry=await fetchPlot(next,expression,signal);if(id!==generation||disposed)return;
                 fast=fast&&!entry.limited&&entry.cost<=1500&&entry.points.some(p=>p.plottable);
                 if(remember(entry)&&low!==null&&high!==null)showCached(low,high);
-                else {parameter=entry.parameter;view=entry.view;limited=entry.limited;approximate=entry.approximate;pendingView=false;samples=entry.points;chunks=null;table.replaceChildren();draw();fast=false;}
+                else {parameter=entry.parameter;limited=entry.limited;approximate=entry.approximate;pendingView=false;samples=entry.points;chunks=null;draw();fast=false;}
             }
             if(low!==null&&high!==null&&fast)prefetch(query,expression,identity,low,high);
         } catch(error) {
             if(id===generation && !disposed && error.name!=='AbortError')message(error instanceof TypeError?text.network:error.message,true);
         } finally {if(id===generation && !disposed){root.removeAttribute('aria-busy');request=null;}}
     }
-    function bounds() {
-        if(viewport)return viewport;
-        const low=numeric($('graph-min').value.trim()),high=numeric($('graph-max').value.trim());
-        return low!==null&&high!==null&&high>low?[low,high]:[-10,10];
-    }
+    function bounds() {return viewport||[-10,10];}
     function horizontal(clientX) {
         const rect=svg.getBoundingClientRect(),width=svg.viewBox.baseVal.width;
         return Math.max(0,Math.min(1,((clientX-rect.left)/rect.width*width-64)/(width-86)));
@@ -392,19 +344,12 @@ function initGraph() {
         // Keep ample coordinate precision for pixel positions, not just endpoints.
         if(high-low<Math.max(1,Math.abs(low),Math.abs(high))*1e-8||yHigh-yLow<Math.max(1,Math.abs(yLow),Math.abs(yHigh))*1e-8){message(text.range,true);return;}
         const old=bounds(),verticalOnly=(yLow!==yViewport[0]||yHigh!==yViewport[1])&&low===old[0]&&high===old[1]&&Math.abs((yHigh-yLow)-(yViewport[1]-yViewport[0]))<=(yHigh-yLow)*1e-12;
-        yViewport=[yLow,yHigh];$('graph-ymin').value=String(yLow);$('graph-ymax').value=String(yHigh);
-        if(verticalOnly){
-            drawSoon();save();
-            // Translation needs no new samples, but retained coefficients may
-            // have changed in the calculator since the previous plot.
-            if($('graph-session').checked){clearTimeout(viewportTimer);viewportTimer=setTimeout(()=>{viewportTimer=null;if(!disposed)plot(null,true);},300);}
-            return;
-        }
+        yViewport=[yLow,yHigh];
+        if(verticalOnly){drawSoon();return;}
         ++generation;request?.abort();request=null;root.removeAttribute('aria-busy');
-        viewport=[low,high];$('graph-min').value=String(low);$('graph-max').value=String(high);
+        viewport=[low,high];
         stopPrefetch();pendingView=true;
         const hit=showCached(low,high,false);
-        if(hit&&$('graph-session').checked){pendingView=true;message(text.busy);}
         drawSoon();if(!hit)message($('graph-expression').value.trim()?text.busy:text.ready);save();
         clearTimeout(viewportTimer);
         viewportTimer=setTimeout(()=>{viewportTimer=null;if(!disposed)plot(null,true);},300);
@@ -465,12 +410,8 @@ function initGraph() {
         }
     },{signal:lifecycle.signal});
     $('graph-form').addEventListener('submit',plot,{signal:lifecycle.signal});
-    for(const name of fields)$('graph-'+name).addEventListener('input',()=>{
-        if(name==='expression'){for(const axis of ['min','ymin'])$('graph-'+axis).value='-10';for(const axis of ['max','ymax'])$('graph-'+axis).value='10';yViewport=[-10,10];}
-        if(name==='ymin'||name==='ymax'){const a=numeric($('graph-ymin').value),b=numeric($('graph-ymax').value);if(a!==null&&b!==null&&b>a&&Number.isFinite(b-a))yViewport=[a,b];}
-        invalidate(!['min','max','ymin','ymax'].includes(name));
-    },{signal:lifecycle.signal});
-    $('graph-values').addEventListener('toggle',()=>{if($('graph-values').open)renderTable();},{signal:lifecycle.signal});
+    $('graph-expression').addEventListener('input',()=>invalidate(),{signal:lifecycle.signal});
+    $('graph-color').addEventListener('input',()=>{applyColor();save();},{signal:lifecycle.signal});
     window.addEventListener('numforge:navigate',save,{signal:lifecycle.signal});
     let previousWidth=0;
     const resize=new ResizeObserver(entries=>{
@@ -479,7 +420,7 @@ function initGraph() {
     });
     resize.observe(root.querySelector('.graph-result'));
     draw();
-    return ()=>{save();disposed=true;clearCache();samples=null;chunks=null;view=null;clearTimeout(viewportTimer);if(drawFrame!==null)cancelAnimationFrame(drawFrame);request?.abort();pointers.clear();resize.disconnect();lifecycle.abort();};
+    return ()=>{save();disposed=true;clearCache();samples=null;chunks=null;clearTimeout(viewportTimer);if(drawFrame!==null)cancelAnimationFrame(drawFrame);request?.abort();pointers.clear();resize.disconnect();lifecycle.abort();};
 }
 window.numforgeInitGraph=initGraph;
 window.numforgeDisposeGraph=initGraph();

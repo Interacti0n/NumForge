@@ -44,8 +44,8 @@ test('zoom grows decimal precision and always retains an exact zero tick',async(
 test('mouse drag moves both axes and a fresh page starts at the origin',async({page})=>{
  await draw(page);const rect=await page.locator('#graph-plot').boundingBox(),x=rect.x+rect.width/2,y=rect.y+rect.height/2;
  await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+90,y-50,{steps:5});await page.mouse.up();
- expect(Number(await page.locator('#graph-ymin').inputValue())).toBeLessThan(-10);
- expect(Number(await page.locator('#graph-min').inputValue())).toBeLessThan(-10);
+ expect(Number(await page.locator('#graph-plot').getAttribute('data-ymin'))).toBeLessThan(-10);
+ expect(Number(await page.locator('#graph-plot').getAttribute('data-xmin'))).toBeLessThan(-10);
  await page.reload();await expect(page.locator('#graph-plot')).toHaveAttribute('data-xmin','-10');await expect(page.locator('#graph-plot')).toHaveAttribute('data-ymin','-10');
 });
 

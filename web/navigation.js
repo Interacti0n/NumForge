@@ -224,7 +224,10 @@ function setupGuideNavigation()
     const compact = window.matchMedia('(max-width: 930px)');
     let active = null, frame = 0, sections = [], part = null;
     function hashSection(url) {
-        try { return allSections.find(section => section.heading.id === decodeURIComponent(url.hash.slice(1))); }
+        try {
+            const id=decodeURIComponent(url.hash.slice(1));
+            return allSections.find(section => section.heading.id === (id==='graph-variables'?'graph-color':id));
+        }
         catch (_) { return null; }
     }
     function syncLanguageLinks() {

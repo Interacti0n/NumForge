@@ -5,6 +5,8 @@ details and the [2.2.1 release record](docs/project/RELEASE_2_2_1.md) for valida
 
 ## Unreleased
 
+- Simpler graph controls: function and color, with automatic sampling and radians.
+
 - Reduce unnecessary graph gaps and off-screen refinement work; show warnings
   only for unresolved detail in the current camera.
 

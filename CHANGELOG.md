@@ -7,6 +7,10 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Simplify browser graphs to a function expression and a persistent curve color.
+  Use automatic screen-space sampling, radians and independent calculator state;
+  remove range/precision/session controls and sample tables, and update both guides.
+
 - Keep short screen-space chords connected for restricted continuous expressions
   with camera bounds, while retaining pole/phase checks and legacy precision
   criteria. Limit graph refinement warnings to visible unresolved samples/edges.

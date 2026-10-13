@@ -2,7 +2,7 @@ const {test,expect}=require('@playwright/test');
 const parts={
  calculator:['intro','syntax','variables','functions','complex','quantities','precision','cache','random','history','calculator-limits'],
  units:['units','unit-results','unit-history','unit-limits'],
- graphs:['graphs','graph-settings','graph-reading','graph-variables','graph-limits'],
+ graphs:['graphs','graph-settings','graph-reading','graph-color','graph-limits'],
  api:['api-intro','http','session-http','unit-http','graph-http','limits','library','documentation']
 };
 async function choose(page,part) {
@@ -36,11 +36,12 @@ for(const lang of ['sk','en'])test(`focused guide parts, scroll tracking and mob
  for(const link of await docs.all()){await expect(link).toHaveAttribute('target','_blank');await expect(link).toHaveAttribute('rel','noopener noreferrer');}
 });
 for(const lang of ['sk','en'])test(`legacy guide anchors open the correct part and language links preserve it ${lang}`,async({page})=>{
- for(const [anchor,part] of [['variables','calculator'],['units','units'],['http','api'],['limits','api'],['graph-http','api']]) {
+ for(const [anchor,part] of [['variables','calculator'],['units','units'],['http','api'],['limits','api'],['graph-http','api'],['graph-variables','graphs']]) {
   await page.goto(`/api?lang=${lang}#${anchor}`);
   await expect(page.locator(`[data-guide-panel="${part}"]`)).toBeVisible();
-  await expect(page.locator('.guide-toc a[aria-current="location"]')).toHaveAttribute('href','#'+anchor);
+  await expect(page.locator('.guide-toc a[aria-current="location"]')).toHaveAttribute('href','#'+(anchor==='graph-variables'?'graph-color':anchor));
  }
+ await page.goto(`/api?section=api&lang=${lang}#graph-http`);
  const other=lang==='sk'?'en':'sk';
  await page.locator(`.language-switch a[lang="${other}"]`).click();
  await expect(page).toHaveURL(`/api?section=api&lang=${other}#graph-http`);

@@ -6,28 +6,22 @@ only on submission. Empty input, editing and request errors retain a coordinate
 grid from −10 to 10 on both axes; empty submissions do not contact the server.
 The requested x view starts at −10 to 10 around zero.
 
-Sample density and the parameter are automatic. The C parser chooses the unique
-variable not present in the selected calculator session. `sin(t)` uses `t`;
-`a*x` uses `x` if `a` is stored. Multiple unknown names are rejected rather than
-guessed. With no free variable the graph uses `x`, shadowing a referenced session
-`x` or plotting a constant expression. Constants, function aliases and strings
-are AST nodes, not candidate letters. Names remain case-sensitive.
+The controls contain only the function expression and **Curve color / Farba krivky**.
+Changing color repaints cached curves without another calculation. The expression
+and color persist per tab across language changes and navigation; a new page starts
+at −10..10 around zero on both axes.
 
-**View and settings / Rozsah a nastavenia** contains optional increasing x and y bounds,
-calculation precision (1–10000 significant digits, default 34) and radians/degrees.
-Bounds are finite decimal literals, including scientific notation, not expressions
-such as `pi` or `1/3`. They describe the displayed interval, not a domain restriction.
-Default precision 34 permits fast approximate drawing in C. Another precision
-value uses the precision evaluator; unsupported or uncertain expressions also
-retain that path. Coordinates have at most 17 significant digits regardless of
-calculation precision. Density is automatic. The uniform API retains 12 places.
+The C parser infers the unique variable in the expression. `sin(t)` uses `t`,
+`x*x` uses `x`, and constant expressions use the x axis. Multiple names such as
+`a*x` or `x+y` are rejected. The graph is independent of calculator variables and
+ans; built-in constants such as pi remain available. Names are case-sensitive.
 
-## Calculator variables
-
-Enable **Use calculator variables and ans** for read-only snapshots in the same
-browser tab. Sampling does not create/reset a session or change variables, ans,
-histories, previews or random state. The graph parameter shadows the session name
-with the same spelling. A changed session revision rejects the graph request.
+Angles always use radians. The page selects the C screen sampler with the server's
+default working precision 34, automatic pixel-scale refinement and precision
+fallback for unsupported or uncertain expressions. Fast projected coordinates have
+at most 17 significant digits; this is an approximate drawing, not a promise of 34
+accurate digits. There is no precision, angle or range input on the page: zoom and
+pan choose the view, and the sampler adapts its density to that view.
 
 ## Curves and gaps
 
@@ -36,7 +30,7 @@ midpoints and refines intervals with curvature or mixed point classifications.
 The browser draws only connections accepted by the sampler. Domain errors,
 complex values (including zero imaginary components), quantities and intervals
 still unresolved at refinement bounds remain gaps. There are no point markers
-or manual connection/sample-count controls. The sample table stays accessible.
+or manual connection/sample-count controls. Sample values are not listed below the plot.
 
 Screen-space refinement follows visible curvature and captured trig/domain
 checks. Precision fallback can use coarser chords for recognized continuous
@@ -66,7 +60,7 @@ whole periods. If a wide range contains too many oscillations, narrow the x rang
 the plot may omit all connections rather than draw misleading chords.
 Both axes start at −10..10 and stay independent of the function's extrema.
 The curve is clipped to the chosen camera; large values do not resize the axes.
-Explicit y bounds are available alongside x bounds in the settings.
+Move either axis with the plot controls or pointer gestures.
 
 Axis marks are multiples of steps 1, 2 or 5 times a power of ten. The available
 screen width determines their density. Normal views use integers; zooming adds
@@ -90,8 +84,7 @@ gesture the previous curve is projected into the new view; after sampling the
 visible interval is refined without changing the camera. Vertical panning
 reprojects cached values without a calculation. Edits/navigation cancel pending
 work and old responses cannot replace a newer view. A newly opened page or edited
-expression starts around zero; expression, precision, angle and session settings
-persist per tab.
+expression starts around zero. The expression and curve color persist per tab.
 
 ## Prepared ranges
 
@@ -118,10 +111,10 @@ Fast refined requests use at most 8192 points; precision fallback uses at most
 2048. Unprepared settled moves display coarse data before adding detail.
 The cache is bounded to 12 sampled
 ranges, 12288 total cached points and an estimated 8 MiB weight, and lives only
-in the current page and clears on expression/precision/angle/session changes or
-navigation. Session revisions are rechecked before settled cache reuse, so
-changed coefficients/ans trigger new calculations. At most 1024 cached sample
-rows are displayed in the value table, with an explicit truncation message.
+in the current page and clears on expression changes or navigation. Color changes
+keep the cache. HTTP clients can still request sample data, configurable precision,
+angles and read-only session snapshots through the documented API; those options
+are independent of the browser graph controls.
 
 Coordinates are rounded JSON numbers or scientific strings from C. Browser overflow or underflow
 is omitted, never plotted as a false zero. Collapsed x coordinates prevent drawing.

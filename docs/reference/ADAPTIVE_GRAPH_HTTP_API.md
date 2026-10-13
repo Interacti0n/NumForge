@@ -44,7 +44,7 @@ Success retains `ok`, `parameter`, `count`, and classified
   suggest a display view, not a domain/continuity/range certificate.
 
 The browser adds padding to the suggested view, clips curves, rejects unsupported
-binary numeric projections and shows an accessible table. Newly discovered poles
+binary numeric projections to draw the curve. Newly discovered poles
 cannot inflate the seeded overview for unresolved pole/domain trees. Smooth
 curves include newly discovered extrema instead of clipping them to the seeds.
 
@@ -114,9 +114,10 @@ for allocation/time measurements and independent point/chord comparisons.
 ## Browser range cache
 
 The browser reuses this same endpoint for bounded range tiles; no new numeric
-evaluator or HTTP schema is introduced. Cache identity includes the expression,
-precision, angle and, when selected, client/session revision. The browser checks
-session state before accepting a settled cached view. A missing or too-coarse
+HTTP schema is introduced by caching. The current web page uses the screen sampler
+with automatic precision fallback, radians and no calculator client. Its cache
+identity is the expression; curve color is only presentation. API clients can
+still select calculation precision, angle and read-only session snapshots. A missing or too-coarse
 range is sampled through the existing endpoint (up to four foreground pieces,
 otherwise a complete view); cached data remains as a clipped preview meanwhile.
 
@@ -132,8 +133,8 @@ The current page retains at most 12 ranges, 12288 cached points, an 8 MiB estima
 cache weight, and 48 bounded prefetch-attempt keys. Weight is twice the JSON
 character count plus 256 bytes per point, not a browser heap measurement.
 Oldest ranges are evicted when any bound is exceeded; visible chunks can still
-retain references until the next view is drawn. The table renders at most 1024 rows;
-data is not persisted in sessionStorage. The finest available cached range is
+retain references until the next view is drawn. No sample table is rendered;
+sample data is not persisted in sessionStorage. The finest available cached range is
 chosen per visible segment, retaining independent C connection/gap flags.
 Coordinates at endpoints may be aligned to the requested camera coverage within
 the current projection/binary rounding tolerance, without changing sample values.
