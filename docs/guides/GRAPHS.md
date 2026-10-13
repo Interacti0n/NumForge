@@ -99,7 +99,9 @@ prepared range redraws immediately without another graph calculation. Zooming
 uses available points immediately and refines them only when their range is too
 coarse for the new view. Missing regions are requested separately; the existing
 curve stays visible while those regions are calculated. Independently sampled
-ranges retain their own connection/gap flags and are clipped at their boundaries.
+ranges retain their own connection/gap flags. Adjacent accepted edges share an
+actual sampled boundary point and one continuous stroke, avoiding visible seams
+between different densities. Rejected edges and missing coverage remain separate.
 
 The first calculation prepares three times the visible x range in one bounded
 request: the default −10..10 view uses samples from −30..30. Sampling width is

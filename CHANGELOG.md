@@ -7,6 +7,11 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Join accepted cached graph tiles at shared actual C samples and draw their
+  strokes together, preventing zoom-out seams between different densities or
+  linear/cubic representations. Preserve rejected edges and typed gaps; add
+  desktop/mobile parabola and controlled tile-boundary regressions.
+
 - Add internal forward-mode graph derivatives and bounded stationary-point anchors.
   Draw shape-preserving cubic transitions from optional schema 3 slopes, retain
   linear fallback and sampler gaps, prepare the next zoom level during idle time,

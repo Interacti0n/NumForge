@@ -138,7 +138,11 @@ prefers off-screen/coarse data over the current fine view. Dense partial jobs
 replace the whole viewport so needed tiles are not evicted mid-composition.
 Coarse entries cannot satisfy a final cache hit; resizing can request more detail
 without clearing useful old data. SVG commands share only accepted adjacent
-segments; gaps start new paths. The page has no sample table. Its only function
+segments; gaps start new paths. At a cache boundary, both neighboring accepted
+real edges can be trimmed to the same existing C sample and drawn as one stroke,
+without clipping the stroke at that internal boundary. False connections,
+non-real values and missing coverage prevent joining. Cached entries themselves
+are not mutated. The page has no sample table. Its only function
 controls are the expression and curve color; color changes repaint without a
 request. Browser requests use radians, default working precision and no retained
 calculator client. Configurable HTTP parameters remain available to API clients.

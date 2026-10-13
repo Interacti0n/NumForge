@@ -137,23 +137,32 @@ function initGraph() {
         svg.dataset.ymin=String(projectedView[0]);svg.dataset.ymax=String(projectedView[1]);
         const defs=element('defs'),clip=element('clipPath',{id:'graph-clip'});
         clip.append(element('rect',{x:64,y:22,width:right-64,height:bottom-22}));defs.append(clip);group.append(defs);
-        for(const [index,chunk] of (chunks||[{points}]).entries()) {
-        const id='graph-clip-'+index,segment=element('clipPath',{id});
-        const left=chunk.low===undefined?64:Math.max(64,px(chunk.low)),end=chunk.high===undefined?right:Math.min(right,px(chunk.high));
-        segment.append(element('rect',{x:left,y:22,width:Math.max(0,end-left),height:bottom-22}));defs.append(segment);
-        const curve=element('path',{class:'graph-line','clip-path':`url(#${id})`});
-        let path='',previous=null,pen=false;
-        for(const point of chunk.points) {
-            if(!point.plottable){previous=null;pen=false;continue;}
-            const x=px(point.nx),y=py(point.ny);
-            if(point.connect && previous){
-                if(!pen)path+=`M${previous.x},${previous.y}`;
-                const control=x-previous.x>1?cubic(previous.point,point):null;
-                path+=control?`C${px(control[0])},${py(control[1])},${px(control[2])},${py(control[3])},${x},${y}`:`L${x},${y}`;pen=true;
-            }else pen=false;
-            previous={x,y,point};
+        // Joined tiles share an actual C sample and one stroke. Clipping each
+        // tile separately can cut a steep stroke or expose different interpolants.
+        const runs=[];
+        for(const chunk of chunks||[{points}]){
+            if(chunk.joinedLeft&&runs.length){const run=runs.at(-1);run.chunks.push(chunk);run.high=chunk.high;}
+            else runs.push({low:chunk.low,high:chunk.high,chunks:[chunk]});
         }
-        if(path){curve.setAttribute('d',path);group.append(curve);}
+        for(const [index,run] of runs.entries()) {
+            const id='graph-clip-'+index,segment=element('clipPath',{id});
+            const left=run.low===undefined?64:Math.max(64,px(run.low)),end=run.high===undefined?right:Math.min(right,px(run.high));
+            segment.append(element('rect',{x:left,y:22,width:Math.max(0,end-left),height:bottom-22}));defs.append(segment);
+            const curve=element('path',{class:'graph-line','clip-path':`url(#${id})`});
+            let path='',previous=null,pen=false;
+            for(const chunk of run.chunks)for(const [i,point] of chunk.points.entries()) {
+                // Both copies of a joined boundary are the same C sample.
+                if(i===0&&chunk.joinedLeft)continue;
+                if(!point.plottable){previous=null;pen=false;continue;}
+                const x=px(point.nx),y=py(point.ny);
+                if(point.connect && previous){
+                    if(!pen)path+=`M${previous.x},${previous.y}`;
+                    const control=x-previous.x>1?cubic(previous.point,point):null;
+                    path+=control?`C${px(control[0])},${py(control[1])},${px(control[2])},${py(control[3])},${x},${y}`:`L${x},${y}`;pen=true;
+                }else pen=false;
+                previous={x,y,point};
+            }
+            if(path){curve.setAttribute('d',path);group.append(curve);}
         }
         $('graph-svg-description').textContent=samples?$('graph-expression').value+'; '+text.summary():text.ready;
         svg.append(group);svg.removeAttribute('hidden');
@@ -218,6 +227,20 @@ function initGraph() {
         }
         return true;
     }
+    // Trim only an already accepted edge to an actual sample at a tile boundary.
+    // Never bridge a false connection, a non-real value or missing coverage.
+    function seamPoints(chunk,anchor,left) {
+        const p=chunk.points,i=p.findIndex(point=>point.nx>=anchor.nx);
+        if(i<0)return null;
+        const exact=p[i].nx===anchor.nx;
+        if(left){
+            if(i===0||!p[i].connect||!p[i-1].plottable||!p[i].plottable)return null;
+            return [...p.slice(0,i),{...anchor,connect:true}];
+        }
+        const next=exact?i+1:i,previous=exact?i:i-1;
+        if(previous<0||next>=p.length||!p[next].connect||!p[previous].plottable||!p[next].plottable)return null;
+        return [{...anchor,connect:false},...p.slice(next)];
+    }
     function showCached(low,high,paint=true) {
         cacheMissing=[[low,high]];
         const entries=cache.filter(e=>e.low<high&&e.high>low);
@@ -242,6 +265,16 @@ function initGraph() {
             let end=p.findIndex(point=>point.nx>segment.high);if(end<0)end=p.length;
             return {low:segment.low,high:segment.high,limited:segment.entry.limited,points:p.slice(Math.max(0,start-1),Math.min(p.length,end+1))};
         });
+        for(let i=1;i<chunks.length;++i){
+            const left=chunks[i-1],right=chunks[i];
+            if(left.high!==right.low)continue;
+            const preferred=segments[i-1].entry.span<=segments[i].entry.span?[left,right]:[right,left];
+            const anchor=preferred.map(c=>c.points.find(p=>p.nx===right.low&&p.plottable)).find(Boolean);
+            if(!anchor)continue;
+            const a=seamPoints(left,anchor,true),b=seamPoints(right,anchor,false);
+            if(!a||!b)continue;
+            left.points=a;right.points=b;right.joinedLeft=true;
+        }
         samples=chunks.flatMap(c=>c.points);parameter=segments[0].entry.parameter;
         limited=segments.some(s=>s.entry.limited);
         approximate=segments.some(s=>s.entry.approximate);
