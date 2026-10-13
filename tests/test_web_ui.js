@@ -75,6 +75,7 @@ async function createUI(english) {
         }
     };
     runtime.window.matchMedia = () => ({matches: false, addEventListener() {}});
+    vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../web/function-library.js'), 'utf8'), runtime);
     vm.runInNewContext(instrumentedSource, runtime);
     Object.assign(runtime, runtime.window.__numforgeTest);
     await runtime.ensureSession();

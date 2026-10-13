@@ -1,15 +1,31 @@
 # Browser function graphs
 
 Open **Graphs / Grafy** (`/graph?lang=en` or `/graph?lang=sk`). Enter an expression
-such as `x*x`, `sin(t)` or `1/x`, then press **Plot / Vykresliť**. Computation runs
-only on submission. Empty input, editing and request errors retain a coordinate
-grid from −10 to 10 on both axes; empty submissions do not contact the server.
-The requested x view starts at −10 to 10 around zero.
+such as `x*x`, `sin(t)` or `1/x`, then press **Plot / Vykresliť**. Add up to four
+functions with **Add function / Pridať funkciu**; each has its own expression,
+color picker and remove button. The legend identifies their colors. Each function
+has a different default color, and colors remain adjustable without calculation.
+Blank rows are not evaluated. An empty plot still shows axes; a failed function
+shows its own error while valid curves remain visible.
 
-The controls contain only the function expression and **Curve color / Farba krivky**.
-Changing color repaints cached curves without another calculation. The expression
-and color persist per tab across language changes and navigation; a new page starts
-at −10..10 around zero on both axes.
+Both axes start at −10..10. Editing one of several functions clears only its old
+curve and retains the camera and other results. The expressions and colors persist
+per tab across language changes/navigation; a newly opened page starts around zero.
+
+## Function library
+
+Open **Function library / Knižnica funkcií** below the expression rows. Search by
+name, common abbreviation or localized synonym, or choose a category. Names,
+aliases and descriptions are shared with the calculator, and the C registry owns
+availability. Constants π, e and φ support the same search aliases. Random calls
+are excluded because plotting rejects them.
+
+Clicking inserts into the last focused function row. Selected text is wrapped
+as an argument; without a selection the row's parameter is supplied and selected
+for editing. Calls needing another argument start with an editable numeric default.
+For example, `pow(x;2)`, `root(x;2)` or `complex(x;0)`. Insertion does not calculate;
+press Plot or Enter when the expression is ready. Integer/domain-sensitive calls
+can produce gaps; use real components to plot complex expressions.
 
 The C parser infers the unique variable in the expression. `sin(t)` uses `t`,
 `x*x` uses `x`, and constant expressions use the x axis. Multiple names such as
@@ -79,10 +95,14 @@ Extremely close to a sine maximum the curve is almost horizontal.
 
 ## Moving the view
 
-Use the mouse wheel, the +/− buttons or a two-finger pinch to zoom both axes.
+Use the mouse wheel or a two-finger pinch to zoom both axes.
 Drag in any direction to pan horizontally and vertically.
 **Reset view / Obnoviť pohľad** restores both axes to −10..10.
 The focused plot also accepts +/−, all four arrow keys and Home.
+**Expand graph / Rozšíriť graf** moves the same canvas into a modal covering nearly
+the whole viewport. Its camera and curves are retained; sampling adapts to the
+larger screen area. Return with **Return to page / Vrátiť na stránku** or Escape.
+There are no +/− buttons above the graph.
 Empty plots support view controls without computing.
 
 Sampling waits 90 ms after wheel/button changes or pointer release. During a
@@ -121,9 +141,14 @@ time, allocation and output limits; unprepared intervals cannot be instantaneous
 Fast refined requests use at most 8192 points; precision fallback uses at most
 2048. Unprepared settled moves display coarse data before adding detail.
 The cache is bounded to 12 sampled
-ranges, 12288 total cached points and an estimated 8 MiB weight, and lives only
+ranges, 12288 cached points and an estimated 8 MiB weight **per function**, and lives only
 in the current page and clears on expression changes or navigation. Color changes
-keep the cache. HTTP clients can still request sample data, configurable precision,
+keep the cache. Four functions therefore permit at most 48 retained ranges,
+49152 cached points and 32 MiB estimated cache weight. This is a conservative
+accounting weight, not a browser heap measurement. Foreground C requests and
+optional preparations are serialized; visible work has priority over background
+tiles. Each range/function request retains its own five-second budget, so a
+multi-function update can take longer overall. HTTP clients can still request sample data, configurable precision,
 angles and read-only session snapshots through the documented API; those options
 are independent of the browser graph controls.
 

@@ -34,10 +34,10 @@ test('initial buffered interval supports immediate horizontal and vertical movem
 });
 test('zoom grows decimal precision and always retains an exact zero tick',async({page})=>{
  await draw(page,'x');
- for(let i=0;i<4;++i)await page.locator('#graph-zoom-in').click();
+ for(let i=0;i<4;++i)await page.locator('#graph-plot').dispatchEvent('keydown',{key:'+'});
  let labels=await page.locator('.graph-tick[data-axis="x"]').allTextContents();
  expect(labels).toContain('0');expect(labels.some(t=>/\.\d$/.test(t))).toBe(true);
- for(let i=0;i<4;++i)await page.locator('#graph-zoom-in').click();
+ for(let i=0;i<4;++i)await page.locator('#graph-plot').dispatchEvent('keydown',{key:'+'});
  labels=await page.locator('.graph-tick[data-axis="x"]').allTextContents();
  expect(labels).toContain('0');expect(labels.some(t=>/\.\d{2}$/.test(t))).toBe(true);expect(labels).not.toContain('-0');
 });

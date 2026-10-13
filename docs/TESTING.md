@@ -109,6 +109,9 @@ analytic curves on desktop/mobile; next-zoom cache reuse and malformed optional
 slopes are covered. The reproducible [smooth-zoom comparison](benchmarks/GRAPH_SMOOTH_ZOOM_2026_10_13.md)
 records HTTP work, bytes, reference errors and local frame observations.
 Atomic resource/fault checks include both evaluators and the compact sampler.
+Multi-curve regressions check four-row limits, color-only repaint, error isolation,
+stale deleted results, selected-row library insertion/aliases, SPA persistence
+and expanded-canvas identity/return on desktop and both mobile orientations.
 
 Graph interaction regressions exercise wheel debounce, pointer panning, touch
 pinch, keyboard/reset controls, empty-view navigation and y-axis rescaling.

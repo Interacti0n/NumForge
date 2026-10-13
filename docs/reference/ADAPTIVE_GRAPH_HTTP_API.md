@@ -132,8 +132,12 @@ browser requests and reject obsolete responses; aborting a fetch does not promis
 to interrupt a C evaluation already running on the server. Each server request
 still independently shares the original five-second/allocation budget.
 
-The current page retains at most 12 ranges, 12288 cached points, an 8 MiB estimated
-cache weight, and 48 bounded prefetch-attempt keys. Weight is twice the JSON
+The current page supports at most four curves and retains per function at most
+12 ranges, 12288 cached points, an 8 MiB estimated cache weight, and 48 bounded
+prefetch-attempt keys. Four curves permit 49152 points and 32 MiB estimated weight.
+A shared transport queue prioritizes foreground requests over background tiles.
+Each function/range request has its own server budget; these budgets do not merge
+into an overall five-second multi-curve timeout. Weight is twice the JSON
 character count plus 256 bytes per point, not a browser heap measurement.
 Oldest ranges are evicted when any bound is exceeded; visible chunks can still
 retain references until the next view is drawn. No sample table is rendered;

@@ -7,6 +7,13 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Add up to four browser graph functions with individual colors, rows, legend,
+  caches and isolated errors. Serialize graph requests with foreground priority.
+  Share function-library descriptions/aliases with the calculator, add graph
+  insertion/search/categories and constants, remove zoom buttons and add a
+  nearly full-screen canvas dialog retaining the camera with Escape/button return.
+  Update guides and test mobile/desktop, cancellation, SPA and library regressions.
+
 - Join accepted cached graph tiles at shared actual C samples and draw their
   strokes together, preventing zoom-out seams between different densities or
   linear/cubic representations. Preserve rejected edges and typed gaps; add

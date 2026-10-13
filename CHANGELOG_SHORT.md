@@ -5,6 +5,8 @@ details and the [2.2.1 release record](docs/project/RELEASE_2_2_1.md) for valida
 
 ## Unreleased
 
+- Plot up to four colored functions, browse the function library and expand the graph.
+
 - Prevent visible seams between prepared graph tiles when zooming out.
 
 - Smooth graph extrema and zoom with derivative anchors and prepared detail.

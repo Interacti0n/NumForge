@@ -37,7 +37,7 @@ test('viewport refinement shows coarse data before the final response and cancel
   }else await route.continue();
  });
  const coarse=page.waitForResponse(r=>r.url().includes('/api/graph/plot?')&&new URL(r.url()).searchParams.get('min')==='-2.5'&&new URL(r.url()).searchParams.get('quality')==='coarse');
- await page.evaluate(()=>{document.querySelector('#graph-zoom-in').click();document.querySelector('#graph-zoom-in').click();});const draft=await (await coarse).json();expect(draft.quality).toBe('coarse');
+ await page.evaluate(()=>{document.querySelector('#graph-plot').dispatchEvent(new KeyboardEvent('keydown',{key:'+',bubbles:true,cancelable:true}));document.querySelector('#graph-plot').dispatchEvent(new KeyboardEvent('keydown',{key:'+',bubbles:true,cancelable:true}));});const draft=await (await coarse).json();expect(draft.quality).toBe('coarse');
  await expect(page.locator('.graph-workspace')).toHaveAttribute('aria-busy','true');
  await expect(page.locator('path.graph-line')).toBeVisible();
  await page.locator('#graph-expression').fill('x*x');release();
@@ -82,10 +82,10 @@ test('returning to a cached viewport preserves curve geometry and axis labels',a
 });
 test('zoom stops before coordinate precision becomes unreliable and reset still works',async({page})=>{
  await page.goto('/graph?lang=en');
- await page.evaluate(()=>{for(let i=0;i<80;i++)document.querySelector('#graph-zoom-in').click();});
+ await page.evaluate(()=>{for(let i=0;i<80;i++)document.querySelector('#graph-plot').dispatchEvent(new KeyboardEvent('keydown',{key:'+',bubbles:true,cancelable:true}));});
  const low=Number(await page.locator('#graph-plot').getAttribute('data-xmin')),high=Number(await page.locator('#graph-plot').getAttribute('data-xmax'));
  expect(high-low).toBeGreaterThanOrEqual(1e-8);
- await page.locator('#graph-zoom-in').click();
+ await page.locator('#graph-plot').dispatchEvent('keydown',{key:'+'});
  expect(Number(await page.locator('#graph-plot').getAttribute('data-xmin'))).toBe(low);
  expect(Number(await page.locator('#graph-plot').getAttribute('data-xmax'))).toBe(high);
  await page.locator('#graph-reset').click();
@@ -155,7 +155,7 @@ test('uncached refinement keeps the previous curve visible and changes invalidat
    const response=await route.fetch();await held;try{await route.fulfill({response});}catch(_){}
   }else await route.continue();
  });
- await page.evaluate(()=>{document.querySelector('#graph-zoom-in').click();document.querySelector('#graph-zoom-in').click();});await expect(page.locator('path.graph-line')).toBeVisible();
+ await page.evaluate(()=>{document.querySelector('#graph-plot').dispatchEvent(new KeyboardEvent('keydown',{key:'+',bubbles:true,cancelable:true}));document.querySelector('#graph-plot').dispatchEvent(new KeyboardEvent('keydown',{key:'+',bubbles:true,cancelable:true}));});await expect(page.locator('path.graph-line')).toBeVisible();
  await expect(page.locator('.graph-workspace')).toHaveAttribute('aria-busy','true');
  await expect(page.locator('path.graph-line')).toBeVisible();release();
  await expect(page.locator('.graph-workspace')).not.toHaveAttribute('aria-busy','true');
@@ -166,14 +166,14 @@ test('uncached refinement keeps the previous curve visible and changes invalidat
 test('zoomed-out sine retains its sampled extrema',async({page})=>{
  await page.setViewportSize({width:1440,height:1000});await page.goto('/graph?lang=sk');await sample(page,'sin(x)');
  const ready=page.waitForResponse(r=>r.url().includes('/api/graph/plot?')&&new URL(r.url()).searchParams.get('min')==='-640'&&new URL(r.url()).searchParams.get('quality')==='refined');
- for(let i=0;i<6;++i)await page.locator('#graph-zoom-out').click();
+ for(let i=0;i<6;++i)await page.locator('#graph-plot').dispatchEvent('keydown',{key:'-'});
  const data=await (await ready).json();expect(data.limited).toBe(false);expect(Number(data.y_min)).toBe(-1);expect(Number(data.y_max)).toBe(1);
 });
 test('editing cancels queued view resampling',async({page})=>{
  await page.goto('/graph?lang=en');await sample(page,'x*x');let calls=0;
  page.on('request',r=>{if(r.url().includes('/api/graph/plot?'))++calls;});
  await page.evaluate(()=>{
-  document.querySelector('#graph-zoom-in').click();
+  document.querySelector('#graph-plot').dispatchEvent(new KeyboardEvent('keydown',{key:'+',bubbles:true,cancelable:true}));
   const input=document.querySelector('#graph-expression');input.value='sin(x)';input.dispatchEvent(new Event('input',{bubbles:true}));
  });
  await page.waitForTimeout(450);expect(calls).toBe(0);
@@ -185,7 +185,7 @@ test('zoom, pan, keyboard and reset preserve the chosen two-dimensional camera',
  await expect(page.locator('#graph-plot')).toHaveAttribute('data-ymin','-10');
  await expect(page.locator('#graph-plot')).toHaveAttribute('data-ymax','10');
  let ready=page.waitForResponse(r=>r.url().includes('/api/graph/plot?'));
- await page.locator('#graph-zoom-in').click();await ready;
+ await page.locator('#graph-plot').dispatchEvent('keydown',{key:'+'});await ready;
  await expect(page.locator('#graph-plot')).toHaveAttribute('data-ymin','-5');
  await expect(page.locator('#graph-plot')).toHaveAttribute('data-ymax','5');
  await expect(page.locator('#graph-plot')).toHaveAttribute('data-xmin','-5');await expect(page.locator('#graph-plot')).toHaveAttribute('data-xmax','5');
@@ -216,7 +216,7 @@ test('touch pinch zooms and empty view controls do not evaluate',async({page})=>
  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await ready;await cdp.detach();
  expect(Number(await page.locator('#graph-plot').getAttribute('data-xmax'))-Number(await page.locator('#graph-plot').getAttribute('data-xmin'))).toBeCloseTo(20*80/140,6);
  await page.locator('#graph-expression').fill('');let calls=0;page.on('request',r=>{if(r.url().includes('/api/graph/plot?'))++calls;});
- await page.locator('#graph-zoom-in').click();await expect(page.locator('#graph-values')).toHaveCount(0);
+ await page.locator('#graph-plot').dispatchEvent('keydown',{key:'+'});await expect(page.locator('#graph-values')).toHaveCount(0);
  await page.locator('#graph-reset').click();await expect(page.locator('#graph-plot')).toHaveAttribute('data-xmin','-10');
  await expect(page.locator('#graph-status')).toHaveText('Zadaj funkciu a vykresli ju.');expect(calls).toBe(0);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);

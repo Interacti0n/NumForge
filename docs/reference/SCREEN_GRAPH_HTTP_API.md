@@ -133,7 +133,15 @@ responses stop preparation. Speculative data is rejected if retaining it with
 the active view would exceed point/weight bounds. Fast local calculations do not
 guarantee instantaneous responses over a remote tunnel or for arbitrary functions.
 
-Cache bounds are 12 ranges / 12288 points / 8 MiB estimated weight. Eviction
+The browser supports up to four independent function rows in a shared camera.
+Each row uses this existing single-expression endpoint, inferred parameter,
+cache and request generation. A failed/deleted/edited row does not replace another
+row's results. Foreground requests are serialized with priority over background
+preparation; each request has its own original budget, not one shared five-second
+budget across all four functions. A color change only repaints its own layer.
+
+Cache bounds per function are 12 ranges / 12288 points / 8 MiB estimated weight
+(up to 48 ranges / 49152 points / 32 MiB for four functions). Eviction
 prefers off-screen/coarse data over the current fine view. Dense partial jobs
 replace the whole viewport so needed tiles are not evicted mid-composition.
 Coarse entries cannot satisfy a final cache hit; resizing can request more detail
@@ -143,8 +151,12 @@ real edges can be trimmed to the same existing C sample and drawn as one stroke,
 without clipping the stroke at that internal boundary. False connections,
 non-real values and missing coverage prevent joining. Cached entries themselves
 are not mutated. The page has no sample table. Its only function
-controls are the expression and curve color; color changes repaint without a
-request. Browser requests use radians, default working precision and no retained
+controls are expression/color rows, add/remove actions and a searchable library
+sharing calculator metadata plus C registry availability. Random calls are omitted.
+Color changes repaint without a request. The view controls are reset and a nearly
+full-viewport native dialog, with the same canvas/camera and Escape/button return.
+Wheel, pinch and keyboard +/− zoom remain available; expanded/resized views can
+request detail for their new dimensions (up to the existing 2048×1200 API bounds). Browser requests use radians, default working precision and no retained
 calculator client. Configurable HTTP parameters remain available to API clients.
 
 Response `limited` describes the entire sampled range. The browser warning is

@@ -241,6 +241,7 @@ set(NUMFORGE_WEB_ASSETS
     web/chrome.css
     web/navigation.js
     web/calculator.js
+    web/function-library.js
     web/units.sk.html
     web/units.en.html
     web/units.css

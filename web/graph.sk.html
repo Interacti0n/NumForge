@@ -42,20 +42,32 @@
       <section class="card graph-controls" aria-labelledby="graph-title">
         <h1 id="graph-title">Grafy funkcií</h1>
         <form id="graph-form">
-          <label class="graph-expression">Funkcia · y =<input id="graph-expression" value="sin(x)" maxlength="4096" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
-          <label class="graph-color-option"><span>Farba krivky</span><input id="graph-color" type="color" value="#dfafff"></label>
+          <div id="graph-curves">
+            <div class="graph-curve" data-curve="1">
+              <div class="graph-curve-fields"><label class="graph-expression"><span>Funkcia 1 · y =</span><input id="graph-expression" value="sin(x)" maxlength="4096" autocomplete="off" autocapitalize="off" spellcheck="false"></label><label class="graph-color-option"><span class="sr-only">Farba krivky 1</span><input id="graph-color" type="color" value="#dfafff"></label><button class="graph-remove" type="button" aria-label="Odstrániť funkciu 1" hidden>×</button></div>
+              <p class="graph-curve-status" role="status" hidden></p>
+            </div>
+          </div>
+          <button id="graph-add" class="graph-add" type="button">+ Pridať funkciu</button>
           <button class="primary-button" id="graph-submit" type="submit">Vykresliť</button>
         </form>
+        <details class="graph-library" id="graph-library"><summary>Knižnica funkcií</summary>
+          <label class="search-field">Hľadať funkcie<input id="function-search" type="search" autocomplete="off"></label>
+          <label class="graph-library-category">Kategória<select id="graph-function-category"><option value="">Všetky kategórie</option></select></label>
+          <p id="search-status" role="status" hidden></p><div id="graph-functions" class="graph-library-buttons"></div><p id="graph-function-help" class="graph-function-help"></p>
+        </details>
         <noscript><p>Graf vyžaduje JavaScript.</p></noscript>
       </section>
       <section class="card graph-result" aria-labelledby="graph-result-title">
-        <div class="graph-heading"><h2 id="graph-result-title">Graf</h2><div class="graph-view-controls"><button type="button" id="graph-zoom-in" aria-label="Priblížiť">+</button><button type="button" id="graph-zoom-out" aria-label="Oddialiť">−</button><button type="button" id="graph-reset">Obnoviť pohľad</button></div></div><p class="graph-note" id="graph-interaction-hint">Kolieskom alebo dvoma prstami priblíž; potiahnutím posuň ľubovoľným smerom. Obnovenie vráti obe osi na −10 až 10.</p>
+        <div class="graph-heading"><h2 id="graph-result-title">Graf</h2><div class="graph-view-controls"><button type="button" id="graph-reset">Obnoviť pohľad</button><button type="button" id="graph-expand" aria-expanded="false" aria-controls="graph-expanded">Rozšíriť graf</button></div></div><ul id="graph-legend" class="graph-legend" aria-label="Funkcia" hidden></ul><p class="graph-note" id="graph-interaction-hint">Kolieskom alebo dvoma prstami priblíž; potiahnutím posuň ľubovoľným smerom. Obnovenie vráti obe osi na −10 až 10.</p>
         <p id="graph-status" role="status" aria-live="polite">Zadaj funkciu a vykresli ju.</p>
         <svg id="graph-plot" tabindex="0" aria-describedby="graph-interaction-hint" viewBox="0 0 800 440" role="img" aria-labelledby="graph-svg-title graph-svg-description" hidden><title id="graph-svg-title">Graf</title><desc id="graph-svg-description"></desc></svg>
       </section>
+      <dialog id="graph-expanded" class="graph-expanded" aria-label="Rozšírený graf"></dialog>
     </main>
     <footer class="page-footer"><span>NumForge v@NUMFORGE_VERSION@ · © 2026 Interacti0n</span><nav class="footer-links" aria-label="Informácie o projekte"><a href="/LICENSE" data-license>MIT licencia</a><a href="https://github.com/Interacti0n/NumForge" target="_blank" rel="noopener noreferrer">GitHub</a></nav></footer>
   </div>
+  <script src="/assets/function-library.js"></script>
   <script src="/assets/navigation.js"></script>
   <script src="/assets/graph.js"></script>
 </body>

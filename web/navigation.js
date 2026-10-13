@@ -396,6 +396,11 @@ async function navigate(destination, addHistory = true)
         activePageKey = destination.pathname + destination.search;
         setupUpcoming();
         disposeGuideNavigation = setupGuideNavigation();
+        if (replacement.querySelector('#graph-form,#calculator')&&!window.numforgeFunctionLibrary)
+            await new Promise((resolve,reject)=>{
+                const script=document.createElement('script');script.src='/assets/function-library.js';
+                script.onload=resolve;script.onerror=reject;document.body.append(script);
+            });
         if (replacement.querySelector('#graph-form'))
         {
             if (window.numforgeInitGraph) window.numforgeDisposeGraph = window.numforgeInitGraph();

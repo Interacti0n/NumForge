@@ -12,7 +12,7 @@ for(const [lang,width] of [['sk',390],['en',1280]])test(`simple graph controls, 
  const before=calls.length;await color(page,'#20c997');
  await expect(page.locator('path.graph-line')).toHaveCSS('stroke','rgb(32, 201, 151)');
  await page.waitForTimeout(350);expect(calls.length).toBe(before);
- await page.locator('#graph-zoom-in').click();await expect(page.locator('path.graph-line')).toHaveCSS('stroke','rgb(32, 201, 151)');
+ await page.locator('#graph-plot').dispatchEvent('keydown',{key:'+'});await expect(page.locator('path.graph-line')).toHaveCSS('stroke','rgb(32, 201, 151)');
  for(const call of calls){const q=new URL(call.url()).searchParams;expect(q.get('angle')).toBe('rad');
   for(const key of ['precision','client','at','color'])expect(q.has(key)).toBe(false);
  }

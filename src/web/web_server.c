@@ -1022,6 +1022,10 @@ void numforge_handle_connection_with_origin(
     {
         numforge_send_response(socket, 200, "OK", "text/css; charset=utf-8", (const char *)NUMFORGE_CHROME_CSS);
     }
+    else if (strcmp(method, "GET") == 0 && strcmp(target, "/assets/function-library.js") == 0)
+    {
+        numforge_send_response(socket, 200, "OK", "text/javascript; charset=utf-8", (const char *)NUMFORGE_FUNCTION_LIBRARY_JS);
+    }
     else if (strcmp(method, "GET") == 0 && strcmp(target, "/assets/calculator.js") == 0)
     {
         numforge_send_response(socket, 200, "OK", "text/javascript; charset=utf-8", (const char *)NUMFORGE_CALCULATOR_JS);

@@ -3,8 +3,12 @@
 The calculator, unit converter, function graphs, API guide and upcoming-tools
 page have separate Slovak and English HTML files.
 `calculator.css` and `api.css` style their respective pages, while `chrome.css`
-styles the shared header. `calculator.js` implements calculator behavior, and
-`navigation.js` handles
+styles the shared header. `calculator.js` implements calculator behavior; `function-library.js` shares
+localized descriptions and search aliases with graph rows, while `/api/functions`
+remains authoritative for availability. `graph.js` owns up to four independent
+curve caches, a shared camera/priority transport queue, the searchable library
+and expanded-view dialog. `navigation.js` loads shared metadata before either
+tool initializes during an internal transition. `navigation.js` also handles
 transitions between the calculator, guide, future-tool pages and language versions.
 It also fills the shared upcoming page with equation,
 sign-in or registration text based on the route. Change these source

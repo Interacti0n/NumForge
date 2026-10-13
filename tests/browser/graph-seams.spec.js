@@ -4,9 +4,9 @@ async function returnFromDetail(page){
  const prepared=page.waitForResponse(r=>r.url().includes('/api/graph/plot?')&&new URL(r.url()).searchParams.get('min')==='-10');
  await page.locator('#graph-submit').click();await prepared;
  const detailed=page.waitForResponse(r=>r.url().includes('/api/graph/plot?')&&new URL(r.url()).searchParams.get('min')==='-2.5'&&new URL(r.url()).searchParams.get('quality')==='refined');
- await page.evaluate(()=>{document.querySelector('#graph-zoom-in').click();document.querySelector('#graph-zoom-in').click();});await detailed;
+ await page.evaluate(()=>{document.querySelector('#graph-plot').dispatchEvent(new KeyboardEvent('keydown',{key:'+',bubbles:true,cancelable:true}));document.querySelector('#graph-plot').dispatchEvent(new KeyboardEvent('keydown',{key:'+',bubbles:true,cancelable:true}));});await detailed;
  await expect(page.locator('.graph-workspace')).not.toHaveAttribute('aria-busy','true');
- await page.evaluate(()=>{document.querySelector('#graph-zoom-out').click();document.querySelector('#graph-zoom-out').click();});
+ await page.evaluate(()=>{document.querySelector('#graph-plot').dispatchEvent(new KeyboardEvent('keydown',{key:'-',bubbles:true,cancelable:true}));document.querySelector('#graph-plot').dispatchEvent(new KeyboardEvent('keydown',{key:'-',bubbles:true,cancelable:true}));});
  await expect(page.locator('#graph-plot')).toHaveAttribute('data-xmin','-10');
 }
 for(const width of [390,1280])test(`zoomed-out x*x uses one continuous stroke across prepared tiles at width ${width}`,async({page})=>{

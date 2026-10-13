@@ -62,7 +62,7 @@ test('next zoom is prepared before interaction and redraws from the cache',async
  expect(Number(q.get('width'))).toBeGreaterThanOrEqual(640);
  await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
  const before=calls.length;
- const ms=await page.evaluate(async()=>{const start=performance.now();document.querySelector('#graph-zoom-in').click();await new Promise(r=>requestAnimationFrame(r));return performance.now()-start;});
+ const ms=await page.evaluate(async()=>{const start=performance.now();document.querySelector('#graph-plot').dispatchEvent(new KeyboardEvent('keydown',{key:'+',bubbles:true,cancelable:true}));await new Promise(r=>requestAnimationFrame(r));return performance.now()-start;});
  await expect(page.locator('#graph-plot')).toHaveAttribute('data-xmin','-5');
  await expect(page.locator('.graph-workspace')).not.toHaveAttribute('aria-busy','true');
  expect(await page.locator('path.graph-line').getAttribute('d')).toContain('C');
