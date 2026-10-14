@@ -5,6 +5,8 @@ details and the [2.2.1 release record](docs/project/RELEASE_2_2_1.md) for valida
 
 ## Unreleased
 
+- Fix graph cache errors after inverse zooms; test prolonged interactions and memory cleanup.
+
 - Show supported dense sin/cos oscillations as approximate colored ranges; zoom to reveal waves.
 
 - Reuse graph zoom levels and cached previews; reduce duplicate sampling.

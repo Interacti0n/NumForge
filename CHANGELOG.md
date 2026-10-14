@@ -7,6 +7,12 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Ignore floating-point cache-boundary tails after inverse graph zooms and allow
+  resolution comparisons their arithmetic roundoff, preventing indistinguishable
+  sample requests and spurious coordinate-range errors. Preserve accepted-edge
+  gap handling. Add sustained cache/GC/navigation/cancellation diagnostics and
+  desktop/mobile zoom and queued-navigation regressions.
+
 - Add optional bounded C pixel envelopes for dense single affine sin/cos carriers
   with affine amplitude/trend. Keep original point flags and default HTTP output;
   expose `dense=band` display metadata through the existing graph API. Render

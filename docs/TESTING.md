@@ -194,3 +194,39 @@ benchmark counts band and stroke layers together, and reports dense ranges
 separately from unresolved intervals.
 
 Measurements: [dense envelope benchmark](benchmarks/GRAPH_DENSE_ENVELOPES_2026_10_14.md), with HTTP and browser medians and limits.
+
+## Sustained graph interaction and memory diagnostics
+
+```powershell
+node scripts/benchmark_graph_stress.cjs --server build/release-audit-2026-10-12/tests/Release/numforge_web.exe --cycles 16 --output build/graph-stress.json
+```
+
+The diagnostic starts/stops its own server on port 19501. Optional `--profile`
+selects `desktop`, `portrait` or `landscape`; `--case` selects `mixed` or `poles`.
+Each case plots four functions, repeats pan/inverse-wheel zoom, warm visibility,
+expansion and expression cancellation, and uses native Chromium touch injection
+for pinch in the two mobile layouts, requiring the expected zoom on both axes.
+Four-cycle groups visit different intervals
+to exercise cache replacement as well as repeated warm views. Six subsequent
+SPA graph/Units round trips check collection of old graph roots through WeakRef.
+
+Test-only routed JavaScript exposes private cache/queue diagnostics. The
+production bundle has no diagnostic hook. Assertions cover the existing
+12-range, 12288-record, estimated 8 MiB and 48-attempt bounds per function,
+retained point/band objects, settling, warm toggles and invalid projections.
+Heap is measured after forced GC and clearing inspector-console roots; otherwise
+DevTools itself can retain old DOM. DOM/listener counts and the owned server's
+working set are recorded too. A retained graph root produces an ignored local
+heap snapshot for investigation. Timing excludes cache diagnostics and forced
+GC; frame/heap/working-set numbers are observations, not fixed CI thresholds or
+a proof against every leak. Mobile layouts are emulated on this PC.
+
+CI checks in `graph-cache-efficiency.spec.js` reproduce inverse wheel zooms away
+from zero and reject microscopic HTTP intervals; `graph-lifecycle.spec.js`
+checks leaving four queued requests, absence of stale work after navigation,
+restored inputs and fresh plotting in desktop/mobile layouts. Existing seam,
+pole, domain and deep-zoom tests remain necessary: coverage tolerance must not
+invent accepted connections.
+
+Recorded workloads, results and limitations:
+[sustained graph stability](benchmarks/GRAPH_STABILITY_2026_10_14.md).

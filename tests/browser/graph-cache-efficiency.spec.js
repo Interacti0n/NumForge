@@ -1,6 +1,22 @@
 const {test,expect}=require('@playwright/test');
 const query=r=>new URL(r.url()).searchParams;
 const plot=async page=>{await page.locator('#graph-submit').click();await expect(page.locator('.graph-workspace')).not.toHaveAttribute('aria-busy','true');};
+for(const width of [390,1280])test(`inverse wheel zooms do not request microscopic cache tails at width ${width}`,async({page})=>{
+ await page.setViewportSize({width,height:844});await page.goto('/graph?lang=en');
+ const functions=['sin(33x)','sin(1000x)','cos(17x)','x/5'],calls=[];
+ for(let i=0;i<functions.length;i++){if(i)await page.locator('#graph-add').click();await page.locator('.graph-curve').nth(i).locator('input:not([type=color])').fill(functions[i]);}
+ page.on('request',r=>{if(r.url().includes('/api/graph/plot?'))calls.push(query(r));});
+ await plot(page);await page.waitForTimeout(600);
+ await page.locator('#graph-plot').evaluate(svg=>{for(let i=0;i<8;i++)svg.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true,cancelable:true}));});
+ await page.waitForTimeout(1000);await page.locator('#graph-plot').scrollIntoViewIfNeeded();
+ const box=await page.locator('#graph-plot').boundingBox();
+ for(const deltaY of [-1,-1,-1,1,1,1]){await page.locator('#graph-plot').dispatchEvent('wheel',{deltaY,clientX:box.x+box.width*.5,clientY:box.y+box.height*.5});await page.evaluate(()=>new Promise(requestAnimationFrame));}
+ await page.waitForTimeout(1000);await expect(page.locator('.graph-workspace')).not.toHaveAttribute('aria-busy','true');
+ expect(calls.every(q=>Number(q.get('max'))-Number(q.get('min'))>1e-7)).toBe(true);
+ await expect(page.locator('.graph-curve-status.error:not([hidden])')).toHaveCount(0);
+ await expect(page.locator('#graph-status')).toContainText('4 functions plotted');
+ expect(Number(await page.locator('#graph-plot').getAttribute('data-xmax'))).toBeCloseTo(42,10);
+});
 for(const width of [390,1280])test(`prepared resolution levels survive repeated zoom and reset at width ${width}`,async({page})=>{
  await page.setViewportSize({width,height:844});await page.goto('/graph?lang=en');await page.locator('#graph-expression').fill('x*x');const calls=[];
  page.on('request',r=>{if(r.url().includes('/api/graph/plot?'))calls.push(r.url());});await plot(page);await page.waitForTimeout(500);

@@ -354,10 +354,16 @@ function initGraph() {
             const entries=cache.filter(e=>e.low<high&&e.high>low);
             if(!entries.length)return false;
             const stops=[...new Set([low,high,...entries.flatMap(e=>[Math.max(low,e.low),Math.min(high,e.high)])])].sort((a,b)=>a-b);
+            const epsilon=coverageEpsilon(low,high);
             const segments=[];let covered=true,ready=true;cacheMissing=[];
             const missing=(a,b)=>{const previous=cacheMissing.at(-1);if(previous&&previous[1]===a)previous[1]=b;else cacheMissing.push([a,b]);};
             for(let i=1;i<stops.length;++i) {
-                const a=stops[i-1],b=stops[i],entry=entries.filter(e=>e.low<=a&&e.high>=b).sort((x,y)=>Number(resolutionReady(y,low,high))-Number(resolutionReady(x,low,high))||Number(x.quality==='coarse')-Number(y.quality==='coarse')||x.span-y.span)[0];
+                const a=stops[i-1],b=stops[i];
+                // Inverse zooms can differ by a few floating-point ulps. Such
+                // tails need no visible detail and may collapse to repeated
+                // samples. Do not create a tile; accepted edges still decide joins.
+                if(b-a<=epsilon)continue;
+                const entry=entries.filter(e=>e.low<=a+epsilon&&e.high>=b-epsilon).sort((x,y)=>Number(resolutionReady(y,low,high))-Number(resolutionReady(x,low,high))||Number(x.quality==='coarse')-Number(y.quality==='coarse')||x.span-y.span)[0];
                 if(!entry){covered=false;missing(a,b);continue;}
                 const resolution=resolutionReady(entry,low,high);
                 ready=ready&&entry.quality!=='coarse'&&resolution;
@@ -392,13 +398,15 @@ function initGraph() {
         function resolutionReady(entry,low,high,yLow=yViewport[0],yHigh=yViewport[1]){
             const {width,height}=dimensions(),sampleWidth=entry.width||entry.sampleWidth;
             const tolerance=entry.bands.length?1:1.25;
-            return entry.quality!=='coarse'&&(!sampleWidth?entry.span<=(high-low)*4:entry.span/sampleWidth<=(high-low)/width*tolerance)&&(!entry.verticalSpan||entry.verticalSpan/(entry.height||height)<=(yHigh-yLow)/height*1.25);
+            const roundoff=1+Number.EPSILON*16;
+            return entry.quality!=='coarse'&&(!sampleWidth?entry.span<=(high-low)*4*roundoff:entry.span/sampleWidth<=(high-low)/width*tolerance*roundoff)&&(!entry.verticalSpan||entry.verticalSpan/(entry.height||height)<=(yHigh-yLow)/height*1.25*roundoff);
         }
+        function coverageEpsilon(low,high){return Math.max((high-low)*1e-12,Math.max(Math.abs(low),Math.abs(high))*Number.EPSILON*8);}
         function missingPrepared(low,high,viewLow,viewHigh,yLow,yHigh){
             const entries=cache.filter(e=>!e.limited&&resolutionReady(e,viewLow,viewHigh,yLow,yHigh)&&e.low<high&&e.high>low).sort((a,b)=>a.low-b.low);
-            const missing=[];let end=low;
-            for(const entry of entries){if(entry.low>end)missing.push([end,Math.min(high,entry.low)]);end=Math.max(end,Math.min(high,entry.high));if(end>=high)break;}
-            if(end<high)missing.push([end,high]);return missing;
+            const epsilon=coverageEpsilon(low,high),missing=[];let end=low;
+            for(const entry of entries){if(entry.low-end>epsilon)missing.push([end,Math.min(high,entry.low)]);end=Math.max(end,Math.min(high,entry.high));if(end>=high-epsilon)break;}
+            if(high-end>epsilon)missing.push([end,high]);return missing;
         }
         function prefetch(query,expression,identity,low,high) {
             stopPrefetch();
@@ -407,7 +415,8 @@ function initGraph() {
             // the same speculative batch. Missing visible detail still refines.
             if(prefetchCamera===camera)return;
             const span=high-low,token=prefetchToken;
-            const current=cache.find(e=>e.low<=low&&e.high>=high&&resolutionReady(e,low,high)&&!e.limited);
+            const epsilon=coverageEpsilon(low,high);
+            const current=cache.find(e=>e.low<=low+epsilon&&e.high>=high-epsilon&&resolutionReady(e,low,high)&&!e.limited);
             // A cheap full-view tile may prepare both neighbors together. Dense
             // views spend their bounded cache/work on the view and next zoom only.
             const buffer=!!current&&current.points.length<=Math.floor(maxPoints/3);
