@@ -13,12 +13,12 @@ function initGraph() {
         ready:'Enter a function and plot it.',busy:'Sampling…',network:'Cannot reach the server. Try again.',invalid:'The server returned invalid graph data.',
         range:'These coordinates cannot be distinguished in the browser’s numeric range. Adjust or reset the range.',column:'column',
         limited:'Some visible intervals could not be resolved. Zoom in for more detail.',ambiguous:'Use one variable, for example x or t.',
-        hidden:'All functions are hidden.',hide:'Hide function',show:'Show function',function:'Function',color:'Curve color',remove:'Remove function',expand:'Expand graph',collapse:'Return to page',unavailable:'Function catalogue unavailable. Try reopening this page.',noMatch:'No matching function. Try another name.'
+        noStroke:'No visible curve segments in this view.',hidden:'All functions are hidden.',hide:'Hide function',show:'Show function',function:'Function',color:'Curve color',remove:'Remove function',expand:'Expand graph',collapse:'Return to page',unavailable:'Function catalogue unavailable. Try reopening this page.',noMatch:'No matching function. Try another name.'
     }:{
         ready:'Zadaj funkciu a vykresli ju.',busy:'Počítam body…',network:'Server nie je dostupný. Skús to znova.',invalid:'Server vrátil neplatné údaje grafu.',
         range:'Tieto súradnice prehliadač nedokáže rozlíšiť vo svojom číselnom rozsahu. Uprav rozsah alebo obnov pohľad.',column:'pozícia',
         limited:'Niektoré viditeľné úseky sa nepodarilo rozlíšiť. Priblíž graf pre viac detailov.',ambiguous:'Použi jednu premennú, napríklad x alebo t.',
-        hidden:'Všetky funkcie sú skryté.',hide:'Skryť funkciu',show:'Zobraziť funkciu',function:'Funkcia',color:'Farba krivky',remove:'Odstrániť funkciu',expand:'Rozšíriť graf',collapse:'Vrátiť na stránku',unavailable:'Katalóg funkcií nie je dostupný. Skús znovu otvoriť stránku.',noMatch:'Žiadna funkcia sa nenašla. Skús iný názov.'
+        noStroke:'V tomto pohľade nie sú viditeľné úseky kriviek.',hidden:'Všetky funkcie sú skryté.',hide:'Skryť funkciu',show:'Zobraziť funkciu',function:'Funkcia',color:'Farba krivky',remove:'Odstrániť funkciu',expand:'Rozšíriť graf',collapse:'Vrátiť na stránku',unavailable:'Katalóg funkcií nie je dostupný. Skús znovu otvoriť stránku.',noMatch:'Žiadna funkcia sa nenašla. Skús iný názov.'
     };
     const errors=english?{'undefined answer':'Graphs do not use calculator ans.'}:{'division by zero':'Delenie nulou','undefined variable':'Nedefinovaná premenná','undefined answer':'Graf nepoužíva ans z kalkulačky','syntax error':'Chyba syntaxe','time limit exceeded':'Prekročený časový limit','invalid argument':'Neplatný argument'};
     function message(value,error=false){status.textContent=value;status.classList.toggle('error',error);}
@@ -31,14 +31,22 @@ function initGraph() {
         const available=$('graph-expanded').getBoundingClientRect().bottom-svg.getBoundingClientRect().top-38;
         return {width,height:Math.round(Math.max(160,Math.min(1200,available*width/rendered)))};
     }
+    function hasVisibleStroke(state){
+        const [low,high]=bounds(),[bottom,top]=yViewport;
+        return (state.chunks||[{points:state.samples||[]}]).some(chunk=>chunk.points.some((p,i)=>{
+            const a=chunk.points[i-1];return a?.plottable&&p.plottable&&p.connect&&
+                a.nx<Math.min(high,chunk.high??high)&&p.nx>Math.max(low,chunk.low??low)&&
+                Math.max(a.ny,p.ny)>=bottom&&Math.min(a.ny,p.ny)<=top;
+        }));
+    }
     function syncStatus(){
         const allStates=curves.map(c=>c.state()),states=allStates.filter(s=>s.visible);
         root.toggleAttribute('aria-busy',states.some(s=>s.busy));if(root.hasAttribute('aria-busy'))root.setAttribute('aria-busy','true');
         curves.forEach((c,i)=>{const s=allStates[i],node=c.row.querySelector('.graph-curve-status');node.hidden=!s.visible||curves.length===1||(!s.error&&!s.busy&&!s.message.includes(text.limited));node.textContent=s.message;node.classList.toggle('error',s.error);});
         if(!states.length){message(text.hidden);return;}
         if(states.length===1){message(states[0].message,states[0].error);return;}
-        const drawn=states.filter(s=>s.samples?.some(p=>p.plottable)).length,failed=states.filter(s=>s.error).length,unresolved=states.filter(s=>s.message.includes(text.limited)).length;
-        message(states.some(s=>s.busy)?text.busy:drawn?(english?`${drawn} functions plotted`:`Zobrazené funkcie: ${drawn}`)+(failed?(english?` · ${failed} failed`:` · s chybou: ${failed}`):'')+(unresolved?(english?` · ${unresolved} with unresolved detail`:` · s nevyriešeným detailom: ${unresolved}`):''):states.find(s=>s.error)?.message||text.ready,!drawn&&failed>0);
+        const drawn=states.filter(hasVisibleStroke).length,failed=states.filter(s=>s.error).length,unresolved=states.filter(s=>s.message.includes(text.limited)).length;
+        message(states.some(s=>s.busy)?text.busy:drawn?(english?`${drawn} ${drawn===1?'function':'functions'} plotted`:`Zobrazené funkcie: ${drawn}`)+(failed?(english?` · ${failed} failed`:` · s chybou: ${failed}`):'')+(unresolved?(english?` · ${unresolved} with unresolved detail`:` · s nevyriešeným detailom: ${unresolved}`):''):states.find(s=>s.error)?.message||(unresolved?text.limited:text.noStroke),!drawn&&failed>0);
     }
     // Serialize C requests; user-visible work takes priority over speculative tiles.
     const queue=[];let transmitting=false,foregroundBatches=0;
@@ -201,6 +209,7 @@ function initGraph() {
         const defs=element('defs'),clip=element('clipPath',{id:'graph-clip'});
         clip.append(element('rect',{x:64,y:22,width:right-64,height:bottom-22}));defs.append(clip);group.append(defs);
         for(const state of states){
+        if(!hasVisibleStroke(state))continue;
         // Joined tiles share an actual C sample and one stroke. Clipping each
         // tile separately can cut a steep stroke or expose different interpolants.
         const runs=[];
@@ -356,36 +365,32 @@ function initGraph() {
             samples=chunks.flatMap(c=>c.points);parameter=segments[0].entry.parameter;
             limited=segments.some(s=>s.entry.limited);
             approximate=segments.some(s=>s.entry.approximate);
-            pendingView=!(covered&&ready);if(paint)draw();
+            pendingView=!(covered&&ready);if(paint)drawSoon();
             return covered&&ready;
         }
         function resolutionReady(entry,low,high){
             const {width,height}=dimensions(),sampleWidth=entry.width||entry.sampleWidth;
             return entry.quality!=='coarse'&&(!sampleWidth?entry.span<=(high-low)*4:entry.span/sampleWidth<=(high-low)/width*1.25)&&(!entry.verticalSpan||entry.verticalSpan/(entry.height||height)<=(yViewport[1]-yViewport[0])/height*1.25);
         }
-        function missingRanges(low,high) {
-            let cursor=low;const gaps=[];
-            const prepared=cache.filter(e=>resolutionReady(e,low,high)&&e.high>low&&e.low<high).sort((a,b)=>a.low-b.low);
-            for(const entry of prepared) {
-                if(entry.low>cursor)gaps.push([cursor,Math.min(entry.low,high)]);
-                cursor=Math.max(cursor,entry.high);if(cursor>=high)break;
-            }
-            if(cursor<high)gaps.push([cursor,high]);return gaps;
-        }
         function prefetch(query,expression,identity,low,high) {
             stopPrefetch();
             const span=high-low,token=prefetchToken;
-            const ranges=[[low,high],[low-span,low],[high,high+span]];
+            const current=cache.find(e=>e.low<=low&&e.high>=high&&resolutionReady(e,low,high)&&!e.limited);
+            // A cheap full-view tile may prepare both neighbors together. Dense
+            // views spend their bounded cache/work on the view and next zoom only.
+            const buffer=!!current&&current.points.length<=Math.floor(maxPoints/3);
+            const ranges=[...(buffer?[[low-span,high+span]]:[]),[low,high]];
             prefetchTimer=setTimeout(async()=>{
                 prefetchTimer=null;
                 let fetched=0;
-                for(const [index,range] of ranges.entries()) {
-                const jobs=index===0?[range]:missingRanges(...range);
+                for(const range of ranges) {
+                const nextZoom=range[0]===low&&range[1]===high;
+                const jobs=[range];
                 for(const [a,b] of jobs) {
                     if(disposed||!visible||token!==prefetchToken||cacheIdentity!==identity||pointers.size)return;
-                    if(fetched>=3)return;
+                    if(fetched>=2)return;
                     if(!Number.isFinite(a)||!Number.isFinite(b)||b<=a||!Number.isFinite(b-a))continue;
-                    const nextZoom=index===0,center=low+span/2;
+                    const center=low+span/2;
                     const targetLow=nextZoom?center-span/4:a,targetHigh=nextZoom?center+span/4:b;
                     const key=JSON.stringify([identity,a,b,nextZoom]);
                     if(prefetchAttempts.has(key)||cache.some(e=>e.low<=a&&e.high>=b&&resolutionReady(e,targetLow,targetHigh)&&(!nextZoom||e.verticalSpan<=(yViewport[1]-yViewport[0])*.625)))continue;
@@ -393,6 +398,7 @@ function initGraph() {
                     prefetchRequest=new AbortController();const signal=prefetchRequest.signal;
                     ++fetched;
                     const next=new URLSearchParams(query);next.set('min',String(a));next.set('max',String(b));
+                    if(!nextZoom)next.set('width',String(Math.max(320,Math.min(2048,Math.round(Number(query.get('width'))*(b-a)/span)))));
                     if(nextZoom){
                         next.set('width',String(Math.min(2048,Number(query.get('width'))*2)));
                         const middle=yViewport[0]+(yViewport[1]-yViewport[0])/2,quarter=(yViewport[1]-yViewport[0])/4;
@@ -417,7 +423,7 @@ function initGraph() {
             if(!visible)return;
             stopPrefetch();
             ++generation;request?.abort();request=null;busy=false;syncStatus();
-            if(!keepView){samples=null;chunks=null;pendingView=false;draw();}
+            if(!keepView){samples=null;chunks=null;pendingView=false;drawSoon();}
             const id=generation,expression=input.value;
             if(!expression.trim()){pendingView=false;draw();message(text.ready);return;}
             if(!input.reportValidity())return;
@@ -442,7 +448,8 @@ function initGraph() {
                 // A dense visible tile plus another full-size tile can exceed the
                 // cache point bound. Replace the viewport as one bounded result.
                 if(low!==null&&high!==null&&cache.filter(e=>e.low<high&&e.high>low).reduce((n,e)=>n+e.points.length,0)>maxCachePoints-maxPoints)jobs=[[low,high]];
-                if(!keepView&&low!==null&&high!==null&&!cache.length&&Number.isFinite(low-(high-low))&&Number.isFinite(high+(high-low)))jobs=[[low-(high-low),high+(high-low)]];
+                // Foreground jobs cover the visible camera only. Optional wide
+                // coverage is prepared after all visible functions have completed.
                 let fast=true;
                 for(const [a,b] of jobs) {
                     const next=new URLSearchParams(query);

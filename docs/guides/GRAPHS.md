@@ -150,20 +150,30 @@ ranges retain their own connection/gap flags. Adjacent accepted edges share an
 actual sampled boundary point and one continuous stroke, avoiding visible seams
 between different densities. Rejected edges and missing coverage remain separate.
 
-The first calculation prepares three times the visible x range in one bounded
-request: the default −10..10 view uses samples from −30..30. Sampling width is
-scaled to preserve visible detail, up to the API width cap, and the current y
-span supplies the vertical pixel scale. The browser displays only the camera's
-central part. A sufficiently detailed buffered range supports immediate panning
-without another calculation. Zooming farther in still needs additional detail.
+The first calculation samples only the visible camera interval: the default
+view requests −10..10, using the visible x/y pixel scales. With several functions,
+all foreground ranges complete before optional background requests can run.
+This keeps off-screen oscillations and curvature from consuming the visible
+view's point budget. A very dense visible function can still exhaust that budget;
+`sin(1000x)` at the default scale remains unresolved rather than falsely connected.
 
-After 180 ms idle following a quick resolved request, the page first prepares
-finer detail over the current x range for the next zoom level, then missing
-adjacent left/right regions, one request at a time. Cached slopes keep curves
-smooth while additional detail arrives. Preparation never evicts the active
-prepared view just to retain speculative data. Slow/limited/failed
-requests stop optional background work. Every request retains the C API's normal
-time, allocation and output limits; unprepared intervals cannot be instantaneous.
+After 180 ms idle following a quick resolved request, an inexpensive view may
+prepare one three-times-wide buffered range (−30..30 by default), with scaled
+width capped at 2048. Views exceeding one third of the 8192-point fast cap skip
+that wide work. Detail for the next zoom is prepared over the current x range
+at up to twice the width and half the y span. A batch makes at most two sequential
+requests per function, with foreground priority over all speculative work.
+A prepared buffer supports immediate panning; without coverage the existing
+curve remains a preview while missing intervals are sampled after the gesture.
+Cached slopes keep curves smooth while additional detail arrives. Preparation
+cannot evict the active view for speculative data, and slow/limited/failed
+responses stop the batch. Every request retains the normal C time, allocation
+and output limits; unprepared intervals cannot be instantaneous.
+
+The multi-function status counts accepted connected segments that intersect the
+camera, not isolated numeric samples. Valid sampled values alone can leave an
+unresolved function without a displayed stroke. Single-function detail and gap
+warnings retain the same meaning.
 
 Fast refined requests use at most 8192 points; precision fallback uses at most
 2048. Unprepared settled moves display coarse data before adding detail.

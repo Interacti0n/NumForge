@@ -164,3 +164,12 @@ expanded view, zero labels and both locales/layouts. Mouse and touch inspection
 must issue zero graph HTTP requests. A burst of 200 pointer events must produce
 one coalesced readout update while preserving the original plot DOM/geometry;
 its measured frame latency is recorded diagnostically, without a flaky CI timer.
+
+`graph-priority.spec.js` verifies that each foreground request uses the current
+camera and all visible functions finish before off-screen preparation. A held
+buffer must not delay/change the displayed curve. Dense sqrt/abs/sine checks
+complete accepted-edge coverage against independent references; extreme sine
+remains bounded and is not counted without an accepted stroke. Cached pan and
+reciprocal pole breaks remain covered by the existing regressions.
+
+Visible-first comparison: [sampling priority benchmark](benchmarks/GRAPH_VISIBLE_PRIORITY_2026_10_14.md).

@@ -119,7 +119,8 @@ test('cached tile composition preserves reciprocal gaps',async({page})=>{
 });
 test('partial cache requests only the missing interval and expression changes recompute',async({page})=>{
  await page.goto('/graph?lang=en');await sample(page,'sin(x)');
- // Keep the initial buffer, then disable optional work to expose the missing tail.
+ // Wait for optional buffering, then disable work to expose the missing tail.
+ await page.waitForTimeout(350);
  await page.route('**/api/graph/plot?**',route=>{
   const q=new URL(route.request().url()).searchParams;
   return Number(q.get('min'))>=30&&Number(q.get('max'))<=34?route.continue():route.abort();

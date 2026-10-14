@@ -5,6 +5,8 @@ details and the [2.2.1 release record](docs/project/RELEASE_2_2_1.md) for valida
 
 ## Unreleased
 
+- Calculate visible graph intervals before optional buffers; count visible strokes.
+
 - Inspect colored graph coordinates with mouse/touch using cached curves only.
 
 - Hide/show graph functions without losing calculated points; benchmark four-curve

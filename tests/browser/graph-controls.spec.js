@@ -40,7 +40,7 @@ test('legacy precision, angle and calculator state do not affect a new graph',as
  const ready=page.waitForResponse(r=>r.url().includes('/api/graph/plot?'));
  await page.locator('#graph-submit').click();const response=await ready,q=new URL(response.url()).searchParams,data=await response.json();
  expect(q.get('angle')).toBe('rad');expect(q.has('precision')).toBe(false);expect(q.has('client')).toBe(false);
- expect(data.schema_version).toBe(3);expect(q.get('min')).toBe('-30');
+ expect(data.schema_version).toBe(3);expect(q.get('min')).toBe('-10');
  for(const p of data.points)expect(p[1]).toBeCloseTo(Math.sin(p[0]),9);
 });
 

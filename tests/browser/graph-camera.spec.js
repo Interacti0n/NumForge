@@ -18,9 +18,10 @@ test('fixed origin view and integer ticks stay independent of function extrema',
  await expect(svg).toHaveAttribute('data-ymin','-10');await expect(svg).toHaveAttribute('data-ymax','10');
  await page.locator('.graph-result').screenshot({path:'C:/Incoming/Projekty/NumForge/build/graph-fixed-camera.png'});
 });
-test('initial buffered interval supports immediate horizontal and vertical movement',async({page})=>{
+test('visible-first drawing prepares a later buffer for immediate horizontal and vertical movement',async({page})=>{
  const calls=[];page.on('request',r=>{if(r.url().includes('/api/graph/plot?'))calls.push(new URL(r.url()));});
- await draw(page);expect(calls[0].searchParams.get('min')).toBe('-30');expect(calls[0].searchParams.get('max')).toBe('30');
+ const buffer=page.waitForResponse(r=>r.url().includes('/api/graph/plot?')&&new URL(r.url()).searchParams.get('min')==='-30');
+ await draw(page);expect(calls[0].searchParams.get('min')).toBe('-10');expect(calls[0].searchParams.get('max')).toBe('10');await buffer;await page.waitForTimeout(50);
  expect(calls[0].searchParams.get('ymin')).toBe('-10');expect(calls[0].searchParams.get('ymax')).toBe('10');
  await page.locator('#graph-plot').focus();
  for(let i=0;i<3;++i)await page.locator('#graph-plot').press('ArrowRight');

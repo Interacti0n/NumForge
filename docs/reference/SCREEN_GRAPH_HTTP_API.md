@@ -119,17 +119,18 @@ operation has its own budget. Browser aborts reject obsolete responses but do
 not promise interruption of C work already running on the server.
 
 The browser camera starts at −10..10 on both axes, independently of the curve.
-Its first request samples −30..30 with proportionally increased width (capped
-at 2048) and the visible y span. Prepared coverage redraws immediately; finer
+Its first request samples only −10..10 with the visible width and y span.
+All visible functions complete foreground work before background buffers run. Prepared coverage redraws immediately; finer
 zoom may require refinement. Drag/pinch and arrows move in both dimensions;
 vertical translation only reprojects data. Reset restores both axes. Nice ticks
 use 1/2/5 steps and additional decimal places as zoom increases; zero is exact.
 The browser does not use response extrema to resize its camera.
 
-After 180 ms idle, quick resolved requests prepare the current x range for the
-next zoom level (up to twice the width, half the vertical span), then missing
-adjacent ranges. At most three sequential requests run per batch; slow/limited
-responses stop preparation. Speculative data is rejected if retaining it with
+After 180 ms idle, quick resolved views using no more than one third of the
+8192-point cap may prepare a three-times-wide buffer with scaled width capped
+at 2048, followed by next-zoom detail over the current x range (up to twice
+the width, half the vertical span). Denser views skip wide preparation. At most
+two sequential requests run per batch; slow/limited responses stop preparation. Speculative data is rejected if retaining it with
 the active view would exceed point/weight bounds. Fast local calculations do not
 guarantee instantaneous responses over a remote tunnel or for arbitrary functions.
 
@@ -173,3 +174,7 @@ edges. It uses the exact same limited cubic/linear drawing representation,
 excludes hidden/non-real/rejected edges and labels its values approximate. Hover
 and point tracing do not call the HTTP or C evaluator. Two-finger gestures and
 empty-area dragging retain normal camera sampling behavior.
+
+The multi-function UI counts accepted connections intersecting the camera. A
+numeric sample set without accepted visible edges is not counted as a plotted
+function; this does not change HTTP schemas or numerical acceptance rules.

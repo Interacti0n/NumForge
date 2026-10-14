@@ -121,8 +121,10 @@ still select calculation precision, angle and read-only session snapshots. A mis
 range is sampled through the existing endpoint (up to four foreground pieces,
 otherwise a complete view); cached data remains as a clipped preview meanwhile.
 
-After 180 ms idle, quick resolved responses may trigger at most three sequential
-prefetches: detail for the next zoom level, then missing adjacent regions.
+After 180 ms idle, quick resolved responses may trigger at most two sequential
+prefetches: an optional three-times-wide buffer for inexpensive views, then next-zoom
+detail. Views using more than one third of the fast 8192-point cap skip wide
+preparation. Foreground sampling of all visible functions finishes first.
 The current x range is prepared at up to twice the width and half the y span.
 Speculative data cannot evict the active prepared view. Missing foreground detail
 waits 90 ms after a settled camera change; active drag/pinch waits for release. Responses taking
@@ -147,7 +149,8 @@ Coordinates at endpoints may be aligned to the requested camera coverage within
 the current projection/binary rounding tolerance, without changing sample values.
 The browser camera starts at −10..10 on both axes and remains independent of
 returned extrema. Dragging pans in both dimensions; reset restores both axes.
-The first request prepares three times the visible x span. The screen API's
+The first request covers only the visible x span. Off-screen coverage is optional
+background work and does not take points from the first visible result. The screen API's
 optional camera bounds set the vertical error scale; precision fallback retains
 its own sampling criteria. Nice axis ticks use 1/2/5 steps, exact zero and decimal
 places appropriate to zoom. Camera zoom stops before either axis loses reliable

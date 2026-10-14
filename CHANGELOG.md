@@ -7,6 +7,12 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Sample browser graph foreground requests only over the visible interval, finish
+  all visible functions before background preparation and skip wide buffers for
+  dense views. Bound optional batches to two requests, retain next-zoom/cached-pan
+  behavior, coalesce drawing, skip empty strokes and count accepted visible strokes. Add foreground-order, dense
+  coverage, bounded-oscillation and pole regressions with before/after diagnostics.
+
 - Inspect approximate graph coordinates with mouse hover or touch/pen tracing.
   Identify the curve by name/color, reuse accepted cached edges and the drawing
   interpolation without calculation requests, preserve pinch/pan gestures and
