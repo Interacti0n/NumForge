@@ -84,3 +84,4 @@ body { height: auto; min-height: 100dvh; overflow: auto; }
 .graph-inspector span { overflow-wrap: anywhere; }
 .graph-inspection-guide { stroke: currentColor; stroke-width: 1; stroke-dasharray: 4 4; opacity: .55; }
 .graph-inspection-dot { fill: currentColor; stroke: #17002f; stroke-width: 2; }
+.graph-band { fill-opacity: .28; stroke: none; }

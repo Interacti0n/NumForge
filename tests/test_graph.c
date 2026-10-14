@@ -437,9 +437,69 @@ static void test_stationary_anchors_slopes_and_http_opt_in(void)
     TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT,application_fast_graph_sample_view(&screen_graph,"x^3-3x",NULL,-10,10,800U,440U,20,false,NULL,&context,&error));
     TEST_ASSERT_NULL(screen_graph);numforge_budget_end();
 }
+static void test_dense_carrier_bands_values_and_domain_exclusions(void)
+{
+    CalculatorError error;
+    const char *cases[]={"sin(1000x)","2-3*cos(-1000x+\xCF\x80/3)","x*sin(1000x)+2","sin(1000x)+x"};
+    for(size_t c=0;c<4U;++c){
+        TEST_ASSERT_EQUAL_MESSAGE(CALCULATOR_OK,application_fast_graph_sample_view_dense(&screen_graph,cases[c],NULL,-10,10,800U,440U,20,false,true,NULL,&context,&error),cases[c]);
+        TEST_ASSERT_FALSE(screen_graph->limited);TEST_ASSERT_EQUAL_UINT(800U,screen_graph->band_count);TEST_ASSERT_EQUAL_UINT(33U,screen_graph->count);
+        for(size_t i=0;i<screen_graph->band_count;++i){ApplicationFastGraphBand band=screen_graph->bands[i];
+            TEST_ASSERT_TRUE(band.high>band.low);if(i)TEST_ASSERT_TRUE(screen_graph->bands[i-1U].high==band.low);
+            double amplitude=c==1U?3:c==2U?fmax(fabs(band.low),fabs(band.high)):1;
+            double low=c==1U||c==2U?2:c==3U?band.low:0,high=c==3U?band.high:low;
+            TEST_ASSERT_TRUE(fabs((low-amplitude)-band.minimum)<=1e-12);TEST_ASSERT_TRUE(fabs((high+amplitude)-band.maximum)<=1e-12);
+            for(unsigned j=0;j<=8U;++j){double x=band.low+(band.high-band.low)*(double)j/8;
+                double y=c==0U?sin(1000*x):c==1U?2-3*cos(-1000*x+3.14159265358979323846/3):c==2U?x*sin(1000*x)+2:sin(1000*x)+x;
+                TEST_ASSERT_TRUE(y>=band.minimum-1e-12&&y<=band.maximum+1e-12);
+            }
+        }
+        for(size_t i=0;i<screen_graph->count;++i)TEST_ASSERT_FALSE(screen_graph->points[i].connect);
+        application_fast_graph_destroy(screen_graph);screen_graph=NULL;
+    }
+    const char *excluded[]={"tan(1000x)","sin(1000x)/(x-0.1)","sin(1000x)-sin(1000x)","sqrt(x)*sin(1000x)","sin(1000x*x)"};
+    for(size_t i=0;i<5U;++i){
+        CalculatorStatus status=application_fast_graph_sample_view_dense(&screen_graph,excluded[i],NULL,-1,1,320U,300U,20,false,true,NULL,&context,&error);
+        TEST_ASSERT_TRUE_MESSAGE(status==CALCULATOR_OK||status==CALCULATOR_NOT_IMPLEMENTED,excluded[i]);
+        if(status==CALCULATOR_OK)TEST_ASSERT_EQUAL_UINT(0U,screen_graph->band_count);else TEST_ASSERT_NULL(screen_graph);
+        application_fast_graph_destroy(screen_graph);screen_graph=NULL;
+    }
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_graph_sample_view_dense(&screen_graph,"sin(1000x)",NULL,-.01,.01,800U,440U,20,false,true,NULL,&context,&error));
+    TEST_ASSERT_EQUAL_UINT(0U,screen_graph->band_count);TEST_ASSERT_FALSE(screen_graph->limited);
+    for(size_t i=1;i<screen_graph->count;++i)TEST_ASSERT_TRUE(screen_graph->points[i].connect);
+}
+static void test_dense_bands_allocation_deadline_and_http_contract(void)
+{
+    CalculatorError error;
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,application_fast_graph_sample_view_dense(&screen_graph,"sin(1000x)",NULL,-10,10,800U,440U,0,false,true,NULL,&context,&error));
+    TEST_ASSERT_NULL(screen_graph);
+    numforge_test_allocator_begin(0U);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_graph_sample_view_dense(&screen_graph,"sin(1000x)",NULL,-10,10,800U,440U,20,false,true,NULL,&context,&error));
+    size_t calls=numforge_test_allocator_call_count();numforge_test_allocator_end();ApplicationFastGraph *original=screen_graph;
+    for(size_t failure=1;failure<=calls;++failure){numforge_test_allocator_begin(failure);
+        TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY,application_fast_graph_sample_view_dense(&screen_graph,"sin(1000x)",NULL,-10,10,800U,440U,20,false,true,NULL,&context,&error));
+        numforge_test_allocator_end();TEST_ASSERT_EQUAL_PTR(original,screen_graph);
+    }
+    TEST_ASSERT_TRUE(numforge_budget_begin(0U,SIZE_MAX,SIZE_MAX));
+    TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT,application_fast_graph_sample_view_dense(&screen_graph,"sin(1000x)",NULL,-10,10,800U,440U,20,false,true,NULL,&context,&error));
+    numforge_budget_end();TEST_ASSERT_EQUAL_PTR(original,screen_graph);
+    application_fast_graph_destroy(screen_graph);screen_graph=NULL;
+    /* A finished envelope needs no unused 300ms midpoint-refinement reserve. */
+    TEST_ASSERT_TRUE(numforge_budget_begin(250U,SIZE_MAX,SIZE_MAX));
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_graph_sample_view_dense(&screen_graph,"sin(1000x)",NULL,-10,10,800U,440U,20,false,true,NULL,&context,&error));
+    TEST_ASSERT_FALSE(screen_graph->limited);TEST_ASSERT_EQUAL_UINT(800U,screen_graph->band_count);numforge_budget_end();
+    char *response=NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,numforge_web_session_request(&store,"POST","/api/graph/plot?mode=fast&min=-10&max=10&ymin=-10&ymax=10&dense=band","sin(1000x)",&response));
+    TEST_ASSERT_NOT_NULL(strstr(response,"\"dense_representation\":\"pixel-envelope\""));TEST_ASSERT_NOT_NULL(strstr(response,"\"bands\":["));free(response);response=NULL;
+    const char *invalid[]={"/api/graph/plot?min=-10&max=10&dense=band","/api/graph/plot?mode=fast&min=-10&max=10&dense=band",
+        "/api/graph/plot?mode=fast&min=-10&max=10&ymin=-10&ymax=10&dense=curve","/api/graph/plot?mode=fast&min=-10&max=10&ymin=-10&ymax=10&dense=band&dense=band"};
+    for(size_t i=0;i<4U;++i){TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,numforge_web_session_request(&store,"POST",invalid[i],"sin(1000x)",&response));free(response);response=NULL;}
+}
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_dense_carrier_bands_values_and_domain_exclusions);
+    RUN_TEST(test_dense_bands_allocation_deadline_and_http_contract);
     RUN_TEST(test_stationary_anchors_slopes_and_http_opt_in);
     RUN_TEST(test_screen_floor_keeps_smooth_chords_connected);
     RUN_TEST(test_screen_camera_span_and_failure_preserve_output);

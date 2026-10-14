@@ -23,8 +23,8 @@ test('visible-only dense mixed expression keeps all accepted edges and skips the
  await expect(page.locator('path.graph-line')).toHaveCount(1);await page.waitForTimeout(350);expect(calls.every(q=>q.get('min')==='-10'&&q.get('max')==='10')).toBe(true);await expect(page.locator('#graph-status')).not.toContainText('could not be resolved');
 });
 test('extreme unresolved oscillation is bounded and only accepted strokes are counted',async({page})=>{
- await page.goto('/graph?lang=en');await page.locator('#graph-expression').fill('sin(1000x)');await page.locator('#graph-add').click();await page.locator('.graph-curve').last().locator('input:not([type=color])').fill('x');let dense;
- page.on('response',r=>{if(r.url().includes('/api/graph/plot?')&&r.request().postData()==='sin(1000x)')dense=r;});await page.locator('#graph-submit').click();await expect(page.locator('.graph-workspace')).not.toHaveAttribute('aria-busy','true');const data=await dense.json();expect(data.count).toBeLessThanOrEqual(8192);expect(data.limited).toBe(true);
+ await page.goto('/graph?lang=en');await page.locator('#graph-expression').fill('sin(1000x)+sin(1001x)');await page.locator('#graph-add').click();await page.locator('.graph-curve').last().locator('input:not([type=color])').fill('x');let dense;
+ page.on('response',r=>{if(r.url().includes('/api/graph/plot?')&&r.request().postData()==='sin(1000x)+sin(1001x)')dense=r;});await page.locator('#graph-submit').click();await expect(page.locator('.graph-workspace')).not.toHaveAttribute('aria-busy','true');const data=await dense.json();expect(data.count).toBeLessThanOrEqual(8192);expect(data.limited).toBe(true);
  await expect(page.locator('path.graph-line')).toHaveCount(1);await expect(page.locator('#graph-status')).toContainText('1 function plotted');await expect(page.locator('#graph-status')).toContainText('with unresolved detail');
 });
 test('visible-first sampling and later cached pan preserve reciprocal pole breaks',async({page})=>{

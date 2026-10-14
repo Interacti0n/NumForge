@@ -13,12 +13,12 @@ function initGraph() {
         ready:'Enter a function and plot it.',busy:'Sampling…',network:'Cannot reach the server. Try again.',invalid:'The server returned invalid graph data.',
         range:'These coordinates cannot be distinguished in the browser’s numeric range. Adjust or reset the range.',column:'column',
         limited:'Some visible intervals could not be resolved. Zoom in for more detail.',ambiguous:'Use one variable, for example x or t.',
-        noStroke:'No visible curve segments in this view.',hidden:'All functions are hidden.',hide:'Hide function',show:'Show function',function:'Function',color:'Curve color',remove:'Remove function',expand:'Expand graph',collapse:'Return to page',unavailable:'Function catalogue unavailable. Try reopening this page.',noMatch:'No matching function. Try another name.'
+        dense:'Dense oscillations shown as an approximate range. Zoom in to see the curve.',noStroke:'No visible curve segments in this view.',hidden:'All functions are hidden.',hide:'Hide function',show:'Show function',function:'Function',color:'Curve color',remove:'Remove function',expand:'Expand graph',collapse:'Return to page',unavailable:'Function catalogue unavailable. Try reopening this page.',noMatch:'No matching function. Try another name.'
     }:{
         ready:'Zadaj funkciu a vykresli ju.',busy:'Počítam body…',network:'Server nie je dostupný. Skús to znova.',invalid:'Server vrátil neplatné údaje grafu.',
         range:'Tieto súradnice prehliadač nedokáže rozlíšiť vo svojom číselnom rozsahu. Uprav rozsah alebo obnov pohľad.',column:'pozícia',
         limited:'Niektoré viditeľné úseky sa nepodarilo rozlíšiť. Priblíž graf pre viac detailov.',ambiguous:'Použi jednu premennú, napríklad x alebo t.',
-        noStroke:'V tomto pohľade nie sú viditeľné úseky kriviek.',hidden:'Všetky funkcie sú skryté.',hide:'Skryť funkciu',show:'Zobraziť funkciu',function:'Funkcia',color:'Farba krivky',remove:'Odstrániť funkciu',expand:'Rozšíriť graf',collapse:'Vrátiť na stránku',unavailable:'Katalóg funkcií nie je dostupný. Skús znovu otvoriť stránku.',noMatch:'Žiadna funkcia sa nenašla. Skús iný názov.'
+        dense:'Husté oscilácie sú zobrazené ako približný rozsah. Priblíž graf pre jednotlivé vlny.',noStroke:'V tomto pohľade nie sú viditeľné úseky kriviek.',hidden:'Všetky funkcie sú skryté.',hide:'Skryť funkciu',show:'Zobraziť funkciu',function:'Funkcia',color:'Farba krivky',remove:'Odstrániť funkciu',expand:'Rozšíriť graf',collapse:'Vrátiť na stránku',unavailable:'Katalóg funkcií nie je dostupný. Skús znovu otvoriť stránku.',noMatch:'Žiadna funkcia sa nenašla. Skús iný názov.'
     };
     const errors=english?{'undefined answer':'Graphs do not use calculator ans.'}:{'division by zero':'Delenie nulou','undefined variable':'Nedefinovaná premenná','undefined answer':'Graf nepoužíva ans z kalkulačky','syntax error':'Chyba syntaxe','time limit exceeded':'Prekročený časový limit','invalid argument':'Neplatný argument'};
     function message(value,error=false){status.textContent=value;status.classList.toggle('error',error);}
@@ -32,6 +32,7 @@ function initGraph() {
         return {width,height:Math.round(Math.max(160,Math.min(1200,available*width/rendered)))};
     }
     function hasVisibleStroke(state){
+        if(visibleBands(state).length)return true;
         const [low,high]=bounds(),[bottom,top]=yViewport;
         return (state.chunks||[{points:state.samples||[]}]).some(chunk=>chunk.points.some((p,i)=>{
             const a=chunk.points[i-1];return a?.plottable&&p.plottable&&p.connect&&
@@ -39,14 +40,18 @@ function initGraph() {
                 Math.max(a.ny,p.ny)>=bottom&&Math.min(a.ny,p.ny)<=top;
         }));
     }
+    function visibleBands(state){
+        const [low,high]=bounds(),[bottom,top]=yViewport;
+        return (state.chunks||[{bands:state.bands}]).flatMap(chunk=>(chunk.bands||[]).filter(b=>b[0]<Math.min(high,chunk.high??high)&&b[1]>Math.max(low,chunk.low??low)&&Math.max(b[2],bottom)<Math.min(b[3],top)).map(b=>[Math.max(low,chunk.low??low,b[0]),Math.min(high,chunk.high??high,b[1]),b[2],b[3]]));
+    }
     function syncStatus(){
         const allStates=curves.map(c=>c.state()),states=allStates.filter(s=>s.visible);
         root.toggleAttribute('aria-busy',states.some(s=>s.busy));if(root.hasAttribute('aria-busy'))root.setAttribute('aria-busy','true');
-        curves.forEach((c,i)=>{const s=allStates[i],node=c.row.querySelector('.graph-curve-status');node.hidden=!s.visible||curves.length===1||(!s.error&&!s.busy&&!s.message.includes(text.limited));node.textContent=s.message;node.classList.toggle('error',s.error);});
+        curves.forEach((c,i)=>{const s=allStates[i],node=c.row.querySelector('.graph-curve-status');node.hidden=!s.visible||curves.length===1||(!s.error&&!s.busy&&!s.message.includes(text.limited)&&!s.message.includes(text.dense));node.textContent=s.message;node.classList.toggle('error',s.error);});
         if(!states.length){message(text.hidden);return;}
         if(states.length===1){message(states[0].message,states[0].error);return;}
-        const drawn=states.filter(hasVisibleStroke).length,failed=states.filter(s=>s.error).length,unresolved=states.filter(s=>s.message.includes(text.limited)).length;
-        message(states.some(s=>s.busy)?text.busy:drawn?(english?`${drawn} ${drawn===1?'function':'functions'} plotted`:`Zobrazené funkcie: ${drawn}`)+(failed?(english?` · ${failed} failed`:` · s chybou: ${failed}`):'')+(unresolved?(english?` · ${unresolved} with unresolved detail`:` · s nevyriešeným detailom: ${unresolved}`):''):states.find(s=>s.error)?.message||(unresolved?text.limited:text.noStroke),!drawn&&failed>0);
+        const drawn=states.filter(hasVisibleStroke).length,failed=states.filter(s=>s.error).length,unresolved=states.filter(s=>s.message.includes(text.limited)).length,dense=states.filter(s=>visibleBands(s).length).length;
+        message(states.some(s=>s.busy)?text.busy:drawn?(english?`${drawn} ${drawn===1?'function':'functions'} plotted`:`Zobrazené funkcie: ${drawn}`)+(dense?(english?` · ${dense} as dense ranges`:` · husté oscilácie: ${dense}`):'')+(failed?(english?` · ${failed} failed`:` · s chybou: ${failed}`):'')+(unresolved?(english?` · ${unresolved} with unresolved detail`:` · s nevyriešeným detailom: ${unresolved}`):''):states.find(s=>s.error)?.message||(unresolved?text.limited:text.noStroke),!drawn&&failed>0);
     }
     // Serialize C requests; user-visible work takes priority over speculative tiles.
     const queue=[];let transmitting=false,foregroundBatches=0;
@@ -103,6 +108,7 @@ function initGraph() {
         const state=curve.state();if(!state.visible||!state.samples)return null;
         for(const chunk of state.chunks||[{points:state.samples}]){
             if(x<(chunk.low??-Infinity)||x>(chunk.high??Infinity))continue;
+            if((chunk.bands||state.bands||[]).some(b=>x>=b[0]&&x<=b[1]))continue;
             const points=chunk.points;let low=0,high=points.length;
             while(low<high){const mid=(low+high)>>>1;if(points[mid].nx<x)low=mid+1;else high=mid;}
             const b=points[low],a=points[low-1];if(!b?.plottable)continue;
@@ -159,7 +165,7 @@ function initGraph() {
     function draw() {
         svg.querySelectorAll('.graph-drawing').forEach(el=>el.remove());
         const states=curves.filter(c=>c.state().visible).map(curve=>({curve,...curve.state()}));
-        for(const state of states)if(state.samples&&!state.pendingView)state.curve.message((state.approximate?'≈ ':'')+`y = f(${state.parameter})`+(state.curve.visibleUnresolved()?' · '+text.limited:''));
+        for(const state of states)if(state.samples&&!state.pendingView)state.curve.message((state.approximate?'≈ ':'')+`y = f(${state.parameter})`+(visibleBands(state).length?' · '+text.dense:'')+(state.curve.visibleUnresolved()?' · '+text.limited:''));
         let xs=viewport||bounds();
         for(const state of states)if(state.samples&&(state.chunks||[{points:state.samples}]).some(c=>c.points.some((p,i)=>p.nx===null||(i>0&&p.nx<=c.points[i-1].nx)))){state.curve.invalidData();draw();return;}
         // Scale before subtraction so finite extreme values cannot overflow.
@@ -210,6 +216,13 @@ function initGraph() {
         clip.append(element('rect',{x:64,y:22,width:right-64,height:bottom-22}));defs.append(clip);group.append(defs);
         for(const state of states){
         if(!hasVisibleStroke(state))continue;
+        const bands=visibleBands(state);let bandPath='';
+        for(const b of bands){const a=px(b[0]),end=px(b[1]);let top=py(Math.min(projectedView[1],b[3])),base=py(Math.max(projectedView[0],b[2]));
+            // Raster visibility only: retain numeric bounds, but keep a subpixel
+            // range visible as a one-pixel trace clipped to the camera.
+            if(base-top<1){const middle=(base+top)/2;top=middle-.5;base=middle+.5;}
+            bandPath+=`M${a},${top}H${end}V${base}H${a}Z`;}
+        if(bandPath)group.append(element('path',{d:bandPath,class:'graph-band','data-curve':state.curve.id,style:`fill:${state.curve.color.value}`,'clip-path':'url(#graph-clip)'}));
         // Joined tiles share an actual C sample and one stroke. Clipping each
         // tile separately can cut a steep stroke or expose different interpolants.
         const runs=[];
@@ -248,14 +261,14 @@ function initGraph() {
         const id=nextId++;row.dataset.curve=String(id);
         let visible=row.querySelector('.graph-visibility').getAttribute('aria-pressed')!=='false',hiddenCamera=null,hiddenReady=false;
         const cameraKey=()=>JSON.stringify([bounds(),yViewport,dimensions()]);
-        let generation=0,request=null,samples=null,disposed=false,parameter='x',limited=false,pendingView=false,approximate=false,busy=false;
+        let generation=0,request=null,samples=null,bands=null,disposed=false,parameter='x',limited=false,pendingView=false,approximate=false,busy=false;
         let cache=[],cacheIdentity=null,chunks=null,prefetchTimer=null,prefetchRequest=null,prefetchToken=0,prefetchCamera=null,cacheMissing=[],cacheCovered=false;
         const prefetchAttempts=new Set(),maxPoints=8192,maxCachePoints=12288,maxCacheBytes=8*1024*1024;
         let lastMessage=text.ready,lastError=false;
         function message(value,error=false){if(lastMessage===value&&lastError===error)return;lastMessage=value;lastError=error;syncStatus();}
         function stopPrefetch(){++prefetchToken;clearTimeout(prefetchTimer);prefetchTimer=null;prefetchRequest?.abort();prefetchRequest=null;}
         function clearCache(){stopPrefetch();cache=[];cacheIdentity=null;prefetchCamera=null;prefetchAttempts.clear();}
-        function invalidate(){++generation;request?.abort();request=null;busy=false;clearCache();samples=null;chunks=null;pendingView=false;limited=false;parameter='x';message(text.ready);syncStatus();drawSoon();}
+        function invalidate(){++generation;request?.abort();request=null;busy=false;clearCache();samples=null;bands=null;chunks=null;pendingView=false;limited=false;parameter='x';message(text.ready);syncStatus();drawSoon();}
         function visibleUnresolved() {
             if(!limited||!samples)return false;
             const [low,high]=bounds(),[bottom,top]=yViewport;
@@ -268,6 +281,7 @@ function initGraph() {
             }));
         }
         function decode(body) {
+            if(body.bands!==undefined&&(body.schema_version!==3||body.evaluation!=='double'||body.dense_representation!=='pixel-envelope'||!Array.isArray(body.bands)||body.bands.length>2048||body.bands.some((b,i)=>!Array.isArray(b)||b.length!==4||b.some(v=>!Number.isFinite(v))||b[0]>=b[1]||b[2]>b[3]||(i>0&&b[0]<body.bands[i-1][1]))))throw Error(text.invalid);
             const slopes=body.slopes;
             if(slopes!==undefined&&(body.schema_version!==3||!Array.isArray(slopes)||slopes.length!==body.count||slopes.some(s=>s!==null&&!Number.isFinite(s))))throw Error(text.invalid);
             if(body.schema_version===3){
@@ -285,14 +299,15 @@ function initGraph() {
                 const nx=numeric(point.x),ny=numeric(point.y);
                 return {...point,nx,ny,derivative:slopes?.[i]??NaN,plottable:point.kind==='real'&&nx!==null&&ny!==null};
             });
-            return {points,parameter:body.parameter,limited:body.limited,approximate:body.evaluation==='double',quality:body.quality||'refined',width:body.width,height:body.height};
+            if(body.bands?.some(b=>b[0]<points[0].nx||b[1]>points.at(-1).nx))throw Error(text.invalid);
+            return {points,bands:body.bands||[],parameter:body.parameter,limited:body.limited,approximate:body.evaluation==='double',quality:body.quality||'refined',width:body.width,height:body.height};
         }
         async function fetchPlot(query,expression,signal,background=false) {
             const {response,payload,cost}=await transport(query,expression,signal,background);if(payload.length>512*1024)throw Error(text.invalid);
             const body=JSON.parse(payload);
             if(!response.ok||!body.ok)throw Error((body.code==='graph_parameter_ambiguous'?text.ambiguous:errors[body.status]||body.error||body.status||text.invalid)+(Number.isSafeInteger(body.column)?` · ${text.column} ${body.column}`:''));
             // Conservative cache weight, not an engine-specific heap measurement.
-            return {...decode(body),sampleWidth:Number(query.get('width'))||0,verticalSpan:Number(query.get('ymax'))-Number(query.get('ymin'))||0,cacheBytes:payload.length*2+body.points.length*256,cost,requestedLow:numeric(query.get('min')),requestedHigh:numeric(query.get('max'))};
+            return {...decode(body),sampleWidth:Number(query.get('width'))||0,verticalSpan:Number(query.get('ymax'))-Number(query.get('ymin'))||0,cacheBytes:payload.length*2+body.points.length*256+(body.bands?.length||0)*128,cost,requestedLow:numeric(query.get('min')),requestedHigh:numeric(query.get('max'))};
         }
         function remember(entry) {
             let low=entry.points[0].nx,high=entry.points.at(-1).nx;
@@ -312,7 +327,7 @@ function initGraph() {
             const sameRange=cache.filter(e=>e.low===low&&e.high===high);
             if(sameRange.some(e=>dominates(e,entry)))return true;
             cache=cache.filter(e=>e.low!==low||e.high!==high||!dominates(entry,e));cache.push(entry);
-            while(cache.length>12||cache.reduce((n,e)=>n+e.points.length,0)>maxCachePoints||cache.reduce((n,e)=>n+e.cacheBytes,0)>maxCacheBytes){
+            while(cache.length>12||cache.reduce((n,e)=>n+e.points.length+e.bands.length,0)>maxCachePoints||cache.reduce((n,e)=>n+e.cacheBytes,0)>maxCacheBytes){
                 const [a,b]=bounds();
                 let victim=cache.findIndex(e=>e.high<=a||e.low>=b);
                 if(victim<0)victim=cache.findIndex(e=>!resolutionReady(e,a,b));
@@ -356,7 +371,7 @@ function initGraph() {
                 const p=segment.entry.points;
                 let start=p.findIndex(point=>point.nx>=segment.low);if(start<0)start=p.length-1;
                 let end=p.findIndex(point=>point.nx>segment.high);if(end<0)end=p.length;
-                return {low:segment.low,high:segment.high,limited:segment.entry.limited,points:p.slice(Math.max(0,start-1),Math.min(p.length,end+1))};
+                return {low:segment.low,high:segment.high,limited:segment.entry.limited,bands:segment.entry.bands.filter(b=>b[0]<segment.high&&b[1]>segment.low),points:p.slice(Math.max(0,start-1),Math.min(p.length,end+1))};
             });
             for(let i=1;i<chunks.length;++i){
                 const left=chunks[i-1],right=chunks[i];
@@ -376,7 +391,8 @@ function initGraph() {
         }
         function resolutionReady(entry,low,high,yLow=yViewport[0],yHigh=yViewport[1]){
             const {width,height}=dimensions(),sampleWidth=entry.width||entry.sampleWidth;
-            return entry.quality!=='coarse'&&(!sampleWidth?entry.span<=(high-low)*4:entry.span/sampleWidth<=(high-low)/width*1.25)&&(!entry.verticalSpan||entry.verticalSpan/(entry.height||height)<=(yHigh-yLow)/height*1.25);
+            const tolerance=entry.bands.length?1:1.25;
+            return entry.quality!=='coarse'&&(!sampleWidth?entry.span<=(high-low)*4:entry.span/sampleWidth<=(high-low)/width*tolerance)&&(!entry.verticalSpan||entry.verticalSpan/(entry.height||height)<=(yHigh-yLow)/height*1.25);
         }
         function missingPrepared(low,high,viewLow,viewHigh,yLow,yHigh){
             const entries=cache.filter(e=>!e.limited&&resolutionReady(e,viewLow,viewHigh,yLow,yHigh)&&e.low<high&&e.high>low).sort((a,b)=>a.low-b.low);
@@ -428,7 +444,7 @@ function initGraph() {
                         if(disposed||token!==prefetchToken||cacheIdentity!==identity){prefetchAttempts.delete(key);return;}
                         // Speculative detail cannot evict the current prepared view.
                         const retained=cache.filter(e=>e.low<high&&e.high>low);
-                        if(retained.reduce((n,e)=>n+e.points.length,0)+entry.points.length>maxCachePoints||retained.reduce((n,e)=>n+e.cacheBytes,0)+entry.cacheBytes>maxCacheBytes)return;
+                        if(retained.reduce((n,e)=>n+e.points.length+e.bands.length,0)+entry.points.length+entry.bands.length>maxCachePoints||retained.reduce((n,e)=>n+e.cacheBytes,0)+entry.cacheBytes>maxCacheBytes)return;
                         remember(entry);
                         if(entry.limited||entry.cost>1500||!entry.points.some(p=>p.plottable))return;
                     } catch(_){if(signal.aborted)prefetchAttempts.delete(key);return;}
@@ -443,7 +459,7 @@ function initGraph() {
             if(!visible)return;
             stopPrefetch();
             ++generation;request?.abort();request=null;busy=false;syncStatus();
-            if(!keepView){samples=null;chunks=null;pendingView=false;drawSoon();}
+            if(!keepView){samples=null;bands=null;chunks=null;pendingView=false;drawSoon();}
             const id=generation,expression=input.value;
             if(!expression.trim()){pendingView=false;draw();message(text.ready);return;}
             if(!input.reportValidity())return;
@@ -455,10 +471,10 @@ function initGraph() {
                 // back to the precision evaluator when fast arithmetic is unsuitable.
                 const query=new URLSearchParams({min:String(low),max:String(high),angle:'rad',ymin:String(yLow),ymax:String(yHigh)});
                 const {width,height}=dimensions();
-                query.set('mode','fast');query.set('width',String(Math.round(width)));query.set('height',String(height));query.set('quality','refined');query.set('interpolation','hermite');
+                query.set('mode','fast');query.set('width',String(Math.round(width)));query.set('height',String(height));query.set('quality','refined');query.set('interpolation','hermite');query.set('dense','band');
                 if(id!==generation||disposed)return;
                 const identity=expression;
-                if(cacheIdentity!==identity){clearCache();cacheIdentity=identity;samples=null;chunks=null;draw();message(text.busy);}
+                if(cacheIdentity!==identity){clearCache();cacheIdentity=identity;samples=null;bands=null;chunks=null;draw();message(text.busy);}
                 if(low!==null&&high!==null&&high>low&&Number.isFinite(high-low))viewport=[low,high];
                 if(low!==null&&high!==null&&showCached(low,high)) {
                     const fast=cache.find(e=>!e.limited&&e.cost<=1500&&e.points.some(p=>p.plottable));
@@ -467,7 +483,7 @@ function initGraph() {
                 let jobs=low!==null&&high!==null&&cacheMissing.length&&cacheMissing.length<=4?cacheMissing.map(r=>r.slice()):[[low,high]];
                 // A dense visible tile plus another full-size tile can exceed the
                 // cache point bound. Replace the viewport as one bounded result.
-                if(low!==null&&high!==null&&cache.filter(e=>e.low<high&&e.high>low).reduce((n,e)=>n+e.points.length,0)>maxCachePoints-maxPoints)jobs=[[low,high]];
+                if(low!==null&&high!==null&&cache.filter(e=>e.low<high&&e.high>low).reduce((n,e)=>n+e.points.length+e.bands.length,0)>maxCachePoints-maxPoints)jobs=[[low,high]];
                 // Foreground jobs cover the visible camera only. Optional wide
                 // coverage is prepared after all visible functions have completed.
                 let fast=true;
@@ -488,7 +504,7 @@ function initGraph() {
                     if(!entry)entry=await fetchPlot(next,expression,signal);if(id!==generation||disposed)return;
                     fast=fast&&!entry.limited&&entry.cost<=1500&&entry.points.some(p=>p.plottable);
                     if(remember(entry)&&low!==null&&high!==null)showCached(low,high);
-                    else {parameter=entry.parameter;limited=entry.limited;approximate=entry.approximate;pendingView=false;samples=entry.points;chunks=null;draw();fast=false;}
+                    else {parameter=entry.parameter;limited=entry.limited;approximate=entry.approximate;pendingView=false;samples=entry.points;bands=entry.bands;chunks=null;draw();fast=false;}
                 }
                 if(low!==null&&high!==null&&fast)prefetch(query,expression,identity,low,high);
             } catch(error) {
@@ -497,8 +513,8 @@ function initGraph() {
         }
 
         const curve={id,row,input,color,plot,message,visibleUnresolved,
-            state:()=>({visible,samples,chunks,parameter,limited,pendingView,approximate,busy,message:lastMessage,error:lastError}),
-            invalidData(){samples=null;chunks=null;pendingView=false;message(text.range,true);},
+            state:()=>({visible,samples,bands,chunks,parameter,limited,pendingView,approximate,busy,message:lastMessage,error:lastError}),
+            invalidData(){samples=null;bands=null;chunks=null;pendingView=false;message(text.range,true);},
             cameraChanged(){if(!visible)return;++generation;request?.abort();request=null;busy=false;stopPrefetch();pendingView=!!input.value.trim();const hit=showCached(...bounds(),false);if(!hit)message(input.value.trim()?text.busy:text.ready);syncStatus();},
             setVisible(value){
                 if(visible===value)return;

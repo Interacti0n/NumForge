@@ -61,7 +61,7 @@ Values come from already displayed cached samples, using the same limited cubic
 or linear interpolation as the stroke. No HTTP request or expression evaluation is
 triggered by inspection. These are approximate drawing coordinates, not a separate
 high-precision calculation. Hidden functions, non-real values, off-screen values,
-isolated samples and rejected/unresolved connections are not inspected; the
+isolated samples, dense ranges and rejected/unresolved connections are not inspected; the
 marker disappears in gaps rather than joining across them. The display adapts
 its decimal precision to the view and formats rounded zero as `0`. Mouse exit,
 Escape with the canvas focused, and camera gestures dismiss the readout.
@@ -106,7 +106,9 @@ refinement in a visible sampled region; unresolved detail elsewhere in the
 prepared buffer does not show that warning. Known domain/complex gaps alone are
 not a refinement warning. Forward trigonometric phases receive an extra check against hidden
 whole periods. If a wide range contains too many oscillations, narrow the x range;
-the plot may omit all connections rather than draw misleading chords.
+the plot may omit unresolved connections rather than draw misleading chords.
+For supported dense sin/cos expressions, a translucent range replaces unresolved
+individual waves; see the next section.
 Both axes start at −10..10 and stay independent of the function's extrema.
 The curve is clipped to the chosen camera; large values do not resize the axes.
 Move either axis with the plot controls or pointer gestures.
@@ -119,6 +121,23 @@ Interactive zoom stops when either axis span would fall below
 `1e-8 * max(1, abs(axis_min), abs(axis_max))`, leaving precision for individual pixels.
 The last valid view stays visible and zooming out or resetting remains available.
 Extremely close to a sine maximum the curve is almost horizontal.
+
+## Dense oscillations
+
+When a full period fits into one pixel column, supported expressions such as
+`sin(1000x)`, `2+3*cos(1000x)` or `x*sin(1000x)+2` show a translucent band in the
+function color. The message identifies it as an approximate range. Zoom in to
+reveal the individual curve; zoom out to return to the range. The band represents
+possible values across a column, not one exact y value or exact local extrema.
+A changing amplitude/trend can widen it beyond the values actually attained.
+Coordinate inspection therefore omits bands rather than inventing a y value.
+
+The first implementation recognizes one sin/cos term with a linear argument and
+constant/linear amplitude and trend. Multiple trig terms, tangent, variable
+fractions such as `sin(1000x)/x`, nonlinear arguments and outer domain operations
+retain normal sampling and may still exhaust its finite limits. Envelopes do not
+join poles, domain errors or rejected sample edges. Their computation stays in
+the same C evaluator/application layer and the existing time/space budgets.
 
 ## Moving the view
 
@@ -157,7 +176,8 @@ view requests −10..10, using the visible x/y pixel scales. With several functi
 all foreground ranges complete before optional background requests can run.
 This keeps off-screen oscillations and curvature from consuming the visible
 view's point budget. A very dense visible function can still exhaust that budget;
-`sin(1000x)` at the default scale remains unresolved rather than falsely connected.
+`sin(1000x)` at the default scale uses the dense-range representation. Unsupported
+dense expressions remain unresolved rather than falsely connected.
 
 After 180 ms idle following a quick resolved request, an inexpensive view may
 prepare one three-times-wide buffered range (−30..30 by default), with scaled
@@ -186,10 +206,10 @@ Fast refined requests use at most 8192 points; precision fallback uses at most
 accepted cached strokes already cover the view without visible unresolved gaps,
 they supply the preview and only refined data is requested.
 The cache is bounded to 12 sampled
-ranges, 12288 cached points and an estimated 8 MiB weight **per function**, and lives only
+ranges, 12288 cached point-or-band records and an estimated 8 MiB weight **per function**, and lives only
 in the current page and clears on expression changes or navigation. Color changes
 keep the cache. Four functions therefore permit at most 48 retained ranges,
-49152 cached points and 32 MiB estimated cache weight. This is a conservative
+49152 cached records and 32 MiB estimated cache weight. This is a conservative
 accounting weight, not a browser heap measurement. Foreground C requests and
 optional preparations are serialized; visible work has priority over background
 tiles. Each range/function request retains its own five-second budget, so a

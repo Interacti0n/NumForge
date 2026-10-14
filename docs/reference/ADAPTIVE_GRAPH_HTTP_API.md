@@ -140,12 +140,13 @@ to interrupt a C evaluation already running on the server. Each server request
 still independently shares the original five-second/allocation budget.
 
 The current page supports at most four curves and retains per function at most
-12 ranges, 12288 cached points, an 8 MiB estimated cache weight, and 48 bounded
-prefetch-attempt keys. Four curves permit 49152 points and 32 MiB estimated weight.
+12 ranges, 12288 cached point-or-band records, an 8 MiB estimated cache weight, and 48 bounded
+prefetch-attempt keys. Four curves permit 49152 records and 32 MiB estimated weight.
 A shared transport queue prioritizes foreground requests over background tiles.
 Each function/range request has its own server budget; these budgets do not merge
 into an overall five-second multi-curve timeout. Weight is twice the JSON
-character count plus 256 bytes per point, not a browser heap measurement.
+character count plus 256 bytes per point and 128 bytes per dense band, not a
+browser heap measurement.
 Oldest ranges are evicted when any bound is exceeded; visible chunks can still
 retain references until the next view is drawn. No sample table is rendered;
 sample data is not persisted in sessionStorage. The finest available cached range is
@@ -165,3 +166,8 @@ optional camera bounds set the vertical error scale; precision fallback retains
 its own sampling criteria. Nice axis ticks use 1/2/5 steps, exact zero and decimal
 places appropriate to zoom. Camera zoom stops before either axis loses reliable
 pixel coordinate precision.
+
+The browser also requests optional [dense screen-space envelopes](SCREEN_GRAPH_HTTP_API.md#optional-dense-oscillation-envelopes).
+They are schema 3 display metadata; this precision schema 2 API does not produce
+bands or change its connections. Supported dense carriers display a colored
+range with an explicit message and no invented coordinate-inspector y value.

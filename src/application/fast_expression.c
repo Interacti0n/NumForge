@@ -135,6 +135,79 @@ CalculatorStatus application_fast_compile_tree(ApplicationFastExpression **resul
     return status;
 }
 
+/* Recognize a single affine sin/cos carrier from the compiled C expression.
+ * No text rewriting, guessed extrema or variable denominators are allowed. */
+CalculatorStatus application_fast_expression_dense_model(const ApplicationFastExpression *program,
+    ApplicationFastDenseModel *result)
+{
+    typedef struct Cell {ApplicationFastDenseModel model;bool carrier;} Cell;
+    if(!program||!result)return CALCULATOR_NULL_ARGUMENT;
+    if(program->phase_count!=1U)return CALCULATOR_NOT_IMPLEMENTED;
+    Cell stack[CALCULATOR_MAX_EXPRESSION_DEPTH+1U];size_t used=0;
+    for(size_t i=0;i<program->count;++i){
+        if(!numforge_budget_check())return calculator_budget_status(CALCULATOR_OUT_OF_MEMORY);
+        FastInstruction op=program->code[i];Cell a={0},b={0},r={0};
+        if(op.operation==F_CONSTANT||op.operation==F_X){
+            if(used>=CALCULATOR_MAX_EXPRESSION_DEPTH+1U)return CALCULATOR_NOT_IMPLEMENTED;
+            r.model.offset=op.operation==F_X?1:0;r.model.offset_value=op.operation==F_X?0:op.value;
+            stack[used++]=r;continue;
+        }
+        if(!used)return CALCULATOR_NOT_IMPLEMENTED;
+        a=stack[--used];bool binary=op.operation>=F_ADD&&op.operation<=F_POWER;
+        if(binary){if(!used)return CALCULATOR_NOT_IMPLEMENTED;b=a;a=stack[--used];}
+        double scale=1;
+        switch(op.operation){
+        case F_NEGATE:r=a;scale=-1;break;
+        case F_ADD:case F_SUBTRACT:
+            if(a.carrier&&b.carrier)return CALCULATOR_NOT_IMPLEMENTED;
+            r=a.carrier?a:b;r.carrier=a.carrier||b.carrier;
+            if(op.operation==F_SUBTRACT&&!a.carrier){r.model.amplitude=-r.model.amplitude;r.model.amplitude_offset=-r.model.amplitude_offset;}
+            r.model.offset=a.model.offset+(op.operation==F_ADD?1:-1)*b.model.offset;
+            r.model.offset_value=a.model.offset_value+(op.operation==F_ADD?1:-1)*b.model.offset_value;
+            break;
+        case F_MULTIPLY:
+            if(a.carrier&&b.carrier)return CALCULATOR_NOT_IMPLEMENTED;
+            if(b.carrier){Cell swap=a;a=b;b=swap;}
+            if(b.model.offset!=0&&(a.model.amplitude!=0||a.model.offset!=0))return CALCULATOR_NOT_IMPLEMENTED;
+            r=a;r.model.amplitude=a.model.amplitude*b.model.offset_value+a.model.amplitude_offset*b.model.offset;
+            r.model.amplitude_offset=a.model.amplitude_offset*b.model.offset_value;
+            r.model.offset=a.model.offset*b.model.offset_value+a.model.offset_value*b.model.offset;
+            r.model.offset_value=a.model.offset_value*b.model.offset_value;
+            break;
+        case F_DIVIDE:
+            if(b.carrier||b.model.offset!=0||b.model.offset_value==0)return CALCULATOR_NOT_IMPLEMENTED;
+            r=a;scale=1/b.model.offset_value;break;
+        case F_SIN:case F_COS:
+            if(a.carrier||a.model.offset==0)return CALCULATOR_NOT_IMPLEMENTED;
+            r.carrier=true;r.model.amplitude_offset=1;
+            scale=program->context.angle_unit==CALCULATOR_ANGLE_DEGREES?0.017453292519943295:1;
+            r.model.phase=a.model.offset*scale;r.model.phase_offset=a.model.offset_value*scale;scale=1;
+            break;
+        default:
+            /* Constant-only operations may be folded; nonlinear amplitude,
+             * phase, clipping and domain-sensitive transformations are deferred. */
+            if(a.carrier||a.model.offset!=0||(binary&&(b.carrier||b.model.offset!=0)))return CALCULATOR_NOT_IMPLEMENTED;
+            switch(op.operation){
+            case F_SQUARE:r.model.offset_value=a.model.offset_value*a.model.offset_value;break;
+            case F_CUBE:r.model.offset_value=a.model.offset_value*a.model.offset_value*a.model.offset_value;break;
+            case F_POWER:r.model.offset_value=pow(a.model.offset_value,b.model.offset_value);break;
+            case F_EXP:r.model.offset_value=exp(a.model.offset_value);break;
+            case F_LN:if(a.model.offset_value<=0)return CALCULATOR_NOT_IMPLEMENTED;r.model.offset_value=log(a.model.offset_value);break;
+            case F_SQRT:if(a.model.offset_value<0)return CALCULATOR_NOT_IMPLEMENTED;r.model.offset_value=sqrt(a.model.offset_value);break;
+            case F_CBRT:r.model.offset_value=cbrt(a.model.offset_value);break;
+            case F_ABS:r.model.offset_value=fabs(a.model.offset_value);break;
+            default:return CALCULATOR_NOT_IMPLEMENTED;
+            }
+            break;
+        }
+        r.model.amplitude*=scale;r.model.amplitude_offset*=scale;r.model.offset*=scale;r.model.offset_value*=scale;
+        if(!isfinite(r.model.amplitude)||!isfinite(r.model.amplitude_offset)||!isfinite(r.model.offset)||!isfinite(r.model.offset_value)||!isfinite(r.model.phase)||!isfinite(r.model.phase_offset))return CALCULATOR_NOT_IMPLEMENTED;
+        stack[used++]=r;
+    }
+    if(used!=1U||!stack[0].carrier||(stack[0].model.amplitude==0&&stack[0].model.amplitude_offset==0))return CALCULATOR_NOT_IMPLEMENTED;
+    *result=stack[0].model;return CALCULATOR_OK;
+}
+
 /* Error propagation is a conservative fallback heuristic, not certified interval
  * arithmetic. Libm values are only for approximate screen-space plotting. */
 static ApplicationFastSample evaluate(const ApplicationFastExpression *program,double x,ApplicationFastProbe *probe,bool derive)

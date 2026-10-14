@@ -19,7 +19,44 @@ typedef struct Work {
 static bool real(const ApplicationFastGraphPoint *p){return p->kind==APPLICATION_GRAPH_REAL&&isfinite(p->y);}
 static CalculatorStatus probe(Work *work,double x,ApplicationFastProbe *result)
 {return work->screen_floor?application_fast_expression_probe_derivative(work->fast,x,result):application_fast_expression_probe(work->fast,x,result);}
-void application_fast_graph_destroy(ApplicationFastGraph *graph){if(graph){free(graph->points);free(graph);}}
+void application_fast_graph_destroy(ApplicationFastGraph *graph){if(graph){free(graph->points);free(graph->bands);free(graph);}}
+static CalculatorStatus dense_bands(Work *work,double minimum,double maximum,size_t width)
+{
+    ApplicationFastDenseModel model={0};
+    CalculatorStatus status=application_fast_expression_dense_model(work->fast,&model);
+    if(status==CALCULATOR_NOT_IMPLEMENTED)return CALCULATOR_OK;
+    if(status!=CALCULATOR_OK)return status;
+    const double turn=6.28318530717958647693;
+    double step=(maximum-minimum)/(double)width,phase_step=fabs(model.phase)*step;
+    if(!isfinite(phase_step)||phase_step<turn*(1+64*DBL_EPSILON))return CALCULATOR_OK;
+    work->graph->bands=numforge_calloc(width,sizeof(*work->graph->bands));
+    if(!work->graph->bands)return CALCULATOR_OUT_OF_MEMORY;
+    for(size_t i=0;i<width;++i){
+        if(!numforge_budget_check())return calculator_budget_status(CALCULATOR_OUT_OF_MEMORY);
+        double a=minimum+(maximum-minimum)*(double)i/(double)width;
+        double b=i+1U==width?maximum:minimum+(maximum-minimum)*(double)(i+1U)/(double)width;
+        double pa=fma(model.phase,a,model.phase_offset),pb=fma(model.phase,b,model.phase_offset);
+        if(b<=a||!isfinite(pa)||!isfinite(pb)||fmax(fabs(pa),fabs(pb))>1e6||fabs(pb-pa)<turn*(1+64*DBL_EPSILON))continue;
+        double aa=fma(model.amplitude,a,model.amplitude_offset),ab=fma(model.amplitude,b,model.amplitude_offset);
+        double ya=fma(model.offset,a,model.offset_value),yb=fma(model.offset,b,model.offset_value);
+        double amplitude=fmax(fabs(aa),fabs(ab));
+        double low=nextafter(fmin(ya,yb)-amplitude,-INFINITY),high=nextafter(fmax(ya,yb)+amplitude,INFINITY);
+        if(!isfinite(aa)||!isfinite(ab)||!isfinite(ya)||!isfinite(yb)||!isfinite(low)||!isfinite(high)||low>high)continue;
+        work->graph->bands[work->graph->band_count++]=(ApplicationFastGraphBand){a,b,low,high};
+    }
+    return CALCULATOR_OK;
+}
+static bool band_covered(const ApplicationFastGraph *graph,double low,double high)
+{
+    size_t left=0,right=graph->band_count;
+    while(left<right){size_t middle=left+(right-left)/2;if(graph->bands[middle].high<=low)left=middle+1U;else right=middle;}
+    double end=low;
+    for(size_t i=left;i<graph->band_count&&end<high;++i){
+        if(graph->bands[i].low>end)return false;
+        end=fmax(end,graph->bands[i].high);
+    }
+    return end>=high;
+}
 static CalculatorStatus project(const BigDecimal *number,double *value)
 {
     char *text=NULL;CalculatorStatus status=calculator_from_decimal_status(bigdecimal_format_mode(number,
@@ -82,9 +119,12 @@ static CalculatorStatus refine(Work *work)
     for(size_t i=0;i<pending;++i)queue[i]=(Interval){i,0};
     while(pending){
         ApplicationFastGraph *graph=work->graph;
-        if(graph->count>=work->limit||numforge_budget_available_bytes()<3U*1024U*1024U||numforge_budget_available_ms()<300U){graph->limited=true;break;}
         Interval interval=queue[head];head=(head+1U)%work->limit;--pending;
         size_t left=interval.left;ApplicationFastGraphPoint a=graph->points[left],c=graph->points[left+1U],b={0};
+        /* A separately classified envelope covers dense continuous detail.
+         * Never promote its boundaries into accepted point connections. */
+        if(band_covered(graph,a.x,c.x))continue;
+        if(graph->count>=work->limit||numforge_budget_available_bytes()<3U*1024U*1024U||numforge_budget_available_ms()<300U){graph->limited=true;break;}
         double middle=a.x+(c.x-a.x)/2;if(middle<=a.x||middle>=c.x||interval.depth>=16U){graph->limited=true;continue;}
         ApplicationFastProbe ap={0},bp={0},cp={0};
         status=probe(work,a.x,&ap);
@@ -168,13 +208,13 @@ static CalculatorStatus stationary(Work *work)
     }
     return CALCULATOR_OK;
 }
-CalculatorStatus application_fast_graph_sample_view(ApplicationFastGraph **result,const char *input,const char *parameter,
-    double minimum,double maximum,size_t width,size_t height,double vertical_span,bool coarse,const CalculatorSession *session,
+CalculatorStatus application_fast_graph_sample_view_dense(ApplicationFastGraph **result,const char *input,const char *parameter,
+    double minimum,double maximum,size_t width,size_t height,double vertical_span,bool coarse,bool dense,const CalculatorSession *session,
     const CalculatorContext *context,CalculatorError *error)
 {
     calculator_error_clear(error);
     if(!result||!input||!context){calculator_error_set(error,CALCULATOR_NULL_ARGUMENT,0U);return CALCULATOR_NULL_ARGUMENT;}
-    if(!isfinite(minimum)||!isfinite(maximum)||maximum<=minimum||!isfinite(vertical_span)||vertical_span<0||width<320U||width>2048U||height<160U||height>1200U)return CALCULATOR_INVALID_ARGUMENT;
+    if(!isfinite(minimum)||!isfinite(maximum)||maximum<=minimum||!isfinite(vertical_span)||vertical_span<0||(dense&&vertical_span==0)||width<320U||width>2048U||height<160U||height>1200U)return CALCULATOR_INVALID_ARGUMENT;
     if(!isfinite(maximum-minimum))return CALCULATOR_NOT_IMPLEMENTED;
     if(maximum-minimum<fmax(fabs(minimum),fabs(maximum))*DBL_EPSILON*256)return CALCULATOR_NOT_IMPLEMENTED;
     CalculatorStatus status=calculator_context_validate(context,error);if(status!=CALCULATOR_OK)return status;
@@ -192,6 +232,7 @@ CalculatorStatus application_fast_graph_sample_view(ApplicationFastGraph **resul
         if(real(&work.graph->points[i])){double y=work.graph->points[i].y;low=isnan(low)?y:fmin(low,y);high=isnan(high)?y:fmax(high,y);}
     }
     if(status==CALCULATOR_OK&&uncertain>16U)status=CALCULATOR_NOT_IMPLEMENTED;
+    if(status==CALCULATOR_OK&&dense&&work.screen_floor)status=dense_bands(&work,minimum,maximum,width);
     if(status==CALCULATOR_OK){
         work.graph->minimum=low;work.graph->maximum=high;
         memcpy(work.graph->parameter,application_expression_parameter(work.exact),strlen(application_expression_parameter(work.exact))+1U);
@@ -212,6 +253,12 @@ CalculatorStatus application_fast_graph_sample_view(ApplicationFastGraph **resul
     if(status==CALCULATOR_OK)*result=work.graph;else{application_fast_graph_destroy(work.graph);calculator_error_set(error,status,error?error->offset:0U);}
     if(owner)numforge_budget_end();
     return status;
+}
+CalculatorStatus application_fast_graph_sample_view(ApplicationFastGraph **result,const char *input,const char *parameter,
+    double minimum,double maximum,size_t width,size_t height,double vertical_span,bool coarse,const CalculatorSession *session,
+    const CalculatorContext *context,CalculatorError *error)
+{
+    return application_fast_graph_sample_view_dense(result,input,parameter,minimum,maximum,width,height,vertical_span,coarse,false,session,context,error);
 }
 CalculatorStatus application_fast_graph_sample(ApplicationFastGraph **result,const char *input,const char *parameter,
     double minimum,double maximum,size_t width,size_t height,bool coarse,const CalculatorSession *session,

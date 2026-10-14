@@ -183,3 +183,14 @@ cancel obsolete refinement. Pole, domain, seam and cache-budget checks remain
 part of the graph suite.
 
 Cache/zoom comparison: [efficiency benchmark](benchmarks/GRAPH_CACHE_EFFICIENCY_2026_10_14.md).
+
+Dense-envelope checks in `graph_tests` cover independent sin/cos values,
+affine amplitude/trend ranges, unchanged false point flags, unsupported domains,
+every allocation failure, deadline atomicity and the opt-in HTTP contract.
+`graph-dense.spec.js` checks numeric containment, RAD/DEG, precision fallback,
+legacy output, pole exclusions, zoom transitions, locale/layout, colors,
+visibility, absent band coordinate values and malformed metadata. The multi-curve
+benchmark counts band and stroke layers together, and reports dense ranges
+separately from unresolved intervals.
+
+Measurements: [dense envelope benchmark](benchmarks/GRAPH_DENSE_ENVELOPES_2026_10_14.md), with HTTP and browser medians and limits.

@@ -7,6 +7,13 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Add optional bounded C pixel envelopes for dense single affine sin/cos carriers
+  with affine amplitude/trend. Keep original point flags and default HTTP output;
+  expose `dense=band` display metadata through the existing graph API. Render
+  translucent colored ranges, refine back to strokes on zoom, preserve cache,
+  visibility and expansion, and omit invented coordinate-inspector values.
+  Retain normal pole/domain/fallback handling for unsupported expressions.
+
 - Reuse accepted cached graph strokes as previews and request only refinement
   when the whole view is covered without unresolved detail. Retain useful
   resolution levels, prefer adequately refined tiles, combine prepared coverage

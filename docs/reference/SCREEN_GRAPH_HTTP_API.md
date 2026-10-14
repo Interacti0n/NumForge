@@ -19,6 +19,7 @@ Additional fields require `mode=fast`:
 | `quality` | `coarse`, `refined` | `refined` |
 | `interpolation` | `linear`, `hermite` (requires both y bounds) | `linear` |
 | `ymin`, `ymax` | Both finite decimal bounds with finite positive difference | Seed-derived vertical scale |
+| `dense` | `band` (requires both y bounds) | No envelopes |
 
 When supplied together, `ymin` and `ymax` define the visible vertical span used
 for pixel error estimates. They do not discard samples outside the camera or
@@ -57,6 +58,40 @@ unchanged. Slopes are omitted if they would exceed the response bound; schema 2
 fallback also omits them. Clients must support linear drawing when slopes are
 absent/null. Slopes do not authorize connections across a false `connect` flag.
 This is drawing metadata, not a public symbolic differentiation API.
+
+## Optional dense-oscillation envelopes
+
+With `dense=band`, supported schema 3 results may include
+`dense_representation:"pixel-envelope"` and `bands`. Each band is
+`[x_min, x_max, y_min, y_max]` with four finite JSON numbers, ordered in x,
+non-overlapping, and at most `width` bands (maximum 2048). They describe an
+approximate range of possible ordinates across one requested pixel column;
+they are not points, edges, exact local extrema or a certified error enclosure.
+Point rows and connection flags are unchanged. `y_min`/`y_max` at the top level
+remain sampled-point extrema and do not include envelope bounds.
+
+The C bytecode recognizes a single affine sin/cos carrier with affine amplitude
+and trend: `(a*x+b)*sin/cos(k*x+c) + d*x+e`. Constants, arithmetic, constant-only
+operations and nonzero constant division can form those coefficients. Several
+carrier occurrences, variable denominators, tangent, nonlinear phase/amplitude,
+clipping and domain-sensitive outer transformations retain ordinary sampling.
+Examples include `sin(1000x)`, `2-3*cos(1000x+0.3)`, `x*sin(1000x)+2` and
+`sin(1000x)+x`. Parameter inference and requested RAD/DEG are retained.
+
+A column needs at least a full affine phase turn, with a small numerical margin;
+phase endpoints must stay within the fast evaluator's existing ±1e6-radian range.
+The amplitude/trend endpoint ranges produce the approximate band bounds. A
+varying amplitude/trend can overestimate the values actually attained in that
+column. Floating coefficients and rounding remain approximate; this is not
+public interval arithmetic. Unsupported or mostly uncertain expressions keep
+the precision fallback, which has no bands. The option never relaxes point
+connection, pole or domain guards.
+
+Band-covered seed/refinement intervals do not consume more midpoint samples
+or become accepted chords. Other intervals retain the normal bounded sampler.
+`limited` reports unresolved sampling work, not the presence of a recognized
+band. Clients requesting bands must interpret their separate representation;
+legacy requests without the option retain their original point results.
 
 ## Sampling and budgets
 
@@ -104,7 +139,7 @@ resource failure returns no partial success.
 
 ## Browser refinement
 
-The web requests Hermite slopes and draws shape-preserving cubic segments from
+The web requests Hermite slopes and optional dense bands, and draws shape-preserving cubic segments from
 accepted adjacent C samples when their projected horizontal spacing exceeds one
 pixel. Tangents are limited to keep interpolation inside the endpoint ordinates;
 missing/nonfinite slopes, equal ordinates and subpixel segments use straight
@@ -147,8 +182,8 @@ row's results. Foreground requests are serialized with priority over background
 preparation; each request has its own original budget, not one shared five-second
 budget across all four functions. A color change only repaints its own layer.
 
-Cache bounds per function are 12 ranges / 12288 points / 8 MiB estimated weight
-(up to 48 ranges / 49152 points / 32 MiB for four functions). Eviction
+Cache bounds per function are 12 ranges / 12288 point-or-band records / 8 MiB estimated weight
+(up to 48 ranges / 49152 records / 32 MiB for four functions). Eviction
 prefers off-screen/coarse data over the current fine view. Dense partial jobs
 replace the whole viewport so needed tiles are not evicted mid-composition.
 Coarse entries cannot satisfy a final cache hit or discard a useful refined
@@ -186,3 +221,13 @@ empty-area dragging retain normal camera sampling behavior.
 The multi-function UI counts accepted connections intersecting the camera. A
 numeric sample set without accepted visible edges is not counted as a plotted
 function; this does not change HTTP schemas or numerical acceptance rules.
+
+Dense ranges use the curve color with a translucent fill and an explicit SK/EN
+message. Zooming refines them into accepted strokes; band cache hits require
+at least the current horizontal density. Color/visibility/expanded-view controls
+apply equally. Coordinate inspection never assigns a single y value to a band.
+Bands count as displayed functions, separately identified in the status. A
+subpixel-height band paints a one-pixel trace clipped to the camera, without
+changing its numeric bounds. Entirely off-screen bands are omitted. Each
+point costs 256 bytes and each band 128 bytes in conservative cache accounting,
+in addition to twice the response text size; these weights are not heap sizes.

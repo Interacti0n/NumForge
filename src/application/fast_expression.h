@@ -20,6 +20,14 @@ typedef struct ApplicationFastProbe {
     double phases[64];int phase_kinds[64];
     ApplicationFastGuard guards[64];bool complete;
 } ApplicationFastProbe;
+/* Restricted continuous display model: (amplitude*x + amplitude_offset) *
+ * sin/cos(phase*x + phase_offset) + offset*x + offset_value. Unsupported trees
+ * keep ordinary sampling. This is approximate metadata, not interval proof. */
+typedef struct ApplicationFastDenseModel {
+    double amplitude,amplitude_offset,offset,offset_value,phase,phase_offset;
+} ApplicationFastDenseModel;
+CalculatorStatus application_fast_expression_dense_model(const ApplicationFastExpression *expression,
+    ApplicationFastDenseModel *result);
 CalculatorStatus application_expression_fast_compile(ApplicationFastExpression **result,
     const ApplicationExpression *expression, CalculatorError *error);
 void application_fast_expression_destroy(ApplicationFastExpression *expression);

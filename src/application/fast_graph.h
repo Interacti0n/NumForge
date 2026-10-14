@@ -6,8 +6,10 @@ typedef struct ApplicationFastGraphPoint {
     double x,y;ApplicationGraphPointKind kind;bool connect,approximate;
     double derivative;
 } ApplicationFastGraphPoint;
+typedef struct ApplicationFastGraphBand {double low,high,minimum,maximum;} ApplicationFastGraphBand;
 typedef struct ApplicationFastGraph {
     ApplicationFastGraphPoint *points;size_t count,exact_probes;
+    ApplicationFastGraphBand *bands;size_t band_count;
     double minimum,maximum;bool limited;
     char parameter[CALCULATOR_VARIABLE_NAME_BYTES+1U];
 } ApplicationFastGraph;
@@ -23,5 +25,11 @@ CalculatorStatus application_fast_graph_sample_view(ApplicationFastGraph **resul
     const char *input,const char *parameter,double minimum,double maximum,
     size_t width,size_t height,double vertical_span,bool coarse,const CalculatorSession *session,
     const CalculatorContext *context,CalculatorError *error);
+/* Optional approximate pixel envelopes for a restricted single affine sin/cos
+ * carrier. Existing point connection flags remain unchanged and independent. */
+CalculatorStatus application_fast_graph_sample_view_dense(ApplicationFastGraph **result,
+    const char *input,const char *parameter,double minimum,double maximum,
+    size_t width,size_t height,double vertical_span,bool coarse,bool dense,
+    const CalculatorSession *session,const CalculatorContext *context,CalculatorError *error);
 void application_fast_graph_destroy(ApplicationFastGraph *graph);
 #endif

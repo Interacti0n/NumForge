@@ -92,7 +92,9 @@ documented HTTP contract alongside the web implementation, using the versioned
    a shared function library, an expanded canvas and cached coordinate inspection.
    Visible-first sampling, reusable resolution levels and accepted cached previews
    reduce repeated work; missing/gapped views keep coarse/refined sampling.
-   Next: deliberate dense-oscillation display, longer interaction/memory checks,
+   Restricted single-carrier dense oscillations now have a separate approximate
+   envelope display; broader carrier/domain support remains future work.
+   Next: longer interaction/memory checks,
    clearer messages and saved/exported graph configurations. Adaptive refinement
    and connection flags remain heuristics, not continuity proofs.
 3. Add real linear/quadratic equation solving, then bounded numerical root
