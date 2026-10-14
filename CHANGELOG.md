@@ -7,6 +7,14 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Prioritize visible parts of domain-sensitive graph functions by deferring
+  guarded off-screen refinement without joining edges. Add optional
+  `screen_clipped` metadata and y-aware cache reuse/resampling. Keep confirmed
+  complex/domain seeds from triggering unnecessary full precision fallback,
+  while preserving complex-to-real recovery. Distinguish off-screen, domain,
+  unresolved, quantity and numeric-range notes per function; add nested-log
+  pole, vertical-pan, allocation/deadline and numerical regressions.
+
 - Ignore floating-point cache-boundary tails after inverse graph zooms and allow
   resolution comparisons their arithmetic roundoff, preventing indistinguishable
   sample requests and spurious coordinate-range errors. Preserve accepted-edge

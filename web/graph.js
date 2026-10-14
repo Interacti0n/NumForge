@@ -13,12 +13,12 @@ function initGraph() {
         ready:'Enter a function and plot it.',busy:'Sampling…',network:'Cannot reach the server. Try again.',invalid:'The server returned invalid graph data.',
         range:'These coordinates cannot be distinguished in the browser’s numeric range. Adjust or reset the range.',column:'column',
         limited:'Some visible intervals could not be resolved. Zoom in for more detail.',ambiguous:'Use one variable, for example x or t.',
-        dense:'Dense oscillations shown as an approximate range. Zoom in to see the curve.',noStroke:'No visible curve segments in this view.',hidden:'All functions are hidden.',hide:'Hide function',show:'Show function',function:'Function',color:'Curve color',remove:'Remove function',expand:'Expand graph',collapse:'Return to page',unavailable:'Function catalogue unavailable. Try reopening this page.',noMatch:'No matching function. Try another name.'
+        dense:'Dense oscillations shown as an approximate range. Zoom in to see the curve.',noStroke:'No connected curve could be resolved here. Zoom in for more detail.',noReal:'No real-valued points found in this x range. Try a different range.',outside:'Curve is outside this view. Drag or zoom out to find it.',domain:'Parts outside the real domain are left empty.',numeric:'Values exceed the browser’s plotting range. Adjust the view.',hidden:'All functions are hidden.',hide:'Hide function',show:'Show function',function:'Function',color:'Curve color',remove:'Remove function',expand:'Expand graph',collapse:'Return to page',unavailable:'Function catalogue unavailable. Try reopening this page.',noMatch:'No matching function. Try another name.'
     }:{
         ready:'Zadaj funkciu a vykresli ju.',busy:'Počítam body…',network:'Server nie je dostupný. Skús to znova.',invalid:'Server vrátil neplatné údaje grafu.',
         range:'Tieto súradnice prehliadač nedokáže rozlíšiť vo svojom číselnom rozsahu. Uprav rozsah alebo obnov pohľad.',column:'pozícia',
         limited:'Niektoré viditeľné úseky sa nepodarilo rozlíšiť. Priblíž graf pre viac detailov.',ambiguous:'Použi jednu premennú, napríklad x alebo t.',
-        dense:'Husté oscilácie sú zobrazené ako približný rozsah. Priblíž graf pre jednotlivé vlny.',noStroke:'V tomto pohľade nie sú viditeľné úseky kriviek.',hidden:'Všetky funkcie sú skryté.',hide:'Skryť funkciu',show:'Zobraziť funkciu',function:'Funkcia',color:'Farba krivky',remove:'Odstrániť funkciu',expand:'Rozšíriť graf',collapse:'Vrátiť na stránku',unavailable:'Katalóg funkcií nie je dostupný. Skús znovu otvoriť stránku.',noMatch:'Žiadna funkcia sa nenašla. Skús iný názov.'
+        dense:'Husté oscilácie sú zobrazené ako približný rozsah. Priblíž graf pre jednotlivé vlny.',noStroke:'Tu sa nepodarilo rozlíšiť súvislú krivku. Priblíž graf pre viac detailov.',noReal:'V tomto rozsahu x sa nenašli reálne body. Skús iný rozsah.',outside:'Krivka je mimo tohto pohľadu. Posuň graf alebo ho oddiaľ.',domain:'Časti mimo reálnej domény sa nevykresľujú.',numeric:'Hodnoty presahujú číselný rozsah grafu v prehliadači. Uprav pohľad.',hidden:'Všetky funkcie sú skryté.',hide:'Skryť funkciu',show:'Zobraziť funkciu',function:'Funkcia',color:'Farba krivky',remove:'Odstrániť funkciu',expand:'Rozšíriť graf',collapse:'Vrátiť na stránku',unavailable:'Katalóg funkcií nie je dostupný. Skús znovu otvoriť stránku.',noMatch:'Žiadna funkcia sa nenašla. Skús iný názov.'
     };
     const errors=english?{'undefined answer':'Graphs do not use calculator ans.'}:{'division by zero':'Delenie nulou','undefined variable':'Nedefinovaná premenná','undefined answer':'Graf nepoužíva ans z kalkulačky','syntax error':'Chyba syntaxe','time limit exceeded':'Prekročený časový limit','invalid argument':'Neplatný argument'};
     function message(value,error=false){status.textContent=value;status.classList.toggle('error',error);}
@@ -47,11 +47,11 @@ function initGraph() {
     function syncStatus(){
         const allStates=curves.map(c=>c.state()),states=allStates.filter(s=>s.visible);
         root.toggleAttribute('aria-busy',states.some(s=>s.busy));if(root.hasAttribute('aria-busy'))root.setAttribute('aria-busy','true');
-        curves.forEach((c,i)=>{const s=allStates[i],node=c.row.querySelector('.graph-curve-status');node.hidden=!s.visible||curves.length===1||(!s.error&&!s.busy&&!s.message.includes(text.limited)&&!s.message.includes(text.dense));node.textContent=s.message;node.classList.toggle('error',s.error);});
+        curves.forEach((c,i)=>{const s=allStates[i],node=c.row.querySelector('.graph-curve-status');node.hidden=!s.visible||curves.length===1||(!s.error&&!s.busy&&!s.notice);node.textContent=s.message;node.classList.toggle('error',s.error);node.dataset.notice=s.notice;});
         if(!states.length){message(text.hidden);return;}
         if(states.length===1){message(states[0].message,states[0].error);return;}
-        const drawn=states.filter(hasVisibleStroke).length,failed=states.filter(s=>s.error).length,unresolved=states.filter(s=>s.message.includes(text.limited)).length,dense=states.filter(s=>visibleBands(s).length).length;
-        message(states.some(s=>s.busy)?text.busy:drawn?(english?`${drawn} ${drawn===1?'function':'functions'} plotted`:`Zobrazené funkcie: ${drawn}`)+(dense?(english?` · ${dense} as dense ranges`:` · husté oscilácie: ${dense}`):'')+(failed?(english?` · ${failed} failed`:` · s chybou: ${failed}`):'')+(unresolved?(english?` · ${unresolved} with unresolved detail`:` · s nevyriešeným detailom: ${unresolved}`):''):states.find(s=>s.error)?.message||(unresolved?text.limited:text.noStroke),!drawn&&failed>0);
+        const drawn=states.filter(hasVisibleStroke).length,failed=states.filter(s=>s.error).length,unresolved=states.filter(s=>s.notice==='limited').length,dense=states.filter(s=>visibleBands(s).length).length,other=states.filter(s=>s.notice&&!['limited','dense'].includes(s.notice)).length;
+        message(states.some(s=>s.busy||s.pendingView)?text.busy:drawn?(english?`${drawn} ${drawn===1?'function':'functions'} plotted`:`Zobrazené funkcie: ${drawn}`)+(dense?(english?` · ${dense} as dense ranges`:` · husté oscilácie: ${dense}`):'')+(failed?(english?` · ${failed} failed`:` · s chybou: ${failed}`):'')+(unresolved?(english?` · ${unresolved} with unresolved detail`:` · s nevyriešeným detailom: ${unresolved}`):'')+(other?(english?' · See function notes.':' · Pozri poznámky pri funkciách.'):''):states.find(s=>s.error)?.message||states.find(s=>s.notice)?.message||text.noStroke,!drawn&&failed>0);
     }
     // Serialize C requests; user-visible work takes priority over speculative tiles.
     const queue=[];let transmitting=false,foregroundBatches=0;
@@ -165,7 +165,7 @@ function initGraph() {
     function draw() {
         svg.querySelectorAll('.graph-drawing').forEach(el=>el.remove());
         const states=curves.filter(c=>c.state().visible).map(curve=>({curve,...curve.state()}));
-        for(const state of states)if(state.samples&&!state.pendingView)state.curve.message((state.approximate?'≈ ':'')+`y = f(${state.parameter})`+(visibleBands(state).length?' · '+text.dense:'')+(state.curve.visibleUnresolved()?' · '+text.limited:''));
+        for(const state of states)if(state.samples&&!state.pendingView&&!state.busy&&!state.error)state.curve.describe();
         let xs=viewport||bounds();
         for(const state of states)if(state.samples&&(state.chunks||[{points:state.samples}]).some(c=>c.points.some((p,i)=>p.nx===null||(i>0&&p.nx<=c.points[i-1].nx)))){state.curve.invalidData();draw();return;}
         // Scale before subtraction so finite extreme values cannot overflow.
@@ -264,8 +264,8 @@ function initGraph() {
         let generation=0,request=null,samples=null,bands=null,disposed=false,parameter='x',limited=false,pendingView=false,approximate=false,busy=false;
         let cache=[],cacheIdentity=null,chunks=null,prefetchTimer=null,prefetchRequest=null,prefetchToken=0,prefetchCamera=null,cacheMissing=[],cacheCovered=false;
         const prefetchAttempts=new Set(),maxPoints=8192,maxCachePoints=12288,maxCacheBytes=8*1024*1024;
-        let lastMessage=text.ready,lastError=false;
-        function message(value,error=false){if(lastMessage===value&&lastError===error)return;lastMessage=value;lastError=error;syncStatus();}
+        let lastMessage=text.ready,lastError=false,lastNotice='';
+        function message(value,error=false,notice=''){if(lastMessage===value&&lastError===error&&lastNotice===notice)return;lastMessage=value;lastError=error;lastNotice=notice;syncStatus();}
         function stopPrefetch(){++prefetchToken;clearTimeout(prefetchTimer);prefetchTimer=null;prefetchRequest?.abort();prefetchRequest=null;}
         function clearCache(){stopPrefetch();cache=[];cacheIdentity=null;prefetchCamera=null;prefetchAttempts.clear();}
         function invalidate(){++generation;request?.abort();request=null;busy=false;clearCache();samples=null;bands=null;chunks=null;pendingView=false;limited=false;parameter='x';message(text.ready);syncStatus();drawSoon();}
@@ -281,6 +281,7 @@ function initGraph() {
             }));
         }
         function decode(body) {
+            if(body.screen_clipped!==undefined&&(body.schema_version!==3||body.evaluation!=='double'||typeof body.screen_clipped!=='boolean'))throw Error(text.invalid);
             if(body.bands!==undefined&&(body.schema_version!==3||body.evaluation!=='double'||body.dense_representation!=='pixel-envelope'||!Array.isArray(body.bands)||body.bands.length>2048||body.bands.some((b,i)=>!Array.isArray(b)||b.length!==4||b.some(v=>!Number.isFinite(v))||b[0]>=b[1]||b[2]>b[3]||(i>0&&b[0]<body.bands[i-1][1]))))throw Error(text.invalid);
             const slopes=body.slopes;
             if(slopes!==undefined&&(body.schema_version!==3||!Array.isArray(slopes)||slopes.length!==body.count||slopes.some(s=>s!==null&&!Number.isFinite(s))))throw Error(text.invalid);
@@ -300,14 +301,14 @@ function initGraph() {
                 return {...point,nx,ny,derivative:slopes?.[i]??NaN,plottable:point.kind==='real'&&nx!==null&&ny!==null};
             });
             if(body.bands?.some(b=>b[0]<points[0].nx||b[1]>points.at(-1).nx))throw Error(text.invalid);
-            return {points,bands:body.bands||[],parameter:body.parameter,limited:body.limited,approximate:body.evaluation==='double',quality:body.quality||'refined',width:body.width,height:body.height};
+            return {points,bands:body.bands||[],screenClipped:body.screen_clipped===true,parameter:body.parameter,limited:body.limited,approximate:body.evaluation==='double',quality:body.quality||'refined',width:body.width,height:body.height};
         }
         async function fetchPlot(query,expression,signal,background=false) {
             const {response,payload,cost}=await transport(query,expression,signal,background);if(payload.length>512*1024)throw Error(text.invalid);
             const body=JSON.parse(payload);
             if(!response.ok||!body.ok)throw Error((body.code==='graph_parameter_ambiguous'?text.ambiguous:errors[body.status]||body.error||body.status||text.invalid)+(Number.isSafeInteger(body.column)?` · ${text.column} ${body.column}`:''));
             // Conservative cache weight, not an engine-specific heap measurement.
-            return {...decode(body),sampleWidth:Number(query.get('width'))||0,verticalSpan:Number(query.get('ymax'))-Number(query.get('ymin'))||0,cacheBytes:payload.length*2+body.points.length*256+(body.bands?.length||0)*128,cost,requestedLow:numeric(query.get('min')),requestedHigh:numeric(query.get('max'))};
+            return {...decode(body),sampleWidth:Number(query.get('width'))||0,verticalSpan:Number(query.get('ymax'))-Number(query.get('ymin'))||0,viewYLow:numeric(query.get('ymin')),viewYHigh:numeric(query.get('ymax')),cacheBytes:payload.length*2+body.points.length*256+(body.bands?.length||0)*128,cost,requestedLow:numeric(query.get('min')),requestedHigh:numeric(query.get('max'))};
         }
         function remember(entry) {
             let low=entry.points[0].nx,high=entry.points.at(-1).nx;
@@ -323,7 +324,7 @@ function initGraph() {
             // Keep useful resolution levels of the same interval. A coarse
             // preview must not discard a previously refined zoom level.
             const xStep=e=>e.span/(e.width||e.sampleWidth||1),yStep=e=>e.verticalSpan/(e.height||dimensions().height);
-            const dominates=(a,b)=>a.quality!=='coarse'&&!a.limited&&a.approximate===b.approximate&&xStep(a)<=xStep(b)&&yStep(a)<=yStep(b);
+            const dominates=(a,b)=>a.quality!=='coarse'&&!a.limited&&a.approximate===b.approximate&&(!a.screenClipped||(b.screenClipped&&coversY(a,b.viewYLow,b.viewYHigh)))&&xStep(a)<=xStep(b)&&yStep(a)<=yStep(b);
             const sameRange=cache.filter(e=>e.low===low&&e.high===high);
             if(sameRange.some(e=>dominates(e,entry)))return true;
             cache=cache.filter(e=>e.low!==low||e.high!==high||!dominates(entry,e));cache.push(entry);
@@ -399,8 +400,9 @@ function initGraph() {
             const {width,height}=dimensions(),sampleWidth=entry.width||entry.sampleWidth;
             const tolerance=entry.bands.length?1:1.25;
             const roundoff=1+Number.EPSILON*16;
-            return entry.quality!=='coarse'&&(!sampleWidth?entry.span<=(high-low)*4*roundoff:entry.span/sampleWidth<=(high-low)/width*tolerance*roundoff)&&(!entry.verticalSpan||entry.verticalSpan/(entry.height||height)<=(yHigh-yLow)/height*1.25*roundoff);
+            return coversY(entry,yLow,yHigh)&&entry.quality!=='coarse'&&(!sampleWidth?entry.span<=(high-low)*4*roundoff:entry.span/sampleWidth<=(high-low)/width*tolerance*roundoff)&&(!entry.verticalSpan||entry.verticalSpan/(entry.height||height)<=(yHigh-yLow)/height*1.25*roundoff);
         }
+        function coversY(entry,low,high){const epsilon=coverageEpsilon(low,high);return !entry.screenClipped||(entry.viewYLow!==null&&entry.viewYHigh!==null&&low>=entry.viewYLow-epsilon&&high<=entry.viewYHigh+epsilon);}
         function coverageEpsilon(low,high){return Math.max((high-low)*1e-12,Math.max(Math.abs(low),Math.abs(high))*Number.EPSILON*8);}
         function missingPrepared(low,high,viewLow,viewHigh,yLow,yHigh){
             const entries=cache.filter(e=>!e.limited&&resolutionReady(e,viewLow,viewHigh,yLow,yHigh)&&e.low<high&&e.high>low).sort((a,b)=>a.low-b.low);
@@ -522,7 +524,22 @@ function initGraph() {
         }
 
         const curve={id,row,input,color,plot,message,visibleUnresolved,
-            state:()=>({visible,samples,bands,chunks,parameter,limited,pendingView,approximate,busy,message:lastMessage,error:lastError}),
+            state:()=>({visible,samples,bands,chunks,parameter,limited,pendingView,approximate,busy,message:lastMessage,error:lastError,notice:lastNotice}),
+            describe(){
+                const state=curve.state(),[low,high]=bounds(),points=(chunks||[{points:samples}]).flatMap(c=>c.points.filter(p=>p.nx>=Math.max(low,c.low??low)&&p.nx<=Math.min(high,c.high??high)));
+                let notice='',detail='';
+                if(visibleUnresolved()){notice='limited';detail=text.limited;}
+                else if(visibleBands(state).length){notice='dense';detail=text.dense;}
+                else if(!hasVisibleStroke(state)){
+                    if(points.some(p=>p.plottable)){const inside=points.some(p=>p.plottable&&p.ny>=yViewport[0]&&p.ny<=yViewport[1]);notice=inside?'disconnected':'outside';detail=inside?text.noStroke:text.outside;}
+                    else if(points.some(p=>p.kind==='real')){notice='numeric';detail=text.numeric;}
+                    else if(points.some(p=>p.kind==='unresolved')){notice='limited';detail=text.limited;}
+                    else if(points.some(p=>p.kind==='quantity')){notice='quantity';detail=english?'Values with units cannot be plotted on these axes.':'Hodnoty s jednotkami sa na tomto grafe nezobrazujú.';}
+                    else{notice='no-real';detail=text.noReal;}
+                }else if(points.some(p=>['complex','domain_error','quantity'].includes(p.kind))){notice='domain';detail=text.domain;}
+                message((approximate?'≈ ':'')+`y = f(${parameter})`+(detail?' · '+detail:''),false,notice);
+            },
+            needsVerticalView(){return visible&&(busy||pendingView||!!samples&&!showCached(...bounds(),false));},
             invalidData(){samples=null;bands=null;chunks=null;pendingView=false;message(text.range,true);},
             cameraChanged(){if(!visible)return;++generation;request?.abort();request=null;busy=false;stopPrefetch();pendingView=!!input.value.trim();const hit=showCached(...bounds(),false);if(!hit)message(input.value.trim()?text.busy:text.ready);syncStatus();},
             setVisible(value){
@@ -558,7 +575,7 @@ function initGraph() {
         if(high-low<Math.max(1,Math.abs(low),Math.abs(high))*1e-8||yHigh-yLow<Math.max(1,Math.abs(yLow),Math.abs(yHigh))*1e-8){message(text.range,true);return;}
         const old=bounds(),verticalOnly=(yLow!==yViewport[0]||yHigh!==yViewport[1])&&low===old[0]&&high===old[1]&&Math.abs((yHigh-yLow)-(yViewport[1]-yViewport[0]))<=(yHigh-yLow)*1e-12;
         clearInspection();yViewport=[yLow,yHigh];
-        if(verticalOnly){drawSoon();return;}
+        if(verticalOnly){const changed=curves.filter(c=>c.needsVerticalView());if(changed.length){changed.forEach(c=>c.cameraChanged());scheduleView();}drawSoon();return;}
         viewport=[low,high];
         curves.forEach(curve=>curve.cameraChanged());drawSoon();save();scheduleView();
     }

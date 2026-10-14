@@ -201,6 +201,18 @@ camera, not isolated numeric samples. Valid sampled values alone can leave an
 unresolved function without a displayed stroke. Single-function detail and gap
 warnings retain the same meaning.
 
+Notes distinguish a curve outside the current view, no sampled real values,
+unresolved detail, unit-valued results and browser numeric projection limits.
+Domain notes explain why parts are empty; they are not parser failures. Each
+function keeps its own note in a multi-function plot. Dense oscillation ranges
+retain their separate zoom hint.
+
+Camera-aware sampling can defer difficult off-screen refinement without joining
+its edges. Moving vertically into those regions requests fresh C samples;
+ordinary fully sampled curves still reproject directly from cache. For example,
+the conventional real-domain expression `1/ln(ln(sqrt(x)))^2` starts at x>1
+and has a pole at e²: its two branches must stay separate.
+
 Fast refined requests use at most 8192 points; precision fallback uses at most
 2048. Unprepared settled moves display coarse data before adding detail. When
 accepted cached strokes already cover the view without visible unresolved gaps,

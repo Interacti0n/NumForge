@@ -271,12 +271,14 @@ static ApplicationFastSample evaluate(const ApplicationFastExpression *program,d
         break;
         case F_LN:
             if(av<=0){r.kind=av<-8*a.error?APPLICATION_FAST_NON_REAL:APPLICATION_FAST_UNCERTAIN;
+            if(probe&&r.kind==APPLICATION_FAST_NON_REAL)probe->non_real_intermediate=true;
         break;}
             if(av<=8*a.error){r.kind=APPLICATION_FAST_UNCERTAIN;
         break;}r.value=log(av);r.error=a.error/av;
         break;
         case F_SQRT:
             if(av<0){r.kind=av<-8*a.error?APPLICATION_FAST_NON_REAL:APPLICATION_FAST_UNCERTAIN;
+            if(probe&&r.kind==APPLICATION_FAST_NON_REAL)probe->non_real_intermediate=true;
         break;}
             if(av<=8*a.error&&a.error!=0){r.kind=APPLICATION_FAST_UNCERTAIN;
         break;}r.value=sqrt(av);r.error=r.value?a.error/(2*r.value):0;

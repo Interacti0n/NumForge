@@ -249,7 +249,7 @@ static CalculatorStatus graph_request(ApplicationClientStore *store, const char 
     if(!fast_mode&&(query->seen&(BIT(WIDTH)|BIT(HEIGHT)|BIT(QUALITY)|BIT(YMINIMUM)|BIT(YMAXIMUM)|BIT(INTERPOLATION)|BIT(DENSE))))return CALCULATOR_INVALID_ARGUMENT;
     bool hermite=(query->seen&BIT(INTERPOLATION))&&strcmp(query->values[INTERPOLATION],"hermite")==0;
     if((query->seen&BIT(INTERPOLATION))&&!hermite&&strcmp(query->values[INTERPOLATION],"linear")!=0)return CALCULATOR_INVALID_ARGUMENT;
-    double vertical_span=0;
+    double vertical_span=0,camera_low=0,camera_high=0;
     bool dense=(query->seen&BIT(DENSE))!=0U;
     if(dense&&(strcmp(query->values[DENSE],"band")!=0||!(query->seen&BIT(YMINIMUM))||!(query->seen&BIT(YMAXIMUM))))return CALCULATOR_INVALID_ARGUMENT;
     if(hermite&&(!(query->seen&BIT(YMINIMUM))||!(query->seen&BIT(YMAXIMUM))))return CALCULATOR_INVALID_ARGUMENT;
@@ -258,6 +258,7 @@ static CalculatorStatus graph_request(ApplicationClientStore *store, const char 
         double low,high;
         if(!camera_bound(query->values[YMINIMUM],&low)||!camera_bound(query->values[YMAXIMUM],&high)||high<=low||!isfinite(high-low))return CALCULATOR_INVALID_ARGUMENT;
         vertical_span=high-low;
+        camera_low=low;camera_high=high;
     }
     if(!number(query,WIDTH,800U,&width)||width<320U||width>2048U||!number(query,HEIGHT,440U,&height)||height<160U||height>1200U)return CALCULATOR_INVALID_ARGUMENT;
     bool coarse=(query->seen&BIT(QUALITY))&&strcmp(query->values[QUALITY],"coarse")==0;
@@ -296,7 +297,9 @@ static CalculatorStatus graph_request(ApplicationClientStore *store, const char 
         bool usable=errno!=ERANGE&&isfinite(low)&&end!=query->values[MINIMUM]&&*end=='\0';
         errno=0;double high=strtod(query->values[MAXIMUM],&end);usable=usable&&errno!=ERANGE&&isfinite(high)&&end!=query->values[MAXIMUM]&&*end=='\0';
         ApplicationFastGraph *fast=NULL;
-        if(usable&&high>low)status=application_fast_graph_sample_view_dense(&fast,body,parameter,low,high,(size_t)width,(size_t)height,vertical_span,coarse,dense,session,&context,error);
+        if(usable&&high>low)status=vertical_span>0?
+            application_fast_graph_sample_camera(&fast,body,parameter,low,high,(size_t)width,(size_t)height,camera_low,camera_high,coarse,dense,session,&context,error):
+            application_fast_graph_sample_view_dense(&fast,body,parameter,low,high,(size_t)width,(size_t)height,0,coarse,dense,session,&context,error);
         else status=CALCULATOR_NOT_IMPLEMENTED;
         if(status==CALCULATOR_OK){
             json.capacity=FAST_GRAPH_RESPONSE_CAPACITY;json.data=numforge_malloc(json.capacity);
@@ -312,6 +315,7 @@ static CalculatorStatus graph_request(ApplicationClientStore *store, const char 
                     append(&json,",%u,%u,%u]",p->connect?1U:0U,(unsigned)p->kind,p->approximate?1U:0U);
                 }
                 append(&json,"]");
+                if(fast->screen_clipped)append(&json,",\"screen_clipped\":true");
                 if(fast->band_count){
                     append(&json,",\"dense_representation\":\"pixel-envelope\",\"bands\":[");
                     for(size_t i=0;i<fast->band_count&&json.status==CALCULATOR_OK;++i){const ApplicationFastGraphBand *band=&fast->bands[i];

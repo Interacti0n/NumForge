@@ -230,3 +230,16 @@ invent accepted connections.
 
 Recorded workloads, results and limitations:
 [sustained graph stability](benchmarks/GRAPH_STABILITY_2026_10_14.md).
+
+Domain/pole view regressions in `graph-domain.spec.js` check the nested-log
+reciprocal against independent visible-value and chord references, both branches,
+domain/pole separation, complex-to-real fallback, typed notes in both languages,
+y-only refinement without recalculating fully sampled siblings, and malformed
+clipping metadata. `graph_tests` also checks allocation/deadline atomicity of the
+full-camera path. Globally smooth screen-floor connections must remain intact.
+
+The HTTP diagnostic supports `--suite domains` to compare nested logarithms,
+tan/reciprocal poles and unchanged cubic/sine/envelope controls. It retains raw
+JSON for independent Decimal checks and measures three repetitions per case;
+the default `--suite dense` behavior remains available.
+Results: [domain-sensitive graph views](benchmarks/GRAPH_DOMAIN_VIEWS_2026_10_15.md).

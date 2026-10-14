@@ -45,7 +45,8 @@ test('covered viewport reuses accepted cached preview before refinement and canc
  await expect(page.locator('path.graph-line')).toHaveCount(0);
 });
 test('dense screen samples render without a point table',async({page})=>{
- await page.goto('/graph?lang=en');const data=await sample(page,'tan(x)');expect(data.count).toBeGreaterThan(1024);expect(data.count).toBeLessThanOrEqual(8192);
+ await page.goto('/graph?lang=en');const data=await sample(page,'tan(x)');expect(data.count).toBeGreaterThan(32);expect(data.count).toBeLessThanOrEqual(8192);
+ if(data.screen_clipped)expect(data.count).toBeLessThan(1024);
  await expect(page.locator('path.graph-line')).toBeVisible();
  expect(await page.locator('#graph-plot').evaluate(svg=>/NaN|Infinity/.test(svg.innerHTML))).toBe(false);
  await expect(page.locator('#graph-values,#graph-table-body')).toHaveCount(0);

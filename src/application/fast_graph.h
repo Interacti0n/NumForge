@@ -10,7 +10,7 @@ typedef struct ApplicationFastGraphBand {double low,high,minimum,maximum;} Appli
 typedef struct ApplicationFastGraph {
     ApplicationFastGraphPoint *points;size_t count,exact_probes;
     ApplicationFastGraphBand *bands;size_t band_count;
-    double minimum,maximum;bool limited;
+    double minimum,maximum;bool limited,screen_clipped;
     char parameter[CALCULATOR_VARIABLE_NAME_BYTES+1U];
 } ApplicationFastGraph;
 /* Approximate screen-space sampler, shared inherited budget and atomic output.
@@ -32,4 +32,10 @@ CalculatorStatus application_fast_graph_sample_view_dense(ApplicationFastGraph *
     size_t width,size_t height,double vertical_span,bool coarse,bool dense,
     const CalculatorSession *session,const CalculatorContext *context,CalculatorError *error);
 void application_fast_graph_destroy(ApplicationFastGraph *graph);
+/* Full camera allows guarded off-screen refinement to be deferred. False edges
+ * remain false; screen_clipped results must be resampled for new y coverage. */
+CalculatorStatus application_fast_graph_sample_camera(ApplicationFastGraph **result,
+    const char *input,const char *parameter,double minimum,double maximum,
+    size_t width,size_t height,double y_minimum,double y_maximum,bool coarse,bool dense,
+    const CalculatorSession *session,const CalculatorContext *context,CalculatorError *error);
 #endif

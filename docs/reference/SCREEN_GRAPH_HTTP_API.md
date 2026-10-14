@@ -59,6 +59,13 @@ fallback also omits them. Clients must support linear drawing when slopes are
 absent/null. Slopes do not authorize connections across a false `connect` flag.
 This is drawing metadata, not a public symbolic differentiation API.
 
+With explicit y bounds, schema 3 may include `screen_clipped:true`. This means
+some off-screen refinement was deferred; their `connect` flags remain false.
+Absence/false means no such deferral. Clients must resample before using these
+gaps in a new y view outside the requested y bounds. It is separate from
+`limited`, which reports unresolved sampling, and from mathematical domain gaps.
+Point rows and legacy requests without camera bounds retain their contracts.
+
 ## Optional dense-oscillation envelopes
 
 With `dense=band`, supported schema 3 results may include
@@ -112,6 +119,20 @@ The horizontal floor is a display approximation and does not certify vertical
 interpolation error. Requests without camera bounds retain their old criterion.
 See the [connected-curve comparison](../benchmarks/GRAPH_CONNECTIONS_2026_10_13.md)
 for before/after work bounds and local HTTP measurements.
+
+For other ASTs, a parent up to eight horizontal pixels wide may stop refining
+when its three real probes are guarded, have finite slopes of the same sign,
+and all lie beyond the same y edge plus a tolerance margin. It accepts no new
+connections and sets `screen_clipped`; viewport-aware clients request those
+regions again if they become visible. Pole crossings, non-real/uncertain probes
+and possible sampled turning points retain refinement. This is a screen-space
+heuristic, not a proof that hidden extrema/discontinuities cannot exist.
+
+Exact probes continue to classify complex/domain results. Confirmed non-real
+seed values do not force the whole real portion into precision fallback. If a
+known non-real intermediate becomes a real final value, such as `abs(sqrt(x))`
+at negative x, the precision sampler remains necessary. Numeric uncertainty,
+resource errors and the shared five-second budget retain their original rules.
 
 Captured trig arguments limit hidden whole periods. Denominator/log/sqrt/power
 guards reject sampled domain crossings and tangent phase regions separate poles.

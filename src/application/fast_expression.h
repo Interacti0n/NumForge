@@ -18,7 +18,7 @@ typedef struct ApplicationFastProbe {
     double derivative; /* NAN when unavailable; does not invalidate sample. */
     size_t phase_count,guard_count;
     double phases[64];int phase_kinds[64];
-    ApplicationFastGuard guards[64];bool complete;
+    ApplicationFastGuard guards[64];bool complete,non_real_intermediate;
 } ApplicationFastProbe;
 /* Restricted continuous display model: (amplitude*x + amplitude_offset) *
  * sin/cos(phase*x + phase_offset) + offset*x + offset_value. Unsupported trees

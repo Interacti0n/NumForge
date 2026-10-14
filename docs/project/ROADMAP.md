@@ -95,8 +95,9 @@ documented HTTP contract alongside the web implementation, using the versioned
    Restricted single-carrier dense oscillations now have a separate approximate
    envelope display; broader carrier/domain support remains future work.
    [Sustained interaction/memory diagnostics](../benchmarks/GRAPH_STABILITY_2026_10_14.md)
-   are available; physical-phone checks,
-   clearer messages and saved/exported graph configurations remain next. Adaptive refinement
+   are available. [Domain-sensitive view refinement and per-function notes](../benchmarks/GRAPH_DOMAIN_VIEWS_2026_10_15.md)
+   are implemented; physical-phone checks and saved/exported graph configurations
+   remain next. Adaptive refinement
    and connection flags remain heuristics, not continuity proofs.
 3. Add real linear/quadratic equation solving, then bounded numerical root
    finding on a specified interval, with residuals and clear convergence limits.

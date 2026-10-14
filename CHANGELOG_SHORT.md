@@ -5,6 +5,8 @@ details and the [2.2.1 release record](docs/project/RELEASE_2_2_1.md) for valida
 
 ## Unreleased
 
+- Improve nested-log/pole graphs and vertical refinement; clarify per-function notes.
+
 - Fix graph cache errors after inverse zooms; test prolonged interactions and memory cleanup.
 
 - Show supported dense sin/cos oscillations as approximate colored ranges; zoom to reveal waves.

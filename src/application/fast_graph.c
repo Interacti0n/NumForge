@@ -14,7 +14,7 @@
 typedef struct Work {
     ApplicationFastGraph *graph;ApplicationExpression *exact;ApplicationFastExpression *fast;
     const CalculatorContext *context;CalculatorError *error;
-    double scale,tolerance,coarse_width;size_t limit;bool smooth,screen_floor;
+    double scale,tolerance,coarse_width,y_minimum,y_maximum;size_t limit;bool smooth,screen_floor,camera;
 } Work;
 static bool real(const ApplicationFastGraphPoint *p){return p->kind==APPLICATION_GRAPH_REAL&&isfinite(p->y);}
 static CalculatorStatus probe(Work *work,double x,ApplicationFastProbe *result)
@@ -140,9 +140,20 @@ static CalculatorStatus refine(Work *work)
         bool accepted=real(&a)&&real(&b)&&real(&c)&&safe(&ap,&bp,&cp,phase_limit)&&
             (short_smooth||fabs(b.y/work->scale-(a.y/work->scale+c.y/work->scale)/2)<=work->tolerance);
         bool empty=!real(&a)&&!real(&b)&&!real(&c);
+        // Spend detail on the visible curve. Monotone guarded probes in a small
+        // interval outside the camera may stop without accepting any edge.
+        // A changed y view must request fresh data before these gaps become visible.
+        double margin=work->tolerance*work->scale*2;
+        bool clipped=!accepted&&!work->smooth&&work->camera&&c.x-a.x<=8*work->coarse_width&&
+            real(&a)&&real(&b)&&real(&c)&&safe(&ap,&bp,&cp,0.5)&&
+            isfinite(a.derivative)&&isfinite(b.derivative)&&isfinite(c.derivative)&&
+            same_sign(a.derivative,b.derivative,c.derivative)&&
+            ((a.y>work->y_maximum+margin&&b.y>work->y_maximum+margin&&c.y>work->y_maximum+margin)||
+             (a.y<work->y_minimum-margin&&b.y<work->y_minimum-margin&&c.y<work->y_minimum-margin));
+        if(clipped)graph->screen_clipped=true;
         if(accepted){graph->points[left+1U].connect=true;graph->points[left+2U].connect=true;}
         for(size_t i=0;i<pending;++i)if(queue[(head+i)%work->limit].left>left)++queue[(head+i)%work->limit].left;
-        if(!accepted&&!empty){queue[(head+pending++)%work->limit]=(Interval){left,interval.depth+1U};queue[(head+pending++)%work->limit]=(Interval){left+1U,interval.depth+1U};}
+        if(!accepted&&!empty&&!clipped){queue[(head+pending++)%work->limit]=(Interval){left,interval.depth+1U};queue[(head+pending++)%work->limit]=(Interval){left+1U,interval.depth+1U};}
     }
     free(queue);return status;
 }
@@ -208,8 +219,8 @@ static CalculatorStatus stationary(Work *work)
     }
     return CALCULATOR_OK;
 }
-CalculatorStatus application_fast_graph_sample_view_dense(ApplicationFastGraph **result,const char *input,const char *parameter,
-    double minimum,double maximum,size_t width,size_t height,double vertical_span,bool coarse,bool dense,const CalculatorSession *session,
+static CalculatorStatus sample_view(ApplicationFastGraph **result,const char *input,const char *parameter,
+    double minimum,double maximum,size_t width,size_t height,double vertical_span,double y_minimum,double y_maximum,bool camera,bool coarse,bool dense,const CalculatorSession *session,
     const CalculatorContext *context,CalculatorError *error)
 {
     calculator_error_clear(error);
@@ -224,14 +235,20 @@ CalculatorStatus application_fast_graph_sample_view_dense(ApplicationFastGraph *
     if(status==CALCULATOR_OK){work.smooth=application_expression_graph_smooth(work.exact);status=application_expression_fast_compile(&work.fast,work.exact,error);if(status==CALCULATOR_INVALID_ARGUMENT)status=CALCULATOR_NOT_IMPLEMENTED;}
     if(status==CALCULATOR_OK){work.graph=numforge_calloc(1U,sizeof(*work.graph));if(!work.graph)status=CALCULATOR_OUT_OF_MEMORY;}
     if(status==CALCULATOR_OK){work.graph->points=numforge_calloc(work.limit,sizeof(*work.graph->points));if(!work.graph->points)status=CALCULATOR_OUT_OF_MEMORY;}
-    size_t uncertain=0;double low=NAN,high=NAN;
+    work.camera=camera;work.y_minimum=y_minimum;work.y_maximum=y_maximum;
+    size_t uncertain=0;double low=NAN,high=NAN;bool complex_recovery=false;
     for(size_t i=0;status==CALCULATOR_OK&&i<33U;++i){
         ApplicationFastProbe probe={0};double x=i==32U?maximum:minimum+(maximum-minimum)*(double)i/32;
         status=point(&work,x,&work.graph->points[i],&probe);if(status!=CALCULATOR_OK)break;
-        ++work.graph->count;if(probe.sample.kind==APPLICATION_FAST_UNCERTAIN)++uncertain;
+        ++work.graph->count;
+        ApplicationGraphPointKind kind=work.graph->points[i].kind;
+        // Confirmed complex/domain samples do not make the real portion
+        // numerically uncertain. Exact evaluation remains the classifier.
+        if(probe.sample.kind==APPLICATION_FAST_UNCERTAIN&&kind!=APPLICATION_GRAPH_COMPLEX&&kind!=APPLICATION_GRAPH_DOMAIN_ERROR)++uncertain;
+        if(probe.non_real_intermediate&&kind==APPLICATION_GRAPH_REAL)complex_recovery=true;
         if(real(&work.graph->points[i])){double y=work.graph->points[i].y;low=isnan(low)?y:fmin(low,y);high=isnan(high)?y:fmax(high,y);}
     }
-    if(status==CALCULATOR_OK&&uncertain>16U)status=CALCULATOR_NOT_IMPLEMENTED;
+    if(status==CALCULATOR_OK&&(uncertain>16U||complex_recovery))status=CALCULATOR_NOT_IMPLEMENTED;
     if(status==CALCULATOR_OK&&dense&&work.screen_floor)status=dense_bands(&work,minimum,maximum,width);
     if(status==CALCULATOR_OK){
         work.graph->minimum=low;work.graph->maximum=high;
@@ -253,6 +270,21 @@ CalculatorStatus application_fast_graph_sample_view_dense(ApplicationFastGraph *
     if(status==CALCULATOR_OK)*result=work.graph;else{application_fast_graph_destroy(work.graph);calculator_error_set(error,status,error?error->offset:0U);}
     if(owner)numforge_budget_end();
     return status;
+}
+CalculatorStatus application_fast_graph_sample_view_dense(ApplicationFastGraph **result,const char *input,const char *parameter,
+    double minimum,double maximum,size_t width,size_t height,double vertical_span,bool coarse,bool dense,const CalculatorSession *session,
+    const CalculatorContext *context,CalculatorError *error)
+{
+    return sample_view(result,input,parameter,minimum,maximum,width,height,vertical_span,0,0,false,coarse,dense,session,context,error);
+}
+CalculatorStatus application_fast_graph_sample_camera(ApplicationFastGraph **result,const char *input,const char *parameter,
+    double minimum,double maximum,size_t width,size_t height,double y_minimum,double y_maximum,bool coarse,bool dense,const CalculatorSession *session,
+    const CalculatorContext *context,CalculatorError *error)
+{
+    if(!isfinite(y_minimum)||!isfinite(y_maximum)||y_maximum<=y_minimum||!isfinite(y_maximum-y_minimum)){
+        calculator_error_set(error,CALCULATOR_INVALID_ARGUMENT,0U);return CALCULATOR_INVALID_ARGUMENT;
+    }
+    return sample_view(result,input,parameter,minimum,maximum,width,height,y_maximum-y_minimum,y_minimum,y_maximum,true,coarse,dense,session,context,error);
 }
 CalculatorStatus application_fast_graph_sample_view(ApplicationFastGraph **result,const char *input,const char *parameter,
     double minimum,double maximum,size_t width,size_t height,double vertical_span,bool coarse,const CalculatorSession *session,

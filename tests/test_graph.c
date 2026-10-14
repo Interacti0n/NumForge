@@ -495,9 +495,54 @@ static void test_dense_bands_allocation_deadline_and_http_contract(void)
         "/api/graph/plot?mode=fast&min=-10&max=10&ymin=-10&ymax=10&dense=curve","/api/graph/plot?mode=fast&min=-10&max=10&ymin=-10&ymax=10&dense=band&dense=band"};
     for(size_t i=0;i<4U;++i){TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,numforge_web_session_request(&store,"POST",invalid[i],"sin(1000x)",&response));free(response);response=NULL;}
 }
+static void test_camera_nested_log_domain_and_pole(void)
+{
+    CalculatorError error;const double pole=exp(2);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_graph_sample_camera(&screen_graph,"1/ln(ln(sqrt(x)))^2",NULL,-10,10,800U,440U,-10,10,false,false,NULL,&context,&error));
+    TEST_ASSERT_TRUE(screen_graph->screen_clipped);TEST_ASSERT_LESS_THAN(512U,screen_graph->count);
+    size_t visible_edges=0;
+    for(size_t i=0;i<screen_graph->count;++i){ApplicationFastGraphPoint p=screen_graph->points[i];
+        if(p.kind==APPLICATION_GRAPH_REAL){TEST_ASSERT_TRUE(p.x>1);double reference=1/pow(log(log(sqrt(p.x))),2);
+            TEST_ASSERT_TRUE(fabs(p.y-reference)<=fabs(reference)*1e-8+1e-12);
+        }
+        if(i&&p.connect){ApplicationFastGraphPoint a=screen_graph->points[i-1U];
+            TEST_ASSERT_TRUE(a.x>1);TEST_ASSERT_FALSE(a.x<pole&&p.x>pole);
+            double x=a.x+(p.x-a.x)/2,y=1/pow(log(log(sqrt(x))),2);
+            if(y<=10){++visible_edges;TEST_ASSERT_TRUE(fabs(y-(a.y+p.y)/2)*440/20<2);}
+        }
+    }
+    TEST_ASSERT_GREATER_THAN(8U,visible_edges);
+    application_fast_graph_destroy(screen_graph);screen_graph=NULL;
+    // A complex intermediate may become real. It needs the precision sampler,
+    // even when fewer than half of the seeds follow that complex path.
+    TEST_ASSERT_EQUAL(CALCULATOR_NOT_IMPLEMENTED,application_fast_graph_sample_camera(&screen_graph,"abs(sqrt(x))",NULL,-10,10,800U,440U,-10,10,false,false,NULL,&context,&error));
+    TEST_ASSERT_NULL(screen_graph);
+    char *response=NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,numforge_web_session_request(&store,"POST","/api/graph/plot?mode=fast&min=-10&max=10&ymin=-10&ymax=10","1/ln(ln(sqrt(x)))^2",&response));
+    TEST_ASSERT_NOT_NULL(strstr(response,"\"evaluation\":\"double\""));TEST_ASSERT_NOT_NULL(strstr(response,"\"screen_clipped\":true"));free(response);
+}
+static void test_camera_clipping_failure_and_deadline_are_atomic(void)
+{
+    CalculatorError error;
+    numforge_test_allocator_begin(0U);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_graph_sample_camera(&screen_graph,"1/(x-0.1)^2",NULL,-10,10,800U,440U,-10,10,false,false,NULL,&context,&error));
+    size_t calls=numforge_test_allocator_call_count();numforge_test_allocator_end();ApplicationFastGraph *original=screen_graph;
+    TEST_ASSERT_TRUE(screen_graph->screen_clipped);
+    for(size_t failure=1;failure<=calls;++failure){numforge_test_allocator_begin(failure);
+        TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY,application_fast_graph_sample_camera(&screen_graph,"1/(x-0.1)^2",NULL,-10,10,800U,440U,-10,10,false,false,NULL,&context,&error));
+        numforge_test_allocator_end();TEST_ASSERT_EQUAL_PTR(original,screen_graph);
+    }
+    TEST_ASSERT_TRUE(numforge_budget_begin(0U,SIZE_MAX,SIZE_MAX));
+    TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT,application_fast_graph_sample_camera(&screen_graph,"x*x",NULL,-10,10,800U,440U,-10,10,false,false,NULL,&context,&error));
+    numforge_budget_end();TEST_ASSERT_EQUAL_PTR(original,screen_graph);
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,application_fast_graph_sample_camera(&screen_graph,"x",NULL,-10,10,800U,440U,10,-10,false,false,NULL,&context,&error));
+    TEST_ASSERT_EQUAL_PTR(original,screen_graph);
+}
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_camera_nested_log_domain_and_pole);
+    RUN_TEST(test_camera_clipping_failure_and_deadline_are_atomic);
     RUN_TEST(test_dense_carrier_bands_values_and_domain_exclusions);
     RUN_TEST(test_dense_bands_allocation_deadline_and_http_contract);
     RUN_TEST(test_stationary_anchors_slopes_and_http_opt_in);
