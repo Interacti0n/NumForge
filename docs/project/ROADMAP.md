@@ -87,10 +87,14 @@ documented HTTP contract alongside the web implementation, using the versioned
    values. Typed batches share one budget and preserve calculator state.
    The [HTTP graph sampler](../reference/GRAPH_HTTP_API.md) now adds bounded exact
    uniform coordinates, plotting projections and point classifications.
-2. [Basic browser graphs](../guides/GRAPHS.md) now display sampled `y = f(x)`
-   adaptive curves with automatic parameters, axes, read-only snapshots and data.
-   Add pan/zoom, multiple curves and stronger discontinuity detection next.
-   Adaptive refinement and connection flags remain heuristics, not continuity proofs.
+2. [Browser graphs](../guides/GRAPHS.md) now display up to four colored `y = f(x)`
+   curves with inferred parameters, automatic sampling, pan/zoom, visibility,
+   a shared function library, an expanded canvas and cached coordinate inspection.
+   Visible-first sampling, reusable resolution levels and accepted cached previews
+   reduce repeated work; missing/gapped views keep coarse/refined sampling.
+   Next: deliberate dense-oscillation display, longer interaction/memory checks,
+   clearer messages and saved/exported graph configurations. Adaptive refinement
+   and connection flags remain heuristics, not continuity proofs.
 3. Add real linear/quadratic equation solving, then bounded numerical root
    finding on a specified interval, with residuals and clear convergence limits.
 4. Add session user functions, local parameters and definition management,

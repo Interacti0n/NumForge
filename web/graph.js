@@ -249,12 +249,12 @@ function initGraph() {
         let visible=row.querySelector('.graph-visibility').getAttribute('aria-pressed')!=='false',hiddenCamera=null,hiddenReady=false;
         const cameraKey=()=>JSON.stringify([bounds(),yViewport,dimensions()]);
         let generation=0,request=null,samples=null,disposed=false,parameter='x',limited=false,pendingView=false,approximate=false,busy=false;
-        let cache=[],cacheIdentity=null,chunks=null,prefetchTimer=null,prefetchRequest=null,prefetchToken=0,cacheMissing=[];
+        let cache=[],cacheIdentity=null,chunks=null,prefetchTimer=null,prefetchRequest=null,prefetchToken=0,prefetchCamera=null,cacheMissing=[],cacheCovered=false;
         const prefetchAttempts=new Set(),maxPoints=8192,maxCachePoints=12288,maxCacheBytes=8*1024*1024;
         let lastMessage=text.ready,lastError=false;
         function message(value,error=false){if(lastMessage===value&&lastError===error)return;lastMessage=value;lastError=error;syncStatus();}
         function stopPrefetch(){++prefetchToken;clearTimeout(prefetchTimer);prefetchTimer=null;prefetchRequest?.abort();prefetchRequest=null;}
-        function clearCache(){stopPrefetch();cache=[];cacheIdentity=null;prefetchAttempts.clear();}
+        function clearCache(){stopPrefetch();cache=[];cacheIdentity=null;prefetchCamera=null;prefetchAttempts.clear();}
         function invalidate(){++generation;request?.abort();request=null;busy=false;clearCache();samples=null;chunks=null;pendingView=false;limited=false;parameter='x';message(text.ready);syncStatus();drawSoon();}
         function visibleUnresolved() {
             if(!limited||!samples)return false;
@@ -305,7 +305,13 @@ function initGraph() {
                 if(near(low,a)&&near(high,b)){low=a;high=b;}
             }
             entry.low=low;entry.high=high;entry.span=high-low;
-            cache=cache.filter(e=>e.low!==low||e.high!==high);cache.push(entry);
+            // Keep useful resolution levels of the same interval. A coarse
+            // preview must not discard a previously refined zoom level.
+            const xStep=e=>e.span/(e.width||e.sampleWidth||1),yStep=e=>e.verticalSpan/(e.height||dimensions().height);
+            const dominates=(a,b)=>a.quality!=='coarse'&&!a.limited&&a.approximate===b.approximate&&xStep(a)<=xStep(b)&&yStep(a)<=yStep(b);
+            const sameRange=cache.filter(e=>e.low===low&&e.high===high);
+            if(sameRange.some(e=>dominates(e,entry)))return true;
+            cache=cache.filter(e=>e.low!==low||e.high!==high||!dominates(entry,e));cache.push(entry);
             while(cache.length>12||cache.reduce((n,e)=>n+e.points.length,0)>maxCachePoints||cache.reduce((n,e)=>n+e.cacheBytes,0)>maxCacheBytes){
                 const [a,b]=bounds();
                 let victim=cache.findIndex(e=>e.high<=a||e.low>=b);
@@ -329,14 +335,14 @@ function initGraph() {
             return [{...anchor,connect:false},...p.slice(next)];
         }
         function showCached(low,high,paint=true) {
-            cacheMissing=[[low,high]];
+            cacheMissing=[[low,high]];cacheCovered=false;
             const entries=cache.filter(e=>e.low<high&&e.high>low);
             if(!entries.length)return false;
             const stops=[...new Set([low,high,...entries.flatMap(e=>[Math.max(low,e.low),Math.min(high,e.high)])])].sort((a,b)=>a-b);
             const segments=[];let covered=true,ready=true;cacheMissing=[];
             const missing=(a,b)=>{const previous=cacheMissing.at(-1);if(previous&&previous[1]===a)previous[1]=b;else cacheMissing.push([a,b]);};
             for(let i=1;i<stops.length;++i) {
-                const a=stops[i-1],b=stops[i],entry=entries.filter(e=>e.low<=a&&e.high>=b).sort((x,y)=>x.span-y.span)[0];
+                const a=stops[i-1],b=stops[i],entry=entries.filter(e=>e.low<=a&&e.high>=b).sort((x,y)=>Number(resolutionReady(y,low,high))-Number(resolutionReady(x,low,high))||Number(x.quality==='coarse')-Number(y.quality==='coarse')||x.span-y.span)[0];
                 if(!entry){covered=false;missing(a,b);continue;}
                 const resolution=resolutionReady(entry,low,high);
                 ready=ready&&entry.quality!=='coarse'&&resolution;
@@ -365,45 +371,58 @@ function initGraph() {
             samples=chunks.flatMap(c=>c.points);parameter=segments[0].entry.parameter;
             limited=segments.some(s=>s.entry.limited);
             approximate=segments.some(s=>s.entry.approximate);
-            pendingView=!(covered&&ready);if(paint)drawSoon();
+            cacheCovered=covered;pendingView=!(covered&&ready);if(paint)drawSoon();
             return covered&&ready;
         }
-        function resolutionReady(entry,low,high){
+        function resolutionReady(entry,low,high,yLow=yViewport[0],yHigh=yViewport[1]){
             const {width,height}=dimensions(),sampleWidth=entry.width||entry.sampleWidth;
-            return entry.quality!=='coarse'&&(!sampleWidth?entry.span<=(high-low)*4:entry.span/sampleWidth<=(high-low)/width*1.25)&&(!entry.verticalSpan||entry.verticalSpan/(entry.height||height)<=(yViewport[1]-yViewport[0])/height*1.25);
+            return entry.quality!=='coarse'&&(!sampleWidth?entry.span<=(high-low)*4:entry.span/sampleWidth<=(high-low)/width*1.25)&&(!entry.verticalSpan||entry.verticalSpan/(entry.height||height)<=(yHigh-yLow)/height*1.25);
+        }
+        function missingPrepared(low,high,viewLow,viewHigh,yLow,yHigh){
+            const entries=cache.filter(e=>!e.limited&&resolutionReady(e,viewLow,viewHigh,yLow,yHigh)&&e.low<high&&e.high>low).sort((a,b)=>a.low-b.low);
+            const missing=[];let end=low;
+            for(const entry of entries){if(entry.low>end)missing.push([end,Math.min(high,entry.low)]);end=Math.max(end,Math.min(high,entry.high));if(end>=high)break;}
+            if(end<high)missing.push([end,high]);return missing;
         }
         function prefetch(query,expression,identity,low,high) {
             stopPrefetch();
+            const camera=JSON.stringify([low,high,yViewport[1]-yViewport[0]]);
+            // A resize with adequate cached foreground coverage does not restart
+            // the same speculative batch. Missing visible detail still refines.
+            if(prefetchCamera===camera)return;
             const span=high-low,token=prefetchToken;
             const current=cache.find(e=>e.low<=low&&e.high>=high&&resolutionReady(e,low,high)&&!e.limited);
             // A cheap full-view tile may prepare both neighbors together. Dense
             // views spend their bounded cache/work on the view and next zoom only.
             const buffer=!!current&&current.points.length<=Math.floor(maxPoints/3);
-            const ranges=[...(buffer?[[low-span,high+span]]:[]),[low,high]];
+            const center=low+span/2,yMiddle=yViewport[0]+(yViewport[1]-yViewport[0])/2,yQuarter=(yViewport[1]-yViewport[0])/4;
+            // The normal canvas also prepares enough width for expansion. Once
+            // expanded, prepare just the central next view at the same density.
+            const zoomLow=$('graph-expanded').open?center-span/4:low,zoomHigh=$('graph-expanded').open?center+span/4:high;
+            const ranges=[...(buffer?[{low:low-span,high:high+span,zoom:false}]:[]),{low:zoomLow,high:zoomHigh,zoom:true}];
             prefetchTimer=setTimeout(async()=>{
                 prefetchTimer=null;
                 let fetched=0;
                 for(const range of ranges) {
-                const nextZoom=range[0]===low&&range[1]===high;
-                const jobs=[range];
+                const nextZoom=range.zoom,yLow=nextZoom?yMiddle-yQuarter:yViewport[0],yHigh=nextZoom?yMiddle+yQuarter:yViewport[1];
+                const missing=missingPrepared(range.low,range.high,nextZoom?center-span/4:low,nextZoom?center+span/4:high,yLow,yHigh);
+                if(!missing.length)continue;
+                // Reuse prepared coverage. One missing tail can be sampled alone;
+                // two neighbors share one bounded buffer request.
+                const jobs=missing.length===1?missing:[[range.low,range.high]];
                 for(const [a,b] of jobs) {
                     if(disposed||!visible||token!==prefetchToken||cacheIdentity!==identity||pointers.size)return;
                     if(fetched>=2)return;
                     if(!Number.isFinite(a)||!Number.isFinite(b)||b<=a||!Number.isFinite(b-a))continue;
-                    const center=low+span/2;
-                    const targetLow=nextZoom?center-span/4:a,targetHigh=nextZoom?center+span/4:b;
-                    const key=JSON.stringify([identity,a,b,nextZoom]);
-                    if(prefetchAttempts.has(key)||cache.some(e=>e.low<=a&&e.high>=b&&resolutionReady(e,targetLow,targetHigh)&&(!nextZoom||e.verticalSpan<=(yViewport[1]-yViewport[0])*.625)))continue;
+                    const key=JSON.stringify([identity,a,b,nextZoom,query.get('width'),query.get('height'),yHigh-yLow]);
+                    if(prefetchAttempts.has(key))continue;
                     prefetchAttempts.add(key);if(prefetchAttempts.size>48)prefetchAttempts.delete(prefetchAttempts.values().next().value);
                     prefetchRequest=new AbortController();const signal=prefetchRequest.signal;
                     ++fetched;
                     const next=new URLSearchParams(query);next.set('min',String(a));next.set('max',String(b));
-                    if(!nextZoom)next.set('width',String(Math.max(320,Math.min(2048,Math.round(Number(query.get('width'))*(b-a)/span)))));
-                    if(nextZoom){
-                        next.set('width',String(Math.min(2048,Number(query.get('width'))*2)));
-                        const middle=yViewport[0]+(yViewport[1]-yViewport[0])/2,quarter=(yViewport[1]-yViewport[0])/4;
-                        next.set('ymin',String(middle-quarter));next.set('ymax',String(middle+quarter));
-                    }
+                    const targetSpan=nextZoom?span/2:span;
+                    next.set('width',String(Math.max(320,Math.min(2048,Math.round(Number(query.get('width'))*(b-a)/targetSpan)))));
+                    next.set('ymin',String(yLow));next.set('ymax',String(yHigh));
                     try {
                         const entry=await fetchPlot(next,expression,signal,true);
                         if(disposed||token!==prefetchToken||cacheIdentity!==identity){prefetchAttempts.delete(key);return;}
@@ -416,6 +435,7 @@ function initGraph() {
                     finally {if(token===prefetchToken)prefetchRequest=null;}
                 }
                 }
+                prefetchCamera=camera;
             },180);
         }
         async function plot(event,keepView=false) {
@@ -456,7 +476,9 @@ function initGraph() {
                     if(a!==null&&b!==null&&(a!==low||b!==high)){next.set('min',String(a));next.set('max',String(b));}
                     if(a!==null&&b!==null&&low!==null&&high!==null)next.set('width',String(Math.max(320,Math.min(2048,Math.round(width*(b-a)/(high-low))))));
                     let entry;
-                    if(keepView){
+                    // Accepted cached geometry already supplies the immediate
+                    // preview. Request coarse data only for missing/gapped views.
+                    if(keepView&&(!cacheCovered||visibleUnresolved()||!hasVisibleStroke(curve.state()))){
                         const preview=new URLSearchParams(next);preview.set('quality','coarse');
                         const draft=await fetchPlot(preview,expression,signal);if(id!==generation||disposed)return;
                         if(remember(draft)&&low!==null&&high!==null)showCached(low,high);

@@ -125,7 +125,12 @@ After 180 ms idle, quick resolved responses may trigger at most two sequential
 prefetches: an optional three-times-wide buffer for inexpensive views, then next-zoom
 detail. Views using more than one third of the fast 8192-point cap skip wide
 preparation. Foreground sampling of all visible functions finishes first.
-The current x range is prepared at up to twice the width and half the y span.
+In the normal canvas the current x range is prepared at up to twice the width
+and half the y span, also supporting expansion. In the expanded canvas only
+the central next-zoom interval is prepared at the current width and half the y
+span. Coverage can combine prepared tiles; a single missing tail is sampled
+alone. A completed batch is not repeated after a resize when visible detail is
+already sufficient.
 Speculative data cannot evict the active prepared view. Missing foreground detail
 waits 90 ms after a settled camera change; active drag/pinch waits for release. Responses taking
 more than 1500 ms including transport, limited responses and errors stop that
@@ -144,7 +149,12 @@ character count plus 256 bytes per point, not a browser heap measurement.
 Oldest ranges are evicted when any bound is exceeded; visible chunks can still
 retain references until the next view is drawn. No sample table is rendered;
 sample data is not persisted in sessionStorage. The finest available cached range is
-chosen per visible segment, retaining independent C connection/gap flags.
+chosen per visible segment, prioritizing adequate refined resolution before
+range width and retaining independent C connection/gap flags. Coarse previews
+do not discard useful refined levels of the same interval. Already accepted
+cached strokes covering a view without visible unresolved gaps supply its
+preview, so that view requests refinement directly rather than another coarse
+pass. Missing/gapped views retain coarse-then-refined sampling.
 Coordinates at endpoints may be aligned to the requested camera coverage within
 the current projection/binary rounding tolerance, without changing sample values.
 The browser camera starts at −10..10 on both axes and remains independent of

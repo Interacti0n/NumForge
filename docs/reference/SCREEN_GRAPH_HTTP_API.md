@@ -111,7 +111,9 @@ missing/nonfinite slopes, equal ordinates and subpixel segments use straight
 lines. This avoids artificial overshoot while preserving sampler gaps; it is not
 a certified interpolation bound. See the [smooth-zoom audit](../benchmarks/GRAPH_SMOOTH_ZOOM_2026_10_13.md).
 
-Camera movement immediately reuses old cached segments. An uncached settled move
+Camera movement immediately reuses old cached segments. When accepted cached
+strokes cover the view without visible unresolved detail, only refinement is
+requested; the cache already supplies the preview. An uncached settled move
 requests coarse data after 90 ms idle or pointer release, paints it for a frame,
 then requests refined data. During an active drag/pinch sampling waits for release. A
 precision fallback is already final and is not requested twice. Each HTTP
@@ -129,7 +131,11 @@ The browser does not use response extrema to resize its camera.
 After 180 ms idle, quick resolved views using no more than one third of the
 8192-point cap may prepare a three-times-wide buffer with scaled width capped
 at 2048, followed by next-zoom detail over the current x range (up to twice
-the width, half the vertical span). Denser views skip wide preparation. At most
+the width, half the vertical span). In the expanded canvas, next-zoom preparation
+uses only the central half of x at the current width and half the vertical span.
+Prepared tiles are checked together and a single missing tail is sampled alone.
+A completed batch is not repeated for a resize with adequate foreground detail.
+Denser views skip wide preparation. At most
 two sequential requests run per batch; slow/limited responses stop preparation. Speculative data is rejected if retaining it with
 the active view would exceed point/weight bounds. Fast local calculations do not
 guarantee instantaneous responses over a remote tunnel or for arbitrary functions.
@@ -145,7 +151,9 @@ Cache bounds per function are 12 ranges / 12288 points / 8 MiB estimated weight
 (up to 48 ranges / 49152 points / 32 MiB for four functions). Eviction
 prefers off-screen/coarse data over the current fine view. Dense partial jobs
 replace the whole viewport so needed tiles are not evicted mid-composition.
-Coarse entries cannot satisfy a final cache hit; resizing can request more detail
+Coarse entries cannot satisfy a final cache hit or discard a useful refined
+level of the same range. Adequate refined tiles take precedence over narrower
+but insufficient tiles; resizing can request more detail
 without clearing useful old data. SVG commands share only accepted adjacent
 segments; gaps start new paths. At a cache boundary, both neighboring accepted
 real edges can be trimmed to the same existing C sample and drawn as one stroke,

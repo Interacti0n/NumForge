@@ -27,17 +27,17 @@ test('dense cached camera motion keeps the curve visible across animation frames
  require('node:fs').writeFileSync('C:/Incoming/Projekty/NumForge/build/graph-motion-frames.json',JSON.stringify(gaps));
  expect(gaps).toHaveLength(20);await expect(page.locator('path.graph-line')).toBeVisible();
 });
-test('viewport refinement shows coarse data before the final response and cancels obsolete work',async({page})=>{
+test('covered viewport reuses accepted cached preview before refinement and cancels obsolete work',async({page})=>{
  await page.goto('/graph?lang=en');await sample(page,'sin(33x)');
- let release;const held=new Promise(resolve=>release=resolve);
+ let release,waiting=false;const calls=[],held=new Promise(resolve=>release=resolve);
  await page.route('**/api/graph/plot?**',async route=>{
   const q=new URL(route.request().url()).searchParams;
+  if(q.get('min')==='-2.5'&&q.get('max')==='2.5')calls.push(q.get('quality'));
   if(q.get('min')==='-2.5'&&q.get('quality')==='refined'){
-   const response=await route.fetch();await held;try{await route.fulfill({response});}catch(_){}
+   const response=await route.fetch();waiting=true;await held;try{await route.fulfill({response});}catch(_){}
   }else await route.continue();
  });
- const coarse=page.waitForResponse(r=>r.url().includes('/api/graph/plot?')&&new URL(r.url()).searchParams.get('min')==='-2.5'&&new URL(r.url()).searchParams.get('quality')==='coarse');
- await page.evaluate(()=>{document.querySelector('#graph-plot').dispatchEvent(new KeyboardEvent('keydown',{key:'+',bubbles:true,cancelable:true}));document.querySelector('#graph-plot').dispatchEvent(new KeyboardEvent('keydown',{key:'+',bubbles:true,cancelable:true}));});const draft=await (await coarse).json();expect(draft.quality).toBe('coarse');
+ await page.evaluate(()=>{document.querySelector('#graph-plot').dispatchEvent(new KeyboardEvent('keydown',{key:'+',bubbles:true,cancelable:true}));document.querySelector('#graph-plot').dispatchEvent(new KeyboardEvent('keydown',{key:'+',bubbles:true,cancelable:true}));});await expect.poll(()=>waiting).toBe(true);expect(calls).toEqual(['refined']);
  await expect(page.locator('.graph-workspace')).toHaveAttribute('aria-busy','true');
  await expect(page.locator('path.graph-line')).toBeVisible();
  await page.locator('#graph-expression').fill('x*x');release();

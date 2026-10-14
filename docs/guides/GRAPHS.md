@@ -145,7 +145,9 @@ The current page caches sampled ranges at several densities. Moving inside a
 prepared range redraws immediately without another graph calculation. Zooming
 uses available points immediately and refines them only when their range is too
 coarse for the new view. Missing regions are requested separately; the existing
-curve stays visible while those regions are calculated. Independently sampled
+curve stays visible while those regions are calculated. Adequate refined entries
+are preferred over narrower but insufficient entries; a coarse preview does not
+discard a useful refined level of the same interval. Independently sampled
 ranges retain their own connection/gap flags. Adjacent accepted edges share an
 actual sampled boundary point and one continuous stroke, avoiding visible seams
 between different densities. Rejected edges and missing coverage remain separate.
@@ -160,8 +162,12 @@ view's point budget. A very dense visible function can still exhaust that budget
 After 180 ms idle following a quick resolved request, an inexpensive view may
 prepare one three-times-wide buffered range (−30..30 by default), with scaled
 width capped at 2048. Views exceeding one third of the 8192-point fast cap skip
-that wide work. Detail for the next zoom is prepared over the current x range
-at up to twice the width and half the y span. A batch makes at most two sequential
+that wide work. In the normal canvas, next-zoom detail covers the current x range
+at up to twice the width and half the y span, also preparing for expansion. In the
+expanded canvas it covers only the central half of x at the current width and
+half the y span. Prepared tiles are checked together; a single missing tail is
+requested alone. A completed preparation is not repeated for a resize whose
+visible detail is already sufficient. A batch makes at most two sequential
 requests per function, with foreground priority over all speculative work.
 A prepared buffer supports immediate panning; without coverage the existing
 curve remains a preview while missing intervals are sampled after the gesture.
@@ -176,7 +182,9 @@ unresolved function without a displayed stroke. Single-function detail and gap
 warnings retain the same meaning.
 
 Fast refined requests use at most 8192 points; precision fallback uses at most
-2048. Unprepared settled moves display coarse data before adding detail.
+2048. Unprepared settled moves display coarse data before adding detail. When
+accepted cached strokes already cover the view without visible unresolved gaps,
+they supply the preview and only refined data is requested.
 The cache is bounded to 12 sampled
 ranges, 12288 cached points and an estimated 8 MiB weight **per function**, and lives only
 in the current page and clears on expression changes or navigation. Color changes

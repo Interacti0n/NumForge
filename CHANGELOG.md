@@ -7,6 +7,13 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Reuse accepted cached graph strokes as previews and request only refinement
+  when the whole view is covered without unresolved detail. Retain useful
+  resolution levels, prefer adequately refined tiles, combine prepared coverage
+  checks and sample single missing preparation tails separately. Keep expansion
+  prepared, reduce expanded next-zoom work to the central view and avoid restarting
+  completed preparation on an adequately cached resize.
+
 - Sample browser graph foreground requests only over the visible interval, finish
   all visible functions before background preparation and skip wide buffers for
   dense views. Bound optional batches to two requests, retain next-zoom/cached-pan

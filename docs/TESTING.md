@@ -173,3 +173,13 @@ remains bounded and is not counted without an accepted stroke. Cached pan and
 reciprocal pole breaks remain covered by the existing regressions.
 
 Visible-first comparison: [sampling priority benchmark](benchmarks/GRAPH_VISIBLE_PRIORITY_2026_10_14.md).
+
+`graph-cache-efficiency.spec.js` checks repeated prepared zoom/reset cycles on
+desktop/mobile with no further requests, cached expansion, central preparation
+in the expanded canvas and coarse previews for genuinely missing coverage. The
+held-refinement regression in `graph-ui.spec.js` checks that covered accepted
+geometry supplies the preview without a duplicate coarse request and that edits
+cancel obsolete refinement. Pole, domain, seam and cache-budget checks remain
+part of the graph suite.
+
+Cache/zoom comparison: [efficiency benchmark](benchmarks/GRAPH_CACHE_EFFICIENCY_2026_10_14.md).
