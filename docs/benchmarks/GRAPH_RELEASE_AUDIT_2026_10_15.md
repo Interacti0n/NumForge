@@ -13,6 +13,8 @@ subsequently addresses the default-screen Gaussian scale failure. Other release
 findings remain open. The subsequent [step guards](GRAPH_STEP_GUARDS_2026_10_15.md)
 address observed floor/ceil/trunc/round jump connections while retaining
 bounded refinement.
+The [view reconciliation fix](GRAPH_VIEW_RECONCILIATION_2026_10_15.md) subsequently
+addresses the stuck loading state and missing central cache tile after zooming.
 
 This audit changes diagnostic scripts and documentation only. It does not change
 the evaluator, sampler, web UI, version or deployed server.

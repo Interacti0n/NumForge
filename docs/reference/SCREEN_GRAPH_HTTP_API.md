@@ -245,6 +245,15 @@ Cache bounds per function are 12 ranges / 12288 point-or-band records / 8 MiB es
 (up to 48 ranges / 49152 records / 32 MiB for four functions). Eviction
 prefers off-screen/coarse data over the current fine view. Dense partial jobs
 replace the whole viewport so needed tiles are not evicted mid-composition.
+Remembering the same response object is idempotent, including a limited
+precision preview that already supplies the refined result. If bounded cache
+eviction still leaves visible coverage missing after the planned partial jobs,
+the foreground operation makes at most one complete-view repair request.
+It keeps the same camera and operation generation; an edit/hide/navigation
+cancels or discards the stale response. A failed repair finishes in an error
+state rather than repeatedly retrying or leaving a loading message. Successful
+completion refreshes the status and drawing after clearing the busy flag.
+This does not join rejected numeric edges or relax cache/request limits.
 Coarse entries cannot satisfy a final cache hit or discard a useful refined
 level of the same range. Adequate refined tiles take precedence over narrower
 but insufficient tiles; resizing can request more detail

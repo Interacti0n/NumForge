@@ -120,3 +120,6 @@ the SVG diagnostic records it explicitly and does not certify full coverage.
 
 Next: repair final pending-view/cache reconciliation, then revisit dense mixed
 expressions and cross-engine/device release checks. This is not release sign-off.
+
+Follow-up: [view reconciliation](GRAPH_VIEW_RECONCILIATION_2026_10_15.md)
+addresses the separately recorded client loading/central-cache defect.

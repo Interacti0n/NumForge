@@ -4,9 +4,9 @@ const {spawn,execFile}=require('node:child_process'),{once}=require('node:events
 const fs=require('node:fs/promises'),path=require('node:path'),runFile=promisify(execFile);
 const args=process.argv.slice(2),option=n=>args.includes(n)?args[args.indexOf(n)+1]:undefined;
 const executable=option('--server'),cycles=Number(option('--cycles')||16),output=option('--output')||'build/graph-stress.json',profileFilter=option('--profile'),caseFilter=option('--case');
-if(!executable||!Number.isInteger(cycles)||cycles<1||cycles>100)throw Error('Use --server file.exe [--cycles 1..100] [--profile desktop|portrait|landscape] [--case mixed|poles] [--output file.json]');
+if(!executable||!Number.isInteger(cycles)||cycles<1||cycles>100)throw Error('Use --server file.exe [--cycles 1..100] [--profile desktop|portrait|landscape] [--case mixed|poles|steps] [--output file.json]');
 const profiles=[{name:'desktop',viewport:{width:1280,height:900}}, {name:'portrait',viewport:{width:390,height:844},hasTouch:true},{name:'landscape',viewport:{width:844,height:390},hasTouch:true}].filter(p=>!profileFilter||p.name===profileFilter);
-const cases=[{name:'mixed',functions:['sin(33x)','sin(1000x)','cos(17x)','x/5']},{name:'poles',functions:['tan(3x)','1/(x-0.1)^2','sin(1000x)','sqrt(abs(x))*sin(33x)']}].filter(c=>!caseFilter||c.name===caseFilter);
+const cases=[{name:'mixed',functions:['sin(33x)','sin(1000x)','cos(17x)','x/5']},{name:'poles',functions:['tan(3x)','1/(x-0.1)^2','sin(1000x)','sqrt(abs(x))*sin(33x)']},{name:'steps',functions:['floor(x)','ceil(x)','round(x;1)','trunc(x)']}].filter(c=>!caseFilter||c.name===caseFilter);
 if(!profiles.length||!cases.length)throw Error('Unknown profile/case');
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
 async function server(){
@@ -18,7 +18,7 @@ async function server(){
 }
 function instrument(source){
  const replace=(a,b)=>{if(source.split(a).length!==2)throw Error('Stress instrumentation anchor changed: '+a);source=source.replace(a,b);};
- replace('state:()=>({visible,samples,',`diagnostics:()=>({id,visible,ranges:cache.length,records:cache.reduce((n,e)=>n+e.points.length+e.bands.length,0),bytes:cache.reduce((n,e)=>n+e.cacheBytes,0),attempts:prefetchAttempts.size,retainedPoints:new Set([...cache.flatMap(e=>e.points),...(samples||[])]).size,retainedBands:new Set([...cache.flatMap(e=>e.bands),...(chunks||[]).flatMap(c=>c.bands||[]),...(bands||[])]).size,prefetch:!!prefetchRequest||prefetchTimer!==null,busy}),
+ replace('state:()=>({visible,samples,',`diagnostics:()=>({id,visible,ranges:cache.length,uniqueRanges:new Set(cache).size,records:cache.reduce((n,e)=>n+e.points.length+e.bands.length,0),bytes:cache.reduce((n,e)=>n+e.cacheBytes,0),attempts:prefetchAttempts.size,retainedPoints:new Set([...cache.flatMap(e=>e.points),...(samples||[])]).size,retainedBands:new Set([...cache.flatMap(e=>e.bands),...(chunks||[]).flatMap(c=>c.bands||[]),...(bands||[])]).size,prefetch:!!prefetchRequest||prefetchTimer!==null,busy,pendingView}),
             state:()=>({visible,samples,`);
  replace('loadLibrary();draw();',`loadLibrary();draw();
     window.__graphStressStats=()=>({curves:curves.map(c=>c.diagnostics()),queue:queue.length,transmitting,foregroundBatches,viewportTimer:viewportTimer!==null});`);
@@ -43,7 +43,7 @@ async function run(browser,owned,profile,scenario){
  const navigate=async href=>{const menu=page.locator('.nav-toggle');if(await menu.isVisible())await menu.click();await page.locator(`.primary-nav a[href="${href}"]`).click();};
  const idle=async()=>{const deadline=performance.now()+35000;while(performance.now()<deadline){const s=await page.evaluate(()=>window.__graphStressStats?.());if(!active&&performance.now()-lastNetwork>350&&s&&!s.queue&&!s.transmitting&&!s.foregroundBatches&&!s.viewportTimer&&s.curves.every(c=>!c.busy&&!c.prefetch))return;await pause(35);}throw Error('Work did not settle: '+phase);};
  const camera=()=>page.locator('#graph-plot').evaluate(svg=>({low:Number(svg.dataset.xmin),high:Number(svg.dataset.xmax),bottom:Number(svg.dataset.ymin),top:Number(svg.dataset.ymax),width:svg.viewBox.baseVal.width,height:svg.viewBox.baseVal.height}));
- const check=async()=>{const s=await page.evaluate(()=>window.__graphStressStats());if(s.curves.length!==4||s.curves.some(c=>c.ranges>12||c.records>12288||c.bytes>8*1024*1024||c.attempts>48||c.retainedPoints+c.retainedBands>20480))throw Error('Cache bound exceeded: '+JSON.stringify(s));const messages=await page.locator('.graph-curve-status.error:not([hidden])').allTextContents();if(messages.length||errors.length)throw Error(JSON.stringify({messages,errors}));if(await page.locator('#graph-plot').evaluate(svg=>/NaN|Infinity/.test(svg.innerHTML)))throw Error('Invalid SVG projection');return s;};
+ const check=async()=>{const s=await page.evaluate(()=>window.__graphStressStats());if(s.curves.length!==4||s.curves.some(c=>c.ranges>12||c.uniqueRanges!==c.ranges||c.records>12288||c.bytes>8*1024*1024||c.attempts>48||c.retainedPoints+c.retainedBands>20480))throw Error('Cache bound or identity invariant failed: '+JSON.stringify(s));if(s.curves.some(c=>c.pendingView))throw Error('Settled view still pending: '+JSON.stringify(s));const messages=await page.locator('.graph-curve-status.error:not([hidden])').allTextContents();if(messages.length||errors.length)throw Error(JSON.stringify({messages,errors}));if(await page.locator('#graph-plot').evaluate(svg=>/NaN|Infinity/.test(svg.innerHTML)))throw Error('Invalid SVG projection');return s;};
  const snapshot=async(cycle,withProcess=false)=>{
   await idle();
   const telemetry=await page.evaluate(()=>{const b=window.__stressFrames;b.paused=true;return{frames:b.frames.splice(0),longTasks:b.longTasks.splice(0),draws:b.draws};});

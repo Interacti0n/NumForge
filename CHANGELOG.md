@@ -7,6 +7,11 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Keep limited precision graph previews from occupying the cache twice and
+  evicting the centre after zooming out. Reconcile missing visible tiles with
+  one full-view request, finish loading/error messages explicitly, and discard
+  stale repairs after edits. Add real SVG, bounded-cache and failure regressions.
+
 - Reject adaptive graph connections when captured floor/ceil/trunc/round
   values change, including shifted, scaled and composed calls. Preserve
   plateau connections, exact sample values and existing point/time limits;

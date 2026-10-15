@@ -312,6 +312,10 @@ function initGraph() {
             return {...decode(body),sampleWidth:Number(query.get('width'))||0,verticalSpan:Number(query.get('ymax'))-Number(query.get('ymin'))||0,viewYLow:numeric(query.get('ymin')),viewYHigh:numeric(query.get('ymax')),cacheBytes:payload.length*2+body.points.length*256+(body.bands?.length||0)*128,cost,requestedLow:numeric(query.get('min')),requestedHigh:numeric(query.get('max'))};
         }
         function remember(entry) {
+            // Precision previews can already be refined and become the final
+            // result. Remembering that same object again must be idempotent,
+            // including limited entries which cannot dominate other levels.
+            if(cache.includes(entry))return true;
             let low=entry.points[0].nx,high=entry.points.at(-1).nx;
             if(low===null||high===null||high<=low||!Number.isFinite(high-low)||entry.points.some((p,i)=>p.nx===null||(i>0&&p.nx<=entry.points[i-1].nx)))return false;
             const a=entry.requestedLow,b=entry.requestedHigh;
@@ -518,10 +522,18 @@ function initGraph() {
                     if(remember(entry)&&low!==null&&high!==null)showCached(low,high);
                     else {parameter=entry.parameter;limited=entry.limited;approximate=entry.approximate;pendingView=false;samples=entry.points;bands=entry.bands;chunks=null;draw();fast=false;}
                 }
+                // Partial results can evict an earlier visible tile under the
+                // bounded cache. Reconcile once with a complete foreground
+                // result, rather than leaving a hole or retrying indefinitely.
+                if(low!==null&&high!==null&&pendingView){
+                    const entry=await fetchPlot(query,expression,signal);if(id!==generation||disposed)return;
+                    fast=fast&&!entry.limited&&entry.cost<=1500&&entry.points.some(p=>p.plottable);
+                    if(!remember(entry)||!showCached(low,high))throw Error(text.invalid);
+                }
                 if(low!==null&&high!==null&&fast)prefetch(query,expression,identity,low,high);
             } catch(error) {
-                if(id===generation && !disposed && error.name!=='AbortError')message(error instanceof TypeError?text.network:error.message,true);
-            } finally {if(id===generation && !disposed){busy=false;request=null;syncStatus();}}
+                if(id===generation && !disposed && error.name!=='AbortError'){pendingView=false;message(error instanceof TypeError?text.network:error.message,true);}
+            } finally {if(id===generation && !disposed){busy=false;request=null;if(samples&&!pendingView&&!lastError)curve.describe();syncStatus();drawSoon();}}
         }
 
         const curve={id,row,input,color,plot,message,visibleUnresolved,
