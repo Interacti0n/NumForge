@@ -236,16 +236,17 @@ static void test_maximum_batch_owns_values_independently(void)
 }
 static void test_graph_phases_ownership_and_faults(void)
 {
-    prepare("sin(3*x)+cos(x)");argument(0U,"0");
-    TEST_ASSERT_TRUE(application_expression_graph_smooth(prepared));
+    prepare("sin(3*x)+cos(x)+floor(x)+ceil(x)+trunc(x)+round(x;1)");argument(0U,"0");
+    TEST_ASSERT_FALSE(application_expression_graph_smooth(prepared));
     application_expression_enable_graph_phases(prepared);
     application_expression_enable_graph_phases(prepared);
     sample(1U);
-    TEST_ASSERT_EQUAL_UINT64(2U,samples[0].phase_count);
+    TEST_ASSERT_EQUAL_UINT64(6U,samples[0].phase_count);
     TEST_ASSERT_FALSE(samples[0].phase_unknown);
-    for (size_t i=0U;i<2U;++i) {
+    for (size_t i=0U;i<6U;++i) {
         bool zero=false;
         TEST_ASSERT_EQUAL(BIGDECIMAL_OK,bigdecimal_is_zero(&zero,samples[0].phases[i]));TEST_ASSERT_TRUE(zero);
+        if(i>=2U)TEST_ASSERT_EQUAL(-2,application_expression_graph_peak_offset(prepared,i));
     }
     CalculatorError error;bool complete=false;
     for (size_t failure=1U;failure<10000U;++failure) {
@@ -403,9 +404,18 @@ static void test_screen_exp_tails_are_bounded_and_never_reused_as_exact_zeros(vo
     TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT,application_fast_expression_probe_screen(fast,100,1e-6,&p));
     numforge_budget_end();TEST_ASSERT_TRUE(p.derivative==123);
 }
+static void test_step_metadata_overflow_is_explicit(void)
+{
+    char expression[1024]="floor(x)";
+    for(size_t i=1U;i<65U;++i)memcpy(expression+8U+(i-1U)*9U,"+floor(x)",10U);
+    prepare(expression);argument(0U,"1/3");application_expression_enable_graph_phases(prepared);sample(1U);
+    TEST_ASSERT_TRUE(samples[0].phase_unknown);TEST_ASSERT_EQUAL(64U,samples[0].phase_count);
+    for(size_t i=0;i<64U;++i)TEST_ASSERT_EQUAL(-2,application_expression_graph_peak_offset(prepared,i));
+}
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_step_metadata_overflow_is_explicit);
     RUN_TEST(test_screen_exp_tails_are_bounded_and_never_reused_as_exact_zeros);
     RUN_TEST(test_forward_derivatives_and_unavailable_slopes);
     RUN_TEST(test_fast_graph_values_domains_and_angle_units);

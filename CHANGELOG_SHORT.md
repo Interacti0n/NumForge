@@ -5,6 +5,8 @@ details and the [2.2.1 release record](docs/project/RELEASE_2_2_1.md) for valida
 
 ## Unreleased
 
+- Keep graph strokes separated at observed floor/ceil/trunc/round jumps.
+
 - Render narrow Gaussian graph peaks without failing on negligible exponential tails.
 
 - Capture narrow rational graph peaks and valleys that previously disappeared between samples.

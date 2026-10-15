@@ -229,7 +229,7 @@ static CalculatorStatus adaptive_interval(GraphRefinement *work, size_t left,
         int camera_comparison = 1;
         if (status == CALCULATOR_OK && work->camera) status = calculator_from_decimal_status(bigdecimal_compare(&camera_comparison, work->delta, work->camera_tolerance));
         if (status != CALCULATOR_OK) return status;
-        bool phases_safe = true, phases_tight = true;
+        bool phases_safe = true, phases_tight = true, steps_safe = true;
         for (size_t i = left; i <= left + 2U; ++i)
             if (graph->samples[i].phase_unknown || graph->samples[i].phase_count != graph->samples[left].phase_count) phases_safe = false;
         /* Small phase steps avoid accepting a chord that hides whole periods.
@@ -239,6 +239,12 @@ static CalculatorStatus adaptive_interval(GraphRefinement *work, size_t left,
                 for (size_t j = i + 1U; phases_safe && j <= left + 2U; ++j) {
                     const BigDecimal *p = graph->samples[i].phases[phase], *q = graph->samples[j].phases[phase];
                     if (p == NULL || q == NULL) { phases_safe = false;break; }
+                    if(application_expression_graph_peak_offset(work->expression,phase)==-2){
+                        int step_comparison=0;status=calculator_from_decimal_status(bigdecimal_compare(&step_comparison,p,q));
+                        if(status!=CALCULATOR_OK)return status;
+                        if(step_comparison!=0)steps_safe=false;
+                        continue;
+                    }
                     status = calculator_from_decimal_status(bigdecimal_sub(work->delta, p, q));
                     if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_abs(work->delta, work->delta));
                     int phase_comparison = 0;
@@ -250,7 +256,7 @@ static CalculatorStatus adaptive_interval(GraphRefinement *work, size_t left,
                     if (phase_comparison > 0) phases_tight = false;
                 }
         bool coarse = false;
-        if (work->camera && comparison > 0 && phases_safe && phases_tight) {
+        if (work->camera && (comparison > 0 || !steps_safe) && phases_safe && phases_tight) {
             bool deferred = false;
             status = adaptive_offscreen(work, left, &deferred);
             if (status != CALCULATOR_OK) return status;
@@ -278,7 +284,7 @@ static CalculatorStatus adaptive_interval(GraphRefinement *work, size_t left,
             if (status != CALCULATOR_OK) return status;
             coarse = width_comparison <= 0;
         }
-        if (((comparison <= 0 && phases_tight) || coarse) && phases_safe) {
+        if (((comparison <= 0 && phases_tight) || coarse) && phases_safe && steps_safe) {
             graph->connect[left + 1U] = true;graph->connect[left + 2U] = true;*accepted = true;
         }
     }

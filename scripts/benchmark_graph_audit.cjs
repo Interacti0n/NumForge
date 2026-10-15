@@ -3,7 +3,7 @@ const {spawn}=require('node:child_process'),{once}=require('node:events');
 const fs=require('node:fs/promises'),path=require('node:path');
 const args=process.argv.slice(2),option=n=>args.includes(n)?args[args.indexOf(n)+1]:undefined;
 const executable=option('--server'),before=option('--before'),output=option('--output')||'build/graph-audit.json',repeats=Number(option('--repeats')||3);
-const suite=option('--suite')||'default';if(!['default','narrow','exponential'].includes(suite))throw Error('Unknown suite');
+const suite=option('--suite')||'default';if(!['default','narrow','exponential','steps'].includes(suite))throw Error('Unknown suite');
 const pause=ms=>new Promise(r=>setTimeout(r,ms)),pi=Math.PI;
 const cases=[
  ['linear','3x+2',x=>3*x+2],['parabola','x*x',x=>x*x],['cubic','x^3-3x',x=>x*x*x-3*x],['degree10','x^10',x=>x**10],
@@ -67,7 +67,33 @@ for(const [name,expression,f,anchors,poles=[]] of [
  ['hole','exp(-1/x^2)',x=>x===0?NaN:Math.exp(-1/(x*x)),[],[0]]
 ])exponentialCases.push({name:'exp-'+name,expression,f,anchors,poles,min:-10,max:10,ymin:-10,ymax:10,width:800,height:440});
 const controls=cases.filter(c=>['linear','parabola','sine','sine33','tangent','paired-poles'].includes(c.name));
-const selectedCases=suite==='narrow'?[...narrowCases,...controls]:suite==='exponential'?[...exponentialCases,...controls]:cases;
+const even=x=>{const n=Math.floor(x),t=x-n;return t<.5?n:t>.5?n+1:n%2===0?n:n+1;};
+const boundaries=(scale,shift,min,max,kind)=>{
+ const low=Math.floor(Math.min(scale*min+shift,scale*max+shift))-1,high=Math.ceil(Math.max(scale*min+shift,scale*max+shift))+1,result=[];
+ for(let k=low;k<=high;k++){
+  if(kind==='trunc'&&k===0)continue;
+  const argument=kind==='round'?k+.5:k,x=(argument-shift)/scale;
+  if(x<min||x>max)continue;
+  const left=kind==='ceil'||(kind==='trunc'&&k<0)||(kind==='round'&&k%2===0);
+  result.push({x,side:(scale>0?left:!left)?'left':'right'});
+ }return result;
+};
+const stepCases=[];
+for(const [profile,width,height] of [['desktop',800,440],['small',320,300]])for(const span of [10,100])
+ for(const [kind,f] of [['floor',Math.floor],['ceil',Math.ceil],['trunc',Math.trunc],['round',even]])
+  stepCases.push({name:`step-${profile}-${span}-${kind}`,expression:`${kind}(x)`,f,min:-span,max:span,ymin:-10,ymax:10,width,height,breaks:boundaries(1,0,-span,span,kind)});
+for(const [name,expression,f,opts] of [
+ ['shifted','floor(3*x+0.37)',x=>Math.floor(3*x+.37),{breaks:boundaries(3,.37,-100,100,'floor')}],
+ ['reversed','ceil(-2*x+0.37)',x=>Math.ceil(-2*x+.37),{breaks:boundaries(-2,.37,-100,100,'ceil')}],
+ ['trend','floor(x)+x/10',x=>Math.floor(x)+x/10,{breaks:boundaries(1,0,-100,100,'floor')}],
+ ['tiny','0.000000001*floor(x)',x=>1e-9*Math.floor(x),{breaks:boundaries(1,0,-100,100,'floor')}],
+ ['composition','floor(x)+ceil(2*x+0.37)',x=>Math.floor(x)+Math.ceil(2*x+.37),{breaks:[...boundaries(1,0,-100,100,'floor'),...boundaries(2,.37,-100,100,'ceil')]}],
+ ['periodic-floor','floor(sin(3*x))',x=>Math.floor(Math.sin(3*x)),{min:-10,max:10}],
+ ['periodic-ceil','ceil(sin(3*x))',x=>Math.ceil(Math.sin(3*x)),{min:-10,max:10}],
+ ['decimal-round','round(x;1)',x=>even(x*10)/10,{min:-2,max:2,breaks:boundaries(10,0,-2,2,'round')}],
+ ['sparse','floor(x/100)',x=>Math.floor(x/100),{min:-10000,max:10000,breaks:boundaries(.01,0,-10000,10000,'floor')}]
+])stepCases.push({name:'step-'+name,expression,f,min:-100,max:100,ymin:-10,ymax:10,width:800,height:440,...opts});
+const selectedCases=suite==='narrow'?[...narrowCases,...controls]:suite==='exponential'?[...exponentialCases,...controls]:suite==='steps'?[...stepCases,...controls]:cases;
 async function server(binary,port){
  const base='http://127.0.0.1:'+port;const occupied=await fetch(base,{signal:AbortSignal.timeout(500)}).catch(()=>null);if(occupied){await occupied.arrayBuffer();throw Error('Audit port occupied');}
  const child=spawn(path.resolve(binary),['--no-browser','--port',String(port)],{windowsHide:true,stdio:'ignore'});let failure;child.on('error',e=>failure=e);
@@ -79,7 +105,10 @@ function assess(item,data){
  let pointError=0,pointChecks=0,invalidEdges=0,poleCrossings=0,jumpCrossings=0;
  for(let i=0;i<points.length;i++){const p=points[i];if(p.kind==='real'&&p.y!==null&&p.y>=item.ymin&&p.y<=item.ymax){const y=item.f(p.x);if(Number.isFinite(y)){pointError=Math.max(pointError,Math.abs(p.y-y)/Math.max(1,Math.abs(y)));pointChecks++;}}
   if(!p.connect)continue;const a=points[i-1];if(!a||a.kind!=='real'||p.kind!=='real'||a.y===null||p.y===null){invalidEdges++;continue;}
-  poleCrossings+=(item.poles||[]).filter(x=>a.x<x&&x<p.x).length;jumpCrossings+=(item.breaks||[]).filter(x=>a.x<x&&x<=p.x&&a.y!==p.y).length;
+  poleCrossings+=(item.poles||[]).filter(x=>a.x<x&&x<p.x).length;jumpCrossings+=(item.breaks||[]).filter(boundary=>{
+   const x=typeof boundary==='number'?boundary:boundary.x;
+   return a.y!==p.y&&(boundary.side==='left'?a.x<=x&&x<p.x:a.x<x&&x<=p.x);
+  }).length;
  }
  const bands=data.bands||[];let visible=0,covered=0,bandCovered=0,missing=0,error=0,worst=null;
  function rendered(x){let lo=0,hi=points.length;while(lo<hi){const m=(lo+hi)>>>1;if(points[m].x<x)lo=m+1;else hi=m;}const b=points[lo],a=points[lo-1];
@@ -110,7 +139,7 @@ async function main(){
  }
  if(option('--reassess')){
   const audit=JSON.parse(await fs.readFile(option('--reassess'),'utf8'));
-  for(const row of audit.rows){const original=audit.rows.find(r=>r.version===row.version&&r.case===row.case&&r.payload);if(row.ok)Object.assign(row,assess([...cases,...narrowCases,...exponentialCases].find(c=>c.name===row.case),JSON.parse(original.payload)));}
+  for(const row of audit.rows){const original=audit.rows.find(r=>r.version===row.version&&r.case===row.case&&r.payload);if(row.ok)Object.assign(row,assess([...cases,...narrowCases,...exponentialCases,...stepCases].find(c=>c.name===row.case),JSON.parse(original.payload)));}
   await save(audit);return;
  }
  if(!executable||!Number.isInteger(repeats)||repeats<1||repeats>5)throw Error('Use --server new.exe [--before old.exe] [--repeats 1..5] [--output file.json], or --reassess input.json --output file.json');

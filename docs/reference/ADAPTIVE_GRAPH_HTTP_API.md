@@ -69,8 +69,24 @@ forward sin/cos/tan calls, corresponding phase probes must also differ by at mos
 0.5 radians (30 degrees). Nested calls are checked too; unknown phases are never
 accepted solely because their output values happen to agree. This avoids obvious
 whole-period aliasing on wide intervals without projecting C mathematics to double.
-Phase arguments are evaluated through the same prepared C AST; at most 64 forward
-call sites are captured, with overflow/unsupported arguments treated as unknown.
+The same metadata also captures the evaluated value of each floor/ceil/trunc/
+round call, including nested calls and the precision argument of round. Every
+captured step value must compare exactly equal at all three probes before
+either chord is accepted. This prevents endpoint/midpoint values aligned on
+several different integer levels from accepting a diagonal through jumps.
+It applies inside compositions even when the final result has a continuous
+trend or very small jump amplitude. It is conservative: cancelling step calls
+can still cause gaps, and finite sampling can miss unsampled excursions.
+
+Arguments/step calls are evaluated through the same prepared C AST; at most 64
+combined trig/step call sites are captured, with overflow/unsupported metadata
+treated as unknown. Unknown metadata cannot authorize a connection. These
+owned values share the normal allocation/time scope and cleanup, and do not
+add public response fields. Precision screen fallback uses the same guards.
+For a camera request, changed step values still forbid connections, but do not
+block the existing bounded off-screen deferral when all trig guards pass.
+Small ordered triples beyond one camera edge can stop as disconnected gaps,
+preserving points for visible plateaus and setting `screen_clipped:true`.
 
 For a restricted continuous expression tree, the ordinary display error tolerance
 is relaxed to 0.005 of the seeded y span. A parent interval no wider than

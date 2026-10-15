@@ -40,6 +40,14 @@ instead. Such responses have schema 2 and `evaluation:"precision"`; clients must
 support both schemas. Resource failures are not optional fallback and session
 data is never mutated.
 
+Step calls (`floor`, `ceil`, `trunc`, `round`) retain precision fallback. Its
+shared trig/step metadata rejects connections whenever a captured step value
+differs across the endpoint/midpoint triple, including nested/composed calls.
+This guard is independent of vertical pixel tolerance and does not change
+calculator rounding or add HTTP fields. Dense steps can reach the existing
+2048-point/depth limits and leave gaps; finite sampling is not a completeness
+proof. See the [precision contract](ADAPTIVE_GRAPH_HTTP_API.md).
+
 ## Compact response, schema 3
 
 Fast responses have `sampling:"screen"`, `evaluation:"double"`, `parameter`,

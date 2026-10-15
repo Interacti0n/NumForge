@@ -280,20 +280,23 @@ static void collect_graph_phases(ApplicationExpression *expression, const Calcul
         case CALCULATOR_EXPRESSION_POSTFIX: collect_graph_phases(expression,node->data.postfix.operand);break;
         case CALCULATOR_EXPRESSION_BINARY:
             collect_graph_phases(expression,node->data.binary.left);collect_graph_phases(expression,node->data.binary.right);break;
-        case CALCULATOR_EXPRESSION_CALL:
-            if (node->data.call.function->implementation == CALCULATOR_FUNCTION_SIN ||
-                node->data.call.function->implementation == CALCULATOR_FUNCTION_COS ||
-                node->data.call.function->implementation == CALCULATOR_FUNCTION_TAN) {
+        case CALCULATOR_EXPRESSION_CALL: {
+            CalculatorFunctionImplementation function=node->data.call.function->implementation;
+            bool step=function==CALCULATOR_FUNCTION_FLOOR||function==CALCULATOR_FUNCTION_CEIL||
+                function==CALCULATOR_FUNCTION_TRUNC||function==CALCULATOR_FUNCTION_ROUND;
+            if (function == CALCULATOR_FUNCTION_SIN || function == CALCULATOR_FUNCTION_COS ||
+                function == CALCULATOR_FUNCTION_TAN || step) {
                 if (expression->phase_count < 64U) {
                     size_t i=expression->phase_count++;
-                    expression->phase_nodes[i] = node->data.call.arguments[0];
-                    expression->phase_kinds[i] = node->data.call.function->implementation == CALCULATOR_FUNCTION_COS ? 0 :
-                        node->data.call.function->implementation == CALCULATOR_FUNCTION_SIN ? 1 : -1;
+                    expression->phase_nodes[i] = step?node:node->data.call.arguments[0];
+                    expression->phase_kinds[i] = step?-2:function == CALCULATOR_FUNCTION_COS ? 0 :
+                        function == CALCULATOR_FUNCTION_SIN ? 1 : -1;
                 }
                 else expression->phase_overflow = true;
             }
             for (size_t i=0;i<node->data.call.count;++i) collect_graph_phases(expression,node->data.call.arguments[i]);
             break;
+        }
         default: break;
     }
 }

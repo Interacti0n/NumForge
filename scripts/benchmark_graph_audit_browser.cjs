@@ -12,17 +12,22 @@ const cases=[
  {name:'cosh-steep',expression:'cosh(10x)',x:-.1904296875,expected:Math.cosh(-1.904296875)},
  {name:'gaussian-narrow',expression:'exp(-((x-0.1234)/0.04)^2)',x:.1318359375,expected:Math.exp(-(((.1318359375-.1234)/.04)**2))},
  {name:'gaussian-very-narrow',expression:'exp(-((x-0.1234)/0.005)^2)',x:.1234,expected:1},
- {name:'floor-wide',expression:'floor(x)',x:-.048828125,expected:-1,zoomOut:3}
+ {name:'floor-wide',expression:'floor(x)',x:-.048828125,expected:-1,zoomOut:3,step:true}
 ];
 async function measure(page,item){
  return page.locator('#graph-plot').evaluate((svg,item)=>{
   const camera={xmin:Number(svg.dataset.xmin),xmax:Number(svg.dataset.xmax),ymin:Number(svg.dataset.ymin),ymax:Number(svg.dataset.ymax)},w=svg.viewBox.baseVal.width,h=svg.viewBox.baseVal.height;
   const paths=[...svg.querySelectorAll('path.graph-line')];let drawn=null,errorPx=null;
-  if(paths.length&&item.x!==undefined){const x=64+(item.x-camera.xmin)/(camera.xmax-camera.xmin)*(w-86),line=paths.find(p=>{const b=p.getBBox();return b.x<=x&&b.x+b.width>=x;});if(!line)return{camera,width:w,height:h,status:document.querySelector('#graph-status').textContent,error:document.querySelector('#graph-status').classList.contains('error'),paths:paths.length,drawn,error_px:errorPx};let low=0,high=line.getTotalLength();
+  const stepGeometry={};if(item.step){let segments=0,nonhorizontal=0,starts=0;
+   for(const path of paths){let y=null;for(const command of path.getAttribute('d').match(/[MLC][^MLC]*/g)||[]){
+    const values=command.slice(1).split(',').map(Number);if(command[0]==='M'){y=values[1];starts++;continue;}
+    segments++;if(values.some((v,i)=>i%2===1&&Math.abs(v-y)>1e-6))nonhorizontal++;y=values.at(-1);
+   }}Object.assign(stepGeometry,{step_segments:segments,step_subpaths:starts,nonhorizontal_step_segments:nonhorizontal});}
+  if(paths.length&&item.x!==undefined){const x=64+(item.x-camera.xmin)/(camera.xmax-camera.xmin)*(w-86),line=paths.find(p=>{const b=p.getBBox();return b.x<=x&&b.x+b.width>=x;});if(!line)return{camera,width:w,height:h,status:document.querySelector('#graph-status').textContent,error:document.querySelector('#graph-status').classList.contains('error'),paths:paths.length,drawn,error_px:errorPx,...stepGeometry};let low=0,high=line.getTotalLength();
    for(let i=0;i<60;i++){const m=(low+high)/2;if(line.getPointAtLength(m).x<x)low=m;else high=m;}
    const p=line.getPointAtLength((low+high)/2);drawn=camera.ymax-(p.y-22)/(h-68)*(camera.ymax-camera.ymin);errorPx=Math.abs(drawn-item.expected)*(h-68)/(camera.ymax-camera.ymin);
   }
-  return{camera,width:w,height:h,status:document.querySelector('#graph-status').textContent,error:document.querySelector('#graph-status').classList.contains('error'),paths:paths.length,drawn,error_px:errorPx};
+  return{camera,width:w,height:h,status:document.querySelector('#graph-status').textContent,error:document.querySelector('#graph-status').classList.contains('error'),paths:paths.length,drawn,error_px:errorPx,...stepGeometry};
  },item);
 }
 (async()=>{

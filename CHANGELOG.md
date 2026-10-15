@@ -7,6 +7,11 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Reject adaptive graph connections when captured floor/ceil/trunc/round
+  values change, including shifted, scaled and composed calls. Preserve
+  plateau connections, exact sample values and existing point/time limits;
+  test explicit precision, metadata overflow/ownership and atomic failures.
+
 - Project negligible exponential tails in screen sampling with a propagated
   absolute error allowance, avoiding whole-graph scale errors on narrow
   Gaussians. Seed actual values at exponent turns and estimated shoulders,

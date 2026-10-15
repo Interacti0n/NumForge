@@ -619,9 +619,30 @@ static void test_gaussian_tail_projection_seeds_and_atomic_failures(void)
     TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT,application_fast_graph_sample_camera(&screen_graph,expression,NULL,-10,10,800U,440U,-10,10,false,false,NULL,&context,&error));
     numforge_budget_end();TEST_ASSERT_EQUAL_PTR(original,screen_graph);
 }
+static void test_step_metadata_connections_and_atomic_failures(void)
+{
+    range("-2","2");CalculatorError error;const char *expression="floor(x)+x/10";
+    numforge_test_allocator_begin(0U);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_graph_adaptive(&graph,expression,NULL,minimum,maximum,NULL,&context,&error));
+    size_t calls=numforge_test_allocator_call_count();numforge_test_allocator_end();
+    size_t connections=0;
+    for(size_t i=1U;i<graph->count;++i)if(graph->connect[i]){
+        TEST_ASSERT_EQUAL(1U,graph->samples[i].phase_count);int comparison=1;
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK,bigdecimal_compare(&comparison,graph->samples[i-1U].phases[0],graph->samples[i].phases[0]));
+        TEST_ASSERT_EQUAL(0,comparison);++connections;
+    }
+    TEST_ASSERT_GREATER_THAN(20U,connections);ApplicationGraph *original=graph;
+    for(size_t i=0;i<20U;++i){numforge_test_allocator_begin(1U+(calls-1U)*i/19U);
+        TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY,application_graph_adaptive(&graph,expression,NULL,minimum,maximum,NULL,&context,&error));
+        numforge_test_allocator_end();TEST_ASSERT_EQUAL_PTR(original,graph);}
+    TEST_ASSERT_TRUE(numforge_budget_begin(5000U,SIZE_MAX,SIZE_MAX));numforge_test_budget_expire_after(200U);
+    TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT,application_graph_adaptive(&graph,expression,NULL,minimum,maximum,NULL,&context,&error));
+    numforge_budget_end();TEST_ASSERT_EQUAL_PTR(original,graph);
+}
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_step_metadata_connections_and_atomic_failures);
     RUN_TEST(test_gaussian_tail_projection_seeds_and_atomic_failures);
     RUN_TEST(test_guarded_turn_anchors_and_atomic_failures);
     RUN_TEST(test_precision_camera_clipping_and_atomic_failures);

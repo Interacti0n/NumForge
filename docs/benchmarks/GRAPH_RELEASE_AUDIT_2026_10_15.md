@@ -10,7 +10,9 @@ addresses the first finding. The subsequent [narrow-feature fix](GRAPH_NARROW_FE
 addresses the missed fast Lorentzian peak. The results below describe the audited
 `8e004db` build. The [exponential tail fix](GRAPH_EXP_TAILS_2026_10_15.md)
 subsequently addresses the default-screen Gaussian scale failure. Other release
-findings remain open.
+findings remain open. The subsequent [step guards](GRAPH_STEP_GUARDS_2026_10_15.md)
+address observed floor/ceil/trunc/round jump connections while retaining
+bounded refinement.
 
 This audit changes diagnostic scripts and documentation only. It does not change
 the evaluator, sampler, web UI, version or deployed server.

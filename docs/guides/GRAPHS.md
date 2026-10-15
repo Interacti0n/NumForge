@@ -218,6 +218,11 @@ ordinary fully sampled curves still reproject directly from cache. For example,
 the conventional real-domain expression `1/ln(ln(sqrt(x)))^2` starts at x>1
 and has a pole at e²: its two branches must stay separate.
 
+Step functions such as `floor`, `ceil`, `trunc` and `round` are drawn as separate
+plateaus at observed jumps. The same guard applies inside combined expressions.
+A wide view with many steps may leave unresolved gaps; zoom in to request more
+detail. The graph does not join different levels with a diagonal shortcut.
+
 Fast refined requests use at most 8192 points; precision fallback uses at most
 2048. Unprepared settled moves display coarse data before adding detail. When
 accepted cached strokes already cover the view without visible unresolved gaps,
