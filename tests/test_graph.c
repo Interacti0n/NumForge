@@ -580,9 +580,31 @@ static void test_precision_camera_clipping_and_atomic_failures(void)
     bigdecimal_destroy(low);bigdecimal_destroy(high);
 }
 
+static void test_guarded_turn_anchors_and_atomic_failures(void)
+{
+    CalculatorError error;const char *expression="1/(1+((x-0.1234)/0.04)^2)";
+    numforge_test_allocator_begin(0U);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_graph_sample_camera(&screen_graph,expression,NULL,-10,10,800U,440U,-10,10,false,false,NULL,&context,&error));
+    size_t calls=numforge_test_allocator_call_count();numforge_test_allocator_end();
+    double peak=0;size_t anchors=0;
+    for(size_t i=0;i<screen_graph->count;++i){ApplicationFastGraphPoint p=screen_graph->points[i];peak=fmax(peak,p.y);
+        if(p.turn_anchor){++anchors;TEST_ASSERT_TRUE(p.connect);TEST_ASSERT_TRUE(i+1U<screen_graph->count);TEST_ASSERT_TRUE(screen_graph->points[i+1U].connect);}
+    }
+    TEST_ASSERT_TRUE(peak>.9999);TEST_ASSERT_GREATER_THAN(0U,anchors);TEST_ASSERT_FALSE(screen_graph->limited);
+    TEST_ASSERT_LESS_THAN(512U,screen_graph->count);ApplicationFastGraph *original=screen_graph;
+    for(size_t i=0;i<20U;++i){numforge_test_allocator_begin(1U+(calls-1U)*i/19U);
+        TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY,application_fast_graph_sample_camera(&screen_graph,expression,NULL,-10,10,800U,440U,-10,10,false,false,NULL,&context,&error));
+        numforge_test_allocator_end();TEST_ASSERT_EQUAL_PTR(original,screen_graph);
+    }
+    TEST_ASSERT_TRUE(numforge_budget_begin(5000U,SIZE_MAX,SIZE_MAX));numforge_test_budget_expire_after(200U);
+    TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT,application_fast_graph_sample_camera(&screen_graph,expression,NULL,-10,10,800U,440U,-10,10,false,false,NULL,&context,&error));
+    numforge_budget_end();TEST_ASSERT_EQUAL_PTR(original,screen_graph);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_guarded_turn_anchors_and_atomic_failures);
     RUN_TEST(test_precision_camera_clipping_and_atomic_failures);
     RUN_TEST(test_camera_nested_log_domain_and_pole);
     RUN_TEST(test_camera_clipping_failure_and_deadline_are_atomic);

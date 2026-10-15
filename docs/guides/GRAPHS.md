@@ -93,6 +93,10 @@ accepted points, with tangent limits to avoid overshoot. The C sampler also
 searches for stationary points inside accepted intervals of supported smooth
 expressions, so shifted peaks and combined functions receive actual evaluated
 anchors. These checks help shape and do not prove that all extrema were found.
+For guarded domain-sensitive expressions such as `1/(1+((x-0.1234)/0.04)^2)`,
+observed changes in slope can also trigger a bounded turning-point search.
+The resulting actual sample splits the interval; both sides are checked again
+before drawing. This helps narrow peaks and valleys without joining across gaps.
 
 Coarse trigonometric curves also evaluate points near sin/cos phase extrema, so
 missed peaks do not create a false changing amplitude. These are actual C samples;

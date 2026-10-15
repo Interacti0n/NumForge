@@ -68,7 +68,7 @@ static CalculatorStatus point(Work *work,double x,ApplicationFastGraphPoint *res
 {
     CalculatorStatus status=work->screen_floor?application_fast_expression_probe_derivative(work->fast,x,probe):application_fast_expression_probe(work->fast,x,probe);
     if(status!=CALCULATOR_OK)return status;
-    *result=(ApplicationFastGraphPoint){x,NAN,APPLICATION_GRAPH_REAL,false,true,NAN};
+    *result=(ApplicationFastGraphPoint){x,NAN,APPLICATION_GRAPH_REAL,false,true,false,NAN};
     if(probe->sample.kind==APPLICATION_FAST_REAL){result->y=probe->sample.value;result->derivative=probe->derivative;return CALCULATOR_OK;}
     if(work->graph->exact_probes>=128U||numforge_budget_available_bytes()<3U*1024U*1024U||numforge_budget_available_ms()<300U){result->kind=APPLICATION_GRAPH_UNRESOLVED;work->graph->limited=true;return CALCULATOR_OK;}
     ++work->graph->exact_probes;
@@ -111,6 +111,43 @@ static bool safe(const ApplicationFastProbe *a,const ApplicationFastProbe *b,con
 }
 static void insert(ApplicationFastGraph *graph,size_t index,ApplicationFastGraphPoint value)
 {memmove(graph->points+index+1U,graph->points+index,(graph->count-index)*sizeof(*graph->points));graph->points[index]=value;++graph->count;}
+static bool turn(double a,double b)
+{return isfinite(a)&&isfinite(b)&&((a<0&&b>0)||(a>0&&b<0));}
+/* A guarded derivative bracket can reveal a narrow rational feature hidden
+ * between seed values. Use an actual evaluation as the split, then let normal
+ * refinement validate both neighbouring edges. Never manufacture a connection. */
+static CalculatorStatus turning_split(Work *work,const ApplicationFastGraphPoint *a,
+    const ApplicationFastGraphPoint *c,const ApplicationFastProbe *ap,
+    const ApplicationFastProbe *cp,ApplicationFastGraphPoint *b,ApplicationFastProbe *bp)
+{
+    if(b->derivative==0){b->turn_anchor=true;return CALCULATOR_OK;}
+    double left=a->x,right=c->x,dl=a->derivative;
+    for(unsigned attempt=0U;attempt<32U;++attempt){
+        if(numforge_budget_available_bytes()<3U*1024U*1024U||numforge_budget_available_ms()<300U){work->graph->limited=true;return CALCULATOR_OK;}
+        double x=left+(right-left)/2;if(x<=left||x>=right)break;
+        ApplicationFastProbe observed={0};ApplicationFastGraphPoint value={0};
+        CalculatorStatus status=probe(work,x,&observed);
+        if(status!=CALCULATOR_OK)return status;
+        // An off-screen candidate needs no optional stationary search. In
+        // particular, do not spend exact probes chasing an invisible pole.
+        double margin=work->tolerance*work->scale*2;
+        if(!isfinite(observed.sample.value)||(work->camera&&
+            (observed.sample.value<work->y_minimum-margin||observed.sample.value>work->y_maximum+margin)))return CALCULATOR_OK;
+        if(observed.sample.kind==APPLICATION_FAST_REAL)
+            value=(ApplicationFastGraphPoint){x,observed.sample.value,APPLICATION_GRAPH_REAL,false,true,false,observed.derivative};
+        else status=point(work,x,&value,&observed);
+        if(status!=CALCULATOR_OK)return status;
+        if(!real(&value)||(work->camera&&(value.y<work->y_minimum-margin||value.y>work->y_maximum+margin))||
+            !isfinite(observed.derivative)||!safe(ap,&observed,cp,0.5))return CALCULATOR_OK;
+        if(observed.sample.kind==APPLICATION_FAST_UNCERTAIN||observed.derivative==0||attempt==31U){
+            value.turn_anchor=true;*b=value;
+            *bp=observed;return CALCULATOR_OK;
+        }
+        if((dl<0&&observed.derivative<0)||(dl>0&&observed.derivative>0)){left=x;dl=observed.derivative;}
+        else right=x;
+    }
+    return CALCULATOR_OK;
+}
 static CalculatorStatus refine(Work *work)
 {
     typedef struct Interval {size_t left;unsigned depth;} Interval;
@@ -131,13 +168,28 @@ static CalculatorStatus refine(Work *work)
         if(status==CALCULATOR_OK)status=probe(work,c.x,&cp);
         if(status==CALCULATOR_OK)status=point(work,middle,&b,&bp);
         if(status!=CALCULATOR_OK)break;
+        double ad=a.turn_anchor?0:a.derivative,cd=c.turn_anchor?0:c.derivative;
+        bool turning=work->screen_floor&&!work->smooth&&real(&a)&&real(&b)&&real(&c)&&
+            (turn(ad,b.derivative)||turn(b.derivative,cd)||turn(ad,cd));
+        // A trend can hide the sign change in the first probes. Explore a
+        // sampled bend in f' until screen scale, then let actual turns take over.
+        double gradient=fmax(fabs(ad),fmax(fabs(b.derivative),fabs(cd)));
+        bool bending=work->screen_floor&&!work->smooth&&c.x-a.x>work->coarse_width&&
+            isfinite(ad)&&isfinite(b.derivative)&&isfinite(cd)&&
+            (b.derivative<fmin(ad,cd)-gradient*1e-6||b.derivative>fmax(ad,cd)+gradient*1e-6);
+        if(turning&&turn(ad,cd)&&safe(&ap,&bp,&cp,0.5)){
+            status=turning_split(work,&a,&c,&ap,&cp,&b,&bp);
+            if(status!=CALCULATOR_OK)break;
+        }
         insert(graph,left+1U,b);graph->points[left+2U].connect=false;
         double phase_limit=work->smooth&&c.x-a.x<=work->coarse_width?3:0.5;
         /* A restricted continuous AST can use two half-pixel chords once
          * horizontal detail is below the requested screen resolution. Keep
          * phase/domain checks: this must not join poles or hidden periods. */
         bool short_smooth=work->screen_floor&&work->smooth&&c.x-a.x<=work->coarse_width;
-        bool accepted=real(&a)&&real(&b)&&real(&c)&&safe(&ap,&bp,&cp,phase_limit)&&
+        // A root is not necessarily the midpoint: always recheck both children
+        // at their own midpoints before accepting the new neighbouring edges.
+        bool accepted=!turning&&!bending&&real(&a)&&real(&b)&&real(&c)&&safe(&ap,&bp,&cp,phase_limit)&&
             (short_smooth||fabs(b.y/work->scale-(a.y/work->scale+c.y/work->scale)/2)<=work->tolerance);
         bool empty=!real(&a)&&!real(&b)&&!real(&c);
         // Spend detail on the visible curve. Monotone guarded probes in a small

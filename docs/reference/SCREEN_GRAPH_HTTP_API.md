@@ -153,6 +153,19 @@ resource errors and the shared five-second budget retain their original rules.
 
 Captured trig arguments limit hidden whole periods. Denominator/log/sqrt/power
 guards reject sampled domain crossings and tangent phase regions separate poles.
+For non-globally-smooth expressions with screen bounds, a sampled derivative sign
+change prevents immediate midpoint acceptance. A significant sampled bend in the
+derivative also explores intervals wider than one horizontal pixel, so a small
+trend does not hide a narrow peak from the first probes. Where endpoint derivatives form
+a guarded bracket, at most 32 bisection probes seek a turning-point candidate.
+Numeric uncertainty uses the existing reserved exact classifier. An actual
+sample replaces the midpoint only after real/finite/domain/phase checks; the
+two new intervals are always refined at their own midpoints before connecting.
+Optional search skips candidates visibly outside the camera and retains the
+same shared time/allocation/point/exact-probe limits. An internal anchor flag
+prevents repeated search at a numerically located turn without changing its
+value or derivative. It adds no HTTP field and is not an exact extremum or
+continuity certificate; an unobserved narrow feature can still evade sampling.
 Smooth trees receive actual sin/cos extremum evaluations, checked within 1e-6
 radians using up to eight bracket updates. No +/-1 ordinates are synthesized.
 With camera bounds, forward-mode automatic differentiation computes f and f'

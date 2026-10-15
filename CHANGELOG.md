@@ -7,6 +7,12 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Preserve narrow rational graph peaks and valleys using guarded derivative
+  brackets during C sampling. Evaluate a bounded turning-point candidate, then
+  refine both neighbouring intervals before accepting connections. Keep actual
+  values/slopes, existing pole/domain guards and operation limits; add shifted,
+  scaled, multiple-peak, SVG and allocation/deadline regressions.
+
 - Use the visible camera for precision-fallback graph refinement, preventing
   huge off-screen sinh/cosh values from accepting inaccurate visible chords.
   Defer small ordered off-screen intervals as disconnected gaps, expose the

@@ -3,6 +3,7 @@ const {spawn}=require('node:child_process'),{once}=require('node:events');
 const fs=require('node:fs/promises'),path=require('node:path');
 const args=process.argv.slice(2),option=n=>args.includes(n)?args[args.indexOf(n)+1]:undefined;
 const executable=option('--server'),before=option('--before'),output=option('--output')||'build/graph-audit.json',repeats=Number(option('--repeats')||3);
+const suite=option('--suite')||'default';if(!['default','narrow'].includes(suite))throw Error('Unknown suite');
 const pause=ms=>new Promise(r=>setTimeout(r,ms)),pi=Math.PI;
 const cases=[
  ['linear','3x+2',x=>3*x+2],['parabola','x*x',x=>x*x],['cubic','x^3-3x',x=>x*x*x-3*x],['degree10','x^10',x=>x**10],
@@ -38,6 +39,21 @@ const cases=[
  ['tiny-log','ln(1+x)',x=>Math.log1p(x),{min:-1e-8,max:1e-8,ymin:-1e-8,ymax:1e-8}],
  ['broad-sine','sin(x)',Math.sin,{min:-1000,max:1000}],['broad-polynomial','x*x',x=>x*x,{min:-1e6,max:1e6}]
 ].map(([name,expression,f,opts={}])=>({name,expression,f,min:-10,max:10,ymin:-10,ymax:10,width:800,height:440,...opts}));
+const narrowCases=[];
+for(const [profile,width,height] of [['desktop',800,440],['small',320,300]])
+ for(const centre of [.1234,-.43127,.00037,3.78123])for(const spread of [.2,.04,.004,.0004])for(const sign of [1,-1]){
+  narrowCases.push({name:`narrow-${profile}-${centre}-${spread}-${sign}`,expression:`${sign}/(1+((x-(${centre}))/${spread})^2)`,
+   f:x=>sign/(1+((x-centre)/spread)**2),min:-10,max:10,ymin:-10,ymax:10,width,height,
+   anchors:[centre,...[-2,-1,-.5,.5,1,2].map(v=>centre+v*spread)]});
+ }
+const lorentz=(x,c,w)=>1/(1+((x-c)/w)**2);
+for(const [name,expression,f,anchors] of [
+ ['trend','3+2/(1+((x-0.1234)/0.004)^2)+x/100',x=>3+2*lorentz(x,.1234,.004)+x/100,[.1234]],
+ ['offset-valley','2-1/(1+((x-0.1234)/0.004)^2)',x=>2-lorentz(x,.1234,.004),[.1234]],
+ ['two-peaks','1/(1+((x-0.1234)/0.004)^2)+1/(1+((x+0.43127)/0.01)^2)',x=>lorentz(x,.1234,.004)+lorentz(x,-.43127,.01),[.1234,-.43127]],
+ ['edge','1/(1+((x-9.999)/0.004)^2)',x=>lorentz(x,9.999,.004),[9.999]]
+])narrowCases.push({name:'narrow-'+name,expression,f,anchors,min:-10,max:10,ymin:-10,ymax:10,width:800,height:440});
+const selectedCases=suite==='narrow'?[...narrowCases,...cases.filter(c=>['linear','parabola','sine','sine33','tangent','paired-poles'].includes(c.name))]:cases;
 async function server(binary,port){
  const base='http://127.0.0.1:'+port;const occupied=await fetch(base,{signal:AbortSignal.timeout(500)}).catch(()=>null);if(occupied){await occupied.arrayBuffer();throw Error('Audit port occupied');}
  const child=spawn(path.resolve(binary),['--no-browser','--port',String(port)],{windowsHide:true,stdio:'ignore'});let failure;child.on('error',e=>failure=e);
@@ -72,7 +88,7 @@ async function main(){
  async function save(audit){
   await fs.mkdir(path.dirname(output),{recursive:true});await fs.writeFile(output,JSON.stringify(audit,null,2)+'\n');
   if(option('--csv')){
-   const fields=['version','case','expression','http_median_ms','http_min_ms','http_max_ms','response_bytes','ok','evaluation','count','bands','limited','screen_clipped','max_render_error_px','visible_coverage','missing_visible_checks','visible_checks','pole_crossings','jump_crossings','max_visible_point_relative_error'];
+   const fields=['version','case','expression','http_median_ms','http_min_ms','http_max_ms','response_bytes','ok','evaluation','count','bands','limited','screen_clipped','exact_probes','max_render_error_px','visible_coverage','missing_visible_checks','visible_checks','pole_crossings','jump_crossings','max_visible_point_relative_error'];
    const csv=[fields.join(',')],seen=new Set(),escape=v=>'"'+String(v??'').replaceAll('"','""')+'"';
    for(const row of audit.rows){const key=row.version+':'+row.case;if(seen.has(key))continue;seen.add(key);const samples=audit.rows.filter(r=>r.version===row.version&&r.case===row.case).map(r=>r.http_ms).sort((a,b)=>a-b),summary={...row,http_median_ms:samples[Math.floor(samples.length/2)],http_min_ms:samples[0],http_max_ms:samples.at(-1)};csv.push(fields.map(k=>escape(summary[k])).join(','));}
    await fs.mkdir(path.dirname(option('--csv')),{recursive:true});await fs.writeFile(option('--csv'),csv.join('\n')+'\n');
@@ -80,20 +96,20 @@ async function main(){
  }
  if(option('--reassess')){
   const audit=JSON.parse(await fs.readFile(option('--reassess'),'utf8'));
-  for(const row of audit.rows){const original=audit.rows.find(r=>r.version===row.version&&r.case===row.case&&r.payload);if(row.ok)Object.assign(row,assess(cases.find(c=>c.name===row.case),JSON.parse(original.payload)));}
+  for(const row of audit.rows){const original=audit.rows.find(r=>r.version===row.version&&r.case===row.case&&r.payload);if(row.ok)Object.assign(row,assess([...cases,...narrowCases].find(c=>c.name===row.case),JSON.parse(original.payload)));}
   await save(audit);return;
  }
  if(!executable||!Number.isInteger(repeats)||repeats<1||repeats>5)throw Error('Use --server new.exe [--before old.exe] [--repeats 1..5] [--output file.json], or --reassess input.json --output file.json');
  const rows=[];for(const [version,binary,port] of [...(before?[['before',before,19505]]:[]),['current',executable,19506]]){
   const owned=await server(binary,port);
-  try{for(const item of cases){let last=null;for(let repeat=1;repeat<=repeats;repeat++){
+  try{for(const item of selectedCases){let last=null;for(let repeat=1;repeat<=repeats;repeat++){
    const q=new URLSearchParams({mode:'fast',min:String(item.min),max:String(item.max),ymin:String(item.ymin),ymax:String(item.ymax),width:String(item.width),height:String(item.height),interpolation:'hermite',dense:'band'});
    const start=performance.now(),response=await fetch(owned.base+'/api/graph/plot?'+q,{method:'POST',headers:{'Content-Type':'text/plain'},body:item.expression,signal:AbortSignal.timeout(12000)}),payload=await response.text(),ms=performance.now()-start,data=JSON.parse(payload);
    const row={version,case:item.name,expression:item.expression,camera:{min:item.min,max:item.max,ymin:item.ymin,ymax:item.ymax,width:item.width,height:item.height},repeat,http_ms:ms,response_bytes:Buffer.byteLength(payload),status:response.status,ok:!!data.ok,evaluation:data.evaluation,count:data.count,limited:data.limited,screen_clipped:!!data.screen_clipped,bands:data.bands?.length||0,exact_probes:data.exact_probes,...(data.ok?assess(item,data):{error:data.status||data.error}),...(repeat===1?{payload}:{})};rows.push(row);last=row;
   }process.stdout.write(JSON.stringify({version,case:item.name,ok:last.ok,ms:+last.http_ms.toFixed(2),points:last.count,limited:last.limited,coverage:last.visible_coverage,error_px:+(last.max_render_error_px||0).toFixed(3),pole_crossings:last.pole_crossings})+'\n');}}
   finally{await owned.close();}
  }
- await save({generated:new Date().toISOString(),current:path.resolve(executable),before:before?path.resolve(before):null,repeats,note:'Owned loopback HTTP; 4097 independent reference coordinates plus specified feature anchors. Drawing reproduces the browser Hermite limiter and screen chord threshold; no timing thresholds. Conditional errors/coverage are diagnostics, not continuity proofs. JSON payloads retained for first repetition only.',rows});
+ await save({generated:new Date().toISOString(),current:path.resolve(executable),before:before?path.resolve(before):null,repeats,suite,note:'Owned loopback HTTP; 4097 independent reference coordinates plus specified feature anchors. Drawing reproduces the browser Hermite limiter and screen chord threshold; no timing thresholds. Conditional errors/coverage are diagnostics, not continuity proofs. JSON payloads retained for first repetition only.',rows});
 }
 module.exports={cases,assess,server};
 if(require.main===module)main().catch(e=>{process.stderr.write(e.stack+'\n');process.exitCode=1;});

@@ -77,7 +77,7 @@ matrix includes intermediate ratios too; all products are compared in full.
 | `check_*_benchmark.js` | Validate harness results and metric consistency; no speed thresholds. |
 | `http_benchmark.js` | Measure the real loopback HTTP path. |
 | `http_queue_benchmark.js` | Observe latency behind a slow request on a dedicated loopback server. |
-| `../scripts/benchmark_graph_audit.cjs`, `../scripts/check_graph_audit_decimal.py` | Independent graph value/geometry corpus with optional before/after HTTP timings, dense coverage and Decimal references; see the [graph release audit](../docs/benchmarks/GRAPH_RELEASE_AUDIT_2026_10_15.md). |
+| `../scripts/benchmark_graph_audit.cjs`, `../scripts/check_graph_audit_decimal.py` | Independent graph value/geometry corpus with optional before/after HTTP timings, dense coverage and Decimal references; `--suite narrow` adds peak/valley cases. See the [graph release audit](../docs/benchmarks/GRAPH_RELEASE_AUDIT_2026_10_15.md) and [narrow-feature measurements](../docs/benchmarks/GRAPH_NARROW_FEATURES_2026_10_15.md). |
 | `../scripts/benchmark_graph_audit_browser.cjs`, `../scripts/benchmark_graph_budget.cjs` | Actual SVG reproductions and installed Chromium/Chrome/Edge smoke checks; bounded graph rejection, queue waiting and recovery. Known rendering defects are recorded explicitly, not treated as successful graphs. |
 | `../scripts/benchmark_graph_multi.cjs --suite precision` | Four precision-fallback curves on desktop/mobile layouts; see the [camera correction and measured tradeoffs](../docs/benchmarks/GRAPH_PRECISION_CAMERA_2026_10_15.md). Default scenarios are unchanged. |
 | `run_baseline.js` | Record three isolated runs with source/build/machine metadata. |

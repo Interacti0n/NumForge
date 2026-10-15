@@ -51,6 +51,7 @@ numerical references, session/unit regressions, browser/CI checks and profiling.
 - [Formatting/cache measurements](benchmarks/BENCHMARKS.md).
 - [Graph release audit, 15 October 2026](benchmarks/GRAPH_RELEASE_AUDIT_2026_10_15.md): independent geometry checks, before/after timings, sustained cache tests and remaining release gates.
 - [Precision graph camera fix](benchmarks/GRAPH_PRECISION_CAMERA_2026_10_15.md): visible sinh/cosh geometry, preserved narrow peaks, precision deferral metadata and measured tradeoffs.
+- [Narrow graph features](benchmarks/GRAPH_NARROW_FEATURES_2026_10_15.md): derivative-guided peak discovery, independent accuracy checks and before/after timings.
 - [Smooth graph zoom](benchmarks/GRAPH_SMOOTH_ZOOM_2026_10_13.md): derivative anchors, interpolation accuracy and prepared detail.
 - [BigInt measurements](benchmarks/BIGINT_BENCHMARKS.md).
 - [Karatsuba experiment](benchmarks/KARATSUBA_EXPERIMENT_2026_10_11.md): private threshold measurements, whole-product references and bounded scratch.

@@ -1,6 +1,7 @@
 """Independent standard-library Decimal references for graph audit findings."""
 import argparse
 import json
+import re
 from decimal import Decimal as D, localcontext
 from pathlib import Path
 
@@ -8,9 +9,13 @@ parser = argparse.ArgumentParser()
 parser.add_argument("recording", type=Path)
 parser.add_argument("--output", required=True, type=Path)
 args = parser.parse_args()
+narrow_parameters = {}
 
 
 def reference(name, x):
+    if name in narrow_parameters:
+        sign, centre, width = narrow_parameters[name]
+        return sign / (1 + ((x - centre) / width) ** 2)
     if name == "lorentz-narrow":
         return 1 / (1 + ((x - D(".1234")) / D(".04")) ** 2)
     if name == "gaussian-narrow":
@@ -27,12 +32,16 @@ def reference(name, x):
 
 
 recording = json.loads(args.recording.read_text(encoding="utf-8"))
+for row in recording["rows"]:
+    match = re.fullmatch(r"(-?1)/\(1\+\(\(x-\(([-\d.]+)\)\)/([\d.]+)\)\^2\)", row["expression"])
+    if match:
+        narrow_parameters[row["case"]] = tuple(D(value) for value in match.groups())
 rows = []
 for row in recording["rows"]:
-    if row["version"] != "current" or row["repeat"] != 1 or row["case"] not in (
+    if row["version"] != "current" or row["repeat"] != 1 or (row["case"] not in narrow_parameters and row["case"] not in (
         "lorentz-narrow", "gaussian-narrow", "hyperbolic-steep", "cosh-steep",
         "nested-log", "nested-log-wide", "complex-abs"
-    ):
+    )):
         continue
     data = json.loads(row["payload"])
     count, error, convergence = 0, D(0), D(0)
