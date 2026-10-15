@@ -15,6 +15,8 @@ address observed floor/ceil/trunc/round jump connections while retaining
 bounded refinement.
 The [view reconciliation fix](GRAPH_VIEW_RECONCILIATION_2026_10_15.md) subsequently
 addresses the stuck loading state and missing central cache tile after zooming.
+The [dense-sum follow-up](GRAPH_DENSE_SUMS_2026_10_15.md) adds bounded affine
+sin/cos sums; nonlinear phases such as the wide chirp remain separate work.
 
 This audit changes diagnostic scripts and documentation only. It does not change
 the evaluator, sampler, web UI, version or deployed server.

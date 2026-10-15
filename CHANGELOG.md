@@ -7,6 +7,12 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Extend opt-in dense graph ranges to sums/differences of up to four affine
+  sin/cos occurrences with affine amplitudes and trend. Combine identical terms,
+  preserve precision/domain fallbacks and resolved zoom curves, and document
+  conservative overestimation for beating/cancelling terms. Add independent
+  bounds, work/failure regressions and a composed-oscillation audit suite.
+
 - Keep limited precision graph previews from occupying the cache twice and
   evicting the centre after zooming out. Reconcile missing visible tiles with
   one full-view request, finish loading/error messages explicitly, and discard

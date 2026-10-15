@@ -55,6 +55,7 @@ numerical references, session/unit regressions, browser/CI checks and profiling.
 - [Exponential graph tails](benchmarks/GRAPH_EXP_TAILS_2026_10_15.md): bounded screen projection, Gaussian peak/shoulder seeds and regression measurements.
 - [Graph step guards](benchmarks/GRAPH_STEP_GUARDS_2026_10_15.md): precision metadata for discrete jumps, composition regressions and bounded-work measurements.
 - [Graph view reconciliation](benchmarks/GRAPH_VIEW_RECONCILIATION_2026_10_15.md): completed loading states, retained central tiles and bounded cache-pressure recovery.
+- [Dense graph sums](benchmarks/GRAPH_DENSE_SUMS_2026_10_15.md): bounded affine sin/cos sums, conservative range limits and before/after measurements.
 - [Smooth graph zoom](benchmarks/GRAPH_SMOOTH_ZOOM_2026_10_13.md): derivative anchors, interpolation accuracy and prepared detail.
 - [BigInt measurements](benchmarks/BIGINT_BENCHMARKS.md).
 - [Karatsuba experiment](benchmarks/KARATSUBA_EXPERIMENT_2026_10_11.md): private threshold measurements, whole-product references and bounded scratch.

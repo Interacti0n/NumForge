@@ -5,6 +5,8 @@ details and the [2.2.1 release record](docs/project/RELEASE_2_2_1.md) for valida
 
 ## Unreleased
 
+- Keep supported dense sin/cos sums visible as approximate ranges, with curves after zooming in.
+
 - Fix missing graph centres and stuck loading messages after zooming out.
 
 - Keep graph strokes separated at observed floor/ceil/trunc/round jumps.

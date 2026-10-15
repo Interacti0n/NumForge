@@ -16,13 +16,31 @@ test('envelopes are opt-in, disappear at resolved scales and preserve precision 
  const zoom=await sample(request,'sin(1000x)',{min:'-.01',max:'.01'});expect(zoom.bands).toBeUndefined();expect(zoom.limited).toBe(false);expect(zoom.points.slice(1).every(p=>p[2]===1)).toBe(true);
  for(const p of zoom.points)expect(p[1]).toBeCloseTo(Math.sin(1000*p[0]),8);
  const fallback=await sample(request,'sin(x)',{precision:'100',min:'-.01',max:'.01'});expect(fallback.schema_version).toBe(2);expect(fallback.bands).toBeUndefined();
+ const cancelled=await sample(request,'sin(1000x)-sin(1000x)+cos(1100x)',{min:'-.001',max:'.001'});expect(cancelled.schema_version).toBe(2);expect(cancelled.bands).toBeUndefined();
 });
-test('variable poles, nonlinear domains and multiple carriers never acquire envelopes',async({request})=>{
- for(const expression of ['tan(1000x)','sin(1000x)/(x-0.1)','sin(1000x)+sin(1001x)','sqrt(x)*sin(1000x)','sin(1000x*x)']){
+test('variable poles, nonlinear domains and excessive carrier sums never acquire envelopes',async({request})=>{
+ for(const expression of ['tan(1000x)','sin(1000x)/(x-0.1)','sin(1000x)+cos(1100x)+sin(1200x)+cos(1300x)+sin(1400x)','sqrt(x)*sin(1000x)','sin(1000x*x)']){
   const data=await sample(request,expression,{min:'0',max:'1',width:'320'});expect(data.bands,expression).toBeUndefined();
   if(expression.includes('/'))data.points.forEach((p,i)=>{if(p[2])expect(data.points[i-1][0]<.1&&p[0]>.1).toBe(false);});
  }
  for(const extra of [{mode:'',dense:'band'},{dense:'curve'},{ymin:'',ymax:''}]){const response=await request.post('/api/graph/plot?'+new URLSearchParams({...defaults,...extra}),{data:'sin(1000x)'});expect(response.ok()).toBe(false);}
+});
+test('dense sums preserve independent values, repeated terms and resolved zoom',async({request})=>{
+ for(const [expression,f] of [
+  ['sin(1000x)+sin(1001x)',x=>Math.sin(1000*x)+Math.sin(1001*x)],
+  ['-(sin(1000x)-2*cos(-1001x+0.3))/2+x/10',x=>-(Math.sin(1000*x)-2*Math.cos(-1001*x+.3))/2+x/10],
+  ['x*(sin(1000x)+cos(1100x))+2',x=>x*(Math.sin(1000*x)+Math.cos(1100*x))+2],
+  ['sin(1000x)+cos(1100x)-sin(1200x)+cos(1300x)',x=>Math.sin(1000*x)+Math.cos(1100*x)-Math.sin(1200*x)+Math.cos(1300*x)],
+  ['sin(1000x)+sin(1000x)+cos(1100x)',x=>2*Math.sin(1000*x)+Math.cos(1100*x)]]){
+  const data=await sample(request,expression);expect(data.bands).toHaveLength(800);expect(data.count).toBe(33);expect(data.limited).toBe(false);
+  const bad=[];for(const [a,b,low,high] of data.bands)for(let j=0;j<=32;j++){const y=f(a+(b-a)*j/32);if(y<low-1e-10||y>high+1e-10)bad.push(y);}expect(bad,expression).toEqual([]);
+  const zoom=await sample(request,expression,{min:'-.001',max:'.001'});expect(zoom.bands).toBeUndefined();expect(zoom.limited).toBe(false);expect(zoom.points.slice(1).every(p=>p[2]===1)).toBe(true);
+  for(const p of zoom.points)expect(p[1]).toBeCloseTo(f(p[0]),8);
+ }
+});
+test('mixed dense curve stays visible as a range beside a resolved function',async({page})=>{
+ await page.goto('/graph?lang=en');await page.locator('#graph-expression').fill('sin(1000x)+sin(1001x)');await page.locator('#graph-add').click();await page.locator('.graph-curve').last().locator('input:not([type=color])').fill('x');await page.locator('#graph-submit').click();
+ await expect(page.locator('.graph-workspace')).not.toHaveAttribute('aria-busy','true');await expect(page.locator('path.graph-band')).toHaveCount(1);await expect(page.locator('path.graph-line')).toHaveCount(1);await expect(page.locator('#graph-status')).toContainText('2 functions plotted');await expect(page.locator('#graph-status')).toContainText('1 as dense ranges');
 });
 for(const [lang,width] of [['en',1280],['sk',390]])test(`dense range transitions to an inspected curve after zoom ${lang} ${width}`,async({page})=>{
  await page.setViewportSize({width,height:844});await page.goto('/graph?lang='+lang);await page.locator('#graph-expression').fill('sin(1000x)');await page.locator('#graph-submit').click();await expect(page.locator('path.graph-band')).toHaveCount(1);await expect(page.locator('path.graph-line')).toHaveCount(0);await expect(page.locator('#graph-status')).toContainText(lang==='en'?'approximate range':'približný rozsah');

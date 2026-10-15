@@ -102,20 +102,26 @@ they are not points, edges, exact local extrema or a certified error enclosure.
 Point rows and connection flags are unchanged. `y_min`/`y_max` at the top level
 remain sampled-point extrema and do not include envelope bounds.
 
-The C bytecode recognizes a single affine sin/cos carrier with affine amplitude
-and trend: `(a*x+b)*sin/cos(k*x+c) + d*x+e`. Constants, arithmetic, constant-only
-operations and nonzero constant division can form those coefficients. Several
-carrier occurrences, variable denominators, tangent, nonlinear phase/amplitude,
+The C bytecode recognizes a sum/difference of up to four affine sin/cos carrier
+occurrences with affine amplitudes and an affine trend:
+`sum((a*x+b)*sin/cos(k*x+c)) + d*x+e`. Constants, arithmetic, constant-only
+operations and nonzero constant division can form those coefficients. Identical
+phase/kind terms are combined in the metadata. More than four occurrences,
+products of carriers, variable denominators, tangent, nonlinear phase/amplitude,
 clipping and domain-sensitive outer transformations retain ordinary sampling.
 Examples include `sin(1000x)`, `2-3*cos(1000x+0.3)`, `x*sin(1000x)+2` and
-`sin(1000x)+x`. Parameter inference and requested RAD/DEG are retained.
+`sin(1000x)+x`, `sin(1000x)+sin(1001x)` and
+`x*(sin(1000x)+cos(1100x))+2`. Parameter inference and requested RAD/DEG are retained.
 
-A column needs at least a full affine phase turn, with a small numerical margin;
+A column needs at least a full affine phase turn for every remaining carrier,
+with a small numerical margin;
 phase endpoints must stay within the fast evaluator's existing ±1e6-radian range.
-The amplitude/trend endpoint ranges produce the approximate band bounds. A
-varying amplitude/trend can overestimate the values actually attained in that
-column. Floating coefficients and rounding remain approximate; this is not
-public interval arithmetic. Unsupported or mostly uncertain expressions keep
+The sum of absolute amplitude endpoint bounds plus the trend endpoint range
+produces the approximate band bounds. A varying amplitude/trend or cancellation
+between different carriers can overestimate the values actually attained in that
+column, including the envelope of beats. Floating coefficients and rounding remain approximate; this is not
+public interval arithmetic. Unsupported or mostly uncertain expressions (including
+some cancelled intermediate results) keep
 the precision fallback, which has no bands. The option never relaxes point
 connection, pole or domain guards.
 

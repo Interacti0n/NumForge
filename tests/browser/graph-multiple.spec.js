@@ -89,7 +89,7 @@ test('expansion during sampling restarts with the new dimensions and navigation 
 });
 
 test('unresolved detail remains visible for its curve in a multi-function plot',async({page})=>{
- await page.goto('/graph?lang=en');await input(page,0).fill('sin(1000x)+sin(1001x)');await add(page,'x');await plot(page);
+ await page.goto('/graph?lang=en');await input(page,0).fill('sin(1000x)+sin(1001x)+sin(x*x)');await add(page,'x');await plot(page);
  await expect(page.locator('#graph-status')).toContainText('with unresolved detail');
  await expect(rows(page).nth(0).locator('.graph-curve-status')).toContainText('Some visible intervals');
  await expect(page.locator('path.graph-line')).toBeVisible();

@@ -277,6 +277,25 @@ static void compile_fast(const char *input)
     TEST_ASSERT_EQUAL(CALCULATOR_OK,application_expression_prepare_auto(&prepared,input,&session,&context,&error));
     TEST_ASSERT_EQUAL(CALCULATOR_OK,application_expression_fast_compile(&fast,prepared,&error));
 }
+static void test_dense_sum_metadata_and_failure_contract(void)
+{
+    ApplicationFastDenseModel model={0};
+    compile_fast("sin(1000x)-sin(1000x)+cos(1100x)");
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_expression_dense_model(fast,&model));
+    TEST_ASSERT_EQUAL_UINT(1U,model.count);TEST_ASSERT_TRUE(model.carriers[0].cosine);
+    TEST_ASSERT_TRUE(model.carriers[0].phase==1100);TEST_ASSERT_TRUE(model.carriers[0].amplitude_offset==1);
+    compile_fast("x*(sin(1000x)+cos(1100x))+2");
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_expression_dense_model(fast,&model));
+    TEST_ASSERT_EQUAL_UINT(2U,model.count);TEST_ASSERT_TRUE(model.offset_value==2);
+    for(size_t i=0;i<model.count;++i){TEST_ASSERT_TRUE(model.carriers[i].amplitude==1);TEST_ASSERT_TRUE(model.carriers[i].amplitude_offset==0);}
+    ApplicationFastDenseModel original=model;
+    TEST_ASSERT_TRUE(numforge_budget_begin(0U,SIZE_MAX,SIZE_MAX));
+    TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT,application_fast_expression_dense_model(fast,&model));
+    numforge_budget_end();TEST_ASSERT_EQUAL_MEMORY(&original,&model,sizeof(model));
+    compile_fast("sin(1000x)/(x-0.1)");
+    TEST_ASSERT_EQUAL(CALCULATOR_NOT_IMPLEMENTED,application_fast_expression_dense_model(fast,&model));
+    TEST_ASSERT_EQUAL_MEMORY(&original,&model,sizeof(model));
+}
 static void test_fast_graph_values_domains_and_angle_units(void)
 {
     const double x[]={-2,0,2};ApplicationFastSample output[3];
@@ -419,6 +438,7 @@ int main(void)
     RUN_TEST(test_screen_exp_tails_are_bounded_and_never_reused_as_exact_zeros);
     RUN_TEST(test_forward_derivatives_and_unavailable_slopes);
     RUN_TEST(test_fast_graph_values_domains_and_angle_units);
+    RUN_TEST(test_dense_sum_metadata_and_failure_contract);
     RUN_TEST(test_fast_graph_snapshot_and_arithmetic_contract);
     RUN_TEST(test_fast_graph_uncertainty_and_unsupported_syntax);
     RUN_TEST(test_fast_graph_ownership_faults_and_shared_budget);

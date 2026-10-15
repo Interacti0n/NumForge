@@ -136,14 +136,14 @@ CalculatorStatus application_fast_compile_tree(ApplicationFastExpression **resul
     return status;
 }
 
-/* Recognize a single affine sin/cos carrier from the compiled C expression.
+/* Recognize a bounded affine sin/cos sum from the compiled C expression.
  * No text rewriting, guessed extrema or variable denominators are allowed. */
 CalculatorStatus application_fast_expression_dense_model(const ApplicationFastExpression *program,
     ApplicationFastDenseModel *result)
 {
-    typedef struct Cell {ApplicationFastDenseModel model;bool carrier;} Cell;
+    typedef struct Cell {ApplicationFastDenseModel model;} Cell;
     if(!program||!result)return CALCULATOR_NULL_ARGUMENT;
-    if(program->phase_count!=1U)return CALCULATOR_NOT_IMPLEMENTED;
+    if(!program->phase_count||program->phase_count>APPLICATION_FAST_DENSE_CARRIERS)return CALCULATOR_NOT_IMPLEMENTED;
     Cell stack[CALCULATOR_MAX_EXPRESSION_DEPTH+1U];size_t used=0;
     for(size_t i=0;i<program->count;++i){
         if(!numforge_budget_check())return calculator_budget_status(CALCULATOR_OUT_OF_MEMORY);
@@ -160,34 +160,50 @@ CalculatorStatus application_fast_expression_dense_model(const ApplicationFastEx
         switch(op.operation){
         case F_NEGATE:r=a;scale=-1;break;
         case F_ADD:case F_SUBTRACT:
-            if(a.carrier&&b.carrier)return CALCULATOR_NOT_IMPLEMENTED;
-            r=a.carrier?a:b;r.carrier=a.carrier||b.carrier;
-            if(op.operation==F_SUBTRACT&&!a.carrier){r.model.amplitude=-r.model.amplitude;r.model.amplitude_offset=-r.model.amplitude_offset;}
+            r=a;
+            for(size_t j=0;j<b.model.count;++j){
+                ApplicationFastDenseCarrier term=b.model.carriers[j];
+                if(op.operation==F_SUBTRACT){term.amplitude=-term.amplitude;term.amplitude_offset=-term.amplitude_offset;}
+                size_t k=0;
+                for(;k<r.model.count;++k){ApplicationFastDenseCarrier *other=&r.model.carriers[k];
+                    if(other->phase==term.phase&&other->phase_offset==term.phase_offset&&other->cosine==term.cosine){
+                        other->amplitude+=term.amplitude;other->amplitude_offset+=term.amplitude_offset;break;
+                    }
+                }
+                if(k==r.model.count){
+                    if(r.model.count==APPLICATION_FAST_DENSE_CARRIERS)return CALCULATOR_NOT_IMPLEMENTED;
+                    r.model.carriers[r.model.count++]=term;
+                }
+            }
             r.model.offset=a.model.offset+(op.operation==F_ADD?1:-1)*b.model.offset;
             r.model.offset_value=a.model.offset_value+(op.operation==F_ADD?1:-1)*b.model.offset_value;
             break;
         case F_MULTIPLY:
-            if(a.carrier&&b.carrier)return CALCULATOR_NOT_IMPLEMENTED;
-            if(b.carrier){Cell swap=a;a=b;b=swap;}
-            if(b.model.offset!=0&&(a.model.amplitude!=0||a.model.offset!=0))return CALCULATOR_NOT_IMPLEMENTED;
-            r=a;r.model.amplitude=a.model.amplitude*b.model.offset_value+a.model.amplitude_offset*b.model.offset;
-            r.model.amplitude_offset=a.model.amplitude_offset*b.model.offset_value;
+            if(a.model.count&&b.model.count)return CALCULATOR_NOT_IMPLEMENTED;
+            if(b.model.count){Cell swap=a;a=b;b=swap;}
+            if(b.model.offset!=0&&a.model.offset!=0)return CALCULATOR_NOT_IMPLEMENTED;
+            r=a;
+            for(size_t j=0;j<r.model.count;++j){ApplicationFastDenseCarrier *term=&r.model.carriers[j];
+                if(b.model.offset!=0&&term->amplitude!=0)return CALCULATOR_NOT_IMPLEMENTED;
+                term->amplitude=term->amplitude*b.model.offset_value+term->amplitude_offset*b.model.offset;
+                term->amplitude_offset*=b.model.offset_value;
+            }
             r.model.offset=a.model.offset*b.model.offset_value+a.model.offset_value*b.model.offset;
             r.model.offset_value=a.model.offset_value*b.model.offset_value;
             break;
         case F_DIVIDE:
-            if(b.carrier||b.model.offset!=0||b.model.offset_value==0)return CALCULATOR_NOT_IMPLEMENTED;
+            if(b.model.count||b.model.offset!=0||b.model.offset_value==0)return CALCULATOR_NOT_IMPLEMENTED;
             r=a;scale=1/b.model.offset_value;break;
         case F_SIN:case F_COS:
-            if(a.carrier||a.model.offset==0)return CALCULATOR_NOT_IMPLEMENTED;
-            r.carrier=true;r.model.amplitude_offset=1;
+            if(a.model.count||a.model.offset==0)return CALCULATOR_NOT_IMPLEMENTED;
+            r.model.count=1;r.model.carriers[0].amplitude_offset=1;r.model.carriers[0].cosine=op.operation==F_COS;
             scale=program->context.angle_unit==CALCULATOR_ANGLE_DEGREES?0.017453292519943295:1;
-            r.model.phase=a.model.offset*scale;r.model.phase_offset=a.model.offset_value*scale;scale=1;
+            r.model.carriers[0].phase=a.model.offset*scale;r.model.carriers[0].phase_offset=a.model.offset_value*scale;scale=1;
             break;
         default:
             /* Constant-only operations may be folded; nonlinear amplitude,
              * phase, clipping and domain-sensitive transformations are deferred. */
-            if(a.carrier||a.model.offset!=0||(binary&&(b.carrier||b.model.offset!=0)))return CALCULATOR_NOT_IMPLEMENTED;
+            if(a.model.count||a.model.offset!=0||(binary&&(b.model.count||b.model.offset!=0)))return CALCULATOR_NOT_IMPLEMENTED;
             switch(op.operation){
             case F_SQUARE:r.model.offset_value=a.model.offset_value*a.model.offset_value;break;
             case F_CUBE:r.model.offset_value=a.model.offset_value*a.model.offset_value*a.model.offset_value;break;
@@ -201,11 +217,19 @@ CalculatorStatus application_fast_expression_dense_model(const ApplicationFastEx
             }
             break;
         }
-        r.model.amplitude*=scale;r.model.amplitude_offset*=scale;r.model.offset*=scale;r.model.offset_value*=scale;
-        if(!isfinite(r.model.amplitude)||!isfinite(r.model.amplitude_offset)||!isfinite(r.model.offset)||!isfinite(r.model.offset_value)||!isfinite(r.model.phase)||!isfinite(r.model.phase_offset))return CALCULATOR_NOT_IMPLEMENTED;
+        r.model.offset*=scale;r.model.offset_value*=scale;
+        if(!isfinite(r.model.offset)||!isfinite(r.model.offset_value))return CALCULATOR_NOT_IMPLEMENTED;
+        for(size_t j=0;j<r.model.count;++j){ApplicationFastDenseCarrier *term=&r.model.carriers[j];
+            term->amplitude*=scale;term->amplitude_offset*=scale;
+            if(!isfinite(term->amplitude)||!isfinite(term->amplitude_offset)||!isfinite(term->phase)||!isfinite(term->phase_offset))return CALCULATOR_NOT_IMPLEMENTED;
+        }
         stack[used++]=r;
     }
-    if(used!=1U||!stack[0].carrier||(stack[0].model.amplitude==0&&stack[0].model.amplitude_offset==0))return CALCULATOR_NOT_IMPLEMENTED;
+    if(used!=1U)return CALCULATOR_NOT_IMPLEMENTED;
+    ApplicationFastDenseModel *model=&stack[0].model;size_t count=0;
+    for(size_t j=0;j<model->count;++j)if(model->carriers[j].amplitude!=0||model->carriers[j].amplitude_offset!=0)model->carriers[count++]=model->carriers[j];
+    model->count=count;
+    if(!count)return CALCULATOR_NOT_IMPLEMENTED;
     *result=stack[0].model;return CALCULATOR_OK;
 }
 

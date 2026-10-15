@@ -3,7 +3,7 @@ const {spawn}=require('node:child_process'),{once}=require('node:events');
 const fs=require('node:fs/promises'),path=require('node:path');
 const args=process.argv.slice(2),option=n=>args.includes(n)?args[args.indexOf(n)+1]:undefined;
 const executable=option('--server'),before=option('--before'),output=option('--output')||'build/graph-audit.json',repeats=Number(option('--repeats')||3);
-const suite=option('--suite')||'default';if(!['default','narrow','exponential','steps'].includes(suite))throw Error('Unknown suite');
+const suite=option('--suite')||'default';if(!['default','narrow','exponential','steps','dense'].includes(suite))throw Error('Unknown suite');
 const pause=ms=>new Promise(r=>setTimeout(r,ms)),pi=Math.PI;
 const cases=[
  ['linear','3x+2',x=>3*x+2],['parabola','x*x',x=>x*x],['cubic','x^3-3x',x=>x*x*x-3*x],['degree10','x^10',x=>x**10],
@@ -93,7 +93,15 @@ for(const [name,expression,f,opts] of [
  ['decimal-round','round(x;1)',x=>even(x*10)/10,{min:-2,max:2,breaks:boundaries(10,0,-2,2,'round')}],
  ['sparse','floor(x/100)',x=>Math.floor(x/100),{min:-10000,max:10000,breaks:boundaries(.01,0,-10000,10000,'floor')}]
 ])stepCases.push({name:'step-'+name,expression,f,min:-100,max:100,ymin:-10,ymax:10,width:800,height:440,...opts});
-const selectedCases=suite==='narrow'?[...narrowCases,...controls]:suite==='exponential'?[...exponentialCases,...controls]:suite==='steps'?[...stepCases,...controls]:cases;
+const denseCases=[];
+for(const [profile,width,height] of [['desktop',800,440],['small',320,300]])for(const [name,expression,f] of [
+ ['beats','sin(1000x)+sin(1001x)',x=>Math.sin(1000*x)+Math.sin(1001*x)],
+ ['affine','x*(sin(1000x)+cos(1100x))+2',x=>x*(Math.sin(1000*x)+Math.cos(1100*x))+2],
+ ['scaled','-(sin(1000x)-2*cos(-1001x+0.3))/2+x/10',x=>-(Math.sin(1000*x)-2*Math.cos(-1001*x+.3))/2+x/10],
+ ['four','sin(1000x)+cos(1100x)-sin(1200x)+cos(1300x)',x=>Math.sin(1000*x)+Math.cos(1100*x)-Math.sin(1200*x)+Math.cos(1300*x)],
+ ['repeated','sin(1000x)+sin(1000x)+cos(1100x)',x=>2*Math.sin(1000*x)+Math.cos(1100*x)]
+])for(const [scale,min,max] of [['wide',-10,10],['resolved',-.001,.001]])denseCases.push({name:`dense-${profile}-${name}-${scale}`,expression,f,min,max,ymin:-10,ymax:10,width,height});
+const selectedCases=suite==='narrow'?[...narrowCases,...controls]:suite==='exponential'?[...exponentialCases,...controls]:suite==='steps'?[...stepCases,...controls]:suite==='dense'?[...denseCases,...cases.filter(c=>['chirp-wide','inverse-phase'].includes(c.name)),...controls]:cases;
 async function server(binary,port){
  const base='http://127.0.0.1:'+port;const occupied=await fetch(base,{signal:AbortSignal.timeout(500)}).catch(()=>null);if(occupied){await occupied.arrayBuffer();throw Error('Audit port occupied');}
  const child=spawn(path.resolve(binary),['--no-browser','--port',String(port)],{windowsHide:true,stdio:'ignore'});let failure;child.on('error',e=>failure=e);
@@ -139,7 +147,7 @@ async function main(){
  }
  if(option('--reassess')){
   const audit=JSON.parse(await fs.readFile(option('--reassess'),'utf8'));
-  for(const row of audit.rows){const original=audit.rows.find(r=>r.version===row.version&&r.case===row.case&&r.payload);if(row.ok)Object.assign(row,assess([...cases,...narrowCases,...exponentialCases,...stepCases].find(c=>c.name===row.case),JSON.parse(original.payload)));}
+  for(const row of audit.rows){const original=audit.rows.find(r=>r.version===row.version&&r.case===row.case&&r.payload);if(row.ok)Object.assign(row,assess([...cases,...narrowCases,...exponentialCases,...stepCases,...denseCases].find(c=>c.name===row.case),JSON.parse(original.payload)));}
   await save(audit);return;
  }
  if(!executable||!Number.isInteger(repeats)||repeats<1||repeats>5)throw Error('Use --server new.exe [--before old.exe] [--repeats 1..5] [--output file.json], or --reassess input.json --output file.json');

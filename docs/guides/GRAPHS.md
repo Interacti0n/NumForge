@@ -133,13 +133,17 @@ When a full period fits into one pixel column, supported expressions such as
 function color. The message identifies it as an approximate range. Zoom in to
 reveal the individual curve; zoom out to return to the range. The band represents
 possible values across a column, not one exact y value or exact local extrema.
-A changing amplitude/trend can widen it beyond the values actually attained.
+A changing amplitude/trend or cancellation between terms can widen it beyond
+the values actually attained, including the changing envelope of beats.
 Coordinate inspection therefore omits bands rather than inventing a y value.
 
-The first implementation recognizes one sin/cos term with a linear argument and
-constant/linear amplitude and trend. Multiple trig terms, tangent, variable
+The implementation recognizes sums/differences of up to four sin/cos occurrences
+with linear arguments, constant/linear amplitudes and trend, for example
+`sin(1000x)+sin(1001x)`. Each remaining term must complete a full period within
+one column. Products of trig terms, larger sums, tangent, variable
 fractions such as `sin(1000x)/x`, nonlinear arguments and outer domain operations
-retain normal sampling and may still exhaust its finite limits. Envelopes do not
+retain normal sampling and may still exhaust its finite limits. Strong numerical
+cancellation can also keep the precision fallback. Envelopes do not
 join poles, domain errors or rejected sample edges. Their computation stays in
 the same C evaluator/application layer and the existing time/space budgets.
 

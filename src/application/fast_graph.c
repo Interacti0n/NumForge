@@ -27,21 +27,28 @@ static CalculatorStatus dense_bands(Work *work,double minimum,double maximum,siz
     if(status==CALCULATOR_NOT_IMPLEMENTED)return CALCULATOR_OK;
     if(status!=CALCULATOR_OK)return status;
     const double turn=6.28318530717958647693;
-    double step=(maximum-minimum)/(double)width,phase_step=fabs(model.phase)*step;
-    if(!isfinite(phase_step)||phase_step<turn*(1+64*DBL_EPSILON))return CALCULATOR_OK;
+    double step=(maximum-minimum)/(double)width;
+    for(size_t j=0;j<model.count;++j){double phase_step=fabs(model.carriers[j].phase)*step;
+        if(!isfinite(phase_step)||phase_step<turn*(1+64*DBL_EPSILON))return CALCULATOR_OK;
+    }
     work->graph->bands=numforge_calloc(width,sizeof(*work->graph->bands));
     if(!work->graph->bands)return CALCULATOR_OUT_OF_MEMORY;
     for(size_t i=0;i<width;++i){
         if(!numforge_budget_check())return calculator_budget_status(CALCULATOR_OUT_OF_MEMORY);
         double a=minimum+(maximum-minimum)*(double)i/(double)width;
         double b=i+1U==width?maximum:minimum+(maximum-minimum)*(double)(i+1U)/(double)width;
-        double pa=fma(model.phase,a,model.phase_offset),pb=fma(model.phase,b,model.phase_offset);
-        if(b<=a||!isfinite(pa)||!isfinite(pb)||fmax(fabs(pa),fabs(pb))>1e6||fabs(pb-pa)<turn*(1+64*DBL_EPSILON))continue;
-        double aa=fma(model.amplitude,a,model.amplitude_offset),ab=fma(model.amplitude,b,model.amplitude_offset);
+        if(b<=a)continue;
+        double amplitude=0;bool valid=true;
+        for(size_t j=0;j<model.count;++j){const ApplicationFastDenseCarrier *term=&model.carriers[j];
+            double pa=fma(term->phase,a,term->phase_offset),pb=fma(term->phase,b,term->phase_offset);
+            double aa=fma(term->amplitude,a,term->amplitude_offset),ab=fma(term->amplitude,b,term->amplitude_offset);
+            if(!isfinite(pa)||!isfinite(pb)||fmax(fabs(pa),fabs(pb))>1e6||fabs(pb-pa)<turn*(1+64*DBL_EPSILON)||!isfinite(aa)||!isfinite(ab)){valid=false;break;}
+            amplitude=nextafter(amplitude+fmax(fabs(aa),fabs(ab)),INFINITY);
+        }
+        if(!valid)continue;
         double ya=fma(model.offset,a,model.offset_value),yb=fma(model.offset,b,model.offset_value);
-        double amplitude=fmax(fabs(aa),fabs(ab));
         double low=nextafter(fmin(ya,yb)-amplitude,-INFINITY),high=nextafter(fmax(ya,yb)+amplitude,INFINITY);
-        if(!isfinite(aa)||!isfinite(ab)||!isfinite(ya)||!isfinite(yb)||!isfinite(low)||!isfinite(high)||low>high)continue;
+        if(!isfinite(ya)||!isfinite(yb)||!isfinite(low)||!isfinite(high)||low>high)continue;
         work->graph->bands[work->graph->band_count++]=(ApplicationFastGraphBand){a,b,low,high};
     }
     return CALCULATOR_OK;
