@@ -3,7 +3,7 @@ const {spawn}=require('node:child_process'),{once}=require('node:events');
 const fs=require('node:fs/promises'),path=require('node:path');
 const args=process.argv.slice(2),option=n=>args.includes(n)?args[args.indexOf(n)+1]:undefined;
 const executable=option('--server'),before=option('--before'),output=option('--output')||'build/graph-audit.json',repeats=Number(option('--repeats')||3);
-const suite=option('--suite')||'default';if(!['default','narrow','exponential','steps','dense','quadratic'].includes(suite))throw Error('Unknown suite');
+const suite=option('--suite')||'default';if(!['default','narrow','exponential','steps','dense','quadratic','mixed'].includes(suite))throw Error('Unknown suite');
 const pause=ms=>new Promise(r=>setTimeout(r,ms)),pi=Math.PI;
 const cases=[
  ['linear','3x+2',x=>3*x+2],['parabola','x*x',x=>x*x],['cubic','x^3-3x',x=>x*x*x-3*x],['degree10','x^10',x=>x**10],
@@ -114,7 +114,22 @@ for(const [profile,width,height] of [['desktop',800,440],['small',320,300]]){
   ['phase-limit','sin(x*x)',x=>Math.sin(x*x),[0]]
  ])quadraticCases.push({name:`quadratic-${profile}-${name}`,expression,f,anchors,min:name==='phase-limit'?-1000:-100,max:name==='phase-limit'?1000:100,ymin:-10,ymax:10,width,height});
 }
-const selectedCases=suite==='narrow'?[...narrowCases,...controls]:suite==='exponential'?[...exponentialCases,...controls]:suite==='steps'?[...stepCases,...controls]:suite==='dense'?[...denseCases,...cases.filter(c=>['chirp-wide','inverse-phase'].includes(c.name)),...controls]:suite==='quadratic'?[...quadraticCases,...controls]:cases;
+const mixedCases=[];
+for(const [profile,width,height] of [['desktop',800,440],['small',320,300]]){
+ for(const [name,expression,f] of [
+  ['chirp','sin(x*x)+cos(1000x)',x=>Math.sin(x*x)+Math.cos(1000*x)],
+  ['sine','cos(1000x)+sin(x)',x=>Math.cos(1000*x)+Math.sin(x)],
+  ['cosine','sin(1000x)+cos(x)',x=>Math.sin(1000*x)+Math.cos(x)],
+  ['vertex','sin(1000x)+cos(-3*(x-0.1234)^2)',x=>Math.sin(1000*x)+Math.cos(-3*(x-.1234)**2)],
+  ['signed','-(x-0.1234)*cos(x*x)+2*cos(1000x)+x/10',x=>-(x-.1234)*Math.cos(x*x)+2*Math.cos(1000*x)+x/10],
+  ['three','sin(x)+cos(x*x)+cos(1000x)',x=>Math.sin(x)+Math.cos(x*x)+Math.cos(1000*x)],
+  ['trig-turn','cos(1000x)+sin(x+π/2)',x=>Math.cos(1000*x)+Math.sin(x+Math.PI/2)],
+  ['negative-phase','cos(1000x)+sin(-1000*(x-0.1234)^2)',x=>Math.cos(1000*x)+Math.sin(-1000*(x-.1234)**2)]
+ ])for(const [scale,min,max] of [['default',-10.001,9.999],['resolved',.1224,.1244]])mixedCases.push({name:`mixed-${profile}-${name}-${scale}`,expression,f,min,max,width,height,ymin:-10,ymax:10,anchors:scale==='default'?[0,.1234,Math.PI/2,-Math.PI/2]:[.1234]});
+ mixedCases.push({name:`mixed-${profile}-wide`,expression:'sin(x*x)+cos(1000x)',f:x=>Math.sin(x*x)+Math.cos(1000*x),min:-100,max:100,width,height,ymin:-10,ymax:10,anchors:[0]});
+ for(const span of [2,1])mixedCases.push({name:`mixed-${profile}-intermediate-${span}`,expression:'sin(x*x)+cos(1000x)',f:x=>Math.sin(x*x)+Math.cos(1000*x),min:-span,max:span,width,height,ymin:-10,ymax:10,anchors:[0]});
+}
+const selectedCases=suite==='narrow'?[...narrowCases,...controls]:suite==='exponential'?[...exponentialCases,...controls]:suite==='steps'?[...stepCases,...controls]:suite==='dense'?[...denseCases,...cases.filter(c=>['chirp-wide','inverse-phase'].includes(c.name)),...controls]:suite==='quadratic'?[...quadraticCases,...controls]:suite==='mixed'?[...mixedCases,...controls,...cases.filter(c=>['chirp-wide','inverse-phase'].includes(c.name))]:cases;
 async function server(binary,port){
  const base='http://127.0.0.1:'+port;const occupied=await fetch(base,{signal:AbortSignal.timeout(500)}).catch(()=>null);if(occupied){await occupied.arrayBuffer();throw Error('Audit port occupied');}
  const child=spawn(path.resolve(binary),['--no-browser','--port',String(port)],{windowsHide:true,stdio:'ignore'});let failure;child.on('error',e=>failure=e);
@@ -160,7 +175,7 @@ async function main(){
  }
  if(option('--reassess')){
   const audit=JSON.parse(await fs.readFile(option('--reassess'),'utf8'));
-  for(const row of audit.rows){const original=audit.rows.find(r=>r.version===row.version&&r.case===row.case&&r.payload);if(row.ok)Object.assign(row,assess([...cases,...narrowCases,...exponentialCases,...stepCases,...denseCases,...quadraticCases].find(c=>c.name===row.case),JSON.parse(original.payload)));}
+  for(const row of audit.rows){const original=audit.rows.find(r=>r.version===row.version&&r.case===row.case&&r.payload);if(row.ok)Object.assign(row,assess([...cases,...narrowCases,...exponentialCases,...stepCases,...denseCases,...quadraticCases,...mixedCases].find(c=>c.name===row.case),JSON.parse(original.payload)));}
   await save(audit);return;
  }
  if(!executable||!Number.isInteger(repeats)||repeats<1||repeats>5)throw Error('Use --server new.exe [--before old.exe] [--repeats 1..5] [--output file.json], or --reassess input.json --output file.json');

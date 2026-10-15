@@ -7,6 +7,11 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Bound slow sin/cos terms through interior phase/trig extrema and signed affine
+  amplitudes when another carrier is dense. Keep fast/slow mixtures visible
+  without exhausting sampled points, with ordinary curves after zoom, unchanged
+  domain guards and independent range/failure/performance regressions.
+
 - Recognize quadratic sin/cos phases in opt-in dense graph ranges. Preserve
   sampled phase vertices and stricter resolved-curve checks between bands;
   keep unsupported composition and numerical fallbacks. Add shifted/chirped

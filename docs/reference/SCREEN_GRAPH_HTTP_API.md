@@ -115,11 +115,13 @@ ordinary sampling. Examples include `sin(1000x)`, `2-3*cos(1000x+0.3)`,
 `x*(sin(1000x)+cos(1100x))+2`, `sin(x*x)` and `cos(-3*(x-0.1234)^2)`.
 Parameter inference and requested RAD/DEG are retained.
 
-A column needs at least a full phase turn for every remaining carrier,
-with numerical margins; the phase must be monotone across that column.
-Phase endpoints must stay within the fast evaluator's existing ±1e6-radian range.
-The sum of absolute amplitude endpoint bounds plus the trend endpoint range
-produces the approximate band bounds. A varying amplitude/trend or cancellation
+A column needs at least one carrier with a full monotone phase turn, including
+numerical margins. All carriers must have finite bounded phase ranges within
+the fast evaluator's existing ±1e6-radian limit, including interior quadratic
+vertices. Other carriers contribute trig ranges from their phase bounds,
+including interior sin/cos maxima and minima, rather than just endpoint values.
+Signed affine amplitude ranges multiply those trig ranges; the term ranges and
+affine trend then add to the approximate band bounds. A varying amplitude/trend or cancellation
 between different carriers can overestimate the values actually attained in that
 column, including the envelope of beats. Floating coefficients and rounding remain approximate; this is not
 public interval arithmetic. Unsupported or mostly uncertain expressions (including
@@ -129,13 +131,15 @@ connection, pole or domain guards.
 
 Quadratic phase vertices are evaluated in the original expression as additional
 discovery seeds, without inventing output extrema or accepting neighbouring
-edges. Columns containing a phase turn retain ordinary samples. Coefficient
+edges. A column containing a phase turn retains ordinary samples unless another
+carrier qualifies as dense and all term ranges can be bounded. Coefficient
 cancellation/roundoff margins can also defer a column to sampling. Resolvable
 parts of recognized quadratic models retain midpoint-error and strict phase
 checks even below a horizontal pixel; the smooth short-chord shortcut is disabled
-there. Bands and ordinary curves can coexist in the same response. A fast carrier
-mixed with a slow/turning carrier may still exhaust the point limit in the
-unbanded region; this remains visible as unresolved detail.
+there. Bands and ordinary curves can coexist in the same response. Supported
+fast/slow mixtures such as `sin(x*x)+cos(1000x)` can use bands across phase turns.
+Unsupported expressions, uncertain coefficients or columns without a qualifying
+dense carrier retain sampling and may still exhaust its finite limits.
 
 Band-covered seed/refinement intervals do not consume more midpoint samples
 or become accepted chords. Other intervals retain the normal bounded sampler.

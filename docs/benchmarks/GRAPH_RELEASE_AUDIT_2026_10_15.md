@@ -20,6 +20,9 @@ sin/cos sums; nonlinear phases such as the wide chirp remain separate work.
 The subsequent [quadratic-phase fix](GRAPH_QUADRATIC_PHASES_2026_10_15.md)
 addresses the wide chirp with sampled centres and dense outer columns. General
 fast/slow mixtures and non-polynomial phases still have finite sampling limits.
+The subsequent [mixed-range fix](GRAPH_MIXED_RANGES_2026_10_15.md) handles bounded
+slow terms alongside supported dense carriers. General unsupported phases and
+release validation across browsers/devices remain separate work.
 
 This audit changes diagnostic scripts and documentation only. It does not change
 the evaluator, sampler, web UI, version or deployed server.

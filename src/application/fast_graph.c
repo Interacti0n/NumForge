@@ -21,20 +21,41 @@ static bool real(const ApplicationFastGraphPoint *p){return p->kind==APPLICATION
 static CalculatorStatus probe(Work *work,double x,ApplicationFastProbe *result)
 {return work->tail_tolerance>0?application_fast_expression_probe_screen(work->fast,x,work->tail_tolerance,result):work->screen_floor?application_fast_expression_probe_derivative(work->fast,x,result):application_fast_expression_probe(work->fast,x,result);}
 void application_fast_graph_destroy(ApplicationFastGraph *graph){if(graph){free(graph->points);free(graph->bands);free(graph);}}
-static bool dense_phase_column(const ApplicationFastDenseCarrier *term,double a,double b)
+static double phase_error(const ApplicationFastDenseCarrier *term,double x)
+{return 64*DBL_EPSILON*(fabs(term->phase_square*x)*fabs(x)+fabs(term->phase*x)+fabs(term->phase_offset));}
+static bool phase_column(const ApplicationFastDenseCarrier *term,double a,double b,double *low,double *high,bool *dense)
 {
     double pa=fma(fma(term->phase_square,a,term->phase),a,term->phase_offset);
     double pb=fma(fma(term->phase_square,b,term->phase),b,term->phase_offset);
     double da=fma(2*term->phase_square,a,term->phase),db=fma(2*term->phase_square,b,term->phase);
-    double ea=64*DBL_EPSILON*(fabs(term->phase_square*a)*fabs(a)+fabs(term->phase*a)+fabs(term->phase_offset));
-    double eb=64*DBL_EPSILON*(fabs(term->phase_square*b)*fabs(b)+fabs(term->phase*b)+fabs(term->phase_offset));
+    double ea=phase_error(term,a),eb=phase_error(term,b);
     double eda=64*DBL_EPSILON*(fabs(2*term->phase_square*a)+fabs(term->phase));
     double edb=64*DBL_EPSILON*(fabs(2*term->phase_square*b)+fabs(term->phase));
-    // Reject vertices and ill-conditioned expanded coefficients. These margins
-    // are screen heuristics; they do not certify polynomial interval arithmetic.
-    return isfinite(pa)&&isfinite(pb)&&isfinite(da)&&isfinite(db)&&isfinite(ea)&&isfinite(eb)&&
-        ((da>eda&&db>edb)||(da<-eda&&db<-edb))&&
-        fmax(fabs(pa),fabs(pb))<=1e6&&fabs(pb-pa)>=6.28318530717958647693*(1+64*DBL_EPSILON)+ea+eb;
+    if(!isfinite(pa)||!isfinite(pb)||!isfinite(da)||!isfinite(db)||!isfinite(ea)||!isfinite(eb)||
+        fmax(fabs(pa),fabs(pb))>1e6)return false;
+    *low=fmin(pa-ea,pb-eb);*high=fmax(pa+ea,pb+eb);
+    *dense=((da>eda&&db>edb)||(da<-eda&&db<-edb))&&
+        fabs(pb-pa)>=6.28318530717958647693*(1+64*DBL_EPSILON)+ea+eb;
+    if(term->phase_square!=0){double vertex=-0.5*(term->phase/term->phase_square);
+        if(isfinite(vertex)&&vertex>a&&vertex<b){
+            double value=fma(fma(term->phase_square,vertex,term->phase),vertex,term->phase_offset),error=phase_error(term,vertex);
+            if(!isfinite(value)||!isfinite(error)||fabs(value)>1e6)return false;
+            *low=fmin(*low,value-error);*high=fmax(*high,value+error);*dense=false;
+        }
+    }
+    return isfinite(*low)&&isfinite(*high)&&(*dense||(*low>=-1e6&&*high<=1e6));
+}
+/* Bounds include interior trigonometric extrema, not just endpoint samples.
+ * Phase/roundoff margins remain approximate screen arithmetic. */
+static void trig_range(double a,double b,bool cosine,double *low,double *high)
+{
+    const double pi=3.14159265358979323846,turn=6.28318530717958647693;
+    if(b-a>=turn){*low=-1;*high=1;return;}
+    double ya=cosine?cos(a):sin(a),yb=cosine?cos(b):sin(b);
+    double peak=cosine?0:pi/2,trough=cosine?pi:-pi/2;
+    *low=fmax(-1,fmin(ya,yb)-16*DBL_EPSILON);*high=fmin(1,fmax(ya,yb)+16*DBL_EPSILON);
+    if(ceil((a-peak)/turn)<=floor((b-peak)/turn))*high=1;
+    if(ceil((a-trough)/turn)<=floor((b-trough)/turn))*low=-1;
 }
 static CalculatorStatus dense_bands(Work *work,double minimum,double maximum,size_t width)
 {
@@ -49,9 +70,11 @@ static CalculatorStatus dense_bands(Work *work,double minimum,double maximum,siz
     }
     const double turn=6.28318530717958647693;
     double step=(maximum-minimum)/(double)width;
+    bool potential=false;
     for(size_t j=0;j<model.count;++j){double phase_step=fabs(model.carriers[j].phase)*step;
-        if(model.carriers[j].phase_square==0&&(!isfinite(phase_step)||phase_step<turn*(1+64*DBL_EPSILON)))return CALCULATOR_OK;
+        if(model.carriers[j].phase_square!=0||(isfinite(phase_step)&&phase_step>=turn*(1+64*DBL_EPSILON)))potential=true;
     }
+    if(!potential)return CALCULATOR_OK;
     work->graph->bands=numforge_calloc(width,sizeof(*work->graph->bands));
     if(!work->graph->bands)return CALCULATOR_OUT_OF_MEMORY;
     for(size_t i=0;i<width;++i){
@@ -59,15 +82,23 @@ static CalculatorStatus dense_bands(Work *work,double minimum,double maximum,siz
         double a=minimum+(maximum-minimum)*(double)i/(double)width;
         double b=i+1U==width?maximum:minimum+(maximum-minimum)*(double)(i+1U)/(double)width;
         if(b<=a)continue;
-        double amplitude=0;bool valid=true;
+        double low=0,high=0;bool valid=true,dense=false;
         for(size_t j=0;j<model.count;++j){const ApplicationFastDenseCarrier *term=&model.carriers[j];
+            double phase_low=0,phase_high=0,tl=-1,th=1;bool carrier_dense=false;
             double aa=fma(term->amplitude,a,term->amplitude_offset),ab=fma(term->amplitude,b,term->amplitude_offset);
-            if(!dense_phase_column(term,a,b)||!isfinite(aa)||!isfinite(ab)){valid=false;break;}
-            amplitude=nextafter(amplitude+fmax(fabs(aa),fabs(ab)),INFINITY);
+            if(!phase_column(term,a,b,&phase_low,&phase_high,&carrier_dense)||!isfinite(aa)||!isfinite(ab)){valid=false;break;}
+            dense=dense||carrier_dense;
+            if(!carrier_dense)trig_range(phase_low,phase_high,term->cosine,&tl,&th);
+            double error=64*DBL_EPSILON*fmax(fabs(term->amplitude*a)+fabs(term->amplitude_offset),fabs(term->amplitude*b)+fabs(term->amplitude_offset));
+            double al=fmin(aa,ab)-error,ah=fmax(aa,ab)+error;
+            double ll=al*tl,lh=al*th,hl=ah*tl,hh=ah*th;
+            double term_low=fmin(fmin(ll,lh),fmin(hl,hh)),term_high=fmax(fmax(ll,lh),fmax(hl,hh));
+            if(!isfinite(ll)||!isfinite(lh)||!isfinite(hl)||!isfinite(hh)){valid=false;break;}
+            low=nextafter(low+term_low,-INFINITY);high=nextafter(high+term_high,INFINITY);
         }
-        if(!valid)continue;
+        if(!valid||!dense)continue;
         double ya=fma(model.offset,a,model.offset_value),yb=fma(model.offset,b,model.offset_value);
-        double low=nextafter(fmin(ya,yb)-amplitude,-INFINITY),high=nextafter(fmax(ya,yb)+amplitude,INFINITY);
+        low=nextafter(low+fmin(ya,yb),-INFINITY);high=nextafter(high+fmax(ya,yb),INFINITY);
         if(!isfinite(ya)||!isfinite(yb)||!isfinite(low)||!isfinite(high)||low>high)continue;
         work->graph->bands[work->graph->band_count++]=(ApplicationFastGraphBand){a,b,low,high};
     }

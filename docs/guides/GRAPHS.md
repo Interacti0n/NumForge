@@ -139,17 +139,18 @@ Coordinate inspection therefore omits bands rather than inventing a y value.
 
 The implementation recognizes sums/differences of up to four sin/cos occurrences
 with linear or quadratic arguments, constant/linear amplitudes and trend, for example
-`sin(1000x)+sin(1001x)` or `sin(x*x)`. Each remaining term must complete a full
-period within one column, without a phase turn inside it. Near the vertex of a
-quadratic argument, evaluated points keep the ordinary curve; outer dense parts
-can use bands. Products of trig terms, larger sums, tangent, variable
+`sin(1000x)+sin(1001x)` or `sin(x*x)`. At least one term must complete a full
+period within one column without a phase turn inside it; other terms contribute
+bounded ranges including their interior extrema. This also supports a fast/slow
+mixture such as `sin(x*x)+cos(1000x)`. Near a quadratic vertex, evaluated points
+keep the ordinary curve if no other term is dense. Products of trig terms, larger sums, tangent, variable
 fractions such as `sin(1000x)/x`, other nonlinear arguments and outer domain operations
 retain normal sampling and may still exhaust its finite limits. Strong numerical
 cancellation can also keep the precision fallback. Envelopes do not
 join poles, domain errors or rejected sample edges. Their computation stays in
 the same C evaluator/application layer and the existing time/space budgets.
-Mixing a very fast term with a slow or turning term can still exhaust the sample
-limit where bands are unavailable; the unresolved-detail notice remains applicable.
+Unsupported or unresolved mixtures can still exhaust the sample limit where
+bands are unavailable; the unresolved-detail notice remains applicable.
 
 ## Moving the view
 

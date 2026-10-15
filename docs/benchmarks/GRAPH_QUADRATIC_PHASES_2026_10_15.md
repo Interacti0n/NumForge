@@ -6,6 +6,10 @@ covered only 30.73% of independently checked reference positions, and had a
 not represent this changing frequency. This change adds bounded quadratic
 phase metadata and combines sampled central curves with dense outer ranges.
 
+The later [mixed-range follow-up](GRAPH_MIXED_RANGES_2026_10_15.md) addresses
+the supported fast/slow mixture limitation. Scope and measurements below describe
+the preceding `571ac3b` change.
+
 ## Implementation
 
 The C bytecode model now accepts affine/quadratic arguments formed by addition,
