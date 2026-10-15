@@ -17,6 +17,9 @@ The [view reconciliation fix](GRAPH_VIEW_RECONCILIATION_2026_10_15.md) subsequen
 addresses the stuck loading state and missing central cache tile after zooming.
 The [dense-sum follow-up](GRAPH_DENSE_SUMS_2026_10_15.md) adds bounded affine
 sin/cos sums; nonlinear phases such as the wide chirp remain separate work.
+The subsequent [quadratic-phase fix](GRAPH_QUADRATIC_PHASES_2026_10_15.md)
+addresses the wide chirp with sampled centres and dense outer columns. General
+fast/slow mixtures and non-polynomial phases still have finite sampling limits.
 
 This audit changes diagnostic scripts and documentation only. It does not change
 the evaluator, sampler, web UI, version or deployed server.

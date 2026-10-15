@@ -288,6 +288,12 @@ static void test_dense_sum_metadata_and_failure_contract(void)
     TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_expression_dense_model(fast,&model));
     TEST_ASSERT_EQUAL_UINT(2U,model.count);TEST_ASSERT_TRUE(model.offset_value==2);
     for(size_t i=0;i<model.count;++i){TEST_ASSERT_TRUE(model.carriers[i].amplitude==1);TEST_ASSERT_TRUE(model.carriers[i].amplitude_offset==0);}
+    const char *quadratics[]={"sin((x-2)^2)","sin((x-2)*(x-2))","sin(x²-4x+4)"};
+    for(size_t i=0;i<sizeof(quadratics)/sizeof(*quadratics);++i){
+        compile_fast(quadratics[i]);TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_expression_dense_model(fast,&model));
+        TEST_ASSERT_EQUAL_UINT(1U,model.count);TEST_ASSERT_TRUE(model.carriers[0].phase_square==1);
+        TEST_ASSERT_TRUE(model.carriers[0].phase==-4);TEST_ASSERT_TRUE(model.carriers[0].phase_offset==4);
+    }
     ApplicationFastDenseModel original=model;
     TEST_ASSERT_TRUE(numforge_budget_begin(0U,SIZE_MAX,SIZE_MAX));
     TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT,application_fast_expression_dense_model(fast,&model));
@@ -295,6 +301,11 @@ static void test_dense_sum_metadata_and_failure_contract(void)
     compile_fast("sin(1000x)/(x-0.1)");
     TEST_ASSERT_EQUAL(CALCULATOR_NOT_IMPLEMENTED,application_fast_expression_dense_model(fast,&model));
     TEST_ASSERT_EQUAL_MEMORY(&original,&model,sizeof(model));
+    const char *unsupported[]={"sin(x^3)","sin(x*x*x)","x*x*sin(1000x)","sin(x*x)+x*x","sin(x*x)/x","sin(sin(x))"};
+    for(size_t i=0;i<sizeof(unsupported)/sizeof(*unsupported);++i){compile_fast(unsupported[i]);
+        TEST_ASSERT_EQUAL_MESSAGE(CALCULATOR_NOT_IMPLEMENTED,application_fast_expression_dense_model(fast,&model),unsupported[i]);
+        TEST_ASSERT_EQUAL_MEMORY(&original,&model,sizeof(model));
+    }
 }
 static void test_fast_graph_values_domains_and_angle_units(void)
 {

@@ -457,7 +457,7 @@ static void test_dense_carrier_bands_values_and_domain_exclusions(void)
         for(size_t i=0;i<screen_graph->count;++i)TEST_ASSERT_FALSE(screen_graph->points[i].connect);
         application_fast_graph_destroy(screen_graph);screen_graph=NULL;
     }
-    const char *excluded[]={"tan(1000x)","sin(1000x)/(x-0.1)","sin(1000x)-sin(1000x)","sqrt(x)*sin(1000x)","sin(1000x*x)"};
+    const char *excluded[]={"tan(1000x)","sin(1000x)/(x-0.1)","sin(1000x)-sin(1000x)","sqrt(x)*sin(1000x)","sin(1000x*x*x)"};
     for(size_t i=0;i<5U;++i){
         CalculatorStatus status=application_fast_graph_sample_view_dense(&screen_graph,excluded[i],NULL,-1,1,320U,300U,20,false,true,NULL,&context,&error);
         TEST_ASSERT_TRUE_MESSAGE(status==CALCULATOR_OK||status==CALCULATOR_NOT_IMPLEMENTED,excluded[i]);
@@ -505,6 +505,40 @@ static void test_dense_sums_bounds_and_resolved_zoom(void)
     }
     TEST_ASSERT_TRUE(numforge_budget_begin(0U,SIZE_MAX,SIZE_MAX));
     TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT,application_fast_graph_sample_view_dense(&screen_graph,expressions[3],NULL,-10,10,800U,440U,20,false,true,NULL,&context,&error));
+    numforge_budget_end();TEST_ASSERT_EQUAL_PTR(original,screen_graph);
+}
+static void test_quadratic_phase_bands_vertices_and_atomic_failures(void)
+{
+    CalculatorError error;
+    const char *expressions[]={"sin(x*x)","cos(-3*(x-0.1234)^2+0.7)","(x/100+2)*sin((x-0.43127)^2)+x/100"};
+    const double vertices[]={0,.1234,.43127};
+    for(size_t c=0;c<3U;++c){
+        TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_graph_sample_view_dense(&screen_graph,expressions[c],NULL,-100,100,800U,440U,20,false,true,NULL,&context,&error));
+        TEST_ASSERT_FALSE(screen_graph->limited);TEST_ASSERT_TRUE(screen_graph->band_count>0&&screen_graph->band_count<800U);
+        TEST_ASSERT_TRUE(screen_graph->count>33U&&screen_graph->count<4096U);bool vertex=false,connected=false;
+        for(size_t i=0;i<screen_graph->count;++i){ApplicationFastGraphPoint p=screen_graph->points[i];
+            double y=c==0U?sin(p.x*p.x):c==1U?cos(-3*(p.x-.1234)*(p.x-.1234)+.7):(p.x/100+2)*sin((p.x-.43127)*(p.x-.43127))+p.x/100;
+            TEST_ASSERT_TRUE(fabs(p.y-y)<1e-8);if(fabs(p.x-vertices[c])<1e-14)vertex=true;if(p.connect)connected=true;
+        }
+        TEST_ASSERT_TRUE(vertex);TEST_ASSERT_TRUE(connected);
+        for(size_t i=0;i<screen_graph->band_count;++i){ApplicationFastGraphBand b=screen_graph->bands[i];
+            TEST_ASSERT_FALSE(b.low<=vertices[c]&&b.high>=vertices[c]);
+            for(unsigned j=0;j<=32U;++j){double x=b.low+(b.high-b.low)*(double)j/32;
+                double y=c==0U?sin(x*x):c==1U?cos(-3*(x-.1234)*(x-.1234)+.7):(x/100+2)*sin((x-.43127)*(x-.43127))+x/100;
+                TEST_ASSERT_TRUE(y>=b.minimum-1e-10&&y<=b.maximum+1e-10);
+            }
+        }
+        application_fast_graph_destroy(screen_graph);screen_graph=NULL;
+    }
+    numforge_test_allocator_begin(0U);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_graph_sample_view_dense(&screen_graph,expressions[1],NULL,-100,100,800U,440U,20,false,true,NULL,&context,&error));
+    size_t calls=numforge_test_allocator_call_count();numforge_test_allocator_end();ApplicationFastGraph *original=screen_graph;
+    for(size_t failure=1;failure<=calls;++failure){numforge_test_allocator_begin(failure);
+        TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY,application_fast_graph_sample_view_dense(&screen_graph,expressions[1],NULL,-100,100,800U,440U,20,false,true,NULL,&context,&error));
+        numforge_test_allocator_end();TEST_ASSERT_EQUAL_PTR(original,screen_graph);
+    }
+    TEST_ASSERT_TRUE(numforge_budget_begin(5000U,SIZE_MAX,SIZE_MAX));numforge_test_budget_expire_after(200U);
+    TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT,application_fast_graph_sample_view_dense(&screen_graph,expressions[1],NULL,-100,100,800U,440U,20,false,true,NULL,&context,&error));
     numforge_budget_end();TEST_ASSERT_EQUAL_PTR(original,screen_graph);
 }
 static void test_dense_bands_allocation_deadline_and_http_contract(void)
@@ -690,6 +724,7 @@ int main(void)
     RUN_TEST(test_dense_carrier_bands_values_and_domain_exclusions);
     RUN_TEST(test_dense_bands_allocation_deadline_and_http_contract);
     RUN_TEST(test_dense_sums_bounds_and_resolved_zoom);
+    RUN_TEST(test_quadratic_phase_bands_vertices_and_atomic_failures);
     RUN_TEST(test_stationary_anchors_slopes_and_http_opt_in);
     RUN_TEST(test_screen_floor_keeps_smooth_chords_connected);
     RUN_TEST(test_screen_camera_span_and_failure_preserve_output);

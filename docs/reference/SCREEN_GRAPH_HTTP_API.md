@@ -102,20 +102,22 @@ they are not points, edges, exact local extrema or a certified error enclosure.
 Point rows and connection flags are unchanged. `y_min`/`y_max` at the top level
 remain sampled-point extrema and do not include envelope bounds.
 
-The C bytecode recognizes a sum/difference of up to four affine sin/cos carrier
-occurrences with affine amplitudes and an affine trend:
-`sum((a*x+b)*sin/cos(k*x+c)) + d*x+e`. Constants, arithmetic, constant-only
+The C bytecode recognizes a sum/difference of up to four sin/cos carrier
+occurrences with affine amplitudes, affine/quadratic phases and an affine trend:
+`sum((a*x+b)*sin/cos(q*x*x+k*x+c)) + d*x+e`. Constants, arithmetic, constant-only
 operations and nonzero constant division can form those coefficients. Identical
-phase/kind terms are combined in the metadata. More than four occurrences,
-products of carriers, variable denominators, tangent, nonlinear phase/amplitude,
-clipping and domain-sensitive outer transformations retain ordinary sampling.
-Examples include `sin(1000x)`, `2-3*cos(1000x+0.3)`, `x*sin(1000x)+2` and
-`sin(1000x)+x`, `sin(1000x)+sin(1001x)` and
-`x*(sin(1000x)+cos(1100x))+2`. Parameter inference and requested RAD/DEG are retained.
+phase/kind terms are combined in the metadata. Multiplication, square/postfix
+square and power two can form a quadratic phase. More than four occurrences,
+products of carriers, variable denominators, tangent, higher/non-polynomial phases,
+nonlinear amplitudes, clipping and domain-sensitive outer transformations retain
+ordinary sampling. Examples include `sin(1000x)`, `2-3*cos(1000x+0.3)`,
+`x*sin(1000x)+2`, `sin(1000x)+x`, `sin(1000x)+sin(1001x)`,
+`x*(sin(1000x)+cos(1100x))+2`, `sin(x*x)` and `cos(-3*(x-0.1234)^2)`.
+Parameter inference and requested RAD/DEG are retained.
 
-A column needs at least a full affine phase turn for every remaining carrier,
-with a small numerical margin;
-phase endpoints must stay within the fast evaluator's existing ±1e6-radian range.
+A column needs at least a full phase turn for every remaining carrier,
+with numerical margins; the phase must be monotone across that column.
+Phase endpoints must stay within the fast evaluator's existing ±1e6-radian range.
 The sum of absolute amplitude endpoint bounds plus the trend endpoint range
 produces the approximate band bounds. A varying amplitude/trend or cancellation
 between different carriers can overestimate the values actually attained in that
@@ -124,6 +126,16 @@ public interval arithmetic. Unsupported or mostly uncertain expressions (includi
 some cancelled intermediate results) keep
 the precision fallback, which has no bands. The option never relaxes point
 connection, pole or domain guards.
+
+Quadratic phase vertices are evaluated in the original expression as additional
+discovery seeds, without inventing output extrema or accepting neighbouring
+edges. Columns containing a phase turn retain ordinary samples. Coefficient
+cancellation/roundoff margins can also defer a column to sampling. Resolvable
+parts of recognized quadratic models retain midpoint-error and strict phase
+checks even below a horizontal pixel; the smooth short-chord shortcut is disabled
+there. Bands and ordinary curves can coexist in the same response. A fast carrier
+mixed with a slow/turning carrier may still exhaust the point limit in the
+unbanded region; this remains visible as unresolved detail.
 
 Band-covered seed/refinement intervals do not consume more midpoint samples
 or become accepted chords. Other intervals retain the normal bounded sampler.

@@ -7,6 +7,10 @@ This follow-up extends that bounded representation to sums/differences of up
 to four sin/cos occurrences with affine phases, affine amplitudes and an affine
 trend. It does not solve arbitrary nonlinear phases or certify continuity.
 
+The later [quadratic-phase follow-up](GRAPH_QUADRATIC_PHASES_2026_10_15.md)
+addresses the wide chirp. Measurements and scope below describe the affine-sum
+change at `427654d`.
+
 ## Implementation and limits
 
 - The existing C bytecode produces a fixed-size model; no JavaScript expression

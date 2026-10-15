@@ -19,7 +19,7 @@ test('envelopes are opt-in, disappear at resolved scales and preserve precision 
  const cancelled=await sample(request,'sin(1000x)-sin(1000x)+cos(1100x)',{min:'-.001',max:'.001'});expect(cancelled.schema_version).toBe(2);expect(cancelled.bands).toBeUndefined();
 });
 test('variable poles, nonlinear domains and excessive carrier sums never acquire envelopes',async({request})=>{
- for(const expression of ['tan(1000x)','sin(1000x)/(x-0.1)','sin(1000x)+cos(1100x)+sin(1200x)+cos(1300x)+sin(1400x)','sqrt(x)*sin(1000x)','sin(1000x*x)']){
+ for(const expression of ['tan(1000x)','sin(1000x)/(x-0.1)','sin(1000x)+cos(1100x)+sin(1200x)+cos(1300x)+sin(1400x)','sqrt(x)*sin(1000x)','sin(1000x*x*x)']){
   const data=await sample(request,expression,{min:'0',max:'1',width:'320'});expect(data.bands,expression).toBeUndefined();
   if(expression.includes('/'))data.points.forEach((p,i)=>{if(p[2])expect(data.points[i-1][0]<.1&&p[0]>.1).toBe(false);});
  }

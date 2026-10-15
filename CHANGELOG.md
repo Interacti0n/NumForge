@@ -7,6 +7,11 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Recognize quadratic sin/cos phases in opt-in dense graph ranges. Preserve
+  sampled phase vertices and stricter resolved-curve checks between bands;
+  keep unsupported composition and numerical fallbacks. Add shifted/chirped
+  graph geometry, atomic-failure and before/after benchmark coverage.
+
 - Extend opt-in dense graph ranges to sums/differences of up to four affine
   sin/cos occurrences with affine amplitudes and trend. Combine identical terms,
   preserve precision/domain fallbacks and resolved zoom curves, and document

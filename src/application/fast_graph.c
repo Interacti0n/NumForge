@@ -14,22 +14,43 @@
 typedef struct Work {
     ApplicationFastGraph *graph;ApplicationExpression *exact;ApplicationFastExpression *fast;
     const CalculatorContext *context;CalculatorError *error;
-    double scale,tolerance,coarse_width,y_minimum,y_maximum,tail_tolerance;size_t limit;bool smooth,screen_floor,camera,exponential,exponential_turns;
+    double phase_vertices[APPLICATION_FAST_DENSE_CARRIERS];size_t phase_vertex_count;
+    double scale,tolerance,coarse_width,y_minimum,y_maximum,tail_tolerance;size_t limit;bool smooth,screen_floor,camera,exponential,exponential_turns,quadratic_phase;
 } Work;
 static bool real(const ApplicationFastGraphPoint *p){return p->kind==APPLICATION_GRAPH_REAL&&isfinite(p->y);}
 static CalculatorStatus probe(Work *work,double x,ApplicationFastProbe *result)
 {return work->tail_tolerance>0?application_fast_expression_probe_screen(work->fast,x,work->tail_tolerance,result):work->screen_floor?application_fast_expression_probe_derivative(work->fast,x,result):application_fast_expression_probe(work->fast,x,result);}
 void application_fast_graph_destroy(ApplicationFastGraph *graph){if(graph){free(graph->points);free(graph->bands);free(graph);}}
+static bool dense_phase_column(const ApplicationFastDenseCarrier *term,double a,double b)
+{
+    double pa=fma(fma(term->phase_square,a,term->phase),a,term->phase_offset);
+    double pb=fma(fma(term->phase_square,b,term->phase),b,term->phase_offset);
+    double da=fma(2*term->phase_square,a,term->phase),db=fma(2*term->phase_square,b,term->phase);
+    double ea=64*DBL_EPSILON*(fabs(term->phase_square*a)*fabs(a)+fabs(term->phase*a)+fabs(term->phase_offset));
+    double eb=64*DBL_EPSILON*(fabs(term->phase_square*b)*fabs(b)+fabs(term->phase*b)+fabs(term->phase_offset));
+    double eda=64*DBL_EPSILON*(fabs(2*term->phase_square*a)+fabs(term->phase));
+    double edb=64*DBL_EPSILON*(fabs(2*term->phase_square*b)+fabs(term->phase));
+    // Reject vertices and ill-conditioned expanded coefficients. These margins
+    // are screen heuristics; they do not certify polynomial interval arithmetic.
+    return isfinite(pa)&&isfinite(pb)&&isfinite(da)&&isfinite(db)&&isfinite(ea)&&isfinite(eb)&&
+        ((da>eda&&db>edb)||(da<-eda&&db<-edb))&&
+        fmax(fabs(pa),fabs(pb))<=1e6&&fabs(pb-pa)>=6.28318530717958647693*(1+64*DBL_EPSILON)+ea+eb;
+}
 static CalculatorStatus dense_bands(Work *work,double minimum,double maximum,size_t width)
 {
     ApplicationFastDenseModel model={0};
     CalculatorStatus status=application_fast_expression_dense_model(work->fast,&model);
     if(status==CALCULATOR_NOT_IMPLEMENTED)return CALCULATOR_OK;
     if(status!=CALCULATOR_OK)return status;
+    for(size_t j=0;j<model.count;++j)if(model.carriers[j].phase_square!=0){
+        work->quadratic_phase=true;
+        double vertex=-0.5*(model.carriers[j].phase/model.carriers[j].phase_square);
+        if(isfinite(vertex)&&vertex>minimum&&vertex<maximum)work->phase_vertices[work->phase_vertex_count++]=vertex;
+    }
     const double turn=6.28318530717958647693;
     double step=(maximum-minimum)/(double)width;
     for(size_t j=0;j<model.count;++j){double phase_step=fabs(model.carriers[j].phase)*step;
-        if(!isfinite(phase_step)||phase_step<turn*(1+64*DBL_EPSILON))return CALCULATOR_OK;
+        if(model.carriers[j].phase_square==0&&(!isfinite(phase_step)||phase_step<turn*(1+64*DBL_EPSILON)))return CALCULATOR_OK;
     }
     work->graph->bands=numforge_calloc(width,sizeof(*work->graph->bands));
     if(!work->graph->bands)return CALCULATOR_OUT_OF_MEMORY;
@@ -40,9 +61,8 @@ static CalculatorStatus dense_bands(Work *work,double minimum,double maximum,siz
         if(b<=a)continue;
         double amplitude=0;bool valid=true;
         for(size_t j=0;j<model.count;++j){const ApplicationFastDenseCarrier *term=&model.carriers[j];
-            double pa=fma(term->phase,a,term->phase_offset),pb=fma(term->phase,b,term->phase_offset);
             double aa=fma(term->amplitude,a,term->amplitude_offset),ab=fma(term->amplitude,b,term->amplitude_offset);
-            if(!isfinite(pa)||!isfinite(pb)||fmax(fabs(pa),fabs(pb))>1e6||fabs(pb-pa)<turn*(1+64*DBL_EPSILON)||!isfinite(aa)||!isfinite(ab)){valid=false;break;}
+            if(!dense_phase_column(term,a,b)||!isfinite(aa)||!isfinite(ab)){valid=false;break;}
             amplitude=nextafter(amplitude+fmax(fabs(aa),fabs(ab)),INFINITY);
         }
         if(!valid)continue;
@@ -118,6 +138,21 @@ static bool safe(const ApplicationFastProbe *a,const ApplicationFastProbe *b,con
 }
 static void insert(ApplicationFastGraph *graph,size_t index,ApplicationFastGraphPoint value)
 {memmove(graph->points+index+1U,graph->points+index,(graph->count-index)*sizeof(*graph->points));graph->points[index]=value;++graph->count;}
+/* A phase vertex can hide between equal seed phases. Evaluate the original
+ * expression there, without assigning an output extremum or accepting edges. */
+static CalculatorStatus quadratic_phase_seeds(Work *work)
+{
+    ApplicationFastGraph *graph=work->graph;
+    for(size_t i=0;i<work->phase_vertex_count;++i){double x=work->phase_vertices[i];size_t index=0;
+        while(index<graph->count&&graph->points[index].x<x)++index;
+        if(index<graph->count&&graph->points[index].x==x)continue;
+        if(graph->count>=work->limit){graph->limited=true;return CALCULATOR_OK;}
+        ApplicationFastProbe observed={0};ApplicationFastGraphPoint value={0};
+        CalculatorStatus status=point(work,x,&value,&observed);if(status!=CALCULATOR_OK)return status;
+        insert(graph,index,value);
+    }
+    return CALCULATOR_OK;
+}
 static bool turn(double a,double b)
 {return isfinite(a)&&isfinite(b)&&((a<0&&b>0)||(a>0&&b<0));}
 /* Search argument turns before exp flattens its tails to screen zero. These
@@ -245,11 +280,11 @@ static CalculatorStatus refine(Work *work)
             if(status!=CALCULATOR_OK)break;
         }
         insert(graph,left+1U,b);graph->points[left+2U].connect=false;
-        double phase_limit=work->smooth&&c.x-a.x<=work->coarse_width?3:0.5;
+        double phase_limit=work->smooth&&!work->quadratic_phase&&c.x-a.x<=work->coarse_width?3:0.5;
         /* A restricted continuous AST can use two half-pixel chords once
          * horizontal detail is below the requested screen resolution. Keep
          * phase/domain checks: this must not join poles or hidden periods. */
-        bool short_smooth=work->screen_floor&&work->smooth&&!work->exponential_turns&&c.x-a.x<=work->coarse_width;
+        bool short_smooth=work->screen_floor&&work->smooth&&!work->exponential_turns&&!work->quadratic_phase&&c.x-a.x<=work->coarse_width;
         // A root is not necessarily the midpoint: always recheck both children
         // at their own midpoints before accepting the new neighbouring edges.
         bool accepted=!turning&&!bending&&real(&a)&&real(&b)&&real(&c)&&safe(&ap,&bp,&cp,phase_limit)&&
@@ -367,6 +402,7 @@ static CalculatorStatus sample_view(ApplicationFastGraph **result,const char *in
     }
     if(status==CALCULATOR_OK&&(uncertain>16U||complex_recovery))status=CALCULATOR_NOT_IMPLEMENTED;
     if(status==CALCULATOR_OK&&dense&&work.screen_floor)status=dense_bands(&work,minimum,maximum,width);
+    if(status==CALCULATOR_OK)status=quadratic_phase_seeds(&work);
     if(status==CALCULATOR_OK)status=exponential_seeds(&work);
     if(status==CALCULATOR_OK){
         if(work.exponential)for(size_t i=0;i<work.graph->count;++i)if(real(&work.graph->points[i])){low=isnan(low)?work.graph->points[i].y:fmin(low,work.graph->points[i].y);high=isnan(high)?work.graph->points[i].y:fmax(high,work.graph->points[i].y);}

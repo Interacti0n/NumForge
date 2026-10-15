@@ -5,6 +5,8 @@ details and the [2.2.1 release record](docs/project/RELEASE_2_2_1.md) for valida
 
 ## Unreleased
 
+- Render wide quadratic oscillations such as sin(x*x) with sampled centres and dense outer ranges.
+
 - Keep supported dense sin/cos sums visible as approximate ranges, with curves after zooming in.
 
 - Fix missing graph centres and stuck loading messages after zooming out.

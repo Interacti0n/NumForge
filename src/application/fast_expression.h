@@ -23,11 +23,11 @@ typedef struct ApplicationFastProbe {
     double exponential_slopes[64]; /* Argument derivatives, even in flat tails. */
 } ApplicationFastProbe;
 /* Restricted continuous display model: sum of up to four affine-amplitude,
- * affine-phase sin/cos carriers plus an affine trend. Unsupported trees keep
+ * quadratic-phase sin/cos carriers plus an affine trend. Unsupported trees keep
  * ordinary sampling. This is approximate metadata, not interval proof. */
 #define APPLICATION_FAST_DENSE_CARRIERS 4U
 typedef struct ApplicationFastDenseCarrier {
-    double amplitude,amplitude_offset,phase,phase_offset;
+    double amplitude,amplitude_offset,phase,phase_offset,phase_square;
     bool cosine;
 } ApplicationFastDenseCarrier;
 typedef struct ApplicationFastDenseModel {
