@@ -1,0 +1,7 @@
+profile,case,cycles,requests_after_cycles,aborted_after_cycles,received_MiB,cache_peak_ranges_per_function,cache_peak_records_per_function,cache_peak_estimated_MiB_per_function,retained_peak_records_per_function,heap_initial_MiB,heap_peak_MiB,heap_final_MiB,frame_p95_ms,frame_max_ms,long_tasks,max_long_task_ms,navigation_roundtrips,old_graph_roots_alive_max,units_dom_nodes_min,units_dom_nodes_max,units_listeners_min,units_listeners_max,server_working_set_initial_MiB,server_working_set_final_MiB
+"desktop","mixed","24","135","6","14.593","9","11982","4.109","11984","5.845","7.262","7.239","16.7","33.4","0","0","6","0","878","878","73","73","8.973","9.387"
+"desktop","poles","24","119","6","11.857","9","11976","3.58","11976","4.39","6.407","5.364","16.8","33.4","0","0","6","0","878","878","73","73","9.555","9.445"
+"portrait","mixed","24","146","6","7.33","12","12255","4.231","12255","4.469","7.081","6.315","16.8","33.3","0","0","6","0","869","869","73","73","9.516","9.859"
+"portrait","poles","24","182","6","14.869","12","11933","4.133","11933","4.246","6.598","5.417","16.7","16.8","0","0","6","0","869","869","73","73","10.027","9.715"
+"landscape","mixed","24","202","6","19.52","12","12227","4.25","12227","5.858","7.447","7.408","16.8","33.4","0","0","6","0","869","869","73","73","10.215","10.379"
+"landscape","poles","24","190","6","18.943","12","12227","4.23","12227","4.399","6.815","5.891","16.7","33.4","0","0","6","0","869","869","73","73","10.352","10.438"
