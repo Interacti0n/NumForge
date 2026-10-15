@@ -281,7 +281,8 @@ function initGraph() {
             }));
         }
         function decode(body) {
-            if(body.screen_clipped!==undefined&&(body.schema_version!==3||body.evaluation!=='double'||typeof body.screen_clipped!=='boolean'))throw Error(text.invalid);
+            const cameraSchema=(body.schema_version===3&&body.evaluation==='double')||(body.schema_version===2&&body.evaluation==='precision');
+            if(body.screen_clipped!==undefined&&(!cameraSchema||typeof body.screen_clipped!=='boolean'))throw Error(text.invalid);
             if(body.bands!==undefined&&(body.schema_version!==3||body.evaluation!=='double'||body.dense_representation!=='pixel-envelope'||!Array.isArray(body.bands)||body.bands.length>2048||body.bands.some((b,i)=>!Array.isArray(b)||b.length!==4||b.some(v=>!Number.isFinite(v))||b[0]>=b[1]||b[2]>b[3]||(i>0&&b[0]<body.bands[i-1][1]))))throw Error(text.invalid);
             const slopes=body.slopes;
             if(slopes!==undefined&&(body.schema_version!==3||!Array.isArray(slopes)||slopes.length!==body.count||slopes.some(s=>s!==null&&!Number.isFinite(s))))throw Error(text.invalid);

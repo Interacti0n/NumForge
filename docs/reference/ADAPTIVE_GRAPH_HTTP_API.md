@@ -50,6 +50,12 @@ curves include newly discovered extrema instead of clipping them to the seeds.
 
 ## Bounded C refinement
 
+These seed-based criteria describe requests without a camera. The
+[screen API](SCREEN_GRAPH_HTTP_API.md) can also return schema 2 when approximate
+double evaluation is unsuitable. With explicit y bounds, that precision fallback
+uses camera pixel tolerance and reports optional off-screen deferral plus
+requested dimensions; it retains the same typed evaluator and 2048-point limit.
+
 Preparation parses once and snapshots only referenced values. Thirty-three exact
 inclusive seed coordinates span the requested view. Midpoints are exact rational
 coordinates. Every new sample uses the same typed C evaluator and inherited scope.

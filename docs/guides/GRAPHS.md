@@ -76,12 +76,12 @@ still unresolved at refinement bounds remain gaps. Samples have no permanent mar
 or manual connection/sample-count controls. Sample values are not listed below the plot.
 
 Screen-space refinement follows visible curvature and captured trig/domain
-checks. Precision fallback can use coarser chords for recognized continuous
-expressions such as sin/cos, polynomials and exp. Neither calculation precision
+checks. Precision fallback also follows the visible camera, so huge values outside
+the view do not reduce detail on visible sinh/cosh branches. Neither calculation precision
 nor point count alone guarantees interpolation accuracy. Pole/jump operations
 keep stricter checks; unsupported operations retain the precision sampler.
 
-For a restricted continuous expression with explicit camera bounds, short
+In the double screen sampler, for a restricted continuous expression with explicit camera bounds, short
 segments can remain connected once they are below half a horizontal pixel.
 This avoids spending the point budget on steep off-screen curves such as x^10
 or exp(x). Trigonometric phase checks still reject unresolved whole periods;
@@ -154,7 +154,8 @@ Empty plots support view controls without computing.
 Sampling waits 90 ms after wheel/button changes or pointer release. During a
 gesture the previous curve is projected into the new view; after sampling the
 visible interval is refined without changing the camera. Vertical panning
-reprojects cached values without a calculation. Edits/navigation cancel pending
+reprojects complete cached curves; deferred off-screen regions receive fresh
+samples when revealed, including precision fallback. Edits/navigation cancel pending
 work and old responses cannot replace a newer view. A newly opened page or edited
 expression starts around zero. The expression and curve color persist per tab.
 

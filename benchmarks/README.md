@@ -79,6 +79,7 @@ matrix includes intermediate ratios too; all products are compared in full.
 | `http_queue_benchmark.js` | Observe latency behind a slow request on a dedicated loopback server. |
 | `../scripts/benchmark_graph_audit.cjs`, `../scripts/check_graph_audit_decimal.py` | Independent graph value/geometry corpus with optional before/after HTTP timings, dense coverage and Decimal references; see the [graph release audit](../docs/benchmarks/GRAPH_RELEASE_AUDIT_2026_10_15.md). |
 | `../scripts/benchmark_graph_audit_browser.cjs`, `../scripts/benchmark_graph_budget.cjs` | Actual SVG reproductions and installed Chromium/Chrome/Edge smoke checks; bounded graph rejection, queue waiting and recovery. Known rendering defects are recorded explicitly, not treated as successful graphs. |
+| `../scripts/benchmark_graph_multi.cjs --suite precision` | Four precision-fallback curves on desktop/mobile layouts; see the [camera correction and measured tradeoffs](../docs/benchmarks/GRAPH_PRECISION_CAMERA_2026_10_15.md). Default scenarios are unchanged. |
 | `run_baseline.js` | Record three isolated runs with source/build/machine metadata. |
 | `run_performance_audit.js`, `summarize_performance_audit.js` | Record and check a cross-layer audit with production resource outcomes. |
 | `calculator_limit_benchmark.c` | Time the complete calculator pipeline with shared time/allocation/output budgets. |

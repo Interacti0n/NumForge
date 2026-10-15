@@ -7,6 +7,13 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Use the visible camera for precision-fallback graph refinement, preventing
+  huge off-screen sinh/cosh values from accepting inaccurate visible chords.
+  Defer small ordered off-screen intervals as disconnected gaps, expose the
+  existing camera-deferral flag in schema 2 and resample newly revealed y views.
+  Preserve legacy seed-based sampling and existing resource limits; add geometry,
+  SVG, vertical-cache and allocation/deadline regressions.
+
 - Prioritize visible parts of domain-sensitive graph functions by deferring
   guarded off-screen refinement without joining edges. Add optional
   `screen_clipped` metadata and y-aware cache reuse/resampling. Keep confirmed

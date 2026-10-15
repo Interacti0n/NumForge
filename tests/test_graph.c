@@ -538,9 +538,52 @@ static void test_camera_clipping_failure_and_deadline_are_atomic(void)
     TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,application_fast_graph_sample_camera(&screen_graph,"x",NULL,-10,10,800U,440U,10,-10,false,false,NULL,&context,&error));
     TEST_ASSERT_EQUAL_PTR(original,screen_graph);
 }
+static void test_precision_camera_clipping_and_atomic_failures(void)
+{
+    range("-10","10");CalculatorError error;
+    BigDecimal *low=bigdecimal_create(), *high=bigdecimal_create();
+    TEST_ASSERT_NOT_NULL(low);TEST_ASSERT_NOT_NULL(high);
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK,bigdecimal_set_string(low,"-10"));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK,bigdecimal_set_string(high,"10"));
+#ifdef NUMFORGE_ENABLE_ALLOC_STATS
+    context.time_limit_ms=60000;
+#endif
+    numforge_test_allocator_begin(0U);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_graph_adaptive_camera(&graph,"sinh(10x)",NULL,minimum,maximum,low,high,800U,440U,NULL,&context,&error));
+    size_t calls=numforge_test_allocator_call_count();numforge_test_allocator_end();
+    TEST_ASSERT_TRUE(graph->screen_clipped);TEST_ASSERT_FALSE(graph->limited);TEST_ASSERT_LESS_THAN(1024U,graph->count);
+    size_t visible=0,gaps=0;
+    for(size_t i=1;i<graph->count;++i){
+        if(graph->connect[i])++visible;else ++gaps;
+    }
+    TEST_ASSERT_GREATER_THAN(16U,visible);TEST_ASSERT_GREATER_THAN(16U,gaps);
+    ApplicationGraph *original=graph;
+    for(size_t i=0;i<20U;++i){
+        numforge_test_allocator_begin(1U+(calls-1U)*i/19U);
+        TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY,application_graph_adaptive_camera(&graph,"sinh(10x)",NULL,minimum,maximum,low,high,800U,440U,NULL,&context,&error));
+        numforge_test_allocator_end();TEST_ASSERT_EQUAL_PTR(original,graph);
+    }
+    TEST_ASSERT_TRUE(numforge_budget_begin(0U,SIZE_MAX,SIZE_MAX));
+    TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT,application_graph_adaptive_camera(&graph,"sinh(10x)",NULL,minimum,maximum,low,high,800U,440U,NULL,&context,&error));
+    numforge_budget_end();TEST_ASSERT_EQUAL_PTR(original,graph);
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,application_graph_adaptive_camera(&graph,"x",NULL,minimum,maximum,high,low,800U,440U,NULL,&context,&error));
+    TEST_ASSERT_EQUAL_PTR(original,graph);
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,application_graph_adaptive_camera(&graph,"x",NULL,minimum,maximum,low,high,0U,440U,NULL,&context,&error));
+    TEST_ASSERT_EQUAL(CALCULATOR_NULL_ARGUMENT,application_graph_adaptive_camera(&graph,"x",NULL,minimum,maximum,NULL,high,800U,440U,NULL,&context,&error));
+    TEST_ASSERT_EQUAL_PTR(original,graph);
+    char *response=NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,numforge_web_session_request(&store,"POST","/api/graph/plot?mode=fast&min=-10&max=10&ymin=-10&ymax=10&precision=35&quality=coarse","sinh(10x)",&response));
+    TEST_ASSERT_NOT_NULL(strstr(response,"\"schema_version\":2"));TEST_ASSERT_NOT_NULL(strstr(response,"\"screen_clipped\":true"));
+    TEST_ASSERT_NOT_NULL(strstr(response,"\"quality\":\"refined\""));free(response);response=NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,numforge_web_session_request(&store,"POST","/api/graph/plot?min=-10&max=10","sinh(10x)",&response));
+    TEST_ASSERT_NULL(strstr(response,"screen_clipped"));TEST_ASSERT_NULL(strstr(response,"\"width\""));free(response);
+    bigdecimal_destroy(low);bigdecimal_destroy(high);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_precision_camera_clipping_and_atomic_failures);
     RUN_TEST(test_camera_nested_log_domain_and_pole);
     RUN_TEST(test_camera_clipping_failure_and_deadline_are_atomic);
     RUN_TEST(test_dense_carrier_bands_values_and_domain_exclusions);

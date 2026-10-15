@@ -24,8 +24,13 @@ Additional fields require `mode=fast`:
 When supplied together, `ymin` and `ymax` define the visible vertical span used
 for pixel error estimates. They do not discard samples outside the camera or
 change returned `y_min`/`y_max` extrema metadata. Missing pairs, nonfinite bounds
-and reversed/equal ranges fail. Precision fallback accepts these camera fields
-but retains its existing adaptive criteria. Without them, fast API clients keep
+and reversed/equal ranges fail. Precision fallback also uses the camera: a parent
+midpoint tolerance of at most one vertical plot pixel, retaining a finer seeded
+tolerance when searching larger intervals. A supported smooth parent no wider
+than one horizontal plot pixel may use the camera tolerance once its midpoint
+error also passes; there is no width-only shortcut. This preserves tiny seed
+signals that can reveal narrow peaks without oversampling discovered features.
+Without these bounds, clients keep
 the seed-derived vertical scale.
 
 Default calculation precision 34 permits approximate C double arithmetic; this
@@ -59,12 +64,24 @@ fallback also omits them. Clients must support linear drawing when slopes are
 absent/null. Slopes do not authorize connections across a false `connect` flag.
 This is drawing metadata, not a public symbolic differentiation API.
 
-With explicit y bounds, schema 3 may include `screen_clipped:true`. This means
+With explicit y bounds, schema 3 or schema 2 precision fallback may include
+`screen_clipped:true`. This means
 some off-screen refinement was deferred; their `connect` flags remain false.
 Absence/false means no such deferral. Clients must resample before using these
 gaps in a new y view outside the requested y bounds. It is separate from
 `limited`, which reports unresolved sampling, and from mathematical domain gaps.
 Point rows and legacy requests without camera bounds retain their contracts.
+Camera-aware precision fallback returns its requested `width`/`height` and
+`quality:"refined"`, even for a coarse request: it uses the same bounded precision
+refinement rather than the double sampler's coarse shortcut. It still has no
+slopes or bands. All numeric decisions remain BigDecimal/BigRational operations.
+
+Precision deferral requires three ordered real probes beyond the same camera
+edge by two pixel tolerances, a parent at most eight horizontal plot pixels wide,
+and the existing strict trig-phase checks. Deferred edges remain false and must
+be resampled when a new y view reveals them. This sampled display heuristic does
+not prove that no unseen turn exists. Point/depth/time/allocation limits stay
+unchanged; `limited` remains distinct from deliberate screen deferral.
 
 ## Optional dense-oscillation envelopes
 

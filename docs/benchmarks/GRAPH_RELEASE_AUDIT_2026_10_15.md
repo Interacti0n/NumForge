@@ -5,6 +5,10 @@ release yet.** Existing regressions pass; the wider independent corpus exposes
 incorrect interpolation, missed peaks, false jump connections and an avoidable
 whole-plot error. Fix those before adding more mathematical graph features.
 
+Follow-up: the [precision camera fix](GRAPH_PRECISION_CAMERA_2026_10_15.md)
+addresses the first finding. The results below describe the audited `8e004db`
+build; the remaining release findings still apply.
+
 This audit changes diagnostic scripts and documentation only. It does not change
 the evaluator, sampler, web UI, version or deployed server.
 

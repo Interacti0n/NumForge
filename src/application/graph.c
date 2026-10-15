@@ -111,7 +111,7 @@ CalculatorStatus application_graph_sample(ApplicationGraph **result,
     return status;
 }
 /* Adaptive plotting uses BigDecimal error estimates, never binary floating point.
- * Seeded y bounds keep newly discovered poles from crushing the visible scale. */
+ * Legacy requests use seed scaling; screen fallback uses the explicit camera. */
 typedef struct GraphRefinement {
     ApplicationGraph *graph;
     ApplicationExpression *expression;
@@ -122,9 +122,39 @@ typedef struct GraphRefinement {
     BigDecimal *phase_span;
     BigDecimal *coarse_width;
     BigDecimal *strict_phase_span;
+    BigDecimal *clip_minimum, *clip_maximum, *camera_tolerance, *pixel_width;
+    bool camera;
     bool smooth;
     size_t point_limit;
 } GraphRefinement;
+
+/* Deferral never accepts an edge. Three real, ordered probes outside one camera
+ * edge are a bounded display heuristic, not proof that a hidden turn is absent.
+ * Small x spans and the existing phase checks constrain the deferred region. */
+static CalculatorStatus adaptive_offscreen(GraphRefinement *work, size_t left, bool *deferred)
+{
+    *deferred = false;
+    int width = 0, ab = 0, bc = 0;
+    CalculatorStatus status = calculator_from_decimal_status(bigdecimal_sub(work->delta,
+        work->graph->coordinates[left + 2U].number, work->graph->coordinates[left].number));
+    if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_compare(&width, work->delta, work->coarse_width));
+    if (status != CALCULATOR_OK || width > 0) return status;
+    const BigDecimal *a = work->graph->samples[left].value.number;
+    const BigDecimal *b = work->graph->samples[left + 1U].value.number;
+    const BigDecimal *c = work->graph->samples[left + 2U].value.number;
+    status = calculator_from_decimal_status(bigdecimal_compare(&ab, a, b));
+    if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_compare(&bc, b, c));
+    if (status != CALCULATOR_OK || !((ab <= 0 && bc <= 0) || (ab >= 0 && bc >= 0))) return status;
+    bool below = true, above = true;
+    for (size_t i = left; status == CALCULATOR_OK && i <= left + 2U; ++i) {
+        int low = 0, high = 0;
+        status = calculator_from_decimal_status(bigdecimal_compare(&low, work->graph->samples[i].value.number, work->clip_minimum));
+        if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_compare(&high, work->graph->samples[i].value.number, work->clip_maximum));
+        below = below && low < 0;above = above && high > 0;
+    }
+    if (status == CALCULATOR_OK) *deferred = below || above;
+    return status;
+}
 
 static CalculatorStatus adaptive_coordinate(CalculatorValue *value,
     const BigRational *rational, const CalculatorContext *context)
@@ -196,6 +226,8 @@ static CalculatorStatus adaptive_interval(GraphRefinement *work, size_t left,
         if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_abs(work->delta, work->delta));
         int comparison = 0;
         if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_compare(&comparison, work->delta, work->tolerance));
+        int camera_comparison = 1;
+        if (status == CALCULATOR_OK && work->camera) status = calculator_from_decimal_status(bigdecimal_compare(&camera_comparison, work->delta, work->camera_tolerance));
         if (status != CALCULATOR_OK) return status;
         bool phases_safe = true, phases_tight = true;
         for (size_t i = left; i <= left + 2U; ++i)
@@ -218,14 +250,31 @@ static CalculatorStatus adaptive_interval(GraphRefinement *work, size_t left,
                     if (phase_comparison > 0) phases_tight = false;
                 }
         bool coarse = false;
+        if (work->camera && comparison > 0 && phases_safe && phases_tight) {
+            bool deferred = false;
+            status = adaptive_offscreen(work, left, &deferred);
+            if (status != CALCULATOR_OK) return status;
+            if (deferred) { graph->screen_clipped = true;*empty = true;return CALCULATOR_OK; }
+        }
         /* Display approximation for a restricted continuous AST: a parent
          * narrower than 1/256 of the view contributes two short chords.
          * Domain/pole/jump operations keep the original strict criterion. */
-        if (work->smooth && phases_safe && (comparison > 0 || !phases_tight)) {
+        if (!work->camera && work->smooth && phases_safe && (comparison > 0 || !phases_tight)) {
             status = calculator_from_decimal_status(bigdecimal_sub(work->delta,
                 graph->coordinates[left + 2U].number, graph->coordinates[left].number));
             int width_comparison = 0;
             if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_compare(&width_comparison,work->delta,work->coarse_width));
+            if (status != CALCULATOR_OK) return status;
+            coarse = width_comparison <= 0;
+        }
+        /* Preserve small seed signals while searching large intervals, then
+         * avoid refining a discovered smooth feature beyond screen needs.
+         * Unlike the legacy floor, both pixel width AND camera error must pass. */
+        if (work->camera && work->smooth && phases_safe && phases_tight && camera_comparison <= 0) {
+            int width_comparison = 0;
+            status = calculator_from_decimal_status(bigdecimal_sub(work->delta,
+                graph->coordinates[left + 2U].number, graph->coordinates[left].number));
+            if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_compare(&width_comparison, work->delta, work->pixel_width));
             if (status != CALCULATOR_OK) return status;
             coarse = width_comparison <= 0;
         }
@@ -363,16 +412,19 @@ static CalculatorStatus adaptive_refine(GraphRefinement *work)
     return CALCULATOR_OK;
 }
 
-CalculatorStatus application_graph_adaptive_limit(ApplicationGraph **result,
+static CalculatorStatus adaptive_request(ApplicationGraph **result,
     const char *input, const char *parameter, const BigRational *minimum,
-    const BigRational *maximum, size_t point_limit, const CalculatorSession *session,
+    const BigRational *maximum, size_t point_limit, const BigDecimal *y_minimum,
+    const BigDecimal *y_maximum, size_t width, size_t height, const CalculatorSession *session,
     const CalculatorContext *context, CalculatorError *error)
 {
     calculator_error_clear(error);
     if (result == NULL || input == NULL || minimum == NULL || maximum == NULL || context == NULL) {
         calculator_error_set(error, CALCULATOR_NULL_ARGUMENT, 0U);return CALCULATOR_NULL_ARGUMENT;
     }
-    if (point_limit < 33U || point_limit > 8192U) {
+    bool camera = y_minimum != NULL || y_maximum != NULL;
+    if (point_limit < 33U || point_limit > 8192U || (camera &&
+        (y_minimum == NULL || y_maximum == NULL || width < 320U || width > 2048U || height < 160U || height > 1200U))) {
         calculator_error_set(error, CALCULATOR_INVALID_ARGUMENT, 0U);return CALCULATOR_INVALID_ARGUMENT;
     }
     CalculatorStatus status = calculator_context_validate(context, error);
@@ -382,12 +434,16 @@ CalculatorStatus application_graph_adaptive_limit(ApplicationGraph **result,
     ApplicationExpression *expression = NULL;
     BigRational *step = NULL, *divisor = NULL, *cursor = NULL;
     BigDecimal *number = NULL, *factor = NULL;
-    GraphRefinement work = {0};work.point_limit = point_limit;
+    GraphRefinement work = {0};work.point_limit = point_limit;work.camera = camera;
     ApplicationExpressionSample *seeds = NULL;
     bool any = false;
     int comparison = 0;
     status = calculator_from_rational_status(bigrational_compare(&comparison, minimum, maximum));
     if (status == CALCULATOR_OK && comparison >= 0) status = CALCULATOR_INVALID_ARGUMENT;
+    if (status == CALCULATOR_OK && camera) {
+        status = calculator_from_decimal_status(bigdecimal_compare(&comparison, y_minimum, y_maximum));
+        if (status == CALCULATOR_OK && comparison >= 0) status = CALCULATOR_INVALID_ARGUMENT;
+    }
     if (status == CALCULATOR_OK) status = parameter == NULL ?
         application_expression_prepare_auto(&expression, input, session, context, error) :
         application_expression_prepare(&expression, input, parameter, session, context, error);
@@ -407,9 +463,14 @@ CalculatorStatus application_graph_adaptive_limit(ApplicationGraph **result,
         step = bigrational_create();divisor = bigrational_create();cursor = bigrational_create();
         number = bigdecimal_create();factor = bigdecimal_create();
         work.half = bigdecimal_create();work.sum = bigdecimal_create();work.delta = bigdecimal_create();work.tolerance = bigdecimal_create();work.phase_span = bigdecimal_create();work.coarse_width = bigdecimal_create();work.strict_phase_span = bigdecimal_create();
+        if (camera) {
+            work.clip_minimum = bigdecimal_create();work.clip_maximum = bigdecimal_create();
+            work.camera_tolerance = bigdecimal_create();work.pixel_width = bigdecimal_create();
+        }
         if (graph->coordinates == NULL || graph->samples == NULL || graph->connect == NULL || graph->view_minimum == NULL ||
             graph->view_maximum == NULL || step == NULL || divisor == NULL || cursor == NULL || number == NULL || factor == NULL ||
-            work.half == NULL || work.sum == NULL || work.delta == NULL || work.tolerance == NULL || work.phase_span == NULL || work.coarse_width == NULL || work.strict_phase_span == NULL) status = CALCULATOR_OUT_OF_MEMORY;
+            work.half == NULL || work.sum == NULL || work.delta == NULL || work.tolerance == NULL || work.phase_span == NULL || work.coarse_width == NULL || work.strict_phase_span == NULL ||
+            (camera && (work.clip_minimum == NULL || work.clip_maximum == NULL || work.camera_tolerance == NULL || work.pixel_width == NULL))) status = CALCULATOR_OUT_OF_MEMORY;
     }
     if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_set_string(number, "32"));
     if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_from_bigdecimal(divisor, number));
@@ -433,6 +494,21 @@ CalculatorStatus application_graph_adaptive_limit(ApplicationGraph **result,
     if (status == CALCULATOR_OK && zero) status = calculator_from_decimal_status(bigdecimal_set_string(work.tolerance, "1"));
     if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_set_string(factor, work.smooth ? "0.005" : "0.001"));
     if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_mul(work.tolerance, work.tolerance, factor));
+    if (status == CALCULATOR_OK && camera) {
+        char pixels[24];(void)snprintf(pixels, sizeof(pixels), "%zu", height - 68U);
+        /* A screen tolerance may tighten seed scaling, never relax a tiny seed
+         * signal before refinement has had a chance to discover a narrow peak. */
+        status = calculator_from_decimal_status(bigdecimal_copy(work.sum, work.tolerance));
+        if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_sub(work.tolerance, y_maximum, y_minimum));
+        if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_set_string(factor, pixels));
+        if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_div_significant(work.tolerance, work.tolerance, factor, 40, BIGDECIMAL_ROUND_HALF_EVEN));
+        if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_copy(work.camera_tolerance, work.tolerance));
+        if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_add(work.delta, work.tolerance, work.tolerance));
+        if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_sub(work.clip_minimum, y_minimum, work.delta));
+        if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_add(work.clip_maximum, y_maximum, work.delta));
+        if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_compare(&comparison, work.sum, work.tolerance));
+        if (status == CALCULATOR_OK && comparison < 0) status = calculator_from_decimal_status(bigdecimal_copy(work.tolerance, work.sum));
+    }
     if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_set_string(work.half, "0.5"));
     if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_set_string(work.strict_phase_span,
         context->angle_unit == CALCULATOR_ANGLE_DEGREES ? "30" : "0.5"));
@@ -442,6 +518,17 @@ CalculatorStatus application_graph_adaptive_limit(ApplicationGraph **result,
         graph->coordinates[32U].number,graph->coordinates[0U].number));
     if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_set_string(factor,"0.00390625"));
     if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_mul(work.coarse_width,work.coarse_width,factor));
+    if (status == CALCULATOR_OK && camera) {
+        char pixels[24];(void)snprintf(pixels, sizeof(pixels), "%zu", width - 86U);
+        status = calculator_from_decimal_status(bigdecimal_sub(work.coarse_width, graph->coordinates[32U].number, graph->coordinates[0U].number));
+        if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_set_string(factor, "8"));
+        if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_mul(work.coarse_width, work.coarse_width, factor));
+        if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_set_string(factor, pixels));
+        if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_div_significant(work.coarse_width, work.coarse_width, factor, 40, BIGDECIMAL_ROUND_HALF_EVEN));
+        if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_copy(work.pixel_width, work.coarse_width));
+        for (size_t i = 0U; status == CALCULATOR_OK && i < 3U; ++i)
+            status = calculator_from_decimal_status(bigdecimal_mul(work.pixel_width, work.pixel_width, work.half));
+    }
     if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_set_string(number, "2"));
     if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_from_bigdecimal(divisor, number));
     work.graph = graph;work.expression = expression;work.context = context;work.error = error;work.two = divisor;
@@ -462,10 +549,33 @@ CalculatorStatus application_graph_adaptive_limit(ApplicationGraph **result,
     bigdecimal_destroy(work.phase_span);
     bigdecimal_destroy(work.coarse_width);
     bigdecimal_destroy(work.strict_phase_span);
+    bigdecimal_destroy(work.clip_minimum);bigdecimal_destroy(work.clip_maximum);
+    bigdecimal_destroy(work.camera_tolerance);bigdecimal_destroy(work.pixel_width);
     if (status == CALCULATOR_OK) *result = graph;
     else { application_graph_destroy(graph);calculator_error_set(error, status, error == NULL ? 0U : error->offset); }
     if (owner) numforge_budget_end();
     return status;
+}
+
+CalculatorStatus application_graph_adaptive_limit(ApplicationGraph **result,
+    const char *input, const char *parameter, const BigRational *minimum,
+    const BigRational *maximum, size_t point_limit, const CalculatorSession *session,
+    const CalculatorContext *context, CalculatorError *error)
+{
+    return adaptive_request(result,input,parameter,minimum,maximum,point_limit,NULL,NULL,0U,0U,session,context,error);
+}
+
+CalculatorStatus application_graph_adaptive_camera(ApplicationGraph **result,
+    const char *input, const char *parameter, const BigRational *minimum,
+    const BigRational *maximum, const BigDecimal *y_minimum, const BigDecimal *y_maximum,
+    size_t width, size_t height, const CalculatorSession *session,
+    const CalculatorContext *context, CalculatorError *error)
+{
+    if (y_minimum == NULL || y_maximum == NULL) {
+        calculator_error_set(error, CALCULATOR_NULL_ARGUMENT, 0U);return CALCULATOR_NULL_ARGUMENT;
+    }
+    return adaptive_request(result,input,parameter,minimum,maximum,APPLICATION_GRAPH_MAX_ADAPTIVE_SAMPLES,
+        y_minimum,y_maximum,width,height,session,context,error);
 }
 
 CalculatorStatus application_graph_adaptive(ApplicationGraph **result,

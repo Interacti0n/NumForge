@@ -282,7 +282,7 @@ static CalculatorStatus graph_request(ApplicationClientStore *store, const char 
     *code = "graph_error";
     bool owner = numforge_budget_begin(CALCULATOR_DEFAULT_TIME_LIMIT_MS,
         CALCULATOR_ALLOCATION_BUDGET, CALCULATOR_SINGLE_ALLOCATION);
-    BigDecimal *decimal = bigdecimal_create();
+    BigDecimal *decimal = bigdecimal_create(), *precision_y_minimum = NULL, *precision_y_maximum = NULL;
     BigRational *minimum = bigrational_create(), *maximum = bigrational_create();
     ApplicationGraph *graph = NULL;
     Json json = {NULL, 0U, CALCULATOR_OK, adaptive ? GRAPH_RESPONSE_CAPACITY : RESPONSE_CAPACITY};
@@ -340,7 +340,14 @@ static CalculatorStatus graph_request(ApplicationClientStore *store, const char 
         application_fast_graph_destroy(fast);
         if(status==CALCULATOR_NOT_IMPLEMENTED)status=CALCULATOR_OK;
     }
-    if (status == CALCULATOR_OK) status = adaptive ?
+    if (status == CALCULATOR_OK && adaptive && fast_mode && vertical_span > 0) {
+        precision_y_minimum = bigdecimal_create();precision_y_maximum = bigdecimal_create();
+        status = precision_y_minimum && precision_y_maximum ? CALCULATOR_OK : CALCULATOR_OUT_OF_MEMORY;
+        if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_set_string(precision_y_minimum, query->values[YMINIMUM]));
+        if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_set_string(precision_y_maximum, query->values[YMAXIMUM]));
+        if (status == CALCULATOR_OK) status = application_graph_adaptive_camera(&graph, body, parameter, minimum, maximum,
+            precision_y_minimum, precision_y_maximum, (size_t)width, (size_t)height, session, &context, error);
+    } else if (status == CALCULATOR_OK) status = adaptive ?
         application_graph_adaptive(&graph, body, parameter, minimum, maximum, session, &context, error) :
         application_graph_sample(&graph, body, parameter, minimum, maximum, (size_t)points, session, &context, error);
     if (adaptive && parameter == NULL && status == CALCULATOR_UNDEFINED_VARIABLE) *code = "graph_parameter_ambiguous";
@@ -359,6 +366,10 @@ static CalculatorStatus graph_request(ApplicationClientStore *store, const char 
             if (view.number != NULL) plot_number(&json, &view,16);else append(&json,"null");
             append(&json, ",\"y_max\":");view.number = graph->view_maximum;
             if (view.number != NULL) plot_number(&json, &view,16);else append(&json,"null");
+            if (precision_y_minimum) {
+                append(&json, ",\"quality\":\"refined\",\"width\":%llu,\"height\":%llu", (unsigned long long)width, (unsigned long long)height);
+                if (graph->screen_clipped) append(&json, ",\"screen_clipped\":true");
+            }
         }
         append(&json, ",\"count\":%zu,\"plot_places\":%u,\"points\":[", graph->count,adaptive?16U:12U);
         static const char *kinds[] = {"real", "domain_error", "complex", "quantity"};
@@ -387,6 +398,7 @@ static CalculatorStatus graph_request(ApplicationClientStore *store, const char 
 graph_done:
     status = calculator_budget_status(status);
     application_graph_destroy(graph); bigdecimal_destroy(decimal);
+    bigdecimal_destroy(precision_y_minimum);bigdecimal_destroy(precision_y_maximum);
     bigrational_destroy(minimum); bigrational_destroy(maximum);
     if (status == CALCULATOR_OK) *response = json.data;
     else free(json.data);

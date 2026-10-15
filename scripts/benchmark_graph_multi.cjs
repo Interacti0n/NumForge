@@ -7,18 +7,20 @@ const fs=require('node:fs/promises'),path=require('node:path');
 const args=process.argv.slice(2),option=name=>args.includes(name)?args[args.indexOf(name)+1]:undefined;
 const before=option('--before'),after=option('--after'),output=args.includes('--output')?option('--output'):'build/graph-multi-benchmark.json';
 const repeats=Number(args.includes('--repeats')?option('--repeats'):3);
-if(!before||!after||!Number.isInteger(repeats)||repeats<1||repeats>10)throw Error('Use --before old.exe --after new.exe [--output file.json] [--repeats 1..10]');
+if(!before||!after||!Number.isInteger(repeats)||repeats<1||repeats>10)throw Error('Use --before old.exe --after new.exe [--suite default|precision] [--output file.json] [--repeats 1..10]');
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms)),now=()=>performance.now();
 const percentile=(values,p)=>values.length?[...values].sort((a,b)=>a-b)[Math.min(values.length-1,Math.floor(values.length*p))]:null;
-const scenarios=[
+const suite=option('--suite')||'default';if(!['default','precision'].includes(suite))throw Error('Unknown suite');
+const scenarios=suite==='precision'?[{name:'precision-camera',functions:['sinh(10x)','cosh(10x)','tanh(10x)','atan(100x)']}]:[
  {name:'mixed',functions:['sin(33x)','cos(17x)','exp(-x*x/4)','x^3-3x']},
  {name:'dense-and-poles',functions:['sin(1000x)','tan(3x)','1/(x-0.1)^2','sqrt(abs(x))*sin(33x)']}
 ];
 async function server(executable,port){
+ const occupied=await fetch(`http://127.0.0.1:${port}`,{signal:AbortSignal.timeout(500)}).catch(()=>null);if(occupied){await occupied.arrayBuffer();throw Error('Benchmark port occupied');}
  const child=spawn(path.resolve(executable),['--no-browser','--port',String(port)],{windowsHide:true,stdio:'ignore'});
  let launchError;child.on('error',error=>launchError=error);
  const close=async()=>{if(child.exitCode===null&&!launchError){const exit=once(child,'exit');child.kill();await exit;}};
- try{for(let i=0;i<60;i++){if(launchError)throw launchError;if(child.exitCode!==null)throw Error('Server exited');try{const r=await fetch(`http://127.0.0.1:${port}/graph?lang=en`);if(r.ok)return{url:`http://127.0.0.1:${port}`,close};}catch(_){}await pause(100);}throw Error('Server readiness timeout');}catch(error){await close();throw error;}
+ try{for(let i=0;i<60;i++){if(launchError)throw launchError;if(child.exitCode!==null)throw Error('Server exited');try{const r=await fetch(`http://127.0.0.1:${port}/graph?lang=en`);await r.arrayBuffer();if(r.ok)return{url:`http://127.0.0.1:${port}`,close};}catch(_){}await pause(100);}throw Error('Server readiness timeout');}catch(error){await close();throw error;}
 }
 async function run(browser,base,version,profile,scenario,repeat){
  const context=await browser.newContext({viewport:profile.viewport}),page=await context.newPage(),cdp=await context.newCDPSession(page);
@@ -56,7 +58,7 @@ async function run(browser,base,version,profile,scenario,repeat){
   await begin('pan');await page.mouse.move(x,y);await page.mouse.down();for(let i=1;i<=8;i++){await page.mouse.move(x+box.width*.012*i,y);await page.evaluate(()=>new Promise(requestAnimationFrame));}await page.mouse.up();await finish();
   await begin('zoom');for(let i=0;i<6;i++){await page.locator('#graph-plot').dispatchEvent('wheel',{deltaY:-100,clientX:x,clientY:y});await page.evaluate(()=>new Promise(requestAnimationFrame));}await finish();
   if(version==='after'){
-   await begin('toggle');const id=await rows.nth(1).getAttribute('data-curve');await page.locator(`#graph-legend button[data-curve="${id}"]`).click();await page.waitForFunction(id=>!document.querySelector(`path.graph-line[data-curve="${id}"]`),id);await page.locator(`#graph-legend button[data-curve="${id}"]`).click();await page.waitForFunction(id=>!!document.querySelector(`path.graph-line[data-curve="${id}"]`),id);const visible=await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>resolve(performance.now()-window.bench.origin))));await finish(visible);
+   await begin('toggle');const id=await rows.nth(suite==='precision'?3:1).getAttribute('data-curve');await page.locator(`#graph-legend button[data-curve="${id}"]`).click();await page.waitForFunction(id=>!document.querySelector(`path.graph-line[data-curve="${id}"]`),id);await page.locator(`#graph-legend button[data-curve="${id}"]`).click();await page.waitForFunction(id=>!!document.querySelector(`path.graph-line[data-curve="${id}"]`),id);const visible=await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>resolve(performance.now()-window.bench.origin))));await finish(visible);
    if(phases.toggle.requests!==0)throw Error('Warm visibility toggle made a graph request');
   }
   const heap=await cdp.send('Runtime.getHeapUsage');const row={version,profile:profile.name,scenario:scenario.name,repeat,functions:scenario.functions,js_heap_used_bytes:heap.usedSize,js_heap_total_bytes:heap.totalSize,phases};process.stdout.write(JSON.stringify({version,profile:profile.name,scenario:scenario.name,repeat,first_frame_ms:phases.initial.first_visible_frame_ms,initial_curves:phases.initial.rendered_functions,initial_unresolved:phases.initial.visible_unresolved_functions,zoom_requests:phases.zoom.requests,toggle_requests:phases.toggle?.requests,errors:phases.initial.errors})+'\n');return row;
@@ -68,5 +70,5 @@ async function run(browser,base,version,profile,scenario,repeat){
   const owned=await server(executable,port);
   try{for(const profile of [{name:'desktop',viewport:{width:1280,height:900}},{name:'mobile-layout',viewport:{width:390,height:844}}])for(const scenario of scenarios)for(let repeat=1;repeat<=repeats;repeat++)rows.push(await run(browser,owned.url,version,profile,scenario,repeat));}finally{await owned.close();}
  }}finally{await browser.close();}
- await fs.mkdir(path.dirname(output),{recursive:true});await fs.writeFile(output,JSON.stringify({generated:new Date().toISOString(),before:path.resolve(before),after:path.resolve(after),repeats,note:'Headless Chromium on this PC; mobile viewport is not a physical phone. Settling includes a fixed 350ms quiet interval. Frame times include tool interaction overhead. Heap is sampled without forcing GC and includes the whole page. Cache weight is a conservative response estimate, not heap usage.',rows},null,2)+'\n');
+ await fs.mkdir(path.dirname(output),{recursive:true});await fs.writeFile(output,JSON.stringify({generated:new Date().toISOString(),before:path.resolve(before),after:path.resolve(after),repeats,suite,note:'Headless Chromium on this PC; mobile viewport is not a physical phone. Settling includes a fixed 350ms quiet interval. Frame times include tool interaction overhead. Heap is sampled without forcing GC and includes the whole page. Cache weight is a conservative response estimate, not heap usage.',rows},null,2)+'\n');
 })().catch(error=>{process.stderr.write(error.stack+'\n');process.exitCode=1;});
