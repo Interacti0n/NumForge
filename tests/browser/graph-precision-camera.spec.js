@@ -21,7 +21,7 @@ test('precision camera refines visible hyperbolic chords instead of seeded off-s
 });
 
 test('precision camera preserves tiny seeded signals that reveal narrow smooth peaks',async({request})=>{
- const body=await (await request.post('/api/graph/plot?mode=fast&min=-10&max=10&ymin=-10&ymax=10&width=800&height=440',{data:'exp(-((x-0.1234)/0.04)^2)'})).json();
+ const body=await (await request.post('/api/graph/plot?mode=fast&precision=35&min=-10&max=10&ymin=-10&ymax=10&width=800&height=440',{data:'exp(-((x-0.1234)/0.04)^2)'})).json();
  expect(body.ok).toBe(true);expect(body.evaluation).toBe('precision');
  expect(Math.max(...body.points.filter(p=>p.kind==='real').map(p=>Number(p.y)))).toBeGreaterThan(.98);
  const right=body.points.findIndex(p=>Number(p.x)>=.1234),b=body.points[right],a=body.points[right-1];expect(b.connect).toBe(true);

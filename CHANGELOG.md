@@ -7,6 +7,13 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Project negligible exponential tails in screen sampling with a propagated
+  absolute error allowance, avoiding whole-graph scale errors on narrow
+  Gaussians. Seed actual values at exponent turns and estimated shoulders,
+  then validate their neighbouring chords. Keep ordinary numerical probes,
+  precision fallback and resource limits; test compositions, wider cameras,
+  nonlinear magnification, domain gaps and atomic failures.
+
 - Preserve narrow rational graph peaks and valleys using guarded derivative
   brackets during C sampling. Evaluate a bounded turning-point candidate, then
   refine both neighbouring intervals before accepting connections. Keep actual

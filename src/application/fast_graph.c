@@ -14,11 +14,11 @@
 typedef struct Work {
     ApplicationFastGraph *graph;ApplicationExpression *exact;ApplicationFastExpression *fast;
     const CalculatorContext *context;CalculatorError *error;
-    double scale,tolerance,coarse_width,y_minimum,y_maximum;size_t limit;bool smooth,screen_floor,camera;
+    double scale,tolerance,coarse_width,y_minimum,y_maximum,tail_tolerance;size_t limit;bool smooth,screen_floor,camera,exponential,exponential_turns;
 } Work;
 static bool real(const ApplicationFastGraphPoint *p){return p->kind==APPLICATION_GRAPH_REAL&&isfinite(p->y);}
 static CalculatorStatus probe(Work *work,double x,ApplicationFastProbe *result)
-{return work->screen_floor?application_fast_expression_probe_derivative(work->fast,x,result):application_fast_expression_probe(work->fast,x,result);}
+{return work->tail_tolerance>0?application_fast_expression_probe_screen(work->fast,x,work->tail_tolerance,result):work->screen_floor?application_fast_expression_probe_derivative(work->fast,x,result):application_fast_expression_probe(work->fast,x,result);}
 void application_fast_graph_destroy(ApplicationFastGraph *graph){if(graph){free(graph->points);free(graph->bands);free(graph);}}
 static CalculatorStatus dense_bands(Work *work,double minimum,double maximum,size_t width)
 {
@@ -64,12 +64,12 @@ static CalculatorStatus project(const BigDecimal *number,double *value)
     if(status==CALCULATOR_OK){char *end=NULL;errno=0;double x=strtod(text,&end);*value=errno==ERANGE||!isfinite(x)||end==text||*end?NAN:x;}
     free(text);return status;
 }
-static CalculatorStatus point(Work *work,double x,ApplicationFastGraphPoint *result,ApplicationFastProbe *probe)
+static CalculatorStatus point(Work *work,double x,ApplicationFastGraphPoint *result,ApplicationFastProbe *observed)
 {
-    CalculatorStatus status=work->screen_floor?application_fast_expression_probe_derivative(work->fast,x,probe):application_fast_expression_probe(work->fast,x,probe);
+    CalculatorStatus status=probe(work,x,observed);
     if(status!=CALCULATOR_OK)return status;
     *result=(ApplicationFastGraphPoint){x,NAN,APPLICATION_GRAPH_REAL,false,true,false,NAN};
-    if(probe->sample.kind==APPLICATION_FAST_REAL){result->y=probe->sample.value;result->derivative=probe->derivative;return CALCULATOR_OK;}
+    if(observed->sample.kind==APPLICATION_FAST_REAL){result->y=observed->sample.value;result->derivative=observed->derivative;return CALCULATOR_OK;}
     if(work->graph->exact_probes>=128U||numforge_budget_available_bytes()<3U*1024U*1024U||numforge_budget_available_ms()<300U){result->kind=APPLICATION_GRAPH_UNRESOLVED;work->graph->limited=true;return CALCULATOR_OK;}
     ++work->graph->exact_probes;
     char text[32];(void)snprintf(text,sizeof(text),"%.17g",x);
@@ -80,7 +80,7 @@ static CalculatorStatus point(Work *work,double x,ApplicationFastGraphPoint *res
     if(status==CALCULATOR_OK)status=calculator_from_rational_status(bigrational_from_bigdecimal(coordinate.rational,coordinate.number));
     if(status==CALCULATOR_OK)status=application_expression_sample(work->exact,&coordinate,1U,&sample,work->error);
     if(status==CALCULATOR_OK){result->kind=application_graph_point_kind(sample);result->approximate=sample->value.kind==CALCULATOR_VALUE_DECIMAL||sample->value.kind==CALCULATOR_VALUE_COMPLEX_DECIMAL;
-        if(result->kind==APPLICATION_GRAPH_REAL){status=project(sample->value.number,&result->y);result->derivative=probe->derivative;}}
+        if(result->kind==APPLICATION_GRAPH_REAL){status=project(sample->value.number,&result->y);result->derivative=observed->derivative;}}
     calculator_value_destroy(&coordinate);application_expression_samples_destroy(sample,1U);return status;
 }
 static bool same_sign(double a,double b,double c){return (a>0&&b>0&&c>0)||(a<0&&b<0&&c<0);}
@@ -113,6 +113,62 @@ static void insert(ApplicationFastGraph *graph,size_t index,ApplicationFastGraph
 {memmove(graph->points+index+1U,graph->points+index,(graph->count-index)*sizeof(*graph->points));graph->points[index]=value;++graph->count;}
 static bool turn(double a,double b)
 {return isfinite(a)&&isfinite(b)&&((a<0&&b>0)||(a>0&&b<0));}
+/* Search argument turns before exp flattens its tails to screen zero. These
+ * are discovery seeds, not accepted curve edges or synthetic function values. */
+static CalculatorStatus exponential_seeds(Work *work)
+{
+    if(!work->screen_floor||!work->exponential)return CALCULATOR_OK;
+    ApplicationFastGraph *graph=work->graph;
+    for(size_t edge=32U;edge>0;--edge){
+        double start=graph->points[edge-1U].x,end=graph->points[edge].x;
+        ApplicationFastProbe a={0},c={0};CalculatorStatus status=probe(work,start,&a);
+        if(status==CALCULATOR_OK)status=probe(work,end,&c);
+        if(status!=CALCULATOR_OK)return status;
+        if(!a.complete||!c.complete||a.exponential_count!=c.exponential_count)continue;
+        for(size_t slot=0;slot<a.exponential_count;++slot){
+            double dl=a.exponential_slopes[slot],dr=c.exponential_slopes[slot];
+            bool endpoint=(dl==0&&isfinite(dr)&&dr!=0)||(dr==0&&isfinite(dl)&&dl!=0);
+            if(!turn(dl,dr)&&!endpoint)continue;
+            double left=start,right=end;bool found=endpoint;double x=dl==0?start:end;
+            for(unsigned attempt=0;!found&&attempt<40U;++attempt){
+                if(graph->count>=work->limit||numforge_budget_available_bytes()<3U*1024U*1024U||numforge_budget_available_ms()<300U){graph->limited=true;return CALCULATOR_OK;}
+                x=left+(right-left)/2;if(x<=left||x>=right)break;
+                ApplicationFastProbe b={0};status=probe(work,x,&b);if(status!=CALCULATOR_OK)return status;
+                if(!b.complete||slot>=b.exponential_count||!safe(&a,&b,&c,.5))break;
+                double d=b.exponential_slopes[slot];if(!isfinite(d))break;
+                if(d==0||attempt==39U){found=true;break;}
+                if((dl<0&&d<0)||(dl>0&&d>0)){left=x;dl=d;}else right=x;
+            }
+            if(found){
+                if(graph->count>=work->limit||numforge_budget_available_bytes()<3U*1024U*1024U||numforge_budget_available_ms()<300U){graph->limited=true;return CALCULATOR_OK;}
+                ApplicationFastGraphPoint value={0};ApplicationFastProbe b={0};status=point(work,x,&value,&b);
+                if(status!=CALCULATOR_OK)return status;
+                if(!real(&value))continue;
+                work->exponential_turns=true;
+                size_t index=edge;while(index<graph->count&&graph->points[index].x<x)++index;
+                if(x==start)index=edge-1U;
+                value.turn_anchor=true;
+                if(index<graph->count&&graph->points[index].x==x)graph->points[index].turn_anchor=true;
+                else insert(graph,index,value);
+                // A curvature-based spacing estimate supplies actual shoulder
+                // seeds even when the viewing interval dwarfs the feature.
+                double curvature=(c.exponential_slopes[slot]-a.exponential_slopes[slot])/(end-start);
+                double spacing=sqrt(2/fabs(curvature));
+                for(int shoulder=-2;shoulder<=2;++shoulder){
+                    if(!shoulder||!isfinite(spacing)||spacing<=0)continue;
+                    double sx=x+shoulder*spacing;if(sx<=start||sx>=end||sx==x)continue;
+                    if(graph->count>=work->limit){graph->limited=true;return CALCULATOR_OK;}
+                    status=point(work,sx,&value,&b);if(status!=CALCULATOR_OK)return status;
+                    if(!real(&value))continue;
+                    index=edge;while(index<graph->count&&graph->points[index].x<sx)++index;
+                    if(index<graph->count&&graph->points[index].x==sx)continue;
+                    insert(graph,index,value);
+                }
+            }
+        }
+    }
+    return CALCULATOR_OK;
+}
 /* A guarded derivative bracket can reveal a narrow rational feature hidden
  * between seed values. Use an actual evaluation as the split, then let normal
  * refinement validate both neighbouring edges. Never manufacture a connection. */
@@ -152,7 +208,7 @@ static CalculatorStatus refine(Work *work)
 {
     typedef struct Interval {size_t left;unsigned depth;} Interval;
     Interval *queue=numforge_malloc(work->limit*sizeof(*queue));if(!queue)return CALCULATOR_OUT_OF_MEMORY;
-    size_t head=0,pending=32;CalculatorStatus status=CALCULATOR_OK;
+    size_t head=0,pending=work->graph->count-1U;CalculatorStatus status=CALCULATOR_OK;
     for(size_t i=0;i<pending;++i)queue[i]=(Interval){i,0};
     while(pending){
         ApplicationFastGraph *graph=work->graph;
@@ -186,7 +242,7 @@ static CalculatorStatus refine(Work *work)
         /* A restricted continuous AST can use two half-pixel chords once
          * horizontal detail is below the requested screen resolution. Keep
          * phase/domain checks: this must not join poles or hidden periods. */
-        bool short_smooth=work->screen_floor&&work->smooth&&c.x-a.x<=work->coarse_width;
+        bool short_smooth=work->screen_floor&&work->smooth&&!work->exponential_turns&&c.x-a.x<=work->coarse_width;
         // A root is not necessarily the midpoint: always recheck both children
         // at their own midpoints before accepting the new neighbouring edges.
         bool accepted=!turning&&!bending&&real(&a)&&real(&b)&&real(&c)&&safe(&ap,&bp,&cp,phase_limit)&&
@@ -283,6 +339,7 @@ static CalculatorStatus sample_view(ApplicationFastGraph **result,const char *in
     CalculatorStatus status=calculator_context_validate(context,error);if(status!=CALCULATOR_OK)return status;
     bool owner=numforge_budget_begin((uint64_t)context->time_limit_ms,CALCULATOR_ALLOCATION_BUDGET,CALCULATOR_SINGLE_ALLOCATION);
     Work work={0};work.context=context;work.error=error;work.screen_floor=vertical_span>0;work.limit=coarse?width*2U:APPLICATION_FAST_GRAPH_MAX_POINTS;
+    work.tail_tolerance=vertical_span/(double)height/64;
     status=parameter?application_expression_prepare(&work.exact,input,parameter,session,context,error):application_expression_prepare_auto(&work.exact,input,session,context,error);
     if(status==CALCULATOR_OK){work.smooth=application_expression_graph_smooth(work.exact);status=application_expression_fast_compile(&work.fast,work.exact,error);if(status==CALCULATOR_INVALID_ARGUMENT)status=CALCULATOR_NOT_IMPLEMENTED;}
     if(status==CALCULATOR_OK){work.graph=numforge_calloc(1U,sizeof(*work.graph));if(!work.graph)status=CALCULATOR_OUT_OF_MEMORY;}
@@ -292,6 +349,7 @@ static CalculatorStatus sample_view(ApplicationFastGraph **result,const char *in
     for(size_t i=0;status==CALCULATOR_OK&&i<33U;++i){
         ApplicationFastProbe probe={0};double x=i==32U?maximum:minimum+(maximum-minimum)*(double)i/32;
         status=point(&work,x,&work.graph->points[i],&probe);if(status!=CALCULATOR_OK)break;
+        if(probe.exponential_count)work.exponential=true;
         ++work.graph->count;
         ApplicationGraphPointKind kind=work.graph->points[i].kind;
         // Confirmed complex/domain samples do not make the real portion
@@ -302,7 +360,9 @@ static CalculatorStatus sample_view(ApplicationFastGraph **result,const char *in
     }
     if(status==CALCULATOR_OK&&(uncertain>16U||complex_recovery))status=CALCULATOR_NOT_IMPLEMENTED;
     if(status==CALCULATOR_OK&&dense&&work.screen_floor)status=dense_bands(&work,minimum,maximum,width);
+    if(status==CALCULATOR_OK)status=exponential_seeds(&work);
     if(status==CALCULATOR_OK){
+        if(work.exponential)for(size_t i=0;i<work.graph->count;++i)if(real(&work.graph->points[i])){low=isnan(low)?work.graph->points[i].y:fmin(low,work.graph->points[i].y);high=isnan(high)?work.graph->points[i].y:fmax(high,work.graph->points[i].y);}
         work.graph->minimum=low;work.graph->maximum=high;
         memcpy(work.graph->parameter,application_expression_parameter(work.exact),strlen(application_expression_parameter(work.exact))+1U);
         work.scale=fmax(fabs(low),fabs(high));if(!isfinite(work.scale)||work.scale==0)work.scale=1;

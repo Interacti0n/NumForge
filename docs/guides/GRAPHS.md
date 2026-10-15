@@ -234,8 +234,12 @@ multi-function update can take longer overall. HTTP clients can still request sa
 angles and read-only session snapshots through the documented API; those options
 are independent of the browser graph controls.
 
-Coordinates are rounded JSON numbers or scientific strings from C. Browser overflow or underflow
-is omitted, never plotted as a false zero. Collapsed x coordinates prevent drawing.
+The C screen sampler can project negligible exponential tails to zero when its
+propagated error fits a small fraction of a pixel. It searches exponent turns
+and nearby shoulders so narrow Gaussian peaks remain visible. This display
+approximation does not change calculator results or precision sampling.
+Coordinates are rounded JSON numbers or scientific strings from C. Further browser overflow or underflow
+is omitted. Collapsed x coordinates prevent drawing.
 Each C sampling request has one five-second budget for preparation, every sample and serialization, with
 existing allocation and response bounds. Refinement can finish early with a
 limited plot when its remaining budget is too small for another probe. Actual

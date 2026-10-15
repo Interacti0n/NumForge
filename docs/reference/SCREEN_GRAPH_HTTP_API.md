@@ -257,6 +257,27 @@ Wheel, pinch and keyboard +/− zoom remain available; expanded/resized views ca
 request detail for their new dimensions (up to the existing 2048×1200 API bounds). Browser requests use radians, default working precision and no retained
 calculator client. Configurable HTTP parameters remain available to API clients.
 
+For screen sampling with a vertical span, exponential underflow may project to
+zero with an absolute error allowance of `(ymax-ymin)/height/64` (or the supplied
+vertical span). The internal evaluator bounds an underflowed exp by `DBL_MIN`
+only when its argument plus estimated error is below `log(DBL_MIN)`. Supported
+arithmetic propagates that bound, with a nonzero floor to prevent underflow of
+the bound itself. Denominators containing projected tails and nonlinear
+magnification retain uncertainty/exact fallback; a zero display value is never
+reused as an exact mathematical zero. Small propagated argument roundoff can
+also be resolved at a well-conditioned exp within the screen allowance.
+
+Before refinement, up to 40 bisection probes locate sampled derivative turns
+of exp arguments, including turns exactly on a seed. Actual function values at
+these candidates and curvature-estimated shoulders become discovery seeds.
+Their edges still require the usual domain/phase and midpoint checks; curves
+with discovered exp turns retain the midpoint error test below a horizontal
+pixel. Counts, shared budgets, optional-work reserves and public schemas are
+unchanged. This is a finite display heuristic, not a completeness/interval proof.
+Ordinary fast probes, calculator evaluation and explicit precision fallback do
+not opt into this screen projection; extreme exp scale errors can still occur
+there or in unsupported compositions.
+
 Response `limited` describes the entire sampled range. The browser warning is
 restricted to unresolved samples and disconnected real edges that overlap the
 camera's x bounds and whose sampled ordinates intersect its y bounds. Known

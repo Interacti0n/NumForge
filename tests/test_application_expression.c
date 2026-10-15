@@ -377,9 +377,36 @@ static void test_forward_derivatives_and_unavailable_slopes(void)
     TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT,application_fast_expression_probe_derivative(fast,30,&sample));
     TEST_ASSERT_TRUE(sample.derivative==123);numforge_budget_end();
 }
+static void test_screen_exp_tails_are_bounded_and_never_reused_as_exact_zeros(void)
+{
+    ApplicationFastProbe p={0};compile_fast("exp(-x*x)");
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_expression_probe_derivative(fast,100,&p));
+    TEST_ASSERT_EQUAL(APPLICATION_FAST_UNCERTAIN,p.sample.kind);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_expression_probe_screen(fast,100,1e-6,&p));
+    TEST_ASSERT_EQUAL(APPLICATION_FAST_REAL,p.sample.kind);TEST_ASSERT_TRUE(p.sample.value==0);
+    TEST_ASSERT_EQUAL(1U,p.exponential_count);TEST_ASSERT_TRUE(p.exponential_slopes[0]==-200);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_expression_probe_screen(fast,100,1e-310,&p));
+    TEST_ASSERT_EQUAL(APPLICATION_FAST_UNCERTAIN,p.sample.kind);
+    const char *safe[]={"3-2*exp(-x*x)","exp(-x*x)/2","exp(-x*x)+exp(-2*x*x)"};
+    for(size_t i=0;i<sizeof(safe)/sizeof(safe[0]);++i){compile_fast(safe[i]);
+        TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_expression_probe_screen(fast,100,1e-6,&p));
+        TEST_ASSERT_EQUAL(APPLICATION_FAST_REAL,p.sample.kind);TEST_ASSERT_TRUE(p.sample.value==(i==0U?3:0));}
+    const char *unsafe[]={"1/exp(-x*x)","ln(exp(-x*x))","sqrt(exp(-x*x))","exp(-x*x)^0.001",
+        "exp(-x*x)*10^308","exp(-x*x)*exp(-x*x)*10^308*10^308","exp(x*x)"};
+    for(size_t i=0;i<sizeof(unsafe)/sizeof(unsafe[0]);++i){compile_fast(unsafe[i]);
+        TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_expression_probe_screen(fast,100,1e-6,&p));
+        TEST_ASSERT_EQUAL_MESSAGE(APPLICATION_FAST_UNCERTAIN,p.sample.kind,unsafe[i]);}
+    p.derivative=123;
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,application_fast_expression_probe_screen(fast,100,NAN,&p));
+    TEST_ASSERT_TRUE(p.derivative==123);
+    TEST_ASSERT_TRUE(numforge_budget_begin(0U,SIZE_MAX,SIZE_MAX));
+    TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT,application_fast_expression_probe_screen(fast,100,1e-6,&p));
+    numforge_budget_end();TEST_ASSERT_TRUE(p.derivative==123);
+}
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_screen_exp_tails_are_bounded_and_never_reused_as_exact_zeros);
     RUN_TEST(test_forward_derivatives_and_unavailable_slopes);
     RUN_TEST(test_fast_graph_values_domains_and_angle_units);
     RUN_TEST(test_fast_graph_snapshot_and_arithmetic_contract);

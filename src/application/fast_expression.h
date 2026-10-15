@@ -19,6 +19,8 @@ typedef struct ApplicationFastProbe {
     size_t phase_count,guard_count;
     double phases[64];int phase_kinds[64];
     ApplicationFastGuard guards[64];bool complete,non_real_intermediate;
+    size_t exponential_count;
+    double exponential_slopes[64]; /* Argument derivatives, even in flat tails. */
 } ApplicationFastProbe;
 /* Restricted continuous display model: (amplitude*x + amplitude_offset) *
  * sin/cos(phase*x + phase_offset) + offset*x + offset_value. Unsupported trees
@@ -39,6 +41,10 @@ CalculatorStatus application_fast_expression_sample(const ApplicationFastExpress
 /* Same evaluator with bounded trig/domain observations for adaptive edges. */
 CalculatorStatus application_fast_expression_probe(const ApplicationFastExpression *expression,
     double coordinate,ApplicationFastProbe *result);
+/* Screen-only absolute tail projection. Underflow error must remain below
+ * tolerance after supported composition; ordinary probes remain unchanged. */
+CalculatorStatus application_fast_expression_probe_screen(const ApplicationFastExpression *expression,
+    double coordinate,double tolerance,ApplicationFastProbe *result);
 /* Forward-mode AD alongside the same value evaluation and domain observations. */
 CalculatorStatus application_fast_expression_probe_derivative(const ApplicationFastExpression *expression,
     double coordinate,ApplicationFastProbe *result);

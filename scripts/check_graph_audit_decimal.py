@@ -10,9 +10,13 @@ parser.add_argument("recording", type=Path)
 parser.add_argument("--output", required=True, type=Path)
 args = parser.parse_args()
 narrow_parameters = {}
+exponential_parameters = {}
 
 
 def reference(name, x):
+    if name in exponential_parameters:
+        sign, centre, width = exponential_parameters[name]
+        return sign * (-((x - centre) / width) ** 2).exp()
     if name in narrow_parameters:
         sign, centre, width = narrow_parameters[name]
         return sign / (1 + ((x - centre) / width) ** 2)
@@ -36,9 +40,12 @@ for row in recording["rows"]:
     match = re.fullmatch(r"(-?1)/\(1\+\(\(x-\(([-\d.]+)\)\)/([\d.]+)\)\^2\)", row["expression"])
     if match:
         narrow_parameters[row["case"]] = tuple(D(value) for value in match.groups())
+    match = re.fullmatch(r"(-?1)\*exp\(-\(\(x-\(([-\d.]+)\)\)/([\d.]+)\)\^2\)", row["expression"])
+    if match:
+        exponential_parameters[row["case"]] = tuple(D(value) for value in match.groups())
 rows = []
 for row in recording["rows"]:
-    if row["version"] != "current" or row["repeat"] != 1 or (row["case"] not in narrow_parameters and row["case"] not in (
+    if row["version"] != "current" or row["repeat"] != 1 or (row["case"] not in narrow_parameters and row["case"] not in exponential_parameters and row["case"] not in (
         "lorentz-narrow", "gaussian-narrow", "hyperbolic-steep", "cosh-steep",
         "nested-log", "nested-log-wide", "complex-abs"
     )):

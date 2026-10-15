@@ -11,7 +11,7 @@ const cases=[
  {name:'hyperbolic-steep',expression:'sinh(10x)',x:-.1953125,expected:Math.sinh(-1.953125)},
  {name:'cosh-steep',expression:'cosh(10x)',x:-.1904296875,expected:Math.cosh(-1.904296875)},
  {name:'gaussian-narrow',expression:'exp(-((x-0.1234)/0.04)^2)',x:.1318359375,expected:Math.exp(-(((.1318359375-.1234)/.04)**2))},
- {name:'gaussian-very-narrow',expression:'exp(-((x-0.1234)/0.005)^2)'},
+ {name:'gaussian-very-narrow',expression:'exp(-((x-0.1234)/0.005)^2)',x:.1234,expected:1},
  {name:'floor-wide',expression:'floor(x)',x:-.048828125,expected:-1,zoomOut:3}
 ];
 async function measure(page,item){

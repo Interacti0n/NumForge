@@ -8,7 +8,9 @@ whole-plot error. Fix those before adding more mathematical graph features.
 Follow-up: the [precision camera fix](GRAPH_PRECISION_CAMERA_2026_10_15.md)
 addresses the first finding. The subsequent [narrow-feature fix](GRAPH_NARROW_FEATURES_2026_10_15.md)
 addresses the missed fast Lorentzian peak. The results below describe the audited
-`8e004db` build; other release findings remain open.
+`8e004db` build. The [exponential tail fix](GRAPH_EXP_TAILS_2026_10_15.md)
+subsequently addresses the default-screen Gaussian scale failure. Other release
+findings remain open.
 
 This audit changes diagnostic scripts and documentation only. It does not change
 the evaluator, sampler, web UI, version or deployed server.

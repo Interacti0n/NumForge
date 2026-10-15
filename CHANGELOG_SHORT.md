@@ -5,6 +5,8 @@ details and the [2.2.1 release record](docs/project/RELEASE_2_2_1.md) for valida
 
 ## Unreleased
 
+- Render narrow Gaussian graph peaks without failing on negligible exponential tails.
+
 - Capture narrow rational graph peaks and valleys that previously disappeared between samples.
 
 - Correct precision-fallback graph shapes for steep sinh/cosh functions and vertical movement.

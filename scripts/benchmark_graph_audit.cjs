@@ -3,7 +3,7 @@ const {spawn}=require('node:child_process'),{once}=require('node:events');
 const fs=require('node:fs/promises'),path=require('node:path');
 const args=process.argv.slice(2),option=n=>args.includes(n)?args[args.indexOf(n)+1]:undefined;
 const executable=option('--server'),before=option('--before'),output=option('--output')||'build/graph-audit.json',repeats=Number(option('--repeats')||3);
-const suite=option('--suite')||'default';if(!['default','narrow'].includes(suite))throw Error('Unknown suite');
+const suite=option('--suite')||'default';if(!['default','narrow','exponential'].includes(suite))throw Error('Unknown suite');
 const pause=ms=>new Promise(r=>setTimeout(r,ms)),pi=Math.PI;
 const cases=[
  ['linear','3x+2',x=>3*x+2],['parabola','x*x',x=>x*x],['cubic','x^3-3x',x=>x*x*x-3*x],['degree10','x^10',x=>x**10],
@@ -53,7 +53,21 @@ for(const [name,expression,f,anchors] of [
  ['two-peaks','1/(1+((x-0.1234)/0.004)^2)+1/(1+((x+0.43127)/0.01)^2)',x=>lorentz(x,.1234,.004)+lorentz(x,-.43127,.01),[.1234,-.43127]],
  ['edge','1/(1+((x-9.999)/0.004)^2)',x=>lorentz(x,9.999,.004),[9.999]]
 ])narrowCases.push({name:'narrow-'+name,expression,f,anchors,min:-10,max:10,ymin:-10,ymax:10,width:800,height:440});
-const selectedCases=suite==='narrow'?[...narrowCases,...cases.filter(c=>['linear','parabola','sine','sine33','tangent','paired-poles'].includes(c.name))]:cases;
+const exponentialCases=[];
+for(const scale of [10,1000])for(const [profile,width,height] of [['desktop',800,440],['small',320,300]])
+ for(const centre of [0,.1234,-.43127])for(const spread of [.04,.005,.0004])for(const sign of [1,-1])
+  exponentialCases.push({name:`exp-${scale}-${profile}-${centre}-${spread}-${sign}`,expression:`${sign}*exp(-((x-(${centre}))/${spread})^2)`,
+   f:x=>sign*Math.exp(-(((x-centre)/spread)**2)),min:-scale,max:scale,ymin:-10,ymax:10,width,height,
+   anchors:[centre,...[-2,-1,-.5,.5,1,2].map(v=>centre+v*spread)]});
+const gaussian=(x,c,w)=>Math.exp(-(((x-c)/w)**2));
+for(const [name,expression,f,anchors,poles=[]] of [
+ ['trend','3-2*exp(-((x-.1234)/.005)^2)+x/100',x=>3-2*gaussian(x,.1234,.005)+x/100,[.1234]],
+ ['two-peaks','exp(-((x-.1234)/.005)^2)+exp(-((x+.43127)/.0004)^2)',x=>gaussian(x,.1234,.005)+gaussian(x,-.43127,.0004),[.1234,-.43127]],
+ ['edge','exp(-((x-9.999)/.005)^2)',x=>gaussian(x,9.999,.005),[9.999]],
+ ['hole','exp(-1/x^2)',x=>x===0?NaN:Math.exp(-1/(x*x)),[],[0]]
+])exponentialCases.push({name:'exp-'+name,expression,f,anchors,poles,min:-10,max:10,ymin:-10,ymax:10,width:800,height:440});
+const controls=cases.filter(c=>['linear','parabola','sine','sine33','tangent','paired-poles'].includes(c.name));
+const selectedCases=suite==='narrow'?[...narrowCases,...controls]:suite==='exponential'?[...exponentialCases,...controls]:cases;
 async function server(binary,port){
  const base='http://127.0.0.1:'+port;const occupied=await fetch(base,{signal:AbortSignal.timeout(500)}).catch(()=>null);if(occupied){await occupied.arrayBuffer();throw Error('Audit port occupied');}
  const child=spawn(path.resolve(binary),['--no-browser','--port',String(port)],{windowsHide:true,stdio:'ignore'});let failure;child.on('error',e=>failure=e);
@@ -96,7 +110,7 @@ async function main(){
  }
  if(option('--reassess')){
   const audit=JSON.parse(await fs.readFile(option('--reassess'),'utf8'));
-  for(const row of audit.rows){const original=audit.rows.find(r=>r.version===row.version&&r.case===row.case&&r.payload);if(row.ok)Object.assign(row,assess([...cases,...narrowCases].find(c=>c.name===row.case),JSON.parse(original.payload)));}
+  for(const row of audit.rows){const original=audit.rows.find(r=>r.version===row.version&&r.case===row.case&&r.payload);if(row.ok)Object.assign(row,assess([...cases,...narrowCases,...exponentialCases].find(c=>c.name===row.case),JSON.parse(original.payload)));}
   await save(audit);return;
  }
  if(!executable||!Number.isInteger(repeats)||repeats<1||repeats>5)throw Error('Use --server new.exe [--before old.exe] [--repeats 1..5] [--output file.json], or --reassess input.json --output file.json');
