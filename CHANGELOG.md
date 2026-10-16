@@ -7,6 +7,10 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Unify expression typography and color controls across graph rows. Preserve the
+  graph camera, visibility and completed curves across language/tool navigation
+  with the existing bounded cache; restore completed plots after tab reloads.
+
 - Validate subpixel monotone cubic graph arcs against actual control evaluations,
   discover stationary anchors during refinement, and avoid redundant later
   searches. Add explicit slope-required response metadata, compatible bounded

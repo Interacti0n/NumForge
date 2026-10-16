@@ -5,6 +5,8 @@ details and the [2.2.1 release record](docs/project/RELEASE_2_2_1.md) for valida
 
 ## Unreleased
 
+- Keep graph rows visually consistent and preserve completed graphs when switching tools or languages.
+
 - Keep supported oscillatory graphs continuous and efficient through intermediate zoom levels.
 
 - Display supported fast/slow graph mixtures as bounded ranges without exhausting points.

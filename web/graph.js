@@ -1,9 +1,12 @@
 function initGraph() {
     const root=document.querySelector('.graph-workspace');if(!root)return null;
+    // One bounded, DOM-free snapshot for this tab's SPA navigation. Keep the
+    // existing cache arrays by reference rather than serializing sample data.
+    const retained=initGraph.retained;initGraph.retained=null;
     const $=id=>root.querySelector('#'+id),english=document.documentElement.lang==='en';
     const lifecycle=new AbortController(),svg=$('graph-plot'),status=$('graph-status');
     const curves=[],palette=['#dfafff','#20c997','#ffb454','#66b3ff'],maximumCurves=4;
-    let disposed=false,viewport=null,yViewport=[-10,10],viewportTimer=null,drawFrame=null,nextId=1,activeCurve=null;
+    let disposed=false,restoring=true,viewport=null,yViewport=[-10,10],viewportTimer=null,drawFrame=null,nextId=1,activeCurve=null;
     const pointers=new Map();let gesture=null;
     let projection=null,inspection=null,inspectionFrame=null,inspectPointer=null;
     const readout=$('graph-inspector'),inspectionLayer=element('g',{class:'graph-inspection',visibility:'hidden','pointer-events':'none','aria-hidden':'true'});
@@ -22,7 +25,8 @@ function initGraph() {
     };
     const errors=english?{'undefined answer':'Graphs do not use calculator ans.'}:{'division by zero':'Delenie nulou','undefined variable':'Nedefinovaná premenná','undefined answer':'Graf nepoužíva ans z kalkulačky','syntax error':'Chyba syntaxe','time limit exceeded':'Prekročený časový limit','invalid argument':'Neplatný argument'};
     function message(value,error=false){status.textContent=value;status.classList.toggle('error',error);}
-    function save(){try{const first=curves[0];sessionStorage.setItem('numforge-graph-state',JSON.stringify({expression:first?.input.value||'',color:first?.color.value||palette[0],curves:curves.map(c=>({expression:c.input.value,color:c.color.value,visible:c.state().visible}))}));}catch(_) {}}
+    function settings(){const first=curves[0];return {version:2,expression:first?.input.value||'',color:first?.color.value||palette[0],view:{x:bounds().slice(),y:yViewport.slice()},curves:curves.map(c=>({expression:c.input.value,color:c.color.value,visible:c.state().visible,plotted:c.hasResult()}))};}
+    function save(){if(restoring||disposed)return;try{sessionStorage.setItem('numforge-graph-state',JSON.stringify(settings()));}catch(_) {}}
     function drawSoon(){if(drawFrame===null)drawFrame=requestAnimationFrame(()=>{drawFrame=null;if(!disposed)draw();});}
     function dimensions(){
         const result=root.querySelector('.graph-result');
@@ -535,11 +539,14 @@ function initGraph() {
                 if(low!==null&&high!==null&&fast)prefetch(query,expression,identity,low,high);
             } catch(error) {
                 if(id===generation && !disposed && error.name!=='AbortError'){pendingView=false;message(error instanceof TypeError?text.network:error.message,true);}
-            } finally {if(id===generation && !disposed){busy=false;request=null;if(samples&&!pendingView&&!lastError)curve.describe();syncStatus();drawSoon();}}
+            } finally {if(id===generation && !disposed){busy=false;request=null;if(samples&&!pendingView&&!lastError)curve.describe();syncStatus();drawSoon();save();}}
         }
 
         const curve={id,row,input,color,plot,message,visibleUnresolved,
             state:()=>({visible,samples,bands,chunks,parameter,limited,pendingView,approximate,busy,message:lastMessage,error:lastError,notice:lastNotice}),
+            hasResult:()=>!!samples&&!busy&&!pendingView&&!lastError&&cacheIdentity===input.value,
+            retain(){return curve.hasResult()?{expression:input.value,samples,bands,chunks,cache,cacheIdentity,parameter,limited,approximate,hiddenReady,hiddenCamera}:null;},
+            restore(entry){if(!entry||entry.expression!==input.value)return false;({samples,bands,chunks,cache,cacheIdentity,parameter,limited,approximate,hiddenReady,hiddenCamera}=entry);return true;},
             describe(){
                 const state=curve.state(),[low,high]=bounds(),points=(chunks||[{points:samples}]).flatMap(c=>c.points.filter(p=>p.nx>=Math.max(low,c.low??low)&&p.nx<=Math.min(high,c.high??high)));
                 let notice='',detail='';
@@ -590,7 +597,7 @@ function initGraph() {
         if(high-low<Math.max(1,Math.abs(low),Math.abs(high))*1e-8||yHigh-yLow<Math.max(1,Math.abs(yLow),Math.abs(yHigh))*1e-8){message(text.range,true);return;}
         const old=bounds(),verticalOnly=(yLow!==yViewport[0]||yHigh!==yViewport[1])&&low===old[0]&&high===old[1]&&Math.abs((yHigh-yLow)-(yViewport[1]-yViewport[0]))<=(yHigh-yLow)*1e-12;
         clearInspection();yViewport=[yLow,yHigh];
-        if(verticalOnly){const changed=curves.filter(c=>c.needsVerticalView());if(changed.length){changed.forEach(c=>c.cameraChanged());scheduleView();}drawSoon();return;}
+        if(verticalOnly){const changed=curves.filter(c=>c.needsVerticalView());if(changed.length){changed.forEach(c=>c.cameraChanged());scheduleView();}drawSoon();save();return;}
         viewport=[low,high];
         curves.forEach(curve=>curve.cameraChanged());drawSoon();save();scheduleView();
     }
@@ -692,6 +699,8 @@ function initGraph() {
     try{restored=JSON.parse(sessionStorage.getItem('numforge-graph-state')||'null');}catch(_){}
     const valid=entry=>entry&&typeof entry.expression==='string'&&entry.expression.length<=4096;
     const restoredCurves=Array.isArray(restored?.curves)?restored.curves.filter(valid).slice(0,maximumCurves):valid(restored)?[restored]:[];
+    const validAxis=a=>Array.isArray(a)&&a.length===2&&a.every(Number.isFinite)&&a[1]>a[0]&&Number.isFinite(a[1]-a[0])&&a[1]-a[0]>=Math.max(1,...a.map(Math.abs))*1e-8;
+    if(restored?.version===2&&validAxis(restored.view?.x)&&validAxis(restored.view?.y)){viewport=restored.view.x.slice();yViewport=restored.view.y.slice();}
     if(restoredCurves.length){initialRow.querySelector('input:not([type=color])').value=restoredCurves[0].expression;if(/^#[0-9a-f]{6}$/i.test(restoredCurves[0].color))initialRow.querySelector('input[type=color]').value=restoredCurves[0].color;}
     if(restoredCurves.length)initialRow.querySelector('.graph-visibility').setAttribute('aria-pressed',String(restoredCurves[0].visible!==false));
     curves.push(createCurve(initialRow));activeCurve=curves[0];
@@ -776,8 +785,21 @@ function initGraph() {
             search.addEventListener('keydown',event=>{if(event.key==='Escape'){search.value='';filter();}},{signal:lifecycle.signal});filter();
         }catch(error){if(!disposed&&error.name!=='AbortError'){$('search-status').hidden=false;$('search-status').textContent=text.unavailable;}}
     }
+    const sameSession=retained&&JSON.stringify(restored)===retained.key;
+    const restoredResults=curves.map((c,i)=>sameSession&&c.restore(retained.curves[i]));
+    restoring=false;
+    curves.forEach((c,i)=>{if(restoredResults[i])c.describe();});
     loadLibrary();draw();
-    return ()=>{save();disposed=true;leaveExpanded(false);curves.forEach(c=>c.dispose());clearTimeout(viewportTimer);if(drawFrame!==null)cancelAnimationFrame(drawFrame);if(inspectionFrame!==null)cancelAnimationFrame(inspectionFrame);clearInspection();inspectionLayer.remove();pointers.clear();resize.disconnect();lifecycle.abort();};
+    const restoredSize=dimensions();
+    if(sameSession&&retained.size&&(retained.size.width!==restoredSize.width||retained.size.height!==restoredSize.height)&&restoredResults.some(Boolean)){
+        curves.forEach(c=>c.cameraChanged());scheduleView();
+    }
+    // Reloads have settings but no in-memory samples. Recalculate only curves
+    // that had a completed plot; unfinished/edited input stays unsubmitted.
+    const resume=curves.filter((c,i)=>!restoredResults[i]&&restored?.version===2&&restoredCurves[i]?.plotted===true&&c.state().visible);
+    if(resume.length){++foregroundBatches;Promise.all(resume.map(c=>c.plot(null,true))).finally(()=>{--foregroundBatches;pump();save();});}
+    else save();
+    return ()=>{save();initGraph.retained={key:JSON.stringify(settings()),size:dimensions(),curves:curves.map(c=>c.retain())};disposed=true;leaveExpanded(false);curves.forEach(c=>c.dispose());clearTimeout(viewportTimer);if(drawFrame!==null)cancelAnimationFrame(drawFrame);if(inspectionFrame!==null)cancelAnimationFrame(inspectionFrame);clearInspection();inspectionLayer.remove();pointers.clear();resize.disconnect();lifecycle.abort();};
 
 }
 window.numforgeInitGraph=initGraph;

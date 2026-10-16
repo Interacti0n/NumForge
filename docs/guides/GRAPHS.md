@@ -16,8 +16,12 @@ Blank rows are not evaluated. An empty plot still shows axes; a failed function
 shows its own error while valid curves remain visible.
 
 Both axes start at −10..10. Editing one of several functions clears only its old
-curve and retains the camera and other results. The expressions and colors persist
-per tab across language changes/navigation; a newly opened page starts around zero.
+curve and retains the camera and other results. Expressions, colors, visibility
+and the camera persist in the same tab across language changes/navigation.
+Completed curves and their bounded caches return immediately during navigation
+between tools, without repeating completed calculations. Reloading the tab
+recalculates previously completed visible curves at the saved camera; unfinished
+or edited inputs remain unsubmitted. A fresh tab starts around zero.
 
 ## Function library
 
@@ -175,8 +179,10 @@ gesture the previous curve is projected into the new view; after sampling the
 visible interval is refined without changing the camera. Vertical panning
 reprojects complete cached curves; deferred off-screen regions receive fresh
 samples when revealed, including precision fallback. Edits/navigation cancel pending
-work and old responses cannot replace a newer view. A newly opened page or edited
-expression starts around zero. The expression and curve color persist per tab.
+work and old responses cannot replace a newer view. A fresh tab or edited single
+expression starts around zero. The saved tab camera and completed graphs survive
+navigation; the memory cache holds only the latest graph workspace and retains
+its existing point/byte bounds. A larger canvas can refine restored geometry.
 
 ## Prepared ranges
 
@@ -244,8 +250,9 @@ accepted cached strokes already cover the view without visible unresolved gaps,
 they supply the preview and only refined data is requested.
 The cache is bounded to 12 sampled
 ranges, 12288 cached point-or-band records and an estimated 8 MiB weight **per function**, and lives only
-in the current page and clears on expression changes or navigation. Color changes
-keep the cache. Four functions therefore permit at most 48 retained ranges,
+in the tab's current graph workspace. Navigation retains one DOM-free snapshot;
+returning consumes it, and editing the expression clears that function's cache.
+Color changes keep the cache. Four functions therefore permit at most 48 retained ranges,
 49152 cached records and 32 MiB estimated cache weight. This is a conservative
 accounting weight, not a browser heap measurement. Foreground C requests and
 optional preparations are serialized; visible work has priority over background
