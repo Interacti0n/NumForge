@@ -7,6 +7,8 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Mark approximate visible axis intercepts and intersections of accepted cached graph strokes, including represented tangent contacts; snap mouse/touch inspection to their coordinates. Add Find function to center on a real C-sampled y intercept without changing Reset view. Bound geometry work and marker count.
+
 - Rename the per-curve graph panel to Function editor and align its input, Plot/Clear actions, search and desktop categories with the calculator. Keep compact, scroll-free layouts on smaller screens.
 
 - Preserve valleys and corners in absolute-value graphs, including shifted

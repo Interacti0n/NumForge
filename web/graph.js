@@ -8,7 +8,8 @@ function initGraph() {
     const curves=[],palette=['#dfafff','#20c997','#ffb454','#66b3ff'],maximumCurves=4;
     let disposed=false,restoring=true,viewport=null,yViewport=[-10,10],viewportTimer=null,drawFrame=null,nextId=1,activeCurve=null;
     const pointers=new Map();let gesture=null;
-    let projection=null,inspection=null,inspectionFrame=null,inspectPointer=null;
+    let projection=null,inspection=null,inspectionFrame=null,inspectPointer=null,features=[],featureCacheKey=null,locateRequest=null;
+    lifecycle.signal.addEventListener('abort',()=>locateRequest?.abort(),{once:true});
     const readout=$('graph-inspector'),inspectionLayer=element('g',{class:'graph-inspection',visibility:'hidden','pointer-events':'none','aria-hidden':'true'});
     const inspectX=element('line',{class:'graph-inspection-guide'}),inspectY=element('line',{class:'graph-inspection-guide'}),inspectDot=element('circle',{r:4.5,class:'graph-inspection-dot'});
     inspectionLayer.append(inspectX,inspectY,inspectDot);svg.append(inspectionLayer);
@@ -16,12 +17,12 @@ function initGraph() {
         ready:'Enter a function and plot it.',busy:'Sampling…',network:'Cannot reach the server. Try again.',invalid:'The server returned invalid graph data.',
         range:'These coordinates cannot be distinguished in the browser’s numeric range. Adjust or reset the range.',column:'column',
         limited:'Some visible intervals could not be resolved. Zoom in for more detail.',ambiguous:'Use one variable, for example x or t.',
-        dense:'Dense oscillations shown as an approximate range. Zoom in to see the curve.',noStroke:'No connected curve could be resolved here. Zoom in for more detail.',noReal:'No real-valued points found in this x range. Try a different range.',outside:'Curve is outside this view. Drag or zoom out to find it.',domain:'Parts outside the real domain are left empty.',numeric:'Values exceed the browser’s plotting range. Adjust the view.',hidden:'All functions are hidden.',hide:'Hide function',show:'Show function',function:'Function',color:'Curve color',remove:'Remove function',expand:'Expand graph',collapse:'Return to page',unavailable:'Function catalogue unavailable. Try reopening this page.',noMatch:'No matching function. Try another name.'
+        dense:'Dense oscillations shown as an approximate range. Zoom in to see the curve.',noStroke:'No connected curve could be resolved here. Zoom in for more detail.',noReal:'No real-valued points found in this x range. Try a different range.',outside:'Curve is outside this view. Drag or zoom out to find it.',domain:'Parts outside the real domain are left empty.',numeric:'Values exceed the browser’s plotting range. Adjust the view.',hidden:'All functions are hidden.',hide:'Hide function',show:'Show function',function:'Function',color:'Curve color',remove:'Remove function',expand:'Expand graph',collapse:'Back',unavailable:'Function catalogue unavailable. Try reopening this page.',noMatch:'No matching function. Try another name.'
     }:{
         ready:'Zadaj funkciu a vykresli ju.',busy:'Počítam body…',network:'Server nie je dostupný. Skús to znova.',invalid:'Server vrátil neplatné údaje grafu.',
         range:'Tieto súradnice prehliadač nedokáže rozlíšiť vo svojom číselnom rozsahu. Uprav rozsah alebo obnov pohľad.',column:'pozícia',
         limited:'Niektoré viditeľné úseky sa nepodarilo rozlíšiť. Priblíž graf pre viac detailov.',ambiguous:'Použi jednu premennú, napríklad x alebo t.',
-        dense:'Husté oscilácie sú zobrazené ako približný rozsah. Priblíž graf pre jednotlivé vlny.',noStroke:'Tu sa nepodarilo rozlíšiť súvislú krivku. Priblíž graf pre viac detailov.',noReal:'V tomto rozsahu x sa nenašli reálne body. Skús iný rozsah.',outside:'Krivka je mimo tohto pohľadu. Posuň graf alebo ho oddiaľ.',domain:'Časti mimo reálnej domény sa nevykresľujú.',numeric:'Hodnoty presahujú číselný rozsah grafu v prehliadači. Uprav pohľad.',hidden:'Všetky funkcie sú skryté.',hide:'Skryť funkciu',show:'Zobraziť funkciu',function:'Funkcia',color:'Farba krivky',remove:'Odstrániť funkciu',expand:'Rozšíriť graf',collapse:'Vrátiť na stránku',unavailable:'Katalóg funkcií nie je dostupný. Skús znovu otvoriť stránku.',noMatch:'Žiadna funkcia sa nenašla. Skús iný názov.'
+        dense:'Husté oscilácie sú zobrazené ako približný rozsah. Priblíž graf pre jednotlivé vlny.',noStroke:'Tu sa nepodarilo rozlíšiť súvislú krivku. Priblíž graf pre viac detailov.',noReal:'V tomto rozsahu x sa nenašli reálne body. Skús iný rozsah.',outside:'Krivka je mimo tohto pohľadu. Posuň graf alebo ho oddiaľ.',domain:'Časti mimo reálnej domény sa nevykresľujú.',numeric:'Hodnoty presahujú číselný rozsah grafu v prehliadači. Uprav pohľad.',hidden:'Všetky funkcie sú skryté.',hide:'Skryť funkciu',show:'Zobraziť funkciu',function:'Funkcia',color:'Farba krivky',remove:'Odstrániť funkciu',expand:'Rozšíriť graf',collapse:'Späť',unavailable:'Katalóg funkcií nie je dostupný. Skús znovu otvoriť stránku.',noMatch:'Žiadna funkcia sa nenašla. Skús iný názov.'
     };
     const errors=english?{'undefined answer':'Graphs do not use calculator ans.'}:{'division by zero':'Delenie nulou','undefined variable':'Nedefinovaná premenná','undefined answer':'Graf nepoužíva ans z kalkulačky','syntax error':'Chyba syntaxe','time limit exceeded':'Prekročený časový limit','invalid argument':'Neplatný argument'};
     function message(value,error=false){status.textContent=value;status.classList.toggle('error',error);status.dataset.detail=String(error||curves.some(c=>{const s=c.state();return s.visible&&(s.error||s.notice);}));}
@@ -105,6 +106,76 @@ function initGraph() {
         const norm=Math.hypot(alpha,beta);if(norm>3){alpha*=3/norm;beta*=3/norm;}
         return [a.nx+dx/3,a.ny+dy*alpha/3,b.nx-dx/3,b.ny-dy*beta/3];
     }
+    // Intersections of the displayed interpolants, not a symbolic equation
+    // solver. Partition a normalized cubic at its stationary points so tangent
+    // contacts and multiple crossings in one accepted edge are not skipped.
+    function featureRoots(values){
+        const scale=Math.max(...values.map(Math.abs));if(!Number.isFinite(scale)||scale===0)return [];
+        const [v0,v1,v2,v3]=values.map(v=>v/scale),a=(-v0+3*v1-3*v2+v3)*4.5,b=(2*v0-5*v1+4*v2-v3)*4.5,c=(-11*v0+18*v1-9*v2+2*v3)/2,d=v0;
+        const value=t=>((a*t+b)*t+c)*t+d,tolerance=128*Number.EPSILON,turns=[0,1],roots=[];
+        if(Math.abs(a)<tolerance){if(Math.abs(b)>tolerance)turns.push(-c/(2*b));}
+        else{
+            const A=3*a,B=2*b,discriminant=B*B-4*A*c;
+            if(discriminant>=0){const q=-.5*(B+(B>=0?1:-1)*Math.sqrt(discriminant));if(q!==0)turns.push(q/A,c/q);else turns.push(-B/(2*A));}
+        }
+        const split=turns.filter(t=>Number.isFinite(t)&&t>=0&&t<=1).sort((x,y)=>x-y);
+        for(let i=0;i<split.length;++i){
+            let low=split[i],left=value(low);if(Math.abs(left)<=tolerance)roots.push(low);
+            if(i+1===split.length)continue;let high=split[i+1],right=value(high);
+            if(high<=low||Math.abs(left)<=tolerance||Math.abs(right)<=tolerance||(left<0)===(right<0))continue;
+            for(let j=0;j<42;++j){const mid=low+(high-low)/2,y=value(mid);if(y===0){low=high=mid;break;}if((y<0)===(left<0)){low=mid;left=y;}else high=mid;}
+            roots.push(low+(high-low)/2);
+        }
+        return roots;
+    }
+    function graphFeatures(states,p){
+        const found=[],edgeSets=[],maximum=128;let work=0;
+        function add(kind,curve,other,x,y){
+            if(!Number.isFinite(x)||!Number.isFinite(y)||x<p.xBounds[0]||x>p.xBounds[1]||y<p.yBounds[0]||y>p.yBounds[1])return;
+            const ids=[curve.id,...(other?[other.id]:[])].sort((a,b)=>a-b),key=kind+':'+ids.join(':');
+            if(found.some(f=>f.key===key&&Math.abs(p.px(f.x)-p.px(x))<3&&Math.abs(p.py(f.y)-p.py(y))<3))return;
+            if(found.length<maximum)found.push({kind,key,curve,other,x:x===0?0:x,y:y===0?0:y});
+        }
+        for(const state of states){
+            const edges=[];
+            if(state.error||!state.samples){edgeSets.push(edges);continue;}
+            for(const chunk of state.chunks||[{points:state.samples}]){
+                const bands=chunk.bands||state.bands||[];
+                for(let i=1;i<chunk.points.length;++i){
+                    if(++work>65536)break;
+                    const a=chunk.points[i-1],b=chunk.points[i];
+                    if(!a.plottable||!b.plottable||!b.connect||b.nx<=a.nx)continue;
+                    const low=Math.max(a.nx,chunk.low??-Infinity,p.xBounds[0]),high=Math.min(b.nx,chunk.high??Infinity,p.xBounds[1]);if(high<=low)continue;
+                    let first=0,last=bands.length;while(first<last){const mid=(first+last)>>>1;if(bands[mid][1]<=low)first=mid+1;else last=mid;}
+                    if(bands[first]&&bands[first][0]<high)continue;
+                    const control=b.subpixelHermite||p.px(b.nx)-p.px(a.nx)>1?cubic(a,b):null;
+                    const at=x=>{const t=(x-a.nx)/(b.nx-a.nx);return control?(1-t)**3*a.ny+3*(1-t)**2*t*control[1]+3*(1-t)*t*t*control[3]+t**3*b.ny:a.ny*(1-t)+b.ny*t;};
+                    const edge={low,high,at};edges.push(edge);
+                    if(low<=0&&high>=0)add('y-axis',state.curve,null,0,at(0));
+                    if(p.yBounds[0]<=0&&p.yBounds[1]>=0&&found.length<maximum){
+                        for(const t of featureRoots([at(low),at(low+(high-low)/3),at(low+2*(high-low)/3),at(high)]))add('x-axis',state.curve,null,low+(high-low)*t,0);
+                    }
+                }
+            }
+            edges.sort((a,b)=>a.low-b.low);edgeSets.push(edges);
+        }
+        for(let i=0;i<edgeSets.length;++i)for(let j=i+1;j<edgeSets.length;++j){
+            const left=edgeSets[i],right=edgeSets[j];let a=0,b=0;
+            while(a<left.length&&b<right.length&&work++<65536&&found.length<maximum){
+                const e=left[a],f=right[b],low=Math.max(e.low,f.low),high=Math.min(e.high,f.high);
+                if(high>low){
+                    const xs=[low,low+(high-low)/3,low+2*(high-low)/3,high],ys=xs.map(x=>e.at(x)),zs=xs.map(x=>f.at(x));
+                    // Coincident strokes have no isolated intersection marker.
+                    const differences=ys.map((y,k)=>y-zs[k]),scale=Math.max(...ys.map(Math.abs),...zs.map(Math.abs));
+                    if(differences.some(v=>Math.abs(v)>128*Number.EPSILON*scale))for(const t of featureRoots(differences)){
+                        const x=low+(high-low)*t;add('intersection',states[i].curve,states[j].curve,x,e.at(x));
+                    }
+                }
+                if(e.high<=f.high)++a;if(f.high<=e.high)++b;
+            }
+        }
+        return found;
+    }
     // Read only accepted cached edges. Binary search and the drawing's own cubic
     // interpolation keep inspection local, bounded and consistent with the stroke.
     function inspectAt(curve,x){
@@ -134,6 +205,9 @@ function initGraph() {
         const point=new DOMPoint(clientX,clientY).matrixTransform(matrix.inverse()),p=projection;
         if(point.x<64||point.x>p.right||point.y<22||point.y>p.bottom)return null;
         const fraction=(point.x-64)/(p.right-64),x=(p.xLow+(p.xHigh-p.xLow)*fraction)*p.xScale;
+        let closest=null,featureDistance=13;
+        for(const feature of features){const dx=p.px(feature.x)-point.x,dy=p.py(feature.y)-point.y,delta=Math.hypot(matrix.a*dx+matrix.c*dy,matrix.b*dx+matrix.d*dy);if(delta<featureDistance){closest=feature;featureDistance=delta;}}
+        if(closest)return closest;
         let best=null,distance=Infinity;
         for(const curve of curves){
             const candidate=inspectAt(curve,x);if(!candidate||candidate.y<p.yBounds[0]||candidate.y>p.yBounds[1])continue;
@@ -152,7 +226,7 @@ function initGraph() {
     function updateInspection(){
         if(disposed||!projection||!inspection){readout.hidden=true;inspectionLayer.setAttribute('visibility','hidden');return;}
         const selected=inspection.kind==='hover'?inspectionPoint(inspection.clientX,inspection.clientY):
-            inspectAt(curves.find(c=>c.id===inspection.curveId),inspection.x);
+            inspection.featureKey?features.find(f=>f.key===inspection.featureKey&&Math.abs(f.x-inspection.x)<(projection.xBounds[1]-projection.xBounds[0])*1e-6):inspectAt(curves.find(c=>c.id===inspection.curveId),inspection.x);
         const p=projection;
         if(!selected||selected.x<p.xBounds[0]||selected.x>p.xBounds[1]||selected.y<p.yBounds[0]||selected.y>p.yBounds[1]){
             readout.hidden=true;inspectionLayer.setAttribute('visibility','hidden');return;
@@ -161,7 +235,9 @@ function initGraph() {
         for(const [node,attrs] of [[inspectX,{x1:screenX,x2:screenX,y1:22,y2:p.bottom}],[inspectY,{x1:64,x2:p.right,y1:screenY,y2:screenY}],[inspectDot,{cx:screenX,cy:screenY}]])for(const [key,value] of Object.entries(attrs))node.setAttribute(key,value);
         inspectionLayer.style.color=curve.color.value;inspectionLayer.setAttribute('clip-path','url(#graph-clip)');inspectionLayer.setAttribute('visibility','visible');svg.append(inspectionLayer);
         readout.style.setProperty('--inspection-color',curve.color.value);readout.dataset.curve=String(curve.id);readout.dataset.x=String(x);readout.dataset.y=String(y);
-        $('graph-inspector-name').textContent=`${curves.indexOf(curve)+1}. ${curve.input.value}`;
+        const label=selected.kind==='x-axis'?(english?'x-axis intercept':'Priesečník s osou x'):selected.kind==='y-axis'?(english?'y-axis intercept':'Priesečník s osou y'):selected.kind==='intersection'?(english?'Intersection':'Priesečník'):'';
+        $('graph-inspector-name').textContent=label?`${label} · ${curves.indexOf(curve)+1}${selected.other?' ∩ '+(curves.indexOf(selected.other)+1):''}`:`${curves.indexOf(curve)+1}. ${curve.input.value}`;
+        readout.dataset.feature=selected.kind||'';
         $('graph-inspector-coordinates').textContent=`≈ x = ${coordinateLabel(x,p.xBounds[1]-p.xBounds[0],p.right-64)}, y = ${coordinateLabel(y,p.yBounds[1]-p.yBounds[0],p.bottom-22)}`;
         readout.hidden=false;
     }
@@ -260,7 +336,15 @@ function initGraph() {
         }
         $('graph-svg-description').textContent=states.some(s=>s.samples)?states.map(s=>s.curve.input.value).filter(Boolean).join('; '):text.ready;
         svg.append(group);svg.removeAttribute('hidden');
-        projection={px,py,xScale,xLow,xHigh,xBounds:xs,yBounds:projectedView,right,bottom};updateInspection();
+        projection={px,py,xScale,xLow,xHigh,xBounds:xs,yBounds:projectedView,right,bottom};
+        // One bounded geometry snapshot: color/status-only redraws must not
+        // solve the same intersections again. Camera, samples or visibility
+        // changes invalidate it; it never holds a second set of sample arrays.
+        const featureKey=[...xs,...projectedView,width,height,...states.flatMap(state=>[state.curve,state.samples,state.chunks,state.bands,state.error])];
+        if(!featureCacheKey||featureKey.length!==featureCacheKey.length||featureKey.some((value,i)=>value!==featureCacheKey[i])){features=graphFeatures(states,projection);featureCacheKey=featureKey;}
+        const markers=element('g',{class:'graph-features','clip-path':'url(#graph-clip)'});
+        for(const feature of features){const marker=element('circle',{class:'graph-feature',cx:px(feature.x),cy:py(feature.y),r:4,'data-kind':feature.kind,'data-x':feature.x,'data-y':feature.y,'data-curve':feature.curve.id,...(feature.other?{'data-other':feature.other.id}:{}),style:`fill:${feature.curve.color.value}`});markers.append(marker);}
+        group.append(markers);updateInspection();
     }
     function createCurve(row){
         const input=row.querySelector('input:not([type=color])'),color=row.querySelector('input[type=color]'),controller=new AbortController();
@@ -544,6 +628,15 @@ function initGraph() {
         }
 
         const curve={id,row,input,color,plot,message,visibleUnresolved,
+            async originValue(signal){
+                if(cacheIdentity===input.value){for(const entry of cache){const point=entry.points.find(p=>p.nx===0&&p.plottable);if(point)return point.ny;}}
+                // Use the same read-only C graph API for variable inference and
+                // domain checks. The boundary x=0 is an actual sample, never an
+                // extrapolation from cached strokes outside the visible camera.
+                const query=new URLSearchParams({min:'0',max:'1',angle:'rad',mode:'fast',width:'320',height:'160',quality:'coarse',ymin:'-10',ymax:'10'});
+                const entry=await fetchPlot(query,input.value,signal),point=entry.points.find(p=>p.nx===0&&p.plottable);
+                return point?.ny??null;
+            },
             state:()=>({visible,samples,bands,chunks,parameter,limited,pendingView,approximate,busy,message:lastMessage,error:lastError,notice:lastNotice}),
             hasResult:()=>!!samples&&!busy&&!pendingView&&!lastError&&cacheIdentity===input.value,
             retain(){return curve.hasResult()?{expression:input.value,samples,bands,chunks,cache,cacheIdentity,parameter,limited,approximate,hiddenReady,hiddenCamera}:null;},
@@ -567,6 +660,7 @@ function initGraph() {
             cameraChanged(){if(!visible)return;++generation;request?.abort();request=null;busy=false;stopPrefetch();pendingView=!!input.value.trim();const hit=showCached(...bounds(),false);if(!hit)message(input.value.trim()?text.busy:text.ready);syncStatus();},
             setVisible(value){
                 if(visible===value)return;
+                locateRequest?.abort();
                 if(!value){hiddenCamera=cameraKey();hiddenReady=!!samples&&!pendingView;}
                 visible=value;++generation;request?.abort();request=null;busy=false;stopPrefetch();
                 const retained=visible&&hiddenReady&&!!samples&&hiddenCamera===cameraKey();
@@ -575,7 +669,7 @@ function initGraph() {
             },
             dispose(){disposed=true;invalidate();controller.abort();}
         };
-        input.addEventListener('input',()=>{clearTimeout(viewportTimer);viewportTimer=null;if(curves.length===1){viewport=null;yViewport=[-10,10];}invalidate();save();renderLegend();},{signal:controller.signal});
+        input.addEventListener('input',()=>{locateRequest?.abort();clearTimeout(viewportTimer);viewportTimer=null;if(curves.length===1){viewport=null;yViewport=[-10,10];}invalidate();save();renderLegend();},{signal:controller.signal});
         row.addEventListener('focusin',()=>{activeCurve=curve;highlightActive();},{signal:controller.signal});
         color.addEventListener('input',()=>{save();renderLegend();drawSoon();},{signal:controller.signal});
         row.querySelector('.graph-visibility').addEventListener('click',()=>curve.setVisible(!visible),{signal:controller.signal});
@@ -592,6 +686,7 @@ function initGraph() {
         return Math.max(0,Math.min(1,(height-46-(clientY-rect.top)/rect.height*height)/(height-68)));
     }
     function moveView(low,high,yLow=yViewport[0],yHigh=yViewport[1]) {
+        locateRequest?.abort();
         if(!Number.isFinite(low)||!Number.isFinite(high)||high<=low||!Number.isFinite(high-low))return;
         if(!Number.isFinite(yLow)||!Number.isFinite(yHigh)||yHigh<=yLow||!Number.isFinite(yHigh-yLow))return;
         // Keep ample coordinate precision for pixel positions, not just endpoints.
@@ -608,6 +703,21 @@ function initGraph() {
         moveView(center-span*factor*anchor,center+span*factor*(1-anchor),yCenter-ySpan*factor*yAnchor,yCenter+ySpan*factor*(1-yAnchor));
     }
     $('graph-reset').addEventListener('click',()=>moveView(-10,10,-10,10),{signal:lifecycle.signal});
+    $('graph-locate').addEventListener('click',async()=>{
+        const curve=activeCurve?.state().visible&&activeCurve.input.value.trim()?activeCurve:curves.find(c=>c.state().visible&&c.input.value.trim());
+        if(!curve){message(text.ready);return;}
+        locateRequest?.abort();const request=locateRequest=new AbortController(),button=$('graph-locate');button.disabled=true;button.setAttribute('aria-busy','true');
+        const expression=curve.input.value;message(text.busy);
+        try{
+            const y=await curve.originValue(request.signal);
+            if(disposed||request.signal.aborted||curve.input.value!==expression||!curves.includes(curve)||!curve.state().visible)return;
+            if(y===null){message(english?'This function has no real, displayable value at x = 0.':'Táto funkcia nemá pri x = 0 reálnu zobraziteľnú hodnotu.',true);return;}
+            const radius=Math.max(10,Math.abs(y)*1e-6);
+            if(!Number.isFinite(y-radius)||!Number.isFinite(y+radius)){message(text.range,true);return;}
+            moveView(-10,10,y-radius,y+radius);
+        }catch(error){if(!disposed&&error.name!=='AbortError')message(error instanceof TypeError?text.network:error.message,true);}
+        finally{if(locateRequest===request)locateRequest=null;button.disabled=false;button.removeAttribute('aria-busy');}
+    },{signal:lifecycle.signal});
     svg.addEventListener('wheel',event=>{
         if(!event.deltaY)return;
         event.preventDefault();zoom(event.deltaY<0?.8:1.25,horizontal(event.clientX),vertical(event.clientY));
@@ -621,7 +731,7 @@ function initGraph() {
         if(event.pointerType==='mouse'&&event.button!==0)return;
         const selected=event.pointerType!=='mouse'&&!pointers.size?inspectionPoint(event.clientX,event.clientY,true):null;
         pointers.set(event.pointerId,{x:event.clientX,y:event.clientY});svg.setPointerCapture(event.pointerId);
-        if(selected){inspectPointer=event.pointerId;inspection={kind:'pinned',curveId:selected.curve.id,x:selected.x};updateInspection();gesture=null;return;}
+        if(selected){inspectPointer=event.pointerId;inspection={kind:'pinned',curveId:selected.curve.id,x:selected.x,featureKey:selected.key};updateInspection();gesture=null;return;}
         inspectPointer=null;clearInspection();startGesture();
     },{signal:lifecycle.signal});
     svg.addEventListener('pointermove',event=>{
@@ -632,7 +742,7 @@ function initGraph() {
         pointers.set(event.pointerId,{x:event.clientX,y:event.clientY});
         if(inspectPointer===event.pointerId){
             const matrix=svg.getScreenCTM();
-            if(matrix&&projection&&inspection){const point=new DOMPoint(event.clientX,event.clientY).matrixTransform(matrix.inverse());inspection.x=(projection.xLow+(projection.xHigh-projection.xLow)*Math.max(0,Math.min(1,(point.x-64)/(projection.right-64))))*projection.xScale;}
+            if(matrix&&projection&&inspection){const feature=inspectionPoint(event.clientX,event.clientY,true);inspection.featureKey=feature?.key;if(feature?.key)inspection.x=feature.x;else{const point=new DOMPoint(event.clientX,event.clientY).matrixTransform(matrix.inverse());inspection.x=(projection.xLow+(projection.xHigh-projection.xLow)*Math.max(0,Math.min(1,(point.x-64)/(projection.right-64))))*projection.xScale;}}
             inspectSoon();return;
         }
         if(!gesture)return;
@@ -694,6 +804,7 @@ function initGraph() {
     }
     function removeCurve(curve){
         if(curves.length===1)return;const index=curves.indexOf(curve);if(index<0)return;
+        locateRequest?.abort();
         curve.dispose();curves.splice(index,1);curve.row.remove();activeCurve=curves[Math.min(index,curves.length-1)];relabel();save();drawSoon();activeCurve.input.focus();
     }
     const initialRow=root.querySelector('.graph-curve');let restored;

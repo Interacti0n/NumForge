@@ -790,9 +790,24 @@ static void test_rectified_carriers_preserve_zeros_and_dense_ranges(void)
     TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT,application_fast_graph_sample_camera_hermite(&screen_graph,"abs(x*sin(x))",NULL,-100,100,800U,440U,-40,110,false,true,NULL,&context,&error));
     numforge_budget_end();TEST_ASSERT_EQUAL_PTR(original,screen_graph);
 }
+static void test_corner_search_retains_best_secant_probe(void)
+{
+    CalculatorError error;
+    const char *expressions[]={"abs(x-0.1234)","abs(x-0.1234)+0.000000000001"};
+    for(size_t k=0;k<2U;++k){
+        TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_graph_sample_camera_hermite(&screen_graph,expressions[k],NULL,-10,10,800U,440U,-10,10,false,false,NULL,&context,&error));
+        double closest=1e9,value=1e9;
+        for(size_t i=0;i<screen_graph->count;++i){ApplicationFastGraphPoint p=screen_graph->points[i];
+            if(p.turn_anchor&&fabs(p.x-0.1234)<closest){closest=fabs(p.x-0.1234);value=p.y;}}
+        TEST_ASSERT_TRUE(closest<1e-14);TEST_ASSERT_TRUE(fabs(value-(double)k*1e-12)<1e-14);
+        if(k)TEST_ASSERT_TRUE(value>0);
+        application_fast_graph_destroy(screen_graph);screen_graph=NULL;
+    }
+}
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_corner_search_retains_best_secant_probe);
     RUN_TEST(test_rectified_carriers_preserve_zeros_and_dense_ranges);
     RUN_TEST(test_step_metadata_connections_and_atomic_failures);
     RUN_TEST(test_gaussian_tail_projection_seeds_and_atomic_failures);

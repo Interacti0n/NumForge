@@ -82,6 +82,34 @@ marker disappears in gaps rather than joining across them. The display adapts
 its decimal precision to the view and formats rounded zero as `0`. Mouse exit,
 Escape with the canvas focused, and camera gestures dismiss the readout.
 
+### Intercept and intersection markers
+
+Small colored dots mark isolated crossings/touches of the displayed curves with
+the axes and with each other. Hover or tap within 13 CSS pixels to snap the
+coordinate readout to that marker; the label identifies the axis or function pair.
+They use the same accepted linear/cubic cached strokes as the drawing. No new C
+request is made for marker discovery or inspection. Coordinates remain approximate
+screen geometry, not verified high-precision roots of the original expressions.
+
+The browser splits cubic differences at stationary points before locating roots,
+so a represented tangent contact can be found without a sign change. Gaps,
+dense envelopes, non-real samples and coincident stretches have no isolated
+intersection markers. Finite sampling can still miss a contact. Work is bounded
+to 65,536 edge/overlap visits and 128 visible markers, with same-kind/function-pair
+markers within three SVG pixels merged to reduce clutter. Zoom in for detail.
+The latest geometry is reused for color/status-only redraws; changing the camera,
+samples or visible functions invalidates this bounded marker cache.
+
+**Find function / Nájsť funkciu** centers on the selected visible expression at
+x = 0, with a horizontal range of −10 to 10 and a vertical span normally 20.
+The last focused row is preferred; otherwise the first nonempty visible row is
+used. An actual cached C sample at x = 0 is reused when available; otherwise a
+bounded, read-only C graph request infers the variable and evaluates that boundary.
+A missing/non-real/unrepresentable value is reported without moving the camera.
+For very large ordinates the vertical span grows to remain numerically usable.
+Edits, navigation and camera gestures cancel pending lookup. Reset view continues
+to restore −10 to 10 on both axes.
+
 ## Curves and gaps
 
 The [screen-space C sampler](../reference/SCREEN_GRAPH_HTTP_API.md) evaluates

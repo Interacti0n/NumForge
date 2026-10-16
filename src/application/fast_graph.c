@@ -403,14 +403,17 @@ static CalculatorStatus corner_split(Work *work,double low,double high,const App
         for(size_t slot=0;slot<a->corner_count;++slot){
             double av=a->corners[slot],bv=b->corners[slot];
             if(!isfinite(av)||!isfinite(bv)||!((av<0&&bv>0)||(av>0&&bv<0)))continue;
-            double left=low,right=high,root=0;bool located=false;
+            double left=low,right=high,root=0,best=INFINITY;bool located=false;
             for(unsigned attempt=0;attempt<32U;++attempt){
                 if(work->graph->count>=work->limit||numforge_budget_available_bytes()<3U*1024U*1024U||numforge_budget_available_ms()<300U){work->graph->limited=true;return CALCULATOR_OK;}
                 double fraction=fabs(av)/(fabs(av)+fabs(bv));if(!isfinite(fraction)||fraction<.1||fraction>.9)fraction=.5;
                 double x=left+(right-left)*fraction;if(x<=left||x>=right)break;
                 ApplicationFastProbe mid={0};CalculatorStatus status=probe(work,x,&mid);if(status!=CALCULATOR_OK)return status;
                 if(!mid.complete||slot>=mid.corner_count||!isfinite(mid.corners[slot])||!safe(a,&mid,b,3))break;
-                double v=mid.corners[slot];root=x;
+                double v=mid.corners[slot];
+                /* A nearly exact secant hit can be followed by safer bisection
+                 * steps with larger residuals. Retain the best actual probe. */
+                if(fabs(v)<best){best=fabs(v);root=x;}
                 if(v==0||right-left<=work->coarse_width*1e-10||attempt==31U){located=true;break;}
                 if((av<0&&v<0)||(av>0&&v>0)){left=x;av=v;}else{right=x;bv=v;}
             }

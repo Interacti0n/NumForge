@@ -14,7 +14,9 @@ body { height: auto; min-height: 100dvh; overflow: auto; }
 #graph-submit { width: 100%; margin-top: 20px; }
 .graph-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 .graph-heading h2 { margin: 0; font-size: 1.1rem; }
-.graph-view-controls { display: flex; gap: 6px; }
+.graph-view-controls { display: flex; flex-wrap: wrap; gap: 6px; max-width: 100%; }
+.graph-locate-short { display: none; }
+@media (max-width: 600px) { .graph-locate-full { display: none; } .graph-locate-short { display: inline; } .graph-view-controls button { font-size: .75rem; } }
 .graph-view-controls button { min-width: 36px; min-height: 36px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-input); color: var(--text); cursor: pointer; }
 #graph-plot { touch-action: none; cursor: grab; }
 #graph-plot:active { cursor: grabbing; }
@@ -136,3 +138,4 @@ body { height: auto; min-height: 100dvh; overflow: auto; }
 .graph-inspection-guide { stroke: currentColor; stroke-width: 1; stroke-dasharray: 4 4; opacity: .55; }
 .graph-inspection-dot { fill: currentColor; stroke: #17002f; stroke-width: 2; }
 .graph-band { fill-opacity: .28; stroke: none; }
+.graph-feature { stroke: var(--surface); stroke-width: 1.5; pointer-events: none; }

@@ -3,6 +3,7 @@ const field=(page,i)=>page.locator('.graph-curve').nth(i).locator('input:not([ty
 async function navigate(page,path,lang='sk'){
  const toggle=page.locator('.nav-toggle');if(await toggle.isVisible())await toggle.click();
  await page.locator(`.primary-nav a[href="${path}?lang=${lang}"]`).click();
+ await expect(page).toHaveURL(url=>url.pathname===path&&url.searchParams.get('lang')===lang);
 }
 for(const width of [390,1280]){
  test(`all function rows share typography and color control styling at ${width}`,async({page})=>{

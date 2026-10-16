@@ -62,6 +62,7 @@ records Firefox/WebKit coverage, test portability and the physical-phone checkli
 - [Mixed graph ranges](benchmarks/GRAPH_MIXED_RANGES_2026_10_15.md): bounded slow terms alongside dense carriers, zoom regressions and before/after measurements.
 - [Subpixel graph curves](benchmarks/GRAPH_SUBPIXEL_CURVES_2026_10_15.md): validated cubic arcs, stationary anchors and efficient intermediate zoom.
 - [Absolute-value graph valleys](benchmarks/GRAPH_ABSOLUTE_2026_10_16.md): actual corners, zero-reaching dense ranges, equivalent root forms and independent before/after checks.
+- [Graph intercept and intersection checks](benchmarks/GRAPH_INTERSECTIONS_2026_10_16.md): marker correctness, y-intercept lookup and cached rendering overhead.
 - [Smooth graph zoom](benchmarks/GRAPH_SMOOTH_ZOOM_2026_10_13.md): derivative anchors, interpolation accuracy and prepared detail.
 - [BigInt measurements](benchmarks/BIGINT_BENCHMARKS.md).
 - [Karatsuba experiment](benchmarks/KARATSUBA_EXPERIMENT_2026_10_11.md): private threshold measurements, whole-product references and bounded scratch.
