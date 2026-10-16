@@ -140,5 +140,3 @@ body { height: auto; min-height: 100dvh; overflow: auto; }
 .graph-band { fill-opacity: .28; stroke: none; }
 .graph-feature { stroke: var(--surface); stroke-width: 1.5; pointer-events: none; }
 .graph-discrete-point { stroke: var(--surface); stroke-width: 1; pointer-events: none; }
-.graph-render-option { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 8px; }
-.graph-render-option select { min-height: 30px; padding: 3px 7px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-input); color: var(--text); font: inherit; }

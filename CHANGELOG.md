@@ -7,6 +7,8 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Simplify graph rows by removing the manual display-mode selector and always choosing curves or integer points automatically, including restored sessions.
+
 - Use safeguarded Brent-Dekker refinement for sign-changing graph intersection candidates, preserving original-expression residual checks and existing budgets. Add refinement/outcome diagnostics and controlled legacy/Brent benchmarks.
 
 - Reuse bounded original-expression checks within graph intersection verification requests, retaining exact rational differences, numerical tolerances and cancellation limits. Add per-request work counters and a controlled cache-off/on benchmark.

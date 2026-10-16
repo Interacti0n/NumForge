@@ -3,7 +3,7 @@
 Open **Graphs / Grafy** (`/graph?lang=en` or `/graph?lang=sk`). Enter an expression
 such as `x*x`, `sin(t)` or `1/x`, then press **Plot / Vykresliť**. Add up to four
 functions with **Add function / Pridať funkciu**; each has its own expression,
-color picker, Auto/Curve/Points selector, visibility button and remove button. The legend identifies their colors. Each function
+color picker, visibility button and remove button. The legend identifies their colors. Each function
 has a different default color, and colors remain adjustable without calculation.
 Toggle the eye button beside a row or click its colored legend entry to hide or
 show it, including in the expanded graph. Hidden functions keep their expressions,
@@ -23,17 +23,17 @@ between tools, without repeating completed calculations. Reloading the tab
 recalculates previously completed visible curves at the saved camera; unfinished
 or edited inputs remain unsubmitted. A fresh tab starts around zero.
 
-## Curve and point modes
+## Automatic curves and points
 
-Each row offers **Auto**, **Curve / Krivka**, and **Points / Body · celé x**.
-Auto uses a conservative C AST check: factorial, gcd, lcm, mod, npr, ncr or isqrt
+Rendering is automatic, without a mode selector. A conservative C AST check
+recognizes factorial, gcd, lcm, mod, npr, ncr or isqrt, which
 must receive the parameter directly. Examples include `x!`, `factorial(t)`,
 `ncr(x;2)` and `sqrt(x!)`. A constant `factorial(5)` remains a constant curve.
-Transformed lattices such as `factorial(2*x)` are not inferred; explicit Points
-samples integer x only and does not enumerate half-integer domains. Floor/ceil
+Transformed lattices such as `factorial(2*x)` are not inferred, and arbitrary
+half-integer domains are not enumerated. Floor/ceil
 remain step curves because they are defined for noninteger arguments too.
 
-Points evaluates actual integer coordinates in C, without connecting them. Hover
+Recognized integer-domain functions evaluate actual integer coordinates in C, without connecting them. Hover
 or tap a dot for its actual sampled coordinates. Domains still apply: negative
 factorial arguments are omitted and values outside the finite plotting range are
 not shown. Zero/one integer positions in a camera are valid results. At most
@@ -41,7 +41,8 @@ min(256, floor(canvas width / 8)) lattice samples are evaluated. Larger ranges u
 a globally aligned integer stride; zoom in for omitted integer values. Coordinates
 must fit exact browser integers (absolute value at most 2^53 − 1). Evaluation shares
 the normal 5-second/memory limits; expensive integer calls can still hit them.
-Mode changes invalidate that row and are saved with the session.
+Legacy saved manual modes are ignored. HTTP clients retain explicit rendering
+options documented in the graph API.
 
 ## Function editor
 

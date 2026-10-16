@@ -5,6 +5,8 @@ details and the [2.2.1 release record](docs/project/RELEASE_2_2_1.md) for valida
 
 ## Unreleased
 
+- Choose graph curves or integer points automatically without a display selector.
+
 - Confirm more graph intersections with fewer calculations using safeguarded refinement.
 
 - Avoid repeated calculations while verifying graph intersections.

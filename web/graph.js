@@ -29,7 +29,7 @@ function initGraph() {
     };
     const errors=english?{'undefined answer':'Graphs do not use calculator ans.'}:{'division by zero':'Delenie nulou','undefined variable':'Nedefinovaná premenná','undefined answer':'Graf nepoužíva ans z kalkulačky','syntax error':'Chyba syntaxe','time limit exceeded':'Prekročený časový limit','invalid argument':'Neplatný argument'};
     function message(value,error=false){status.textContent=value+(!error&&verificationState==='limited'?(english?' · Some intersections could not be verified. Zoom in to retry.':' · Niektoré priesečníky sa nepodarilo overiť. Skús priblížiť graf.'):'');status.classList.toggle('error',error);status.dataset.detail=String(error||verificationState==='limited'||curves.some(c=>{const s=c.state();return s.visible&&(s.error||s.notice);}));}
-    function settings(){const first=curves[0];return {version:2,expression:first?.input.value||'',color:first?.color.value||palette[0],view:{x:bounds().slice(),y:yViewport.slice()},curves:curves.map(c=>({expression:c.input.value,color:c.color.value,render:c.mode.value,visible:c.state().visible,plotted:c.hasResult()}))};}
+    function settings(){const first=curves[0];return {version:2,expression:first?.input.value||'',color:first?.color.value||palette[0],view:{x:bounds().slice(),y:yViewport.slice()},curves:curves.map(c=>({expression:c.input.value,color:c.color.value,render:'auto',visible:c.state().visible,plotted:c.hasResult()}))};}
     function save(){if(restoring||disposed)return;try{sessionStorage.setItem('numforge-graph-state',JSON.stringify(settings()));}catch(_) {}}
     function drawSoon(){if(drawFrame===null)drawFrame=requestAnimationFrame(()=>{drawFrame=null;if(!disposed)draw();});}
     function dimensions(){
@@ -415,19 +415,19 @@ function initGraph() {
         // One bounded geometry snapshot: color/status-only redraws must not
         // solve the same intersections again. Camera, samples or visibility
         // changes invalidate it; it never holds a second set of sample arrays.
-        const featureKey=[...xs,...projectedView,width,height,...states.flatMap(state=>[state.curve,state.curve.input.value,state.curve.mode.value,state.samples,state.chunks,state.bands,state.error])];
+        const featureKey=[...xs,...projectedView,width,height,...states.flatMap(state=>[state.curve,state.curve.input.value,state.samples,state.chunks,state.bands,state.error])];
         if(!featureCacheKey||featureKey.length!==featureCacheKey.length||featureKey.some((value,i)=>value!==featureCacheKey[i])){features=graphFeatures(states,projection);featureCacheKey=featureKey;verifyFeatures(featureKey);}
         const markers=element('g',{class:'graph-features','clip-path':'url(#graph-clip)'});
         for(const feature of features){if(!feature.verified)continue;const marker=element('circle',{class:'graph-feature',cx:px(feature.x),cy:py(feature.y),r:4,'data-kind':feature.kind,'data-x':feature.x,'data-y':feature.y,'data-verified':'true','data-curve':feature.curve.id,...(feature.other?{'data-other':feature.other.id}:{}),style:`fill:${feature.curve.color.value}`});markers.append(marker);}
         group.append(markers);svg.dataset.featuresState=states.some(s=>s.busy||s.pendingView)?'pending':verificationState;updateInspection();
     }
     function createCurve(row){
-        const input=row.querySelector('input:not([type=color])'),color=row.querySelector('input[type=color]'),mode=row.querySelector('.graph-render'),controller=new AbortController();
+        const input=row.querySelector('input:not([type=color])'),color=row.querySelector('input[type=color]'),controller=new AbortController();
         const id=nextId++;row.dataset.curve=String(id);
         let visible=row.querySelector('.graph-visibility').getAttribute('aria-pressed')!=='false',hiddenCamera=null,hiddenReady=false;
         const cameraKey=()=>JSON.stringify([bounds(),yViewport,dimensions()]);
         let generation=0,request=null,samples=null,bands=null,disposed=false,parameter='x',limited=false,pendingView=false,approximate=false,busy=false,discrete=false,pointStride=1;
-        const identityKey=()=>JSON.stringify([input.value,mode.value]);
+        const identityKey=()=>JSON.stringify([input.value,'auto']);
         let cache=[],cacheIdentity=null,chunks=null,prefetchTimer=null,prefetchRequest=null,prefetchToken=0,prefetchCamera=null,cacheMissing=[],cacheCovered=false;
         const prefetchAttempts=new Set(),maxPoints=8192,maxCachePoints=12288,maxCacheBytes=8*1024*1024;
         let lastMessage=text.ready,lastError=false,lastNotice='';
@@ -656,7 +656,7 @@ function initGraph() {
                 const [low,high]=bounds(),[yLow,yHigh]=yViewport;
                 // The C screen sampler selects density from the camera and falls
                 // back to the precision evaluator when fast arithmetic is unsuitable.
-                const query=new URLSearchParams({min:String(low),max:String(high),render:mode.value,angle:'rad',ymin:String(yLow),ymax:String(yHigh)});
+                const query=new URLSearchParams({min:String(low),max:String(high),render:'auto',angle:'rad',ymin:String(yLow),ymax:String(yHigh)});
                 const {width,height}=dimensions();
                 query.set('mode','fast');query.set('width',String(Math.round(width)));query.set('height',String(height));query.set('quality','refined');query.set('interpolation','hermite-subpixel');query.set('dense','band');
                 if(id!==generation||disposed)return;
@@ -707,7 +707,7 @@ function initGraph() {
             } finally {if(id===generation && !disposed){busy=false;request=null;if(samples&&!pendingView&&!lastError)curve.describe();syncStatus();drawSoon();save();}}
         }
 
-        const curve={id,row,input,color,mode,plot,message,visibleUnresolved,
+        const curve={id,row,input,color,plot,message,visibleUnresolved,
             async originValue(signal){
                 if(cacheIdentity===identityKey()){for(const entry of cache){const point=entry.points.find(p=>p.nx===0&&p.plottable);if(point)return point.ny;}}
                 // Use the same read-only C graph API for variable inference and
@@ -719,8 +719,8 @@ function initGraph() {
             },
             state:()=>({visible,samples,bands,chunks,parameter,limited,pendingView,approximate,busy,discrete,pointStride,message:lastMessage,error:lastError,notice:lastNotice}),
             hasResult:()=>!!samples&&!busy&&!pendingView&&!lastError&&cacheIdentity===identityKey(),
-            retain(){return curve.hasResult()?{expression:input.value,render:mode.value,samples,bands,chunks,cache,cacheIdentity,parameter,limited,approximate,hiddenReady,hiddenCamera,discrete,pointStride}:null;},
-            restore(entry){if(!entry||entry.expression!==input.value||entry.render!==mode.value)return false;({samples,bands,chunks,cache,cacheIdentity,parameter,limited,approximate,hiddenReady,hiddenCamera,discrete,pointStride}=entry);return true;},
+            retain(){return curve.hasResult()?{expression:input.value,render:'auto',samples,bands,chunks,cache,cacheIdentity,parameter,limited,approximate,hiddenReady,hiddenCamera,discrete,pointStride}:null;},
+            restore(entry){if(!entry||entry.expression!==input.value||entry.render!=='auto')return false;({samples,bands,chunks,cache,cacheIdentity,parameter,limited,approximate,hiddenReady,hiddenCamera,discrete,pointStride}=entry);return true;},
             describe(){
                 const state=curve.state(),[low,high]=bounds(),points=(chunks||[{points:samples}]).flatMap(c=>c.points.filter(p=>p.nx>=Math.max(low,c.low??low)&&p.nx<=Math.min(high,c.high??high)));
                 let notice='',detail='';
@@ -752,7 +752,7 @@ function initGraph() {
             dispose(){disposed=true;invalidate();controller.abort();}
         };
         input.addEventListener('input',()=>{locateRequest?.abort();clearTimeout(viewportTimer);viewportTimer=null;if(curves.length===1){viewport=null;yViewport=[-10,10];}invalidate();save();renderLegend();},{signal:controller.signal});
-        mode.addEventListener('change',()=>{locateRequest?.abort();invalidate();save();renderLegend();},{signal:controller.signal});
+
         row.addEventListener('focusin',()=>{activeCurve=curve;highlightActive();},{signal:controller.signal});
         color.addEventListener('input',()=>{save();renderLegend();drawSoon();},{signal:controller.signal});
         row.querySelector('.graph-visibility').addEventListener('click',()=>curve.setVisible(!visible),{signal:controller.signal});
@@ -878,10 +878,10 @@ function initGraph() {
         $('graph-add').textContent=(english?'+ Add function':'+ Pridať funkciu')+` · ${curves.length}/${maximumCurves}`;$('graph-add').disabled=curves.length>=maximumCurves;$('graph-add').title=english?'Up to four functions':'Najviac štyri funkcie';
         highlightActive();renderLegend();syncStatus();
     }
-    function addCurve(expression='',color=null,focus=true,visible=true,render='auto'){
+    function addCurve(expression='',color=null,focus=true,visible=true){
         if(curves.length>=maximumCurves)return;
         const row=curves[0].row.cloneNode(true);row.querySelector('.graph-curve-status').hidden=true;row.querySelector('.graph-visibility').setAttribute('aria-pressed',String(visible));
-        row.querySelector('input:not([type=color])').value=expression;row.querySelector('.graph-render').value=['auto','curve','points'].includes(render)?render:'auto';
+        row.querySelector('input:not([type=color])').value=expression;
         row.querySelector('input[type=color]').value=color||palette.find(p=>!curves.some(c=>c.color.value===p))||palette[curves.length];
         $('graph-curves').append(row);const curve=createCurve(row);curves.push(curve);activeCurve=curve;relabel();save();if(focus)curve.input.focus();drawSoon();
     }
@@ -897,10 +897,10 @@ function initGraph() {
     const validAxis=a=>Array.isArray(a)&&a.length===2&&a.every(Number.isFinite)&&a[1]>a[0]&&Number.isFinite(a[1]-a[0])&&a[1]-a[0]>=Math.max(1,...a.map(Math.abs))*1e-8;
     if(restored?.version===2&&validAxis(restored.view?.x)&&validAxis(restored.view?.y)){viewport=restored.view.x.slice();yViewport=restored.view.y.slice();}
     if(restoredCurves.length){initialRow.querySelector('input:not([type=color])').value=restoredCurves[0].expression;if(/^#[0-9a-f]{6}$/i.test(restoredCurves[0].color))initialRow.querySelector('input[type=color]').value=restoredCurves[0].color;}
-    if(restoredCurves.length&&['auto','curve','points'].includes(restoredCurves[0].render))initialRow.querySelector('.graph-render').value=restoredCurves[0].render;
+
     if(restoredCurves.length)initialRow.querySelector('.graph-visibility').setAttribute('aria-pressed',String(restoredCurves[0].visible!==false));
     curves.push(createCurve(initialRow));activeCurve=curves[0];
-    for(const entry of restoredCurves.slice(1))addCurve(entry.expression,/^#[0-9a-f]{6}$/i.test(entry.color)?entry.color:null,false,entry.visible!==false,entry.render);
+    for(const entry of restoredCurves.slice(1))addCurve(entry.expression,/^#[0-9a-f]{6}$/i.test(entry.color)?entry.color:null,false,entry.visible!==false);
     activeCurve=curves[0];relabel();
     $('graph-form').addEventListener('submit',event=>plotAll(event),{signal:lifecycle.signal});
     $('graph-add').addEventListener('click',()=>addCurve(),{signal:lifecycle.signal});
