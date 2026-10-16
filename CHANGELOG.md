@@ -7,6 +7,8 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Extend graph regression coverage with four-function camera cycles on desktop/mobile widths and independent checks of displayed intercepts, intersections and integer points. Update retained-session and cache diagnostic tests to match existing behavior.
+
 - Add per-curve Auto/Curve/Points modes with conservative C integer-domain detection, precision integer-lattice samples, isolated-dot inspection and saved mode state. Verify graph intersection candidates against original C expressions in bounded asynchronous batches, cache confirmations, and share the marker cap fairly across curves, pairs and screen regions.
 
 - Mark approximate visible axis intercepts and intersections of accepted cached graph strokes, including represented tangent contacts; snap mouse/touch inspection to their coordinates. Add Find function to center on a real C-sampled y intercept without changing Reset view. Bound geometry work and marker count.

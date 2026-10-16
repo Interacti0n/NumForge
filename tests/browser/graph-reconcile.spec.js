@@ -64,7 +64,7 @@ async function diagnostics(page){
   const replace=(a,b)=>{expect(source.split(a)).toHaveLength(2);source=source.replace(a,b);};
   replace('state:()=>({visible,samples,','testCache:()=>({ranges:cache.length,unique:new Set(cache).size,records:cache.reduce((n,e)=>n+e.points.length+e.bands.length,0),pendingView,busy}),state:()=>({visible,samples,');
   replace('loadLibrary();draw();','loadLibrary();draw();window.__graphReconcileTest=()=>curves.map(c=>c.testCache());');
-  replace('return ()=>{save();disposed=true;','return ()=>{delete window.__graphReconcileTest;save();disposed=true;');
+  replace('return ()=>{save();','return ()=>{delete window.__graphReconcileTest;save();');
   await route.fulfill({response,body:source});
  });
 }

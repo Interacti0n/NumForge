@@ -44,12 +44,15 @@ test('zoom grows decimal precision and always retains an exact zero tick',async(
  labels=await page.locator('.graph-tick[data-axis="x"]').allTextContents();
  expect(labels).toContain('0');expect(labels.some(t=>/\.\d{2}$/.test(t))).toBe(true);expect(labels).not.toContain('-0');
 });
-test('mouse drag moves both axes and a fresh page starts at the origin',async({page})=>{
+test('mouse drag moves both axes, reload retains the camera and a new session starts at the origin',async({page,browser,baseURL})=>{
  await draw(page);const rect=await page.locator('#graph-plot').boundingBox(),x=rect.x+rect.width/2,y=rect.y+rect.height/2;
  await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+90,y-50,{steps:5});await page.mouse.up();
  expect(Number(await page.locator('#graph-plot').getAttribute('data-ymin'))).toBeLessThan(-10);
  expect(Number(await page.locator('#graph-plot').getAttribute('data-xmin'))).toBeLessThan(-10);
- await page.reload();await expect(page.locator('#graph-plot')).toHaveAttribute('data-xmin','-10');await expect(page.locator('#graph-plot')).toHaveAttribute('data-ymin','-10');
+ const camera=await page.locator('#graph-plot').evaluate(svg=>[svg.dataset.xmin,svg.dataset.ymin]);
+ await page.reload();await expect.poll(()=>page.locator('#graph-plot').evaluate(svg=>[svg.dataset.xmin,svg.dataset.ymin])).toEqual(camera);
+ const context=await browser.newContext({baseURL});
+ try{const fresh=await context.newPage();await fresh.goto('/graph?lang=en');await expect(fresh.locator('#graph-plot')).toHaveAttribute('data-xmin','-10');await expect(fresh.locator('#graph-plot')).toHaveAttribute('data-ymin','-10');}finally{await context.close();}
 });
 
 test('pure vertical pan reprojects the buffered curve without a graph request',async({page})=>{

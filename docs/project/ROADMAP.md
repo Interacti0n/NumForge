@@ -90,6 +90,10 @@ documented HTTP contract alongside the web implementation, using the versioned
 2. [Browser graphs](../guides/GRAPHS.md) now display up to four colored `y = f(x)`
    curves with inferred parameters, automatic sampling, pan/zoom, visibility,
    a shared function library, an expanded canvas and cached coordinate inspection.
+   Per-curve Auto/Curve/Points modes now include bounded integer-domain sampling.
+   Axis/pair markers are numerically verified against original C expressions and
+   selected across curve groups and screen regions. Arbitrary discrete lattices
+   and complete/symbolic root enumeration remain outside this feature.
    Visible-first sampling, reusable resolution levels and accepted cached previews
    reduce repeated work; missing/gapped views keep coarse/refined sampling.
    Restricted single-carrier dense oscillations now have a separate approximate
