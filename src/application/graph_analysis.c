@@ -75,9 +75,11 @@ CalculatorStatus application_graph_integer_points(ApplicationFastGraph **result,
 
 typedef struct VerifiedSample { double x,y,difference;int sign;bool real,approximate; } VerifiedSample;
 typedef struct VerifyCacheEntry { char coordinate[32];VerifiedSample value;bool occupied,pair; } VerifyCacheEntry;
+typedef enum VerifyReason { VERIFY_RESIDUAL,VERIFY_NON_REAL,VERIFY_ITERATIONS,VERIFY_COORDINATES } VerifyReason;
 typedef struct VerifyWork {
     ApplicationExpression *first,*second;const CalculatorContext *context;CalculatorError *error;
-    size_t probes,sample_requests,cache_hits;bool limited,reuse;
+    size_t probes,sample_requests,cache_hits;bool limited,reuse,brent;
+    ApplicationGraphVerificationStats stats;VerifyReason reason;
     /* Four-way, request-local storage: bounded stack space, no retained
      * typed numbers, no cross-expression/session or cross-request reuse. */
     VerifyCacheEntry cache[128];
@@ -135,17 +137,63 @@ static void verified_output(ApplicationGraphVerifiedPoint *result,const Verified
 {
     *result=(ApplicationGraphVerifiedPoint){true,sample->approximate,sample->x,root?0:sample->y,fabs(sample->difference)};
 }
+static bool verified_residual(const ApplicationGraphCandidate *candidate,const VerifiedSample *sample)
+{
+    return fabs(sample->difference)<=fmin(candidate->y_tolerance,1e-11*fmax(1,fabs(sample->y)));
+}
+static CalculatorStatus verify_brent(VerifyWork *work,const ApplicationGraphCandidate *candidate,bool pair,bool root,
+    VerifiedSample a,VerifiedSample b,VerifiedSample best,ApplicationGraphVerifiedPoint *result)
+{
+    // Brent-Dekker: retain an opposite-sign bracket, attempt secant/inverse
+    // quadratic steps, otherwise bisect. Width alone never confirms a root.
+    VerifiedSample c=a;double d=b.x-a.x,e=d;
+    for(unsigned iteration=0;iteration<24U&&!work->limited;++iteration){
+        if(b.sign==c.sign){c=a;d=b.x-a.x;e=d;}
+        if(fabs(c.difference)<fabs(b.difference)){VerifiedSample old=b;a=b;b=c;c=old;}
+        if(fabs(b.difference)<fabs(best.difference))best=b;
+        if(b.sign==0||verified_residual(candidate,&best)){verified_output(result,&best,root);return CALCULATOR_OK;}
+        double half=c.x*.5-b.x*.5,tolerance=2*DBL_EPSILON*fabs(b.x);
+        tolerance=fmax(tolerance,fabs(nextafter(b.x,c.x)-b.x));
+        if(fabs(half)<=tolerance){work->reason=VERIFY_COORDINATES;return CALCULATOR_OK;}
+        bool interpolate=false;double step=half;
+        if(fabs(e)>=tolerance&&fabs(a.difference)>fabs(b.difference)){
+            double s=b.difference/a.difference,p,q;
+            if(a.x==c.x){p=2*half*s;q=1-s;}
+            else{
+                q=a.difference/c.difference;double r=b.difference/c.difference;
+                p=s*(2*half*q*(q-r)-(b.x-a.x)*(r-1));q=(q-1)*(r-1)*(s-1);
+            }
+            if(p>0)q=-q;else p=-p;
+            if(isfinite(p)&&isfinite(q)&&q!=0&&2*p<fmin(3*half*q-fabs(tolerance*q),fabs(e*q))){step=p/q;interpolate=isfinite(step);}
+        }
+        if(interpolate){e=d;d=step;}else{d=half;e=half;}
+        double x=b.x+(fabs(d)>tolerance?d:copysign(tolerance,half));
+        if(!isfinite(x)||x<=fmin(b.x,c.x)||x>=fmax(b.x,c.x)){x=b.x*.5+c.x*.5;interpolate=false;d=half;e=half;}
+        if(x<=fmin(b.x,c.x)||x>=fmax(b.x,c.x)){work->reason=VERIFY_COORDINATES;return CALCULATOR_OK;}
+        ++work->stats.refinement_steps;
+        if(interpolate)++work->stats.interpolations;else ++work->stats.bisections;
+        a=b;VerifiedSample sample={0};CalculatorStatus status=verify_sample(work,x,pair,&sample);
+        if(status!=CALCULATOR_OK||work->limited)return status;
+        if(!sample.real){work->reason=VERIFY_NON_REAL;return CALCULATOR_OK;}
+        b=sample;
+        if(fabs(b.difference)<fabs(best.difference))best=b;
+        if(b.sign==0||verified_residual(candidate,&best)){verified_output(result,&best,root);return CALCULATOR_OK;}
+    }
+    work->reason=VERIFY_ITERATIONS;return CALCULATOR_OK;
+}
 static CalculatorStatus verify_candidate(VerifyWork *work,const ApplicationGraphCandidate *candidate,ApplicationGraphVerifiedPoint *result)
 {
     bool pair=candidate->kind==APPLICATION_GRAPH_INTERSECTION||candidate->kind==APPLICATION_GRAPH_POINT_INTERSECTION;
     bool root=candidate->kind==APPLICATION_GRAPH_ROOT;VerifiedSample center={0},left={0},right={0};
-    CalculatorStatus status=verify_sample(work,candidate->x,pair,&center);if(status!=CALCULATOR_OK||work->limited||!center.real)return status;
+    CalculatorStatus status=verify_sample(work,candidate->x,pair,&center);if(status!=CALCULATOR_OK||work->limited)return status;
+    if(!center.real){work->reason=VERIFY_NON_REAL;return CALCULATOR_OK;}
     if(candidate->kind==APPLICATION_GRAPH_VALUE){verified_output(result,&center,false);return CALCULATOR_OK;}
     if(center.sign==0){verified_output(result,&center,root);return CALCULATOR_OK;}
     const double tiny=fmin(candidate->y_tolerance,1e-24*fmax(1,fabs(center.y)));
     if(candidate->kind==APPLICATION_GRAPH_POINT_INTERSECTION){if(fabs(center.difference)<=tiny)verified_output(result,&center,false);return CALCULATOR_OK;}
     status=verify_sample(work,candidate->low,pair,&left);if(status==CALCULATOR_OK&&!work->limited)status=verify_sample(work,candidate->high,pair,&right);
-    if(status!=CALCULATOR_OK||work->limited||!left.real||!right.real)return status;
+    if(status!=CALCULATOR_OK||work->limited)return status;
+    if(!left.real||!right.real){work->reason=VERIFY_NON_REAL;return CALCULATOR_OK;}
     if(left.sign!=0&&right.sign!=0&&left.sign==right.sign){
         // Tangencies/cusps: require a much smaller actual C residual on both
         // sides. Decimal rounding can recover a simple exact cusp coordinate;
@@ -162,11 +210,15 @@ static CalculatorStatus verify_candidate(VerifyWork *work,const ApplicationGraph
     VerifiedSample best=center;
     if(fabs(best.difference)<=fmin(candidate->y_tolerance,1e-11*fmax(1,fabs(best.y)))){verified_output(result,&best,root);return CALCULATOR_OK;}
     if(center.x>left.x&&center.x<right.x){if(center.sign==left.sign)left=center;else right=center;}
+    if(work->brent)return verify_brent(work,candidate,pair,root,left,right,best,result);
+    unsigned iterations=0;
     for(unsigned iteration=0;iteration<24U&&!work->limited;++iteration){
         double denominator=fabs(left.difference)+fabs(right.difference),fraction=fabs(left.difference)/denominator;
-        if(!isfinite(fraction)||fraction<.05||fraction>.95)fraction=.5;
-        double x=left.x+(right.x-left.x)*fraction;if(x<=left.x||x>=right.x)break;
-        VerifiedSample mid={0};status=verify_sample(work,x,pair,&mid);if(status!=CALCULATOR_OK||!mid.real)return status;
+        bool bisect=!isfinite(fraction)||fraction<.05||fraction>.95;if(bisect)fraction=.5;
+        double x=left.x+(right.x-left.x)*fraction;if(x<=left.x||x>=right.x){work->reason=VERIFY_COORDINATES;break;}
+        ++iterations;++work->stats.refinement_steps;if(bisect)++work->stats.bisections;else ++work->stats.interpolations;
+        VerifiedSample mid={0};status=verify_sample(work,x,pair,&mid);if(status!=CALCULATOR_OK||work->limited)return status;
+        if(!mid.real){work->reason=VERIFY_NON_REAL;return CALCULATOR_OK;}
         if(fabs(mid.difference)<fabs(best.difference))best=mid;
         if(mid.sign==0){verified_output(result,&mid,root);return CALCULATOR_OK;}
         if(mid.sign==left.sign)left=mid;else right=mid;
@@ -175,10 +227,11 @@ static CalculatorStatus verify_candidate(VerifyWork *work,const ApplicationGraph
     }
     double tolerance=fmin(candidate->y_tolerance,1e-11*fmax(1,fabs(best.y)));
     if(!work->limited&&fabs(best.difference)<=tolerance)verified_output(result,&best,root);
+    if(iterations==24U)work->reason=VERIFY_ITERATIONS;
     return CALCULATOR_OK;
 }
-CalculatorStatus application_graph_verify_profile(ApplicationGraphVerifiedPoint *result,bool *limited,const char *input,const char *other,
-    const ApplicationGraphCandidate *candidates,size_t count,const CalculatorContext *context,CalculatorError *error,bool reuse,ApplicationGraphVerificationStats *stats)
+CalculatorStatus application_graph_verify_experiment(ApplicationGraphVerifiedPoint *result,bool *limited,const char *input,const char *other,
+    const ApplicationGraphCandidate *candidates,size_t count,const CalculatorContext *context,CalculatorError *error,bool reuse,bool brent,ApplicationGraphVerificationStats *stats)
 {
     calculator_error_clear(error);
     if(!result||!limited||!input||!candidates||!context){calculator_error_set(error,CALCULATOR_NULL_ARGUMENT,0U);return CALCULATOR_NULL_ARGUMENT;}
@@ -191,14 +244,29 @@ CalculatorStatus application_graph_verify_profile(ApplicationGraphVerifiedPoint 
     if(pair&&(!other||!*other)){calculator_error_set(error,CALCULATOR_INVALID_ARGUMENT,0U);return CALCULATOR_INVALID_ARGUMENT;}
     CalculatorStatus status=calculator_context_validate(context,error);if(status!=CALCULATOR_OK)return status;
     bool owner=numforge_budget_begin((uint64_t)context->time_limit_ms,CALCULATOR_ALLOCATION_BUDGET,CALCULATOR_SINGLE_ALLOCATION);
-    VerifyWork work={0};work.context=context;work.error=error;work.reuse=reuse;
+    VerifyWork work={0};work.context=context;work.error=error;work.reuse=reuse;work.brent=brent;
     ApplicationGraphVerifiedPoint temporary[APPLICATION_GRAPH_MAX_CANDIDATES]={0};
     status=application_expression_prepare_auto(&work.first,input,NULL,context,error);
     if(status==CALCULATOR_OK&&pair)status=application_expression_prepare_auto(&work.second,other,NULL,context,error);
-    for(size_t i=0;i<count&&status==CALCULATOR_OK&&!work.limited;++i)status=verify_candidate(&work,&candidates[i],&temporary[i]);
+    size_t processed=0;
+    for(size_t i=0;i<count&&status==CALCULATOR_OK&&!work.limited;++i){
+        work.reason=VERIFY_RESIDUAL;status=verify_candidate(&work,&candidates[i],&temporary[i]);
+        if(status!=CALCULATOR_OK||work.limited)break;
+        ++processed;
+        if(temporary[i].confirmed)++work.stats.confirmed;
+        else if(work.reason==VERIFY_NON_REAL)++work.stats.non_real;
+        else if(work.reason==VERIFY_ITERATIONS)++work.stats.iteration_limits;
+        else if(work.reason==VERIFY_COORDINATES)++work.stats.coordinate_limits;
+        else ++work.stats.residual_rejections;
+    }
     status=calculator_budget_status(status);
-    if(status==CALCULATOR_OK){memcpy(result,temporary,count*sizeof(*result));*limited=work.limited;if(stats)*stats=(ApplicationGraphVerificationStats){work.probes,work.sample_requests,work.cache_hits};}else calculator_error_set(error,status,error?error->offset:0U);
+    if(status==CALCULATOR_OK){memcpy(result,temporary,count*sizeof(*result));*limited=work.limited;work.stats.evaluations=work.probes;work.stats.sample_requests=work.sample_requests;work.stats.cache_hits=work.cache_hits;work.stats.unprocessed=count-processed;if(stats)*stats=work.stats;}else calculator_error_set(error,status,error?error->offset:0U);
     application_expression_destroy(work.first);application_expression_destroy(work.second);if(owner)numforge_budget_end();return status;
+}
+CalculatorStatus application_graph_verify_profile(ApplicationGraphVerifiedPoint *result,bool *limited,const char *input,const char *other,
+    const ApplicationGraphCandidate *candidates,size_t count,const CalculatorContext *context,CalculatorError *error,bool reuse,ApplicationGraphVerificationStats *stats)
+{
+    return application_graph_verify_experiment(result,limited,input,other,candidates,count,context,error,reuse,true,stats);
 }
 CalculatorStatus application_graph_verify(ApplicationGraphVerifiedPoint *result,bool *limited,const char *input,const char *other,
     const ApplicationGraphCandidate *candidates,size_t count,const CalculatorContext *context,CalculatorError *error)

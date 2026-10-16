@@ -878,9 +878,34 @@ static void test_verification_reuse_preserves_values_domains_and_scope(void)
     TEST_ASSERT_EQUAL(CALCULATOR_OK,numforge_web_session_request(&store,"POST","/api/graph/verify","x\n\n1 1 0 2 0.1 0.1\n1 1 0 2 0.1 0.1\n",&response));
     TEST_ASSERT_NOT_NULL(strstr(response,"\"evaluations\":1,\"sample_requests\":2,\"cache_hits\":1"));free(response);
 }
+static void test_brent_refinement_preserves_residuals_and_rejects_discontinuities(void)
+{
+    CalculatorError error;bool limited=false;ApplicationGraphVerifiedPoint points[32],baseline[32];
+    ApplicationGraphCandidate candidates[32];ApplicationGraphVerificationStats stats={0},old={0};
+    for(size_t i=0;i<32U;++i){double x=((double)i-16)*3.141592653589793/33+.00001;candidates[i]=(ApplicationGraphCandidate){APPLICATION_GRAPH_ROOT,x,x-.001,x+.001,1e-6,1e-8};}
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_graph_verify_experiment(baseline,&limited,"sin(33*x)",NULL,candidates,32U,&context,&error,true,false,&old));
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_graph_verify_profile(points,&limited,"sin(33*x)",NULL,candidates,32U,&context,&error,true,&stats));
+    TEST_ASSERT_FALSE(limited);TEST_ASSERT_EQUAL(32U,stats.confirmed);TEST_ASSERT_TRUE(stats.evaluations<old.evaluations);TEST_ASSERT_TRUE(stats.refinement_steps<old.refinement_steps);
+    for(size_t i=0;i<32U;++i){TEST_ASSERT_TRUE(points[i].confirmed);TEST_ASSERT_TRUE(fabs(sin(33*points[i].x))<1e-9);TEST_ASSERT_TRUE(points[i].residual<=1e-11);}
+    const char *expressions[]={"x^3-2","2-x^3","x^3+2","ln(x)-1","1E20*x-3","x-1000000000003","1/(x-0.1234)","floor(x)-0.5","(x^2-1)/(x-1)"};
+    const double centers[]={1.2,1.2,-1.2,2.7,1e-20,1000000000002,.1235,1,1};
+    const double lows[]={0,0,-10,.01,-1e-18,1000000000000,.12,.9,.9};
+    const double highs[]={10,10,0,100,1e-18,1000000000010,.13,1.1,1.1};
+    const double roots[]={1.2599210498948732,1.2599210498948732,-1.2599210498948732,2.718281828459045,3e-20,1000000000003};
+    for(size_t i=0;i<9U;++i){
+        candidates[0]=(ApplicationGraphCandidate){APPLICATION_GRAPH_ROOT,centers[i],lows[i],highs[i],1e-6,1e-8};
+        TEST_ASSERT_EQUAL(CALCULATOR_OK,application_graph_verify_profile(points,&limited,expressions[i],NULL,candidates,1U,&context,&error,true,&stats));
+        if(i<6U){TEST_ASSERT_TRUE_MESSAGE(points[0].confirmed,expressions[i]);TEST_ASSERT_TRUE(fabs(points[0].x-roots[i])<=1e-10*fabs(roots[i]));TEST_ASSERT_TRUE(points[0].residual<=1e-11);}
+        else{TEST_ASSERT_FALSE(points[0].confirmed);TEST_ASSERT_EQUAL(1U,stats.non_real+stats.residual_rejections+stats.iteration_limits+stats.coordinate_limits);}
+    }
+    candidates[0]=(ApplicationGraphCandidate){APPLICATION_GRAPH_ROOT,1.2,0,10,1e-6,1e-8};
+    numforge_test_allocator_begin(0U);TEST_ASSERT_EQUAL(CALCULATOR_OK,application_graph_verify_profile(points,&limited,"x^3-2",NULL,candidates,1U,&context,&error,true,&stats));size_t calls=numforge_test_allocator_call_count();numforge_test_allocator_end();
+    for(size_t i=0;i<20U;++i){points[0].x=123;stats.evaluations=987U;limited=true;numforge_test_allocator_begin(1U+(calls-1U)*i/19U);TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY,application_graph_verify_profile(points,&limited,"x^3-2",NULL,candidates,1U,&context,&error,true,&stats));numforge_test_allocator_end();TEST_ASSERT_TRUE(points[0].x==123);TEST_ASSERT_EQUAL(987U,stats.evaluations);TEST_ASSERT_TRUE(limited);}
+}
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_brent_refinement_preserves_residuals_and_rejects_discontinuities);
     RUN_TEST(test_verification_reuse_preserves_values_domains_and_scope);
     RUN_TEST(test_candidate_verification_original_values_domains_and_atomicity);
     RUN_TEST(test_integer_points_domains_sparse_ranges_and_atomicity);

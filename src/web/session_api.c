@@ -452,7 +452,7 @@ static CalculatorStatus graph_verify_request(const char *method,const Query *que
         append(&json,"{\"ok\":true,\"schema_version\":1,\"evaluation\":\"precision\",\"limited\":%s,\"count\":%zu,\"evaluations\":%zu,\"sample_requests\":%zu,\"cache_hits\":%zu,\"points\":[",limited?"true":"false",count,stats.evaluations,stats.sample_requests,stats.cache_hits);
         for(size_t i=0;i<count;++i){const ApplicationGraphVerifiedPoint *point=&verified[i];if(i)append(&json,",");
             if(!point->confirmed)append(&json,"null");else append(&json,"{\"x\":%.17g,\"y\":%.17g,\"residual\":%.17g,\"approximate\":%s}",point->x,point->y,point->residual,point->approximate?"true":"false");}
-        append(&json,"]}");status=json.status;
+        append(&json,"],\"refinement_steps\":%zu,\"bisections\":%zu,\"interpolations\":%zu,\"confirmed\":%zu,\"non_real\":%zu,\"residual_rejections\":%zu,\"iteration_limits\":%zu,\"coordinate_limits\":%zu,\"unprocessed\":%zu}",stats.refinement_steps,stats.bisections,stats.interpolations,stats.confirmed,stats.non_real,stats.residual_rejections,stats.iteration_limits,stats.coordinate_limits,stats.unprocessed);status=json.status;
     }
     free(copy);status=calculator_budget_status(status);if(status==CALCULATOR_OK)*response=json.data;else free(json.data);if(owner)numforge_budget_end();return status;
 }

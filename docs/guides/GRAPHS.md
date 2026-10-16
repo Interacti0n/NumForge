@@ -366,3 +366,7 @@ Intersection verification reuses repeated original-expression checks within each
 C request. This saves work without loosening tolerances or increasing the time
 and evaluation limits. Distinct candidate coordinates may still need all their
 own calculations, so dense plots can retain a limited-verification notice.
+Sign-changing candidates use Brent's safeguarded refinement to avoid wasting
+most attempts on repeated interval halving. Every displayed confirmation still
+requires an actual C evaluation with the same residual tolerance; a narrow
+interval alone does not turn a pole or jump into an intersection.

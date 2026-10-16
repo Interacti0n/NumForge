@@ -81,11 +81,27 @@ checks. A final lookup stopped by the evaluation cap can be included in
 `sample_requests`; it is not an actual evaluation. Counters are not timing or
 accuracy guarantees and do not change the response schema version.
 
+Further additive counters are `refinement_steps`, `bisections`, `interpolations`,
+`confirmed`, `non_real`, `residual_rejections`, `iteration_limits`,
+`coordinate_limits`, and `unprocessed`. Refinement counts include attempted steps
+stopped by the shared budget. The six outcome categories partition candidate
+rows: confirmed, finite-real projection unavailable, residual/contact
+check rejected, 24-step cap reached, coordinate resolution exhausted, or work
+unfinished under the shared budget. More precisely, the partition is
+`confirmed + non_real + residual_rejections + iteration_limits + coordinate_limits + unprocessed = count`;
+`refinement_steps = bisections + interpolations`.
+`non_real` includes missing/nonfinite projections, not only mathematical domains.
+
 Actual C evaluations check the candidate and its neighbors. Sign-bracketed roots
-use at most 24 safeguarded secant/bisection refinements, accepting a residual at
+use at most 24 safeguarded Brent-Dekker refinements (secant/inverse-quadratic
+interpolation with bisection fallback), accepting a residual at
 most min(y_tolerance, 1e-11 × max(1, absolute y)). Same-sign tangent checks require
 a residual at most min(y_tolerance, 1e-24 × max(1, absolute y)) much smaller than
 both neighbors. Decimal rounding can recover simple exact cusp coordinates.
+An interval becoming small does not confirm a root: an actual original-expression
+sample must meet the same residual check. Machine-coordinate exhaustion leaves
+the candidate unconfirmed. The method does not establish continuity across a
+bracket, and the existing pole/domain checks remain necessary.
 Discrete pair checks never search away from their sampled integer x. Undefined,
 complex and quantity samples do not become real zeros. Poles and step jumps are
 rejected unless an actual checked value meets the numerical residual criterion.
