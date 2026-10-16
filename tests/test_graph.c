@@ -852,9 +852,36 @@ static void test_candidate_verification_original_values_domains_and_atomicity(vo
     char *response=NULL;TEST_ASSERT_EQUAL(CALCULATOR_OK,numforge_web_session_request(&store,"POST","/api/graph/verify","x\n2-t\n2 1 0.5 1.5 0.00001 0.000001\n",&response));TEST_ASSERT_NOT_NULL(strstr(response,"\"x\":1,\"y\":1"));free(response);response=NULL;
     TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,numforge_web_session_request(&store,"POST","/api/graph/verify","x\n\n0 nan 0 1 0.1 0.1\n",&response));free(response);
 }
+static void test_verification_reuse_preserves_values_domains_and_scope(void)
+{
+    ApplicationGraphCandidate candidates[32];ApplicationGraphVerifiedPoint output[32],baseline[32];
+    ApplicationGraphVerificationStats stats={0},before={0};CalculatorError error;bool limited=false,old_limited=false;
+    for(size_t i=0;i<32U;++i)candidates[i]=(ApplicationGraphCandidate){APPLICATION_GRAPH_ROOT,3.1415,3.1,3.2,1e-5,1e-6};
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_graph_verify_profile(baseline,&old_limited,"sin(x)",NULL,candidates,32U,&context,&error,false,&before));
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_graph_verify_profile(output,&limited,"sin(x)",NULL,candidates,32U,&context,&error,true,&stats));
+    TEST_ASSERT_FALSE(limited);TEST_ASSERT_TRUE(stats.cache_hits>=31U);TEST_ASSERT_TRUE(stats.evaluations<before.evaluations);TEST_ASSERT_TRUE(stats.evaluations<=512U);
+    for(size_t i=0;i<32U;++i){TEST_ASSERT_TRUE(output[i].confirmed);if(baseline[i].confirmed){TEST_ASSERT_TRUE(output[i].x==baseline[i].x);TEST_ASSERT_TRUE(output[i].residual==baseline[i].residual);}}
+    candidates[0]=(ApplicationGraphCandidate){APPLICATION_GRAPH_VALUE,1,.5,1.5,1e-5,1e-6};
+    candidates[1]=candidates[0];candidates[1].kind=APPLICATION_GRAPH_INTERSECTION;
+    candidates[2]=candidates[0];
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_graph_verify_profile(output,&limited,"1000000000000000000000000000000+x","1000000000000000000000000000001",candidates,3U,&context,&error,true,&stats));
+    TEST_ASSERT_TRUE(output[0].confirmed&&output[1].confirmed&&output[2].confirmed);TEST_ASSERT_TRUE(output[1].residual==0);TEST_ASSERT_EQUAL(3U,stats.evaluations);TEST_ASSERT_EQUAL(1U,stats.cache_hits);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_graph_verify_profile(output,&limited,"x+10",NULL,candidates,1U,&context,&error,true,&stats));TEST_ASSERT_TRUE(output[0].y==11);TEST_ASSERT_EQUAL(0U,stats.cache_hits);
+    candidates[0]=(ApplicationGraphCandidate){APPLICATION_GRAPH_VALUE,-1,-2,0,1e-5,1e-6};candidates[1]=candidates[0];
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_graph_verify_profile(output,&limited,"sqrt(x)",NULL,candidates,2U,&context,&error,true,&stats));TEST_ASSERT_FALSE(output[0].confirmed||output[1].confirmed);TEST_ASSERT_EQUAL(1U,stats.evaluations);TEST_ASSERT_EQUAL(1U,stats.cache_hits);
+    candidates[0]=(ApplicationGraphCandidate){APPLICATION_GRAPH_VALUE,.1,0,1,1e-5,1e-6};candidates[1]=candidates[0];candidates[1].x=nextafter(.1,1);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_graph_verify_profile(output,&limited,"x",NULL,candidates,2U,&context,&error,true,&stats));TEST_ASSERT_TRUE(output[0].x==.1);TEST_ASSERT_TRUE(output[1].x==candidates[1].x);TEST_ASSERT_EQUAL(1U,stats.cache_hits);
+    stats.evaluations=987U;output[0].x=123;limited=true;
+    TEST_ASSERT_TRUE(numforge_budget_begin(5000U,SIZE_MAX,SIZE_MAX));numforge_test_budget_expire_after(1U);
+    TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT,application_graph_verify_profile(output,&limited,"x",NULL,candidates,2U,&context,&error,true,&stats));numforge_budget_end();TEST_ASSERT_TRUE(output[0].x==123);TEST_ASSERT_EQUAL(987U,stats.evaluations);TEST_ASSERT_TRUE(limited);
+    char *response=NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,numforge_web_session_request(&store,"POST","/api/graph/verify","x\n\n1 1 0 2 0.1 0.1\n1 1 0 2 0.1 0.1\n",&response));
+    TEST_ASSERT_NOT_NULL(strstr(response,"\"evaluations\":1,\"sample_requests\":2,\"cache_hits\":1"));free(response);
+}
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_verification_reuse_preserves_values_domains_and_scope);
     RUN_TEST(test_candidate_verification_original_values_domains_and_atomicity);
     RUN_TEST(test_integer_points_domains_sparse_ranges_and_atomicity);
     RUN_TEST(test_corner_search_retains_best_secant_probe);

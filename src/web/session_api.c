@@ -444,11 +444,12 @@ static CalculatorStatus graph_verify_request(const char *method,const Query *que
         if(status==CALCULATOR_OK)++count;
         row=next;
     }
-    if(status==CALCULATOR_OK)status=application_graph_verify(verified,&limited,first,second,candidates,count,&context,error);
+    ApplicationGraphVerificationStats stats={0};
+    if(status==CALCULATOR_OK)status=application_graph_verify_profile(verified,&limited,first,second,candidates,count,&context,error,true,&stats);
     Json json={NULL,0U,CALCULATOR_OK,RESPONSE_CAPACITY};
     if(status==CALCULATOR_OK){json.data=numforge_malloc(json.capacity);if(!json.data)status=CALCULATOR_OUT_OF_MEMORY;}
     if(status==CALCULATOR_OK){
-        append(&json,"{\"ok\":true,\"schema_version\":1,\"evaluation\":\"precision\",\"limited\":%s,\"count\":%zu,\"points\":[",limited?"true":"false",count);
+        append(&json,"{\"ok\":true,\"schema_version\":1,\"evaluation\":\"precision\",\"limited\":%s,\"count\":%zu,\"evaluations\":%zu,\"sample_requests\":%zu,\"cache_hits\":%zu,\"points\":[",limited?"true":"false",count,stats.evaluations,stats.sample_requests,stats.cache_hits);
         for(size_t i=0;i<count;++i){const ApplicationGraphVerifiedPoint *point=&verified[i];if(i)append(&json,",");
             if(!point->confirmed)append(&json,"null");else append(&json,"{\"x\":%.17g,\"y\":%.17g,\"residual\":%.17g,\"approximate\":%s}",point->x,point->y,point->residual,point->approximate?"true":"false");}
         append(&json,"]}");status=json.status;

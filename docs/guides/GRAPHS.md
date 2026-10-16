@@ -361,3 +361,8 @@ resource failures still fail atomically.
 Settings persist per tab across language/navigation. Editing cancels pending work
 and clears stale results. The original uniform sampling HTTP endpoint remains
 available to API clients, but the web uses the adaptive endpoint.
+
+Intersection verification reuses repeated original-expression checks within each
+C request. This saves work without loosening tolerances or increasing the time
+and evaluation limits. Distinct candidate coordinates may still need all their
+own calculations, so dense plots can retain a limited-verification notice.

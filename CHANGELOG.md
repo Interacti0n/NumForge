@@ -7,6 +7,8 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Reuse bounded original-expression checks within graph intersection verification requests, retaining exact rational differences, numerical tolerances and cancellation limits. Add per-request work counters and a controlled cache-off/on benchmark.
+
 - Extend graph regression coverage with four-function camera cycles on desktop/mobile widths and independent checks of displayed intercepts, intersections and integer points. Update retained-session and cache diagnostic tests to match existing behavior.
 
 - Add per-curve Auto/Curve/Points modes with conservative C integer-domain detection, precision integer-lattice samples, isolated-dot inspection and saved mode state. Verify graph intersection candidates against original C expressions in bounded asynchronous batches, cache confirmations, and share the marker cap fairly across curves, pairs and screen regions.

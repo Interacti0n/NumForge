@@ -74,6 +74,13 @@ The response is `ok:true`, `schema_version:1`, `evaluation:"precision"`, boolean
 0; other ordinates come from the first expression. Rational differences are
 subtracted before decimal projection, avoiding subtraction of rounded doubles.
 
+Additive diagnostic counters describe this request: `evaluations` counts actual
+expression evaluations (a pair miss normally costs two), `sample_requests` counts
+sample lookups after the time/memory reserve check, and `cache_hits` counts reused
+checks. A final lookup stopped by the evaluation cap can be included in
+`sample_requests`; it is not an actual evaluation. Counters are not timing or
+accuracy guarantees and do not change the response schema version.
+
 Actual C evaluations check the candidate and its neighbors. Sign-bracketed roots
 use at most 24 safeguarded secant/bisection refinements, accepting a residual at
 most min(y_tolerance, 1e-11 × max(1, absolute y)). Same-sign tangent checks require
@@ -92,6 +99,22 @@ at most 512 actual expression evaluations. A 50-ms/2-MiB soft reserve or probe
 limit can return partial confirmations with `limited:true`; unprocessed rows are
 null. Resource/structural failures return the normal error envelope without a
 partial success body. C application output is atomic on such failures.
+
+A request-local, 128-entry, four-way cache reuses complete original-expression
+checks. Its key is the 16-significant-digit decimal coordinate actually evaluated
+in C, plus whether the check uses one expression or their difference. It stores
+the projected ordinate/difference together with the original difference sign and
+classification; it never subtracts rounded cached ordinates. Non-real successful
+checks may also be reused. Failures are not cached. The returned coordinate keeps
+the current caller's approximate x, even when two binary coordinates map to the
+same decimal input. There is no reuse across requests, expressions or sessions.
+
+Cache hits do not spend the 512-evaluation allowance, but still check cancellation
+and time/memory reserves. Candidate count, refinement limits and numerical
+tolerances remain unchanged. The bounded stack storage retains no allocated
+typed values. A private diagnostic C entry point permits controlled cache-off/on
+benchmarks; production callers enable reuse. Optional C counters are atomic on
+failure along with the other outputs.
 
 ## Browser scheduling and marker balance
 

@@ -63,6 +63,7 @@ records Firefox/WebKit coverage, test portability and the physical-phone checkli
 - [Mixed graph ranges](benchmarks/GRAPH_MIXED_RANGES_2026_10_15.md): bounded slow terms alongside dense carriers, zoom regressions and before/after measurements.
 - [Subpixel graph curves](benchmarks/GRAPH_SUBPIXEL_CURVES_2026_10_15.md): validated cubic arcs, stationary anchors and efficient intermediate zoom.
 - [Absolute-value graph valleys](benchmarks/GRAPH_ABSOLUTE_2026_10_16.md): actual corners, zero-reaching dense ranges, equivalent root forms and independent before/after checks.
+- [Graph verification reuse](benchmarks/GRAPH_VERIFY_REUSE_2026_10_16.md): bounded C sample-check reuse, cache-off/on comparisons and browser work counters.
 - [Graph regression review, 16 October](benchmarks/GRAPH_RELEASE_REGRESSION_2026_10_16.md): complete Chromium graph corpus, multi-curve camera cycles and independent marker checks across browsers.
 - [Discrete graphs and verified intersections](benchmarks/GRAPH_DISCRETE_VERIFIED_2026_10_16.md): integer points, original-expression verification, fair marker selection and cold/warm timings.
 - [Graph intercept and intersection checks](benchmarks/GRAPH_INTERSECTIONS_2026_10_16.md): marker correctness, y-intercept lookup and cached rendering overhead.

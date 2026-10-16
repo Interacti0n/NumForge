@@ -74,12 +74,33 @@ CalculatorStatus application_graph_integer_points(ApplicationFastGraph **result,
 }
 
 typedef struct VerifiedSample { double x,y,difference;int sign;bool real,approximate; } VerifiedSample;
-typedef struct VerifyWork { ApplicationExpression *first,*second;const CalculatorContext *context;CalculatorError *error;size_t probes;bool limited; } VerifyWork;
+typedef struct VerifyCacheEntry { char coordinate[32];VerifiedSample value;bool occupied,pair; } VerifyCacheEntry;
+typedef struct VerifyWork {
+    ApplicationExpression *first,*second;const CalculatorContext *context;CalculatorError *error;
+    size_t probes,sample_requests,cache_hits;bool limited,reuse;
+    /* Four-way, request-local storage: bounded stack space, no retained
+     * typed numbers, no cross-expression/session or cross-request reuse. */
+    VerifyCacheEntry cache[128];
+    unsigned char cache_next[32];
+} VerifyWork;
 static CalculatorStatus verify_sample(VerifyWork *work,double x,bool pair,VerifiedSample *result)
 {
     *result=(VerifiedSample){0};result->x=x;
-    if(work->probes+(pair?2U:1U)>512U||numforge_budget_available_ms()<50U||numforge_budget_available_bytes()<2U*1024U*1024U){work->limited=true;return CALCULATOR_OK;}
+    if(!numforge_budget_check())return calculator_budget_status(CALCULATOR_OUT_OF_MEMORY);
+    if(numforge_budget_available_ms()<50U||numforge_budget_available_bytes()<2U*1024U*1024U){work->limited=true;return CALCULATOR_OK;}
+    ++work->sample_requests;
     char text[32];(void)snprintf(text,sizeof(text),"%.16g",x);
+    unsigned hash=2166136261U;
+    for(const unsigned char *p=(const unsigned char *)text;*p;++p)hash=(hash^*p)*16777619U;
+    hash=(hash^(unsigned)pair)*16777619U;
+    size_t bucket=(size_t)(hash%32U);
+    if(work->reuse)for(size_t i=0;i<4U;++i){
+        const VerifyCacheEntry *cached=&work->cache[bucket*4U+i];
+        if(cached->occupied&&cached->pair==pair&&strcmp(cached->coordinate,text)==0){
+            *result=cached->value;result->x=x;++work->cache_hits;return CALCULATOR_OK;
+        }
+    }
+    if(work->probes+(pair?2U:1U)>512U){work->limited=true;return CALCULATOR_OK;}
     CalculatorValue argument={0};ApplicationExpressionSample *first=NULL,*second=NULL;BigDecimal *difference=NULL;BigRational *rational=NULL;
     CalculatorStatus status=graph_argument(&argument,text,work->context);
     if(status==CALCULATOR_OK){++work->probes;status=application_expression_sample(work->first,&argument,1U,&first,work->error);}
@@ -99,6 +120,14 @@ static CalculatorStatus verify_sample(VerifyWork *work,double x,bool pair,Verifi
         if(status==CALCULATOR_OK)status=calculator_from_decimal_status(bigdecimal_sign(&result->sign,difference));
         result->real=status==CALCULATOR_OK&&isfinite(result->y)&&isfinite(result->difference);
         result->approximate=first->value.kind==CALCULATOR_VALUE_DECIMAL||(pair&&second->value.kind==CALCULATOR_VALUE_DECIMAL);
+    }
+    if(status==CALCULATOR_OK&&work->reuse){
+        /* Cache the complete original-expression check, including the rational
+         * difference computed above, never a difference of rounded projections.
+         * The key is the decimal coordinate actually passed to C, not a pixel. */
+        VerifyCacheEntry *entry=&work->cache[bucket*4U+work->cache_next[bucket]];
+        memcpy(entry->coordinate,text,strlen(text)+1U);entry->value=*result;entry->pair=pair;entry->occupied=true;
+        work->cache_next[bucket]=(unsigned char)((work->cache_next[bucket]+1U)%4U);
     }
     calculator_value_destroy(&argument);application_expression_samples_destroy(first,1U);application_expression_samples_destroy(second,1U);bigdecimal_destroy(difference);bigrational_destroy(rational);return status;
 }
@@ -148,8 +177,8 @@ static CalculatorStatus verify_candidate(VerifyWork *work,const ApplicationGraph
     if(!work->limited&&fabs(best.difference)<=tolerance)verified_output(result,&best,root);
     return CALCULATOR_OK;
 }
-CalculatorStatus application_graph_verify(ApplicationGraphVerifiedPoint *result,bool *limited,const char *input,const char *other,
-    const ApplicationGraphCandidate *candidates,size_t count,const CalculatorContext *context,CalculatorError *error)
+CalculatorStatus application_graph_verify_profile(ApplicationGraphVerifiedPoint *result,bool *limited,const char *input,const char *other,
+    const ApplicationGraphCandidate *candidates,size_t count,const CalculatorContext *context,CalculatorError *error,bool reuse,ApplicationGraphVerificationStats *stats)
 {
     calculator_error_clear(error);
     if(!result||!limited||!input||!candidates||!context){calculator_error_set(error,CALCULATOR_NULL_ARGUMENT,0U);return CALCULATOR_NULL_ARGUMENT;}
@@ -162,12 +191,17 @@ CalculatorStatus application_graph_verify(ApplicationGraphVerifiedPoint *result,
     if(pair&&(!other||!*other)){calculator_error_set(error,CALCULATOR_INVALID_ARGUMENT,0U);return CALCULATOR_INVALID_ARGUMENT;}
     CalculatorStatus status=calculator_context_validate(context,error);if(status!=CALCULATOR_OK)return status;
     bool owner=numforge_budget_begin((uint64_t)context->time_limit_ms,CALCULATOR_ALLOCATION_BUDGET,CALCULATOR_SINGLE_ALLOCATION);
-    VerifyWork work={0};work.context=context;work.error=error;
+    VerifyWork work={0};work.context=context;work.error=error;work.reuse=reuse;
     ApplicationGraphVerifiedPoint temporary[APPLICATION_GRAPH_MAX_CANDIDATES]={0};
     status=application_expression_prepare_auto(&work.first,input,NULL,context,error);
     if(status==CALCULATOR_OK&&pair)status=application_expression_prepare_auto(&work.second,other,NULL,context,error);
     for(size_t i=0;i<count&&status==CALCULATOR_OK&&!work.limited;++i)status=verify_candidate(&work,&candidates[i],&temporary[i]);
     status=calculator_budget_status(status);
-    if(status==CALCULATOR_OK){memcpy(result,temporary,count*sizeof(*result));*limited=work.limited;}else calculator_error_set(error,status,error?error->offset:0U);
+    if(status==CALCULATOR_OK){memcpy(result,temporary,count*sizeof(*result));*limited=work.limited;if(stats)*stats=(ApplicationGraphVerificationStats){work.probes,work.sample_requests,work.cache_hits};}else calculator_error_set(error,status,error?error->offset:0U);
     application_expression_destroy(work.first);application_expression_destroy(work.second);if(owner)numforge_budget_end();return status;
+}
+CalculatorStatus application_graph_verify(ApplicationGraphVerifiedPoint *result,bool *limited,const char *input,const char *other,
+    const ApplicationGraphCandidate *candidates,size_t count,const CalculatorContext *context,CalculatorError *error)
+{
+    return application_graph_verify_profile(result,limited,input,other,candidates,count,context,error,true,NULL);
 }
