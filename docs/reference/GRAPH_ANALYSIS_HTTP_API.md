@@ -146,6 +146,14 @@ four functions). Spatially spread ordering and round-robin quotas select at most
 128 total markers across all groups. Dense envelopes and coincident stretches
 are excluded. Finite sampling is not a completeness guarantee.
 
+Persistent marker presentation is thinned when more than 12 confirmations share
+a narrow canvas (CSS width at most 600 px) or a mobile layout (viewport at most
+900 px). Selection gives each curve a turn, preserves its candidate order and keeps
+24 CSS pixels between displayed dots, using the actual SVG screen transform.
+All confirmed coordinates remain available to inspection; thinning does not
+discard confirmations or change C work. Sparse plots and ordinary desktop
+canvases keep their full marker set. Canvas expansion/resize recomputes spacing.
+
 One geometry snapshot avoids repeated work for color/status-only redraws. A
 DOM-free verification cache, at most 256 entries and 512 KiB conservative size,
 survives same-tab tool/language navigation; expression/camera changes use different

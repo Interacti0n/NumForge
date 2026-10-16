@@ -11,7 +11,7 @@ function initGraph() {
     const curves=[],palette=['#dfafff','#20c997','#ffb454','#66b3ff'],maximumCurves=4;
     let disposed=false,restoring=true,viewport=null,yViewport=[-10,10],viewportTimer=null,drawFrame=null,nextId=1,activeCurve=null;
     const pointers=new Map();let gesture=null;
-    let projection=null,inspection=null,inspectionFrame=null,inspectPointer=null,features=[],featureCacheKey=null,locateRequest=null,verificationRequest=null,verificationTimer=null,verificationState='ready';
+    let projection=null,inspection=null,inspectionFrame=null,inspectPointer=null,features=[],displayedFeatures=new Set(),featureCacheKey=null,locateRequest=null,verificationRequest=null,verificationTimer=null,verificationState='ready';
     lifecycle.signal.addEventListener('abort',()=>{locateRequest?.abort();verificationRequest?.abort();clearTimeout(verificationTimer);},{once:true});
     const readout=$('graph-inspector'),inspectionLayer=element('g',{class:'graph-inspection',visibility:'hidden','pointer-events':'none','aria-hidden':'true'});
     const inspectX=element('line',{class:'graph-inspection-guide'}),inspectY=element('line',{class:'graph-inspection-guide'}),inspectDot=element('circle',{r:4.5,class:'graph-inspection-dot'});
@@ -242,6 +242,26 @@ function initGraph() {
             finally{if(!disposed&&!request.signal.aborted&&featureCacheKey===key){verificationState=limited?'limited':'ready';syncStatus();drawSoon();}}
         },120);
     }
+    function featureMarkers(){
+        const confirmed=features.filter(feature=>feature.verified),matrix=svg.getScreenCTM();
+        const compact=svg.getBoundingClientRect().width<=600||window.matchMedia('(max-width:900px)').matches;
+        const spacing=compact&&confirmed.length>12&&matrix?24:0;
+        svg.dataset.featureCount=String(confirmed.length);svg.dataset.markerSpacing=String(spacing);
+        if(!spacing)return confirmed;
+        // Thin only the presentation, in real CSS pixels. Give each curve a
+        // turn and keep its original candidate order; inspection retains all.
+        const shown=[],positions=[],groups=new Map();
+        for(const feature of confirmed){if(!groups.has(feature.curve))groups.set(feature.curve,{values:[],next:0});groups.get(feature.curve).values.push(feature);}
+        let added=true;
+        while(added){added=false;for(const queue of groups.values())while(queue.next<queue.values.length){
+            const feature=queue.values[queue.next++];
+            if(feature.x<projection.xBounds[0]||feature.x>projection.xBounds[1]||feature.y<projection.yBounds[0]||feature.y>projection.yBounds[1])continue;
+            const x=projection.px(feature.x),y=projection.py(feature.y),sx=matrix.a*x+matrix.c*y,sy=matrix.b*x+matrix.d*y;
+            if(positions.some(point=>Math.hypot(point.x-sx,point.y-sy)<spacing))continue;
+            positions.push({x:sx,y:sy});shown.push(feature);added=true;break;
+        }}
+        return shown;
+    }
     // Read only accepted cached edges. Binary search and the drawing's own cubic
     // interpolation keep inspection local, bounded and consistent with the stroke.
     function inspectAt(curve,x){
@@ -273,7 +293,7 @@ function initGraph() {
         if(point.x<64||point.x>p.right||point.y<22||point.y>p.bottom)return null;
         const fraction=(point.x-64)/(p.right-64),x=(p.xLow+(p.xHigh-p.xLow)*fraction)*p.xScale;
         let closest=null,featureDistance=13;
-        for(const feature of features){if(!feature.verified)continue;const dx=p.px(feature.x)-point.x,dy=p.py(feature.y)-point.y,delta=Math.hypot(matrix.a*dx+matrix.c*dy,matrix.b*dx+matrix.d*dy);if(delta<featureDistance){closest=feature;featureDistance=delta;}}
+        for(const feature of features){if(!feature.verified)continue;const dx=p.px(feature.x)-point.x,dy=p.py(feature.y)-point.y,delta=Math.hypot(matrix.a*dx+matrix.c*dy,matrix.b*dx+matrix.d*dy);if(delta<featureDistance-1e-6||(closest&&Math.abs(delta-featureDistance)<=1e-6&&displayedFeatures.has(feature)&&!displayedFeatures.has(closest))){closest=feature;featureDistance=delta;}}
         if(closest)return closest;
         let best=null,distance=Infinity;
         for(const curve of curves){
@@ -418,7 +438,8 @@ function initGraph() {
         const featureKey=[...xs,...projectedView,width,height,...states.flatMap(state=>[state.curve,state.curve.input.value,state.samples,state.chunks,state.bands,state.error])];
         if(!featureCacheKey||featureKey.length!==featureCacheKey.length||featureKey.some((value,i)=>value!==featureCacheKey[i])){features=graphFeatures(states,projection);featureCacheKey=featureKey;verifyFeatures(featureKey);}
         const markers=element('g',{class:'graph-features','clip-path':'url(#graph-clip)'});
-        for(const feature of features){if(!feature.verified)continue;const marker=element('circle',{class:'graph-feature',cx:px(feature.x),cy:py(feature.y),r:4,'data-kind':feature.kind,'data-x':feature.x,'data-y':feature.y,'data-verified':'true','data-curve':feature.curve.id,...(feature.other?{'data-other':feature.other.id}:{}),style:`fill:${feature.curve.color.value}`});markers.append(marker);}
+        const shownFeatures=featureMarkers();displayedFeatures=new Set(shownFeatures);svg.dataset.markerCount=String(shownFeatures.length);
+        for(const feature of shownFeatures){const marker=element('circle',{class:'graph-feature',cx:px(feature.x),cy:py(feature.y),r:4,'data-kind':feature.kind,'data-x':feature.x,'data-y':feature.y,'data-verified':'true','data-curve':feature.curve.id,...(feature.other?{'data-other':feature.other.id}:{}),style:`fill:${feature.curve.color.value}`});markers.append(marker);}
         group.append(markers);svg.dataset.featuresState=states.some(s=>s.busy||s.pendingView)?'pending':verificationState;updateInspection();
     }
     function createCurve(row){

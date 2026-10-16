@@ -7,6 +7,8 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Space dense graph markers on mobile and narrow canvases while keeping all verified coordinates available to mouse/touch inspection without recalculation.
+
 - Simplify graph rows by removing the manual display-mode selector and always choosing curves or integer points automatically, including restored sessions.
 
 - Use safeguarded Brent-Dekker refinement for sign-changing graph intersection candidates, preserving original-expression residual checks and existing budgets. Add refinement/outcome diagnostics and controlled legacy/Brent benchmarks.

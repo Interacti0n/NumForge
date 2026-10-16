@@ -371,3 +371,9 @@ Sign-changing candidates use Brent's safeguarded refinement to avoid wasting
 most attempts on repeated interval halving. Every displayed confirmation still
 requires an actual C evaluation with the same residual tolerance; a narrow
 interval alone does not turn a pole or jump into an intersection.
+
+On narrow canvases and mobile layouts, dense intersection markers are spaced
+apart so they do not cover the curves. All verified coordinates remain available
+to mouse/touch inspection, including points without a persistent dot; inspection
+highlights the selected point without another calculation. Sparse graphs keep
+their markers, and zooming or expanding the graph adapts the spacing to the canvas.
