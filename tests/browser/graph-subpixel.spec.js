@@ -36,7 +36,9 @@ for(const width of [390,1280])test(`sequential zoom stays visible and draws accu
  });expect(quality.checks).toBeGreaterThan(50);expect(quality.cubic).toBe(true);expect(quality.error).toBeLessThan(.8);
  if(width===390)await expect(page.locator('path.graph-line-subpixel').first()).toHaveCSS('stroke-width','0.9px');
  const target=await page.locator('#graph-plot').evaluate(svg=>{const w=svg.viewBox.baseVal.width,h=svg.viewBox.baseVal.height,lo=Number(svg.dataset.xmin),hi=Number(svg.dataset.xmax),yl=Number(svg.dataset.ymin),yh=Number(svg.dataset.ymax),x=.005,y=Math.sin(x*x)+Math.cos(1000*x);const p=new DOMPoint(64+(x-lo)/(hi-lo)*(w-86),22+(yh-y)/(yh-yl)*(h-68)).matrixTransform(svg.getScreenCTM());return{x:p.x,y:p.y,scale:(h-68)/(yh-yl)};});
- await page.mouse.move(target.x,target.y);await expect(page.locator('#graph-inspector')).toBeVisible();const point=await page.locator('#graph-inspector').evaluate(e=>({x:Number(e.dataset.x),y:Number(e.dataset.y)}));expect(Math.abs(point.y-f(point.x))*target.scale).toBeLessThan(.8);
+ // Dense subpixel waves require an exact coordinate: native mouse injection
+ // rounds to a CSS pixel in Firefox, potentially selecting a different phase.
+ await page.locator('#graph-plot').dispatchEvent('pointermove',{pointerType:'mouse',clientX:target.x,clientY:target.y});await expect(page.locator('#graph-inspector')).toBeVisible();const point=await page.locator('#graph-inspector').evaluate(e=>({x:Number(e.dataset.x),y:Number(e.dataset.y)}));expect(Math.abs(point.y-f(point.x))*target.scale).toBeLessThan(.8);
  await page.locator('.graph-result').screenshot({path:`C:/Incoming/Projekty/NumForge/build/graph-subpixel-${width}.png`});
  await page.locator('#graph-plot').press('Home');await expect(page.locator('path.graph-band')).toHaveCount(1);
 });

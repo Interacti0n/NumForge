@@ -113,3 +113,7 @@ retains the legacy limited result. Conservative dense envelopes can overestimate
 correlated/beat ranges. Firefox/WebKit/physical-device checks remain release
 gates. No universal instant-rendering, mathematical certification, release
 sign-off, deployment, push or version bump is implied by these results.
+
+The subsequent [Firefox/WebKit browser check](../testing/GRAPH_BROWSER_CHECK_2026_10_16.md)
+records engine coverage and test portability fixes; physical-device validation
+is tracked separately there.

@@ -53,7 +53,7 @@ for(const lang of ['en','sk'])test(`graph library searches shared aliases and in
 for(const [width,height] of [[1280,900],[390,844],[844,390]])test(`expanded graph keeps the canvas and camera and returns cleanly ${width}x${height}`,async({page})=>{
  await page.setViewportSize({width,height});await page.goto('/graph?lang=en');await add(page,'cos(x)');await plot(page);
  const svg=page.locator('#graph-plot');await svg.press('ArrowRight');await expect(svg).toHaveAttribute('data-xmin','-6');
- await page.locator('#graph-expand').scrollIntoViewIfNeeded();const beforeScroll=await page.evaluate(()=>({x:scrollX,y:scrollY}));await page.evaluate(()=>window.graphCanvas=document.querySelector('#graph-plot'));await page.locator('#graph-expand').click();
+ await page.locator('#graph-expand').scrollIntoViewIfNeeded();await page.evaluate(()=>{window.graphCanvas=document.querySelector('#graph-plot');document.querySelector('#graph-expand').addEventListener('click',()=>{window.graphOpeningScroll={x:scrollX,y:scrollY};},{capture:true,once:true});});await page.locator('#graph-expand').click();const beforeScroll=await page.evaluate(()=>window.graphOpeningScroll);
  await expect(page.locator('#graph-expanded')).toHaveAttribute('open','');await expect(page.locator('#graph-expand')).toHaveAttribute('aria-expanded','true');
  await expect(svg).toHaveAttribute('data-xmin','-6');expect(await page.evaluate(()=>window.graphCanvas===document.querySelector('#graph-plot'))).toBe(true);
  const rect=await page.locator('#graph-expanded').boundingBox();expect(rect.width).toBeGreaterThan(width*.9);expect(rect.height).toBeGreaterThan(height*.9);

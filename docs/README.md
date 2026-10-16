@@ -44,6 +44,8 @@ Start with the [API guide](API.md), or open a specific reference:
 
 The [testing guide](TESTING.md) gives the complete local command and links to
 numerical references, session/unit regressions, browser/CI checks and profiling.
+The [graph browser check, 16 October 2026](testing/GRAPH_BROWSER_CHECK_2026_10_16.md)
+records Firefox/WebKit coverage, test portability and the physical-phone checklist.
 
 ## Investigate performance — `benchmarks/`
 

@@ -41,7 +41,28 @@ failure tests exercise partial nested calls and argument-array growth.
 The dedicated browser CI job installs Chromium with OS dependencies using
 `npx playwright install --with-deps chromium`. Failures upload the HTML report,
 screenshots and traces for 14 days. Local reports, dependencies and test results
-are ignored by Git. Coverage is Chromium-only, not a cross-browser guarantee.
+are ignored by Git. That CI job remains Chromium-only.
+
+### Optional Firefox and WebKit graph checks
+
+The separate configuration reuses the same C server and runs graph/guide tests
+in both engines, with desktop and narrow viewport scenarios from those tests:
+
+```powershell
+npx playwright install firefox webkit
+$env:NUMFORGE_WEB_EXECUTABLE = 'C:/path/to/NumForge/build/Release/numforge_web.exe'
+npx playwright test --config playwright.cross-browser.config.js
+```
+
+Run these commands from `tests/browser`. Optionally set `PLAYWRIGHT_BROWSERS_PATH`
+to an absolute directory under `build/` for project-local browser downloads.
+Reports are written to `playwright-report-cross-browser/`, and artifacts to
+`test-results-cross-browser/`; both are ignored by Git. Clipboard permissions
+are omitted because these scenarios do not need them and engines differ in
+permission support. Three native multi-touch tests use Chromium's DevTools
+protocol and explicitly skip in other engines; ordinary touch taps still run.
+WebKit on Windows is not Safari on an iPhone. Physical-device pinch/pan,
+viewport resizing and expanded-view checks remain necessary.
 
 ## Coverage and package CI
 

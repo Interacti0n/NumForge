@@ -84,6 +84,7 @@ test('returning to a cached viewport preserves curve geometry and axis labels',a
 test('zoom stops before coordinate precision becomes unreliable and reset still works',async({page})=>{
  await page.goto('/graph?lang=en');
  await page.evaluate(()=>{for(let i=0;i<80;i++)document.querySelector('#graph-plot').dispatchEvent(new KeyboardEvent('keydown',{key:'+',bubbles:true,cancelable:true}));});
+ await expect.poll(async()=>Number(await page.locator('#graph-plot').getAttribute('data-xmax'))-Number(await page.locator('#graph-plot').getAttribute('data-xmin'))).toBeLessThan(1e-7);
  const low=Number(await page.locator('#graph-plot').getAttribute('data-xmin')),high=Number(await page.locator('#graph-plot').getAttribute('data-xmax'));
  expect(high-low).toBeGreaterThanOrEqual(1e-8);
  await page.locator('#graph-plot').dispatchEvent('keydown',{key:'+'});
@@ -208,7 +209,8 @@ test('zoom, pan, keyboard and reset preserve the chosen two-dimensional camera',
  await expect(page.locator('#graph-plot')).toHaveAttribute('data-xmin','-10');await expect(page.locator('#graph-plot')).toHaveAttribute('data-xmax','10');
  expect(await svg.evaluate(el=>!/NaN|Infinity/.test(el.innerHTML))).toBe(true);
 });
-test('touch pinch zooms and empty view controls do not evaluate',async({page})=>{
+test('touch pinch zooms and empty view controls do not evaluate',async({page,browserName})=>{
+ test.skip(browserName!=='chromium','Native multi-touch injection uses the Chromium DevTools protocol.');
  await page.setViewportSize({width:390,height:844});await page.goto('/graph?lang=sk');await sample(page,'sin(x)');
  const svg=page.locator('#graph-plot');await svg.scrollIntoViewIfNeeded();const box=await svg.boundingBox();
  const cdp=await page.context().newCDPSession(page),x=Math.round(box.x+box.width/2),y=Math.round(box.y+box.height/2);
