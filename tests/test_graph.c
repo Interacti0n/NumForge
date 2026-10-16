@@ -1,5 +1,6 @@
 #include "graph.h"
 #include "fast_graph.h"
+#include "graph_analysis.h"
 #include "session_api.h"
 #include "web_api.h"
 #include "../src/internal/numforge_alloc.h"
@@ -804,9 +805,58 @@ static void test_corner_search_retains_best_secant_probe(void)
         application_fast_graph_destroy(screen_graph);screen_graph=NULL;
     }
 }
+static void test_integer_points_domains_sparse_ranges_and_atomicity(void)
+{
+    CalculatorError error;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_graph_integer_points(&screen_graph,"t!",NULL,-2,5,800U,true,NULL,&context,&error));
+    TEST_ASSERT_TRUE(screen_graph->discrete);TEST_ASSERT_EQUAL_STRING("t",screen_graph->parameter);TEST_ASSERT_EQUAL_UINT(8U,screen_graph->count);
+    const double expected[]={1,1,2,6,24,120};
+    for(size_t i=0;i<screen_graph->count;++i){ApplicationFastGraphPoint p=screen_graph->points[i];TEST_ASSERT_FALSE(p.connect);
+        if(i<2U)TEST_ASSERT_EQUAL(APPLICATION_GRAPH_DOMAIN_ERROR,p.kind);else TEST_ASSERT_TRUE(expected[i-2U]==p.y);}
+    ApplicationFastGraph *original=screen_graph;
+    TEST_ASSERT_EQUAL(CALCULATOR_NOT_IMPLEMENTED,application_graph_integer_points(&screen_graph,"factorial(2*x)",NULL,-2,5,800U,true,NULL,&context,&error));TEST_ASSERT_EQUAL_PTR(original,screen_graph);
+    application_fast_graph_destroy(screen_graph);screen_graph=NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_graph_integer_points(&screen_graph,"sin(x)",NULL,.1,.9,800U,false,NULL,&context,&error));TEST_ASSERT_EQUAL_UINT(0U,screen_graph->count);
+    application_fast_graph_destroy(screen_graph);screen_graph=NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_graph_integer_points(&screen_graph,"x",NULL,-10000,10000,320U,false,NULL,&context,&error));TEST_ASSERT_TRUE(screen_graph->count<=40U);TEST_ASSERT_TRUE(screen_graph->point_stride>1);
+    for(size_t i=0;i<screen_graph->count;++i)TEST_ASSERT_TRUE(floor(screen_graph->points[i].x)==screen_graph->points[i].x);
+    original=screen_graph;
+    numforge_test_allocator_begin(0U);ApplicationFastGraph *attempt=NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_graph_integer_points(&attempt,"x!",NULL,-2,5,800U,true,NULL,&context,&error));size_t calls=numforge_test_allocator_call_count();numforge_test_allocator_end();application_fast_graph_destroy(attempt);
+    for(size_t i=0;i<20U;++i){numforge_test_allocator_begin(1U+(calls-1U)*i/19U);TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY,application_graph_integer_points(&screen_graph,"x!",NULL,-2,5,800U,true,NULL,&context,&error));numforge_test_allocator_end();TEST_ASSERT_EQUAL_PTR(original,screen_graph);}
+    TEST_ASSERT_TRUE(numforge_budget_begin(5000U,SIZE_MAX,SIZE_MAX));numforge_test_budget_expire_after(1U);
+    TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT,application_graph_integer_points(&screen_graph,"x!",NULL,-2,5,800U,true,NULL,&context,&error));numforge_budget_end();TEST_ASSERT_EQUAL_PTR(original,screen_graph);
+    char *response=NULL;TEST_ASSERT_EQUAL(CALCULATOR_OK,numforge_web_session_request(&store,"POST","/api/graph/plot?mode=fast&render=auto&min=-2&max=5","x!",&response));
+    TEST_ASSERT_NOT_NULL(strstr(response,"\"render\":\"points\""));TEST_ASSERT_NOT_NULL(strstr(response,"\"evaluation\":\"precision\""));free(response);
+}
+static void test_candidate_verification_original_values_domains_and_atomicity(void)
+{
+    CalculatorError error;bool limited=false;ApplicationGraphVerifiedPoint points[2]={{0}};
+    ApplicationGraphCandidate root={APPLICATION_GRAPH_ROOT,3.1415,3.1,3.2,1e-5,1e-6};
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_graph_verify(points,&limited,"sin(x)",NULL,&root,1U,&context,&error));TEST_ASSERT_TRUE(points[0].confirmed);TEST_ASSERT_TRUE(fabs(points[0].x-3.141592653589793)<1e-8);TEST_ASSERT_TRUE(points[0].residual<1e-10);
+    root=(ApplicationGraphCandidate){APPLICATION_GRAPH_ROOT,1,.9,1.1,1e-5,1e-6};
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_graph_verify(points,&limited,"floor(x)-0.5",NULL,&root,1U,&context,&error));TEST_ASSERT_FALSE(points[0].confirmed);
+    root=(ApplicationGraphCandidate){APPLICATION_GRAPH_ROOT,.001,-.1,.1,1e-5,1e-6};
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_graph_verify(points,&limited,"1/x",NULL,&root,1U,&context,&error));TEST_ASSERT_FALSE(points[0].confirmed);
+    root=(ApplicationGraphCandidate){APPLICATION_GRAPH_ROOT,.1234,.12,.13,1e-5,1e-6};
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_graph_verify(points,&limited,"(x-0.1234)^2+0.000000000001",NULL,&root,1U,&context,&error));TEST_ASSERT_FALSE(points[0].confirmed);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_graph_verify(points,&limited,"(x-0.1234)^2",NULL,&root,1U,&context,&error));TEST_ASSERT_TRUE(points[0].confirmed);
+    root=(ApplicationGraphCandidate){APPLICATION_GRAPH_INTERSECTION,1,.5,1.5,1e-5,1e-6};
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_graph_verify(points,&limited,"x","2-t",&root,1U,&context,&error));TEST_ASSERT_TRUE(points[0].confirmed);TEST_ASSERT_TRUE(points[0].x==1&&points[0].y==1);
+    root.kind=APPLICATION_GRAPH_POINT_INTERSECTION;root.low=root.high=1;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_graph_verify(points,&limited,"x!","x",&root,1U,&context,&error));TEST_ASSERT_TRUE(points[0].confirmed);
+    numforge_test_allocator_begin(0U);TEST_ASSERT_EQUAL(CALCULATOR_OK,application_graph_verify(points,&limited,"x!","x",&root,1U,&context,&error));size_t calls=numforge_test_allocator_call_count();numforge_test_allocator_end();
+    for(size_t i=0;i<20U;++i){points[0].x=123;numforge_test_allocator_begin(1U+(calls-1U)*i/19U);TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY,application_graph_verify(points,&limited,"x!","x",&root,1U,&context,&error));numforge_test_allocator_end();TEST_ASSERT_TRUE(points[0].x==123);}
+    TEST_ASSERT_TRUE(numforge_budget_begin(5000U,SIZE_MAX,SIZE_MAX));numforge_test_budget_expire_after(1U);points[0].x=123;
+    TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT,application_graph_verify(points,&limited,"x!","x",&root,1U,&context,&error));numforge_budget_end();TEST_ASSERT_TRUE(points[0].x==123);
+    char *response=NULL;TEST_ASSERT_EQUAL(CALCULATOR_OK,numforge_web_session_request(&store,"POST","/api/graph/verify","x\n2-t\n2 1 0.5 1.5 0.00001 0.000001\n",&response));TEST_ASSERT_NOT_NULL(strstr(response,"\"x\":1,\"y\":1"));free(response);response=NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,numforge_web_session_request(&store,"POST","/api/graph/verify","x\n\n0 nan 0 1 0.1 0.1\n",&response));free(response);
+}
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_candidate_verification_original_values_domains_and_atomicity);
+    RUN_TEST(test_integer_points_domains_sparse_ranges_and_atomicity);
     RUN_TEST(test_corner_search_retains_best_secant_probe);
     RUN_TEST(test_rectified_carriers_preserve_zeros_and_dense_ranges);
     RUN_TEST(test_step_metadata_connections_and_atomic_failures);

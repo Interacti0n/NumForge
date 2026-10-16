@@ -11,9 +11,16 @@ typedef struct ApplicationFastGraphBand {double low,high,minimum,maximum;} Appli
 typedef struct ApplicationFastGraph {
     ApplicationFastGraphPoint *points;size_t count,exact_probes;
     ApplicationFastGraphBand *bands;size_t band_count;
-    double minimum,maximum;bool limited,screen_clipped,subpixel_hermite;
+    double minimum,maximum;bool limited,screen_clipped,subpixel_hermite,discrete;
+    double point_stride;
     char parameter[CALCULATOR_VARIABLE_NAME_BYTES+1U];
 } ApplicationFastGraph;
+/* Read-only precision evaluation on a bounded integer lattice. automatic=true
+ * returns NOT_IMPLEMENTED unless the AST requires integer parameter values.
+ * Zero/one samples are valid, no edges are connected, <=256 samples. */
+CalculatorStatus application_graph_integer_points(ApplicationFastGraph **result,
+    const char *input,const char *parameter,double minimum,double maximum,size_t width,
+    bool automatic,const CalculatorSession *session,const CalculatorContext *context,CalculatorError *error);
 /* Approximate screen-space sampler, shared inherited budget and atomic output.
  * NOT_IMPLEMENTED requests the existing exact sampler for unsupported/mostly
  * uncertain trees. Coordinates are finite doubles; no SDK precision claim. */

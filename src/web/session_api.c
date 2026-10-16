@@ -4,6 +4,7 @@
 #include "functions.h"
 #include "graph.h"
 #include "fast_graph.h"
+#include "graph_analysis.h"
 #include <errno.h>
 #include <math.h>
 #include "exact_functions.h"
@@ -89,10 +90,10 @@ static void snapshot(Json *json, const CalculatorValue *value, bool full)
 
 enum { CLIENT, ACTION, REVISION, OFFSET, LIMIT, AT, ID, NAME, FULL,
        FROM, TO, PRECISION, PLACES, ROUNDING, ANGLE, NOTATION,
-       MINIMUM, MAXIMUM, POINTS, PARAMETER, MODE, WIDTH, HEIGHT, QUALITY, YMINIMUM, YMAXIMUM, INTERPOLATION, DENSE, QUERY_COUNT };
+       MINIMUM, MAXIMUM, POINTS, PARAMETER, MODE, WIDTH, HEIGHT, QUALITY, YMINIMUM, YMAXIMUM, INTERPOLATION, DENSE, RENDER, QUERY_COUNT };
 static const char *keys[] = {"client", "action", "revision", "offset", "limit", "at", "id", "name", "full",
     "from", "to", "precision", "places", "rounding", "angle", "notation",
-    "min", "max", "points", "parameter", "mode", "width", "height", "quality", "ymin", "ymax", "interpolation", "dense"};
+    "min", "max", "points", "parameter", "mode", "width", "height", "quality", "ymin", "ymax", "interpolation", "dense", "render"};
 typedef struct Query { char values[QUERY_COUNT][48]; unsigned int seen; } Query;
 #define BIT(field) (1U << (field))
 
@@ -236,7 +237,7 @@ static CalculatorStatus graph_request(ApplicationClientStore *store, const char 
     const Query *query, const char *body, char **response, CalculatorError *error, const char **code, bool adaptive)
 {
     const unsigned int allowed = BIT(CLIENT) | BIT(AT) | BIT(MINIMUM) | BIT(MAXIMUM) |
-        (adaptive ? BIT(MODE)|BIT(WIDTH)|BIT(HEIGHT)|BIT(QUALITY)|BIT(YMINIMUM)|BIT(YMAXIMUM)|BIT(INTERPOLATION)|BIT(DENSE) : BIT(POINTS)) | BIT(PARAMETER) | BIT(PRECISION) | BIT(ANGLE);
+        (adaptive ? BIT(MODE)|BIT(WIDTH)|BIT(HEIGHT)|BIT(QUALITY)|BIT(YMINIMUM)|BIT(YMAXIMUM)|BIT(INTERPOLATION)|BIT(DENSE)|BIT(RENDER) : BIT(POINTS)) | BIT(PARAMETER) | BIT(PRECISION) | BIT(ANGLE);
     uint64_t points, precision, at,width,height;
     if (strcmp(method, "POST") != 0 || (query->seen & ~allowed) ||
         !(query->seen & BIT(MINIMUM)) || !(query->seen & BIT(MAXIMUM)) ||
@@ -246,6 +247,9 @@ static CalculatorStatus graph_request(ApplicationClientStore *store, const char 
         ((query->seen & BIT(AT)) && !(query->seen & BIT(CLIENT)))) return CALCULATOR_INVALID_ARGUMENT;
     bool fast_mode=(query->seen&BIT(MODE))!=0U;
     if(fast_mode&&strcmp(query->values[MODE],"fast")!=0)return CALCULATOR_INVALID_ARGUMENT;
+    bool integer_points=(query->seen&BIT(RENDER))&&strcmp(query->values[RENDER],"points")==0;
+    bool automatic_points=(query->seen&BIT(RENDER))&&strcmp(query->values[RENDER],"auto")==0;
+    if((query->seen&BIT(RENDER))&&(!fast_mode||(!integer_points&&!automatic_points&&strcmp(query->values[RENDER],"curve")!=0)))return CALCULATOR_INVALID_ARGUMENT;
     if(!fast_mode&&(query->seen&(BIT(WIDTH)|BIT(HEIGHT)|BIT(QUALITY)|BIT(YMINIMUM)|BIT(YMAXIMUM)|BIT(INTERPOLATION)|BIT(DENSE))))return CALCULATOR_INVALID_ARGUMENT;
     bool subpixel=(query->seen&BIT(INTERPOLATION))&&strcmp(query->values[INTERPOLATION],"hermite-subpixel")==0;
     bool hermite=subpixel||((query->seen&BIT(INTERPOLATION))&&strcmp(query->values[INTERPOLATION],"hermite")==0);
@@ -293,22 +297,24 @@ static CalculatorStatus graph_request(ApplicationClientStore *store, const char 
     if (status == CALCULATOR_OK) status = calculator_from_bigdecimal_status(bigdecimal_set_string(decimal, query->values[MAXIMUM]));
     if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_from_bigdecimal(maximum, decimal));
     const char *parameter = query->seen & BIT(PARAMETER) ? query->values[PARAMETER] : adaptive ? NULL : "x";
-    if(status==CALCULATOR_OK&&fast_mode&&precision==CALCULATOR_DEFAULT_DIVISION_SCALE){
+    if(status==CALCULATOR_OK&&fast_mode&&(precision==CALCULATOR_DEFAULT_DIVISION_SCALE||integer_points||automatic_points)){
         char *end=NULL;errno=0;double low=strtod(query->values[MINIMUM],&end);
         bool usable=errno!=ERANGE&&isfinite(low)&&end!=query->values[MINIMUM]&&*end=='\0';
         errno=0;double high=strtod(query->values[MAXIMUM],&end);usable=usable&&errno!=ERANGE&&isfinite(high)&&end!=query->values[MAXIMUM]&&*end=='\0';
         ApplicationFastGraph *fast=NULL;
-        if(usable&&high>low)status=vertical_span>0?
+        status=CALCULATOR_NOT_IMPLEMENTED;
+        if(usable&&high>low&&(integer_points||automatic_points))status=application_graph_integer_points(&fast,body,parameter,low,high,(size_t)width,automatic_points,session,&context,error);
+        if(status==CALCULATOR_NOT_IMPLEMENTED&&precision==CALCULATOR_DEFAULT_DIVISION_SCALE&&usable&&high>low)status=vertical_span>0?
             (subpixel?application_fast_graph_sample_camera_hermite:application_fast_graph_sample_camera)(&fast,body,parameter,low,high,(size_t)width,(size_t)height,camera_low,camera_high,coarse,dense,session,&context,error):
             application_fast_graph_sample_view_dense(&fast,body,parameter,low,high,(size_t)width,(size_t)height,0,coarse,dense,session,&context,error);
-        else status=CALCULATOR_NOT_IMPLEMENTED;
         if(status==CALCULATOR_OK){
 fast_response:
             json.capacity=FAST_GRAPH_RESPONSE_CAPACITY;json.data=numforge_malloc(json.capacity);
             if(!json.data)status=CALCULATOR_OUT_OF_MEMORY;
             else{
-                append(&json,"{\"ok\":true,\"schema_version\":3,\"sampling\":\"screen\",\"evaluation\":\"double\",\"parameter\":");string(&json,fast->parameter);
-                append(&json,",\"quality\":\"%s\",\"width\":%llu,\"height\":%llu,\"limited\":%s,\"exact_probes\":%zu,\"y_min\":",coarse?"coarse":"refined",(unsigned long long)width,(unsigned long long)height,fast->limited?"true":"false",fast->exact_probes);
+                append(&json,"{\"ok\":true,\"schema_version\":3,\"sampling\":\"%s\",\"evaluation\":\"%s\",\"parameter\":",fast->discrete?"discrete":"screen",fast->discrete?"precision":"double");string(&json,fast->parameter);
+                if(fast->discrete)append(&json,",\"render\":\"points\",\"point_stride\":%.17g",fast->point_stride);
+                append(&json,",\"quality\":\"%s\",\"width\":%llu,\"height\":%llu,\"limited\":%s,\"exact_probes\":%zu,\"y_min\":",coarse&&!fast->discrete?"coarse":"refined",(unsigned long long)width,(unsigned long long)height,fast->limited?"true":"false",fast->exact_probes);
                 if(isfinite(fast->minimum))append(&json,"%.17g",fast->minimum);else append(&json,"null");
                 append(&json,",\"y_max\":");if(isfinite(fast->maximum))append(&json,"%.17g",fast->maximum);else append(&json,"null");
                 append(&json,",\"count\":%zu,\"plot_places\":16,\"points\":[",fast->count);
@@ -327,7 +333,7 @@ fast_response:
                 }
                 /* Optional slopes must not displace required points or exceed
                  * the existing response bound. Absence means linear fallback. */
-                if(hermite&&json.status==CALCULATOR_OK&&json.capacity-json.used>fast->count*18U+64U){
+                if(hermite&&!fast->discrete&&json.status==CALCULATOR_OK&&json.capacity-json.used>fast->count*18U+64U){
                     append(&json,",\"slopes\":[");
                     for(size_t i=0U;i<fast->count;++i){
                         if(isfinite(fast->points[i].derivative))append(&json,"%s%.9g",i?",":"",fast->points[i].derivative);
@@ -417,6 +423,38 @@ graph_done:
     return status;
 }
 
+static CalculatorStatus graph_verify_request(const char *method,const Query *query,const char *body,char **response,CalculatorError *error,const char **code)
+{
+    *code="graph_verification_error";
+    uint64_t precision=34U;
+    if(strcmp(method,"POST")!=0||(query->seen&~BIT(PRECISION))||!number(query,PRECISION,34U,&precision)||precision<34U||precision>100U||strlen(body)>4096U)return CALCULATOR_INVALID_ARGUMENT;
+    CalculatorContext context;calculator_context_init(&context);context.division_scale=(int64_t)precision;context.time_limit_ms=1000;
+    bool owner=numforge_budget_begin(1000U,CALCULATOR_ALLOCATION_BUDGET,CALCULATOR_SINGLE_ALLOCATION);
+    size_t length=strlen(body);char *copy=numforge_malloc(length+1U);CalculatorStatus status=copy?CALCULATOR_OK:CALCULATOR_OUT_OF_MEMORY;
+    ApplicationGraphCandidate candidates[APPLICATION_GRAPH_MAX_CANDIDATES]={0};ApplicationGraphVerifiedPoint verified[APPLICATION_GRAPH_MAX_CANDIDATES]={0};
+    size_t count=0U;bool limited=false;char *first=copy,*second=NULL,*row=NULL;
+    if(copy){memcpy(copy,body,length+1U);second=strchr(copy,'\n');if(second){*second++='\0';row=strchr(second,'\n');if(row)*row++='\0';}if(!*first||!second||!row||!*row)status=CALCULATOR_INVALID_ARGUMENT;}
+    while(status==CALCULATOR_OK&&row&&*row){
+        if(count>=APPLICATION_GRAPH_MAX_CANDIDATES){status=CALCULATOR_INVALID_ARGUMENT;break;}
+        char *next=strchr(row,'\n');if(next)*next++='\0';
+        if(row[0]<'0'||row[0]>'3'||row[1]!=' '){status=CALCULATOR_INVALID_ARGUMENT;break;}
+        ApplicationGraphCandidate *candidate=&candidates[count];candidate->kind=(ApplicationGraphCandidateKind)(row[0]-'0');char *token=row+2;
+        double *values[]={&candidate->x,&candidate->low,&candidate->high,&candidate->x_tolerance,&candidate->y_tolerance};
+        for(size_t i=0;i<5U;++i){char *end=strchr(token,' ');if((i<4U&&!end)||(i==4U&&end)){status=CALCULATOR_INVALID_ARGUMENT;break;}if(end)*end='\0';if(strlen(token)>=48U||!camera_bound(token,values[i])){status=CALCULATOR_INVALID_ARGUMENT;break;}if(end)token=end+1;}
+        if(status==CALCULATOR_OK)++count;
+        row=next;
+    }
+    if(status==CALCULATOR_OK)status=application_graph_verify(verified,&limited,first,second,candidates,count,&context,error);
+    Json json={NULL,0U,CALCULATOR_OK,RESPONSE_CAPACITY};
+    if(status==CALCULATOR_OK){json.data=numforge_malloc(json.capacity);if(!json.data)status=CALCULATOR_OUT_OF_MEMORY;}
+    if(status==CALCULATOR_OK){
+        append(&json,"{\"ok\":true,\"schema_version\":1,\"evaluation\":\"precision\",\"limited\":%s,\"count\":%zu,\"points\":[",limited?"true":"false",count);
+        for(size_t i=0;i<count;++i){const ApplicationGraphVerifiedPoint *point=&verified[i];if(i)append(&json,",");
+            if(!point->confirmed)append(&json,"null");else append(&json,"{\"x\":%.17g,\"y\":%.17g,\"residual\":%.17g,\"approximate\":%s}",point->x,point->y,point->residual,point->approximate?"true":"false");}
+        append(&json,"]}");status=json.status;
+    }
+    free(copy);status=calculator_budget_status(status);if(status==CALCULATOR_OK)*response=json.data;else free(json.data);if(owner)numforge_budget_end();return status;
+}
 static CalculatorStatus session_request(ApplicationClientStore *store,
     const char *method, const char *target, const char *body, char **response,
     CalculatorError *error, const char **code)
@@ -427,6 +465,7 @@ static CalculatorStatus session_request(ApplicationClientStore *store,
     uint64_t conversion_finished = UINT64_MAX;
     Query query; char path[64];
     if (!parse(target, path, &query)) return CALCULATOR_INVALID_ARGUMENT;
+    if(strcmp(path,"/api/graph/verify")==0)return graph_verify_request(method,&query,body,response,error,code);
     if (strcmp(path, "/api/graph/sample") == 0 || strcmp(path, "/api/graph/plot") == 0)
         return graph_request(store, method, &query, body, response, error, code, strcmp(path, "/api/graph/plot") == 0);
     bool get = strcmp(method, "GET") == 0, post = strcmp(method, "POST") == 0;

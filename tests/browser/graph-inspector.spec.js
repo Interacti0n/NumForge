@@ -1,7 +1,7 @@
 const {test,expect}=require('@playwright/test');
 test.use({hasTouch:true});
 async function point(page,x,y){await page.locator('#graph-plot').scrollIntoViewIfNeeded();return page.locator('#graph-plot').evaluate((svg,{x,y})=>{const w=svg.viewBox.baseVal.width,h=svg.viewBox.baseVal.height,px=64+(x-Number(svg.dataset.xmin))/(Number(svg.dataset.xmax)-Number(svg.dataset.xmin))*(w-86),py=h-46-(y-Number(svg.dataset.ymin))/(Number(svg.dataset.ymax)-Number(svg.dataset.ymin))*(h-68),p=new DOMPoint(px,py).matrixTransform(svg.getScreenCTM());return{x:p.x,y:p.y};},{x,y});}
-async function draw(page,expression='sin(x)',lang='en'){await page.goto('/graph?lang='+lang);await page.locator('#graph-expression').fill(expression);await page.locator('#graph-submit').click();await expect(page.locator('.graph-workspace')).not.toHaveAttribute('aria-busy','true');await expect(page.locator('path.graph-line')).toBeAttached();await expect(page.locator('#graph-plot')).toBeVisible();await page.waitForTimeout(400);}
+async function draw(page,expression='sin(x)',lang='en'){await page.goto('/graph?lang='+lang);await page.locator('#graph-expression').fill(expression);await page.locator('#graph-submit').click();await expect(page.locator('.graph-workspace')).not.toHaveAttribute('aria-busy','true');await expect(page.locator('path.graph-line')).toBeAttached();await expect(page.locator('#graph-plot')).toBeVisible();await expect(page.locator('#graph-plot')).toHaveAttribute('data-features-state',/ready|limited/);await page.waitForTimeout(100);}
 async function hover(page,x,y){
  const p=await point(page,x,y);
  await page.locator('#graph-plot').evaluate(svg=>svg.addEventListener('pointermove',event=>{

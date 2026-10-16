@@ -2,7 +2,7 @@ const {test,expect}=require('@playwright/test');
 async function plot(page,expressions,lang='en'){
  await page.goto('/graph?lang='+lang);await page.locator('#graph-expression').fill(expressions[0]);
  for(const expression of expressions.slice(1)){await page.locator('#graph-add').click();await page.locator('.graph-curve').last().locator('input:not([type=color])').fill(expression);}
- await page.locator('#graph-submit').click();await expect(page.locator('.graph-workspace')).not.toHaveAttribute('aria-busy','true');await expect(page.locator('path.graph-line').first()).toBeVisible();
+ await page.locator('#graph-submit').click();await expect(page.locator('.graph-workspace')).not.toHaveAttribute('aria-busy','true');await expect(page.locator('path.graph-line').first()).toBeVisible();await expect(page.locator('#graph-plot')).toHaveAttribute('data-features-state',/ready|limited/);
 }
 async function markers(page,kind){return page.locator(`.graph-feature[data-kind="${kind}"]`).evaluateAll(nodes=>nodes.map(e=>({x:Number(e.dataset.x),y:Number(e.dataset.y),curve:e.dataset.curve,other:e.dataset.other})));}
 function has(points,x,y,tolerance=1e-5){return points.some(p=>Math.abs(p.x-x)<tolerance&&Math.abs(p.y-y)<tolerance);}
@@ -59,4 +59,32 @@ test('editing while a y-intercept lookup is pending cannot move a newer camera',
  await page.route('**/api/graph/plot?**',async route=>{const response=await route.fetch();started();await held;try{await route.fulfill({response});}catch(_) {}});
  await page.locator('#graph-locate').click();await sent;await page.locator('#graph-expression').fill('x');release();
  await expect(page.locator('#graph-locate')).toBeEnabled();await expect(page.locator('#graph-plot')).toHaveAttribute('data-ymin','-10');await page.waitForTimeout(150);await expect(page.locator('#graph-plot')).toHaveAttribute('data-ymax','10');
+});
+test('C verification refines geometry against the original expression and rejects false roots',async({page})=>{
+ const response=await page.request.post('/api/graph/verify',{data:'sin(x)\n\n0 3.1415 3.1 3.2 0.00001 0.000001\n'}),body=await response.json();expect(body.ok).toBe(true);expect(body.points[0].x).toBeCloseTo(Math.PI,9);expect(body.points[0].residual).toBeLessThan(1e-10);
+ for(const expression of ['1/x','floor(x)-0.5','(x-0.1234)^2+0.000000000001']){
+  const x=expression.startsWith('floor')?1:expression.startsWith('1/')?.001:.1234,low=expression.startsWith('floor')?.9:expression.startsWith('1/')?-.1:.12,high=expression.startsWith('floor')?1.1:expression.startsWith('1/')?.1:.13;
+  const checked=await (await page.request.post('/api/graph/verify',{data:expression+'\n\n0 '+[x,low,high,.00001,.000001].join(' ')+'\n'})).json();expect(checked.ok).toBe(true);expect(checked.points).toEqual([null]);
+ }
+});
+test('dense marker selection covers every curve and both sides of the view',async({page})=>{
+ await plot(page,['sin(33*x)','cos(31*x)','sin(17*x)','cos(13*x)']);const points=await page.locator('.graph-feature').evaluateAll(nodes=>nodes.map(e=>({kind:e.dataset.kind,x:Number(e.dataset.x),curve:e.dataset.curve,verified:e.dataset.verified})));
+ expect(points.length).toBeLessThanOrEqual(128);expect(new Set(points.map(p=>p.curve)).size).toBe(4);expect(points.every(p=>p.verified==='true')).toBe(true);
+ for(const curve of ['1','2','3','4']){const roots=points.filter(p=>p.curve===curve&&p.kind==='x-axis');expect(roots.some(p=>p.x<-6)).toBe(true);expect(roots.some(p=>p.x>6)).toBe(true);}
+});
+test('verification failures leave the plot usable without displaying unchecked markers',async({page})=>{
+ await page.route('**/api/graph/verify',route=>route.fulfill({status:503,contentType:'application/json',body:'{"ok":false}'}));
+ await plot(page,['x-5']);await expect(page.locator('path.graph-line')).toBeVisible();await expect(page.locator('.graph-feature')).toHaveCount(0);await expect(page.locator('#graph-status')).toContainText('could not be verified');
+});
+test('late verification responses cannot restore markers after editing the expression',async({page})=>{
+ let release,started;const held=new Promise(r=>release=r),sent=new Promise(r=>started=r);
+ await page.route('**/api/graph/verify',async route=>{const response=await route.fetch();started();await held;try{await route.fulfill({response});}catch(_) {}});
+ await page.goto('/graph?lang=en');await page.locator('#graph-expression').fill('x-5');await page.locator('#graph-submit').click();await sent;
+ await page.locator('#graph-expression').fill('x+2');release();await expect(page.locator('.graph-feature')).toHaveCount(0);await page.waitForTimeout(200);await expect(page.locator('.graph-feature')).toHaveCount(0);await expect(page.locator('path.graph-line')).toHaveCount(0);
+});
+test('confirmed markers survive color and same-camera tool navigation without new verification',async({page})=>{
+ await plot(page,['x-5']);await expect(page.locator('.graph-feature')).toHaveCount(2);let calls=0;page.on('request',r=>{if(r.url().includes('/api/graph/verify'))calls++;});
+ await page.locator('#graph-color').evaluate(e=>{e.value='#20c997';e.dispatchEvent(new Event('input',{bubbles:true}));});await expect(page.locator('.graph-feature').first()).toHaveCSS('fill','rgb(32, 201, 151)');
+ await page.locator('.primary-nav a[href="/?lang=en"]').click();await expect(page).toHaveURL(url=>url.pathname==='/');await expect(page.locator('#expression')).toBeVisible();
+ await page.locator('.primary-nav a[href="/graph?lang=en"]').click();await expect(page).toHaveURL(url=>url.pathname==='/graph');await expect(page.locator('.graph-feature')).toHaveCount(2);await expect(page.locator('#graph-plot')).toHaveAttribute('data-features-state','ready');await page.waitForTimeout(200);expect(calls).toBe(0);
 });

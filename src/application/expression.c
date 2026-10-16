@@ -272,6 +272,31 @@ bool application_expression_graph_smooth(const ApplicationExpression *expression
 {
     return expression != NULL && graph_smooth_node(expression->tree);
 }
+static bool integer_domain_node(const CalculatorExpression *node,const char *parameter)
+{
+    switch(node->type){
+        case CALCULATOR_EXPRESSION_POSTFIX:
+            if(node->data.postfix.operation==CALCULATOR_POSTFIX_FACTORIAL&&
+                node->data.postfix.operand->type==CALCULATOR_EXPRESSION_VARIABLE&&
+                strcmp(node->data.postfix.operand->data.variable.name,parameter)==0)return true;
+            return integer_domain_node(node->data.postfix.operand,parameter);
+        case CALCULATOR_EXPRESSION_UNARY:return integer_domain_node(node->data.unary.operand,parameter);
+        case CALCULATOR_EXPRESSION_BINARY:return integer_domain_node(node->data.binary.left,parameter)||integer_domain_node(node->data.binary.right,parameter);
+        case CALCULATOR_EXPRESSION_CALL:{
+            CalculatorFunctionImplementation kind=node->data.call.function->implementation;
+            bool restricted=kind==CALCULATOR_FUNCTION_FACTORIAL||kind==CALCULATOR_FUNCTION_GCD||kind==CALCULATOR_FUNCTION_LCM||kind==CALCULATOR_FUNCTION_MOD||kind==CALCULATOR_FUNCTION_NPR||kind==CALCULATOR_FUNCTION_NCR||kind==CALCULATOR_FUNCTION_ISQRT;
+            for(size_t i=0;i<node->data.call.count;++i){const CalculatorExpression *argument=node->data.call.arguments[i];
+                if(restricted&&argument->type==CALCULATOR_EXPRESSION_VARIABLE&&strcmp(argument->data.variable.name,parameter)==0)return true;
+                if(integer_domain_node(argument,parameter))return true;
+            }return false;
+        }
+        default:return false;
+    }
+}
+bool application_expression_graph_integer_domain(const ApplicationExpression *expression)
+{
+    return expression!=NULL&&integer_domain_node(expression->tree,expression->parameter_name);
+}
 
 static void collect_graph_phases(ApplicationExpression *expression, const CalculatorExpression *node)
 {

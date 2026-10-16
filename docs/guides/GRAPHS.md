@@ -3,7 +3,7 @@
 Open **Graphs / Grafy** (`/graph?lang=en` or `/graph?lang=sk`). Enter an expression
 such as `x*x`, `sin(t)` or `1/x`, then press **Plot / Vykresliť**. Add up to four
 functions with **Add function / Pridať funkciu**; each has its own expression,
-color picker, visibility button and remove button. The legend identifies their colors. Each function
+color picker, Auto/Curve/Points selector, visibility button and remove button. The legend identifies their colors. Each function
 has a different default color, and colors remain adjustable without calculation.
 Toggle the eye button beside a row or click its colored legend entry to hide or
 show it, including in the expanded graph. Hidden functions keep their expressions,
@@ -22,6 +22,26 @@ Completed curves and their bounded caches return immediately during navigation
 between tools, without repeating completed calculations. Reloading the tab
 recalculates previously completed visible curves at the saved camera; unfinished
 or edited inputs remain unsubmitted. A fresh tab starts around zero.
+
+## Curve and point modes
+
+Each row offers **Auto**, **Curve / Krivka**, and **Points / Body · celé x**.
+Auto uses a conservative C AST check: factorial, gcd, lcm, mod, npr, ncr or isqrt
+must receive the parameter directly. Examples include `x!`, `factorial(t)`,
+`ncr(x;2)` and `sqrt(x!)`. A constant `factorial(5)` remains a constant curve.
+Transformed lattices such as `factorial(2*x)` are not inferred; explicit Points
+samples integer x only and does not enumerate half-integer domains. Floor/ceil
+remain step curves because they are defined for noninteger arguments too.
+
+Points evaluates actual integer coordinates in C, without connecting them. Hover
+or tap a dot for its actual sampled coordinates. Domains still apply: negative
+factorial arguments are omitted and values outside the finite plotting range are
+not shown. Zero/one integer positions in a camera are valid results. At most
+min(256, floor(canvas width / 8)) lattice samples are evaluated. Larger ranges use
+a globally aligned integer stride; zoom in for omitted integer values. Coordinates
+must fit exact browser integers (absolute value at most 2^53 − 1). Evaluation shares
+the normal 5-second/memory limits; expensive integer calls can still hit them.
+Mode changes invalidate that row and are saved with the session.
 
 ## Function editor
 
@@ -87,18 +107,34 @@ Escape with the canvas focused, and camera gestures dismiss the readout.
 Small colored dots mark isolated crossings/touches of the displayed curves with
 the axes and with each other. Hover or tap within 13 CSS pixels to snap the
 coordinate readout to that marker; the label identifies the axis or function pair.
-They use the same accepted linear/cubic cached strokes as the drawing. No new C
-request is made for marker discovery or inspection. Coordinates remain approximate
-screen geometry, not verified high-precision roots of the original expressions.
+Accepted cached linear/cubic strokes suggest candidates. The original C
+expressions then verify/refine them asynchronously; only confirmed points are
+shown. Actual precision-sampled discrete axis points need no second evaluation.
+Pair intersections involving a point function are checked only at its actual
+integer samples. Mouse/touch inspection itself makes no requests.
 
-The browser splits cubic differences at stationary points before locating roots,
-so a represented tangent contact can be found without a sign change. Gaps,
-dense envelopes, non-real samples and coincident stretches have no isolated
-intersection markers. Finite sampling can still miss a contact. Work is bounded
-to 65,536 edge/overlap visits and 128 visible markers, with same-kind/function-pair
-markers within three SVG pixels merged to reduce clutter. Zoom in for detail.
-The latest geometry is reused for color/status-only redraws; changing the camera,
-samples or visible functions invalidates this bounded marker cache.
+Verification uses real typed evaluations at precision 34, checks neighboring
+values, and rejects undefined poles and step jumps without a small residual.
+Sign-bracketed roots use a residual at most min(0.001 vertical pixel, 1e-11 times
+max(1, absolute y)); tangent contacts use 1e-24 times max(1, absolute y), capped by
+the pixel tolerance. Decimal rounding can recover exact simple cusp coordinates.
+This is numerical verification, not a proof that a root exists or is unique;
+finite sampling, tiny positive minima below tolerance and ill-conditioned functions
+remain limitations. Coordinates are still approximate screen projections.
+
+Candidates skip gaps, non-real values, unresolved envelopes and coincident
+stretches. Discovery visits at most 65,536 edges/overlaps. A 64×16 screen grid
+reduces same-kind/function-pair clutter, then round-robin group selection and
+spatially spread ordering allocate the 128-marker cap across axes, curves and
+pairs instead of consuming it on the first curve's left side. Zoom for detail.
+
+Each verification request checks at most 32 candidates, 512 actual C evaluations
+and 24 refinements per candidate within 1 second (inside the main 5-second ceiling).
+A soft reserve can leave candidates unconfirmed. Batches run behind foreground
+plots, wait 120 ms for camera motion to settle and are cancelled by new geometry
+or navigation. The graph remains usable while dots appear. Color-only redraws
+reuse geometry. A bounded 256-entry/512 KiB verification cache survives same-tab
+tool/language navigation; keys include the expressions and camera.
 
 **Find function / Nájsť funkciu** centers on the selected visible expression at
 x = 0, with a horizontal range of −10 to 10 and a vertical span normally 20.

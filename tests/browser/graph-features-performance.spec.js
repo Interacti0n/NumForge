@@ -4,6 +4,8 @@ for(const expressions of [['sin(x)'],['sin(33*x)'],['x','2-x','sin(3*x)','cos(5*
   await page.goto('/graph?lang=en');await page.locator('#graph-expression').fill(expressions[0]);
   for(const expression of expressions.slice(1)){await page.locator('#graph-add').click();await page.locator('.graph-curve').last().locator('input:not([type=color])').fill(expression);}
   await page.locator('#graph-submit').click();await expect(page.locator('.graph-workspace')).not.toHaveAttribute('aria-busy','true');await expect(page.locator('path.graph-line').first()).toBeVisible();await page.waitForTimeout(500);
+  // Older comparison snapshots have no asynchronous C confirmation state.
+  if(await page.locator('#graph-plot').getAttribute('data-features-state'))await expect(page.locator('#graph-plot')).toHaveAttribute('data-features-state',/ready|limited/);
   const diagnostic=await page.evaluate(async()=>{
    const times=[],frames=[],color=document.querySelector('#graph-color'),svg=document.querySelector('#graph-plot'),query=svg.querySelectorAll.bind(svg);let drawStart=0;
    // Both versions begin a redraw by selecting the previous drawing. Time the

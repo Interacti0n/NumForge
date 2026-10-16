@@ -26,6 +26,7 @@ Start with the [API guide](API.md), or open a specific reference:
 - [Unit catalogue](reference/UNIT_CATALOG.md): 233 units, localized names and sources.
 - [Unit HTTP API](reference/UNIT_HTTP_API.md): catalogue and conversion routes.
 - [Graph sampling HTTP API](reference/GRAPH_HTTP_API.md): bounded grids, point errors and session isolation.
+- [Graph points and verification](reference/GRAPH_ANALYSIS_HTTP_API.md): discrete modes, bounded C checks and balanced markers.
 - [Web/API coverage](reference/WEB_API_PARITY.md): implemented calls and remaining gaps.
 
 ## Understand the code — `design/`
@@ -62,6 +63,7 @@ records Firefox/WebKit coverage, test portability and the physical-phone checkli
 - [Mixed graph ranges](benchmarks/GRAPH_MIXED_RANGES_2026_10_15.md): bounded slow terms alongside dense carriers, zoom regressions and before/after measurements.
 - [Subpixel graph curves](benchmarks/GRAPH_SUBPIXEL_CURVES_2026_10_15.md): validated cubic arcs, stationary anchors and efficient intermediate zoom.
 - [Absolute-value graph valleys](benchmarks/GRAPH_ABSOLUTE_2026_10_16.md): actual corners, zero-reaching dense ranges, equivalent root forms and independent before/after checks.
+- [Discrete graphs and verified intersections](benchmarks/GRAPH_DISCRETE_VERIFIED_2026_10_16.md): integer points, original-expression verification, fair marker selection and cold/warm timings.
 - [Graph intercept and intersection checks](benchmarks/GRAPH_INTERSECTIONS_2026_10_16.md): marker correctness, y-intercept lookup and cached rendering overhead.
 - [Smooth graph zoom](benchmarks/GRAPH_SMOOTH_ZOOM_2026_10_13.md): derivative anchors, interpolation accuracy and prepared detail.
 - [BigInt measurements](benchmarks/BIGINT_BENCHMARKS.md).

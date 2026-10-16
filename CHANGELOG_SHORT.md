@@ -5,6 +5,8 @@ details and the [2.2.1 release record](docs/project/RELEASE_2_2_1.md) for valida
 
 ## Unreleased
 
+- Integer-point graphs, C-verified intercept/intersection markers and balanced marker selection.
+
 - Graph intercept/intersection markers with coordinate snapping and a Find function view control.
 
 - Calculator-style graph function editor with clearer naming and Plot/Clear actions.

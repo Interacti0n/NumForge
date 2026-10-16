@@ -37,6 +37,10 @@ void application_expression_enable_graph_phases(ApplicationExpression *expressio
 /* Restricted globally continuous operations; excludes unknown domain/pole/jump
  * operations. Used only to permit coarser display chords, never domain claims. */
 bool application_expression_graph_smooth(const ApplicationExpression *expression);
+/* Conservative automatic integer-grid selection: a domain-restricting call
+ * must consume the parameter directly. Transformed lattices need explicit UI
+ * selection; this does not claim arbitrary discrete domains are discoverable. */
+bool application_expression_graph_integer_domain(const ApplicationExpression *expression);
 /* Forward trig offset: 1 = sin half-period, 0 = cos, -1 = tan/unsupported;
  * -2 = discrete step value, which must match across an accepted interval. */
 int application_expression_graph_peak_offset(const ApplicationExpression *expression,size_t phase);

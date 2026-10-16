@@ -20,6 +20,13 @@ Additional fields require `mode=fast`:
 | `interpolation` | `linear`, `hermite`, `hermite-subpixel` (cubic modes require both y bounds) | `linear` |
 | `ymin`, `ymax` | Both finite decimal bounds with finite positive difference | Seed-derived vertical scale |
 | `dense` | `band` (requires both y bounds) | No envelopes |
+| `render` | `curve`, `auto`, `points` | `curve` |
+
+`render=auto|points` can select a precision integer-lattice response with schema
+3, `evaluation:"precision"`, `sampling:"discrete"`, no connected edges and zero
+or more points. This explicit opt-in does not change legacy curve responses.
+See [integer points and C verification](GRAPH_ANALYSIS_HTTP_API.md) for domains,
+stride, limits and the separate read-only candidate verification route.
 
 When supplied together, `ymin` and `ymax` define the visible vertical span used
 for pixel error estimates. They do not discard samples outside the camera or

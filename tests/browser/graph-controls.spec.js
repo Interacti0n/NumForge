@@ -4,7 +4,7 @@ async function color(page,value){
 }
 for(const [lang,width] of [['sk',390],['en',1280]])test(`simple graph controls, color and radians ${lang}`,async({page})=>{
  await page.setViewportSize({width,height:844});await page.goto('/graph?lang='+lang);
- await expect(page.locator('#graph-form input')).toHaveCount(2);await expect(page.locator('#graph-form select,#graph-form details')).toHaveCount(0);
+ await expect(page.locator('#graph-form input')).toHaveCount(2);await expect(page.locator('#graph-form select')).toHaveCount(1);await expect(page.locator('.graph-render')).toHaveValue('auto');await expect(page.locator('#graph-form details')).toHaveCount(0);
  await expect(page.getByLabel(lang==='sk'?'Farba krivky':'Curve color')).toHaveAttribute('type','color');
  const calls=[];page.on('request',r=>{if(r.url().includes('/api/graph/plot?'))calls.push(r);});
  const prepared=page.waitForResponse(r=>r.url().includes('/api/graph/plot?')&&new URL(r.url()).searchParams.get('ymin')==='-5');
