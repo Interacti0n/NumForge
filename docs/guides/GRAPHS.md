@@ -34,6 +34,9 @@ The catalogue opens in a compact modal instead of extending the page. Previous/
 next buttons keep every entry reachable without an internal scrollbar; short
 landscape windows show fewer entries per page. Close with × or Escape to return
 to the selected expression. Search begins across all categories.
+The selected row's complete expression is editable at the top of the open
+library. Typing, selection and function insertion update that same row; other
+rows remain unchanged. Press Enter there, or Plot, to close the library and draw.
 
 Clicking inserts into the last focused function row. Selected text is wrapped
 as the first argument. Without a selection, a call such as `sqrt()` is inserted
@@ -95,6 +98,14 @@ This avoids spending the point budget on steep off-screen curves such as x^10
 or exp(x). Trigonometric phase checks still reject unresolved whole periods;
 division, tangent and other domain-sensitive expressions keep stricter rules.
 The displayed chord is an approximation, not an accuracy guarantee between samples.
+Expressions containing `abs` retain vertical-error checks at subpixel widths.
+Captured inner sign changes locate actual corners before accepting their two
+neighboring intervals. The real screen form `sqrt(u^2)` shares this handling;
+complex intermediates still use the original evaluator for classification.
+For a recognized outer absolute sine/cosine model, dense envelopes are mapped
+through absolute value. A single carrier without an additive trend needs a full
+π phase span per column, so ranges such as `abs(x*sin(x))` include zero rather
+than losing their valleys. Other absolute sums retain the full 2π criterion.
 
 Where slopes are available, the browser draws smooth transitions between
 accepted points, with tangent limits to avoid overshoot. The C sampler also

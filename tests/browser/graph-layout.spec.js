@@ -31,3 +31,15 @@ test('expanded plot preserves important errors instead of hiding every status',a
  await page.goto('/graph?lang=en');await page.locator('#graph-expression').fill('x+y');await page.locator('#graph-submit').click();await expect(page.locator('#graph-status')).toHaveClass(/error/);
  await page.locator('#graph-expand').click();await expect(page.locator('#graph-status')).toBeVisible();await expect(page.locator('#graph-status')).toContainText('one variable');
 });
+for(const width of [390,1280])test(`library edits the selected complete expression while remaining open at ${width}`,async({page})=>{
+ await page.setViewportSize({width,height:900});await page.goto('/graph?lang=en');await page.locator('#graph-add').click();
+ const target=page.locator('.graph-curve').last().locator('input:not([type=color])');await target.fill('');await page.locator('#graph-library summary').click();
+ const editor=page.locator('#graph-library-expression');await expect(editor).toBeFocused();await expect(page.locator('#graph-library-target')).toContainText('2');
+ await editor.fill('x + ');await page.locator('#graph-library-next').click();await expect(editor).toHaveValue('x + ');
+ await page.locator('#function-search').fill('square root');await page.locator('#graph-functions button[data-function=sqrt]').click();await expect(editor).toBeFocused();await editor.press('2');
+ await expect(editor).toHaveValue('x + sqrt(2)');await expect(target).toHaveValue('x + sqrt(2)');await expect(page.locator('#graph-expression')).toHaveValue('sin(x)');
+ await editor.evaluate(e=>e.setSelectionRange(0,1));await page.locator('#function-search').fill('sine');await page.locator('#graph-functions button[data-function=sin]').click();
+ await expect(editor).toHaveValue('sin(x) + sqrt(2)');await editor.press('End');await editor.press('+');await editor.press('3');
+ await page.locator('#graph-library-dialog').screenshot({path:`C:/Incoming/Projekty/NumForge/build/graph-library-editor-${width}.png`});
+ await editor.press('Enter');await expect(page.locator('#graph-library-dialog')).not.toBeVisible();await expect(target).toHaveValue('sin(x) + sqrt(2)+3');await expect(page.locator('path.graph-line')).toHaveCount(2);
+});

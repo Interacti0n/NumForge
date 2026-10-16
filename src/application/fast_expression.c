@@ -15,16 +15,19 @@ typedef enum FastOp { F_CONSTANT,F_X,F_NEGATE,F_SQUARE,F_CUBE,
     F_SIN,F_COS,F_TAN,F_EXP,F_LN,F_SQRT,F_CBRT,F_ABS } FastOp;
 typedef struct FastInstruction { FastOp operation;double value;double error; } FastInstruction;
 struct ApplicationFastExpression {
-    FastInstruction *code;size_t count,phase_count,guard_count,exponential_count;CalculatorContext context;
+    FastInstruction *code;size_t count,phase_count,guard_count,exponential_count,corner_count;CalculatorContext context;
 };
 typedef struct FastCell { double value,error;ApplicationFastKind kind;double derivative;bool differentiable,tail; } FastCell;
 
 void application_fast_expression_destroy(ApplicationFastExpression *expression)
 {if(expression){free(expression->code);free(expression);}}
+bool application_fast_expression_has_corners(const ApplicationFastExpression *expression)
+{return expression&&expression->corner_count!=0U;}
 
 static CalculatorStatus emit(ApplicationFastExpression *program,FastOp operation,double value,double error)
 {
     if(program->count>=FAST_INSTRUCTIONS)return CALCULATOR_VALUE_TOO_LARGE;
+    if(operation==F_ABS){if(program->corner_count>=64U)return CALCULATOR_INVALID_ARGUMENT;++program->corner_count;}
     if(operation==F_EXP){if(program->exponential_count>=64U)return CALCULATOR_INVALID_ARGUMENT;++program->exponential_count;}
     if(operation>=F_SIN&&operation<=F_TAN){if(program->phase_count>=64U)return CALCULATOR_INVALID_ARGUMENT;++program->phase_count;}
     if(operation==F_DIVIDE||operation==F_POWER||operation==F_SQRT||operation==F_LN){if(program->guard_count>=64U)return CALCULATOR_INVALID_ARGUMENT;++program->guard_count;}
@@ -111,6 +114,16 @@ static CalculatorStatus compile_node(ApplicationFastExpression *program,const Ca
         }
         if(status==CALCULATOR_OK&&node->data.call.count!=(operation==F_POWER?2U:1U))status=CALCULATOR_INVALID_ARGUMENT;
         for(size_t i=0;status==CALCULATOR_OK&&i<node->data.call.count;++i)status=compile_node(program,node->data.call.arguments[i],parameter,answer,error);
+        /* On projected real inputs sqrt(u^2) has the same corners as abs(u).
+         * Keep all guards inside u. Non-real/uncertain intermediates still use
+         * the unchanged original AST for exact classification. */
+        if(status==CALCULATOR_OK&&operation==F_SQRT&&program->count){
+            FastOp last=program->code[program->count-1U].operation;
+            if(last==F_SQUARE){--program->count;operation=F_ABS;}
+            else if(last==F_POWER&&program->count>=2U){FastInstruction exponent=program->code[program->count-2U];
+                if(exponent.operation==F_CONSTANT&&exponent.value==2&&exponent.error==0){program->count-=2U;--program->guard_count;operation=F_ABS;}
+            }
+        }
         if(status==CALCULATOR_OK)status=emit(program,operation,0,0);
         break;
     }
@@ -220,6 +233,15 @@ CalculatorStatus application_fast_expression_dense_model(const ApplicationFastEx
                 r.model.offset_value=pow(a.model.offset_value,b.model.offset_value);
             }
             break;
+        case F_ABS:
+            if(a.model.count){
+                if(i+1U!=program->count||a.square!=0)return CALCULATOR_NOT_IMPLEMENTED;
+                r=a;r.model.absolute=true;
+            }else{
+                if(a.square!=0||a.model.offset!=0)return CALCULATOR_NOT_IMPLEMENTED;
+                r.model.offset_value=fabs(a.model.offset_value);
+            }
+            break;
         default:
             /* Constant-only operations may be folded; nonlinear amplitude,
              * phase, clipping and domain-sensitive transformations are deferred. */
@@ -267,6 +289,7 @@ static ApplicationFastSample evaluate(const ApplicationFastExpression *program,d
         bool binary=op.operation>=F_ADD&&op.operation<=F_POWER;
         if(binary){if(!used)return (ApplicationFastSample){0,APPLICATION_FAST_UNCERTAIN};b=a;a=stack[--used];}
         if(probe&&op.operation==F_EXP)probe->exponential_slopes[probe->exponential_count++]=a.differentiable?a.derivative:NAN;
+        if(probe&&op.operation==F_ABS)probe->corners[probe->corner_count++]=a.kind==APPLICATION_FAST_NON_REAL?NAN:a.value;
         r.tail=a.tail||b.tail;
         // Only affine arithmetic and a guarded division propagate a tiny tail.
         // Nonlinear magnification (roots, logarithms, powers, another exp, ...)
@@ -429,7 +452,7 @@ static CalculatorStatus derivative_probe(const ApplicationFastExpression *expres
     bool owner=numforge_budget_begin((uint64_t)expression->context.time_limit_ms,CALCULATOR_ALLOCATION_BUDGET,CALCULATOR_SINGLE_ALLOCATION);
     CalculatorStatus status=CALCULATOR_OK;ApplicationFastProbe pending={0};pending.derivative=NAN;
     if(!numforge_budget_check())status=calculator_budget_status(CALCULATOR_OUT_OF_MEMORY);
-    if(status==CALCULATOR_OK){pending.sample=evaluate(expression,coordinate,&pending,derive,tolerance);pending.complete=pending.phase_count==expression->phase_count&&pending.guard_count==expression->guard_count&&pending.exponential_count==expression->exponential_count;}
+    if(status==CALCULATOR_OK){pending.sample=evaluate(expression,coordinate,&pending,derive,tolerance);pending.complete=pending.phase_count==expression->phase_count&&pending.guard_count==expression->guard_count&&pending.exponential_count==expression->exponential_count&&pending.corner_count==expression->corner_count;}
     status=calculator_budget_status(status);if(status==CALCULATOR_OK)*result=pending;
     if(owner)numforge_budget_end();
     return status;

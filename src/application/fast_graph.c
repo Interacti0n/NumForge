@@ -15,7 +15,7 @@ typedef struct Work {
     ApplicationFastGraph *graph;ApplicationExpression *exact;ApplicationFastExpression *fast;
     const CalculatorContext *context;CalculatorError *error;
     double phase_vertices[APPLICATION_FAST_DENSE_CARRIERS];size_t phase_vertex_count;
-    double scale,tolerance,coarse_width,y_minimum,y_maximum,tail_tolerance;size_t limit;bool smooth,screen_floor,camera,exponential,exponential_turns,quadratic_phase,hermite;
+    double scale,tolerance,coarse_width,y_minimum,y_maximum,tail_tolerance;size_t limit;bool smooth,screen_floor,camera,exponential,exponential_turns,quadratic_phase,hermite,rectified,corners,corner_recovery;
 } Work;
 static bool real(const ApplicationFastGraphPoint *p){return p->kind==APPLICATION_GRAPH_REAL&&isfinite(p->y);}
 static CalculatorStatus probe(Work *work,double x,ApplicationFastProbe *result)
@@ -23,7 +23,7 @@ static CalculatorStatus probe(Work *work,double x,ApplicationFastProbe *result)
 void application_fast_graph_destroy(ApplicationFastGraph *graph){if(graph){free(graph->points);free(graph->bands);free(graph);}}
 static double phase_error(const ApplicationFastDenseCarrier *term,double x)
 {return 64*DBL_EPSILON*(fabs(term->phase_square*x)*fabs(x)+fabs(term->phase*x)+fabs(term->phase_offset));}
-static bool phase_column(const ApplicationFastDenseCarrier *term,double a,double b,double *low,double *high,bool *dense)
+static bool phase_column(const ApplicationFastDenseCarrier *term,double a,double b,double period,double *low,double *high,bool *dense)
 {
     double pa=fma(fma(term->phase_square,a,term->phase),a,term->phase_offset);
     double pb=fma(fma(term->phase_square,b,term->phase),b,term->phase_offset);
@@ -35,7 +35,7 @@ static bool phase_column(const ApplicationFastDenseCarrier *term,double a,double
         fmax(fabs(pa),fabs(pb))>1e6)return false;
     *low=fmin(pa-ea,pb-eb);*high=fmax(pa+ea,pb+eb);
     *dense=((da>eda&&db>edb)||(da<-eda&&db<-edb))&&
-        fabs(pb-pa)>=6.28318530717958647693*(1+64*DBL_EPSILON)+ea+eb;
+        fabs(pb-pa)>=period*(1+64*DBL_EPSILON)+ea+eb;
     if(term->phase_square!=0){double vertex=-0.5*(term->phase/term->phase_square);
         if(isfinite(vertex)&&vertex>a&&vertex<b){
             double value=fma(fma(term->phase_square,vertex,term->phase),vertex,term->phase_offset),error=phase_error(term,vertex);
@@ -57,22 +57,28 @@ static void trig_range(double a,double b,bool cosine,double *low,double *high)
     if(ceil((a-peak)/turn)<=floor((b-peak)/turn))*high=1;
     if(ceil((a-trough)/turn)<=floor((b-trough)/turn))*low=-1;
 }
-static CalculatorStatus dense_bands(Work *work,double minimum,double maximum,size_t width)
+static CalculatorStatus dense_bands(Work *work,double minimum,double maximum,size_t width,bool enabled)
 {
     ApplicationFastDenseModel model={0};
     CalculatorStatus status=application_fast_expression_dense_model(work->fast,&model);
     if(status==CALCULATOR_NOT_IMPLEMENTED)return CALCULATOR_OK;
     if(status!=CALCULATOR_OK)return status;
+    work->rectified=model.absolute;
+    if(model.absolute)work->hermite=false; /* abs corners use actual phase anchors. */
+    if(!enabled)return CALCULATOR_OK;
     for(size_t j=0;j<model.count;++j)if(model.carriers[j].phase_square!=0){
         work->quadratic_phase=true;
         double vertex=-0.5*(model.carriers[j].phase/model.carriers[j].phase_square);
         if(isfinite(vertex)&&vertex>minimum&&vertex<maximum)work->phase_vertices[work->phase_vertex_count++]=vertex;
     }
     const double turn=6.28318530717958647693;
+    /* |sin|/|cos| complete a cycle in pi only without an additive trend.
+     * Other absolute sums retain the conservative whole-carrier criterion. */
+    double period=model.absolute&&model.count==1U&&model.offset==0&&model.offset_value==0?turn/2:turn;
     double step=(maximum-minimum)/(double)width;
     bool potential=false;
     for(size_t j=0;j<model.count;++j){double phase_step=fabs(model.carriers[j].phase)*step;
-        if(model.carriers[j].phase_square!=0||(isfinite(phase_step)&&phase_step>=turn*(1+64*DBL_EPSILON)))potential=true;
+        if(model.carriers[j].phase_square!=0||(isfinite(phase_step)&&phase_step>=period*(1+64*DBL_EPSILON)))potential=true;
     }
     if(!potential)return CALCULATOR_OK;
     work->graph->bands=numforge_calloc(width,sizeof(*work->graph->bands));
@@ -86,7 +92,7 @@ static CalculatorStatus dense_bands(Work *work,double minimum,double maximum,siz
         for(size_t j=0;j<model.count;++j){const ApplicationFastDenseCarrier *term=&model.carriers[j];
             double phase_low=0,phase_high=0,tl=-1,th=1;bool carrier_dense=false;
             double aa=fma(term->amplitude,a,term->amplitude_offset),ab=fma(term->amplitude,b,term->amplitude_offset);
-            if(!phase_column(term,a,b,&phase_low,&phase_high,&carrier_dense)||!isfinite(aa)||!isfinite(ab)){valid=false;break;}
+            if(!phase_column(term,a,b,period,&phase_low,&phase_high,&carrier_dense)||!isfinite(aa)||!isfinite(ab)){valid=false;break;}
             dense=dense||carrier_dense;
             if(!carrier_dense)trig_range(phase_low,phase_high,term->cosine,&tl,&th);
             double error=64*DBL_EPSILON*fmax(fabs(term->amplitude*a)+fabs(term->amplitude_offset),fabs(term->amplitude*b)+fabs(term->amplitude_offset));
@@ -100,6 +106,7 @@ static CalculatorStatus dense_bands(Work *work,double minimum,double maximum,siz
         double ya=fma(model.offset,a,model.offset_value),yb=fma(model.offset,b,model.offset_value);
         low=nextafter(low+fmin(ya,yb),-INFINITY);high=nextafter(high+fmax(ya,yb),INFINITY);
         if(!isfinite(ya)||!isfinite(yb)||!isfinite(low)||!isfinite(high)||low>high)continue;
+        if(model.absolute){double top=fmax(fabs(low),fabs(high));low=low<=0&&high>=0?0:fmin(fabs(low),fabs(high));high=top;}
         work->graph->bands[work->graph->band_count++]=(ApplicationFastGraphBand){a,b,low,high};
     }
     return CALCULATOR_OK;
@@ -128,7 +135,10 @@ static CalculatorStatus point(Work *work,double x,ApplicationFastGraphPoint *res
     if(status!=CALCULATOR_OK)return status;
     *result=(ApplicationFastGraphPoint){x,NAN,APPLICATION_GRAPH_REAL,false,true,false,NAN};
     if(observed->sample.kind==APPLICATION_FAST_REAL){result->y=observed->sample.value;result->derivative=observed->derivative;return CALCULATOR_OK;}
-    if(work->graph->exact_probes>=128U||numforge_budget_available_bytes()<3U*1024U*1024U||numforge_budget_available_ms()<300U){result->kind=APPLICATION_GRAPH_UNRESOLVED;work->graph->limited=true;return CALCULATOR_OK;}
+    /* Actual abs-cusp values need exact recovery near zero. Keep this bounded
+     * separately from ordinary screen plots, under the same inherited budget. */
+    size_t exact_limit=work->corner_recovery?512U:128U;
+    if(work->graph->exact_probes>=exact_limit||numforge_budget_available_bytes()<3U*1024U*1024U||numforge_budget_available_ms()<300U){result->kind=APPLICATION_GRAPH_UNRESOLVED;work->graph->limited=true;return CALCULATOR_OK;}
     ++work->graph->exact_probes;
     char text[32];(void)snprintf(text,sizeof(text),"%.17g",x);
     CalculatorValue coordinate={0};ApplicationExpressionSample *sample=NULL;
@@ -307,6 +317,8 @@ static CalculatorStatus hermite_check(Work *work,const ApplicationFastGraphPoint
         fabs(right.sample.value/work->scale-high/work->scale)<=work->tolerance/4;
     return CALCULATOR_OK;
 }
+static CalculatorStatus corner_split(Work *work,double left,double right,const ApplicationFastProbe *a,
+    const ApplicationFastProbe *b,ApplicationFastGraphPoint *value,ApplicationFastProbe *observed,bool *found);
 static CalculatorStatus refine(Work *work)
 {
     typedef struct Interval {size_t left;unsigned depth;} Interval;
@@ -327,6 +339,14 @@ static CalculatorStatus refine(Work *work)
         if(status==CALCULATOR_OK)status=probe(work,c.x,&cp);
         if(status==CALCULATOR_OK)status=point(work,middle,&b,&bp);
         if(status!=CALCULATOR_OK)break;
+        bool corner=false;
+        if(work->screen_floor&&work->corners&&real(&a)&&real(&b)&&real(&c)){
+            ApplicationFastGraphPoint candidate;ApplicationFastProbe observed={0};
+            status=corner_split(work,a.x,b.x,&ap,&bp,&candidate,&observed,&corner);
+            if(status==CALCULATOR_OK&&!corner)status=corner_split(work,b.x,c.x,&bp,&cp,&candidate,&observed,&corner);
+            if(status!=CALCULATOR_OK)break;
+            if(corner){b=candidate;bp=observed;}
+        }
         double ad=a.turn_anchor?0:a.derivative,cd=c.turn_anchor?0:c.derivative;
         bool turning=work->screen_floor&&(!work->smooth||(work->hermite&&work->quadratic_phase))&&real(&a)&&real(&b)&&real(&c)&&
             (turn(ad,b.derivative)||turn(b.derivative,cd)||turn(ad,cd));
@@ -336,7 +356,7 @@ static CalculatorStatus refine(Work *work)
         bool bending=work->screen_floor&&!work->smooth&&c.x-a.x>work->coarse_width&&
             isfinite(ad)&&isfinite(b.derivative)&&isfinite(cd)&&
             (b.derivative<fmin(ad,cd)-gradient*1e-6||b.derivative>fmax(ad,cd)+gradient*1e-6);
-        if(turning&&turn(ad,cd)&&safe(&ap,&bp,&cp,work->hermite&&work->quadratic_phase?3:0.5)){
+        if(!corner&&turning&&turn(ad,cd)&&safe(&ap,&bp,&cp,work->hermite&&work->quadratic_phase?3:0.5)){
             status=turning_split(work,&a,&c,&ap,&cp,&b,&bp);
             if(status!=CALCULATOR_OK)break;
         }
@@ -345,10 +365,10 @@ static CalculatorStatus refine(Work *work)
         /* A restricted continuous AST can use two half-pixel chords once
          * horizontal detail is below the requested screen resolution. Keep
          * phase/domain checks: this must not join poles or hidden periods. */
-        bool short_smooth=work->screen_floor&&work->smooth&&!work->exponential_turns&&!work->quadratic_phase&&c.x-a.x<=work->coarse_width;
+        bool short_smooth=work->screen_floor&&work->smooth&&!work->corners&&!work->exponential_turns&&!work->quadratic_phase&&c.x-a.x<=work->coarse_width;
         // A root is not necessarily the midpoint: always recheck both children
         // at their own midpoints before accepting the new neighbouring edges.
-        bool accepted=!turning&&!bending&&real(&a)&&real(&b)&&real(&c)&&safe(&ap,&bp,&cp,phase_limit)&&
+        bool accepted=!corner&&!turning&&!bending&&real(&a)&&real(&b)&&real(&c)&&safe(&ap,&bp,&cp,phase_limit)&&
             (short_smooth||fabs(b.y/work->scale-(a.y/work->scale+c.y/work->scale)/2)<=work->tolerance);
         if(!accepted&&!turning&&work->hermite&&work->quadratic_phase&&work->smooth&&real(&a)&&real(&b)&&real(&c)){
             status=hermite_check(work,&a,&b,&c,&ap,&bp,&cp,&accepted);if(status!=CALCULATOR_OK)break;
@@ -372,6 +392,38 @@ static CalculatorStatus refine(Work *work)
     }
     free(queue);return status;
 }
+/* Split at an actual sign bracket of an abs argument before acceptance. Both
+ * children then receive their own midpoint checks; appending a cusp afterwards
+ * could invalidate an otherwise accepted chord's error estimate. */
+static CalculatorStatus corner_split(Work *work,double low,double high,const ApplicationFastProbe *a,
+    const ApplicationFastProbe *b,ApplicationFastGraphPoint *value,ApplicationFastProbe *observed,bool *found)
+{
+    *found=false;
+    if(!a->complete||!b->complete||a->corner_count!=b->corner_count)return CALCULATOR_OK;
+        for(size_t slot=0;slot<a->corner_count;++slot){
+            double av=a->corners[slot],bv=b->corners[slot];
+            if(!isfinite(av)||!isfinite(bv)||!((av<0&&bv>0)||(av>0&&bv<0)))continue;
+            double left=low,right=high,root=0;bool located=false;
+            for(unsigned attempt=0;attempt<32U;++attempt){
+                if(work->graph->count>=work->limit||numforge_budget_available_bytes()<3U*1024U*1024U||numforge_budget_available_ms()<300U){work->graph->limited=true;return CALCULATOR_OK;}
+                double fraction=fabs(av)/(fabs(av)+fabs(bv));if(!isfinite(fraction)||fraction<.1||fraction>.9)fraction=.5;
+                double x=left+(right-left)*fraction;if(x<=left||x>=right)break;
+                ApplicationFastProbe mid={0};CalculatorStatus status=probe(work,x,&mid);if(status!=CALCULATOR_OK)return status;
+                if(!mid.complete||slot>=mid.corner_count||!isfinite(mid.corners[slot])||!safe(a,&mid,b,3))break;
+                double v=mid.corners[slot];root=x;
+                if(v==0||right-left<=work->coarse_width*1e-10||attempt==31U){located=true;break;}
+                if((av<0&&v<0)||(av>0&&v>0)){left=x;av=v;}else{right=x;bv=v;}
+            }
+            /* A previously inserted root can retain an ulp-sized sign residue.
+             * Do not repeatedly seed the same subpixel endpoint. */
+            if(located&&(root-low<=work->coarse_width*1e-6||high-root<=work->coarse_width*1e-6))continue;
+            if(located){work->corner_recovery=true;CalculatorStatus status=point(work,root,value,observed);work->corner_recovery=false;
+                if(status!=CALCULATOR_OK)return status;
+                if(real(value)&&observed->complete&&safe(a,observed,b,3)){value->derivative=NAN;value->turn_anchor=true;observed->derivative=NAN;*found=true;return CALCULATOR_OK;}
+            }
+        }
+    return CALCULATOR_OK;
+}
 static CalculatorStatus peaks(Work *work)
 {
     if(!work->smooth)return CALCULATOR_OK;
@@ -385,18 +437,20 @@ static CalculatorStatus peaks(Work *work)
         if(!a.complete||!b.complete||a.phase_count!=b.phase_count)continue;
         for(size_t phase=0;phase<a.phase_count;++phase){
             if(a.phase_kinds[phase]<0)continue;
-            double pa=a.phases[phase],pb=b.phases[phase],offset=a.phase_kinds[phase]?pi/2:0;
-            double target=offset+(floor((fmin(pa,pb)-offset)/pi)+1)*pi;
+            double pa=a.phases[phase],pb=b.phases[phase],offset=work->rectified?0:a.phase_kinds[phase]?pi/2:0;
+            double spacing=work->rectified?pi/2:pi;
+            double target=offset+(floor((fmin(pa,pb)-offset)/spacing)+1)*spacing;
+            if(work->rectified&&fabs(target-fmin(pa,pb))<1e-6)target+=spacing;
             if(target>=fmax(pa,pb)||fabs(target-pa)<1e-7||fabs(target-pb)<1e-7)continue;
             double lo=graph->points[edge-1U].x,hi=graph->points[edge].x;
             for(unsigned attempt=0;attempt<8U;++attempt){
                 if(graph->count>=work->limit||numforge_budget_available_bytes()<3U*1024U*1024U||numforge_budget_available_ms()<300U){graph->limited=true;return CALCULATOR_OK;}
                 double x=lo+(hi-lo)*(target-pa)/(pb-pa);if(!isfinite(x)||x<=lo||x>=hi)break;
-                ApplicationFastGraphPoint value;ApplicationFastProbe observed={0};status=point(work,x,&value,&observed);
+                ApplicationFastGraphPoint value;ApplicationFastProbe observed={0};work->corner_recovery=work->rectified;status=point(work,x,&value,&observed);work->corner_recovery=false;
                 if(status!=CALCULATOR_OK)return status;
                 if(!real(&value)||!observed.complete||phase>=observed.phase_count)break;
                 double measured=observed.phases[phase];
-                if(fabs(measured-target)<1e-6){value.connect=true;insert(graph,edge,value);++edge;break;}
+                if(fabs(measured-target)<1e-6){value.connect=true;insert(graph,edge,value);if(!work->rectified)++edge;break;}
                 bool lower=pb>pa?measured<target:measured>target;
                 if(lower){lo=x;pa=measured;}else{hi=x;pb=measured;}
             }
@@ -449,6 +503,7 @@ static CalculatorStatus sample_view(ApplicationFastGraph **result,const char *in
     work.tail_tolerance=vertical_span/(double)height/64;
     status=parameter?application_expression_prepare(&work.exact,input,parameter,session,context,error):application_expression_prepare_auto(&work.exact,input,session,context,error);
     if(status==CALCULATOR_OK){work.smooth=application_expression_graph_smooth(work.exact);status=application_expression_fast_compile(&work.fast,work.exact,error);if(status==CALCULATOR_INVALID_ARGUMENT)status=CALCULATOR_NOT_IMPLEMENTED;}
+    if(status==CALCULATOR_OK){work.corners=application_fast_expression_has_corners(work.fast);if(work.corners)work.hermite=false;}
     if(status==CALCULATOR_OK){work.graph=numforge_calloc(1U,sizeof(*work.graph));if(!work.graph)status=CALCULATOR_OUT_OF_MEMORY;}
     if(status==CALCULATOR_OK){work.graph->points=numforge_calloc(work.limit,sizeof(*work.graph->points));if(!work.graph->points)status=CALCULATOR_OUT_OF_MEMORY;}
     work.camera=camera;work.y_minimum=y_minimum;work.y_maximum=y_maximum;
@@ -466,7 +521,7 @@ static CalculatorStatus sample_view(ApplicationFastGraph **result,const char *in
         if(real(&work.graph->points[i])){double y=work.graph->points[i].y;low=isnan(low)?y:fmin(low,y);high=isnan(high)?y:fmax(high,y);}
     }
     if(status==CALCULATOR_OK&&(uncertain>16U||complex_recovery))status=CALCULATOR_NOT_IMPLEMENTED;
-    if(status==CALCULATOR_OK&&dense&&work.screen_floor)status=dense_bands(&work,minimum,maximum,width);
+    if(status==CALCULATOR_OK&&work.screen_floor)status=dense_bands(&work,minimum,maximum,width,dense);
     if(status==CALCULATOR_OK)status=quadratic_phase_seeds(&work);
     if(status==CALCULATOR_OK)status=exponential_seeds(&work);
     if(status==CALCULATOR_OK){
@@ -479,7 +534,8 @@ static CalculatorStatus sample_view(ApplicationFastGraph **result,const char *in
         /* Acceptance emits two half-chords. For smooth local curvature their
          * error is about a quarter of the parent midpoint deviation. */
         work.tolerance=span*(coarse?8:2)/(double)height;work.coarse_width=(maximum-minimum)/(double)width;
-        status=refine(&work);if(status==CALCULATOR_OK&&!work.graph->subpixel_hermite)status=peaks(&work);
+        status=refine(&work);
+        if(status==CALCULATOR_OK&&!work.graph->subpixel_hermite)status=peaks(&work);
         if(status==CALCULATOR_OK&&!work.graph->subpixel_hermite)status=stationary(&work);
         if(status==CALCULATOR_OK&&(work.smooth||!work.graph->limited||isnan(low))){
             low=NAN;high=NAN;for(size_t i=0;i<work.graph->count;++i)if(real(&work.graph->points[i])){double y=work.graph->points[i].y;low=isnan(low)?y:fmin(low,y);high=isnan(high)?y:fmax(high,y);}

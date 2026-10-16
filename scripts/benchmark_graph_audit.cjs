@@ -3,7 +3,7 @@ const {spawn}=require('node:child_process'),{once}=require('node:events');
 const fs=require('node:fs/promises'),path=require('node:path');
 const args=process.argv.slice(2),option=n=>args.includes(n)?args[args.indexOf(n)+1]:undefined;
 const executable=option('--server'),before=option('--before'),output=option('--output')||'build/graph-audit.json',repeats=Number(option('--repeats')||3);
-const suite=option('--suite')||'default';if(!['default','narrow','exponential','steps','dense','quadratic','mixed','transition'].includes(suite))throw Error('Unknown suite');
+const suite=option('--suite')||'default';if(!['default','narrow','exponential','steps','dense','quadratic','mixed','transition','absolute'].includes(suite))throw Error('Unknown suite');
 const pause=ms=>new Promise(r=>setTimeout(r,ms)),pi=Math.PI;
 const cases=[
  ['linear','3x+2',x=>3*x+2],['parabola','x*x',x=>x*x],['cubic','x^3-3x',x=>x*x*x-3*x],['degree10','x^10',x=>x**10],
@@ -137,7 +137,31 @@ for(const [profile,width,height] of [['desktop',800,440],['small',320,300]])for(
  ['signed','(x-0.1234)*cos(1000x)+sin(x*x)',x=>(x-.1234)*Math.cos(1000*x)+Math.sin(x*x)],
  ['four','sin(x*x)+cos(1000x)+0.1*sin(900x)+x/20',x=>Math.sin(x*x)+Math.cos(1000*x)+.1*Math.sin(900*x)+x/20]
 ])transitionCases.push({name:`transition-${profile}-${name}`,expression,f,min:-1.25,max:1.25,ymin:-2.5,ymax:2.5,width,height,anchors:[0,.1234]});
-const selectedCases=suite==='narrow'?[...narrowCases,...controls]:suite==='exponential'?[...exponentialCases,...controls]:suite==='steps'?[...stepCases,...controls]:suite==='dense'?[...denseCases,...cases.filter(c=>['chirp-wide','inverse-phase'].includes(c.name)),...controls]:suite==='quadratic'?[...quadraticCases,...controls]:suite==='mixed'?[...mixedCases,...controls,...cases.filter(c=>['chirp-wide','inverse-phase'].includes(c.name))]:suite==='transition'?[...transitionCases,...mixedCases.filter(c=>c.name.includes('intermediate')),...controls]:cases;
+const absoluteCases=[];
+for(const [profile,width,height] of [['desktop',930,530],['small',320,300]]){
+ for(const span of [10,100,400])absoluteCases.push({name:`absolute-${profile}-sine-${span}`,expression:'abs(x*sin(x))',f:x=>Math.abs(x*Math.sin(x)),min:-span,max:span,ymin:-span/3,ymax:span,width,height,anchors:Array.from({length:2*Math.floor(span/Math.PI)+1},(_,i)=>(i-Math.floor(span/Math.PI))*Math.PI)});
+ absoluteCases.push({name:`absolute-${profile}-screenshot`,expression:'abs(x*sin(x))',f:x=>Math.abs(x*Math.sin(x)),min:-340,max:3890,ymin:-1500,ymax:2700,width,height});
+ for(const [name,expression,f,span,ymin,ymax] of [
+  ['cosine','abs(x*cos(x))',x=>Math.abs(x*Math.cos(x)),100,-40,110],
+  ['shifted','abs((2x-3)*sin(3x+0.2))',x=>Math.abs((2*x-3)*Math.sin(3*x+.2)),100,-40,210],
+  ['offset','abs(sin(x)+0.2)',x=>Math.abs(Math.sin(x)+.2),100,-.2,1.5],
+  ['sum','abs(sin(x)+cos(2x))',x=>Math.abs(Math.sin(x)+Math.cos(2*x)),50,-.2,2.2],
+  ['translated','1+abs(sin(x)+0.2)',x=>1+Math.abs(Math.sin(x)+.2),100,.8,2.5],
+  ['equivalent-root','sqrt((x*sin(x))^2)',x=>Math.abs(x*Math.sin(x)),10,-1,10],
+  ['quadratic','abs(sin(x*x))',x=>Math.abs(Math.sin(x*x)),10,-.2,1.2],
+ ]){
+  const anchors=[];for(let k=-200;k<=200;k++){
+   if(name==='cosine')anchors.push(Math.PI/2+k*Math.PI);
+   if(name==='shifted')anchors.push((k*Math.PI-.2)/3,1.5);
+   if(name==='offset'||name==='translated')anchors.push(Math.asin(-.2)+k*2*Math.PI,Math.PI-Math.asin(-.2)+k*2*Math.PI);
+   if(name==='sum')anchors.push(Math.PI/2+k*2*Math.PI,-Math.PI/6+k*2*Math.PI,7*Math.PI/6+k*2*Math.PI);
+   if(name==='equivalent-root')anchors.push(k*Math.PI);
+   if(name==='quadratic'&&k>=0)anchors.push(Math.sqrt(k*Math.PI),-Math.sqrt(k*Math.PI));
+  }
+  absoluteCases.push({name:`absolute-${profile}-${name}`,expression,f,min:-span,max:span,ymin,ymax,width,height,anchors:anchors.filter(x=>x>=-span&&x<=span)});
+ }
+}
+const selectedCases=suite==='absolute'?[...absoluteCases,...controls]:suite==='narrow'?[...narrowCases,...controls]:suite==='exponential'?[...exponentialCases,...controls]:suite==='steps'?[...stepCases,...controls]:suite==='dense'?[...denseCases,...cases.filter(c=>['chirp-wide','inverse-phase'].includes(c.name)),...controls]:suite==='quadratic'?[...quadraticCases,...controls]:suite==='mixed'?[...mixedCases,...controls,...cases.filter(c=>['chirp-wide','inverse-phase'].includes(c.name))]:suite==='transition'?[...transitionCases,...mixedCases.filter(c=>c.name.includes('intermediate')),...controls]:cases;
 async function server(binary,port){
  const base='http://127.0.0.1:'+port;const occupied=await fetch(base,{signal:AbortSignal.timeout(500)}).catch(()=>null);if(occupied){await occupied.arrayBuffer();throw Error('Audit port occupied');}
  const child=spawn(path.resolve(binary),['--no-browser','--port',String(port)],{windowsHide:true,stdio:'ignore'});let failure;child.on('error',e=>failure=e);
@@ -184,7 +208,7 @@ async function main(){
  }
  if(option('--reassess')){
   const audit=JSON.parse(await fs.readFile(option('--reassess'),'utf8'));
-  for(const row of audit.rows){const original=audit.rows.find(r=>r.version===row.version&&r.case===row.case&&r.payload);if(row.ok)Object.assign(row,assess([...cases,...narrowCases,...exponentialCases,...stepCases,...denseCases,...quadraticCases,...mixedCases,...transitionCases].find(c=>c.name===row.case),JSON.parse(original.payload)));}
+  for(const row of audit.rows){const original=audit.rows.find(r=>r.version===row.version&&r.case===row.case&&r.payload);if(row.ok)Object.assign(row,assess([...cases,...narrowCases,...exponentialCases,...stepCases,...denseCases,...quadraticCases,...mixedCases,...transitionCases,...absoluteCases].find(c=>c.name===row.case),JSON.parse(original.payload)));}
   await save(audit);return;
  }
  if(!executable||!Number.isInteger(repeats)||repeats<1||repeats>5)throw Error('Use --server new.exe [--before old.exe] [--repeats 1..5] [--output file.json], or --reassess input.json --output file.json');

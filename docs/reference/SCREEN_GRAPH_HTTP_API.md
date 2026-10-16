@@ -115,6 +115,15 @@ ordinary sampling. Examples include `sin(1000x)`, `2-3*cos(1000x+0.3)`,
 `x*(sin(1000x)+cos(1100x))+2`, `sin(x*x)` and `cos(-3*(x-0.1234)^2)`.
 Parameter inference and requested RAD/DEG are retained.
 
+A final `abs(...)` around a recognized model also supports envelopes. Bounds
+are mapped through absolute value, with lower bound zero when the inner range
+straddles zero. For one carrier without an additive trend, a full monotone π
+phase span suffices; other absolute sums still require a full 2π carrier turn.
+This distinguishes `abs(x*sin(x))` from ordinary `x*sin(x)`. Non-final absolute
+compositions retain ordinary sampling. Real `sqrt(u^2)` screen bytecode can use
+the same path, preserving guards inside u and exact original-AST classification
+for non-real or uncertain intermediates.
+
 A column needs at least one carrier with a full monotone phase turn, including
 numerical margins. All carriers must have finite bounded phase ranges within
 the fast evaluator's existing ±1e6-radian limit, including interior quadratic
@@ -227,13 +236,22 @@ Non-real/unresolved points are disconnected. Finite sampling can miss narrow
 features; `limited` does not imply a timeout or prove discontinuity.
 
 Uncertain/non-real samples use precision classification at the same projected
-coordinate. At most 128 optional probes are allowed, with a 3 MiB / 300 ms
-reserve. One shared five-second / 64 MiB cumulative / 512 KiB single-allocation
+coordinate. Ordinary uncertainty recovery stops at 128 exact probes; locating
+actual abs corners/rectified phase anchors can extend the shared total to 512.
+This does not increase the five-second, point or memory budgets. A 3 MiB / 300 ms
+reserve remains. One shared five-second / 64 MiB cumulative / 512 KiB single-allocation
 budget covers the request and serialization. Compact JSON is capped at 512 KiB;
 precision schema 2 stays at 256 KiB, uniform/session limits are unchanged. Actual
 resource failure returns no partial success.
 
 ## Browser refinement
+
+Absolute-value expressions keep vertical midpoint checks even below a horizontal
+pixel. Captured inner sign changes provide bounded corner brackets; the original
+expression is evaluated at the located corner, with an unavailable derivative.
+Both child intervals are checked before accepting edges. Numerical root residues
+within a millionth of a requested column do not seed the same endpoint again.
+Corner-free expressions keep their existing faster refinement policy.
 
 The web requests Hermite slopes and optional dense bands, and draws shape-preserving cubic segments from
 accepted adjacent C samples when their projected horizontal spacing exceeds one

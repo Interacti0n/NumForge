@@ -7,6 +7,13 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Preserve valleys and corners in absolute-value graphs, including shifted
+  expressions and real sqrt-of-square forms. Check both neighboring intervals,
+  retain vertical accuracy at subpixel widths, and map supported dense absolute
+  oscillations to ranges including zero. Add independent references/benchmarks.
+- Edit the selected complete expression inside the open graph function library;
+  insertion, selection and Enter/Plot update the same row.
+
 - Keep the graph function catalogue within a compact paginated modal without
   internal scrolling. Give expanded plots the available height, with compact
   controls/legend and important warnings instead of repeated instruction text.

@@ -733,23 +733,29 @@ function initGraph() {
     const resize=new ResizeObserver(resized);resize.observe(result);
     window.addEventListener('resize',resized,{signal:lifecycle.signal});
 
-    const libraryDetails=$('graph-library'),libraryDialog=$('graph-library-dialog');
+    const libraryDetails=$('graph-library'),libraryDialog=$('graph-library-dialog'),libraryExpression=$('graph-library-expression');let libraryCurve=null;
+    function syncLibraryExpression(){if(!libraryCurve)return;const input=libraryCurve.input,changed=input.value!==libraryExpression.value;input.value=libraryExpression.value;input.setSelectionRange(libraryExpression.selectionStart,libraryExpression.selectionEnd);if(changed)input.dispatchEvent(new Event('input',{bubbles:true}));}
     libraryDetails.addEventListener('toggle',()=>{
         if(disposed)return;
-        if(libraryDetails.open&&!libraryDialog.open){libraryDialog.showModal();document.body.classList.add('graph-library-open');$('function-search').focus({preventScroll:true});}
+        if(libraryDetails.open&&!libraryDialog.open){libraryCurve=activeCurve||curves[0];libraryExpression.value=libraryCurve.input.value;$('graph-library-target').textContent=`${text.function} ${curves.indexOf(libraryCurve)+1} · y =`;libraryExpression.setSelectionRange(libraryCurve.input.selectionStart,libraryCurve.input.selectionEnd);libraryDialog.showModal();document.body.classList.add('graph-library-open');libraryExpression.focus({preventScroll:true});}
         else if(!libraryDetails.open&&libraryDialog.open)libraryDialog.close();
     },{signal:lifecycle.signal});
     $('graph-library-close').addEventListener('click',()=>libraryDialog.close(),{signal:lifecycle.signal});
-    libraryDialog.addEventListener('close',()=>{libraryDetails.open=false;document.body.classList.remove('graph-library-open');if(!disposed)activeCurve?.input.focus({preventScroll:true});},{signal:lifecycle.signal});
+    libraryDialog.addEventListener('close',()=>{if(!disposed)syncLibraryExpression();libraryDetails.open=false;document.body.classList.remove('graph-library-open');if(!disposed)libraryCurve?.input.focus({preventScroll:true});},{signal:lifecycle.signal});
+    libraryExpression.addEventListener('input',syncLibraryExpression,{signal:lifecycle.signal});
+    function plotFromLibrary(){syncLibraryExpression();libraryDialog.close();plotAll(null,true);}
+    $('graph-library-plot').addEventListener('click',plotFromLibrary,{signal:lifecycle.signal});
+    libraryExpression.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();plotFromLibrary();}},{signal:lifecycle.signal});
 
     function insertLibrary(value,isFunction=false,name=''){
-        const curve=activeCurve||curves[0],input=curve.input,start=input.selectionStart??input.value.length,end=input.selectionEnd??start;
+        const curve=libraryDialog.open?libraryCurve:activeCurve||curves[0],input=libraryDialog.open?libraryExpression:curve.input,start=input.selectionStart??input.value.length,end=input.selectionEnd??start;
         const selected=input.value.slice(start,end),arity=registry.get(name)?.minimum_arguments||1;
         const separators=';'.repeat(Math.max(0,arity-1));
         const insertion=isFunction?value+selected+separators+')':value;
         if(input.value.length-(end-start)+insertion.length>4096){curve.message(english?'The expression is too long.':'Zadanie je príliš dlhé.',true);return;}
-        input.setRangeText(insertion,start,end,'end');input.dispatchEvent(new Event('input',{bubbles:true}));if(!libraryDialog.open)input.focus();
+        input.setRangeText(insertion,start,end,'end');input.dispatchEvent(new Event('input',{bubbles:true}));input.focus({preventScroll:true});
         if(isFunction){const caret=selected?(arity>1?start+value.length+selected.length+1:start+insertion.length):start+value.length;input.setSelectionRange(caret,caret);}
+        if(libraryDialog.open)syncLibraryExpression();
     }
     let registry=new Map();
     async function loadLibrary(){
@@ -790,7 +796,7 @@ function initGraph() {
             let page=0;
             function filter(reset=true){if(reset)page=0;const query=library.normalize(search.value.trim()),category=selector.value;
                 const matches=buttons.filter(({searchable,category:group})=>(!category||String(group)===category)&&searchable.includes(query));
-                const perPage=innerHeight<=420?3:innerHeight<=560?6:9,pages=Math.max(1,Math.ceil(matches.length/perPage));page=Math.min(page,pages-1);
+                const perPage=innerHeight<=460?3:innerHeight<=760?6:9,pages=Math.max(1,Math.ceil(matches.length/perPage));page=Math.min(page,pages-1);
                 const shown=new Set(matches.slice(page*perPage,(page+1)*perPage));
                 buttons.forEach(entry=>{entry.button.hidden=!shown.has(entry);});
                 searchStatus.hidden=!!matches.length;searchStatus.textContent=text.noMatch;

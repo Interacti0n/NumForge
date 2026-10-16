@@ -769,9 +769,31 @@ static void test_step_metadata_connections_and_atomic_failures(void)
     TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT,application_graph_adaptive(&graph,expression,NULL,minimum,maximum,NULL,&context,&error));
     numforge_budget_end();TEST_ASSERT_EQUAL_PTR(original,graph);
 }
+static void test_rectified_carriers_preserve_zeros_and_dense_ranges(void)
+{
+    CalculatorError error;const double pi=3.14159265358979323846;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_graph_sample_camera_hermite(&screen_graph,"abs(x*sin(x))",NULL,-100,100,800U,440U,-40,110,false,false,NULL,&context,&error));
+    TEST_ASSERT_FALSE(screen_graph->limited);TEST_ASSERT_EQUAL_UINT(0U,screen_graph->band_count);
+    for(int k=-31;k<=31;++k){double x=(double)k*pi,best=1e9;
+        for(size_t i=0;i<screen_graph->count;++i)if(fabs(screen_graph->points[i].x-x)<1e-6)best=fmin(best,screen_graph->points[i].y);
+        TEST_ASSERT_TRUE(best<1e-6);
+    }
+    application_fast_graph_destroy(screen_graph);screen_graph=NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_graph_sample_camera_hermite(&screen_graph,"abs(x*sin(x))",NULL,-340,3890,930U,530U,-1500,2700,false,true,NULL,&context,&error));
+    TEST_ASSERT_FALSE(screen_graph->limited);TEST_ASSERT_EQUAL_UINT(930U,screen_graph->band_count);
+    for(size_t i=0;i<screen_graph->band_count;++i){ApplicationFastGraphBand b=screen_graph->bands[i];
+        TEST_ASSERT_TRUE(b.minimum==0);TEST_ASSERT_TRUE(b.maximum>=fmax(fabs(b.low),fabs(b.high)));
+        for(unsigned j=0;j<=8U;++j){double x=b.low+(b.high-b.low)*(double)j/8;TEST_ASSERT_TRUE(fabs(x*sin(x))<=b.maximum);}
+    }
+    ApplicationFastGraph *original=screen_graph;
+    TEST_ASSERT_TRUE(numforge_budget_begin(5000U,SIZE_MAX,SIZE_MAX));numforge_test_budget_expire_after(100U);
+    TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT,application_fast_graph_sample_camera_hermite(&screen_graph,"abs(x*sin(x))",NULL,-100,100,800U,440U,-40,110,false,true,NULL,&context,&error));
+    numforge_budget_end();TEST_ASSERT_EQUAL_PTR(original,screen_graph);
+}
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_rectified_carriers_preserve_zeros_and_dense_ranges);
     RUN_TEST(test_step_metadata_connections_and_atomic_failures);
     RUN_TEST(test_gaussian_tail_projection_seeds_and_atomic_failures);
     RUN_TEST(test_guarded_turn_anchors_and_atomic_failures);

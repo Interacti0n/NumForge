@@ -5,6 +5,8 @@ details and the [2.2.1 release record](docs/project/RELEASE_2_2_1.md) for valida
 
 ## Unreleased
 
+- Fix missing valleys in absolute-value graphs and allow full expression editing inside the library.
+
 - Compact graph function library and a taller expanded graph canvas.
 
 - Keep graph rows visually consistent and preserve completed graphs when switching tools or languages.
