@@ -17,7 +17,7 @@ Additional fields require `mode=fast`:
 | `width` | Integer 320–2048 | 800 |
 | `height` | Integer 160–1200 | 440 |
 | `quality` | `coarse`, `refined` | `refined` |
-| `interpolation` | `linear`, `hermite` (requires both y bounds) | `linear` |
+| `interpolation` | `linear`, `hermite`, `hermite-subpixel` (cubic modes require both y bounds) | `linear` |
 | `ymin`, `ymax` | Both finite decimal bounds with finite positive difference | Seed-derived vertical scale |
 | `dense` | `band` (requires both y bounds) | No envelopes |
 
@@ -148,6 +148,21 @@ band. Clients requesting bands must interpret their separate representation;
 legacy requests without the option retain their original point results.
 
 ## Sampling and budgets
+
+For a supported quadratic model with camera bounds, `dense=band` and
+`interpolation=hermite-subpixel`,
+the sampler may return `subpixel_hermite:true`. Such responses require `slopes`:
+use the documented monotone cubic limiter even when an edge is below one
+horizontal pixel, including coordinate inspection. Absent metadata retains the
+legacy one-pixel cubic threshold and linear fallback. Existing `hermite` callers
+retain their original sampling policy. Invalid policy metadata
+or missing required slopes must not be rendered as ordinary linear edges.
+The sampler compares each half-edge cubic midpoint with an actual quarter-point
+evaluation, retains phase/domain checks and discovers stationary anchors during
+refinement. Redundant post-refinement anchor searches are skipped for these
+results. If required slopes cannot fit the existing response budget, the server
+resamples using the legacy path within the same shared operation budget.
+This is approximate rendered-error control, not a certified uniform bound.
 
 There are 33 seeds, breadth-first midpoint refinement and depth at most 16.
 Coarse work is capped at twice width (640–4096 points); refined work at 8192.

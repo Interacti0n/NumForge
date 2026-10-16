@@ -15,7 +15,7 @@ typedef struct Work {
     ApplicationFastGraph *graph;ApplicationExpression *exact;ApplicationFastExpression *fast;
     const CalculatorContext *context;CalculatorError *error;
     double phase_vertices[APPLICATION_FAST_DENSE_CARRIERS];size_t phase_vertex_count;
-    double scale,tolerance,coarse_width,y_minimum,y_maximum,tail_tolerance;size_t limit;bool smooth,screen_floor,camera,exponential,exponential_turns,quadratic_phase;
+    double scale,tolerance,coarse_width,y_minimum,y_maximum,tail_tolerance;size_t limit;bool smooth,screen_floor,camera,exponential,exponential_turns,quadratic_phase,hermite;
 } Work;
 static bool real(const ApplicationFastGraphPoint *p){return p->kind==APPLICATION_GRAPH_REAL&&isfinite(p->y);}
 static CalculatorStatus probe(Work *work,double x,ApplicationFastProbe *result)
@@ -251,7 +251,10 @@ static CalculatorStatus turning_split(Work *work,const ApplicationFastGraphPoint
 {
     if(b->derivative==0){b->turn_anchor=true;return CALCULATOR_OK;}
     double left=a->x,right=c->x,dl=a->derivative;
-    for(unsigned attempt=0U;attempt<32U;++attempt){
+    bool interpolated=work->hermite&&work->quadratic_phase;
+    unsigned attempts=interpolated?12U:32U;
+    double phase_limit=interpolated?3:0.5;
+    for(unsigned attempt=0U;attempt<attempts;++attempt){
         if(numforge_budget_available_bytes()<3U*1024U*1024U||numforge_budget_available_ms()<300U){work->graph->limited=true;return CALCULATOR_OK;}
         double x=left+(right-left)/2;if(x<=left||x>=right)break;
         ApplicationFastProbe observed={0};ApplicationFastGraphPoint value={0};
@@ -260,21 +263,48 @@ static CalculatorStatus turning_split(Work *work,const ApplicationFastGraphPoint
         // An off-screen candidate needs no optional stationary search. In
         // particular, do not spend exact probes chasing an invisible pole.
         double margin=work->tolerance*work->scale*2;
-        if(!isfinite(observed.sample.value)||(work->camera&&
+        if(!isfinite(observed.sample.value)||(!interpolated&&work->camera&&
             (observed.sample.value<work->y_minimum-margin||observed.sample.value>work->y_maximum+margin)))return CALCULATOR_OK;
         if(observed.sample.kind==APPLICATION_FAST_REAL)
             value=(ApplicationFastGraphPoint){x,observed.sample.value,APPLICATION_GRAPH_REAL,false,true,false,observed.derivative};
         else status=point(work,x,&value,&observed);
         if(status!=CALCULATOR_OK)return status;
-        if(!real(&value)||(work->camera&&(value.y<work->y_minimum-margin||value.y>work->y_maximum+margin))||
-            !isfinite(observed.derivative)||!safe(ap,&observed,cp,0.5))return CALCULATOR_OK;
-        if(observed.sample.kind==APPLICATION_FAST_UNCERTAIN||observed.derivative==0||attempt==31U){
+        if(!real(&value)||(!interpolated&&work->camera&&(value.y<work->y_minimum-margin||value.y>work->y_maximum+margin))||
+            !isfinite(observed.derivative)||!safe(ap,&observed,cp,phase_limit))return CALCULATOR_OK;
+        if(observed.sample.kind==APPLICATION_FAST_UNCERTAIN||observed.derivative==0||attempt+1U==attempts){
             value.turn_anchor=true;*b=value;
             *bp=observed;return CALCULATOR_OK;
         }
         if((dl<0&&observed.derivative<0)||(dl>0&&observed.derivative>0)){left=x;dl=observed.derivative;}
         else right=x;
     }
+    return CALCULATOR_OK;
+}
+static double cubic_midpoint(const ApplicationFastGraphPoint *a,const ApplicationFastGraphPoint *b)
+{
+    double dx=b->x-a->x,dy=b->y-a->y,secant=dy/dx;
+    if(!isfinite(a->derivative)||!isfinite(b->derivative)||!isfinite(secant)||dx<=0||dy==0)return a->y/2+b->y/2;
+    double alpha=fmax(0,a->derivative/secant),beta=fmax(0,b->derivative/secant),norm=hypot(alpha,beta);
+    if(!isfinite(alpha)||!isfinite(beta)||!isfinite(norm))return NAN;
+    if(norm>3){alpha*=3/norm;beta*=3/norm;}
+    return a->y/2+b->y/2+dy*(alpha-beta)/8;
+}
+static CalculatorStatus hermite_check(Work *work,const ApplicationFastGraphPoint *a,
+    const ApplicationFastGraphPoint *b,const ApplicationFastGraphPoint *c,
+    const ApplicationFastProbe *ap,const ApplicationFastProbe *bp,const ApplicationFastProbe *cp,bool *accepted)
+{
+    *accepted=false;
+    if(!isfinite(a->derivative)||!isfinite(b->derivative)||!isfinite(c->derivative)||!safe(ap,bp,cp,3))return CALCULATOR_OK;
+    ApplicationFastProbe left={0},right={0};
+    CalculatorStatus status=probe(work,a->x+(b->x-a->x)/2,&left);
+    if(status==CALCULATOR_OK)status=probe(work,b->x+(c->x-b->x)/2,&right);
+    if(status!=CALCULATOR_OK)return status;
+    if(left.sample.kind!=APPLICATION_FAST_REAL||right.sample.kind!=APPLICATION_FAST_REAL||
+        !safe(ap,&left,bp,1.5)||!safe(bp,&right,cp,1.5))return CALCULATOR_OK;
+    double low=cubic_midpoint(a,b),high=cubic_midpoint(b,c);
+    *accepted=isfinite(low)&&isfinite(high)&&
+        fabs(left.sample.value/work->scale-low/work->scale)<=work->tolerance/4&&
+        fabs(right.sample.value/work->scale-high/work->scale)<=work->tolerance/4;
     return CALCULATOR_OK;
 }
 static CalculatorStatus refine(Work *work)
@@ -298,7 +328,7 @@ static CalculatorStatus refine(Work *work)
         if(status==CALCULATOR_OK)status=point(work,middle,&b,&bp);
         if(status!=CALCULATOR_OK)break;
         double ad=a.turn_anchor?0:a.derivative,cd=c.turn_anchor?0:c.derivative;
-        bool turning=work->screen_floor&&!work->smooth&&real(&a)&&real(&b)&&real(&c)&&
+        bool turning=work->screen_floor&&(!work->smooth||(work->hermite&&work->quadratic_phase))&&real(&a)&&real(&b)&&real(&c)&&
             (turn(ad,b.derivative)||turn(b.derivative,cd)||turn(ad,cd));
         // A trend can hide the sign change in the first probes. Explore a
         // sampled bend in f' until screen scale, then let actual turns take over.
@@ -306,7 +336,7 @@ static CalculatorStatus refine(Work *work)
         bool bending=work->screen_floor&&!work->smooth&&c.x-a.x>work->coarse_width&&
             isfinite(ad)&&isfinite(b.derivative)&&isfinite(cd)&&
             (b.derivative<fmin(ad,cd)-gradient*1e-6||b.derivative>fmax(ad,cd)+gradient*1e-6);
-        if(turning&&turn(ad,cd)&&safe(&ap,&bp,&cp,0.5)){
+        if(turning&&turn(ad,cd)&&safe(&ap,&bp,&cp,work->hermite&&work->quadratic_phase?3:0.5)){
             status=turning_split(work,&a,&c,&ap,&cp,&b,&bp);
             if(status!=CALCULATOR_OK)break;
         }
@@ -320,6 +350,10 @@ static CalculatorStatus refine(Work *work)
         // at their own midpoints before accepting the new neighbouring edges.
         bool accepted=!turning&&!bending&&real(&a)&&real(&b)&&real(&c)&&safe(&ap,&bp,&cp,phase_limit)&&
             (short_smooth||fabs(b.y/work->scale-(a.y/work->scale+c.y/work->scale)/2)<=work->tolerance);
+        if(!accepted&&!turning&&work->hermite&&work->quadratic_phase&&work->smooth&&real(&a)&&real(&b)&&real(&c)){
+            status=hermite_check(work,&a,&b,&c,&ap,&bp,&cp,&accepted);if(status!=CALCULATOR_OK)break;
+            if(accepted)graph->subpixel_hermite=true;
+        }
         bool empty=!real(&a)&&!real(&b)&&!real(&c);
         // Spend detail on the visible curve. Monotone guarded probes in a small
         // interval outside the camera may stop without accepting any edge.
@@ -402,7 +436,7 @@ static CalculatorStatus stationary(Work *work)
 }
 static CalculatorStatus sample_view(ApplicationFastGraph **result,const char *input,const char *parameter,
     double minimum,double maximum,size_t width,size_t height,double vertical_span,double y_minimum,double y_maximum,bool camera,bool coarse,bool dense,const CalculatorSession *session,
-    const CalculatorContext *context,CalculatorError *error)
+    const CalculatorContext *context,CalculatorError *error,bool hermite)
 {
     calculator_error_clear(error);
     if(!result||!input||!context){calculator_error_set(error,CALCULATOR_NULL_ARGUMENT,0U);return CALCULATOR_NULL_ARGUMENT;}
@@ -411,7 +445,7 @@ static CalculatorStatus sample_view(ApplicationFastGraph **result,const char *in
     if(maximum-minimum<fmax(fabs(minimum),fabs(maximum))*DBL_EPSILON*256)return CALCULATOR_NOT_IMPLEMENTED;
     CalculatorStatus status=calculator_context_validate(context,error);if(status!=CALCULATOR_OK)return status;
     bool owner=numforge_budget_begin((uint64_t)context->time_limit_ms,CALCULATOR_ALLOCATION_BUDGET,CALCULATOR_SINGLE_ALLOCATION);
-    Work work={0};work.context=context;work.error=error;work.screen_floor=vertical_span>0;work.limit=coarse?width*2U:APPLICATION_FAST_GRAPH_MAX_POINTS;
+    Work work={0};work.context=context;work.error=error;work.screen_floor=vertical_span>0;work.limit=coarse?width*2U:APPLICATION_FAST_GRAPH_MAX_POINTS;work.hermite=hermite;
     work.tail_tolerance=vertical_span/(double)height/64;
     status=parameter?application_expression_prepare(&work.exact,input,parameter,session,context,error):application_expression_prepare_auto(&work.exact,input,session,context,error);
     if(status==CALCULATOR_OK){work.smooth=application_expression_graph_smooth(work.exact);status=application_expression_fast_compile(&work.fast,work.exact,error);if(status==CALCULATOR_INVALID_ARGUMENT)status=CALCULATOR_NOT_IMPLEMENTED;}
@@ -445,8 +479,8 @@ static CalculatorStatus sample_view(ApplicationFastGraph **result,const char *in
         /* Acceptance emits two half-chords. For smooth local curvature their
          * error is about a quarter of the parent midpoint deviation. */
         work.tolerance=span*(coarse?8:2)/(double)height;work.coarse_width=(maximum-minimum)/(double)width;
-        status=refine(&work);if(status==CALCULATOR_OK)status=peaks(&work);
-        if(status==CALCULATOR_OK)status=stationary(&work);
+        status=refine(&work);if(status==CALCULATOR_OK&&!work.graph->subpixel_hermite)status=peaks(&work);
+        if(status==CALCULATOR_OK&&!work.graph->subpixel_hermite)status=stationary(&work);
         if(status==CALCULATOR_OK&&(work.smooth||!work.graph->limited||isnan(low))){
             low=NAN;high=NAN;for(size_t i=0;i<work.graph->count;++i)if(real(&work.graph->points[i])){double y=work.graph->points[i].y;low=isnan(low)?y:fmin(low,y);high=isnan(high)?y:fmax(high,y);}
             work.graph->minimum=low;work.graph->maximum=high;
@@ -461,7 +495,7 @@ CalculatorStatus application_fast_graph_sample_view_dense(ApplicationFastGraph *
     double minimum,double maximum,size_t width,size_t height,double vertical_span,bool coarse,bool dense,const CalculatorSession *session,
     const CalculatorContext *context,CalculatorError *error)
 {
-    return sample_view(result,input,parameter,minimum,maximum,width,height,vertical_span,0,0,false,coarse,dense,session,context,error);
+    return sample_view(result,input,parameter,minimum,maximum,width,height,vertical_span,0,0,false,coarse,dense,session,context,error,false);
 }
 CalculatorStatus application_fast_graph_sample_camera(ApplicationFastGraph **result,const char *input,const char *parameter,
     double minimum,double maximum,size_t width,size_t height,double y_minimum,double y_maximum,bool coarse,bool dense,const CalculatorSession *session,
@@ -470,7 +504,16 @@ CalculatorStatus application_fast_graph_sample_camera(ApplicationFastGraph **res
     if(!isfinite(y_minimum)||!isfinite(y_maximum)||y_maximum<=y_minimum||!isfinite(y_maximum-y_minimum)){
         calculator_error_set(error,CALCULATOR_INVALID_ARGUMENT,0U);return CALCULATOR_INVALID_ARGUMENT;
     }
-    return sample_view(result,input,parameter,minimum,maximum,width,height,y_maximum-y_minimum,y_minimum,y_maximum,true,coarse,dense,session,context,error);
+    return sample_view(result,input,parameter,minimum,maximum,width,height,y_maximum-y_minimum,y_minimum,y_maximum,true,coarse,dense,session,context,error,false);
+}
+CalculatorStatus application_fast_graph_sample_camera_hermite(ApplicationFastGraph **result,const char *input,const char *parameter,
+    double minimum,double maximum,size_t width,size_t height,double y_minimum,double y_maximum,bool coarse,bool dense,const CalculatorSession *session,
+    const CalculatorContext *context,CalculatorError *error)
+{
+    if(!isfinite(y_minimum)||!isfinite(y_maximum)||y_maximum<=y_minimum||!isfinite(y_maximum-y_minimum)){
+        calculator_error_set(error,CALCULATOR_INVALID_ARGUMENT,0U);return CALCULATOR_INVALID_ARGUMENT;
+    }
+    return sample_view(result,input,parameter,minimum,maximum,width,height,y_maximum-y_minimum,y_minimum,y_maximum,true,coarse,dense,session,context,error,true);
 }
 CalculatorStatus application_fast_graph_sample_view(ApplicationFastGraph **result,const char *input,const char *parameter,
     double minimum,double maximum,size_t width,size_t height,double vertical_span,bool coarse,const CalculatorSession *session,

@@ -23,6 +23,8 @@ fast/slow mixtures and non-polynomial phases still have finite sampling limits.
 The subsequent [mixed-range fix](GRAPH_MIXED_RANGES_2026_10_15.md) handles bounded
 slow terms alongside supported dense carriers. General unsupported phases and
 release validation across browsers/devices remain separate work.
+The subsequent [subpixel curves](GRAPH_SUBPIXEL_CURVES_2026_10_15.md) address
+intermediate zoom gaps with checked cubic interpolation and earlier anchors.
 
 This audit changes diagnostic scripts and documentation only. It does not change
 the evaluator, sampler, web UI, version or deployed server.

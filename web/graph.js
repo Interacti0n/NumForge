@@ -118,7 +118,7 @@ function initGraph() {
                 continue;
             }
             if(!a?.plottable||!b.connect||b.nx<=a.nx)continue;
-            const t=(x-a.nx)/(b.nx-a.nx),control=projection.px(b.nx)-projection.px(a.nx)>1?cubic(a,b):null;
+            const t=(x-a.nx)/(b.nx-a.nx),control=b.subpixelHermite||projection.px(b.nx)-projection.px(a.nx)>1?cubic(a,b):null;
             const y=control?(1-t)**3*a.ny+3*(1-t)**2*t*control[1]+3*(1-t)*t*t*control[3]+t**3*b.ny:a.ny*(1-t)+b.ny*t;
             if(Number.isFinite(y))return {curve,x,y};
         }
@@ -234,7 +234,8 @@ function initGraph() {
             const id='graph-clip-'+state.curve.id+'-'+index,segment=element('clipPath',{id});
             const left=run.low===undefined?64:Math.max(64,px(run.low)),end=run.high===undefined?right:Math.min(right,px(run.high));
             segment.append(element('rect',{x:left,y:22,width:Math.max(0,end-left),height:bottom-22}));defs.append(segment);
-            const curve=element('path',{class:'graph-line','data-curve':state.curve.id,style:`stroke:${state.curve.color.value}`,'clip-path':`url(#${id})`});
+            const subpixel=run.chunks.some(chunk=>chunk.points.some(point=>point.subpixelHermite));
+            const curve=element('path',{class:'graph-line'+(subpixel?' graph-line-subpixel':''),'data-curve':state.curve.id,style:`stroke:${state.curve.color.value}`,'clip-path':`url(#${id})`});
             let path='',previous=null,pen=false;
             for(const chunk of run.chunks)for(let i=0;i<chunk.points.length;++i) {
                 const point=chunk.points[i];
@@ -244,7 +245,7 @@ function initGraph() {
                 const x=px(point.nx),y=py(point.ny);
                 if(point.connect && previous){
                     if(!pen)path+=`M${previous.x},${previous.y}`;
-                    const control=x-previous.x>1?cubic(previous.point,point):null;
+                    const control=point.subpixelHermite||x-previous.x>1?cubic(previous.point,point):null;
                     path+=control?`C${px(control[0])},${py(control[1])},${px(control[2])},${py(control[3])},${x},${y}`:`L${x},${y}`;pen=true;
                 }else pen=false;
                 previous={x,y,point};
@@ -285,6 +286,7 @@ function initGraph() {
             if(body.screen_clipped!==undefined&&(!cameraSchema||typeof body.screen_clipped!=='boolean'))throw Error(text.invalid);
             if(body.bands!==undefined&&(body.schema_version!==3||body.evaluation!=='double'||body.dense_representation!=='pixel-envelope'||!Array.isArray(body.bands)||body.bands.length>2048||body.bands.some((b,i)=>!Array.isArray(b)||b.length!==4||b.some(v=>!Number.isFinite(v))||b[0]>=b[1]||b[2]>b[3]||(i>0&&b[0]<body.bands[i-1][1]))))throw Error(text.invalid);
             const slopes=body.slopes;
+            if(body.subpixel_hermite!==undefined&&(body.subpixel_hermite!==true||body.schema_version!==3||body.evaluation!=='double'||!Array.isArray(slopes)))throw Error(text.invalid);
             if(slopes!==undefined&&(body.schema_version!==3||!Array.isArray(slopes)||slopes.length!==body.count||slopes.some(s=>s!==null&&!Number.isFinite(s))))throw Error(text.invalid);
             if(body.schema_version===3){
                 const kinds=['real','domain_error','complex','quantity','unresolved'];
@@ -299,7 +301,7 @@ function initGraph() {
             const points=body.points.map((point,i)=>{
                 if(!point || typeof point.connect!=='boolean' || !['real','domain_error','complex','quantity',...(body.schema_version===3?['unresolved']:[])].includes(point.kind) || typeof point.x!=='string' || (point.kind==='real'?typeof point.y!=='string'&&!(body.schema_version===3&&point.y===null):point.y!==null))throw Error(text.invalid);
                 const nx=numeric(point.x),ny=numeric(point.y);
-                return {...point,nx,ny,derivative:slopes?.[i]??NaN,plottable:point.kind==='real'&&nx!==null&&ny!==null};
+                return {...point,nx,ny,derivative:slopes?.[i]??NaN,subpixelHermite:body.subpixel_hermite===true,plottable:point.kind==='real'&&nx!==null&&ny!==null};
             });
             if(body.bands?.some(b=>b[0]<points[0].nx||b[1]>points.at(-1).nx))throw Error(text.invalid);
             return {points,bands:body.bands||[],screenClipped:body.screen_clipped===true,parameter:body.parameter,limited:body.limited,approximate:body.evaluation==='double',quality:body.quality||'refined',width:body.width,height:body.height};
@@ -487,7 +489,7 @@ function initGraph() {
                 // back to the precision evaluator when fast arithmetic is unsuitable.
                 const query=new URLSearchParams({min:String(low),max:String(high),angle:'rad',ymin:String(yLow),ymax:String(yHigh)});
                 const {width,height}=dimensions();
-                query.set('mode','fast');query.set('width',String(Math.round(width)));query.set('height',String(height));query.set('quality','refined');query.set('interpolation','hermite');query.set('dense','band');
+                query.set('mode','fast');query.set('width',String(Math.round(width)));query.set('height',String(height));query.set('quality','refined');query.set('interpolation','hermite-subpixel');query.set('dense','band');
                 if(id!==generation||disposed)return;
                 const identity=expression;
                 if(cacheIdentity!==identity){clearCache();cacheIdentity=identity;samples=null;bands=null;chunks=null;draw();message(text.busy);}

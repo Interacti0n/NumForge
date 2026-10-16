@@ -154,6 +154,12 @@ bands are unavailable; the unresolved-detail notice remains applicable.
 
 ## Moving the view
 
+At intermediate zoom levels, supported quadratic oscillations use smooth
+interpolation even below a horizontal pixel. C checks those arcs against extra
+evaluated points and keeps actual stationary anchors. This avoids spending the
+point budget on unnecessary straight segments while preserving the visible
+curve. Sampling limits still apply to more demanding or unsupported expressions.
+
 Use the mouse wheel or a two-finger pinch to zoom both axes.
 Drag in any direction to pan horizontally and vertically.
 **Reset view / Obnoviť pohľad** restores both axes to −10..10.

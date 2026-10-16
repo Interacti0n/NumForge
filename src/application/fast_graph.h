@@ -11,7 +11,7 @@ typedef struct ApplicationFastGraphBand {double low,high,minimum,maximum;} Appli
 typedef struct ApplicationFastGraph {
     ApplicationFastGraphPoint *points;size_t count,exact_probes;
     ApplicationFastGraphBand *bands;size_t band_count;
-    double minimum,maximum;bool limited,screen_clipped;
+    double minimum,maximum;bool limited,screen_clipped,subpixel_hermite;
     char parameter[CALCULATOR_VARIABLE_NAME_BYTES+1U];
 } ApplicationFastGraph;
 /* Approximate screen-space sampler, shared inherited budget and atomic output.
@@ -26,8 +26,8 @@ CalculatorStatus application_fast_graph_sample_view(ApplicationFastGraph **resul
     const char *input,const char *parameter,double minimum,double maximum,
     size_t width,size_t height,double vertical_span,bool coarse,const CalculatorSession *session,
     const CalculatorContext *context,CalculatorError *error);
-/* Optional approximate pixel envelopes for a restricted single affine sin/cos
- * carrier. Existing point connection flags remain unchanged and independent. */
+/* Optional approximate pixel envelopes for restricted sin/cos sums with affine
+ * amplitudes and affine/quadratic phases, independent of point connections. */
 CalculatorStatus application_fast_graph_sample_view_dense(ApplicationFastGraph **result,
     const char *input,const char *parameter,double minimum,double maximum,
     size_t width,size_t height,double vertical_span,bool coarse,bool dense,
@@ -36,6 +36,12 @@ void application_fast_graph_destroy(ApplicationFastGraph *graph);
 /* Full camera allows guarded off-screen refinement to be deferred. False edges
  * remain false; screen_clipped results must be resampled for new y coverage. */
 CalculatorStatus application_fast_graph_sample_camera(ApplicationFastGraph **result,
+    const char *input,const char *parameter,double minimum,double maximum,
+    size_t width,size_t height,double y_minimum,double y_maximum,bool coarse,bool dense,
+    const CalculatorSession *session,const CalculatorContext *context,CalculatorError *error);
+/* Opt-in rendered-interpolation validation. A subpixel_hermite result requires
+ * its slopes, including below one pixel; legacy callers retain linear checks. */
+CalculatorStatus application_fast_graph_sample_camera_hermite(ApplicationFastGraph **result,
     const char *input,const char *parameter,double minimum,double maximum,
     size_t width,size_t height,double y_minimum,double y_maximum,bool coarse,bool dense,
     const CalculatorSession *session,const CalculatorContext *context,CalculatorError *error);

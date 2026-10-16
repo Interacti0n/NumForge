@@ -7,6 +7,12 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Validate subpixel monotone cubic graph arcs against actual control evaluations,
+  discover stationary anchors during refinement, and avoid redundant later
+  searches. Add explicit slope-required response metadata, compatible bounded
+  fallback and matching rendering/inspection. Test sequential zoom and offset-grid
+  independent references to catch interpolation errors between sampled points.
+
 - Bound slow sin/cos terms through interior phase/trig extrema and signed affine
   amplitudes when another carrier is dense. Keep fast/slow mixtures visible
   without exhausting sampled points, with ordinary curves after zoom, unchanged

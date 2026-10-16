@@ -26,6 +26,7 @@ body { height: auto; min-height: 100dvh; overflow: auto; }
 .graph-axis { stroke: #c994f075; stroke-width: 1; }
 .graph-tick { fill: #bd9bd8; font: 12px var(--font-math); }
 .graph-line { stroke: var(--graph-color,#dfafff); stroke-width: 1.8; fill: none; }
+@media (max-width: 640px) { .graph-line-subpixel { stroke-width: .9; } }
 .graph-note { color: var(--quiet); font-size: .75rem; line-height: 1.6; margin: 16px 0; }
 @media (max-width: 960px) { .graph-workspace { grid-template-columns: minmax(0,1fr); gap: 16px; } }
 @media (max-width: 600px) { .graph-workspace { padding: 18px 0 28px; } .graph-workspace .card { padding: 18px; } }

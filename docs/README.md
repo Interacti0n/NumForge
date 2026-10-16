@@ -58,6 +58,7 @@ numerical references, session/unit regressions, browser/CI checks and profiling.
 - [Dense graph sums](benchmarks/GRAPH_DENSE_SUMS_2026_10_15.md): bounded affine sin/cos sums, conservative range limits and before/after measurements.
 - [Quadratic graph phases](benchmarks/GRAPH_QUADRATIC_PHASES_2026_10_15.md): sampled phase turns, dense outer ranges and wide-chirp accuracy measurements.
 - [Mixed graph ranges](benchmarks/GRAPH_MIXED_RANGES_2026_10_15.md): bounded slow terms alongside dense carriers, zoom regressions and before/after measurements.
+- [Subpixel graph curves](benchmarks/GRAPH_SUBPIXEL_CURVES_2026_10_15.md): validated cubic arcs, stationary anchors and efficient intermediate zoom.
 - [Smooth graph zoom](benchmarks/GRAPH_SMOOTH_ZOOM_2026_10_13.md): derivative anchors, interpolation accuracy and prepared detail.
 - [BigInt measurements](benchmarks/BIGINT_BENCHMARKS.md).
 - [Karatsuba experiment](benchmarks/KARATSUBA_EXPERIMENT_2026_10_11.md): private threshold measurements, whole-product references and bounded scratch.

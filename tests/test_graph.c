@@ -507,6 +507,34 @@ static void test_dense_sums_bounds_and_resolved_zoom(void)
     TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT,application_fast_graph_sample_view_dense(&screen_graph,expressions[3],NULL,-10,10,800U,440U,20,false,true,NULL,&context,&error));
     numforge_budget_end();TEST_ASSERT_EQUAL_PTR(original,screen_graph);
 }
+static void test_subpixel_hermite_opt_in_and_atomic_failures(void)
+{
+    CalculatorError error;const char *expression="sin(x*x)+cos(1000x)";
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_graph_sample_camera_hermite(&screen_graph,expression,NULL,-2,2,800U,440U,-2,2,false,true,NULL,&context,&error));
+    TEST_ASSERT_TRUE(screen_graph->subpixel_hermite);TEST_ASSERT_FALSE(screen_graph->limited);TEST_ASSERT_TRUE(screen_graph->count<7800U);
+    for(size_t i=1;i<screen_graph->count;++i){TEST_ASSERT_TRUE(screen_graph->points[i].connect);TEST_ASSERT_TRUE(isfinite(screen_graph->points[i].derivative));}
+    application_fast_graph_destroy(screen_graph);screen_graph=NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_graph_sample_camera(&screen_graph,expression,NULL,-2,2,800U,440U,-2,2,false,true,NULL,&context,&error));
+    TEST_ASSERT_FALSE(screen_graph->subpixel_hermite);
+    application_fast_graph_destroy(screen_graph);screen_graph=NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_graph_sample_camera_hermite(&screen_graph,"sin((x*1E8)^2)+cos(1E11*x)",NULL,-2.5e-8,2.5e-8,800U,1200U,-2.5,2.5,false,true,NULL,&context,&error));
+    TEST_ASSERT_TRUE(screen_graph->subpixel_hermite);application_fast_graph_destroy(screen_graph);screen_graph=NULL;
+    char *response=NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,numforge_web_session_request(&store,"POST","/api/graph/plot?mode=fast&dense=band&interpolation=hermite-subpixel&min=-2&max=2&ymin=-2&ymax=2&width=800&height=440",expression,&response));
+    TEST_ASSERT_NOT_NULL(strstr(response,"\"subpixel_hermite\":true"));TEST_ASSERT_NOT_NULL(strstr(response,"\"slopes\":["));free(response);
+    numforge_test_allocator_begin(0U);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_fast_graph_sample_camera_hermite(&screen_graph,"sin(x*x)",NULL,-2,2,800U,440U,-2,2,false,true,NULL,&context,&error));
+    size_t calls=numforge_test_allocator_call_count();numforge_test_allocator_end();ApplicationFastGraph *original=screen_graph;
+    for(size_t failure=1;failure<=calls;++failure){numforge_test_allocator_begin(failure);
+        TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY,application_fast_graph_sample_camera_hermite(&screen_graph,"sin(x*x)",NULL,-2,2,800U,440U,-2,2,false,true,NULL,&context,&error));
+        numforge_test_allocator_end();TEST_ASSERT_EQUAL_PTR(original,screen_graph);
+    }
+    TEST_ASSERT_TRUE(numforge_budget_begin(5000U,SIZE_MAX,SIZE_MAX));numforge_test_budget_expire_after(1000U);
+    TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT,application_fast_graph_sample_camera_hermite(&screen_graph,expression,NULL,-2,2,800U,440U,-2,2,false,true,NULL,&context,&error));
+    numforge_budget_end();TEST_ASSERT_EQUAL_PTR(original,screen_graph);
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,application_fast_graph_sample_camera_hermite(&screen_graph,expression,NULL,-2,2,800U,440U,2,-2,false,true,NULL,&context,&error));
+    TEST_ASSERT_EQUAL_PTR(original,screen_graph);
+}
 static void test_mixed_carrier_ranges_values_and_atomic_failures(void)
 {
     CalculatorError error;
@@ -755,6 +783,7 @@ int main(void)
     RUN_TEST(test_dense_sums_bounds_and_resolved_zoom);
     RUN_TEST(test_quadratic_phase_bands_vertices_and_atomic_failures);
     RUN_TEST(test_mixed_carrier_ranges_values_and_atomic_failures);
+    RUN_TEST(test_subpixel_hermite_opt_in_and_atomic_failures);
     RUN_TEST(test_stationary_anchors_slopes_and_http_opt_in);
     RUN_TEST(test_screen_floor_keeps_smooth_chords_connected);
     RUN_TEST(test_screen_camera_span_and_failure_preserve_output);

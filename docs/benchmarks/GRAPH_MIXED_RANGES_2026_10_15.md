@@ -5,6 +5,10 @@ The quadratic-phase follow-up still exhausted 8192 points for
 and 94.97% small: the slow quadratic phase prevented a band near its vertex,
 while the other carrier remained too dense to sample economically.
 
+The later [subpixel-curve follow-up](GRAPH_SUBPIXEL_CURVES_2026_10_15.md)
+addresses the intermediate-scale sampling gap. Measurements below describe
+the preceding `c383a75` implementation.
+
 ## Change and scope
 
 The C sampler now requires **at least one** full monotone phase period per pixel

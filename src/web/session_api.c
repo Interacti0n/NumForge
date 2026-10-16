@@ -247,7 +247,8 @@ static CalculatorStatus graph_request(ApplicationClientStore *store, const char 
     bool fast_mode=(query->seen&BIT(MODE))!=0U;
     if(fast_mode&&strcmp(query->values[MODE],"fast")!=0)return CALCULATOR_INVALID_ARGUMENT;
     if(!fast_mode&&(query->seen&(BIT(WIDTH)|BIT(HEIGHT)|BIT(QUALITY)|BIT(YMINIMUM)|BIT(YMAXIMUM)|BIT(INTERPOLATION)|BIT(DENSE))))return CALCULATOR_INVALID_ARGUMENT;
-    bool hermite=(query->seen&BIT(INTERPOLATION))&&strcmp(query->values[INTERPOLATION],"hermite")==0;
+    bool subpixel=(query->seen&BIT(INTERPOLATION))&&strcmp(query->values[INTERPOLATION],"hermite-subpixel")==0;
+    bool hermite=subpixel||((query->seen&BIT(INTERPOLATION))&&strcmp(query->values[INTERPOLATION],"hermite")==0);
     if((query->seen&BIT(INTERPOLATION))&&!hermite&&strcmp(query->values[INTERPOLATION],"linear")!=0)return CALCULATOR_INVALID_ARGUMENT;
     double vertical_span=0,camera_low=0,camera_high=0;
     bool dense=(query->seen&BIT(DENSE))!=0U;
@@ -298,10 +299,11 @@ static CalculatorStatus graph_request(ApplicationClientStore *store, const char 
         errno=0;double high=strtod(query->values[MAXIMUM],&end);usable=usable&&errno!=ERANGE&&isfinite(high)&&end!=query->values[MAXIMUM]&&*end=='\0';
         ApplicationFastGraph *fast=NULL;
         if(usable&&high>low)status=vertical_span>0?
-            application_fast_graph_sample_camera(&fast,body,parameter,low,high,(size_t)width,(size_t)height,camera_low,camera_high,coarse,dense,session,&context,error):
+            (subpixel?application_fast_graph_sample_camera_hermite:application_fast_graph_sample_camera)(&fast,body,parameter,low,high,(size_t)width,(size_t)height,camera_low,camera_high,coarse,dense,session,&context,error):
             application_fast_graph_sample_view_dense(&fast,body,parameter,low,high,(size_t)width,(size_t)height,0,coarse,dense,session,&context,error);
         else status=CALCULATOR_NOT_IMPLEMENTED;
         if(status==CALCULATOR_OK){
+fast_response:
             json.capacity=FAST_GRAPH_RESPONSE_CAPACITY;json.data=numforge_malloc(json.capacity);
             if(!json.data)status=CALCULATOR_OUT_OF_MEMORY;
             else{
@@ -325,13 +327,22 @@ static CalculatorStatus graph_request(ApplicationClientStore *store, const char 
                 }
                 /* Optional slopes must not displace required points or exceed
                  * the existing response bound. Absence means linear fallback. */
-                if(hermite&&json.status==CALCULATOR_OK&&json.capacity-json.used>fast->count*18U+32U){
+                if(hermite&&json.status==CALCULATOR_OK&&json.capacity-json.used>fast->count*18U+64U){
                     append(&json,",\"slopes\":[");
                     for(size_t i=0U;i<fast->count;++i){
                         if(isfinite(fast->points[i].derivative))append(&json,"%s%.9g",i?",":"",fast->points[i].derivative);
                         else append(&json,"%snull",i?",":"");
                     }
                     append(&json,"]");
+                    if(fast->subpixel_hermite)append(&json,",\"subpixel_hermite\":true");
+                }else if(fast->subpixel_hermite&&json.status==CALCULATOR_OK){
+                    /* Optimized edges require slopes. If they cannot fit, use
+                     * the legacy sampler within the same inherited budget. */
+                    free(json.data);json.data=NULL;json.used=0;json.status=CALCULATOR_OK;
+                    application_fast_graph_destroy(fast);fast=NULL;
+                    status=application_fast_graph_sample_camera(&fast,body,parameter,low,high,(size_t)width,(size_t)height,camera_low,camera_high,coarse,dense,session,&context,error);
+                    if(status==CALCULATOR_OK)goto fast_response;
+                    goto graph_done;
                 }
                 append(&json,"}");status=json.status;
             }
