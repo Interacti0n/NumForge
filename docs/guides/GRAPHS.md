@@ -30,6 +30,10 @@ name, common abbreviation or localized synonym, or choose a category. Names,
 aliases and descriptions are shared with the calculator, and the C registry owns
 availability. Constants π, e and φ support the same search aliases. Random calls
 are excluded because plotting rejects them.
+The catalogue opens in a compact modal instead of extending the page. Previous/
+next buttons keep every entry reachable without an internal scrollbar; short
+landscape windows show fewer entries per page. Close with × or Escape to return
+to the selected expression. Search begins across all categories.
 
 Clicking inserts into the last focused function row. Selected text is wrapped
 as the first argument. Without a selection, a call such as `sqrt()` is inserted
@@ -171,6 +175,8 @@ The focused plot also accepts +/−, all four arrow keys and Home.
 **Expand graph / Rozšíriť graf** moves the same canvas into a modal covering nearly
 the whole viewport. Its camera and curves are retained; sampling adapts to the
 larger screen area. Return with **Return to page / Vrátiť na stránku** or Escape.
+The expanded plot uses the available height, omits the repeated gesture hint and
+ordinary success text, and retains the legend, controls and important warnings.
 There are no +/− buttons above the graph.
 Empty plots support view controls without computing.
 

@@ -24,7 +24,7 @@ function initGraph() {
         dense:'Husté oscilácie sú zobrazené ako približný rozsah. Priblíž graf pre jednotlivé vlny.',noStroke:'Tu sa nepodarilo rozlíšiť súvislú krivku. Priblíž graf pre viac detailov.',noReal:'V tomto rozsahu x sa nenašli reálne body. Skús iný rozsah.',outside:'Krivka je mimo tohto pohľadu. Posuň graf alebo ho oddiaľ.',domain:'Časti mimo reálnej domény sa nevykresľujú.',numeric:'Hodnoty presahujú číselný rozsah grafu v prehliadači. Uprav pohľad.',hidden:'Všetky funkcie sú skryté.',hide:'Skryť funkciu',show:'Zobraziť funkciu',function:'Funkcia',color:'Farba krivky',remove:'Odstrániť funkciu',expand:'Rozšíriť graf',collapse:'Vrátiť na stránku',unavailable:'Katalóg funkcií nie je dostupný. Skús znovu otvoriť stránku.',noMatch:'Žiadna funkcia sa nenašla. Skús iný názov.'
     };
     const errors=english?{'undefined answer':'Graphs do not use calculator ans.'}:{'division by zero':'Delenie nulou','undefined variable':'Nedefinovaná premenná','undefined answer':'Graf nepoužíva ans z kalkulačky','syntax error':'Chyba syntaxe','time limit exceeded':'Prekročený časový limit','invalid argument':'Neplatný argument'};
-    function message(value,error=false){status.textContent=value;status.classList.toggle('error',error);}
+    function message(value,error=false){status.textContent=value;status.classList.toggle('error',error);status.dataset.detail=String(error||curves.some(c=>{const s=c.state();return s.visible&&(s.error||s.notice);}));}
     function settings(){const first=curves[0];return {version:2,expression:first?.input.value||'',color:first?.color.value||palette[0],view:{x:bounds().slice(),y:yViewport.slice()},curves:curves.map(c=>({expression:c.input.value,color:c.color.value,visible:c.state().visible,plotted:c.hasResult()}))};}
     function save(){if(restoring||disposed)return;try{sessionStorage.setItem('numforge-graph-state',JSON.stringify(settings()));}catch(_) {}}
     function drawSoon(){if(drawFrame===null)drawFrame=requestAnimationFrame(()=>{drawFrame=null;if(!disposed)draw();});}
@@ -32,7 +32,7 @@ function initGraph() {
         const result=root.querySelector('.graph-result');
         if(!$('graph-expanded').open){const width=Math.max(320,Math.min(800,result.clientWidth-48));return {width,height:width<600?300:440};}
         const rendered=svg.clientWidth||result.clientWidth-48,width=Math.max(320,Math.min(2048,rendered));
-        const available=$('graph-expanded').getBoundingClientRect().bottom-svg.getBoundingClientRect().top-38;
+        const available=root.querySelector('.graph-canvas').clientHeight;
         return {width,height:Math.round(Math.max(160,Math.min(1200,available*width/rendered)))};
     }
     function hasVisibleStroke(state){
@@ -182,6 +182,7 @@ function initGraph() {
         let yLow=projectedView[0]/yScale,yHigh=projectedView[1]/yScale;
         const {width,height}=dimensions(),right=width-22,bottom=height-46;
         svg.setAttribute('viewBox',`0 0 ${width} ${height}`);
+        svg.setAttribute('preserveAspectRatio',$('graph-expanded').open?'none':'xMidYMid meet');
         const px=x=>Math.max(-1e6,Math.min(1e6,64+(x/xScale-xLow)/(xHigh-xLow)*(right-64)));
         const py=y=>Math.max(-1e6,Math.min(1e6,bottom-(y/yScale-yLow)/(yHigh-yLow)*(bottom-22)));
         const group=element('g',{class:'graph-drawing'});
@@ -732,13 +733,22 @@ function initGraph() {
     const resize=new ResizeObserver(resized);resize.observe(result);
     window.addEventListener('resize',resized,{signal:lifecycle.signal});
 
+    const libraryDetails=$('graph-library'),libraryDialog=$('graph-library-dialog');
+    libraryDetails.addEventListener('toggle',()=>{
+        if(disposed)return;
+        if(libraryDetails.open&&!libraryDialog.open){libraryDialog.showModal();document.body.classList.add('graph-library-open');$('function-search').focus({preventScroll:true});}
+        else if(!libraryDetails.open&&libraryDialog.open)libraryDialog.close();
+    },{signal:lifecycle.signal});
+    $('graph-library-close').addEventListener('click',()=>libraryDialog.close(),{signal:lifecycle.signal});
+    libraryDialog.addEventListener('close',()=>{libraryDetails.open=false;document.body.classList.remove('graph-library-open');if(!disposed)activeCurve?.input.focus({preventScroll:true});},{signal:lifecycle.signal});
+
     function insertLibrary(value,isFunction=false,name=''){
         const curve=activeCurve||curves[0],input=curve.input,start=input.selectionStart??input.value.length,end=input.selectionEnd??start;
         const selected=input.value.slice(start,end),arity=registry.get(name)?.minimum_arguments||1;
         const separators=';'.repeat(Math.max(0,arity-1));
         const insertion=isFunction?value+selected+separators+')':value;
         if(input.value.length-(end-start)+insertion.length>4096){curve.message(english?'The expression is too long.':'Zadanie je príliš dlhé.',true);return;}
-        input.setRangeText(insertion,start,end,'end');input.dispatchEvent(new Event('input',{bubbles:true}));input.focus();
+        input.setRangeText(insertion,start,end,'end');input.dispatchEvent(new Event('input',{bubbles:true}));if(!libraryDialog.open)input.focus();
         if(isFunction){const caret=selected?(arity>1?start+value.length+selected.length+1:start+insertion.length):start+value.length;input.setSelectionRange(caret,caret);}
     }
     let registry=new Map();
@@ -777,11 +787,20 @@ function initGraph() {
             });
             const constants=library.constantAliasesFor(english);
             for(const [symbol,en,sk] of [['π','Pi','Pí'],['e','Euler’s number','Eulerovo číslo'],['φ','Golden ratio','Zlatý rez']])makeButton(symbol,symbol,english?en:sk,constants[symbol],categories.length-1);
-            function filter(){const query=library.normalize(search.value.trim()),category=selector.value;let matches=0;
-                buttons.forEach(({button,searchable,category:group})=>{button.hidden=!!(!query&&category&&String(group)!==category)||!searchable.includes(query);if(!button.hidden)++matches;});
-                selector.closest('label').hidden=!!query;searchStatus.hidden=!query;searchStatus.textContent=matches?(english?`${matches} matching functions`:`Zodpovedajúce funkcie: ${matches}`):text.noMatch;
+            let page=0;
+            function filter(reset=true){if(reset)page=0;const query=library.normalize(search.value.trim()),category=selector.value;
+                const matches=buttons.filter(({searchable,category:group})=>(!category||String(group)===category)&&searchable.includes(query));
+                const perPage=innerHeight<=420?3:innerHeight<=560?6:9,pages=Math.max(1,Math.ceil(matches.length/perPage));page=Math.min(page,pages-1);
+                const shown=new Set(matches.slice(page*perPage,(page+1)*perPage));
+                buttons.forEach(entry=>{entry.button.hidden=!shown.has(entry);});
+                searchStatus.hidden=!!matches.length;searchStatus.textContent=text.noMatch;
+                $('graph-library-page').textContent=`${page+1} / ${pages}`;
+                $('graph-library-previous').disabled=page===0;$('graph-library-next').disabled=page===pages-1;
             }
-            search.addEventListener('input',filter,{signal:lifecycle.signal});selector.addEventListener('change',filter,{signal:lifecycle.signal});
+            search.addEventListener('input',()=>{if(search.value.trim())selector.value='';filter();},{signal:lifecycle.signal});selector.addEventListener('change',()=>filter(),{signal:lifecycle.signal});
+            $('graph-library-previous').addEventListener('click',()=>{--page;filter(false);},{signal:lifecycle.signal});
+            $('graph-library-next').addEventListener('click',()=>{++page;filter(false);},{signal:lifecycle.signal});
+            window.addEventListener('resize',()=>filter(false),{signal:lifecycle.signal});
             search.addEventListener('keydown',event=>{if(event.key==='Escape'){search.value='';filter();}},{signal:lifecycle.signal});filter();
         }catch(error){if(!disposed&&error.name!=='AbortError'){$('search-status').hidden=false;$('search-status').textContent=text.unavailable;}}
     }
@@ -799,7 +818,7 @@ function initGraph() {
     const resume=curves.filter((c,i)=>!restoredResults[i]&&restored?.version===2&&restoredCurves[i]?.plotted===true&&c.state().visible);
     if(resume.length){++foregroundBatches;Promise.all(resume.map(c=>c.plot(null,true))).finally(()=>{--foregroundBatches;pump();save();});}
     else save();
-    return ()=>{save();initGraph.retained={key:JSON.stringify(settings()),size:dimensions(),curves:curves.map(c=>c.retain())};disposed=true;leaveExpanded(false);curves.forEach(c=>c.dispose());clearTimeout(viewportTimer);if(drawFrame!==null)cancelAnimationFrame(drawFrame);if(inspectionFrame!==null)cancelAnimationFrame(inspectionFrame);clearInspection();inspectionLayer.remove();pointers.clear();resize.disconnect();lifecycle.abort();};
+    return ()=>{save();initGraph.retained={key:JSON.stringify(settings()),size:dimensions(),curves:curves.map(c=>c.retain())};disposed=true;leaveExpanded(false);libraryDialog.close();document.body.classList.remove('graph-library-open');curves.forEach(c=>c.dispose());clearTimeout(viewportTimer);if(drawFrame!==null)cancelAnimationFrame(drawFrame);if(inspectionFrame!==null)cancelAnimationFrame(inspectionFrame);clearInspection();inspectionLayer.remove();pointers.clear();resize.disconnect();lifecycle.abort();};
 
 }
 window.numforgeInitGraph=initGraph;

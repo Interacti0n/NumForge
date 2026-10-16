@@ -7,6 +7,10 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Keep the graph function catalogue within a compact paginated modal without
+  internal scrolling. Give expanded plots the available height, with compact
+  controls/legend and important warnings instead of repeated instruction text.
+
 - Unify expression typography and color controls across graph rows. Preserve the
   graph camera, visibility and completed curves across language/tool navigation
   with the existing bounded cache; restore completed plots after tab reloads.
