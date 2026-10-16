@@ -7,6 +7,8 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Rename the per-curve graph panel to Function editor and align its input, Plot/Clear actions, search and desktop categories with the calculator. Keep compact, scroll-free layouts on smaller screens.
+
 - Preserve valleys and corners in absolute-value graphs, including shifted
   expressions and real sqrt-of-square forms. Check both neighboring intervals,
   retain vertical accuracy at subpixel widths, and map supported dense absolute

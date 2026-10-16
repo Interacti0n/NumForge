@@ -33,8 +33,11 @@ test('expanded plot preserves important errors instead of hiding every status',a
 });
 for(const width of [390,1280])test(`library edits the selected complete expression while remaining open at ${width}`,async({page})=>{
  await page.setViewportSize({width,height:900});await page.goto('/graph?lang=en');await page.locator('#graph-add').click();
- const target=page.locator('.graph-curve').last().locator('input:not([type=color])');await target.fill('');await page.locator('#graph-library summary').click();
+ const target=page.locator('.graph-curve').last().locator('input:not([type=color])');await target.fill('x+1');await page.locator('#graph-library summary').click();
  const editor=page.locator('#graph-library-expression');await expect(editor).toBeFocused();await expect(page.locator('#graph-library-target')).toContainText('2');
+ await expect(page.getByRole('heading',{name:'Function editor',exact:true})).toBeVisible();
+ const inputBox=await editor.boundingBox(),actionsBox=await page.locator('.graph-editor-actions').boundingBox();expect(actionsBox.y).toBeGreaterThanOrEqual(inputBox.y+inputBox.height);
+ await page.locator('#graph-library-clear').click();await expect(editor).toBeFocused();await expect(target).toHaveValue('');await expect(page.locator('#graph-expression')).toHaveValue('sin(x)');
  await editor.fill('x + ');await page.locator('#graph-library-next').click();await expect(editor).toHaveValue('x + ');
  await page.locator('#function-search').fill('square root');await page.locator('#graph-functions button[data-function=sqrt]').click();await expect(editor).toBeFocused();await editor.press('2');
  await expect(editor).toHaveValue('x + sqrt(2)');await expect(target).toHaveValue('x + sqrt(2)');await expect(page.locator('#graph-expression')).toHaveValue('sin(x)');
@@ -42,4 +45,15 @@ for(const width of [390,1280])test(`library edits the selected complete expressi
  await expect(editor).toHaveValue('sin(x) + sqrt(2)');await editor.press('End');await editor.press('+');await editor.press('3');
  await page.locator('#graph-library-dialog').screenshot({path:`C:/Incoming/Projekty/NumForge/build/graph-library-editor-${width}.png`});
  await editor.press('Enter');await expect(page.locator('#graph-library-dialog')).not.toBeVisible();await expect(target).toHaveValue('sin(x) + sqrt(2)+3');await expect(page.locator('path.graph-line')).toHaveCount(2);
+});
+
+test('desktop editor categories match the calculator style and search across categories',async({page})=>{
+ await page.setViewportSize({width:1280,height:800});await page.goto('/graph?lang=en');await page.locator('#graph-library summary').click();
+ const categories=page.locator('#graph-function-categories');await expect(categories).toBeVisible();
+ const trig=categories.getByRole('button',{name:'Trigonometry',exact:true});await trig.click();await expect(trig).toHaveAttribute('aria-pressed','true');
+ await expect(page.locator('#graph-functions button[data-function=sin]')).toBeVisible();await expect(page.locator('#graph-functions button[data-function=sqrt]')).not.toBeVisible();
+ await page.locator('#function-search').fill('square root');await expect(page.locator('#graph-functions button[data-function=sqrt]')).toBeVisible();
+ await expect(categories.getByRole('button',{name:'All categories',exact:true})).toHaveAttribute('aria-pressed','true');
+ await categories.getByRole('button',{name:'Constants',exact:true}).click();await expect(page.locator('#function-search')).toHaveValue('');await expect(page.locator('#graph-functions button[data-insert="π"]')).toBeVisible();
+ await page.locator('#graph-library-dialog').screenshot({path:'C:/Incoming/Projekty/NumForge/build/graph-editor-categories.png'});
 });

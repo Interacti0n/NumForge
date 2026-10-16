@@ -23,9 +23,10 @@ between tools, without repeating completed calculations. Reloading the tab
 recalculates previously completed visible curves at the saved camera; unfinished
 or edited inputs remain unsubmitted. A fresh tab starts around zero.
 
-## Function library
+## Function editor
 
-Open **Function library / Knižnica funkcií** below the expression rows. Search by
+Open **Edit function / Upraviť funkciu** below the expression rows to open the
+**Function editor / Editor funkcie** for the last focused row. Search by
 name, common abbreviation or localized synonym, or choose a category. Names,
 aliases and descriptions are shared with the calculator, and the C registry owns
 availability. Constants π, e and φ support the same search aliases. Random calls
@@ -35,8 +36,12 @@ next buttons keep every entry reachable without an internal scrollbar; short
 landscape windows show fewer entries per page. Close with × or Escape to return
 to the selected expression. Search begins across all categories.
 The selected row's complete expression is editable at the top of the open
-library. Typing, selection and function insertion update that same row; other
-rows remain unchanged. Press Enter there, or Plot, to close the library and draw.
+editor. Typing, selection and function insertion update that same row; other
+rows remain unchanged. Like the calculator, the full-width input has Plot and
+Clear actions below it. Clear empties only this row without submitting it. On
+large screens the calculator-style category buttons sit beside the function
+buttons; smaller windows use a category selector to keep everything on screen.
+Press Enter there, or Plot, to close the editor and draw.
 
 Clicking inserts into the last focused function row. Selected text is wrapped
 as the first argument. Without a selection, a call such as `sqrt()` is inserted

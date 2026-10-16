@@ -5,6 +5,8 @@ details and the [2.2.1 release record](docs/project/RELEASE_2_2_1.md) for valida
 
 ## Unreleased
 
+- Calculator-style graph function editor with clearer naming and Plot/Clear actions.
+
 - Fix missing valleys in absolute-value graphs and allow full expression editing inside the library.
 
 - Compact graph function library and a taller expanded graph canvas.

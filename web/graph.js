@@ -745,6 +745,7 @@ function initGraph() {
     libraryExpression.addEventListener('input',syncLibraryExpression,{signal:lifecycle.signal});
     function plotFromLibrary(){syncLibraryExpression();libraryDialog.close();plotAll(null,true);}
     $('graph-library-plot').addEventListener('click',plotFromLibrary,{signal:lifecycle.signal});
+    $('graph-library-clear').addEventListener('click',()=>{libraryExpression.value='';libraryExpression.setSelectionRange(0,0);syncLibraryExpression();libraryExpression.focus({preventScroll:true});},{signal:lifecycle.signal});
     libraryExpression.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();plotFromLibrary();}},{signal:lifecycle.signal});
 
     function insertLibrary(value,isFunction=false,name=''){
@@ -793,8 +794,14 @@ function initGraph() {
             });
             const constants=library.constantAliasesFor(english);
             for(const [symbol,en,sk] of [['π','Pi','Pí'],['e','Euler’s number','Eulerovo číslo'],['φ','Golden ratio','Zlatý rez']])makeButton(symbol,symbol,english?en:sk,constants[symbol],categories.length-1);
+            const categoryButtons=[...selector.options].map(option=>{
+                const button=document.createElement('button');button.type='button';button.textContent=option.textContent;button.dataset.category=option.value;
+                button.addEventListener('click',()=>{selector.value=option.value;search.value='';filter();},{signal:lifecycle.signal});
+                $('graph-function-categories').append(button);return button;
+            });
             let page=0;
             function filter(reset=true){if(reset)page=0;const query=library.normalize(search.value.trim()),category=selector.value;
+                categoryButtons.forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.category===category)));
                 const matches=buttons.filter(({searchable,category:group})=>(!category||String(group)===category)&&searchable.includes(query));
                 const perPage=innerHeight<=460?3:innerHeight<=760?6:9,pages=Math.max(1,Math.ceil(matches.length/perPage));page=Math.min(page,pages-1);
                 const shown=new Set(matches.slice(page*perPage,(page+1)*perPage));
