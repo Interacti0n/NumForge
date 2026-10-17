@@ -8,7 +8,9 @@ units and approximation metadata follow the existing calculator contracts.
 The [bounded HTTP graph sampler](../reference/GRAPH_HTTP_API.md) now calls this
 foundation through the C application operation in `src/application/graph.h`.
 The [browser graph page](../guides/GRAPHS.md) now draws [adaptive curves](../reference/ADAPTIVE_GRAPH_HTTP_API.md).
-Solvers and an installed public SDK evaluator remain future work.
+General expression solvers and an installed public SDK evaluator remain future
+work. The separate [coefficient-based linear/quadratic foundation](POLYNOMIAL_EQUATIONS.md)
+is implemented in the private C application layer.
 The installed SDK remains the numeric C API. Graph sampling does not implement
 mathematics in JavaScript or reparse the expression for every point.
 

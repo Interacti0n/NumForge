@@ -7,6 +7,15 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+### Equation foundation
+
+- Add a private coefficient-based C solver for linear/quadratic equations with
+  exact rational coefficients, algebraic radicals, complex conjugates, repeated
+  roots and constant/linear degree reduction. Keep irrational roots exact rather
+  than silently rounding them into rational-component complex values.
+- Document ownership, shared time/memory budgets and the future HTTP/UI boundary;
+  add exact residual, allocation-failure, deadline and memory-leak regressions.
+
 ## 2.3.0 — 17 October 2026
 
 ### Graphs and shared expression tools

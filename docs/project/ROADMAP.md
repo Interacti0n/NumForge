@@ -103,8 +103,12 @@ documented HTTP contract alongside the web implementation, using the versioned
    are implemented; informational notes are hidden in the UI. Initial phone feedback
    is positive; broader physical-device checks and graph export/import remain next. Adaptive refinement
    and connection flags remain heuristics, not continuity proofs.
-3. Add real linear/quadratic equation solving, then bounded numerical root
-   finding on a specified interval, with residuals and clear convergence limits.
+3. The [private C linear/quadratic foundation](../design/POLYNOMIAL_EQUATIONS.md)
+   now solves real rational coefficients exactly, including irrational and
+   complex roots and degenerate cases. Coefficient-expression/HTTP adapters,
+   algebraic formatting, decimal projections and the equation UI remain next.
+   Then add bounded numerical root finding on a specified interval, with
+   residuals and clear convergence limits.
 4. Add session user functions, local parameters and definition management,
    followed by their integration with graphs and solvers.
 5. Extend Quantity with general compound unit strings, named derived units,
@@ -133,8 +137,9 @@ Measured arithmetic optimizations can proceed independently of these tools.
   concrete application need.
 
 Equation, sign-in and account-creation navigation entries currently
-open informational pages. Accounts, synchronization and equation solving are not
-implemented. The app has no Premium feature or subscription system.
+open informational pages. Accounts, synchronization and browser/HTTP equation
+solving are not implemented; the private coefficient-based C foundation above
+is available. The app has no Premium feature or subscription system.
 
 ## Distribution and project presentation
 

@@ -5,6 +5,9 @@ details and the [2.3.0 release record](docs/project/RELEASE_2_3.md) for validati
 
 ## Unreleased
 
+- Add the private C foundation for exact linear/quadratic equations, including
+  irrational and complex roots; browser/HTTP integration follows separately.
+
 ## 2.3.0 — 17 October 2026
 
 - Plot up to four colored functions with mouse/touch pan, zoom and expanded views.

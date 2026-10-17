@@ -34,6 +34,7 @@ Start with the [API guide](API.md), or open a specific reference:
 - [Architecture](design/ARCHITECTURE.md): dependency flow and source map.
 - [Application design](design/APPLICATION_DESIGN.md): sessions, adapters and future storage.
 - [Parametric expressions](design/PARAMETRIC_EXPRESSIONS.md): implemented C application foundation for future graphs/solvers, snapshots and shared budgets.
+- [Polynomial equations](design/POLYNOMIAL_EQUATIONS.md): implemented private C linear/quadratic solver, exact radicals, complex roots and ownership; HTTP/UI integration remains next.
 - [Account proposal](design/ACCOUNT_DESIGN.md): planned C/HTTP login, registration, recovery and storage contracts; not implemented.
 - [BigInt](design/BIGINT_DESIGN.md) and [BigDecimal](design/BIGDECIMAL_DESIGN.md): representation and arithmetic.
 - [Calculator](design/CALCULATOR_DESIGN.md): modules, evaluation and budgets.
