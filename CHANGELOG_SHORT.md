@@ -1,7 +1,7 @@
 # Changelog highlights
 
 The main changes in a few words. See the [full changelog](CHANGELOG.md) for
-details and the [2.3.0 preparation record](docs/project/RELEASE_2_3.md) for validation.
+details and the [2.3.0 release record](docs/project/RELEASE_2_3.md) for validation.
 
 ## Unreleased
 

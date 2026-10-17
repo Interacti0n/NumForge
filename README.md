@@ -17,11 +17,11 @@ NumForge is a C17 mathematics library for arbitrary-precision integers
 calculators. Both calculators use the same C expression parser and numeric
 library.
 
-**Preparing 2.3.0:** interactive graphs with up to four functions, adaptive C sampling,
+**2.3.0:** interactive graphs with up to four functions, adaptive C sampling,
 mouse/touch navigation, automatic integer points and C-verified intersections.
-See the [release preparation record](docs/project/RELEASE_2_3.md).
+See the [release record](docs/project/RELEASE_2_3.md).
 
-**Latest published version, 2.2.1:** faster large-number arithmetic, factorials and high-precision logarithms,
+**Previously in 2.2.1:** faster large-number arithmetic, factorials and high-precision logarithms,
 reduced allocation traffic, delayed web previews and stronger regression checks.
 See the [release record](docs/project/RELEASE_2_2_1.md).
 
@@ -154,7 +154,7 @@ integer examples above, or `notation fraction` for exact fractions. Use
 `precision 40` for the illustrated square root, and `quit` to exit.
 
 To run without a compiler, download the portable Windows x64 ZIP or Linux x64
-tar.gz from the [2.2.1 release](https://github.com/Interacti0n/NumForge/releases/tag/v2.2.1).
+tar.gz from the [2.3.0 release](https://github.com/Interacti0n/NumForge/releases/tag/v2.3.0).
 Verify its SHA-256, extract the entire archive and launch `numforge_web.exe`
 (Windows) or `./numforge_web` (Linux); the browser opens automatically on Windows.
 Both archives also include the CLI. Windows binaries are unsigned; Linux requires
@@ -166,12 +166,12 @@ verification. A hosted demo remains future distribution work.
 
 Use NumForge in your own application **without compiling the NumForge source
 tree**. Download a prebuilt SDK and its matching SHA-256 file from the
-[2.2.1 release](https://github.com/Interacti0n/NumForge/releases/tag/v2.2.1):
+[2.3.0 release](https://github.com/Interacti0n/NumForge/releases/tag/v2.3.0):
 
 | Platform | SDK archive | Toolchain |
 | --- | --- | --- |
-| Windows x64 | `NumForge-2.2.1-sdk-win-x64.zip` | MSVC, Release `/MD` |
-| Linux x64 | `NumForge-2.2.1-sdk-linux-x64.tar.gz` | GCC, glibc |
+| Windows x64 | `NumForge-2.3.0-sdk-win-x64.zip` | MSVC, Release `/MD` |
+| Linux x64 | `NumForge-2.3.0-sdk-linux-x64.tar.gz` | GCC, glibc |
 
 Each SDK contains the public headers, a static library, relocatable CMake
 exports and a working example. It exposes BigInt, BigDecimal, BigRational,

@@ -1,9 +1,9 @@
-# Release 2.3.0 preparation record
+# Release 2.3.0 record
 
-Prepared on 17 October 2026. Version 2.3.0 introduces the graph tool and its
-supporting application/HTTP operations. This record is a release candidate audit,
-not evidence of a published tag, successful remote CI or downloadable 2.3.0 assets.
-The latest published download links remain on 2.2.1 until publication.
+[NumForge 2.3.0](https://github.com/Interacti0n/NumForge/releases/tag/v2.3.0) was published on 17 October 2026 from
+exact tag source `e91796007f5abf8b59c858d509dfd618c5e9709e`. It introduces the graph tool
+and supporting application/HTTP operations. All twelve CI jobs and both platform
+packaging jobs passed before the published archives were verified.
 
 ## Scope
 
@@ -79,7 +79,7 @@ Historical benchmark reports retain their original snapshots and limitations.
 The browser CI matrix now has two one-worker shards with unchanged assertions
 and individual timeouts. A listing audit confirms 213 + 195 = 408 cases, no
 overlap and no omission. YAML parsing/matrix/artifact checks passed. This is
-local configuration evidence; the new hosted jobs still require a push.
+local configuration evidence; the subsequent exact-source hosted jobs also passed.
 
 ## Local archive evidence
 
@@ -105,7 +105,7 @@ or the final 2.3.0 release asset name. Outputs stay in ignored
 
 Local Windows GCC checks do not replace Linux sanitizers, hosted Windows MSVC
 2022, 32-bit, Linux/macOS ARM64, fuzz campaigns or Linux archive verification.
-No tag, push or published release was made during this preparation.
+These local audit checks preceded tagging and publication; final release evidence is below.
 
 ## CI follow-up: MSVC 2022 and 32-bit floating-point tests
 
@@ -131,17 +131,29 @@ After the test-only fixes, all 35 graph cases passed in each profile. No numeric
 algorithm, resource budget, tolerance, warning policy or browser code changed.
 The complete older-MSVC RelWithDebInfo build also passed with warnings-as-errors,
 followed by all 42 ordinary checks and 16 allocation shards (58/58). Actual Linux
-32-bit hosted verification remains pending; the local x87 run is a reproduction
+32-bit hosted verification then passed in the final CI run; the local x87 run is a reproduction
 of its arithmetic behavior, not a claim of a local Linux run.
 
-## Publication checklist
+## Published release verification
 
-1. Commit the tested candidate. Push only when requested by the maintainer.
-2. Verify all remote CI jobs for that exact candidate, including both browser
-   shards, Linux sanitizers/fuzzing, 32-bit, ARM64 and installed C/C++ consumers.
-3. After successful CI, create the exact version tag and publish the release.
-   Build applications and SDKs from that tag using the
-   [packaging workflow](RELEASE_PACKAGING.md); verify both Windows/Linux assets.
-4. Update published-download links to 2.3.0 after the matching assets exist.
-   Keep older release tags/assets intact. Audit archives must not be uploaded as
-   release-tag binaries.
+- [Exact-source CI](https://github.com/Interacti0n/NumForge/actions/runs/38993282758): all 12 jobs passed, including
+  Windows/MSVC 2022, Linux 32-bit, both browser shards, Linux sanitizers/fuzzing,
+  ARM64 platforms, coverage, benchmark checks and installed C/C++ consumers.
+- [Release packaging](https://github.com/Interacti0n/NumForge/actions/runs/38994071707): Windows x64 and Linux x64
+  jobs passed full native tests and verified extracted application/SDK archives;
+  the upload job verified checksums before attaching all eight assets.
+- Downloaded the four published archives and four checksum files independently.
+  SHA256, asset sizes/digests, Windows ZIP integrity and embedded source/version
+  provenance all matched the exact `v2.3.0` source above.
+- README and SDK online links now target the published 2.3.0 release. Local audit
+  archives remain separate and were not uploaded as release assets.
+
+| Published archive | SHA256 |
+| --- | --- |
+| `NumForge-2.3.0-win-x64.zip` | `c624bfd92b2eeedbabe090e1f0632b4f6d328049b2d653b95de09771d7fe3668` |
+| `NumForge-2.3.0-linux-x64.tar.gz` | `55e930839634d71ed503678b598e58ee229b838dd1d5fab4b5544e5d4859e0af` |
+| `NumForge-2.3.0-sdk-win-x64.zip` | `002cc99c6d62f3b57198536bf441042c72742a59c35a5c4cab2ffa95c9a24e85` |
+| `NumForge-2.3.0-sdk-linux-x64.tar.gz` | `61a35b5b7e8ee54c32fddac9c75a4c9caefedb16203917afa9d51a3f3895c570` |
+
+The immutable release tag remains on the CI-verified source. Later documentation
+updates record publication without moving that tag or replacing its archives.
