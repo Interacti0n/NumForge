@@ -8,7 +8,8 @@ have different ownership and compatibility contracts.
 | [Public C API](reference/C_API.md) | BigInt, BigDecimal, BigRational, BigComplex, BigRationalComplex, units, runtime scopes and ownership. |
 | [BigComplex foundation](reference/BIGCOMPLEX.md) | Standalone complex arithmetic, principal functions, precision and calculator integration. |
 | [Calculator expressions](reference/CALCULATOR_EXPRESSIONS.md) | Operators, named calls, precision, syntax and limits. |
-| [Polynomial equation foundation](design/POLYNOMIAL_EQUATIONS.md) | Private coefficient-based C solver, exact linear/quadratic roots and resource/ownership rules; no HTTP operation yet. |
+| [Polynomial equation foundation](design/POLYNOMIAL_EQUATIONS.md) | Private coefficient-based C solver, exact linear/quadratic roots and resource/ownership rules. |
+| [Polynomial equation HTTP API](reference/EQUATION_HTTP_API.md) | Stateless exact coefficient expressions and algebraic solutions; browser editor remains next. |
 | [Local HTTP API](reference/HTTP_API.md) | Evaluation, preview/confirmation, client IDs, revisions and errors. |
 | [Session HTTP API](reference/SESSION_HTTP_API.md) | Authoritative variables/history, typed snapshots, reset/release, functions and conversion history. |
 | [Unit HTTP API](reference/UNIT_HTTP_API.md) | Catalogue and compatible expression conversions. |

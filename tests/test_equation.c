@@ -1,4 +1,5 @@
 #include "equation.h"
+#include "session_api.h"
 #include "../src/internal/numforge_alloc.h"
 #include <unity.h>
 #include <inttypes.h>
@@ -11,6 +12,7 @@ static CalculatorError error;
 static BigRational *coefficients[3];
 static ApplicationEquationSolution *solution;
 static BigRationalComplex *root;
+static ApplicationClientStore store;
 
 void setUp(void)
 {
@@ -26,6 +28,7 @@ void setUp(void)
 void tearDown(void)
 {
     numforge_test_allocator_end(); numforge_budget_end();
+    application_client_store_destroy(&store);
     application_equation_destroy(solution); solution = NULL;
     bigrationalcomplex_destroy(root); root = NULL;
     for (size_t i = 0; i < 3U; ++i) {
@@ -222,6 +225,120 @@ static void test_deadline_and_outer_memory_budget_preserve_destinations(void)
     TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE, application_equation_solve(&solution, coefficients[0], coefficients[1], coefficients[2], &context, &error));
     TEST_ASSERT_EQUAL_PTR(original, solution); TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_MEMORY, numforge_budget_failure()); numforge_budget_end();
 }
+
+static void test_coefficient_expressions_are_exact_and_stateless(void)
+{
+    const char *inputs[] = {"0.5", "-5/6", "1/3"};
+    size_t failed = 0U;
+    context.division_scale = 1;
+    context.significant_division = false;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_equation_solve_expressions(&solution, inputs, &context, &error, &failed));
+    TEST_ASSERT_EQUAL(SIZE_MAX, failed);
+    root_parts(0U, "2/3", "0"); root_parts(1U, "1", "0");
+    TEST_ASSERT_FALSE(context.significant_division);
+    application_equation_destroy(solution); solution = NULL;
+    inputs[0] = "sqrt(4)"; inputs[1] = "-(2^2+2)"; inputs[2] = "4! / 6";
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_equation_solve_expressions(&solution, inputs, &context, &error, &failed));
+    root_parts(0U, "1", "0"); root_parts(1U, "2", "0");
+    ApplicationEquationSolution *original = solution;
+    const char *bad[] = {"sqrt(2)", "\xCF\x80", "i", "qty(1;\"m\")", "x=1", "rand()", "sum(1;rand())", "x", "ans", "1/0", "("};
+    const CalculatorStatus statuses[] = {CALCULATOR_NOT_IMPLEMENTED, CALCULATOR_NOT_IMPLEMENTED,
+        CALCULATOR_INVALID_ARGUMENT, CALCULATOR_DIMENSION_ERROR, CALCULATOR_INVALID_ARGUMENT,
+        CALCULATOR_INVALID_ARGUMENT, CALCULATOR_INVALID_ARGUMENT, CALCULATOR_UNDEFINED_VARIABLE,
+        CALCULATOR_UNDEFINED_ANSWER, CALCULATOR_DIVISION_BY_ZERO, CALCULATOR_SYNTAX_ERROR};
+    for (size_t i = 0U; i < sizeof(bad)/sizeof(bad[0]); ++i) {
+        inputs[1] = bad[i];
+        TEST_ASSERT_EQUAL_MESSAGE(statuses[i], application_equation_solve_expressions(&solution, inputs, &context, &error, &failed), bad[i]);
+        TEST_ASSERT_EQUAL(1U, failed); TEST_ASSERT_EQUAL_PTR(original, solution);
+        TEST_ASSERT_EQUAL(statuses[i], error.status);
+    }
+    inputs[1] = "1 + rand()";
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, application_equation_solve_expressions(&solution, inputs, &context, &error, &failed));
+    TEST_ASSERT_EQUAL(4U, error.offset);
+    inputs[1] = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_NULL_ARGUMENT, application_equation_solve_expressions(&solution, inputs, &context, &error, &failed));
+    TEST_ASSERT_EQUAL_PTR(original, solution); TEST_ASSERT_EQUAL(SIZE_MAX, failed);
+}
+
+static void test_expression_adapter_allocation_and_deadline_failures_are_atomic(void)
+{
+    equation(1, -3, 2);
+    const char *inputs[] = {"1/2", "-5/6", "1/3"};
+    ApplicationEquationSolution *attempt = NULL, *original = solution;
+    numforge_test_allocator_begin(0U);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_equation_solve_expressions(&attempt, inputs, &context, &error, NULL));
+    size_t calls = numforge_test_allocator_call_count(); numforge_test_allocator_end(); application_equation_destroy(attempt);
+    for (size_t i = 1U; i <= calls; ++i) {
+        numforge_test_allocator_begin(i);
+        TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY, application_equation_solve_expressions(&solution, inputs, &context, &error, NULL));
+        numforge_test_allocator_end(); TEST_ASSERT_EQUAL_PTR(original, solution);
+    }
+    TEST_ASSERT_TRUE(numforge_budget_begin(5000U, SIZE_MAX, SIZE_MAX));
+    numforge_test_budget_expire_after(1U);
+    TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT, application_equation_solve_expressions(&solution, inputs, &context, &error, NULL));
+    TEST_ASSERT_EQUAL_PTR(original, solution); TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_TIME, numforge_budget_failure()); numforge_budget_end();
+}
+
+static void test_http_exact_solution_schema_and_validation(void)
+{
+    const char *bodies[] = {"1\n0\n-2", "9\n-6\n5", "0\n3\n-2", "0\n0\n0", "0\n0\n7", "4\n12\n9", "1\r\n0\r\n-2"};
+    const char *expected[] = {"\"radicand\":\"2\",\"offset\":null", "\"imaginary\":true,\"center\":\"1/3\"",
+        "\"degree\":1,\"count\":1", "\"kind\":\"all\"", "\"kind\":\"none\"", "\"branch\":\"single\",\"multiplicity\":2", "\"radicand\":\"2\",\"offset\":null"};
+    TEST_ASSERT_TRUE(numforge_web_is_session_target("/api/equations/solve"));
+    for (size_t i = 0U; i < sizeof(bodies)/sizeof(bodies[0]); ++i) {
+        char *response = NULL;
+        TEST_ASSERT_EQUAL(CALCULATOR_OK, numforge_web_session_request(&store, "POST", "/api/equations/solve?precision=1", bodies[i], &response));
+        TEST_ASSERT_NOT_NULL(strstr(response, "\"ok\":true,\"schema_version\":1"));
+        TEST_ASSERT_NOT_NULL(strstr(response, expected[i])); free(response);
+    }
+    const char *bad_targets[] = {"/api/equations/solve?precision=0", "/api/equations/solve?precision=10001",
+        "/api/equations/solve?precision=1&precision=2", "/api/equations/solve?client=abc", "/api/equations/solve?angle=deg", "/api/equations/unknown"};
+    for (size_t i = 0U; i < sizeof(bad_targets)/sizeof(bad_targets[0]); ++i) {
+        char *response = NULL;
+        TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, numforge_web_session_request(&store, "POST", bad_targets[i], "1\n0\n1", &response));
+        TEST_ASSERT_NOT_NULL(strstr(response, "\"ok\":false")); free(response);
+    }
+    const char *bad_bodies[] = {"1", "1\n0", "1\n0\n1\n2", "1\n\n1", "1\n0\n"};
+    for (size_t i = 0U; i < sizeof(bad_bodies)/sizeof(bad_bodies[0]); ++i) {
+        char *response = NULL;
+        TEST_ASSERT_NOT_EQUAL(CALCULATOR_OK, numforge_web_session_request(&store, "POST", "/api/equations/solve", bad_bodies[i], &response));
+        TEST_ASSERT_NOT_NULL(strstr(response, "\"ok\":false")); free(response);
+    }
+    char *response = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, numforge_web_session_request(&store, "POST", "/api/equations/solve", "1\n1+rand()\n0", &response));
+    TEST_ASSERT_NOT_NULL(strstr(response, "\"code\":\"coefficient_b_error\",\"column\":3")); free(response); response = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, numforge_web_session_request(&store, "GET", "/api/equations/solve", "1\n0\n1", &response));
+    free(response);
+    char oversized[CALCULATOR_MAX_INPUT_BYTES + 2U];
+    memset(oversized, '1', sizeof(oversized)-1U); oversized[sizeof(oversized)-1U] = '\0'; response = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, numforge_web_session_request(&store, "POST", "/api/equations/solve", oversized, &response));
+    free(response);
+    static const ApplicationClientStore empty = {0}; TEST_ASSERT_EQUAL_MEMORY(&empty, &store, sizeof(store));
+    application_client_store_destroy(&store);
+}
+
+static void test_http_allocation_failures_and_shared_budget(void)
+{
+    char *response = NULL;
+    numforge_test_allocator_begin(0U);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, numforge_web_session_request(&store, "POST", "/api/equations/solve", "1/2\n-5/6\n1/3", &response));
+    size_t calls = numforge_test_allocator_call_count(); numforge_test_allocator_end(); free(response);
+    for (size_t i = 1U; i <= calls; ++i) {
+        response = NULL; numforge_test_allocator_begin(i);
+        TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY, numforge_web_session_request(&store, "POST", "/api/equations/solve", "1/2\n-5/6\n1/3", &response));
+        numforge_test_allocator_end();
+        if (response) TEST_ASSERT_NULL(strstr(response, "\"ok\":true"));
+        free(response);
+    }
+    response = NULL;
+    TEST_ASSERT_TRUE(numforge_budget_begin(5000U, 1U, 1U));
+    TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE, numforge_web_session_request(&store, "POST", "/api/equations/solve", "1\n0\n1", &response));
+    TEST_ASSERT_NULL(response); TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_MEMORY, numforge_budget_failure()); numforge_budget_end();
+    TEST_ASSERT_TRUE(numforge_budget_begin(5000U, SIZE_MAX, SIZE_MAX));
+    numforge_test_budget_expire_after(1U);
+    TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT, numforge_web_session_request(&store, "POST", "/api/equations/solve", "1\n0\n1", &response));
+    free(response); numforge_budget_end(); application_client_store_destroy(&store);
+}
 int main(void)
 {
     UNITY_BEGIN();
@@ -232,5 +349,9 @@ int main(void)
     RUN_TEST(test_inputs_are_borrowed_and_context_is_always_validated);
     RUN_TEST(test_every_allocation_failure_is_atomic);
     RUN_TEST(test_deadline_and_outer_memory_budget_preserve_destinations);
+    RUN_TEST(test_coefficient_expressions_are_exact_and_stateless);
+    RUN_TEST(test_expression_adapter_allocation_and_deadline_failures_are_atomic);
+    RUN_TEST(test_http_exact_solution_schema_and_validation);
+    RUN_TEST(test_http_allocation_failures_and_shared_budget);
     return UNITY_END();
 }

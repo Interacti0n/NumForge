@@ -5,10 +5,11 @@ coefficients. It preserves exact fractions and irrational radicals, including
 complex conjugate roots. Declarations are in `src/application/equation.h` and
 the implementation belongs to `numforge_application`.
 
-This is an implemented coefficient-based foundation. It is not an installed
-numeric SDK API or an HTTP operation. The browser Equations page remains an
-informational placeholder. Parsing arbitrary equations, decimal root previews
-and interactive equation controls are subsequent work.
+This is an implemented coefficient-based foundation with a stateless
+[HTTP operation](../reference/EQUATION_HTTP_API.md). It is not an installed
+numeric SDK API. The browser Equations page remains an informational placeholder.
+Parsing arbitrary equations, decimal root previews and interactive equation
+controls are subsequent work.
 
 ## C operations and ownership
 
@@ -33,6 +34,16 @@ still available in the successfully solved equation. Invalid root indices and
 requests for roots of NONE/ALL results return `CALCULATOR_INVALID_ARGUMENT`.
 
 ## Degree reduction and exact representation
+
+`application_equation_solve_expressions` evaluates three borrowed coefficient
+strings in a,b,c order, then calls the same exact solver. The shared C evaluator
+must produce exact real integer/rational values; approximate values, quantities
+and complex typed results are rejected. Exact evaluation is enabled regardless
+of the caller's display division policy. Assignments/random calls are forbidden;
+no session variables or ans are available. All three evaluations and solving
+share one budget. Optional `failed_coefficient` receives 0..2 for coefficient
+failures or `SIZE_MAX` for success and non-coefficient errors; error offsets are
+local to the identified coefficient. Ownership matches the typed solver.
 
 | Coefficients | Result |
 | --- | --- |
@@ -79,8 +90,8 @@ existing application time limit (five seconds by default), cumulative 64 MiB
 allocation budget and 512 KiB single-allocation limit. Nested calls inherit an
 active outer budget and never reset or end it. Solving and materializing roots
 are separate bounded operations unless the caller wraps them in one outer
-scope. A future HTTP adapter must keep coefficient evaluation, solving,
-formatting and serialization within one request budget.
+scope. The HTTP adapter keeps coefficient evaluation, solving and successful
+serialization within one request budget.
 
 No session, variables, ans, history or random state is accessed. Resource errors
 abort the operation without publishing partial output. `equation_tests` covers
@@ -92,8 +103,8 @@ complex arithmetic. Allocation-stat builds verify zero live allocations.
 
 ## Next integration
 
-1. Add a read-only coefficient-expression adapter and documented HTTP contract,
-   preserving exact typed inputs and one request budget.
+1. The read-only coefficient-expression adapter and documented HTTP contract
+   are implemented, preserving exact typed inputs and one request budget.
 2. Format exact algebraic roots and add optional cancellation-safe decimal
    projections, then build the equation UI and user guide around that contract.
 3. Add bounded numerical roots of general prepared expressions on an explicit

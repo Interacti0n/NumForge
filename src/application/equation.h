@@ -39,6 +39,17 @@ CalculatorStatus application_equation_solve(ApplicationEquationSolution **result
     const CalculatorContext *context, CalculatorError *error);
 void application_equation_destroy(ApplicationEquationSolution *solution);
 
+/* Stateless coefficient expressions in a,b,c order. Only exact real integer /
+ * rational results are accepted; assignments, random calls, quantities and
+ * approximate values are rejected. Exact evaluation is enabled independently
+ * of the caller's significant_division display policy. No session is read.
+ * failed_coefficient, if supplied, receives 0..2 for a coefficient error, or
+ * SIZE_MAX for success / a non-coefficient error. error offsets are local to
+ * that coefficient. Output ownership and atomic failure match solve above. */
+CalculatorStatus application_equation_solve_expressions(ApplicationEquationSolution **result,
+    const char *const inputs[3], const CalculatorContext *context,
+    CalculatorError *error, size_t *failed_coefficient);
+
 /* Materialize an owned rational-component root; caller destroys *result.
  * Irrational radicals return NOT_IMPLEMENTED rather than silently approximating;
  * their exact center/radicand remain available in the solution above.

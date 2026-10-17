@@ -27,6 +27,7 @@ Start with the [API guide](API.md), or open a specific reference:
 - [Unit HTTP API](reference/UNIT_HTTP_API.md): catalogue and conversion routes.
 - [Graph sampling HTTP API](reference/GRAPH_HTTP_API.md): bounded grids, point errors and session isolation.
 - [Graph points and verification](reference/GRAPH_ANALYSIS_HTTP_API.md): discrete modes, bounded C checks and balanced markers.
+- [Polynomial equation HTTP API](reference/EQUATION_HTTP_API.md): exact coefficient expressions and linear/quadratic solutions.
 - [Web/API coverage](reference/WEB_API_PARITY.md): implemented calls and remaining gaps.
 
 ## Understand the code — `design/`
@@ -34,7 +35,7 @@ Start with the [API guide](API.md), or open a specific reference:
 - [Architecture](design/ARCHITECTURE.md): dependency flow and source map.
 - [Application design](design/APPLICATION_DESIGN.md): sessions, adapters and future storage.
 - [Parametric expressions](design/PARAMETRIC_EXPRESSIONS.md): implemented C application foundation for future graphs/solvers, snapshots and shared budgets.
-- [Polynomial equations](design/POLYNOMIAL_EQUATIONS.md): implemented private C linear/quadratic solver, exact radicals, complex roots and ownership; HTTP/UI integration remains next.
+- [Polynomial equations](design/POLYNOMIAL_EQUATIONS.md): implemented private C linear/quadratic solver, exact radicals, complex roots, coefficient expressions and ownership; UI integration remains next.
 - [Account proposal](design/ACCOUNT_DESIGN.md): planned C/HTTP login, registration, recovery and storage contracts; not implemented.
 - [BigInt](design/BIGINT_DESIGN.md) and [BigDecimal](design/BIGDECIMAL_DESIGN.md): representation and arithmetic.
 - [Calculator](design/CALCULATOR_DESIGN.md): modules, evaluation and budgets.

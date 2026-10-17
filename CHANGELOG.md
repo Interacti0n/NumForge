@@ -13,8 +13,12 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
   exact rational coefficients, algebraic radicals, complex conjugates, repeated
   roots and constant/linear degree reduction. Keep irrational roots exact rather
   than silently rounding them into rational-component complex values.
-- Document ownership, shared time/memory budgets and the future HTTP/UI boundary;
+- Document ownership, shared time/memory budgets and the application/UI boundary;
   add exact residual, allocation-failure, deadline and memory-leak regressions.
+- Add stateless C coefficient-expression evaluation and `POST /api/equations/solve`
+  with exact algebraic JSON roots, coefficient-specific errors and shared request
+  budgets. Reject random/assignment, quantity, complex and approximate coefficients;
+  add exhaustive adapter allocation failures and real-server HTTP regressions.
 
 ## 2.3.0 — 17 October 2026
 

@@ -1,0 +1,93 @@
+# Polynomial equation HTTP API
+
+`POST /api/equations/solve` solves `a*x^2 + b*x + c = 0` using the
+[exact C application solver](../design/POLYNOMIAL_EQUATIONS.md). This stateless
+endpoint is available before the browser equation editor; that page remains an
+informational placeholder. The installed numeric SDK does not export these
+private application interfaces.
+
+## Request
+
+Use a UTF-8 `text/plain` body with exactly three lines: coefficient expressions
+`a`, `b`, then `c`. Do not append a fourth line, even an empty one. CRLF is also
+accepted. Each line must contain an expression. The total body limit is 4096
+bytes, including separators; the server's 8192-byte request framing limit also
+includes headers. NUL bytes are rejected by HTTP framing/dispatch validation.
+
+The only query option is `precision`, an integer from 1 to 10000 with default
+34. Duplicate, unknown and malformed options are errors. Precision controls the
+shared evaluator's decimal working projection; accepted coefficients and
+solutions remain exact at every setting. Radians are fixed for this endpoint.
+
+Expressions use the existing calculator parser and evaluator. Finite decimal
+literals, fractions and calls producing exact real integer/rational results
+are accepted, e.g. `0.5`, `1/3`, `sqrt(4)` and `4! / 6`. Approximate results
+such as `sqrt(2)` or `π` are rejected with `not implemented`; they are not
+silently frozen into rational coefficients. Complex values are rejected with
+`invalid argument`, quantities with `invalid quantity operation`. A mathematically real
+expression is accepted only if its final typed result is exact and real.
+
+Variables and `ans` have no session to resolve against. Assignments and every
+registered random-call alias are rejected before evaluation, including nested
+calls. The endpoint accepts no `client`, revision, display or angle options.
+It never creates or changes sessions, histories, cached results or random state.
+
+PowerShell example, with a running local server:
+
+```powershell
+$body = "1`n0`n-2"
+Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:8766/api/equations/solve' `
+    -ContentType 'text/plain; charset=utf-8' -Body $body
+```
+
+## Exact response, schema 1
+
+All rational numbers are JSON strings, with reduced `numerator/denominator`
+notation when the denominator is not one. There are no lossy JSON numbers for
+coefficients or root coordinates. Example for `x^2 - 2 = 0`:
+
+```json
+{"ok":true,"schema_version":1,"kind":"finite","degree":2,"count":2,"imaginary":false,"center":"0","radicand":"2","offset":null,"discriminant":"8","roots":[{"branch":"minus","multiplicity":1},{"branch":"plus","multiplicity":1}]}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `kind` | `finite`, `none` or `all`; all means every complex number satisfies the constant equation. |
+| `degree` | Effective degree after removing zero leading coefficients; zero for none/all. |
+| `count` | Distinct roots: zero, one or two. A double root appears once. |
+| `center`, `radicand` | Exact finite roots are `center ± sqrt(radicand)`, or `center ± i*sqrt(radicand)` when `imaginary` is true. |
+| `offset` | Exact nonnegative rational square root of radicand, or null for an irrational radical. Null does not mean an unsuccessful solve. |
+| `discriminant` | Exact `b*b - 4*a*c` for degree two, otherwise null. |
+| `roots` | Branch and multiplicity for each root. `minus` precedes `plus`; `single` means center, with multiplicity one or two. |
+
+Linear solutions have zero radicand/offset and one simple root. Repeated
+quadratic roots have zero radicand/offset and multiplicity two. NONE/ALL have
+null center/radicand/offset/discriminant, false imaginary and an empty roots
+array. Negative discriminants produce successful complex solutions, not NONE.
+No decimal root preview or canonical radical simplification is promised yet.
+
+## Errors and limits
+
+Successful solutions return HTTP 200. Malformed requests, invalid coefficients
+and resource failures return HTTP 400 with the standard error envelope:
+
+```json
+{"ok":false,"schema_version":1,"status":"invalid argument","error":"invalid argument","code":"coefficient_b_error","column":3}
+```
+
+`code` identifies `coefficient_a_error`, `coefficient_b_error` or
+`coefficient_c_error` for coefficient evaluation/type errors. `column` is the
+one-based UTF-8 character column within that coefficient's line. Other failures
+use `equation_request_error`; malformed query parsing may use the shared
+`request_error`. The numerical `status` distinguishes syntax, unresolved names,
+division by zero, unsupported approximate coefficients and resource exhaustion.
+Errors have no partial root response. If memory exhaustion prevents an envelope,
+the server retains its small fallback error response.
+
+Parsing/evaluating all coefficients, exact solving and successful serialization
+share one five-second limit, cumulative 64 MiB allocation budget and 512 KiB
+single-allocation limit. The response buffer is bounded to 128 KiB. Oversized
+values/responses fail rather than truncate exact values. Direct C callers may
+install a stricter outer scope; nested operations preserve it. HTTP clients
+cannot raise the time/memory limits. All finite solutions are complete for the
+accepted polynomial; this is separate from approximate graph root candidates.

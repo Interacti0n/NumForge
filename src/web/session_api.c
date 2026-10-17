@@ -5,6 +5,7 @@
 #include "graph.h"
 #include "fast_graph.h"
 #include "graph_analysis.h"
+#include "equation.h"
 #include <errno.h>
 #include <math.h>
 #include "exact_functions.h"
@@ -203,7 +204,8 @@ static void conversion(Json *json, const ApplicationConversion *entry, bool full
 bool numforge_web_is_session_target(const char *target)
 {
     return strncmp(target, "/api/session", 12U) == 0 || strncmp(target, "/api/conversions", 16U) == 0 ||
-        strncmp(target, "/api/functions", 14U) == 0 || strncmp(target, "/api/graph", 10U) == 0;
+        strncmp(target, "/api/functions", 14U) == 0 || strncmp(target, "/api/graph", 10U) == 0 ||
+        strncmp(target, "/api/equations", 14U) == 0;
 }
 
 static void plot_number(Json *json, const CalculatorValue *value, int places)
@@ -456,6 +458,85 @@ static CalculatorStatus graph_verify_request(const char *method,const Query *que
     }
     free(copy);status=calculator_budget_status(status);if(status==CALCULATOR_OK)*response=json.data;else free(json.data);if(owner)numforge_budget_end();return status;
 }
+static void equation_rational(Json *json, const BigRational *value)
+{
+    if (json->status != CALCULATOR_OK) return;
+    if (!value) { append(json, "null"); return; }
+    char *text = NULL;
+    json->status = calculator_from_rational_status(bigrational_to_string(value, &text));
+    if (json->status == CALCULATOR_OK) string(json, text);
+    free(text);
+}
+
+static CalculatorStatus equation_request(const char *method, const Query *query,
+    const char *body, char **response, CalculatorError *error, const char **code)
+{
+    uint64_t precision;
+    *code = "equation_request_error";
+    size_t length = 0U;
+    while (length <= CALCULATOR_MAX_INPUT_BYTES && body[length]) ++length;
+    if (strcmp(method, "POST") != 0 || (query->seen & ~BIT(PRECISION)) ||
+        !number(query, PRECISION, CALCULATOR_DEFAULT_DIVISION_SCALE, &precision) ||
+        precision < 1U || precision > CALCULATOR_MAX_OUTPUT_SCALE || length > CALCULATOR_MAX_INPUT_BYTES)
+        return CALCULATOR_INVALID_ARGUMENT;
+    CalculatorContext context;
+    calculator_context_init(&context);
+    context.division_scale = (int64_t)precision;
+    bool owner = numforge_budget_begin((uint64_t)context.time_limit_ms,
+        CALCULATOR_ALLOCATION_BUDGET, CALCULATOR_SINGLE_ALLOCATION);
+    char *copy = numforge_malloc(length + 1U);
+    CalculatorStatus status = copy ? CALCULATOR_OK : CALCULATOR_OUT_OF_MEMORY;
+    const char *inputs[3] = {copy, NULL, NULL};
+    size_t offsets[3] = {0U}, failed = SIZE_MAX;
+    ApplicationEquationSolution *solution = NULL;
+    Json json = {NULL, 0U, CALCULATOR_OK, RESPONSE_CAPACITY};
+    if (copy) {
+        memcpy(copy, body, length + 1U);
+        for (size_t i = 1U; i < 3U; ++i) {
+            char *separator = strchr(inputs[i-1U], '\n');
+            if (!separator) { status = CALCULATOR_INVALID_ARGUMENT; break; }
+            *separator = '\0';
+            inputs[i] = separator + 1;
+            offsets[i] = (size_t)(inputs[i] - copy);
+        }
+        if (status == CALCULATOR_OK && strchr(inputs[2], '\n')) status = CALCULATOR_INVALID_ARGUMENT;
+    }
+    if (status == CALCULATOR_OK)
+        status = application_equation_solve_expressions(&solution, inputs, &context, error, &failed);
+    if (failed < 3U) {
+        static const char *codes[] = {"coefficient_a_error", "coefficient_b_error", "coefficient_c_error"};
+        *code = codes[failed];
+        calculator_error_set(error, status, offsets[failed] + (error ? error->offset : 0U));
+    } else if (status != CALCULATOR_OK) *code = "equation_request_error";
+    if (status == CALCULATOR_OK) {
+        json.data = numforge_malloc(json.capacity);
+        if (!json.data) status = CALCULATOR_OUT_OF_MEMORY;
+    }
+    if (status == CALCULATOR_OK) {
+        const char *kind = solution->kind == APPLICATION_EQUATION_FINITE ? "finite" :
+            solution->kind == APPLICATION_EQUATION_ALL ? "all" : "none";
+        append(&json, "{\"ok\":true,\"schema_version\":1,\"kind\":\"%s\",\"degree\":%u,\"count\":%zu,\"imaginary\":%s,\"center\":",
+            kind, solution->degree, solution->count, solution->imaginary ? "true" : "false");
+        equation_rational(&json, solution->center);
+        append(&json, ",\"radicand\":"); equation_rational(&json, solution->radicand);
+        append(&json, ",\"offset\":"); equation_rational(&json, solution->offset);
+        append(&json, ",\"discriminant\":"); equation_rational(&json, solution->discriminant);
+        append(&json, ",\"roots\":[");
+        for (size_t i = 0U; i < solution->count; ++i)
+            append(&json, "%s{\"branch\":\"%s\",\"multiplicity\":%u}", i ? "," : "",
+                solution->count == 1U ? "single" : i ? "plus" : "minus", solution->multiplicity[i]);
+        append(&json, "]}");
+        status = json.status;
+    }
+    status = calculator_budget_status(status);
+    if (status == CALCULATOR_OK) *response = json.data;
+    else { free(json.data); calculator_error_set(error, status, error ? error->offset : 0U); }
+    application_equation_destroy(solution);
+    free(copy);
+    if (owner) numforge_budget_end();
+    return status;
+}
+
 static CalculatorStatus session_request(ApplicationClientStore *store,
     const char *method, const char *target, const char *body, char **response,
     CalculatorError *error, const char **code)
@@ -466,6 +547,8 @@ static CalculatorStatus session_request(ApplicationClientStore *store,
     uint64_t conversion_finished = UINT64_MAX;
     Query query; char path[64];
     if (!parse(target, path, &query)) return CALCULATOR_INVALID_ARGUMENT;
+    if (strcmp(path, "/api/equations/solve") == 0)
+        return equation_request(method, &query, body, response, error, code);
     if(strcmp(path,"/api/graph/verify")==0)return graph_verify_request(method,&query,body,response,error,code);
     if (strcmp(path, "/api/graph/sample") == 0 || strcmp(path, "/api/graph/plot") == 0)
         return graph_request(store, method, &query, body, response, error, code, strcmp(path, "/api/graph/plot") == 0);

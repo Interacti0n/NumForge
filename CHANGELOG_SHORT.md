@@ -5,8 +5,8 @@ details and the [2.3.0 release record](docs/project/RELEASE_2_3.md) for validati
 
 ## Unreleased
 
-- Add the private C foundation for exact linear/quadratic equations, including
-  irrational and complex roots; browser/HTTP integration follows separately.
+- Add C/HTTP support for exact linear/quadratic equations, including coefficient
+  expressions, irrational and complex roots; browser integration follows separately.
 
 ## 2.3.0 — 17 October 2026
 

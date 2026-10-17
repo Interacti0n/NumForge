@@ -2,6 +2,10 @@
 
 ## Local HTTP API
 
+For exact linear/quadratic equations, use the separate stateless
+[polynomial equation endpoint](EQUATION_HTTP_API.md). Its three coefficient
+expressions do not read or change calculator sessions.
+
 The typed evaluator automatically promotes dimensionless inputs outside supported
 real domains to principal complex results. This includes negative logarithms,
 asin/acos outside [-1,1], acosh below 1, atanh outside [-1,1], negative even
