@@ -340,8 +340,9 @@ static void test_resolution_experiment_preserves_budget_and_atomic_output(void)
     TEST_ASSERT_NULL(graph);
     TEST_ASSERT_EQUAL(CALCULATOR_OK,application_graph_adaptive_limit(&graph,"x",NULL,minimum,maximum,2048U,NULL,&context,&error));
     ApplicationGraph *original=graph;
-    if(4096U*sizeof(ApplicationExpressionSample)>CALCULATOR_SINGLE_ALLOCATION){
-        TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE,application_graph_adaptive_limit(&graph,"x",NULL,minimum,maximum,4096U,NULL,&context,&error));
+    size_t larger_capacity=4096U;
+    if(larger_capacity*sizeof(ApplicationExpressionSample)>CALCULATOR_SINGLE_ALLOCATION){
+        TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE,application_graph_adaptive_limit(&graph,"x",NULL,minimum,maximum,larger_capacity,NULL,&context,&error));
         TEST_ASSERT_EQUAL_PTR(original,graph);
     }
     numforge_test_allocator_begin(1U);
@@ -870,7 +871,13 @@ static void test_verification_reuse_preserves_values_domains_and_scope(void)
     candidates[0]=(ApplicationGraphCandidate){APPLICATION_GRAPH_VALUE,-1,-2,0,1e-5,1e-6};candidates[1]=candidates[0];
     TEST_ASSERT_EQUAL(CALCULATOR_OK,application_graph_verify_profile(output,&limited,"sqrt(x)",NULL,candidates,2U,&context,&error,true,&stats));TEST_ASSERT_FALSE(output[0].confirmed||output[1].confirmed);TEST_ASSERT_EQUAL(1U,stats.evaluations);TEST_ASSERT_EQUAL(1U,stats.cache_hits);
     candidates[0]=(ApplicationGraphCandidate){APPLICATION_GRAPH_VALUE,.1,0,1,1e-5,1e-6};candidates[1]=candidates[0];candidates[1].x=nextafter(.1,1);
-    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_graph_verify_profile(output,&limited,"x",NULL,candidates,2U,&context,&error,true,&stats));TEST_ASSERT_TRUE(output[0].x==.1);TEST_ASSERT_TRUE(output[1].x==candidates[1].x);TEST_ASSERT_EQUAL(1U,stats.cache_hits);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,application_graph_verify_profile(output,&limited,"x",NULL,candidates,2U,&context,&error,true,&stats));
+    /* Compare stored coordinates bit for bit: x87 may retain extra precision
+     * for a .1 literal even though both input/output fields are doubles. */
+    TEST_ASSERT_TRUE(candidates[0].x!=candidates[1].x);
+    TEST_ASSERT_EQUAL_MEMORY(&candidates[0].x,&output[0].x,sizeof(double));
+    TEST_ASSERT_EQUAL_MEMORY(&candidates[1].x,&output[1].x,sizeof(double));
+    TEST_ASSERT_EQUAL(1U,stats.cache_hits);
     stats.evaluations=987U;output[0].x=123;limited=true;
     TEST_ASSERT_TRUE(numforge_budget_begin(5000U,SIZE_MAX,SIZE_MAX));numforge_test_budget_expire_after(1U);
     TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT,application_graph_verify_profile(output,&limited,"x",NULL,candidates,2U,&context,&error,true,&stats));numforge_budget_end();TEST_ASSERT_TRUE(output[0].x==123);TEST_ASSERT_EQUAL(987U,stats.evaluations);TEST_ASSERT_TRUE(limited);

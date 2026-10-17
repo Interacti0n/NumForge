@@ -107,6 +107,33 @@ Local Windows GCC checks do not replace Linux sanitizers, hosted Windows MSVC
 2022, 32-bit, Linux/macOS ARM64, fuzz campaigns or Linux archive verification.
 No tag, push or published release was made during this preparation.
 
+## CI follow-up: MSVC 2022 and 32-bit floating-point tests
+
+The [first candidate CI run](https://github.com/Interacti0n/NumForge/actions/runs/38990966161)
+for `fbdf6cd` passed ten jobs, including both browser shards, both Linux
+sanitizer configurations, coverage, ARM64 platforms and numeric benchmark jobs.
+Windows failed to compile one test; Linux 32-bit failed one graph assertion.
+All 16 allocation shards passed on Linux 32-bit.
+
+- MSVC 19.44 reported C4127 for a compile-time allocation-size condition with
+  warnings-as-errors. The test now uses its requested sample-capacity variable
+  for both the condition and API call; the allocation/error assertion is retained.
+- The coordinate-cache test compared a stored `double` to the literal `0.1`.
+  x87 can evaluate the literal with excess precision, making that equality fail
+  even when input and output doubles match exactly. The test now asserts that
+  the adjacent inputs are distinct and compares each output to its stored input
+  bit for bit, retaining the expected cache hit.
+
+Both failures were reproduced locally before the changes: MSVC 19.44.35228
+with v143 (CI uses 19.44.35229) reproduced C4127, and GCC 16.2 with
+`-mfpmath=387` reproduced the same graph-test failure as Linux 32-bit.
+After the test-only fixes, all 35 graph cases passed in each profile. No numeric
+algorithm, resource budget, tolerance, warning policy or browser code changed.
+The complete older-MSVC RelWithDebInfo build also passed with warnings-as-errors,
+followed by all 42 ordinary checks and 16 allocation shards (58/58). Actual Linux
+32-bit hosted verification remains pending; the local x87 run is a reproduction
+of its arithmetic behavior, not a claim of a local Linux run.
+
 ## Publication checklist
 
 1. Commit the tested candidate. Push only when requested by the maintainer.
