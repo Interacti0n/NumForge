@@ -169,6 +169,7 @@ if(NUMFORGE_BUILD_APPS OR BUILD_TESTING OR NUMFORGE_BUILD_FUZZERS OR NUMFORGE_BU
         src/application/graph.c
         src/application/graph_analysis.c
         src/application/equation.c
+        src/application/equation_format.c
         src/application/conversion.c
         src/application/session.c
         src/application/client_store.c)
@@ -248,6 +249,10 @@ set(NUMFORGE_WEB_ASSETS
     web/units.en.html
     web/units.css
     web/units.js
+    web/equations.sk.html
+    web/equations.en.html
+    web/equations.css
+    web/equations.js
     web/graph.sk.html
     web/graph.en.html
     web/graph.css

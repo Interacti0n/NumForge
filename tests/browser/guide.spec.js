@@ -3,6 +3,7 @@ const parts={
  calculator:['intro','syntax','variables','functions','complex','quantities','precision','cache','random','history','calculator-limits'],
  units:['units','unit-results','unit-history','unit-limits'],
  graphs:['graphs','graph-settings','graph-reading','graph-color','graph-library','graph-limits'],
+ equations:['equations','equation-results','equation-limits'],
  api:['api-intro','http','session-http','unit-http','graph-http','equation-http','limits','library','documentation']
 };
 async function choose(page,part) {
@@ -62,7 +63,7 @@ test('guide part switching keeps the document, supports Back/Forward and avoids 
  await page.locator('.header-guide').click();await expect(page.locator('[data-guide-panel="calculator"]')).toBeVisible();
 });
 test('guide routes accept only supported parts and languages in either order',async({request})=>{
- for(const query of ['section=calculator','section=units&lang=en','lang=sk&section=graphs','section=api&lang=en']) {
+ for(const query of ['section=calculator','section=units&lang=en','lang=sk&section=graphs','section=equations&lang=sk','section=api&lang=en']) {
   const response=await request.get('/api?'+query);expect(response.ok()).toBe(true);expect(await response.text()).toContain('id="guide-part"');
  }
  for(const query of ['section=unknown','lang=de','section=api&section=units','lang=en&lang=sk','section=api&extra=x','section=api&'])expect((await request.get('/api?'+query)).status()).toBe(404);

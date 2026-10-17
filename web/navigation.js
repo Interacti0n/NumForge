@@ -85,16 +85,12 @@ function setupUpcoming()
     const language = document.documentElement.lang;
     const messages = {
         sk: {
-            solve: ['Riešenie rovníc', 'Samostatný nástroj na hľadanie riešení rovníc je v príprave.',
-                'Čo plánujeme', 'Najprv určíme podporované typy rovníc, presnosť a spôsob zobrazenia riešení.', 'x='],
             login: ['Prihlásenie', 'Prihlasovanie zatiaľ nie je dostupné.',
                 'Čo bude ďalej', 'Po zavedení účtov sa tu bude dať bezpečne prihlásiť a pracovať s vlastným priestorom.', '→', 'Registrácia', '/register?lang=sk'],
             register: ['Vytvoriť účet', 'Registráciu pripravujeme spolu s vlastným priestorom používateľa.',
                 'Čo bude ďalej', 'Pred spustením určíme, aké údaje účet potrebuje a ako sa budú bezpečne uchovávať.', '+', 'Prihlásiť sa', '/login?lang=sk']
         },
         en: {
-            solve: ['Equation solver', 'A dedicated tool for finding solutions to equations is in development.',
-                'What we plan', 'First we will define supported equation types, precision and how solutions are shown.', 'x='],
             login: ['Sign in', 'Sign-in is not available yet.',
                 'What comes next', 'Once accounts are available, you will be able to sign in securely and use your own workspace.', '→', 'Create account', '/register?lang=en'],
             register: ['Create an account', 'Registration is planned alongside a personal workspace.',
@@ -376,6 +372,8 @@ async function navigate(destination, addHistory = true)
         window.numforgeDisposeUnits = null;
         window.numforgeDisposeGraph?.();
         window.numforgeDisposeGraph = null;
+        window.numforgeDisposeEquations?.();
+        window.numforgeDisposeEquations = null;
         disposeGuideNavigation?.();
         disposeGuideNavigation = null;
 
@@ -409,6 +407,14 @@ async function navigate(destination, addHistory = true)
                 script.src = '/assets/graph.js';
                 script.onload = resolve; script.onerror = reject;
                 document.body.append(script);
+            });
+        }
+        if (replacement.querySelector('#equation-form'))
+        {
+            if (window.numforgeInitEquations) window.numforgeDisposeEquations = window.numforgeInitEquations();
+            else await new Promise((resolve, reject) => {
+                const script = document.createElement('script'); script.src = '/assets/equations.js';
+                script.onload = resolve; script.onerror = reject; document.body.append(script);
             });
         }
         if (replacement.querySelector('#unit-converter'))

@@ -522,9 +522,16 @@ static CalculatorStatus equation_request(const char *method, const Query *query,
         append(&json, ",\"offset\":"); equation_rational(&json, solution->offset);
         append(&json, ",\"discriminant\":"); equation_rational(&json, solution->discriminant);
         append(&json, ",\"roots\":[");
-        for (size_t i = 0U; i < solution->count; ++i)
-            append(&json, "%s{\"branch\":\"%s\",\"multiplicity\":%u}", i ? "," : "",
-                solution->count == 1U ? "single" : i ? "plus" : "minus", solution->multiplicity[i]);
+        for (size_t i = 0U; i < solution->count && json.status == CALCULATOR_OK; ++i) {
+            ApplicationEquationRootText *text = NULL;
+            json.status = application_equation_format_root(&text, solution, i, &context, error);
+            if (json.status == CALCULATOR_OK) {
+                append(&json, "%s{\"branch\":\"%s\",\"multiplicity\":%u,\"exact\":", i ? "," : "",
+                    solution->count == 1U ? "single" : i ? "plus" : "minus", solution->multiplicity[i]);
+                string(&json, text->exact); append(&json, ",\"approximation\":"); string(&json, text->approximation); append(&json, "}");
+            }
+            application_equation_root_text_destroy(text);
+        }
         append(&json, "]}");
         status = json.status;
     }

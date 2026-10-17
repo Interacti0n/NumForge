@@ -1,6 +1,6 @@
 # Local web source
 
-The calculator, unit converter, function graphs, API guide and upcoming-tools
+The calculator, unit converter, function graphs, equation editor, API guide and upcoming-tools
 page have separate Slovak and English HTML files.
 `calculator.css` and `api.css` style their respective pages, while `chrome.css`
 styles the shared header. `calculator.js` implements calculator behavior; `function-library.js` shares
@@ -10,7 +10,9 @@ curve caches, a shared camera/priority transport queue, the searchable library
 and expanded-view dialog. `navigation.js` loads shared metadata before either
 tool initializes during an internal transition. `navigation.js` also handles
 transitions between the calculator, guide, future-tool pages and language versions.
-It also fills the shared upcoming page with equation,
+`equations.js` submits coefficients to the C/HTTP solver, renders C-formatted
+exact/approximate roots and retains same-tab state; its disposer aborts stale work.
+Navigation also fills the shared upcoming page with
 sign-in or registration text based on the route. Change these source
 files directly; do not edit the generated `web_page.h` under the build tree.
 
@@ -106,9 +108,9 @@ validates finite browser coordinates. Form settings survive in-place navigation,
 requests are canceled on edits/disposal, and sample values are accessible in a
 table. See the [graph guide](../docs/guides/GRAPHS.md).
 
-Guide content is organized into four `data-guide-panel` articles in the SK/EN
+Guide content is organized into five `data-guide-panel` articles in the SK/EN
 `api.*.html` files. `navigation.js` selects the part and builds its active section
 menu, handles legacy hash links, language links and history, and hides inactive
 parts. Keep part keys and section IDs aligned between languages. The C guide
-route accepts `section=calculator|units|graphs|api` and `lang=sk|en` in either
+route accepts `section=calculator|units|graphs|equations|api` and `lang=sk|en` in either
 order; other page routes retain their existing query contracts.

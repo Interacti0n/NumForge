@@ -9,6 +9,7 @@ testing entry points remain directly under `docs/`.
 - [Remote hosting](guides/HOSTING.md): HTTPS tunnels, reverse proxies and capacity.
 - [Variables](guides/VARIABLES.md): assignments, deletion, snapshots and lifetime.
 - [Function graphs](guides/GRAPHS.md): function/color controls, typed gaps, smooth curves and axes.
+- [Polynomial equations](guides/EQUATIONS.md): coefficient expressions, exact roots, decimal previews and limits.
 - [Unit converter](guides/UNIT_CONVERTER.md): categories, preview, swap and history.
 - [C library guide](guides/LIBRARY_GUIDE.md): build, install and consume the library.
 - [Developer SDK](guides/SDK.md): prebuilt C/C++ library, toolchains and quick start.
@@ -35,7 +36,7 @@ Start with the [API guide](API.md), or open a specific reference:
 - [Architecture](design/ARCHITECTURE.md): dependency flow and source map.
 - [Application design](design/APPLICATION_DESIGN.md): sessions, adapters and future storage.
 - [Parametric expressions](design/PARAMETRIC_EXPRESSIONS.md): implemented C application foundation for future graphs/solvers, snapshots and shared budgets.
-- [Polynomial equations](design/POLYNOMIAL_EQUATIONS.md): implemented private C linear/quadratic solver, exact radicals, complex roots, coefficient expressions and ownership; UI integration remains next.
+- [Polynomial equations](design/POLYNOMIAL_EQUATIONS.md): private C linear/quadratic solver, exact radicals, complex roots, coefficient expressions, formatting and ownership.
 - [Account proposal](design/ACCOUNT_DESIGN.md): planned C/HTTP login, registration, recovery and storage contracts; not implemented.
 - [BigInt](design/BIGINT_DESIGN.md) and [BigDecimal](design/BIGDECIMAL_DESIGN.md): representation and arithmetic.
 - [Calculator](design/CALCULATOR_DESIGN.md): modules, evaluation and budgets.

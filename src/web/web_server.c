@@ -467,6 +467,7 @@ static bool numforge_parse_guide_page(const char *target, bool *english)
         } else if ((length == 18U && strncmp(field, "section=calculator", length) == 0) ||
                    (length == 13U && strncmp(field, "section=units", length) == 0) ||
                    (length == 14U && strncmp(field, "section=graphs", length) == 0) ||
+                   (length == 17U && strncmp(field, "section=equations", length) == 0) ||
                    (length == 11U && strncmp(field, "section=api", length) == 0)) {
             flag = 2U;
         } else return false;
@@ -987,12 +988,23 @@ void numforge_handle_connection_with_origin(
     {
         numforge_send_page(socket, english ? NUMFORGE_GRAPH_PAGE_EN : NUMFORGE_GRAPH_PAGE);
     }
+    else if (strcmp(method, "GET") == 0 && numforge_parse_page_language(target, "/solve", &english))
+    {
+        numforge_send_page(socket, english ? NUMFORGE_EQUATIONS_PAGE_EN : NUMFORGE_EQUATIONS_PAGE);
+    }
     else if (strcmp(method, "GET") == 0 &&
-             (numforge_parse_page_language(target, "/solve", &english) ||
-              numforge_parse_page_language(target, "/login", &english) ||
+             (numforge_parse_page_language(target, "/login", &english) ||
               numforge_parse_page_language(target, "/register", &english)))
     {
         numforge_send_page(socket, english ? NUMFORGE_UPCOMING_PAGE_EN : NUMFORGE_UPCOMING_PAGE);
+    }
+    else if (strcmp(method, "GET") == 0 && strcmp(target, "/assets/equations.css") == 0)
+    {
+        numforge_send_response(socket, 200, "OK", "text/css; charset=utf-8", (const char *)NUMFORGE_EQUATIONS_CSS);
+    }
+    else if (strcmp(method, "GET") == 0 && strcmp(target, "/assets/equations.js") == 0)
+    {
+        numforge_send_response(socket, 200, "OK", "text/javascript; charset=utf-8", (const char *)NUMFORGE_EQUATIONS_JS);
     }
     else if (strcmp(method, "GET") == 0 && strcmp(target, "/assets/graph.css") == 0)
     {

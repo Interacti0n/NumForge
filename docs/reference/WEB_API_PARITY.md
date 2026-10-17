@@ -38,16 +38,16 @@ is added; saved values remain bounded application-owned memory.
 | Adaptive curves and automatic local parameter | `POST /api/graph/plot` | Available; schema 2 precision refinement or mode=fast schema 3 screen sampling with conservative connections |
 | Integer-domain graph samples | `POST /api/graph/plot?mode=fast&render=auto` | Available; conservative direct-parameter detection and bounded integer lattice |
 | Verify graph intercept/intersection candidates | `POST /api/graph/verify` | Available; bounded original-expression C evaluations and numerical residual checks |
-| Solve a linear/quadratic polynomial | `POST /api/equations/solve` | C/HTTP available with exact coefficient expressions and algebraic roots; browser editor not yet implemented |
+| Solve a linear/quadratic polynomial | `POST /api/equations/solve` | Available in browser/C/HTTP with exact coefficient expressions, algebraic root text and approximate decimal previews |
 | List unit catalogue and sources | `GET /api/units` | Available |
 | Validate compatibility, preview a conversion | `POST /api/convert` | Available |
 | Confirm a conversion | `POST /api/conversions?action=commit` | Available, independent ordered history |
 | List/restore/clear conversion history | `GET /api/conversions`, optional saved `id`; `POST` with `action=clear` | Available, no reevaluation |
 
 See [API](../API.md), [Variables](../guides/VARIABLES.md) and [Unit HTTP API](UNIT_HTTP_API.md)
-for the implemented parameter grammar, limits and errors. The [graph page](../guides/GRAPHS.md) is implemented. Equation
-editing and accounts remain browser placeholders. The stateless
-[polynomial solver API](EQUATION_HTTP_API.md) is available; accounts have no API implementation.
+for the implemented parameter grammar, limits and errors. The [graph page](../guides/GRAPHS.md)
+and [equation editor](../guides/EQUATIONS.md) are implemented. Accounts remain
+browser placeholders without an API implementation.
 
 Input editing, caret insertion, clipboard access, language, tab selection,
 expansion and scrolling are client presentation actions. HTTP clients receive

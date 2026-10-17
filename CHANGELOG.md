@@ -9,6 +9,13 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ### Equation foundation
 
+- Add exact root expressions, guarded decimal previews and cancellation-safe
+  projection of small real roots. Expose both strings through the same C/HTTP
+  operation. Preserve exact values separately from approximate previews.
+- Replace the Equations placeholder with a localized mobile/desktop coefficient
+  editor, copyable roots, multiplicities, typed errors and per-tab continuation.
+  Cancel stale requests on editing/navigation and add focused equation guides.
+
 - Add a private coefficient-based C solver for linear/quadratic equations with
   exact rational coefficients, algebraic radicals, complex conjugates, repeated
   roots and constant/linear degree reduction. Keep irrational roots exact rather

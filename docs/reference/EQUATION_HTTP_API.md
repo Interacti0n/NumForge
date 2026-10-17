@@ -2,8 +2,8 @@
 
 `POST /api/equations/solve` solves `a*x^2 + b*x + c = 0` using the
 [exact C application solver](../design/POLYNOMIAL_EQUATIONS.md). This stateless
-endpoint is available before the browser equation editor; that page remains an
-informational placeholder. The installed numeric SDK does not export these
+endpoint also powers the [browser equation editor](../guides/EQUATIONS.md).
+The installed numeric SDK does not export these
 private application interfaces.
 
 ## Request
@@ -44,10 +44,10 @@ Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:8766/api/equations/solve' 
 
 All rational numbers are JSON strings, with reduced `numerator/denominator`
 notation when the denominator is not one. There are no lossy JSON numbers for
-coefficients or root coordinates. Example for `x^2 - 2 = 0`:
+coefficients or root coordinates. Example for `x^2 - 2 = 0` with `precision=16`:
 
 ```json
-{"ok":true,"schema_version":1,"kind":"finite","degree":2,"count":2,"imaginary":false,"center":"0","radicand":"2","offset":null,"discriminant":"8","roots":[{"branch":"minus","multiplicity":1},{"branch":"plus","multiplicity":1}]}
+{"ok":true,"schema_version":1,"kind":"finite","degree":2,"count":2,"imaginary":false,"center":"0","radicand":"2","offset":null,"discriminant":"8","roots":[{"branch":"minus","multiplicity":1,"exact":"-sqrt(2)","approximation":"-1.414213562373095"},{"branch":"plus","multiplicity":1,"exact":"sqrt(2)","approximation":"1.414213562373095"}]}
 ```
 
 | Field | Meaning |
@@ -58,13 +58,19 @@ coefficients or root coordinates. Example for `x^2 - 2 = 0`:
 | `center`, `radicand` | Exact finite roots are `center ± sqrt(radicand)`, or `center ± i*sqrt(radicand)` when `imaginary` is true. |
 | `offset` | Exact nonnegative rational square root of radicand, or null for an irrational radical. Null does not mean an unsuccessful solve. |
 | `discriminant` | Exact `b*b - 4*a*c` for degree two, otherwise null. |
-| `roots` | Branch and multiplicity for each root. `minus` precedes `plus`; `single` means center, with multiplicity one or two. |
+| `roots` | Branch, multiplicity, `exact` expression string and `approximation` decimal string for each root. `minus` precedes `plus`; `single` means center, with multiplicity one or two. |
 
 Linear solutions have zero radicand/offset and one simple root. Repeated
 quadratic roots have zero radicand/offset and multiplicity two. NONE/ALL have
 null center/radicand/offset/discriminant, false imaginary and an empty roots
 array. Negative discriminants produce successful complex solutions, not NONE.
-No decimal root preview or canonical radical simplification is promised yet.
+Each root additionally includes `exact` and `approximation`. For example, the
+plus root above has `exact: "sqrt(2)"` and at precision 16
+`approximation: "1.414213562373095"`. Previews use significant digits from `precision`,
+half-even rounding and guard digits; display options do not affect exact roots.
+Real previews avoid subtraction cancellation using an exact rational root
+product. Preview last digits are not certified; canonical radical simplification
+is not promised. All text/projection work shares the request budget.
 
 ## Errors and limits
 

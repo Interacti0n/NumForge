@@ -328,7 +328,7 @@ test('guide stays separate from tools and accessible with the mobile menu closed
             await page.goto(`${route}?lang=${lang}`);
             const guide = page.locator('.header-guide');
             await expect(guide).toBeVisible();
-            await expect(guide).toHaveAttribute('href', route === '/units' ? `/api?section=units&lang=${lang}` : route === '/graph' ? `/api?section=graphs&lang=${lang}` : `/api?lang=${lang}`);
+            await expect(guide).toHaveAttribute('href', route === '/solve' ? `/api?section=equations&lang=${lang}` : route === '/units' ? `/api?section=units&lang=${lang}` : route === '/graph' ? `/api?section=graphs&lang=${lang}` : `/api?lang=${lang}`);
             await expect(page.locator('.primary-nav a')).toHaveCount(4);
             expect(await guide.evaluate(link => link.closest('.site-navigation') === null)).toBe(true);
             const boxes = await page.locator('.brand, .header-guide, .nav-toggle').evaluateAll(controls =>
@@ -347,7 +347,7 @@ test('guide stays separate from tools and accessible with the mobile menu closed
             else await expect(guide).not.toHaveAttribute('aria-current', 'page');
         }
         await page.locator('.header-guide').click();
-        await expect(page).toHaveURL(new RegExp(`/api\\?lang=${lang}$`));
+        await expect(page).toHaveURL(new RegExp(`/api\\?section=equations&lang=${lang}$`));
         await expect(page.locator('.header-guide')).toHaveAttribute('aria-current', 'page');
         await page.locator('.nav-toggle').click();
         await expect(page.locator('.header-guide')).toBeVisible();
@@ -829,7 +829,7 @@ for (const lang of ['sk', 'en']) {
             await page.locator('.primary-nav a[href^="/graph"]').click();
             await expect(page.locator('#graph-title')).toHaveText(other === 'sk' ? 'Grafy funkcií' : 'Function graphs');
             await page.locator('.primary-nav a[href^="/solve"]').click();
-            await expect(page.locator('#upcoming-title')).toHaveText(other === 'sk' ? 'Riešenie rovníc' : 'Equation solver');
+            await expect(page.locator('.equation-entry h1')).toHaveText(other === 'sk' ? 'Rovnice' : 'Equations');
             await page.locator('.primary-nav a[href^="/units"]').click();
             await expect(page.locator('#unit-converter')).toBeVisible();
             await expect(page.locator('#unit-result')).toHaveText('1000');
@@ -842,7 +842,7 @@ for (const lang of ['sk', 'en']) {
             await calculate(page, 'ans', '4/3');
         });
         test('future tools have localized pages and the menu remains usable on mobile', async ({ page, request }) => {
-            for (const tool of ['solve', 'login', 'register']) {
+            for (const tool of ['login', 'register']) {
                 const response = await request.get(`/${tool}?lang=${lang}`);
                 expect(response.ok()).toBe(true);
                 await page.goto(`/${tool}?lang=${lang}`);

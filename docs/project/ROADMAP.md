@@ -106,8 +106,9 @@ documented HTTP contract alongside the web implementation, using the versioned
 3. The [private C linear/quadratic foundation](../design/POLYNOMIAL_EQUATIONS.md)
    now solves real rational coefficients exactly, including irrational and
    complex roots and degenerate cases. Stateless coefficient expressions and
-   the [HTTP adapter](../reference/EQUATION_HTTP_API.md) are available. Algebraic
-   formatting, decimal projections and the equation UI remain next.
+   the [HTTP adapter](../reference/EQUATION_HTTP_API.md), exact root text,
+   stable decimal previews and the [browser editor](../guides/EQUATIONS.md)
+   are available.
    Then add bounded numerical root finding on a specified interval, with
    residuals and clear convergence limits.
 4. Add session user functions, local parameters and definition management,
@@ -137,9 +138,9 @@ Measured arithmetic optimizations can proceed independently of these tools.
 - Additional constants and mathematical types/functions where there is a
   concrete application need.
 
-Equation, sign-in and account-creation navigation entries currently
-open informational pages. Accounts, synchronization and browser equation solving
-are not implemented; the coefficient-based C/HTTP solver above is available.
+Sign-in and account-creation navigation entries currently
+open informational pages. Accounts and synchronization are not implemented;
+coefficient-based equation solving is available in C, HTTP and the browser.
 The app has no Premium feature or subscription system.
 
 ## Distribution and project presentation

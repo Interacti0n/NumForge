@@ -6,7 +6,9 @@ details and the [2.3.0 release record](docs/project/RELEASE_2_3.md) for validati
 ## Unreleased
 
 - Add C/HTTP support for exact linear/quadratic equations, including coefficient
-  expressions, irrational and complex roots; browser integration follows separately.
+  expressions, irrational and complex roots.
+- Add the browser equation editor, exact root text, stable decimal previews,
+  copy actions and a dedicated guide in both languages.
 
 ## 2.3.0 — 17 October 2026
 

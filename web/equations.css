@@ -1,0 +1,29 @@
+@import url('/assets/calculator.css');
+body { height:auto; min-height:100dvh; overflow:auto; }
+.units-shell { min-height:100dvh; display:flex; flex-direction:column; }
+.equations-workspace { flex:1; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); align-items:start; gap:24px; padding:32px 0; }
+.equations-workspace .card { min-width:0; padding:28px; }
+.equation-entry h1 { margin:0; font-size:1.5rem; }
+.equation-formula { color:var(--accent); font:1.7rem var(--font-math); margin:16px 0 26px; }
+.equation-coefficients { display:grid; gap:16px; }
+.equation-entry label { display:grid; gap:8px; font-weight:600; }
+.equation-entry input { width:100%; min-width:0; min-height:46px; padding:10px 12px; color:var(--text); background:var(--surface-input); border:1px solid var(--border); border-radius:10px; font:1rem var(--font-math); }
+.equation-entry input[aria-invalid=true] { border-color:var(--danger); }
+.equation-hint,.equation-settings p,#equation-status { color:var(--muted); font-size:.9rem; line-height:1.6; }
+.equation-actions { display:flex; gap:12px; margin:22px 0; }
+.equation-actions button { flex:1; min-height:46px; }
+.equations-workspace button:not(.primary-button) { color:var(--text); background:var(--surface-raised); border:1px solid var(--border); border-radius:10px; font:inherit; cursor:pointer; }
+.equations-workspace button:not(.primary-button):hover { background:var(--border-soft); border-color:var(--accent); }
+.equations-workspace :is(button,input,summary):focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+.equation-settings { border-top:1px solid var(--border-soft); padding-top:18px; }
+.equation-settings summary { cursor:pointer; color:var(--muted); }
+.equation-settings label { margin-top:16px; }
+.equation-result h2 { margin:0 0 22px; font-size:1.2rem; }
+#equation-error { color:var(--danger); line-height:1.6; }
+#equation-roots { list-style:none; padding:0; margin:0; display:grid; gap:18px; }
+.equation-root { border-top:1px solid var(--border-soft); padding-top:18px; display:grid; gap:12px; }
+.equation-root code { display:block; font:1.15rem/1.6 var(--font-math); overflow-wrap:anywhere; white-space:pre-wrap; }
+.equation-approx { color:var(--muted); border-top:1px solid var(--border-soft); padding-top:12px; }
+.equation-root small { color:var(--quiet); }
+.equation-root button { justify-self:start; min-height:40px; padding:8px 14px; }
+@media(max-width:760px) { .equations-workspace { grid-template-columns:minmax(0,1fr); padding:20px 0; gap:16px; } .equations-workspace .card { padding:20px; } }

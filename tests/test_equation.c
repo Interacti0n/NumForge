@@ -13,6 +13,7 @@ static BigRational *coefficients[3];
 static ApplicationEquationSolution *solution;
 static BigRationalComplex *root;
 static ApplicationClientStore store;
+static ApplicationEquationRootText *root_text;
 
 void setUp(void)
 {
@@ -29,6 +30,7 @@ void tearDown(void)
 {
     numforge_test_allocator_end(); numforge_budget_end();
     application_client_store_destroy(&store);
+    application_equation_root_text_destroy(root_text); root_text = NULL;
     application_equation_destroy(solution); solution = NULL;
     bigrationalcomplex_destroy(root); root = NULL;
     for (size_t i = 0; i < 3U; ++i) {
@@ -339,6 +341,66 @@ static void test_http_allocation_failures_and_shared_budget(void)
     TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT, numforge_web_session_request(&store, "POST", "/api/equations/solve", "1\n0\n1", &response));
     free(response); numforge_budget_end(); application_client_store_destroy(&store);
 }
+static void test_root_text_and_cancellation_safe_preview(void)
+{
+    context.division_scale = 16;
+    equation(1, 0, -2);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_equation_format_root(&root_text, solution, 1U, &context, &error));
+    TEST_ASSERT_EQUAL_STRING("sqrt(2)", root_text->exact);
+    TEST_ASSERT_EQUAL_STRING("1.414213562373095", root_text->approximation);
+    application_equation_root_text_destroy(root_text); root_text = NULL;
+    equation(0, 3, -1);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_equation_format_root(&root_text, solution, 0U, &context, &error));
+    TEST_ASSERT_EQUAL_STRING("1/3", root_text->exact);
+    TEST_ASSERT_EQUAL_STRING("0.3333333333333333", root_text->approximation);
+    application_equation_root_text_destroy(root_text); root_text = NULL;
+    equation(9, -6, 5);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_equation_format_root(&root_text, solution, 0U, &context, &error));
+    TEST_ASSERT_EQUAL_STRING("1/3 - (2/3)*i", root_text->exact);
+    application_equation_root_text_destroy(root_text); root_text = NULL;
+    integer(coefficients[0], 1); integer(coefficients[2], -1);
+    fraction(coefficients[1], "100000000000000000000000000000000000000000000000000000000000000000000000000000000", "1");
+    application_equation_destroy(solution); solution = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_equation_solve(&solution, coefficients[0], coefficients[1], coefficients[2], &context, &error));
+    TEST_ASSERT_NULL(solution->offset);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_equation_format_root(&root_text, solution, 1U, &context, &error));
+    BigDecimal *actual = bigdecimal_create(), *expected = bigdecimal_create(); int comparison = 1;
+    TEST_ASSERT_NOT_NULL(actual); TEST_ASSERT_NOT_NULL(expected);
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(actual, root_text->approximation));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(expected, "1E-80"));
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_compare(&comparison, actual, expected)); TEST_ASSERT_EQUAL(0, comparison);
+    bigdecimal_destroy(actual); bigdecimal_destroy(expected);
+    application_equation_root_text_destroy(root_text); root_text = NULL;
+    /* Flip the sign to exercise the opposite stable branch. */
+    TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_negate(coefficients[1], coefficients[1]));
+    application_equation_destroy(solution); solution = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_equation_solve(&solution, coefficients[0], coefficients[1], coefficients[2], &context, &error));
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_equation_format_root(&root_text, solution, 0U, &context, &error));
+    TEST_ASSERT_EQUAL_STRING("-1E-80", root_text->approximation);
+}
+
+static void test_root_text_failure_is_atomic(void)
+{
+    const int64_t cases[][3] = {{1, 0, -2}, {9, -6, 5}, {3, 1, 1}};
+    for (size_t k = 0U; k < sizeof(cases)/sizeof(cases[0]); ++k) {
+        equation(cases[k][0], cases[k][1], cases[k][2]);
+        application_equation_root_text_destroy(root_text); root_text = NULL;
+        TEST_ASSERT_EQUAL(CALCULATOR_OK, application_equation_format_root(&root_text, solution, 0U, &context, &error));
+        ApplicationEquationRootText *attempt = NULL, *original = root_text;
+        numforge_test_allocator_begin(0U);
+        TEST_ASSERT_EQUAL(CALCULATOR_OK, application_equation_format_root(&attempt, solution, 1U, &context, &error));
+        size_t calls = numforge_test_allocator_call_count(); numforge_test_allocator_end(); application_equation_root_text_destroy(attempt);
+        for (size_t i = 1U; i <= calls; ++i) {
+            numforge_test_allocator_begin(i);
+            TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY, application_equation_format_root(&root_text, solution, 1U, &context, &error));
+            numforge_test_allocator_end(); TEST_ASSERT_EQUAL_PTR(original, root_text);
+        }
+        TEST_ASSERT_TRUE(numforge_budget_begin(5000U, SIZE_MAX, SIZE_MAX)); numforge_test_budget_expire_after(1U);
+        TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT, application_equation_format_root(&root_text, solution, 0U, &context, &error));
+        TEST_ASSERT_EQUAL_PTR(original, root_text); numforge_budget_end();
+    }
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -353,5 +415,7 @@ int main(void)
     RUN_TEST(test_expression_adapter_allocation_and_deadline_failures_are_atomic);
     RUN_TEST(test_http_exact_solution_schema_and_validation);
     RUN_TEST(test_http_allocation_failures_and_shared_budget);
+    RUN_TEST(test_root_text_and_cancellation_safe_preview);
+    RUN_TEST(test_root_text_failure_is_atomic);
     return UNITY_END();
 }

@@ -154,12 +154,12 @@ or ordering/statistical constraints remain errors. See
 
 ## Guide and API parts
 
-The shared **Guide / API** page stays under `/api`. It now separates four parts:
-Calculator, Units, Graphs and API. Desktop uses part links; mobile uses a compact
+The shared **Guide / API** page stays under `/api`. It now separates five parts:
+Calculator, Units, Graphs, Equations and API. Desktop uses part links; mobile uses a compact
 part selector. Each part has its own section menu and scroll position indicator.
-Calculator is the default; Units and Graphs link directly to their own guides.
+Calculator is the default; Units, Graphs and Equations link directly to their own guides.
 
-Use `/api?section=calculator&lang=en`, `section=units`, `section=graphs` or
+Use `/api?section=calculator&lang=en`, `section=units`, `section=graphs`, `section=equations` or
 `section=api`. The fields may appear in either order. Unsupported/duplicate
 fields and values are rejected. English and Slovak contain matching sections.
 The page loads all parts together; switching parts does not fetch HTML or reload.

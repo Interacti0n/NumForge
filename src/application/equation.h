@@ -58,4 +58,18 @@ CalculatorStatus application_equation_root_exact(BigRationalComplex **result,
     const ApplicationEquationSolution *solution, size_t index,
     const CalculatorContext *context, CalculatorError *error);
 
+typedef struct ApplicationEquationRootText {
+    char *exact;
+    char *approximation;
+} ApplicationEquationRootText;
+
+/* Owned exact expression and approximate decimal preview (significant digits
+ * from division_scale, half-even). Preview is not a certified rounding interval.
+ * Stable real-root projection avoids subtracting nearly equal decimal values.
+ * Atomic output; inherited budget; caller destroys with root_text_destroy. */
+CalculatorStatus application_equation_format_root(ApplicationEquationRootText **result,
+    const ApplicationEquationSolution *solution, size_t index,
+    const CalculatorContext *context, CalculatorError *error);
+void application_equation_root_text_destroy(ApplicationEquationRootText *text);
+
 #endif

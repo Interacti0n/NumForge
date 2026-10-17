@@ -37,6 +37,10 @@ numforge_embed_web_file(NUMFORGE_UNITS_SK_HTML units.sk.html)
 numforge_embed_web_file(NUMFORGE_UNITS_EN_HTML units.en.html)
 numforge_embed_web_file(NUMFORGE_UNITS_CSS units.css)
 numforge_embed_web_file(NUMFORGE_UNITS_JS units.js)
+numforge_embed_web_file(NUMFORGE_EQUATIONS_SK_HTML equations.sk.html)
+numforge_embed_web_file(NUMFORGE_EQUATIONS_EN_HTML equations.en.html)
+numforge_embed_web_file(NUMFORGE_EQUATIONS_CSS equations.css)
+numforge_embed_web_file(NUMFORGE_EQUATIONS_JS equations.js)
 numforge_embed_web_file(NUMFORGE_GRAPH_SK_HTML graph.sk.html)
 numforge_embed_web_file(NUMFORGE_GRAPH_EN_HTML graph.en.html)
 numforge_embed_web_file(NUMFORGE_GRAPH_CSS graph.css)
@@ -57,6 +61,8 @@ numforge_embed_web_binary(NUMFORGE_WORDMARK_PNG wordmark.png)
 
 string(APPEND numforge_web_generated
     "static const char *const NUMFORGE_GRAPH_PAGE[] = {(const char *)NUMFORGE_GRAPH_SK_HTML, NULL};\n"
+    "static const char *const NUMFORGE_EQUATIONS_PAGE[] = {(const char *)NUMFORGE_EQUATIONS_SK_HTML, NULL};\n"
+    "static const char *const NUMFORGE_EQUATIONS_PAGE_EN[] = {(const char *)NUMFORGE_EQUATIONS_EN_HTML, NULL};\n"
     "static const char *const NUMFORGE_GRAPH_PAGE_EN[] = {(const char *)NUMFORGE_GRAPH_EN_HTML, NULL};\n"
     "static const char *const NUMFORGE_UNITS_PAGE[] = {(const char *)NUMFORGE_UNITS_SK_HTML, NULL};\n"
     "static const char *const NUMFORGE_UNITS_PAGE_EN[] = {(const char *)NUMFORGE_UNITS_EN_HTML, NULL};\n"

@@ -7,9 +7,9 @@ the implementation belongs to `numforge_application`.
 
 This is an implemented coefficient-based foundation with a stateless
 [HTTP operation](../reference/EQUATION_HTTP_API.md). It is not an installed
-numeric SDK API. The browser Equations page remains an informational placeholder.
-Parsing arbitrary equations, decimal root previews and interactive equation
-controls are subsequent work.
+numeric SDK API. The [browser equation editor](../guides/EQUATIONS.md) consumes
+this contract with exact root text and decimal previews. Parsing arbitrary
+equations and numerical interval solving remain subsequent work.
 
 ## C operations and ownership
 
@@ -85,6 +85,22 @@ rational polynomial; this operation does not recover its mathematical origin.
 
 ## Resource limits and verification
 
+`application_equation_format_root` returns an owned `ApplicationEquationRootText`
+with exact and approximate strings; destroy it with
+`application_equation_root_text_destroy`. Failures preserve the destination.
+Rational-component roots use the shared complex formatter; irrational roots
+use their stored exact center and radical without square-factor extraction.
+Decimal components use `division_scale` significant digits, half-even rounding
+and 24 working guard digits. Display places, notation and angle settings do not
+change this preview policy. It is an approximation, not a certified interval or
+a guarantee of correctly rounded last digits.
+
+For real irrational roots, compute the root with the same sign as the center by
+addition of magnitudes. Recover its partner from the exact rational root product
+`center^2 - radicand` divided by that stable root, avoiding cancellation. Complex
+roots project real and imaginary components separately. Formatting and previews
+inherit the operation budget; HTTP includes both within its request scope.
+
 The context is validated even for constant equations. Each operation uses the
 existing application time limit (five seconds by default), cumulative 64 MiB
 allocation budget and 512 KiB single-allocation limit. Nested calls inherit an
@@ -105,8 +121,8 @@ complex arithmetic. Allocation-stat builds verify zero live allocations.
 
 1. The read-only coefficient-expression adapter and documented HTTP contract
    are implemented, preserving exact typed inputs and one request budget.
-2. Format exact algebraic roots and add optional cancellation-safe decimal
-   projections, then build the equation UI and user guide around that contract.
+2. Exact algebraic text, cancellation-safe decimal previews, browser coefficient
+   controls and a dedicated user guide are implemented around that contract.
 3. Add bounded numerical roots of general prepared expressions on an explicit
    interval, with residuals and convergence limits; connect those results to
    graph navigation later. Finite sampling does not enumerate every root.
