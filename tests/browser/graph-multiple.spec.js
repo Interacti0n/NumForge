@@ -66,7 +66,7 @@ for(const [width,height] of [[1280,900],[390,844],[844,390]])test(`expanded grap
  await page.locator('#graph-expanded').screenshot({path:`C:/Incoming/Projekty/NumForge/build/graph-expanded-${width}.png`});
  await page.keyboard.press('Escape');await expect(page.locator('#graph-expanded')).not.toHaveAttribute('open','');await expect(page.locator('body')).not.toHaveClass(/graph-expanded-open/);
  await expect(svg).toHaveAttribute('data-xmin',camera.xmin);await expect(svg).toHaveAttribute('data-ymin',camera.ymin);await expect(page.locator('#graph-expand')).toBeFocused();expect(await page.evaluate(()=>({x:scrollX,y:scrollY}))).toEqual(beforeScroll);
- await page.locator('#graph-expand').click();await page.locator('#graph-expand').click();await expect(page.locator('#graph-expanded')).not.toHaveAttribute('open','');
+ await page.locator('#graph-expand').click();await page.locator(width===844?'#graph-expanded-back':'#graph-expand').click();await expect(page.locator('#graph-expanded')).not.toHaveAttribute('open','');
  await page.locator('#graph-reset').click();await expect(svg).toHaveAttribute('data-xmin','-10');await expect(svg).toHaveAttribute('data-ymin','-10');
 });
 test('curve rows persist across language navigation and the shared library loads through SPA routes',async({page})=>{
@@ -88,10 +88,11 @@ test('expansion during sampling restarts with the new dimensions and navigation 
  await expect(page.locator('#unit-converter')).toBeVisible();await expect(page.locator('body')).not.toHaveClass(/graph-expanded-open/);await expect(page.locator('dialog[open]')).toHaveCount(0);
 });
 
-test('unresolved detail remains visible for its curve in a multi-function plot',async({page})=>{
+test('unresolved detail remains classified quietly for its curve in a multi-function plot',async({page})=>{
  await page.goto('/graph?lang=en');await input(page,0).fill('sin(1000x)+sin(1001x)+sin(x*x*x)');await add(page,'x');await plot(page);
  await expect(page.locator('#graph-status')).toContainText('with unresolved detail');
  await expect(rows(page).nth(0).locator('.graph-curve-status')).toContainText('Some visible intervals');
+ await expect(rows(page).nth(0).locator('.graph-curve-status')).not.toBeVisible();await expect(page.locator('#graph-status')).not.toBeVisible();
  await expect(page.locator('path.graph-line')).toBeVisible();
 });
 test('calculator arithmetic survives a missing shared library asset',async({page})=>{

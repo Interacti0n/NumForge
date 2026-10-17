@@ -7,6 +7,8 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+- Polish graph controls with direct row editing, a shared color palette, distinct camera actions and quiet informational notes. Fill mobile landscape expanded views with the plot and reveal controls on demand; preserve visible errors and keyboard return.
+
 - Space dense graph markers on mobile and narrow canvases while keeping all verified coordinates available to mouse/touch inspection without recalculation.
 
 - Simplify graph rows by removing the manual display-mode selector and always choosing curves or integer points automatically, including restored sessions.

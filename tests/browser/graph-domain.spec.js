@@ -29,7 +29,7 @@ for(const [lang,width] of [['en',1280],['sk',390]])test(`graph notes distinguish
  await plot('sqrt(-1)');await expect(page.locator('#graph-status')).toContainText(lang==='en'?'No real-valued points':'nenašli reálne body');await expect(page.locator('#graph-status')).not.toHaveClass(/error/);
  await plot('100+sin(x)');await expect(page.locator('#graph-status')).toContainText(lang==='en'?'outside this view':'mimo tohto pohľadu');
  await page.locator('#graph-add').click();await page.locator('.graph-curve').nth(1).locator('input:not([type=color])').fill('x');await page.locator('#graph-submit').click();await expect(page.locator('.graph-workspace')).not.toHaveAttribute('aria-busy','true');
- await expect(page.locator('.graph-curve').first().locator('.graph-curve-status')).toBeVisible();await expect(page.locator('.graph-curve').first().locator('.graph-curve-status')).toHaveAttribute('data-notice','outside');
+ await expect(page.locator('.graph-curve').first().locator('.graph-curve-status')).not.toBeVisible();await expect(page.locator('.graph-curve').first().locator('.graph-curve-status')).toHaveAttribute('data-notice','outside');
  await expect(page.locator('#graph-status')).toContainText(lang==='en'?'1 function plotted':'Zobrazené funkcie: 1');
 });
 test('vertical pan refines clipped regions and retains the uncut visible sibling',async({page})=>{

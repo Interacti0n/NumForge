@@ -24,6 +24,7 @@ for(const [width,height,lang] of [[1280,800,'en'],[390,844,'sk'],[844,390,'en'],
   const geometry=await dialog.evaluate(d=>{const plot=d.querySelector('#graph-plot').getBoundingClientRect(),r=d.getBoundingClientRect(),result=d.querySelector('.graph-result');return {fraction:plot.height/r.height,bottom:plot.bottom,limit:r.bottom,overflow:result.scrollHeight-result.clientHeight};});
   expect(geometry.fraction).toBeGreaterThan(.72);expect(geometry.bottom).toBeLessThanOrEqual(geometry.limit);expect(geometry.overflow).toBeLessThanOrEqual(1);
   await expect(page.locator('path.graph-line')).toBeVisible();await dialog.screenshot({path:`C:/Incoming/Projekty/NumForge/build/graph-expanded-tall-${width}.png`});
+  if(width===844)await page.locator('#graph-tools-toggle').click();
   await page.locator('#graph-reset').click();await expect(page.locator('#graph-plot')).toHaveAttribute('data-xmin','-10');await page.keyboard.press('Escape');await expect(dialog).not.toBeVisible();
  });
 }

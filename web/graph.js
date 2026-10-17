@@ -60,7 +60,7 @@ function initGraph() {
         if(!states.length){message(text.hidden);return;}
         if(states.length===1){message(states[0].message,states[0].error);return;}
         const drawn=states.filter(hasVisibleStroke).length,failed=states.filter(s=>s.error).length,unresolved=states.filter(s=>s.notice==='limited').length,dense=states.filter(s=>visibleBands(s).length).length,other=states.filter(s=>s.notice&&!['limited','dense'].includes(s.notice)).length;
-        message(states.some(s=>s.busy||s.pendingView)?text.busy:drawn?(english?`${drawn} ${drawn===1?'function':'functions'} plotted`:`Zobrazené funkcie: ${drawn}`)+(dense?(english?` · ${dense} as dense ranges`:` · husté oscilácie: ${dense}`):'')+(failed?(english?` · ${failed} failed`:` · s chybou: ${failed}`):'')+(unresolved?(english?` · ${unresolved} with unresolved detail`:` · s nevyriešeným detailom: ${unresolved}`):'')+(other?(english?' · See function notes.':' · Pozri poznámky pri funkciách.'):''):states.find(s=>s.error)?.message||states.find(s=>s.notice)?.message||text.noStroke,!drawn&&failed>0);
+        message(states.some(s=>s.busy||s.pendingView)?text.busy:drawn?(english?`${drawn} ${drawn===1?'function':'functions'} plotted`:`Zobrazené funkcie: ${drawn}`)+(dense?(english?` · ${dense} as dense ranges`:` · husté oscilácie: ${dense}`):'')+(failed?(english?` · ${failed} failed`:` · s chybou: ${failed}`):'')+(unresolved?(english?` · ${unresolved} with unresolved detail`:` · s nevyriešeným detailom: ${unresolved}`):'')+(other?(english?' · See function notes.':' · Pozri poznámky pri funkciách.'):''):states.find(s=>s.error)?.message||states.find(s=>s.notice)?.message||text.noStroke,failed>0);
     }
     // Serialize C requests; user-visible work takes priority over speculative tiles.
     const queue=[];let transmitting=false,foregroundBatches=0;
@@ -775,7 +775,10 @@ function initGraph() {
         input.addEventListener('input',()=>{locateRequest?.abort();clearTimeout(viewportTimer);viewportTimer=null;if(curves.length===1){viewport=null;yViewport=[-10,10];}invalidate();save();renderLegend();},{signal:controller.signal});
 
         row.addEventListener('focusin',()=>{activeCurve=curve;highlightActive();},{signal:controller.signal});
-        color.addEventListener('input',()=>{save();renderLegend();drawSoon();},{signal:controller.signal});
+        color.addEventListener('input',()=>{row.querySelector('.graph-color-swatch').style.setProperty('--swatch',color.value);save();renderLegend();drawSoon();},{signal:controller.signal});
+        row.querySelector('.graph-color-swatch').style.setProperty('--swatch',color.value);
+        row.querySelector('.graph-color-swatch').addEventListener('click',()=>openColor(curve),{signal:controller.signal});
+        row.querySelector('.graph-edit').addEventListener('click',()=>{activeCurve=curve;highlightActive();$('graph-library').open=true;},{signal:controller.signal});
         row.querySelector('.graph-visibility').addEventListener('click',()=>curve.setVisible(!visible),{signal:controller.signal});
         row.querySelector('.graph-remove').addEventListener('click',()=>removeCurve(curve),{signal:controller.signal});
         return curve;
@@ -895,7 +898,7 @@ function initGraph() {
         if(focused)legend.querySelector(`button[data-curve="${focused}"]`)?.focus({preventScroll:true});
     }
     function relabel(){
-        curves.forEach((c,i)=>{c.row.querySelector('.graph-expression span').textContent=`${text.function} ${i+1} · y =`;c.input.id=i?'graph-expression-'+c.id:'graph-expression';c.color.id=i?'graph-color-'+c.id:'graph-color';c.row.querySelector('.graph-color-option span').textContent=`${text.color} ${i+1}`;const toggle=c.row.querySelector('.graph-visibility'),visible=c.state().visible;toggle.setAttribute('aria-pressed',String(visible));toggle.setAttribute('aria-label',`${visible?text.hide:text.show} ${i+1}`);toggle.title=`${visible?text.hide:text.show} ${i+1}`;c.row.classList.toggle('curve-hidden',!visible);const remove=c.row.querySelector('.graph-remove');remove.hidden=curves.length===1;remove.setAttribute('aria-label',`${text.remove} ${i+1}`);});
+        curves.forEach((c,i)=>{c.row.querySelector('.graph-expression span').textContent=`${text.function} ${i+1} · y =`;c.input.id=i?'graph-expression-'+c.id:'graph-expression';c.color.id=i?'graph-color-'+c.id:'graph-color';c.row.querySelector('.graph-color-option span').textContent=`${text.color} ${i+1}`;c.row.querySelector('.graph-edit').setAttribute('aria-label',`${english?'Edit function':'Upraviť funkciu'} ${i+1}`);c.row.querySelector('.graph-color-swatch').setAttribute('aria-label',`${text.color} ${i+1}`);const toggle=c.row.querySelector('.graph-visibility'),visible=c.state().visible;toggle.setAttribute('aria-pressed',String(visible));toggle.setAttribute('aria-label',`${visible?text.hide:text.show} ${i+1}`);toggle.title=`${visible?text.hide:text.show} ${i+1}`;c.row.classList.toggle('curve-hidden',!visible);const remove=c.row.querySelector('.graph-remove');remove.hidden=curves.length===1;remove.setAttribute('aria-label',`${text.remove} ${i+1}`);});
         $('graph-add').textContent=(english?'+ Add function':'+ Pridať funkciu')+` · ${curves.length}/${maximumCurves}`;$('graph-add').disabled=curves.length>=maximumCurves;$('graph-add').title=english?'Up to four functions':'Najviac štyri funkcie';
         highlightActive();renderLegend();syncStatus();
     }
@@ -928,9 +931,24 @@ function initGraph() {
     $('graph-legend').addEventListener('click',event=>{const button=event.target.closest('.graph-legend-toggle'),curve=curves.find(c=>String(c.id)===button?.dataset.curve);if(curve)curve.setVisible(!curve.state().visible);},{signal:lifecycle.signal});
     window.addEventListener('numforge:navigate',save,{signal:lifecycle.signal});
 
+    // Keep the native color value as the curve model; the palette is shared by all rows.
+    const colorDialog=$('graph-color-dialog'),customColor=$('graph-custom-color');let colorCurve=null;
+    function applyColor(value){if(!colorCurve||!curves.includes(colorCurve))return;colorCurve.color.value=value;colorCurve.color.dispatchEvent(new Event('input',{bubbles:true}));customColor.value=value;for(const b of $('graph-color-palette').children)b.setAttribute('aria-pressed',String(b.dataset.color===value));}
+    function openColor(curve){colorCurve=curve;$('graph-color-title').textContent=`${text.color} ${curves.indexOf(curve)+1}`;applyColor(curve.color.value);colorDialog.showModal();}
+    for(const value of [...palette,'#ff6b88','#ffef85','#ffffff','#a0a9ff']){const button=document.createElement('button');button.type='button';button.dataset.color=value;button.style.setProperty('--swatch',value);button.setAttribute('aria-label',(english?['Purple','Mint','Orange','Blue','Rose','Yellow','White','Indigo']:['Fialová','Mätová','Oranžová','Modrá','Ružová','Žltá','Biela','Indigová'])[$('graph-color-palette').childElementCount]);button.addEventListener('click',()=>applyColor(value),{signal:lifecycle.signal});$('graph-color-palette').append(button);}
+    customColor.addEventListener('input',()=>applyColor(customColor.value),{signal:lifecycle.signal});
+    $('graph-color-close').addEventListener('click',()=>colorDialog.close(),{signal:lifecycle.signal});
+    colorDialog.addEventListener('close',()=>{if(!disposed&&curves.includes(colorCurve))colorCurve.row.querySelector('.graph-color-swatch').focus({preventScroll:true});colorCurve=null;},{signal:lifecycle.signal});
+
     // Move the same canvas into a native modal; keep its camera and curve state.
     const result=root.querySelector('.graph-result'),home=document.createElement('div'),dialog=$('graph-expanded'),expand=$('graph-expand');home.hidden=true;result.before(home);let pagePosition=null;
+    const toolsToggle=$('graph-tools-toggle');
+    function closeTools(){result.classList.remove('graph-tools-open');toolsToggle.setAttribute('aria-expanded','false');}
+    toolsToggle.addEventListener('click',()=>{const open=result.classList.toggle('graph-tools-open');toolsToggle.setAttribute('aria-expanded',String(open));},{signal:lifecycle.signal});
+    $('graph-expanded-back').addEventListener('click',()=>leaveExpanded(),{signal:lifecycle.signal});
+    svg.addEventListener('pointerdown',closeTools,{signal:lifecycle.signal});
     function leaveExpanded(focus=true){
+        closeTools();
         if(dialog.open)dialog.close();home.after(result);home.hidden=true;document.body.classList.remove('graph-expanded-open');expand.textContent=text.expand;expand.setAttribute('aria-expanded','false');
         if(!disposed){if(pagePosition)window.scrollTo({...pagePosition,behavior:'instant'});drawSoon();if(focus)expand.focus({preventScroll:true});}
     }
@@ -1047,7 +1065,7 @@ function initGraph() {
     const resume=curves.filter((c,i)=>!restoredResults[i]&&restored?.version===2&&restoredCurves[i]?.plotted===true&&c.state().visible);
     if(resume.length){++foregroundBatches;Promise.all(resume.map(c=>c.plot(null,true))).finally(()=>{--foregroundBatches;pump();save();});}
     else save();
-    return ()=>{save();initGraph.retained={key:JSON.stringify(settings()),size:dimensions(),curves:curves.map(c=>c.retain()),verifications:verificationCache};disposed=true;leaveExpanded(false);libraryDialog.close();document.body.classList.remove('graph-library-open');curves.forEach(c=>c.dispose());clearTimeout(viewportTimer);if(drawFrame!==null)cancelAnimationFrame(drawFrame);if(inspectionFrame!==null)cancelAnimationFrame(inspectionFrame);clearInspection();inspectionLayer.remove();pointers.clear();resize.disconnect();lifecycle.abort();};
+    return ()=>{save();initGraph.retained={key:JSON.stringify(settings()),size:dimensions(),curves:curves.map(c=>c.retain()),verifications:verificationCache};disposed=true;leaveExpanded(false);colorDialog.close();libraryDialog.close();document.body.classList.remove('graph-library-open');curves.forEach(c=>c.dispose());clearTimeout(viewportTimer);if(drawFrame!==null)cancelAnimationFrame(drawFrame);if(inspectionFrame!==null)cancelAnimationFrame(inspectionFrame);clearInspection();inspectionLayer.remove();pointers.clear();resize.disconnect();lifecycle.abort();};
 
 }
 window.numforgeInitGraph=initGraph;

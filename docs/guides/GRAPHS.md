@@ -46,8 +46,9 @@ options documented in the graph API.
 
 ## Function editor
 
-Open **Edit function / Upraviť funkciu** below the expression rows to open the
-**Function editor / Editor funkcie** for the last focused row. Search by
+Use **Edit / Upraviť** beside a function to open its **Function editor / Editor funkcie**.
+**Functions and constants / Funkcie a konštanty** below the rows opens the same
+editor for the last focused row. Search by
 name, common abbreviation or localized synonym, or choose a category. Names,
 aliases and descriptions are shared with the calculator, and the C registry owns
 availability. Constants π, e and φ support the same search aliases. Random calls
@@ -84,6 +85,15 @@ fallback for unsupported or uncertain expressions. Fast projected coordinates ha
 at most 17 significant digits; this is an approximate drawing, not a promise of 34
 accurate digits. There is no precision, angle or range input on the page: zoom and
 pan choose the view, and the sampler adapts its density to that view.
+
+The round color control opens a shared theme-matched palette. Select a swatch or
+use Custom color for an arbitrary color; changes apply immediately to that curve,
+without new graph evaluations, and survive navigation and reloads.
+
+On short mobile landscape screens, the expanded plot fills the browser viewport.
+Back returns to the page; Controls reveals the camera actions and legend. Tap
+Controls again or touch the canvas to hide them. Escape also exits the expanded
+plot. The browser may retain its own address bar.
 
 ## Coordinate inspection
 
@@ -137,7 +147,7 @@ or navigation. The graph remains usable while dots appear. Color-only redraws
 reuse geometry. A bounded 256-entry/512 KiB verification cache survives same-tab
 tool/language navigation; keys include the expressions and camera.
 
-**Find function / Nájsť funkciu** centers on the selected visible expression at
+**Go to function / K funkcii** centers on the selected visible expression at
 x = 0, with a horizontal range of −10 to 10 and a vertical span normally 20.
 The last focused row is preferred; otherwise the first nonempty visible row is
 used. An actual cached C sample at x = 0 is reused when available; otherwise a
@@ -309,16 +319,11 @@ cannot evict the active view for speculative data, and slow/limited/failed
 responses stop the batch. Every request retains the normal C time, allocation
 and output limits; unprepared intervals cannot be instantaneous.
 
-The multi-function status counts accepted connected segments that intersect the
-camera, not isolated numeric samples. Valid sampled values alone can leave an
-unresolved function without a displayed stroke. Single-function detail and gap
-warnings retain the same meaning.
-
-Notes distinguish a curve outside the current view, no sampled real values,
-unresolved detail, unit-valued results and browser numeric projection limits.
-Domain notes explain why parts are empty; they are not parser failures. Each
-function keeps its own note in a multi-function plot. Dense oscillation ranges
-retain their separate zoom hint.
+The renderer retains per-curve classifications for outside-view curves, missing
+real values, unresolved detail, units and numeric projection limits. These
+informational notes are hidden in the interface; errors remain visible, including
+per-row errors when other functions plot successfully. Quiet diagnostics do not
+change sampling, domain gaps or the conservative handling of uncertain sections.
 
 Camera-aware sampling can defer difficult off-screen refinement without joining
 its edges. Moving vertically into those regions requests fresh C samples;
