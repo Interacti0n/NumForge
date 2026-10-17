@@ -69,7 +69,7 @@ protocol scenarios skipped. They cover independent marker/curve references,
 camera cycles, coordinate inspection, editor layout, palette and mobile controls.
 Native and browser checks ran partly concurrently; these functional results do
 not replace the dated isolated performance comparisons. Production app/SDK
-builds completed; extracted-archive checks will be recorded below.
+builds and extracted-archive checks completed as recorded below.
 
 Documentation review corrected stale uniform/adaptive graph descriptions,
 removed sample-table and future pan/zoom claims, updated API coverage and quiet
@@ -80,6 +80,32 @@ The browser CI matrix now has two one-worker shards with unchanged assertions
 and individual timeouts. A listing audit confirms 213 + 195 = 408 cases, no
 overlap and no omission. YAML parsing/matrix/artifact checks passed. This is
 local configuration evidence; the new hosted jobs still require a push.
+
+## Local archive evidence
+
+The audited source commit is `9268ae54212dc8d907f56ba55b83bbbaa8d49d40`.
+The archive label `2.3.0-audit.1` is a local validation label, not a published tag
+or the final 2.3.0 release asset name. Outputs stay in ignored
+`build/release-prep-2026-10-17/`; rebuild the exact release tag for publication.
+
+| Windows x64 archive | SHA256 |
+| --- | --- |
+| `NumForge-2.3.0-audit.1-win-x64.zip` | `7df61244528de75becdc208fce053949aa8a128d2c5036f9515026db0b9b9ec0` |
+| `NumForge-2.3.0-audit.1-sdk-win-x64.zip` | `bfe61ba325c7a39e0ea1a5b50e3528abe5f2ef542e75308b9f09e28aa135a402` |
+
+- Applications use MSVC Release with static runtime; imports are limited to
+  Windows system DLLs. Extracted CLI/HTTP/embedded-asset checks passed.
+- Additional checks against the extracted application confirmed the 2.3.0 graph
+  UI, 135 sine samples, 21 disconnected factorial samples and the actual root
+  `(5,0)` of `x-5` through C candidate verification.
+- SDK uses MSVC Release `/MD`. Its install/staging copies were removed before
+  building/running the extracted example and external C and C++ API consumers.
+- Documentation check: 106 Markdown files and 486 local links/anchors passed;
+  whitespace/diff checks passed. Both archived SHA256 values were checked again.
+
+Local Windows GCC checks do not replace Linux sanitizers, hosted Windows MSVC
+2022, 32-bit, Linux/macOS ARM64, fuzz campaigns or Linux archive verification.
+No tag, push or published release was made during this preparation.
 
 ## Publication checklist
 
