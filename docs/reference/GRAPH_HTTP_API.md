@@ -1,9 +1,11 @@
 # Graph sampling HTTP API
 
-The development server supports a bounded uniform sampler through
-`POST /api/graph/sample`. The [browser graph page](../guides/GRAPHS.md) consumes this application/HTTP
-foundation. Adaptive continuity detection and an installed public SDK evaluator
-remain future work.
+The local server supports a bounded uniform sampler through
+`POST /api/graph/sample`. This reference describes that stable uniform-grid
+operation. The [browser graph page](../guides/GRAPHS.md) uses the separate
+[screen sampler](SCREEN_GRAPH_HTTP_API.md), with the
+[adaptive precision sampler](ADAPTIVE_GRAPH_HTTP_API.md) as fallback.
+An installed public SDK expression evaluator remains future work.
 
 ```sh
 curl -H 'Content-Type: text/plain' \
@@ -79,9 +81,10 @@ POST retains the server's existing exact Origin policy, Content-Length
 requirement and embedded-NUL rejection. A public tunnel still needs its exact
 configured origin. This route adds no authentication or persistence.
 
-A uniform grid cannot prove continuity or discover every pole. The browser shows gaps and omits
-large/out-of-range projections; optional connecting lines do not prove continuity.
-Adaptive sampling remains future work.
+A uniform grid cannot prove continuity or discover every pole. Consumers must
+respect point kinds and finite numeric projection limits. The browser uses
+adaptive connection flags and screen refinement instead of joining this uniform
+grid blindly; finite adaptive sampling still does not prove continuity.
 
 See the [parametric application design](../design/PARAMETRIC_EXPRESSIONS.md)
 and [general HTTP protections](HTTP_API.md).

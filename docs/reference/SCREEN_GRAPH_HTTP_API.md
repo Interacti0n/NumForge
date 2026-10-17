@@ -357,11 +357,11 @@ Ordinary fast probes, calculator evaluation and explicit precision fallback do
 not opt into this screen projection; extreme exp scale errors can still occur
 there or in unsupported compositions.
 
-Response `limited` describes the entire sampled range. The browser warning is
-restricted to unresolved samples and disconnected real edges that overlap the
-camera's x bounds and whose sampled ordinates intersect its y bounds. Known
-complex/domain/quantity gaps do not produce a refinement warning by themselves.
-Panning vertically rechecks this message without reevaluation.
+Response `limited` describes the entire sampled range. The browser internally
+classifies unresolved samples and disconnected real edges against the visible
+camera; domain/quantity gaps are separate. Informational diagnostics are hidden
+in the interface, while actual errors remain visible. Panning vertically
+rechecks these classifications without reevaluation.
 
 Mouse/touch coordinate inspection is a client-only overlay on accepted cached
 edges. It uses the exact same limited cubic/linear drawing representation,
@@ -373,8 +373,8 @@ The multi-function UI counts accepted connections intersecting the camera. A
 numeric sample set without accepted visible edges is not counted as a plotted
 function; this does not change HTTP schemas or numerical acceptance rules.
 
-Dense ranges use the curve color with a translucent fill and an explicit SK/EN
-message. Zooming refines them into accepted strokes; band cache hits require
+Dense ranges use the curve color with a translucent fill. Informational notes are hidden in the UI;
+actual errors remain visible. Zooming refines them into accepted strokes; band cache hits require
 at least the current horizontal density. Color/visibility/expanded-view controls
 apply equally. Coordinate inspection never assigns a single y value to a band.
 Bands count as displayed functions, separately identified in the status. A

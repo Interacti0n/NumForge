@@ -12,6 +12,8 @@ have different ownership and compatibility contracts.
 | [Session HTTP API](reference/SESSION_HTTP_API.md) | Authoritative variables/history, typed snapshots, reset/release, functions and conversion history. |
 | [Unit HTTP API](reference/UNIT_HTTP_API.md) | Catalogue and compatible expression conversions. |
 | [Graph sampling HTTP API](reference/GRAPH_HTTP_API.md) | Bounded uniform grids, plotting projections, point classifications and read-only session snapshots. |
+| [Screen-space graph HTTP API](reference/SCREEN_GRAPH_HTTP_API.md) | Adaptive display sampling, derivatives, dense ranges and precision fallback. |
+| [Graph points and verification](reference/GRAPH_ANALYSIS_HTTP_API.md) | Integer-domain sampling and bounded C confirmation of marker candidates. |
 | [Web/API coverage](reference/WEB_API_PARITY.md) | Supported web actions and application API gaps. |
 
 ## Values and sessions

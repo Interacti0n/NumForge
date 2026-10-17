@@ -38,7 +38,11 @@ expansion and mobile layout.
 registered names, syntax/depth/argument limits and e/E boundaries; allocation
 failure tests exercise partial nested calls and argument-array growth.
 
-The dedicated browser CI job installs Chromium with OS dependencies using
+The browser CI matrix runs two shards, each with one worker and unchanged
+individual test assertions/timeouts. Together they run the full suite; locally,
+`npm test -- --shard=1/2` and `npm test -- --shard=2/2` reproduce those partitions.
+Each shard allows twenty minutes including build/install time and has a distinct
+failure artifact name. The dedicated browser CI job installs Chromium with OS dependencies using
 `npx playwright install --with-deps chromium`. Failures upload the HTML report,
 screenshots and traces for 14 days. Local reports, dependencies and test results
 are ignored by Git. That CI job remains Chromium-only.

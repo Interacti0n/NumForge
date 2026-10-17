@@ -12,11 +12,16 @@
 
 NumForge is a C17 mathematics library for arbitrary-precision integers
 (`BigInt`), exact decimals (`BigDecimal`), and reduced fractions
-(`BigRational`). It also includes optional command-line and local browser
+(`BigRational`), with decimal/rational complex types (`BigComplex` and
+`BigRationalComplex`). It also includes optional command-line and local browser
 calculators. Both calculators use the same C expression parser and numeric
 library.
 
-**2.2.1:** faster large-number arithmetic, factorials and high-precision logarithms,
+**Preparing 2.3.0:** interactive graphs with up to four functions, adaptive C sampling,
+mouse/touch navigation, automatic integer points and C-verified intersections.
+See the [release preparation record](docs/project/RELEASE_2_3.md).
+
+**Latest published version, 2.2.1:** faster large-number arithmetic, factorials and high-precision logarithms,
 reduced allocation traffic, delayed web previews and stronger regression checks.
 See the [release record](docs/project/RELEASE_2_2_1.md).
 
@@ -287,15 +292,18 @@ record the subsequent fixes separately.
 **Available:** the numeric C library, CLI and local bilingual browser calculator,
 exact rational arithmetic, configurable precision/rounding, scientific functions,
 session variables/history, BigInt bases 2–36, unit-conversion C/HTTP APIs,
-and opt-in benchmarks.
+interactive browser graphs, and opt-in benchmarks.
 
 **Next:** Accuracy follow-ups and optimizations supported by the collected data.
 Direct [BigDecimal and higher-function measurements](docs/benchmarks/DECIMAL_MATH_BENCHMARKS.md)
 include strict references and explicit stress-case limitations.
 Session variables and BigInt conversion in bases 2–36 are implemented.
-[Browser graphs](docs/guides/GRAPHS.md) now display real samples with ranges, axes
-and point data through adaptive C sampling with automatic parameter selection.
-Pan/zoom and multiple curves remain future work.
+[Browser graphs](docs/guides/GRAPHS.md) support four colored functions, adaptive
+C sampling, mouse/touch pan and zoom, expanded mobile views, cached coordinate
+inspection and numerically verified intercept/intersection markers. Integer-domain
+functions use separate sampled dots automatically. Sampling remains approximate:
+narrow features and unresolved regions can be missed, and markers are not a
+complete enumeration of roots.
 User functions and language bindings are future work. Equation and
 account links currently lead to informational pages. See the
 [roadmap](docs/project/ROADMAP.md) for scope and prerequisites; no delivery dates are promised.

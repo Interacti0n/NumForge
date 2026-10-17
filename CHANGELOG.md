@@ -7,229 +7,58 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
-- Polish graph controls with direct row editing, a shared color palette, distinct camera actions and quiet informational notes. Fill mobile landscape expanded views with the plot and reveal controls on demand; preserve visible errors and keyboard return.
+## 2.3.0 — 17 October 2026
 
-- Space dense graph markers on mobile and narrow canvases while keeping all verified coordinates available to mouse/touch inspection without recalculation.
+### Graphs and shared expression tools
 
-- Simplify graph rows by removing the manual display-mode selector and always choosing curves or integer points automatically, including restored sessions.
+- Add up to four independent colored function expressions, inferred variables,
+  automatic radians/sampling, visibility toggles and isolated errors. Keep
+  calculator variables and ans separate from graph evaluation.
+- Add mouse, touch and keyboard pan/zoom with fixed initial axes −10..10, exact
+  zero tick labels, zoom-dependent decimal labels and bounded deep zoom.
+- Open a calculator-style editor directly from each function row, with shared
+  searchable functions/constants, Plot/Clear actions and compact pagination.
+  Function insertion in graphs and calculator includes parentheses, caret
+  placement, selected-text wrapping and required argument separators.
+- Add a theme-matched color palette and expanded graph view. Mobile landscape
+  dedicates the browser viewport to the plot with controls shown on demand.
+  Preserve expressions, camera, visibility and completed curves across same-tab
+  tool/language navigation; reload previously plotted curves in the saved view.
+- Inspect approximate cached curve coordinates and verified markers with mouse
+  or touch without new evaluations. Space dense mobile markers while retaining
+  access to all verified coordinates. Hide informational notes; retain errors.
+- Automatically show supported integer-domain expressions as separate points,
+  with bounded C lattice sampling. HTTP clients retain explicit rendering modes.
+- Mark axis intercepts and curve intersections only after bounded C evaluation
+  of the original expressions. Share markers across curves/pairs/regions, cache
+  confirmations and use safeguarded Brent-Dekker steps for sign changes.
+  Finite sampling, residual tolerances and request budgets still apply.
 
-- Use safeguarded Brent-Dekker refinement for sign-changing graph intersection candidates, preserving original-expression residual checks and existing budgets. Add refinement/outcome diagnostics and controlled legacy/Brent benchmarks.
+### Sampling, performance and reliability
 
-- Reuse bounded original-expression checks within graph intersection verification requests, retaining exact rational differences, numerical tolerances and cancellation limits. Add per-request work counters and a controlled cache-off/on benchmark.
+- Add reusable C parameterized expressions, read-only typed samples and documented
+  uniform, adaptive, screen-space and candidate-verification HTTP operations.
+- Refine screen-space curves progressively with bounded derivatives, stationary
+  anchors, guarded monotone cubic interpolation and precision fallback.
+- Preserve supported sinusoidal extrema, absolute-value valleys, narrow rational
+  peaks and Gaussian shoulders. Refine visible nested-log/pole and steep
+  hyperbolic regions without joining domain gaps, poles or observed step jumps.
+- Represent supported dense affine/quadratic sin/cos oscillations and selected
+  sums/absolute-value forms with approximate translucent ranges; refine to curves
+  on zoom. Unsupported compositions retain ordinary sampling and its limits.
+- Prioritize visible work before bounded background preparation, reuse cached
+  resolution levels and join tiles only at shared accepted C samples. Fix cache
+  seams, inverse-zoom errors, lost centres and stale loading/repair states.
+- Reuse repeated original-expression verification checks without relaxing
+  tolerances; add work/outcome counters and controlled refinement benchmarks.
+- Extend independent numeric, derivative, graph geometry, allocation-failure,
+  cancellation, camera-cycle, memory and cross-browser regressions/benchmarks.
+  Measurements describe their recorded source snapshots, not universal latency.
+- Split the guide into focused Calculator, Units, Graphs and API sections. Show
+  server calculation timing only when it exceeds 0.5 seconds.
 
-- Extend graph regression coverage with four-function camera cycles on desktop/mobile widths and independent checks of displayed intercepts, intersections and integer points. Update retained-session and cache diagnostic tests to match existing behavior.
-
-- Add per-curve Auto/Curve/Points modes with conservative C integer-domain detection, precision integer-lattice samples, isolated-dot inspection and saved mode state. Verify graph intersection candidates against original C expressions in bounded asynchronous batches, cache confirmations, and share the marker cap fairly across curves, pairs and screen regions.
-
-- Mark approximate visible axis intercepts and intersections of accepted cached graph strokes, including represented tangent contacts; snap mouse/touch inspection to their coordinates. Add Find function to center on a real C-sampled y intercept without changing Reset view. Bound geometry work and marker count.
-
-- Rename the per-curve graph panel to Function editor and align its input, Plot/Clear actions, search and desktop categories with the calculator. Keep compact, scroll-free layouts on smaller screens.
-
-- Preserve valleys and corners in absolute-value graphs, including shifted
-  expressions and real sqrt-of-square forms. Check both neighboring intervals,
-  retain vertical accuracy at subpixel widths, and map supported dense absolute
-  oscillations to ranges including zero. Add independent references/benchmarks.
-- Edit the selected complete expression inside the open graph function library;
-  insertion, selection and Enter/Plot update the same row.
-
-- Keep the graph function catalogue within a compact paginated modal without
-  internal scrolling. Give expanded plots the available height, with compact
-  controls/legend and important warnings instead of repeated instruction text.
-
-- Unify expression typography and color controls across graph rows. Preserve the
-  graph camera, visibility and completed curves across language/tool navigation
-  with the existing bounded cache; restore completed plots after tab reloads.
-
-- Validate subpixel monotone cubic graph arcs against actual control evaluations,
-  discover stationary anchors during refinement, and avoid redundant later
-  searches. Add explicit slope-required response metadata, compatible bounded
-  fallback and matching rendering/inspection. Test sequential zoom and offset-grid
-  independent references to catch interpolation errors between sampled points.
-
-- Bound slow sin/cos terms through interior phase/trig extrema and signed affine
-  amplitudes when another carrier is dense. Keep fast/slow mixtures visible
-  without exhausting sampled points, with ordinary curves after zoom, unchanged
-  domain guards and independent range/failure/performance regressions.
-
-- Recognize quadratic sin/cos phases in opt-in dense graph ranges. Preserve
-  sampled phase vertices and stricter resolved-curve checks between bands;
-  keep unsupported composition and numerical fallbacks. Add shifted/chirped
-  graph geometry, atomic-failure and before/after benchmark coverage.
-
-- Extend opt-in dense graph ranges to sums/differences of up to four affine
-  sin/cos occurrences with affine amplitudes and trend. Combine identical terms,
-  preserve precision/domain fallbacks and resolved zoom curves, and document
-  conservative overestimation for beating/cancelling terms. Add independent
-  bounds, work/failure regressions and a composed-oscillation audit suite.
-
-- Keep limited precision graph previews from occupying the cache twice and
-  evicting the centre after zooming out. Reconcile missing visible tiles with
-  one full-view request, finish loading/error messages explicitly, and discard
-  stale repairs after edits. Add real SVG, bounded-cache and failure regressions.
-
-- Reject adaptive graph connections when captured floor/ceil/trunc/round
-  values change, including shifted, scaled and composed calls. Preserve
-  plateau connections, exact sample values and existing point/time limits;
-  test explicit precision, metadata overflow/ownership and atomic failures.
-
-- Project negligible exponential tails in screen sampling with a propagated
-  absolute error allowance, avoiding whole-graph scale errors on narrow
-  Gaussians. Seed actual values at exponent turns and estimated shoulders,
-  then validate their neighbouring chords. Keep ordinary numerical probes,
-  precision fallback and resource limits; test compositions, wider cameras,
-  nonlinear magnification, domain gaps and atomic failures.
-
-- Preserve narrow rational graph peaks and valleys using guarded derivative
-  brackets during C sampling. Evaluate a bounded turning-point candidate, then
-  refine both neighbouring intervals before accepting connections. Keep actual
-  values/slopes, existing pole/domain guards and operation limits; add shifted,
-  scaled, multiple-peak, SVG and allocation/deadline regressions.
-
-- Use the visible camera for precision-fallback graph refinement, preventing
-  huge off-screen sinh/cosh values from accepting inaccurate visible chords.
-  Defer small ordered off-screen intervals as disconnected gaps, expose the
-  existing camera-deferral flag in schema 2 and resample newly revealed y views.
-  Preserve legacy seed-based sampling and existing resource limits; add geometry,
-  SVG, vertical-cache and allocation/deadline regressions.
-
-- Prioritize visible parts of domain-sensitive graph functions by deferring
-  guarded off-screen refinement without joining edges. Add optional
-  `screen_clipped` metadata and y-aware cache reuse/resampling. Keep confirmed
-  complex/domain seeds from triggering unnecessary full precision fallback,
-  while preserving complex-to-real recovery. Distinguish off-screen, domain,
-  unresolved, quantity and numeric-range notes per function; add nested-log
-  pole, vertical-pan, allocation/deadline and numerical regressions.
-
-- Ignore floating-point cache-boundary tails after inverse graph zooms and allow
-  resolution comparisons their arithmetic roundoff, preventing indistinguishable
-  sample requests and spurious coordinate-range errors. Preserve accepted-edge
-  gap handling. Add sustained cache/GC/navigation/cancellation diagnostics and
-  desktop/mobile zoom and queued-navigation regressions.
-
-- Add optional bounded C pixel envelopes for dense single affine sin/cos carriers
-  with affine amplitude/trend. Keep original point flags and default HTTP output;
-  expose `dense=band` display metadata through the existing graph API. Render
-  translucent colored ranges, refine back to strokes on zoom, preserve cache,
-  visibility and expansion, and omit invented coordinate-inspector values.
-  Retain normal pole/domain/fallback handling for unsupported expressions.
-
-- Reuse accepted cached graph strokes as previews and request only refinement
-  when the whole view is covered without unresolved detail. Retain useful
-  resolution levels, prefer adequately refined tiles, combine prepared coverage
-  checks and sample single missing preparation tails separately. Keep expansion
-  prepared, reduce expanded next-zoom work to the central view and avoid restarting
-  completed preparation on an adequately cached resize.
-
-- Sample browser graph foreground requests only over the visible interval, finish
-  all visible functions before background preparation and skip wide buffers for
-  dense views. Bound optional batches to two requests, retain next-zoom/cached-pan
-  behavior, coalesce drawing, skip empty strokes and count accepted visible strokes. Add foreground-order, dense
-  coverage, bounded-oscillation and pole regressions with before/after diagnostics.
-
-- Inspect approximate graph coordinates with mouse hover or touch/pen tracing.
-  Identify the curve by name/color, reuse accepted cached edges and the drawing
-  interpolation without calculation requests, preserve pinch/pan gestures and
-  exclude domain/pole/unresolved gaps. Add mathematical, touch and coalescing tests.
-
-- Toggle individual graph curves from their row or legend, preserving expressions,
-  colors, samples and keyboard focus. Cancel hidden work, skip hidden sampling,
-  reuse current/cached views on show and persist visibility across navigation.
-  Add real-browser before/after diagnostics for four-function rendering, pan, zoom,
-  cache-only toggles, HTTP traffic, frame delays and JavaScript heap usage.
-
-- Insert complete function calls from the graph/calculator library, place the caret
-  inside empty parentheses, wrap selected text and add semicolon placeholders for
-  required extra arguments. Keep explicit closing parentheses in the evaluator.
-
-- Add up to four browser graph functions with individual colors, rows, legend,
-  caches and isolated errors. Serialize graph requests with foreground priority.
-  Share function-library descriptions/aliases with the calculator, add graph
-  insertion/search/categories and constants, remove zoom buttons and add a
-  nearly full-screen canvas dialog retaining the camera with Escape/button return.
-  Update guides and test mobile/desktop, cancellation, SPA and library regressions.
-
-- Join accepted cached graph tiles at shared actual C samples and draw their
-  strokes together, preventing zoom-out seams between different densities or
-  linear/cubic representations. Preserve rejected edges and typed gaps; add
-  desktop/mobile parabola and controlled tile-boundary regressions.
-
-- Add internal forward-mode graph derivatives and bounded stationary-point anchors.
-  Draw shape-preserving cubic transitions from optional schema 3 slopes, retain
-  linear fallback and sampler gaps, prepare the next zoom level during idle time,
-  and reduce settled refinement delay. Add independent derivative/rendering tests
-  and a reproducible before/after graph accuracy and HTTP benchmark.
-
-- Simplify browser graphs to a function expression and a persistent curve color.
-  Use automatic screen-space sampling, radians and independent calculator state;
-  remove range/precision/session controls and sample tables, and update both guides.
-
-- Keep short screen-space chords connected for restricted continuous expressions
-  with camera bounds, while retaining pole/phase checks and legacy precision
-  criteria. Limit graph refinement warnings to visible unresolved samples/edges.
-  Compare steep/dense graph requests with the previous camera sampler.
-
-- Start graph cameras at −10..10 on both axes, add vertical pan and explicit y
-  bounds, and precompute a wider x region for immediate cached movement. Use
-  regular 1/2/5 axis steps, exact zero and progressively finer decimal labels;
-  pass the visible y span to screen-space refinement.
-
-- Use an approximate C screen-space graph sampler with the existing parser,
-  owned double bytecode, precision fallback and compact schema 3. Add coarse
-  then refined viewport requests, bounded active-view cache and shared SVG
-  commands. Calculator arithmetic and precision API defaults remain unchanged.
-
-- Increase adaptive graph capacity to 2048 points with a graph-only 256 KiB
-  response bound. Keep uniform/session limits unchanged and bound range cache
-  by aggregate points and estimated memory as well as range count.
-
-- Preserve close adaptive graph coordinates with a 16-place scientific projection
-  while retaining uniform API output. Keep distinct deep-zoom axis labels and
-  a browser-resolution camera bound to prevent false staircases around flat extrema.
-
-- Cache bounded graph ranges across resolution levels and prepare adjacent/wider
-  views during idle time. Reuse prepared data immediately, sample missing pieces
-  without clearing the curve and validate session revisions before cache reuse.
-  Bound/cancel optional background work and preserve C gap flags at tile seams.
-
-- Display the exact zero graph axis tick as 0 and align its gridline with the zero
-  axis while preserving genuinely tiny scales.
-
-- Anchor coarse sin/cos curves at actually evaluated phase extrema, preventing
-  false amplitude modulation when uniform samples miss periodic peaks. Verify
-  every extremum on the reported wide interval, degree/reversed phases and faults.
-
-- Add graph pan/zoom with mouse, touch, keyboard and reset controls;
-  debounce resampling and cancel stale work. Return sampled extrema as API metadata.
-
-- Permit coarser connected graph chords for restricted continuous expression
-  trees at widths proportional to the selected x range. Preserve strict checks
-  for poles/jumps/domains and exact sample precision; regress sin(33x) explicitly.
-
-- Reduce forward trigonometric temporary allocations without lowering precision;
-  distribute adaptive graph probes across the view, guard against whole-period
-  aliasing and stop optional refinement before budget exhaustion. Add graph
-  benchmarks and independent curve/point regressions for harder expressions and
-  wide ranges. Empty/editing/error states now retain the default coordinate grid.
-
-- Add bounded adaptive C graph refinement and automatic AST parameter inference. Web graphs now draw curves with conservative unresolved gaps, omit manual sample-count/parameter/connection controls and place view/precision options in advanced settings. Uniform HTTP sampling remains available.
-
-- Organize the SK/EN Guide / API page into Calculator, Units, Graphs and API parts with focused user instructions, per-part navigation, context links from tools and preserved legacy anchors/language/history.
-
-- Add responsive SK/EN function graphs with range/precision/angle controls, read-only calculator snapshots, sampled points, axes and an accessible value table. Domain/complex/quantity gaps and browser numeric range limits remain explicit; optional lines never bridge classified gaps.
-
-- Display subtle server calculation timing below calculator and unit conversion results only when computation exceeds 0.5 seconds.
-
-- Add bounded exact uniform graph sampling in the C application layer and
-  read-only POST /api/graph/sample with strict schemas, session snapshots,
-  scientific plotting projections and domain/complex/quantity classifications.
-  Share one budget through serialization; plotting UI and adaptive sampling
-  remain future work.
-
-- Add a reusable parametric expression foundation in the C application layer:
-  parse once, snapshot referenced session values, shadow a local parameter and
-  evaluate typed batches under one shared resource budget. Preserve session state
-  and atomic failure cleanup; report per-point domain errors. Graph/solver UI,
-  HTTP adapters and a public SDK evaluator remain future work.
+See the [release preparation record](docs/project/RELEASE_2_3.md) and
+[graph guide](docs/guides/GRAPHS.md) for validation and supported-scope limits.
 
 ## 2.2.1 — 12 October 2026
 

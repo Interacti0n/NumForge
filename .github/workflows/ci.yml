@@ -251,9 +251,14 @@ jobs:
           retention-days: 14
 
   browser:
+    name: Browser checks (${{ matrix.shard }}/2)
     runs-on: ubuntu-latest
-    # The serial suite alone takes about nine minutes; include build/install time.
+    # Keep one worker per shard; split the expanded suite without relaxing assertions.
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     steps:
       - uses: actions/checkout@v7
         with:
@@ -271,11 +276,11 @@ jobs:
         working-directory: tests/browser
         env:
           NUMFORGE_WEB_EXECUTABLE: ${{ github.workspace }}/build-browser/numforge_web
-        run: npm test
+        run: npm test -- --shard=${{ matrix.shard }}/2
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
-          name: browser-failure-report
+          name: browser-failure-report-${{ matrix.shard }}
           path: |
             tests/browser/playwright-report/
             tests/browser/test-results/

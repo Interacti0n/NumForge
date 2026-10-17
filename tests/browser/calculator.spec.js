@@ -516,7 +516,8 @@ for (const lang of ['sk', 'en']) {
             await expect(page.locator('html')).toHaveAttribute('lang', lang);
             await expect(page.locator('body')).toContainText('bigdecimal_mean');
             const other = lang === 'sk' ? 'en' : 'sk';
-            await page.locator(`a[href="/api?lang=${other}"]`).click();
+            await page.locator(`.language-switch a[lang="${other}"]`).click();
+            await expect(page).toHaveURL(`/api?section=calculator&lang=${other}`);
             await expect(page.locator('html')).toHaveAttribute('lang', other);
             await page.locator(`.back-link[href="/?lang=${other}"]`).click();
             await calculate(page, '2(2+2)', '8');
@@ -698,8 +699,12 @@ for (const lang of ['sk', 'en']) {
             ]) {
                 await page.locator('[data-action=clear]:visible').click();
                 await page.locator(`[data-function="${name}"]`).click();
-                await expect(page.locator('#expression')).toHaveValue(`${name}()`);
-                await page.locator('#expression').pressSequentially(args.slice(0, -1));
+                const argumentsToType = args.slice(0, -1).split(';');
+                await expect(page.locator('#expression')).toHaveValue(`${name}(${';'.repeat(argumentsToType.length - 1)})`);
+                for (let i = 0; i < argumentsToType.length; ++i) {
+                    if (i) await page.locator('#expression').press('ArrowRight');
+                    await page.locator('#expression').pressSequentially(argumentsToType[i]);
+                }
                 await page.locator('#expression').press('Enter');
                 await expect(page.locator('#result')).toHaveText(expected);
             }
@@ -716,8 +721,12 @@ for (const lang of ['sk', 'en']) {
             ]) {
                 await page.locator('[data-action=clear]:visible').click();
                 await page.locator(`[data-function="${name}"]`).click();
-                await expect(page.locator('#expression')).toHaveValue(`${name}()`);
-                await page.locator('#expression').pressSequentially(args.slice(0, -1));
+                const argumentsToType = args.slice(0, -1).split(';');
+                await expect(page.locator('#expression')).toHaveValue(`${name}(${';'.repeat(argumentsToType.length - 1)})`);
+                for (let i = 0; i < argumentsToType.length; ++i) {
+                    if (i) await page.locator('#expression').press('ArrowRight');
+                    await page.locator('#expression').pressSequentially(argumentsToType[i]);
+                }
                 await page.locator('#expression').press('Enter');
                 await expect(page.locator('#result')).toHaveText(expected);
             }

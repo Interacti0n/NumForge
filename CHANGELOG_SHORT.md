@@ -1,110 +1,23 @@
 # Changelog highlights
 
 The main changes in a few words. See the [full changelog](CHANGELOG.md) for
-details and the [2.2.1 release record](docs/project/RELEASE_2_2_1.md) for validation.
+details and the [2.3.0 preparation record](docs/project/RELEASE_2_3.md) for validation.
 
 ## Unreleased
 
-- Reduce overlapping graph markers on mobile while preserving coordinate inspection.
+## 2.3.0 — 17 October 2026
 
-- Choose graph curves or integer points automatically without a display selector.
+- Plot up to four colored functions with mouse/touch pan, zoom and expanded views.
+- Automatically choose continuous curves or supported integer-domain points.
+- Inspect cached coordinates and C-verified intercept/intersection markers.
+- Improve extrema, valleys, narrow peaks, domain gaps and dense oscillations.
+- Reuse bounded samples and faster intersection refinement to reduce repeated work.
+- Add direct function editing, searchable shared functions/constants and a color palette.
+- Preserve completed graphs across tools/languages; keep mobile controls compact.
+- Split the guide by tool and show calculation timing above 0.5 seconds.
+- Expand independent correctness, failure, efficiency and browser regression checks.
 
-- Confirm more graph intersections with fewer calculations using safeguarded refinement.
-
-- Avoid repeated calculations while verifying graph intersections.
-
-- Integer-point graphs, C-verified intercept/intersection markers and balanced marker selection.
-
-- Graph intercept/intersection markers with coordinate snapping and a Find function view control.
-
-- Calculator-style graph function editor with clearer naming and Plot/Clear actions.
-
-- Fix missing valleys in absolute-value graphs and allow full expression editing inside the library.
-
-- Compact graph function library and a taller expanded graph canvas.
-
-- Keep graph rows visually consistent and preserve completed graphs when switching tools or languages.
-
-- Keep supported oscillatory graphs continuous and efficient through intermediate zoom levels.
-
-- Display supported fast/slow graph mixtures as bounded ranges without exhausting points.
-
-- Render wide quadratic oscillations such as sin(x*x) with sampled centres and dense outer ranges.
-
-- Keep supported dense sin/cos sums visible as approximate ranges, with curves after zooming in.
-
-- Fix missing graph centres and stuck loading messages after zooming out.
-
-- Keep graph strokes separated at observed floor/ceil/trunc/round jumps.
-
-- Render narrow Gaussian graph peaks without failing on negligible exponential tails.
-
-- Capture narrow rational graph peaks and valleys that previously disappeared between samples.
-
-- Correct precision-fallback graph shapes for steep sinh/cosh functions and vertical movement.
-
-- Improve nested-log/pole graphs and vertical refinement; clarify per-function notes.
-
-- Fix graph cache errors after inverse zooms; test prolonged interactions and memory cleanup.
-
-- Show supported dense sin/cos oscillations as approximate colored ranges; zoom to reveal waves.
-
-- Reuse graph zoom levels and cached previews; reduce duplicate sampling.
-
-- Calculate visible graph intervals before optional buffers; count visible strokes.
-
-- Inspect colored graph coordinates with mouse/touch using cached curves only.
-
-- Hide/show graph functions without losing calculated points; benchmark four-curve
-  rendering and interactions against the previous version.
-
-- Function-library insertion includes parentheses, caret placement, selected-text
-  wrapping and separators for required extra arguments in calculator and graphs.
-
-- Plot up to four colored functions, browse the function library and expand the graph.
-
-- Prevent visible seams between prepared graph tiles when zooming out.
-
-- Smooth graph extrema and zoom with derivative anchors and prepared detail.
-
-- Simpler graph controls: function and color, with automatic sampling and radians.
-
-- Reduce unnecessary graph gaps and off-screen refinement work; show warnings
-  only for unresolved detail in the current camera.
-
-- Move graphs in both directions with fixed initial axes, exact zero labels and
-  a wider prepared region for smooth cached movement.
-
-- Draw graphs through a faster C sampler and refine uncached views progressively.
-
-- Allow more adaptive graph detail with bounded API responses and cache.
-
-- Fix fake staircases and repeated axis labels at deep graph zoom.
-
-- Smooth cached graph movement with bounded background range preparation.
-
-- Preserve periodic sin/cos peaks in coarse graphs without synthesizing results.
-
-- Interactive graph pan/zoom with mouse, touch and keyboard.
-
-- Favor coarser connected overview curves for recognized continuous functions,
-  including sin(33x), while retaining strict pole and domain checks.
-
-- Faster, bounded graph refinement with oscillation safeguards, performance
-  benchmarks and persistent empty coordinate axes.
-
-- Plot adaptive curves with automatic variables and simpler graph controls.
-
-- Split the guide into focused Calculator, Units, Graphs and API parts.
-
-- Add the graph sampling HTTP API with bounded grids and explicit point errors;
-  preserve calculator sessions.
-- Add responsive SK/EN graphs with axes, sample tables, explicit typed gaps
-  and optional connecting lines. Adaptive sampling remains future work.
-- Show subtle server calculation timing only above 0.5 seconds.
-
-- Add the C application foundation for future graphs/solvers: reusable expressions,
-  isolated session snapshots, typed samples and shared resource limits.
+Graphs remain approximate; finite sampling cannot guarantee every feature or root.
 
 ## 2.2.1 — 12 October 2026
 

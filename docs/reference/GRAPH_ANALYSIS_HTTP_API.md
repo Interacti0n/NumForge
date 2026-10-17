@@ -32,7 +32,8 @@ sets `limited:true` and means omitted integer positions, not failed continuity.
 Bounds outside ±(2^53−1) are rejected because integer coordinates would no longer
 be reliably distinct in the browser. The same 5-second, cumulative allocation and
 single-allocation budgets apply. An expensive factorial can still exhaust them;
-failure is atomic. Mode participates in browser cache/session identity.
+failure is atomic. The browser always requests auto rendering, including restored settings;
+explicit API clients may still choose curve or points independently.
 
 ## Candidate verification
 

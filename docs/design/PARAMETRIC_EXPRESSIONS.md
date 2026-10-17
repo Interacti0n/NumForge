@@ -68,7 +68,8 @@ also remain inside that adapter's outer operation budget.
    Adaptive midpoint refinement now provides bounded heuristic gap detection.
 2. Responsive 2D `y = f(x)` plotting, axes and accessible point data are available.
    Automatic AST parameters and conservative adaptive connections are available.
-   Pan/zoom and stronger continuity handling remain future work; sampling is not a proof.
+   Pan/zoom, screen-space derivatives/refinement, supported integer points and
+   bounded candidate verification are implemented; sampling is not a proof.
 3. Reuse the prepared evaluator for a bounded real root solver with residuals,
    convergence/error reporting and one budget for the complete solve.
 

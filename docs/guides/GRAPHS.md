@@ -204,10 +204,9 @@ and unresolved detail still have finite sampling limits.
 
 Connections are heuristic, not proofs of continuity. Narrow poles, discontinuities,
 isolated valid values or oscillations can escape finite sampling. Gaps can also
-omit a continuous but unresolved steep curve. A message reports exhausted
-refinement in a visible sampled region; unresolved detail elsewhere in the
-prepared buffer does not show that warning. Known domain/complex gaps alone are
-not a refinement warning. Forward trigonometric phases receive an extra check against hidden
+omit a continuous but unresolved steep curve. Internal diagnostics classify
+exhausted refinement in the visible region separately from prepared/off-screen
+detail and known domain/complex gaps; these informational notes are hidden. Forward trigonometric phases receive an extra check against hidden
 whole periods. If a wide range contains too many oscillations, narrow the x range;
 the plot may omit unresolved connections rather than draw misleading chords.
 For supported dense sin/cos expressions, a translucent range replaces unresolved
@@ -249,7 +248,7 @@ cancellation can also keep the precision fallback. Envelopes do not
 join poles, domain errors or rejected sample edges. Their computation stays in
 the same C evaluator/application layer and the existing time/space budgets.
 Unsupported or unresolved mixtures can still exhaust the sample limit where
-bands are unavailable; the unresolved-detail notice remains applicable.
+bands are unavailable; unresolved-detail classification still applies internally.
 
 ## Moving the view
 
@@ -265,9 +264,10 @@ Drag in any direction to pan horizontally and vertically.
 The focused plot also accepts +/−, all four arrow keys and Home.
 **Expand graph / Rozšíriť graf** moves the same canvas into a modal covering nearly
 the whole viewport. Its camera and curves are retained; sampling adapts to the
-larger screen area. Return with **Return to page / Vrátiť na stránku** or Escape.
+larger screen area. Return with **Back / Späť** or Escape.
 The expanded plot uses the available height, omits the repeated gesture hint and
-ordinary success text, and retains the legend, controls and important warnings.
+ordinary informational text, and retains actual errors. On short mobile landscape
+screens, the legend and camera controls are in the toggled Controls menu.
 There are no +/− buttons above the graph.
 Empty plots support view controls without computing.
 
@@ -371,7 +371,7 @@ available to API clients, but the web uses the adaptive endpoint.
 Intersection verification reuses repeated original-expression checks within each
 C request. This saves work without loosening tolerances or increasing the time
 and evaluation limits. Distinct candidate coordinates may still need all their
-own calculations, so dense plots can retain a limited-verification notice.
+own calculations, so dense plots can retain a limited-verification diagnostic, hidden in the interface.
 Sign-changing candidates use Brent's safeguarded refinement to avoid wasting
 most attempts on repeated interval halving. Every displayed confirmation still
 requires an actual C evaluation with the same residual tolerance; a narrow

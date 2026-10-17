@@ -34,8 +34,10 @@ is added; saved values remain bounded application-owned memory.
 | Show/retrieve calculator history | `GET /api/session/history`, optional saved `id` | Available, original values/settings |
 | Reset/release/clear history | `POST /api/session`, `action=reset`, `release` or `clear-history` | Available; clearing history preserves ans |
 | Discover functions, aliases and arities | `GET /api/functions` | Available; web consumes the registry |
-| Sample an expression over a real interval | `POST /api/graph/sample` | Available in development; exact C grid, plotting projections and point errors; SK/EN browser graphs with axes and sample table |
-| Adaptive curves and automatic local parameter | `POST /api/graph/plot` | Available; schema 2, bounded C refinement and conservative sampled connection flags |
+| Sample an expression over a real interval | `POST /api/graph/sample` | Available; exact C grid, plotting projections and point errors; separate browser screen sampler |
+| Adaptive curves and automatic local parameter | `POST /api/graph/plot` | Available; schema 2 precision refinement or mode=fast schema 3 screen sampling with conservative connections |
+| Integer-domain graph samples | `POST /api/graph/plot?mode=fast&render=auto` | Available; conservative direct-parameter detection and bounded integer lattice |
+| Verify graph intercept/intersection candidates | `POST /api/graph/verify` | Available; bounded original-expression C evaluations and numerical residual checks |
 | List unit catalogue and sources | `GET /api/units` | Available |
 | Validate compatibility, preview a conversion | `POST /api/convert` | Available |
 | Confirm a conversion | `POST /api/conversions?action=commit` | Available, independent ordered history |

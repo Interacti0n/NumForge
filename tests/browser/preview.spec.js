@@ -47,7 +47,8 @@ for (const lang of ['sk', 'en']) {
             await expect(result).toBeEmpty();
 
             await input.fill('20');
-            await page.locator(`.header-guide[href="/api?lang=${lang}"]`).click();
+            await page.locator('.header-guide').click();
+            await expect(page).toHaveURL(units ? `/api?section=units&lang=${lang}` : `/api?lang=${lang}`);
             await expect(page.locator('.guide-content')).toBeVisible();
             await page.clock.runFor(2500);
             expect(requests).toHaveLength(2);

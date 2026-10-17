@@ -89,19 +89,19 @@ documented HTTP contract alongside the web implementation, using the versioned
    uniform coordinates, plotting projections and point classifications.
 2. [Browser graphs](../guides/GRAPHS.md) now display up to four colored `y = f(x)`
    curves with inferred parameters, automatic sampling, pan/zoom, visibility,
-   a shared function library, an expanded canvas and cached coordinate inspection.
+   a shared function editor/palette, an expanded canvas and cached coordinate inspection.
    Automatic rendering includes bounded integer-domain sampling without a mode selector.
    Axis/pair markers are numerically verified against original C expressions and
    selected across curve groups and screen regions. Arbitrary discrete lattices
    and complete/symbolic root enumeration remain outside this feature.
    Visible-first sampling, reusable resolution levels and accepted cached previews
    reduce repeated work; missing/gapped views keep coarse/refined sampling.
-   Restricted single-carrier dense oscillations now have a separate approximate
-   envelope display; broader carrier/domain support remains future work.
+   Supported affine/quadratic sin/cos carriers, selected sums and absolute-value
+   forms have approximate envelope displays; broader domains remain future work.
    [Sustained interaction/memory diagnostics](../benchmarks/GRAPH_STABILITY_2026_10_14.md)
-   are available. [Domain-sensitive view refinement and per-function notes](../benchmarks/GRAPH_DOMAIN_VIEWS_2026_10_15.md)
-   are implemented; physical-phone checks and saved/exported graph configurations
-   remain next. Adaptive refinement
+   are available. [Domain-sensitive view refinement and per-function diagnostics](../benchmarks/GRAPH_DOMAIN_VIEWS_2026_10_15.md)
+   are implemented; informational notes are hidden in the UI. Initial phone feedback
+   is positive; broader physical-device checks and graph export/import remain next. Adaptive refinement
    and connection flags remain heuristics, not continuity proofs.
 3. Add real linear/quadratic equation solving, then bounded numerical root
    finding on a specified interval, with residuals and clear convergence limits.
