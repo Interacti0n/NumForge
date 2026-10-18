@@ -5,6 +5,9 @@ details and the [2.3.0 release record](docs/project/RELEASE_2_3.md) for validati
 
 ## Unreleased
 
+- Improve the private numerical-root experiment with cheaper interpolation and
+  automatic bisection fallback; retain the current production method.
+
 - Recheck numerical root residuals at higher precision; benchmark a private Brent
   experiment while retaining bisection in the web/API.
 

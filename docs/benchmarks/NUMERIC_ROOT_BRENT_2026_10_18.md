@@ -1,5 +1,10 @@
 # High-precision Brent experiment — 18 October 2026
 
+The [decimal-weight hybrid follow-up](NUMERIC_ROOT_HYBRID_2026_10_19.md) now
+implements the proposed cheaper interpolation/progress fallback as a third
+private method, with separate measurements. The historical comparison below
+remains the baseline for that work.
+
 Baseline: `872b4bd`, following the [domain checks](NUMERIC_ROOT_DOMAINS_2026_10_18.md).
 **Do not enable this experiment globally yet.** It improves several cases but
 has substantial regressions at flat roots and poles. Production C/HTTP still

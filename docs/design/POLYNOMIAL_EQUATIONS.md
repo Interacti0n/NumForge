@@ -152,5 +152,9 @@ complex arithmetic. Allocation-stat builds verify zero live allocations.
    twice the working precision; unstable residuals/signs publish no root.
    Production retains bisection after a private Brent comparison showed mixed
    costs, including flat-root/pole regressions.
+   A third private hybrid uses bounded decimal interpolation weights and a
+   permanent rational-bisection fallback on poor progress. Its faster ordinary
+   cases do not imply unconditional promotion; production method selection is
+   unchanged.
    Additional bracket scanning, tangencies and graph navigation remain future
    work. Finite sampling does not enumerate every root.

@@ -9,6 +9,11 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ### Equation foundation
 
+- Add a private decimal-weight hybrid comparison with bounded local proposals
+  and permanent bisection fallback on repeated rejections or poor bracket
+  contraction. Preserve large common coordinate offsets and validate method,
+  work statistics and atomic failures; production continues to use bisection.
+
 - Add a private high-precision Brent comparison experiment; production solving
   retains bisection after mixed performance results. Independently check both
   methods and preserve domain/work/atomic-failure contracts.

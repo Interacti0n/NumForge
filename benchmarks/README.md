@@ -105,6 +105,11 @@ The Python checker independently reevaluates emitted coordinates at 180 digits;
 run it on the complete comparison CSV as well as the default baseline. Production
 C/HTTP still uses bisection. See the [Brent experiment](../docs/benchmarks/NUMERIC_ROOT_BRENT_2026_10_18.md).
 
+`--hybrid` records all three methods, adding bounded-decimal interpolation with
+a progress-based permanent bisection fallback. It can be combined with --quick
+or --adversarial. Statistics include fallback_steps and switch_offs; the checker
+also validates their consistency. See the [hybrid follow-up](../docs/benchmarks/NUMERIC_ROOT_HYBRID_2026_10_19.md).
+
 The audit also measures 128–1,024-limb division shapes and 2,048–8,192-limb
 balanced/unbalanced multiplication. Complex pipeline probes include forward and
 inverse functions, tiny/boundary/scaled arguments and intermediate 5,000-place

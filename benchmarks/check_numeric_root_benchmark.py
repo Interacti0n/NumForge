@@ -61,6 +61,15 @@ def main(path):
             assert row["verified"] == "1" and row["status"] == "0", row
             assert D(row["ms"]) >= 0 and int(row["evaluations"]) <= 192, row
             assert int(row["iterations"]) <= 96, row
+            if "interpolations" in row:
+                bisect, interpolate = int(row["bisections"]), int(row["interpolations"])
+                fallback = int(row.get("fallback_steps", 0))
+                switches = int(row.get("switch_offs", 0))
+                assert bisect + interpolate == int(row["iterations"]), row
+                assert int(row["secants"]) + int(row["quadratics"]) == interpolate, row
+                assert switches <= 1 and (not fallback or switches == 1), row
+                if row["algorithm"] != "bisection":
+                    assert int(row["rejections"]) + fallback == bisect, row
             if row["outcome"] != "found":
                 assert not row["x"] and not row["residual"], row
                 continue

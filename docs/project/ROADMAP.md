@@ -118,7 +118,10 @@ documented HTTP contract alongside the web implementation, using the versioned
    reevaluated at higher precision to detect unstable residuals. A private
    [Brent experiment](../benchmarks/NUMERIC_ROOT_BRENT_2026_10_18.md) improves
    several cases but regresses on flat roots/poles; production retains bisection.
-   Cheaper bounded-precision interpolation with a progress fallback comes next.
+   A third [decimal-weight hybrid](../benchmarks/NUMERIC_ROOT_HYBRID_2026_10_19.md)
+   now provides cheaper interpolation with a permanent progress fallback.
+   Production still retains bisection: method selection must consider flat-root
+   cost and convergence coverage, not just fewer evaluations.
    Multiple-bracket scanning,
    tangencies, configurable tolerances and graph integration remain future work.
 4. Add session user functions, local parameters and definition management,

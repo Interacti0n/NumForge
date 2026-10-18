@@ -135,9 +135,11 @@ static CalculatorStatus found(Work *work, ApplicationNumericRoot *result, const 
 
 static CalculatorStatus solve(ApplicationNumericRoot **result, const char *input,
     const BigRational *lower, const BigRational *upper, const CalculatorContext *context, CalculatorError *error,
-    bool brent, ApplicationNumericRootStats *statistics)
+    ApplicationNumericRootMethod method, ApplicationNumericRootStats *statistics)
 {
     calculator_error_clear(error);
+    if ((unsigned)method > APPLICATION_ROOT_DECIMAL_HYBRID) { calculator_error_set(error, CALCULATOR_INVALID_ARGUMENT, 0U); return CALCULATOR_INVALID_ARGUMENT; }
+    bool brent = method != APPLICATION_ROOT_BISECTION;
     if (!result || !input || !lower || !upper || !context) { calculator_error_set(error, CALCULATOR_NULL_ARGUMENT, 0U); return CALCULATOR_NULL_ARGUMENT; }
     CalculatorStatus status = calculator_context_validate(context, error);
     if (status != CALCULATOR_OK) return status;
@@ -202,14 +204,17 @@ static CalculatorStatus solve(ApplicationNumericRoot **result, const char *input
         if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_abs(absolute, probes[1].value));
         if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_compare(&order, absolute, initial));
         if (status == CALCULATOR_OK && order < 0) status = calculator_from_decimal_status(bigdecimal_copy(initial, absolute));
-        if (status == CALCULATOR_OK && brent) status = numeric_root_brent_create(&interpolation, work.context.division_scale);
+        if (status == CALCULATOR_OK && brent) status = numeric_root_brent_create(&interpolation, work.context.division_scale, method == APPLICATION_ROOT_DECIMAL_HYBRID);
         if (status == CALCULATOR_OK && brent) status = numeric_root_brent_reset(&interpolation, lower, upper, probes[0].value, probes[1].value);
     }
     for (size_t iteration = 0U; iteration < 96U && status == CALCULATOR_OK &&
         output->kind == APPLICATION_ROOT_ITERATION_LIMIT && work.evaluations < 189U; ++iteration) {
         ++output->iterations;
-        if (brent) status = numeric_root_brent_propose(&interpolation, scratch[MID], &stats);
-        else { status = midpoint(scratch[MID], output->lower, output->upper, scratch[TWO]); ++stats.bisections; }
+        if (brent && !interpolation.disabled) status = numeric_root_brent_propose(&interpolation, scratch[MID], &stats);
+        else {
+            status = midpoint(scratch[MID], output->lower, output->upper, scratch[TWO]); ++stats.bisections;
+            if (interpolation.disabled) ++stats.fallback_steps;
+        }
         if (status == CALCULATOR_OK) status = probe(&work, scratch[MID], &probes[0], error);
         if (status != CALCULATOR_OK) break;
         if (!probes[0].real) { output->kind = APPLICATION_ROOT_DOMAIN_GAP; break; }
@@ -233,13 +238,13 @@ static CalculatorStatus solve(ApplicationNumericRoot **result, const char *input
             left_sign = probes[1].sign; right_sign = probes[2].sign;
             status = calculator_from_rational_status(bigrational_copy(output->lower, scratch[LEFT_QUARTER]));
             if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_copy(output->upper, scratch[RIGHT_QUARTER]));
-            if (status == CALCULATOR_OK && brent) status = numeric_root_brent_reset(&interpolation, output->lower, output->upper, probes[1].value, probes[2].value);
+            if (status == CALCULATOR_OK && brent && !interpolation.disabled) status = numeric_root_brent_reset(&interpolation, output->lower, output->upper, probes[1].value, probes[2].value);
         } else {
             if (order <= 0 && residual_order <= 0 && improvement < 0) { status = found(&work, output, scratch[MID], &probes[0]); break; }
             bool replace_left = probes[0].sign == left_sign;
             status = calculator_from_rational_status(bigrational_copy(replace_left ? output->lower : output->upper, scratch[MID]));
             if (replace_left) left_sign = probes[0].sign; else right_sign = probes[0].sign;
-            if (status == CALCULATOR_OK && brent) status = numeric_root_brent_accept(&interpolation, scratch[MID], probes[0].value);
+            if (status == CALCULATOR_OK && brent && !interpolation.disabled) status = numeric_root_brent_accept(&interpolation, scratch[MID], probes[0].value, &stats);
         }
     }
     status = calculator_budget_status(status);
@@ -256,11 +261,17 @@ static CalculatorStatus solve(ApplicationNumericRoot **result, const char *input
 CalculatorStatus application_numeric_root_solve(ApplicationNumericRoot **result, const char *input,
     const BigRational *lower, const BigRational *upper, const CalculatorContext *context, CalculatorError *error)
 {
-    return solve(result, input, lower, upper, context, error, false, NULL);
+    return solve(result, input, lower, upper, context, error, APPLICATION_ROOT_BISECTION, NULL);
 }
 CalculatorStatus application_numeric_root_experiment(ApplicationNumericRoot **result, const char *input,
     const BigRational *lower, const BigRational *upper, const CalculatorContext *context, CalculatorError *error,
     bool brent, ApplicationNumericRootStats *statistics)
 {
-    return solve(result, input, lower, upper, context, error, brent, statistics);
+    return solve(result, input, lower, upper, context, error, brent ? APPLICATION_ROOT_RATIONAL_BRENT : APPLICATION_ROOT_BISECTION, statistics);
+}
+CalculatorStatus application_numeric_root_method(ApplicationNumericRoot **result, const char *input,
+    const BigRational *lower, const BigRational *upper, const CalculatorContext *context, CalculatorError *error,
+    ApplicationNumericRootMethod method, ApplicationNumericRootStats *statistics)
+{
+    return solve(result, input, lower, upper, context, error, method, statistics);
 }
