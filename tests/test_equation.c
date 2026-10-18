@@ -401,6 +401,94 @@ static void test_root_text_failure_is_atomic(void)
     }
 }
 
+static void text_equation(const char *input)
+{
+    application_equation_destroy(solution); solution = NULL;
+    TEST_ASSERT_EQUAL_MESSAGE(CALCULATOR_OK, application_equation_solve_text(&solution, input, &context, &error), input);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, error.status);
+}
+static void test_polynomial_equations_normalize_both_sides_exactly(void)
+{
+    text_equation("3x + 1 = 7"); root_parts(0U, "2", "0");
+    text_equation("(x - 2)*(x + 3) = 0"); root_parts(0U, "-3", "0"); root_parts(1U, "2", "0");
+    text_equation("x*x + 2*x + 1 = 0"); root_parts(0U, "-1", "0"); TEST_ASSERT_EQUAL(2U, solution->multiplicity[0]);
+    text_equation("x\xC2\xB2 = 2"); rational_text(solution->radicand, "2"); TEST_ASSERT_NULL(solution->offset);
+    text_equation("x^2 + 1 = 0"); root_parts(0U, "0", "-1"); root_parts(1U, "0", "1");
+    text_equation("(x + 1)/sqrt(4) = 1/3"); root_parts(0U, "-1/3", "0");
+    text_equation("x^0 + x^1 = 4"); root_parts(0U, "3", "0");
+    text_equation("-x^2 = -4"); root_parts(0U, "-2", "0"); root_parts(1U, "2", "0");
+    text_equation("x^2 - x^2 = x - x"); TEST_ASSERT_EQUAL(APPLICATION_EQUATION_ALL, solution->kind);
+    text_equation("x + 1 = x + 2"); TEST_ASSERT_EQUAL(APPLICATION_EQUATION_NONE, solution->kind);
+    context.significant_division = false; context.division_scale = 1;
+    text_equation("0.5x = 1/3"); root_parts(0U, "2/3", "0"); TEST_ASSERT_FALSE(context.significant_division);
+    for (int64_t p = -3; p <= 3; ++p) for (int64_t q = p; q <= 3; ++q) {
+        char input[128], first[32], second[32];
+        (void)snprintf(input, sizeof(input), "-2*(x-(%" PRId64 "))*(x-(%" PRId64 "))=0", p, q);
+        (void)snprintf(first, sizeof(first), "%" PRId64, p); (void)snprintf(second, sizeof(second), "%" PRId64, q);
+        integer(coefficients[0], -2); integer(coefficients[1], 2*(p+q)); integer(coefficients[2], -2*p*q);
+        text_equation(input); root_parts(0U, first, "0"); check_original_polynomial(0U);
+        if (p != q) { root_parts(1U, second, "0"); check_original_polynomial(1U); }
+    }
+}
+static void test_polynomial_equations_reject_unsupported_domains_and_report_positions(void)
+{
+    text_equation("x=2"); ApplicationEquationSolution *original = solution;
+    const char *unsupported[] = {"x^3=1", "x^3-x^3=0", "(x*x)*(x*x)=1", "sin(x)=0", "sqrt(x)=1",
+        "x/x=1", "x/(x-x+1)=2", "x^-1=2", "x^x=1", "x!=1", "x^0.5=1", "sqrt(2)*x=1"};
+    for (size_t i = 0U; i < sizeof(unsupported)/sizeof(unsupported[0]); ++i) {
+        TEST_ASSERT_EQUAL_MESSAGE(CALCULATOR_NOT_IMPLEMENTED, application_equation_solve_text(&solution, unsupported[i], &context, &error), unsupported[i]);
+        TEST_ASSERT_EQUAL_PTR(original, solution);
+    }
+    const char *invalid[] = {"x=1=2", "x+1", "=1", "x=", "x=1\n"};
+    for (size_t i = 0U; i < sizeof(invalid)/sizeof(invalid[0]); ++i) {
+        TEST_ASSERT_EQUAL_MESSAGE(CALCULATOR_SYNTAX_ERROR, application_equation_solve_text(&solution, invalid[i], &context, &error), invalid[i]);
+        TEST_ASSERT_EQUAL_PTR(original, solution);
+    }
+    TEST_ASSERT_EQUAL(CALCULATOR_UNDEFINED_VARIABLE, application_equation_solve_text(&solution, "x+y=0", &context, &error));
+    TEST_ASSERT_EQUAL(CALCULATOR_UNDEFINED_ANSWER, application_equation_solve_text(&solution, "x=ans", &context, &error));
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, application_equation_solve_text(&solution, "0*rand()+x=1", &context, &error));
+    TEST_ASSERT_EQUAL(CALCULATOR_DIVISION_BY_ZERO, application_equation_solve_text(&solution, "x/0=1", &context, &error));
+    const char *unicode = "x\xC2\xB2=sin(x)";
+    TEST_ASSERT_EQUAL(CALCULATOR_NOT_IMPLEMENTED, application_equation_solve_text(&solution, unicode, &context, &error));
+    TEST_ASSERT_EQUAL(4U, error.offset); TEST_ASSERT_EQUAL(4U, calculator_error_column(unicode, error.offset));
+}
+static void test_polynomial_equation_allocations_and_budgets_are_atomic(void)
+{
+    const char *input = "(x-2)*(x+3)=1/3";
+    text_equation(input); ApplicationEquationSolution *original = solution, *attempt = NULL;
+    numforge_test_allocator_begin(0U);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_equation_solve_text(&attempt, input, &context, &error));
+    size_t calls = numforge_test_allocator_call_count(); numforge_test_allocator_end(); application_equation_destroy(attempt);
+    for (size_t i = 1U; i <= calls; ++i) {
+        numforge_test_allocator_begin(i);
+        TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY, application_equation_solve_text(&solution, input, &context, &error));
+        numforge_test_allocator_end(); TEST_ASSERT_EQUAL_PTR(original, solution);
+    }
+    TEST_ASSERT_TRUE(numforge_budget_begin(5000U, 1U, 1U));
+    TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE, application_equation_solve_text(&solution, input, &context, &error));
+    TEST_ASSERT_EQUAL_PTR(original, solution); numforge_budget_end();
+    for (size_t i = 1U; i <= 80U; ++i) {
+        attempt = original;
+        TEST_ASSERT_TRUE(numforge_budget_begin(5000U, SIZE_MAX, SIZE_MAX)); numforge_test_budget_expire_after(i);
+        CalculatorStatus status = application_equation_solve_text(&attempt, input, &context, &error);
+        if (i == 1U) TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT, status);
+        if (status == CALCULATOR_OK) application_equation_destroy(attempt);
+        else { TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT, status); TEST_ASSERT_EQUAL_PTR(original, attempt); }
+        numforge_budget_end();
+    }
+}
+static void test_http_whole_equation_mode_and_errors(void)
+{
+    char *response = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, numforge_web_session_request(&store, "POST", "/api/equations/solve?mode=expression&precision=16", "(x-2)*(x+3)=0", &response));
+    TEST_ASSERT_NOT_NULL(strstr(response, "\"exact\":\"-3\"")); TEST_ASSERT_NOT_NULL(strstr(response, "\"exact\":\"2\"")); free(response); response = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_NOT_IMPLEMENTED, numforge_web_session_request(&store, "POST", "/api/equations/solve?mode=expression", "x=sin(x)", &response));
+    TEST_ASSERT_NOT_NULL(strstr(response, "\"code\":\"equation_expression_error\",\"column\":3")); free(response); response = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, numforge_web_session_request(&store, "POST", "/api/equations/solve?mode=unknown", "x=2", &response)); free(response); response = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, numforge_web_session_request(&store, "POST", "/api/equations/solve?mode=coefficients", "0\n3\n-1", &response));
+    TEST_ASSERT_NOT_NULL(strstr(response, "\"exact\":\"1/3\"")); free(response);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -417,5 +505,9 @@ int main(void)
     RUN_TEST(test_http_allocation_failures_and_shared_budget);
     RUN_TEST(test_root_text_and_cancellation_safe_preview);
     RUN_TEST(test_root_text_failure_is_atomic);
+    RUN_TEST(test_polynomial_equations_normalize_both_sides_exactly);
+    RUN_TEST(test_polynomial_equations_reject_unsupported_domains_and_report_positions);
+    RUN_TEST(test_polynomial_equation_allocations_and_budgets_are_atomic);
+    RUN_TEST(test_http_whole_equation_mode_and_errors);
     return UNITY_END();
 }

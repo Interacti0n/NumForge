@@ -50,6 +50,14 @@ CalculatorStatus application_equation_solve_expressions(ApplicationEquationSolut
     const char *const inputs[3], const CalculatorContext *context,
     CalculatorError *error, size_t *failed_coefficient);
 
+/* One equality of polynomials in x. Exact real constant subexpressions; +,-,*,
+ * division by x-free constants, powers 0..2 and square postfix. Intermediate
+ * polynomial degree must remain <=2. No variable denominators/cancellation of
+ * domain holes, other variables, session mutation or random calls. Atomic output;
+ * UTF-8 byte error offsets refer to the complete equation. */
+CalculatorStatus application_equation_solve_text(ApplicationEquationSolution **result,
+    const char *input, const CalculatorContext *context, CalculatorError *error);
+
 /* Materialize an owned rational-component root; caller destroys *result.
  * Irrational radicals return NOT_IMPLEMENTED rather than silently approximating;
  * their exact center/radicand remain available in the solution above.

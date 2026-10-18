@@ -9,6 +9,14 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ### Equation foundation
 
+- Accept whole linear/quadratic equations in x through a bounded C polynomial
+  AST converter and `mode=expression` HTTP input. Normalize both sides exactly,
+  preserve full-input error positions and reject higher intermediate degrees,
+  variable denominators and unsupported functions without losing domain holes.
+- Default the browser editor to a single equation line; retain coefficient mode,
+  per-tab continuation and localized errors/guides. Preserve the original HTTP
+  three-coefficient grammar when mode is omitted.
+
 - Add exact root expressions, guarded decimal previews and cancellation-safe
   projection of small real roots. Expose both strings through the same C/HTTP
   operation. Preserve exact values separately from approximate previews.

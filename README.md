@@ -304,9 +304,10 @@ inspection and numerically verified intercept/intersection markers. Integer-doma
 functions use separate sampled dots automatically. Sampling remains approximate:
 narrow features and unresolved regions can be missed, and markers are not a
 complete enumeration of roots.
-[Polynomial equations](docs/guides/EQUATIONS.md) accept exact coefficient
-expressions, show exact real/complex roots and separate decimal previews through
-the same bounded C/HTTP solver. General equation parsing remains future work.
+[Polynomial equations](docs/guides/EQUATIONS.md) accept whole linear/quadratic
+equations in x or exact coefficient expressions, show exact real/complex roots
+and separate decimal previews through the same bounded C/HTTP solver.
+Non-polynomial equation solving remains future work.
 User functions and language bindings are future work.
 Account links currently lead to informational pages. See the
 [roadmap](docs/project/ROADMAP.md) for scope and prerequisites; no delivery dates are promised.

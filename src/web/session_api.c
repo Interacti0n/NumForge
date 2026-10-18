@@ -473,9 +473,11 @@ static CalculatorStatus equation_request(const char *method, const Query *query,
 {
     uint64_t precision;
     *code = "equation_request_error";
+    bool expression_mode = (query->seen & BIT(MODE)) && strcmp(query->values[MODE], "expression") == 0;
     size_t length = 0U;
     while (length <= CALCULATOR_MAX_INPUT_BYTES && body[length]) ++length;
-    if (strcmp(method, "POST") != 0 || (query->seen & ~BIT(PRECISION)) ||
+    if (strcmp(method, "POST") != 0 || (query->seen & ~(BIT(PRECISION)|BIT(MODE))) ||
+        ((query->seen & BIT(MODE)) && !expression_mode && strcmp(query->values[MODE], "coefficients") != 0) ||
         !number(query, PRECISION, CALCULATOR_DEFAULT_DIVISION_SCALE, &precision) ||
         precision < 1U || precision > CALCULATOR_MAX_OUTPUT_SCALE || length > CALCULATOR_MAX_INPUT_BYTES)
         return CALCULATOR_INVALID_ARGUMENT;
@@ -484,8 +486,8 @@ static CalculatorStatus equation_request(const char *method, const Query *query,
     context.division_scale = (int64_t)precision;
     bool owner = numforge_budget_begin((uint64_t)context.time_limit_ms,
         CALCULATOR_ALLOCATION_BUDGET, CALCULATOR_SINGLE_ALLOCATION);
-    char *copy = numforge_malloc(length + 1U);
-    CalculatorStatus status = copy ? CALCULATOR_OK : CALCULATOR_OUT_OF_MEMORY;
+    char *copy = expression_mode ? NULL : numforge_malloc(length + 1U);
+    CalculatorStatus status = expression_mode || copy ? CALCULATOR_OK : CALCULATOR_OUT_OF_MEMORY;
     const char *inputs[3] = {copy, NULL, NULL};
     size_t offsets[3] = {0U}, failed = SIZE_MAX;
     ApplicationEquationSolution *solution = NULL;
@@ -502,12 +504,13 @@ static CalculatorStatus equation_request(const char *method, const Query *query,
         if (status == CALCULATOR_OK && strchr(inputs[2], '\n')) status = CALCULATOR_INVALID_ARGUMENT;
     }
     if (status == CALCULATOR_OK)
-        status = application_equation_solve_expressions(&solution, inputs, &context, error, &failed);
+        status = expression_mode ? application_equation_solve_text(&solution, body, &context, error) :
+            application_equation_solve_expressions(&solution, inputs, &context, error, &failed);
     if (failed < 3U) {
         static const char *codes[] = {"coefficient_a_error", "coefficient_b_error", "coefficient_c_error"};
         *code = codes[failed];
         calculator_error_set(error, status, offsets[failed] + (error ? error->offset : 0U));
-    } else if (status != CALCULATOR_OK) *code = "equation_request_error";
+    } else if (status != CALCULATOR_OK) *code = expression_mode ? "equation_expression_error" : "equation_request_error";
     if (status == CALCULATOR_OK) {
         json.data = numforge_malloc(json.capacity);
         if (!json.data) status = CALCULATOR_OUT_OF_MEMORY;

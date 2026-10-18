@@ -108,7 +108,9 @@ documented HTTP contract alongside the web implementation, using the versioned
    complex roots and degenerate cases. Stateless coefficient expressions and
    the [HTTP adapter](../reference/EQUATION_HTTP_API.md), exact root text,
    stable decimal previews and the [browser editor](../guides/EQUATIONS.md)
-   are available.
+   are available. Whole equations in lowercase x now normalize exact polynomial
+   operations on both sides, with intermediate degree <=2 and conservative
+   rejection of variable denominators/functions. Coefficient mode remains available.
    Then add bounded numerical root finding on a specified interval, with
    residuals and clear convergence limits.
 4. Add session user functions, local parameters and definition management,

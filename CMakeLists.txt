@@ -170,6 +170,7 @@ if(NUMFORGE_BUILD_APPS OR BUILD_TESTING OR NUMFORGE_BUILD_FUZZERS OR NUMFORGE_BU
         src/application/graph_analysis.c
         src/application/equation.c
         src/application/equation_format.c
+        src/application/equation_parse.c
         src/application/conversion.c
         src/application/session.c
         src/application/client_store.c)

@@ -1,6 +1,7 @@
 const {test,expect}=require('@playwright/test');
 const path=require('node:path');
 async function coefficients(page,a,b,c) {
+ await page.locator('#equation-mode').selectOption('coefficients');
  for(const [name,value] of Object.entries({a,b,c}))await page.locator('#equation-'+name).fill(value);
 }
 for(const language of ['sk','en'])test(`equation roots, exact expressions and errors ${language}`,async({page})=>{
@@ -52,7 +53,7 @@ test('editing cancels pending equation work and prevents stale solutions',async(
  const waiting=new Promise(resolve=>started=resolve);
  await page.route('**/api/equations/solve?**',async route=>{started();await held;await route.fulfill({json:{ok:true,kind:'finite',count:1,roots:[{exact:'999',approximation:'999',multiplicity:1}]}}).catch(()=>{});});
  await page.locator('#equation-submit').click();await waiting;
- await page.locator('#equation-a').fill('2');release();
+ await page.locator('#equation-expression').fill('2x=1');release();
  await expect(page.locator('#equation-submit')).toBeEnabled();
  await expect(page.locator('.equation-root')).toHaveCount(0);
  await expect(page.locator('#equation-error')).toBeHidden();
@@ -65,6 +66,30 @@ test('preview precision changes decimals while preserving exact roots',async({pa
  await page.locator('#equation-submit').click();
  await expect(page.locator('.equation-root').last().locator('code').first()).toHaveText('x₂ = sqrt(2)');
  await expect(page.locator('.equation-root').last().locator('.equation-approx')).toHaveText('≈ 1.414');
+});
+
+for(const language of ['sk','en'])test(`whole equation entry, products and supported domains ${language}`,async({page})=>{
+ await page.goto('/solve?lang='+language);
+ await expect(page.locator('#equation-expression')).toBeVisible();
+ await expect(page.locator('#equation-a')).toBeHidden();
+ await page.locator('#equation-expression').fill('(x-2)*(x+3)=0');
+ await page.locator('#equation-expression').press('Enter');
+ await expect(page.locator('.equation-root').first()).toContainText('x₁ = -3');
+ await expect(page.locator('.equation-root').last()).toContainText('x₂ = 2');
+ await page.locator('#equation-expression').fill('3x+1=7');await page.locator('#equation-submit').click();
+ await expect(page.locator('#equation-roots')).toContainText('x = 2');
+ await page.locator('#equation-expression').fill('x/x=1');await page.locator('#equation-submit').click();
+ await expect(page.locator('#equation-error')).toContainText(language==='sk'?'Bez x v menovateli':'No x in denominators');
+ await expect(page.locator('#equation-expression')).toBeFocused();
+ await expect(page.locator('.equation-root')).toHaveCount(0);
+ await page.locator('#equation-expression').fill('x^2=2');await page.locator('#equation-submit').click();
+ await expect(page.locator('#equation-roots')).toContainText('sqrt(2)');
+ const other=language==='sk'?'en':'sk';await page.locator(`.language-switch a[lang=${other}]`).click();
+ await expect(page.locator('#equation-mode')).toHaveValue('expression');
+ await expect(page.locator('#equation-expression')).toHaveValue('x^2=2');
+ await expect(page.locator('#equation-roots')).toContainText('sqrt(2)');
+ await page.locator('#equation-clear').click();await expect(page.locator('#equation-expression')).toHaveValue('');
+ await expect(page.locator('#equation-expression')).toBeFocused();
 });
 
 test('equation layout fits phone, landscape and desktop',async({page})=>{

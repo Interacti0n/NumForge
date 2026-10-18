@@ -5,6 +5,9 @@ details and the [2.3.0 release record](docs/project/RELEASE_2_3.md) for validati
 
 ## Unreleased
 
+- Enter whole polynomial equations such as `(x-2)*(x+3)=0`; keep coefficient mode
+  and exact C/HTTP solving with explicit unsupported-domain errors.
+
 - Add C/HTTP support for exact linear/quadratic equations, including coefficient
   expressions, irrational and complex roots.
 - Add the browser equation editor, exact root text, stable decimal previews,

@@ -9,7 +9,7 @@ testing entry points remain directly under `docs/`.
 - [Remote hosting](guides/HOSTING.md): HTTPS tunnels, reverse proxies and capacity.
 - [Variables](guides/VARIABLES.md): assignments, deletion, snapshots and lifetime.
 - [Function graphs](guides/GRAPHS.md): function/color controls, typed gaps, smooth curves and axes.
-- [Polynomial equations](guides/EQUATIONS.md): coefficient expressions, exact roots, decimal previews and limits.
+- [Polynomial equations](guides/EQUATIONS.md): whole equations, coefficient mode, exact roots, decimal previews and limits.
 - [Unit converter](guides/UNIT_CONVERTER.md): categories, preview, swap and history.
 - [C library guide](guides/LIBRARY_GUIDE.md): build, install and consume the library.
 - [Developer SDK](guides/SDK.md): prebuilt C/C++ library, toolchains and quick start.

@@ -42,19 +42,21 @@
       <main class="card equation-entry">
         <h1>Rovnice</h1><p class="equation-formula">ax² + bx + c = 0</p>
         <form id="equation-form">
-          <div class="equation-coefficients">
+          <label class="equation-mode-label" for="equation-mode">Zadanie<select id="equation-mode"><option value="expression">Celá rovnica</option><option value="coefficients">Koeficienty a, b, c</option></select></label>
+          <label for="equation-expression" id="equation-expression-field">Rovnica v x<input id="equation-expression" type="text" value="x^2 - 2 = 0" maxlength="4096" spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="equation-help" required></label>
+          <div class="equation-coefficients" hidden>
             <label for="equation-a">a<input id="equation-a" name="a" type="text" value="1" maxlength="4096" spellcheck="false" autocapitalize="off" autocomplete="off" required></label>
             <label for="equation-b">b<input id="equation-b" name="b" type="text" value="0" maxlength="4096" spellcheck="false" autocapitalize="off" autocomplete="off" required></label>
             <label for="equation-c">c<input id="equation-c" name="c" type="text" value="-2" maxlength="4096" spellcheck="false" autocapitalize="off" autocomplete="off" required></label>
           </div>
-          <p class="equation-hint" id="equation-help">Čísla alebo presné výrazy, napr. 1/3 či sqrt(4). Pre lineárnu rovnicu nastav a = 0.</p>
+          <p class="equation-hint" id="equation-help">Lineárna alebo kvadratická v x, napr. 3x + 1 = 7 či (x - 2)*(x + 3) = 0. Presné reálne konštanty; bez x v menovateli.</p>
           <div class="equation-actions"><button class="primary-button" type="submit" id="equation-submit">Vyriešiť</button><button type="button" id="equation-clear">Vymazať</button></div>
           <details class="equation-settings"><summary>Presnosť náhľadu</summary><label for="equation-precision">Platné číslice<input id="equation-precision" type="number" min="1" max="1000" value="16" required></label><p>Presné korene zostávajú zachované. Desatinný náhľad je približný.</p></details>
         </form>
       </main>
       <section class="card equation-result" aria-labelledby="equation-result-title" aria-live="polite" aria-atomic="true">
         <h2 id="equation-result-title">Riešenia</h2>
-        <p id="equation-status">Zadaj koeficienty a zvoľ Vyriešiť.</p>
+        <p id="equation-status">Zadaj rovnicu a zvoľ Vyriešiť.</p>
         <p id="equation-error" role="alert" hidden></p><ol id="equation-roots"></ol>
       </section>
     </div>

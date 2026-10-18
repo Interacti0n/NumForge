@@ -8,7 +8,7 @@ the implementation belongs to `numforge_application`.
 This is an implemented coefficient-based foundation with a stateless
 [HTTP operation](../reference/EQUATION_HTTP_API.md). It is not an installed
 numeric SDK API. The [browser equation editor](../guides/EQUATIONS.md) consumes
-this contract with exact root text and decimal previews. Parsing arbitrary
+this contract with exact root text and decimal previews. Parsing non-polynomial
 equations and numerical interval solving remain subsequent work.
 
 ## C operations and ownership
@@ -34,6 +34,24 @@ still available in the successfully solved equation. Invalid root indices and
 requests for roots of NONE/ALL results return `CALCULATOR_INVALID_ARGUMENT`.
 
 ## Degree reduction and exact representation
+
+`application_equation_solve_text` accepts one complete equation in lowercase x
+with one `=`. It shares the calculator AST/parser and exact typed constant
+evaluation. It converts both sides into three rational coefficients and subtracts
+them before calling the same solver. Output ownership and budgets match the other
+entry points; errors retain byte offsets in the original full input, including
+the right-hand side. Input length is bounded to 4096 bytes and line breaks are
+rejected. No AST is retained after solving.
+
+The converter accepts unary signs, +, -, *, division by x-free constants,
+powers 0..2 and postfix square. Every intermediate polynomial must remain degree
+at most two; higher intermediate degrees are rejected rather than expanded and
+cancelled later. Calls/exponents/denominators depending on x are unsupported.
+This deliberately preserves domain restrictions: x/x is never cancelled.
+Only lowercase x is available, independently of calculator sessions. A bounded
+AST inspection rejects random calls and unresolved names before constant
+evaluation, including expressions multiplied by zero. Resource failures remain
+atomic; repeated AST inspections also poll the inherited deadline.
 
 `application_equation_solve_expressions` evaluates three borrowed coefficient
 strings in a,b,c order, then calls the same exact solver. The shared C evaluator
