@@ -29,4 +29,8 @@ body { height:auto; min-height:100dvh; overflow:auto; }
 .equation-approx { color:var(--muted); border-top:1px solid var(--border-soft); padding-top:12px; }
 .equation-root small { color:var(--quiet); }
 .equation-root button { justify-self:start; min-height:40px; padding:8px 14px; }
+.equation-root-actions { display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
+.equation-graph-link { display:inline-flex; align-items:center; min-height:40px; padding:8px 14px; border:1px solid var(--border); border-radius:10px; color:var(--accent); text-decoration:none; }
+.equation-graph-link:hover { background:var(--border-soft); }
+.equation-graph-link:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
 @media(max-width:760px) { .equations-workspace { grid-template-columns:minmax(0,1fr); padding:20px 0; gap:16px; } .equations-workspace .card { padding:20px; } }

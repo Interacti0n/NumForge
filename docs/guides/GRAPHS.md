@@ -15,6 +15,12 @@ Visibility is saved per tab alongside expressions and colors.
 Blank rows are not evaluated. An empty plot still shows axes; a failed function
 shows its own error while valid curves remain visible.
 
+From [Equations](EQUATIONS.md#show-a-solution-in-the-graph), **Show in graph** adds
+the difference between equation sides and centers near the selected real root.
+It keeps existing functions, reuses matching expressions and respects the four
+function limit. A root lies on the x axis of this difference; markers still
+require the graph's independent C verification.
+
 Both axes start at −10..10. Editing one of several functions clears only its old
 curve and retains the camera and other results. Expressions, colors, visibility
 and the camera persist in the same tab across language changes/navigation.

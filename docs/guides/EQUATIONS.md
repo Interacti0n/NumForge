@@ -53,8 +53,26 @@ HTTP response to 128 KiB. More requested digits do not guarantee completion.
 Previews use guard digits and a stable real-root projection to avoid subtracting
 nearly equal numbers. They are approximate, without a certified rounding
 interval. Exact radicals are not necessarily simplified by extracting square
-factors. Irrational coefficients in exact mode, systems and graph integration
+factors. Irrational coefficients in exact mode and systems
 remain subsequent work.
+
+## Show a solution in the graph
+
+For a real root within the browser's displayable numeric range, **Show in graph /
+Zobraziť v grafe** adds `(left side)-(right side)` to Graphs. Coefficient mode
+uses `(a)*x^2+(b)*x+(c)`. Solutions therefore lie on the x axis, even when the
+original right side was nonzero. This keeps the original expression's domain.
+Complex roots have no graph action.
+
+The camera centers approximately on the selected root, with y from -10 to 10.
+Exact-mode previews position a broad camera only; numerical mode uses the full
+checked coordinate. Neither becomes a verified graph marker automatically:
+intercepts use the existing independent C graph verification, which may omit
+unresolved points. The plot is an approximate visualization, not a second
+equation proof. Existing functions are retained; matching expressions are reused.
+If all four graph slots are occupied, remove a function before adding another.
+Transfer requires session storage in the same tab; input and solver results
+remain available when returning to Equations.
 
 ## Numerical interval search
 

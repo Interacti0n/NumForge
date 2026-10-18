@@ -81,7 +81,44 @@ function initEquations() {
                 try { await navigator.clipboard.writeText(numerical ? root.x : root.exact); copy.textContent = words.copied; }
                 catch (_) { copy.textContent = words.copyError; }
             }, {signal});
-            row.append(copy); roots.append(row);
+            const actions = document.createElement('div'); actions.className = 'equation-root-actions';
+            actions.append(copy);
+            // Decimal previews position the camera only. Graph intercepts still
+            // have to pass the graph API's independent C verification.
+            const coordinate = numerical ? root.x : root.approximation;
+            const x = typeof coordinate === 'string' && coordinate.length <= 65536 && /^[-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?$/.test(coordinate) ? Number(coordinate) : NaN;
+            const radius = Math.max(10, Math.abs(x) * .6);
+            if ((numerical || value.imaginary === false) && Number.isFinite(x) &&
+                Number.isFinite(x-radius) && Number.isFinite(x+radius) &&
+                !(x === 0 && /[1-9]/.test(coordinate.split(/[eE]/)[0]))) {
+                const graph = document.createElement('a'); graph.className = 'equation-graph-link';
+                graph.href = '/graph?lang=' + (sk ? 'sk' : 'en');
+                graph.textContent = sk ? 'Zobraziť v grafe' : 'Show in graph';
+                graph.title = sk ? 'Rozdiel strán rovnice; riešenie leží na osi x.' : 'Difference between equation sides; a solution lies on the x axis.';
+                graph.addEventListener('click', event => {
+                    // Use normal same-tab navigation, including the SPA router.
+                    if (event.button || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) { event.preventDefault(); return; }
+                    let source;
+                    if (mode.value === 'coefficients') source = '('+inputs[0].value+')*x^2+('+inputs[1].value+')*x+('+inputs[2].value+')';
+                    else {
+                        const sides = expression.value.split('=');
+                        if (sides.length === 2) source = '('+sides[0]+')-('+sides[1]+')';
+                    }
+                    try {
+                        if (!source || new TextEncoder().encode(source).length > 4096) throw Error();
+                        const saved = JSON.parse(sessionStorage.getItem('numforge-graph-state') || 'null');
+                        const entries = Array.isArray(saved?.curves) ? saved.curves.filter(c=>c && typeof c.expression === 'string' && c.expression.trim()) : [];
+                        if (entries.length >= 4 && !entries.some(c=>c.expression === source)) {
+                            event.preventDefault(); error.textContent = sk ? 'V grafe sú už štyri funkcie. Najprv jednu odstráň.' : 'The graph already has four functions. Remove one first.'; error.hidden = false; return;
+                        }
+                        sessionStorage.setItem('numforge-equation-graph', JSON.stringify({expression:source, x:[x-radius,x+radius]}));
+                    } catch (_) {
+                        event.preventDefault(); error.textContent = sk ? 'Prenos do grafu sa nepodaril. Skontroluj dostupnosť úložiska alebo skráť zadanie.' : 'Could not open the graph. Check browser storage or shorten the input.'; error.hidden = false;
+                    }
+                }, {signal});
+                actions.append(graph);
+            }
+            row.append(actions); roots.append(row);
         });
     }
     function cancel() { ++generation; controller?.abort(); controller = null; submit.disabled = false; form.removeAttribute('aria-busy'); }

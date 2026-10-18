@@ -914,18 +914,34 @@ function initGraph() {
         locateRequest?.abort();
         curve.dispose();curves.splice(index,1);curve.row.remove();activeCurve=curves[Math.min(index,curves.length-1)];relabel();save();drawSoon();activeCurve.input.focus();
     }
-    const initialRow=root.querySelector('.graph-curve');let restored;
+    const initialRow=root.querySelector('.graph-curve');let restored,importedExpression=null;
     try{restored=JSON.parse(sessionStorage.getItem('numforge-graph-state')||'null');}catch(_){}
     const valid=entry=>entry&&typeof entry.expression==='string'&&entry.expression.length<=4096;
-    const restoredCurves=Array.isArray(restored?.curves)?restored.curves.filter(valid).slice(0,maximumCurves):valid(restored)?[restored]:[];
     const validAxis=a=>Array.isArray(a)&&a.length===2&&a.every(Number.isFinite)&&a[1]>a[0]&&Number.isFinite(a[1]-a[0])&&a[1]-a[0]>=Math.max(1,...a.map(Math.abs))*1e-8;
+    // A one-shot, bounded handoff preserves existing functions and never marks
+    // the solver's rounded camera coordinate as a verified graph intercept.
+    try{
+        const imported=JSON.parse(sessionStorage.getItem('numforge-equation-graph')||'null');
+        sessionStorage.removeItem('numforge-equation-graph');
+        if(valid(imported)&&new TextEncoder().encode(imported.expression).length<=4096&&validAxis(imported.x)){
+            const entries=(Array.isArray(restored?.curves)?restored.curves.filter(valid):valid(restored)?[restored]:[]).filter(c=>c.expression.trim()).slice(0,maximumCurves);
+            let entry=entries.find(c=>c.expression===imported.expression);
+            if(entry||entries.length<maximumCurves){
+                if(!entry){entry={expression:imported.expression,color:palette[entries.length]};entries.push(entry);}
+                entry.visible=true;entry.plotted=true;
+                restored={version:2,curves:entries,view:{x:imported.x,y:[-10,10]}};
+                importedExpression=imported.expression;
+            }
+        }
+    }catch(_){}
+    const restoredCurves=Array.isArray(restored?.curves)?restored.curves.filter(valid).slice(0,maximumCurves):valid(restored)?[restored]:[];
     if(restored?.version===2&&validAxis(restored.view?.x)&&validAxis(restored.view?.y)){viewport=restored.view.x.slice();yViewport=restored.view.y.slice();}
     if(restoredCurves.length){initialRow.querySelector('input:not([type=color])').value=restoredCurves[0].expression;if(/^#[0-9a-f]{6}$/i.test(restoredCurves[0].color))initialRow.querySelector('input[type=color]').value=restoredCurves[0].color;}
 
     if(restoredCurves.length)initialRow.querySelector('.graph-visibility').setAttribute('aria-pressed',String(restoredCurves[0].visible!==false));
     curves.push(createCurve(initialRow));activeCurve=curves[0];
     for(const entry of restoredCurves.slice(1))addCurve(entry.expression,/^#[0-9a-f]{6}$/i.test(entry.color)?entry.color:null,false,entry.visible!==false);
-    activeCurve=curves[0];relabel();
+    activeCurve=curves.find(c=>c.input.value===importedExpression)||curves[0];relabel();
     $('graph-form').addEventListener('submit',event=>plotAll(event),{signal:lifecycle.signal});
     $('graph-add').addEventListener('click',()=>addCurve(),{signal:lifecycle.signal});
     $('graph-legend').addEventListener('click',event=>{const button=event.target.closest('.graph-legend-toggle'),curve=curves.find(c=>String(c.id)===button?.dataset.curve);if(curve)curve.setVisible(!curve.state().visible);},{signal:lifecycle.signal});

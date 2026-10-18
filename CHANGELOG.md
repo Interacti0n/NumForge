@@ -9,6 +9,10 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ### Equation foundation
 
+- Link real equation roots to graphs of the original side difference, preserving
+  existing functions and independently verifying graph intercepts in C. Retain
+  equation inputs/results when returning and keep complex roots in text.
+
 - Add a private decimal-weight hybrid comparison with bounded local proposals
   and permanent bisection fallback on repeated rejections or poor bracket
   contraction. Preserve large common coordinate offsets and validate method,

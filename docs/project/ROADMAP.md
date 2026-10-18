@@ -122,8 +122,10 @@ documented HTTP contract alongside the web implementation, using the versioned
    now provides cheaper interpolation with a permanent progress fallback.
    Production still retains bisection: method selection must consider flat-root
    cost and convergence coverage, not just fewer evaluations.
-   Multiple-bracket scanning,
-   tangencies, configurable tolerances and graph integration remain future work.
+   Real equation roots now link to graphs of the original side difference,
+   preserving existing functions and independently verifying graph markers.
+   Multiple-bracket scanning, tangencies and configurable tolerances remain
+   future work.
 4. Add session user functions, local parameters and definition management,
    followed by their integration with graphs and solvers.
 5. Extend Quantity with general compound unit strings, named derived units,
