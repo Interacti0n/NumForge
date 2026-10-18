@@ -112,11 +112,28 @@ for(const language of ['sk','en'])test(`numerical interval root, residual and ho
  await page.locator('#equation-expression').fill('(x-0.1234)^2=0');await page.locator('#equation-submit').click();
  await expect(page.locator('#equation-status')).toContainText(other==='sk'?'Koreň môže existovať':'A root may still exist');
  await expect(page.locator('.equation-root')).toHaveCount(0);
+ await page.locator('#equation-expression').fill('x-0.1234+1E-30*(x-0.1234)/abs(x-0.1234)=0');
+ await page.locator('#equation-submit').click();
+ await expect(page.locator('#equation-status')).toContainText(other==='sk'?'nepodarilo overiť spojitosť':'could not be verified');
+ await expect(page.locator('.equation-root')).toHaveCount(0);
  await page.locator('#equation-min').fill('-1');await page.locator('#equation-expression').fill('1/x=0');await page.locator('#equation-submit').click();
  await expect(page.locator('#equation-status')).toContainText(other==='sk'?'nedefinovaná':'undefined');
  await page.locator('#equation-min').fill('2');await page.locator('#equation-submit').click();
  await expect(page.locator('#equation-error')).toContainText(other==='sk'?'Skontroluj interval':'Check that from');
  await expect(page.locator('#equation-min')).toBeFocused();
+});
+
+test('legacy numerical results are discarded while keeping the input',async({page})=>{
+ await page.goto('/solve?lang=en');
+ await page.evaluate(()=>sessionStorage.setItem('numforge-equations-v1',JSON.stringify({
+  inputs:['1','0','-2'],mode:'numeric',expression:'cos(x)=x',bounds:['0','1'],precision:'16',
+  result:{kind:'numeric',outcome:'found',roots:[{x:'0.7',approximation:'0.7',residual:'0'}]}
+ })));
+ await page.reload();await expect(page.locator('#equation-mode')).toHaveValue('numeric');
+ await expect(page.locator('#equation-expression')).toHaveValue('cos(x)=x');
+ await expect(page.locator('#equation-max')).toHaveValue('1');await expect(page.locator('.equation-root')).toHaveCount(0);
+ await page.locator('#equation-submit').click();await expect(page.locator('.equation-root')).toHaveCount(1);
+ await page.reload();await expect(page.locator('.equation-root')).toHaveCount(1);
 });
 
 test('equation layout fits phone, landscape and desktop',async({page})=>{

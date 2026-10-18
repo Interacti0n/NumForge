@@ -164,6 +164,7 @@ if(NUMFORGE_BUILD_APPS OR BUILD_TESTING OR NUMFORGE_BUILD_FUZZERS OR NUMFORGE_BU
 
     add_library(numforge_application STATIC
         src/application/expression.c
+        src/application/expression_domain.c
         src/application/fast_expression.c
         src/application/fast_graph.c
         src/application/graph.c
@@ -416,6 +417,7 @@ if(NUMFORGE_BUILD_BENCHMARKS)
     numforge_enable_diagnostics(numeric_root_benchmark)
     if(BUILD_TESTING)
         add_test(NAME numeric_root_benchmark_smoke COMMAND numeric_root_benchmark --quick)
+        add_test(NAME numeric_root_domain_regression COMMAND numeric_root_benchmark --adversarial)
         set_tests_properties(numeric_root_benchmark_smoke PROPERTIES TIMEOUT 120)
     endif()
     add_executable(calculator_benchmark benchmarks/calculator_benchmark.c benchmarks/benchmark_clock.c)

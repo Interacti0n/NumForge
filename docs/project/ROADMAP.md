@@ -113,7 +113,10 @@ documented HTTP contract alongside the web implementation, using the versioned
    rejection of variable denominators/functions. Coefficient mode remains available.
    [Numerical interval roots](../reference/NUMERIC_ROOT_HTTP_API.md) now find one
    real root in a sign-changing bracket with rational bisection, high-precision
-   residuals and explicit work limits/outcomes. Multiple-bracket scanning,
+   residuals, conservative local domain checks and explicit work limits/outcomes.
+   Unverified candidate domains expose no root. A high-precision safeguarded
+   Brent experiment is the next measured optimization, retaining those checks.
+   Multiple-bracket scanning,
    tangencies, configurable tolerances and graph integration remain future work.
 4. Add session user functions, local parameters and definition management,
    followed by their integration with graphs and solvers.

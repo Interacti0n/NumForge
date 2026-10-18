@@ -1,6 +1,8 @@
 #include "expression.h"
 #include "fast_expression_internal.h"
 #include "expression_internal.h"
+#include "expression_domain_internal.h"
+#include "exact_functions.h"
 #include "evaluator.h"
 #include <numforge/runtime.h>
 #include <stdlib.h>
@@ -271,6 +273,16 @@ static bool graph_smooth_node(const CalculatorExpression *node)
 bool application_expression_graph_smooth(const ApplicationExpression *expression)
 {
     return expression != NULL && graph_smooth_node(expression->tree);
+}
+CalculatorStatus application_expression_domain(bool *verified, const ApplicationExpression *expression,
+    const BigRational *lower, const BigRational *upper)
+{
+    if (!verified || !expression || !lower || !upper) return CALCULATOR_NULL_ARGUMENT;
+    int order = 0;
+    CalculatorStatus status = calculator_from_rational_status(bigrational_compare(&order, lower, upper));
+    if (status != CALCULATOR_OK) return calculator_budget_status(status);
+    if (order > 0) return CALCULATOR_INVALID_ARGUMENT;
+    return application_expression_domain_tree(verified, expression->tree, expression->parameter_name, lower, upper);
 }
 static bool integer_domain_node(const CalculatorExpression *node,const char *parameter)
 {

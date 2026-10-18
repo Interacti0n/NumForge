@@ -6,15 +6,17 @@ typedef enum ApplicationNumericRootKind {
     APPLICATION_ROOT_FOUND,
     APPLICATION_ROOT_NOT_BRACKETED,
     APPLICATION_ROOT_DOMAIN_GAP,
+    APPLICATION_ROOT_DOMAIN_UNVERIFIED,
     APPLICATION_ROOT_ITERATION_LIMIT,
     APPLICATION_ROOT_PRECISION_LIMIT
 } ApplicationNumericRootKind;
 
-/* One bounded, approximate real root, never an enumeration or continuity proof.
+/* One bounded, approximate real root, never an enumeration or certified error bound.
  * x/residual exist only for FOUND; lower/upper retain the final search interval.
  * exact_zero means the sampled typed rational difference is exactly zero.
  * Otherwise both absolute width and absolute residual must be <= 1E-12 and
- * residual must improve strictly on both original endpoints.
+ * residual must improve strictly on both original endpoints, and both sides
+ * must pass conservative real-continuity checks on the final interval.
  * Read-only owned fields, released by application_numeric_root_destroy. */
 typedef struct ApplicationNumericRoot {
     ApplicationNumericRootKind kind;

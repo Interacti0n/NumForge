@@ -37,6 +37,13 @@ void application_expression_enable_graph_phases(ApplicationExpression *expressio
 /* Restricted globally continuous operations; excludes unknown domain/pole/jump
  * operations. Used only to permit coarser display chords, never domain claims. */
 bool application_expression_graph_smooth(const ApplicationExpression *expression);
+/* Conservative real-continuity check on a closed rational parameter interval.
+ * Exact rational enclosures only; unsupported/overlapping ranges return OK and
+ * false, never a discontinuity claim. Supported algebra, integral powers and a
+ * restricted unary-function whitelist. Inherit the caller's operation budget.
+ * Snapshot variables/ans are unverified. Errors preserve *verified. */
+CalculatorStatus application_expression_domain(bool *verified, const ApplicationExpression *expression,
+    const BigRational *lower, const BigRational *upper);
 /* Conservative automatic integer-grid selection: a domain-restricting call
  * must consume the parameter directly. Transformed lattices need explicit UI
  * selection; this does not claim arbitrary discrete domains are discoverable. */

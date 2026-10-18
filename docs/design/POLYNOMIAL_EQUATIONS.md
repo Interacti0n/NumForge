@@ -144,5 +144,9 @@ complex arithmetic. Allocation-stat builds verify zero live allocations.
    controls and a dedicated user guide are implemented around that contract.
 3. Bounded numerical roots of general prepared expressions on an explicit
    sign-changing interval are implemented with residuals and convergence limits.
+   Before accepting a non-exact candidate, exact rational interval enclosures
+   conservatively check both original sides' local real domains/continuity.
+   Unresolved domains publish no root (domain_unverified); no algebraic
+   cancellation discards holes. Exact typed zeros keep their pointwise path.
    Additional bracket scanning, tangencies and graph navigation remain future
    work. Finite sampling does not enumerate every root.

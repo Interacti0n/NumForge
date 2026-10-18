@@ -36,7 +36,7 @@ int main(int argc, char **argv)
     if (argc > 2 || (argc == 2 && !quick && !adversarial)) return 2;
     const int precisions[] = {16, 34, 100}; bool failed = false;
     puts("case,precision,repeat,ms,status,outcome,evaluations,iterations,allocation_calls,allocation_bytes,verified,x,residual");
-    NumericRootCase gap = {"vanishing_jump", "x-0.1234+1E-30*(x-0.1234)/abs(x-0.1234)=0", "0", "1", NULL, APPLICATION_ROOT_ITERATION_LIMIT};
+    NumericRootCase gap = {"vanishing_jump", "x-0.1234+1E-30*(x-0.1234)/abs(x-0.1234)=0", "0", "1", NULL, APPLICATION_ROOT_DOMAIN_UNVERIFIED};
     size_t count = adversarial ? 1U : sizeof(numeric_root_cases)/sizeof(numeric_root_cases[0]);
     for (size_t p = quick ? 1U : 0U; p < (quick ? 2U : 3U); ++p)
         for (size_t i = 0U; i < count; ++i) for (int run = 1; run <= (quick || adversarial ? 1 : 3); ++run) {

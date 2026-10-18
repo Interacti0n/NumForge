@@ -9,9 +9,15 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ### Equation foundation
 
+- Verify real domains on final numerical candidate intervals with conservative
+  exact rational enclosures. Reject the audit's vanishing-jump false root with
+  domain_unverified; retain safe divisions/logarithms/square roots, inherited
+  budgets and separate exact-point acceptance. Explain the outcome in both
+  browser languages and discard obsolete saved numerical results.
+
 - Add a 27-case numerical root corpus at precisions 16/34/100, benchmark timings
   and independent Decimal residual checks. Record scaling/iteration limits and
-  a failing adversarial discontinuity case; domain verification remains open.
+  retain the audit's adversarial discontinuity as a domain-check regression.
 
 - Add an explicit numerical interval mode for one real root of general C
   expressions, using rational bisection and BigDecimal residuals. Bound work to

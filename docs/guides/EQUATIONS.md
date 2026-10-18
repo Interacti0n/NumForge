@@ -75,6 +75,14 @@ Without a confirmed sign change, roots can still exist, especially tangent
 roots. Approximate endpoint zeros alone are not confirmed. Sampled domain gaps,
 insufficient precision and the 96-step/192-coordinate limits produce explanatory
 outcomes instead of “no solutions”. Narrow or shift the interval when needed.
+Before reporting an approximate root, C checks the real domain and continuity
+of both sides around the candidate. If it cannot verify them, no root is shown;
+this can happen for valid expressions outside the current conservative checks.
+Safe divisions, sqrt and ln remain supported when the local ranges establish
+their domains. Steps, tan and some nested expressions may remain unverified.
+Exactly zero typed rational points do not require a continuous surrounding
+interval. Old numerical results saved before these checks are discarded while
+the tab's inputs are retained; solving again checks the current expression.
 The same five-second/memory budget applies. All math uses BigRational/BigDecimal;
-these numerical checks are not a proof of continuity or root existence between
-samples. See the [numerical API](../reference/NUMERIC_ROOT_HTTP_API.md).
+finite-precision signs and residuals still do not give certified existence or
+root-error bounds. See the [numerical API](../reference/NUMERIC_ROOT_HTTP_API.md).

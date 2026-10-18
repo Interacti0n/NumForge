@@ -1,5 +1,10 @@
 # Numerical interval root audit — 18 October 2026
 
+Historical baseline: the [domain-check follow-up](NUMERIC_ROOT_DOMAINS_2026_10_18.md)
+now rejects the vanishing jump as domain_unverified. The current --adversarial
+harness expects that diagnostic and passes; the failed runs below describe the
+original solver at 5592092, not current behavior.
+
 ## Scope and reproduction
 
 Baseline: `5592092`, unchanged production bisection. Windows x64, GCC 16.2

@@ -1,5 +1,6 @@
 #include "numeric_root.h"
 #include "session_api.h"
+#include "expression.h"
 #include "../src/internal/numforge_alloc.h"
 #include <unity.h>
 #include <stdlib.h>
@@ -91,6 +92,98 @@ static void test_audit_reference_corpus_at_all_supported_precision_extremes(void
         }
     }
 }
+static void domain(const char *input, const char *low, const char *high, bool expected)
+{
+    ApplicationExpression *expression = NULL; bool verified = !expected;
+    bound(minimum, low); bound(maximum, high);
+    TEST_ASSERT_EQUAL_MESSAGE(CALCULATOR_OK, application_expression_prepare(&expression, input, "x", NULL, &context, &error), input);
+    TEST_ASSERT_EQUAL_MESSAGE(CALCULATOR_OK, application_expression_domain(&verified, expression, minimum, maximum), input);
+    TEST_ASSERT_EQUAL_MESSAGE(expected, verified, input); application_expression_destroy(expression);
+}
+static void test_interval_domains_preserve_holes_and_allow_safe_compositions(void)
+{
+    domain("1/(x-0.1234)", "0", "1", false);
+    domain("0/(x-0.1234)", "0", "1", false);
+    domain("(x-0.1234)/(x-0.1234)", "0", "1", false);
+    domain("1/abs(x-0.1234)", "0", "1", false);
+    domain("1/(x-0.1234)^2", "0", "1", false);
+    domain("1/(x-0.1234)", "0.2", "1", true);
+    domain("1/(x-0.1234)", "-1", "0", true);
+    domain("sqrt(x)", "-1", "1", false);
+    domain("sqrt(x)", "0", "1", true);
+    domain("ln(x)", "0", "1", false);
+    domain("ln(x)", "0.0001", "1", true);
+    domain("log(x)", "0.0001", "1", true);
+    domain("log(x)", "0", "1", false);
+    domain("ln(sqrt(x))", "0.5", "1", true);
+    domain("ln(ln(x))", "2", "3", true);
+    domain("ln(ln(x))", "0.5", "2", false);
+    domain("sqrt(ln(x))", "2", "3", true);
+    domain("exp(sin(x))+cos(x)", "-100", "100", true);
+    domain("1/(π-x)", "0", "1", true);
+    domain("1/(e-x)", "0", "1", true);
+    domain("1/(φ-x)", "0", "0.5", true);
+    domain("ln(exp(x))", "-1", "1", false);
+    domain("abs(x)*x^3", "-1", "1", true);
+    domain("(x-0.1234)^(-2)", "0", "1", false);
+    domain("(x-0.1234)^(-2)", "0.2", "1", true);
+    domain("pow(x;3)", "-1", "1", true);
+    domain("x^100", "-1", "1", true);
+    domain("x^x", "0.5", "1", true);
+    domain("x^0.5", "-1", "1", false);
+    domain("tan(x)", "1", "2", false);
+    domain("floor(x)+x", "0", "1", false);
+    domain("round(sin(x);0)", "-1", "1", false);
+    domain("1/(abs(x)+1)", "-1", "1", true);
+    domain("1/(x^2+1)", "-1", "1", true);
+    domain("1/(x*x+1)", "-1", "1", false); /* dependency overestimate is honest */
+}
+static void test_candidate_domain_verification_prevents_false_roots(void)
+{
+    const int precisions[] = {16, 34, 100};
+    for (size_t i = 0U; i < sizeof(precisions)/sizeof(precisions[0]); ++i) {
+        context.division_scale = precisions[i];
+        solve("x-0.1234+1E-30*(x-0.1234)/abs(x-0.1234)=0", "0", "1", APPLICATION_ROOT_DOMAIN_UNVERIFIED);
+        TEST_ASSERT_NULL(root->x); TEST_ASSERT_NULL(root->residual);
+        solve("x-0.1234+1E-30*sign(x-0.1234)=0", "0", "1", APPLICATION_ROOT_DOMAIN_UNVERIFIED);
+        solve("1/(x-0.1234)=3", "0.3", "0.6", APPLICATION_ROOT_FOUND); near("0.4567333333333333333333333333333333");
+        solve("1/(0.1234-x)=-3", "0.3", "0.6", APPLICATION_ROOT_FOUND); near("0.4567333333333333333333333333333333");
+        solve("1/sqrt(x)=3", "0.01", "1", APPLICATION_ROOT_FOUND); near("0.1111111111111111111111111111111111");
+        solve("ln(sqrt(x))=1", "1", "10", APPLICATION_ROOT_FOUND); near("7.3890560989306502272304274605750078");
+        solve("(x-0.1234)^(-1)=3", "0.3", "0.6", APPLICATION_ROOT_FOUND); near("0.4567333333333333333333333333333333");
+        solve("pow(x;3)=2", "0", "2", APPLICATION_ROOT_FOUND); near("1.259921049894873164767210607278228351");
+    }
+    /* An actual typed exact zero is valid even if a neighboring point has a
+     * hole or unsupported function. No global continuity claim is made. */
+    solve("floor(x)=0", "0", "1", APPLICATION_ROOT_FOUND); TEST_ASSERT_TRUE(root->exact_zero);
+    solve("1/(x-1)=2", "0", "1.5", APPLICATION_ROOT_FOUND); near("1.5"); TEST_ASSERT_TRUE(root->exact_zero);
+}
+static void test_domain_verification_allocation_failures_are_atomic(void)
+{
+    ApplicationExpression *expression = NULL;
+    bound(minimum, "2"); bound(maximum, "3");
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_expression_prepare(&expression, "ln(sqrt(x))/(x*x+1)", "x", NULL, &context, &error));
+    bool verified = false; numforge_test_allocator_begin(0U);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_expression_domain(&verified, expression, minimum, maximum));
+    size_t calls = numforge_test_allocator_call_count(); numforge_test_allocator_end(); TEST_ASSERT_TRUE(verified);
+    for (size_t i = 1U; i <= calls; ++i) {
+        verified = false; numforge_test_allocator_begin(i);
+        TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY, application_expression_domain(&verified, expression, minimum, maximum));
+        numforge_test_allocator_end(); TEST_ASSERT_FALSE(verified);
+    }
+    verified = false; TEST_ASSERT_TRUE(numforge_budget_begin(5000U, 1U, 1U));
+    TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE, application_expression_domain(&verified, expression, minimum, maximum));
+    TEST_ASSERT_FALSE(verified); numforge_budget_end();
+    for (size_t i = 1U; i <= 40U; ++i) {
+        verified = false; numforge_test_budget_expire_after(i);
+        TEST_ASSERT_TRUE(numforge_budget_begin(5000U, CALCULATOR_ALLOCATION_BUDGET, CALCULATOR_SINGLE_ALLOCATION));
+        CalculatorStatus status = application_expression_domain(&verified, expression, minimum, maximum);
+        TEST_ASSERT_TRUE(status == CALCULATOR_OK || status == CALCULATOR_TIME_LIMIT);
+        if (status != CALCULATOR_OK) TEST_ASSERT_FALSE(verified);
+        numforge_budget_end(); numforge_test_allocator_end();
+    }
+    application_expression_destroy(expression);
+}
 static void test_invalid_inputs_and_read_only_failures(void)
 {
     solve("x=0", "-1", "1", APPLICATION_ROOT_FOUND); ApplicationNumericRoot *original = root;
@@ -149,6 +242,9 @@ static void test_numeric_http_contract_and_diagnostics(void)
     TEST_ASSERT_NOT_NULL(strstr(response, "\"residual\":")); TEST_ASSERT_NULL(strstr(response, "\"exact\":")); free(response); response = NULL;
     TEST_ASSERT_EQUAL(CALCULATOR_OK, numforge_web_session_request(&store, "POST", target, "(x-0.1234)^2=0", &response));
     TEST_ASSERT_NOT_NULL(strstr(response, "\"outcome\":\"not_bracketed\"")); TEST_ASSERT_NOT_NULL(strstr(response, "\"roots\":[]")); free(response); response = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, numforge_web_session_request(&store, "POST", target, "x-0.1234+1E-30*(x-0.1234)/abs(x-0.1234)=0", &response));
+    TEST_ASSERT_NOT_NULL(strstr(response, "\"outcome\":\"domain_unverified\",\"complete\":false,\"count\":0"));
+    TEST_ASSERT_NOT_NULL(strstr(response, "\"roots\":[]")); TEST_ASSERT_NULL(strstr(response, "\"residual\":")); free(response); response = NULL;
     const char *invalid[] = {"/api/equations/solve?mode=numeric", "/api/equations/solve?mode=numeric&min=0&max=0",
         "/api/equations/solve?mode=numeric&min=2&max=1", "/api/equations/solve?mode=numeric&min=bad&max=1",
         "/api/equations/solve?mode=numeric&min=0&max=1&precision=15", "/api/equations/solve?mode=numeric&min=0&max=1&precision=101",
@@ -186,6 +282,9 @@ int main(void)
     UNITY_BEGIN(); RUN_TEST(test_roots_use_original_high_precision_expressions);
     RUN_TEST(test_unbracketed_domains_and_jumps_do_not_claim_no_roots);
     RUN_TEST(test_audit_reference_corpus_at_all_supported_precision_extremes);
+    RUN_TEST(test_interval_domains_preserve_holes_and_allow_safe_compositions);
+    RUN_TEST(test_candidate_domain_verification_prevents_false_roots);
+    RUN_TEST(test_domain_verification_allocation_failures_are_atomic);
     RUN_TEST(test_invalid_inputs_and_read_only_failures); RUN_TEST(test_allocation_failures_and_outer_budgets_are_atomic);
     RUN_TEST(test_iterative_function_allocation_failures_are_atomic);
     RUN_TEST(test_numeric_http_contract_and_diagnostics); RUN_TEST(test_numeric_http_allocation_failures_do_not_publish_roots);

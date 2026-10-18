@@ -5,6 +5,9 @@ details and the [2.3.0 release record](docs/project/RELEASE_2_3.md) for validati
 
 ## Unreleased
 
+- Check numerical root domains conservatively and withhold unverified candidates,
+  including a small-jump false root discovered in the audit.
+
 - Find one high-precision numerical root on a chosen interval, with residual
   checks and explicit diagnostic outcomes in C, HTTP and the browser.
 

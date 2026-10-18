@@ -36,6 +36,7 @@ function initEquations() {
     const numericWords = sk ? {
         found:'Jeden približný koreň. Ďalšie môžu existovať.', not_bracketed:'Interval nepotvrdil zmenu znamienka. Koreň môže existovať; uprav interval.',
         domain_gap:'V skúmaných bodoch je nedefinovaná alebo nereálna hodnota. Zvoľ interval v reálnej doméne.',
+        domain_unverified:'V okolí kandidáta sa nepodarilo overiť spojitosť a definičný obor. Koreň nepotvrdzujeme; skús iný interval alebo jednoduchší zápis.',
         iteration_limit:'Koreň sa v rámci počtu krokov nepodarilo potvrdiť. Skús užší interval.',
         precision_limit:'Výpočet nerozlíšil hodnoty dostatočne. Zvýš presnosť alebo zúž interval.',
         help:'Jeden reálny koreň, napr. cos(x) = x. Zvoľ spojitý interval so zmenou znamienka rozdielu strán. Nehľadá všetky korene.',
@@ -43,6 +44,7 @@ function initEquations() {
     } : {
         found:'One approximate root. Other roots may exist.', not_bracketed:'The interval did not confirm a sign change. A root may still exist; adjust the interval.',
         domain_gap:'A sampled value is undefined or non-real. Choose an interval within the real domain.',
+        domain_unverified:'Continuity and the real domain could not be verified around the candidate. No root is confirmed; try another interval or a simpler expression.',
         iteration_limit:'Could not confirm a root within the step limit. Try a narrower interval.',
         precision_limit:'Values could not be distinguished sufficiently. Increase precision or narrow the interval.',
         help:'One real root, e.g. cos(x) = x. Choose a continuous interval where the difference between sides changes sign. Does not enumerate roots.',
@@ -51,7 +53,7 @@ function initEquations() {
     let controller = null, generation = 0, result = null;
     const equationHelp = document.querySelector('#equation-help').textContent;
     function save() {
-        const state = {inputs:inputs.map(input => input.value), expression:expression.value, bounds:bounds.map(input=>input.value), mode:mode.value, precision:precision.value, result};
+        const state = {numericDomainVersion:1, inputs:inputs.map(input => input.value), expression:expression.value, bounds:bounds.map(input=>input.value), mode:mode.value, precision:precision.value, result};
         try {
             if (JSON.stringify(state).length > 24000) state.result = null;
             sessionStorage.setItem('numforge-equations-v1', JSON.stringify(state));
@@ -167,12 +169,12 @@ function initEquations() {
             if (Array.isArray(saved.bounds) && saved.bounds.length === 2 && saved.bounds.every(value=>typeof value==='string'&&value.length<=47)) bounds.forEach((input,index)=>input.value=saved.bounds[index]);
             if (typeof saved.expression === 'string' && saved.expression.length <= 4096) expression.value = saved.expression;
             if (/^\d+$/.test(saved.precision) && Number(saved.precision) >= 1 && Number(saved.precision) <= 1000) precision.value = saved.precision;
-            if (validResult(saved.result)) result = saved.result;
+            if (validResult(saved.result) && (saved.result.kind !== 'numeric' || saved.numericDomainVersion === 1)) result = saved.result;
         }
     } catch (_) { /* Ignore unavailable or obsolete state. */ }
     function validResult(value) {
         return value && ['finite','none','all','numeric'].includes(value.kind) && Array.isArray(value.roots) && value.roots.length <= 2 &&
-            (value.kind !== 'numeric' || Object.hasOwn(numericWords, value.outcome) && ['found','not_bracketed','domain_gap','iteration_limit','precision_limit'].includes(value.outcome)) &&
+            (value.kind !== 'numeric' || Object.hasOwn(numericWords, value.outcome) && ['found','not_bracketed','domain_gap','domain_unverified','iteration_limit','precision_limit'].includes(value.outcome)) &&
             value.roots.every(root=>typeof root.approximation==='string' && (value.kind==='numeric' ? typeof root.x==='string' && typeof root.residual==='string' : typeof root.exact==='string'));
     }
     syncMode(); render(result);

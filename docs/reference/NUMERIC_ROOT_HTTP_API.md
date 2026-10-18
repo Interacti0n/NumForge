@@ -3,7 +3,7 @@
 `POST /api/equations/solve?mode=numeric&min=0&max=1&precision=34` accepts
 one equation line, e.g. `cos(x)=x`, and searches for **one real root**. This
 stateless private C operation is not an installed numeric SDK API and does not
-enumerate roots or prove continuity.
+enumerate roots or provide certified root-error bounds.
 
 ## Request and work limits
 
@@ -46,17 +46,39 @@ absolute residual check alone. Approximately zero midpoints also need resolvable
 opposite-sign quarter samples. More requested precision does not tighten these
 fixed tolerances or raise work limits.
 
-These checks assume a continuous bracket; they are not certified existence or
-error bounds. Hidden poles/jumps can lie between samples. Even-multiplicity
+Before publishing a non-exact candidate, both original expression trees must
+also pass a conservative real-continuity/domain check on the **final search
+interval**. Unsupported or unresolved domains return domain_unverified with
+no root. The original input is not cancelled/simplified to discard domain holes.
+
+The check uses exact BigRational enclosures for literals, the parameter,
+arithmetic, abs and bounded integral powers. Division requires a denominator
+range excluding zero; sqrt requires a nonnegative argument range, ln and unary
+log require a strictly positive range. Sin/cos/exp and a restricted set of
+globally continuous real functions accept continuous arguments. Mathematical
+constants use coarse exact rational enclosures. No rounded transcendental
+endpoint is treated as a guaranteed enclosure. Small powers propagate ranges;
+large integral powers may retain continuity with an unknown output range.
+
+Range overestimation/dependencies can reject valid expressions. Steps, tan,
+multi-argument logarithms, unsupported calls and insufficiently bounded nested
+ranges remain unverified. For example, ln(exp(x)) currently has an unknown inner
+range and is conservatively unverified. This is not a claim of discontinuity.
+The check inherits the operation budget and visits at most 2048 AST nodes.
+Exactly zero typed rational samples retain their separate acceptance path:
+the original equation is valid at that point without requiring continuity
+throughout its surrounding interval.
+
+These checks do not give certified existence or root-error bounds: signs and
+residuals still come from finite-precision evaluation. Even-multiplicity
 roots without a sign change can be missed. Extremely scaled/ill-conditioned
 functions and very wide intervals may fail to converge. Exact-zero acceptance
 establishes only the typed sampled equation value, not uniqueness/completeness.
 
-The [numerical audit](../benchmarks/NUMERIC_ROOT_AUDIT_2026_10_18.md) records a
-concrete unresolved case: a sufficiently small jump can return found despite
-having no actual root. Width, residual and endpoint improvement do not establish
-continuity. Conservative domain verification remains a prerequisite for stronger
-existence claims.
+The [numerical audit](../benchmarks/NUMERIC_ROOT_AUDIT_2026_10_18.md) records the
+original false acceptance of a vanishing jump. The subsequent domain check now
+rejects that case as domain_unverified. Width, residual and endpoint improvement
+alone remain insufficient. See the [domain follow-up](../benchmarks/NUMERIC_ROOT_DOMAINS_2026_10_18.md).
 
 ## Response and errors
 
@@ -65,7 +87,7 @@ HTTP 200 numerical results have ok:true, schema_version:1, kind:"numeric" and
 
 | Field | Meaning |
 | --- | --- |
-| outcome | found, not_bracketed, domain_gap, iteration_limit or precision_limit. |
+| outcome | found, not_bracketed, domain_gap, domain_unverified, iteration_limit or precision_limit. |
 | count, roots | One root when found; otherwise zero and an empty array. |
 | lower, upper | Final rational search bounds as strings, not certified enclosures. |
 | iterations, evaluations | Refinement steps and evaluated coordinate pairs. |
@@ -84,6 +106,9 @@ preparation and resource failures use numeric_equation_error and standard status
 and UTF-8 character columns. Malformed query parsing may use request_error.
 Numerical nonconvergence is separate from structural/resource failure; no partial
 root is published. Existing low-memory server fallback errors remain available.
+domain_gap means an actually sampled undefined/non-real value; domain_unverified
+means the final candidate interval could not be verified and exposes no x or
+residual. Clients should handle the additional diagnostic outcome.
 
 Multiple-bracket scanning, tangencies, configurable tolerances and graph
 integration remain future work. See the [equation guide](../guides/EQUATIONS.md).

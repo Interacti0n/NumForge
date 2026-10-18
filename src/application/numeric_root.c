@@ -14,6 +14,7 @@ const char *application_numeric_root_kind(ApplicationNumericRootKind kind)
         case APPLICATION_ROOT_FOUND: return "found";
         case APPLICATION_ROOT_NOT_BRACKETED: return "not_bracketed";
         case APPLICATION_ROOT_DOMAIN_GAP: return "domain_gap";
+        case APPLICATION_ROOT_DOMAIN_UNVERIFIED: return "domain_unverified";
         case APPLICATION_ROOT_ITERATION_LIMIT: return "iteration_limit";
         case APPLICATION_ROOT_PRECISION_LIMIT: return "precision_limit";
         default: return "iteration_limit";
@@ -81,8 +82,14 @@ static CalculatorStatus midpoint(BigRational *result, const BigRational *a, cons
     if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_div(result, result, two));
     return status;
 }
-static CalculatorStatus found(ApplicationNumericRoot *result, const BigRational *x, const Probe *sample)
+static CalculatorStatus found(Work *work, ApplicationNumericRoot *result, const BigRational *x, const Probe *sample)
 {
+    if (!sample->exact_zero) for (size_t i = 0U; i < 2U; ++i) {
+        bool verified = false;
+        CalculatorStatus status = application_expression_domain(&verified, work->sides[i], result->lower, result->upper);
+        if (status != CALCULATOR_OK) return status;
+        if (!verified) { result->kind = APPLICATION_ROOT_DOMAIN_UNVERIFIED; return CALCULATOR_OK; }
+    }
     result->x = bigrational_create(); result->residual = bigdecimal_create();
     CalculatorStatus status = result->x && result->residual ? CALCULATOR_OK : CALCULATOR_OUT_OF_MEMORY;
     if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_copy(result->x, x));
@@ -146,7 +153,7 @@ CalculatorStatus application_numeric_root_solve(ApplicationNumericRoot **result,
     for (size_t i = 0U; i < 2U && status == CALCULATOR_OK; ++i) {
         status = probe(&work, i ? upper : lower, &probes[i], error);
         if (status == CALCULATOR_OK && !probes[i].real) { output->kind = APPLICATION_ROOT_DOMAIN_GAP; break; }
-        if (status == CALCULATOR_OK && probes[i].exact_zero) { status = found(output, i ? upper : lower, &probes[i]); break; }
+        if (status == CALCULATOR_OK && probes[i].exact_zero) { status = found(&work, output, i ? upper : lower, &probes[i]); break; }
         if (!i) left_sign = probes[i].sign; else right_sign = probes[i].sign;
     }
     if (status == CALCULATOR_OK && output->kind == APPLICATION_ROOT_ITERATION_LIMIT &&
@@ -164,7 +171,7 @@ CalculatorStatus application_numeric_root_solve(ApplicationNumericRoot **result,
         if (status == CALCULATOR_OK) status = probe(&work, scratch[MID], &probes[0], error);
         if (status != CALCULATOR_OK) break;
         if (!probes[0].real) { output->kind = APPLICATION_ROOT_DOMAIN_GAP; break; }
-        if (probes[0].exact_zero) { status = found(output, scratch[MID], &probes[0]); break; }
+        if (probes[0].exact_zero) { status = found(&work, output, scratch[MID], &probes[0]); break; }
         status = calculator_from_rational_status(bigrational_sub(scratch[WIDTH], output->upper, output->lower));
         if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_compare(&order, scratch[WIDTH], scratch[TOLERANCE]));
         int residual_order = 1, improvement = 1;
@@ -180,12 +187,12 @@ CalculatorStatus application_numeric_root_solve(ApplicationNumericRoot **result,
             if (status != CALCULATOR_OK) break;
             if (!probes[1].real || !probes[2].real) { output->kind = APPLICATION_ROOT_DOMAIN_GAP; break; }
             if (!probes[1].sign || !probes[2].sign || probes[1].sign == probes[2].sign) { output->kind = APPLICATION_ROOT_PRECISION_LIMIT; break; }
-            if (order <= 0 && residual_order <= 0 && improvement < 0) { status = found(output, scratch[MID], &probes[0]); break; }
+            if (order <= 0 && residual_order <= 0 && improvement < 0) { status = found(&work, output, scratch[MID], &probes[0]); break; }
             left_sign = probes[1].sign; right_sign = probes[2].sign;
             status = calculator_from_rational_status(bigrational_copy(output->lower, scratch[LEFT_QUARTER]));
             if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_copy(output->upper, scratch[RIGHT_QUARTER]));
         } else {
-            if (order <= 0 && residual_order <= 0 && improvement < 0) { status = found(output, scratch[MID], &probes[0]); break; }
+            if (order <= 0 && residual_order <= 0 && improvement < 0) { status = found(&work, output, scratch[MID], &probes[0]); break; }
             bool replace_left = probes[0].sign == left_sign;
             status = calculator_from_rational_status(bigrational_copy(replace_left ? output->lower : output->upper, scratch[MID]));
             if (replace_left) left_sign = probes[0].sign; else right_sign = probes[0].sign;

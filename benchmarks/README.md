@@ -66,7 +66,7 @@ matrix includes intermediate ratios too; all products are compared in full.
 
 | Files | Purpose |
 | --- | --- |
-| `numeric_root_benchmark.c`, `numeric_root_cases.h`, `check_numeric_root_benchmark.py` | Bounded high-precision equation baseline, shared analytic/diagnostic corpus and independent Decimal residual checks; [audit and unresolved domain case](../docs/benchmarks/NUMERIC_ROOT_AUDIT_2026_10_18.md). The separate `--adversarial` run currently exits 1. |
+| `numeric_root_benchmark.c`, `numeric_root_cases.h`, `check_numeric_root_benchmark.py` | Bounded high-precision equation baseline, shared analytic/diagnostic corpus and independent Decimal residual checks; [original audit](../docs/benchmarks/NUMERIC_ROOT_AUDIT_2026_10_18.md) and [domain-check follow-up](../docs/benchmarks/NUMERIC_ROOT_DOMAINS_2026_10_18.md). The separate `--adversarial` run now verifies that the vanishing jump returns domain_unverified. |
 | `karatsuba_experiment.c`, `karatsuba_cases.cjs`, `check_karatsuba.cjs`, `run_karatsuba.cjs` | Threshold adapter over the shared private multiplication kernel, complete Node BigInt oracles, failure checks and serial threshold measurements; see the [experiment report](../docs/benchmarks/KARATSUBA_EXPERIMENT_2026_10_11.md). |
 | `generate_karatsuba_factorials.py` | Independent Python factorial references for grouped product-tree comparisons. |
 | `*_benchmark.c` | C timing harnesses for arithmetic, formatting and calculator/cache behavior. |
