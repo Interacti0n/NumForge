@@ -137,6 +137,16 @@ checks and 96-step/192-coordinate ceiling. A grid value rounded to zero needs
 opposite-sign real neighbours on both sides; it is never accepted by itself.
 Refinement prepares its own original ASTs; no simplified difference loses holes.
 
+Same-sign cells also sample a midpoint and, when its local interpolating
+parabola has a distinct vertex inside the cell, that vertex. Proposals use
+BigRational ordinates: exact sampled differences are retained without rounding;
+decimal differences are used only as proposal data. Midpoint/vertex samples
+reevaluate **both original sides**. A typed exact zero may be retained;
+opposite signs split into two ordinary guarded brackets. A small or rounded-zero
+minimum alone is never accepted. This finds rational quadratic contacts such as
+`(x-1/3)^2=0` and some pairs inside a single grid cell. It is bounded local
+discovery, not symbolic differentiation or a proof of complete subdivision.
+
 The scan retains up to 32 ordered roots, removing exact-coordinate duplicates
 without merging distinct points by tolerance. It caps all grid/refinement work
 at 4096 coordinate pairs, conservatively reserving 192 before each refinement.
@@ -146,8 +156,14 @@ the C destination and publishes no partial successful HTTP result. A work/result
 ceiling is a successful, explicitly limited discovery result instead.
 
 Responses use schema_version:1, kind:"numeric_scan", complete:false, count and
-roots with the same x/approximation/residual/exact_zero fields as single-root
-mode. `lower` and `upper` are the original interval. Additional fields:
+roots with x/approximation/residual/exact_zero fields. In **scan mode**, x is a
+canonical exact rational string (integer or numerator/denominator), with
+coordinate_kind:"rational". Its residual is evaluated at that rational point.
+For example `(x-1/3)^2=0` emits x:"1/3", residual:"0"; approximation is a rounded
+decimal preview. Local quadratic candidates and their bisections can produce
+non-terminating fractions, so converting x to a finite decimal would lose the
+checked coordinate. Single-root mode retains its existing full decimal x
+contract. `lower` and `upper` are the original interval. Additional fields:
 
 | Field | Meaning |
 | --- | --- |
@@ -157,19 +173,25 @@ mode. `lower` and `upper` are the original interval. Additional fields:
 | evaluations, iterations | Total coordinate-pair evaluations (including final checks) and nested refinement iterations. |
 | domain_gaps | Processed grid cells with an undefined/non-real sampled endpoint. |
 | rejected_brackets | Opposite-sign candidates whose refinement did not confirm a root, including domain/precision/nonconvergence diagnostics. |
+| candidate_samples | Additional midpoint/vertex evaluations, included in evaluations and its 4096 ceiling. |
+| exact_candidate_roots | Roots retained from typed exact zeros at additional samples; bracket-derived discoveries are counted in roots instead. |
+| candidate_gaps | Additional midpoint/vertex samples outside the real domain, separate from grid endpoint domain_gaps. |
 
 The scan continues across sampled gaps and rejected candidates; valid roots in
 other cells remain eligible. Domain diagnostics do not prove every unsampled
 point is valid. Several roots inside one cell can be missed, as can non-grid
 tangencies, approximate endpoint zeros, unresolved domains and very dense
-oscillations. For example `(x-0.01)*(x-0.02)=0` on 0..128 and
-`(x-0.1234)^2=0` on 0..1 currently return an empty, incomplete scan. Conversely,
+oscillations. `(x-0.01)*(x-0.02)=0` on 0..128 and
+`(x-0.1234)^2=0` on 0..1 now find their roots through local candidates. General
+non-polynomial tangencies such as `(cos(x)-x)^2=0` may remain unconfirmed; a
+tiny positive minimum such as `(x-0.1234)^2+1E-100=0` is not a root. Conversely,
 `x=x` reaches the result limit rather than enumerating an infinite set. An empty
 array never proves “no solutions”. Narrow/shift the interval when appropriate.
 
 The browser offers **Multiple interval roots / Viac koreňov na intervale**,
 retains the same copy/graph actions and session behavior, and distinguishes
 finished discovery from work/result limits. See the
-[scan benchmarks](../benchmarks/NUMERIC_ROOT_SCAN_2026_10_19.md).
+[scan benchmarks](../benchmarks/NUMERIC_ROOT_SCAN_2026_10_19.md) and
+[candidate follow-up](../benchmarks/NUMERIC_ROOT_CANDIDATES_2026_10_19.md).
 General tangent discovery and configurable tolerances remain future work.
 See the [equation guide](../guides/EQUATIONS.md) for graph navigation.

@@ -9,6 +9,11 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ### Equation foundation
 
+- Discover simple off-grid quadratic contacts and close root pairs through
+  bounded original-expression midpoint/vertex samples. Preserve recurring
+  rational scan coordinates in HTTP/copy actions, reject positive minima and
+  candidate domain holes, and include scan benchmark checks in CI.
+
 - Add bounded multiple-root discovery in C, HTTP and both browser languages:
   128 rational grid cells, independent bracket refinement, at most 32 roots and
   4096 coordinate pairs sharing one operation budget. Keep incomplete discovery,

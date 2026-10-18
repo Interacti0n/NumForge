@@ -479,11 +479,13 @@ static void numeric_decimal(Json *json, const BigDecimal *value)
     free(text);
 }
 static void numeric_root_json(Json *json, const ApplicationNumericRoot *root,
-    BigDecimal *decimal, BigDecimal *one, int64_t precision)
+    BigDecimal *decimal, BigDecimal *one, int64_t precision, bool rational_coordinate)
 {
     if (json->status != CALCULATOR_OK) return;
     json->status = calculator_from_rational_status(bigrational_to_bigdecimal(decimal, root->x, precision, BIGDECIMAL_ROUND_HALF_EVEN));
-    append(json, "{\"x\":"); numeric_decimal(json, decimal);
+    append(json, "{\"x\":");
+    if (rational_coordinate) { equation_rational(json, root->x); append(json, ",\"coordinate_kind\":\"rational\""); }
+    else numeric_decimal(json, decimal);
     if (json->status == CALCULATOR_OK) json->status = calculator_from_decimal_status(bigdecimal_set_string(one, "1"));
     if (json->status == CALCULATOR_OK) json->status = calculator_from_decimal_status(bigdecimal_div_significant(decimal, decimal, one, precision, BIGDECIMAL_ROUND_HALF_EVEN));
     append(json, ",\"approximation\":"); numeric_decimal(json, decimal);
@@ -531,12 +533,13 @@ static CalculatorStatus numeric_equation_request(const char *method, const Query
         else append(&json, "{\"ok\":true,\"schema_version\":1,\"kind\":\"numeric\",\"outcome\":\"%s\",\"complete\":false,\"count\":%u,\"evaluations\":%zu,\"iterations\":%zu,\"x_tolerance\":\"1E-12\",\"residual_tolerance\":\"1E-12\",\"lower\":",
             application_numeric_root_kind(root->kind), root->kind == APPLICATION_ROOT_FOUND ? 1U : 0U, root->evaluations, root->iterations);
         equation_rational(&json, scan_mode ? bounds[0] : root->lower); append(&json, ",\"upper\":"); equation_rational(&json, scan_mode ? bounds[1] : root->upper);
+        if (scan_mode) append(&json, ",\"candidate_samples\":%zu,\"exact_candidate_roots\":%zu,\"candidate_gaps\":%zu", scan->candidate_samples, scan->candidate_roots, scan->candidate_gaps);
         append(&json, ",\"roots\":[");
         if (scan_mode) for (size_t i = 0U; i < scan->count && json.status == CALCULATOR_OK; ++i) {
             if (i) append(&json, ",");
-            numeric_root_json(&json, scan->roots[i], decimal, one, (int64_t)precision);
+            numeric_root_json(&json, scan->roots[i], decimal, one, (int64_t)precision, true);
         }
-        else if (root->kind == APPLICATION_ROOT_FOUND) numeric_root_json(&json, root, decimal, one, (int64_t)precision);
+        else if (root->kind == APPLICATION_ROOT_FOUND) numeric_root_json(&json, root, decimal, one, (int64_t)precision, false);
         append(&json, "]}"); status = json.status;
     }
     status = calculator_budget_status(status);

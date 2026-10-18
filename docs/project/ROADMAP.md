@@ -126,7 +126,9 @@ documented HTTP contract alongside the web implementation, using the versioned
    preserving existing functions and independently verifying graph markers.
    Multiple-bracket scanning now uses a bounded 128-cell rational grid, retains
    up to 32 roots and caps total work at 4096 coordinate pairs under one shared
-   budget. It does not guarantee completeness. General tangency discovery and
+   budget. Midpoint/local-quadratic candidates now recover simple rational
+   contacts and close pairs; positive minima and original domain holes remain
+   excluded. It does not guarantee completeness. General tangency discovery and
    configurable tolerances remain future work.
 4. Add session user functions, local parameters and definition management,
    followed by their integration with graphs and solvers.

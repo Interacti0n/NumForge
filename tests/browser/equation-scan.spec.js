@@ -26,7 +26,27 @@ test('scan keeps domain gaps and nonconvergence separate from no roots',async({p
  await expect(page.locator('#equation-status')).toContainText('undefined');await expect(page.locator('.equation-root')).toHaveCount(0);
  result=await scan(page,'ln(x)=0','-2','2');expect(result.count).toBe(1);expect(Number(result.roots[0].x)).toBe(1);
  result=await scan(page,'x-0.1234+1E-30*(x-0.1234)/abs(x-0.1234)=0','0','1');expect(result.count).toBe(0);expect(result.rejected_brackets).toBe(1);
- result=await scan(page,'(x-0.1234)^2=0','0','1');expect(result.count).toBe(0);await expect(page.locator('#equation-status')).toContainText('Other roots may exist');
+ result=await scan(page,'(x-1/3)^2=0/(x-1/3)','0','1');expect(result.count).toBe(0);expect(result.candidate_gaps).toBe(1);await expect(page.locator('#equation-status')).toContainText('undefined');
+ result=await scan(page,'(cos(x)-x)^2=0','0','1');expect(result.count).toBe(0);await expect(page.locator('#equation-status')).toContainText('Other roots may exist');
+});
+
+test('off-grid contacts and close roots retain the checked rational coordinate',async({page})=>{
+ await page.goto('/solve?lang=en');let result=await scan(page,'(x-1/3)^2=0','0','1');
+ expect(result.count).toBe(1);expect(result.roots[0].x).toBe('1/3');expect(result.roots[0].coordinate_kind).toBe('rational');expect(result.roots[0].residual).toBe('0');
+ await page.locator('.equation-root button').click();await expect.poll(()=>page.evaluate(()=>navigator.clipboard.readText())).toBe('1/3');
+ await page.locator('.equation-graph-link').click();await expect(page.locator('#graph-expression')).toHaveValue('((x-1/3)^2)-(0)');
+ await expect(page.locator('#graph-plot')).toHaveAttribute('data-xmin',String(Number(result.roots[0].approximation)-10));
+ await page.locator('.primary-nav a[href="/solve?lang=en"]').click();await expect(page.locator('.equation-root')).toHaveCount(1);
+ result=await scan(page,'(x-0.01)*(x-0.02)=0','0','128');expect(result.count).toBe(2);await expect(page.locator('.equation-root')).toHaveCount(2);
+ result=await scan(page,'(x-0.1234)^2+1E-100=0','0','1');expect(result.count).toBe(0);await expect(page.locator('.equation-root')).toHaveCount(0);
+});
+
+test('older grid-only scan results are discarded without losing the input',async({page})=>{
+ await page.goto('/solve?lang=en');await scan(page,'(x-0.1234)^2=0','0','1');
+ await page.evaluate(()=>{const key='numforge-equations-v1',state=JSON.parse(sessionStorage.getItem(key));delete state.scanCandidateVersion;state.result.count=0;state.result.roots=[];sessionStorage.setItem(key,JSON.stringify(state));});
+ await page.reload();await expect(page.locator('#equation-mode')).toHaveValue('numeric_scan');
+ await expect(page.locator('#equation-expression')).toHaveValue('(x-0.1234)^2=0');await expect(page.locator('.equation-root')).toHaveCount(0);
+ await page.locator('#equation-submit').click();await expect(page.locator('.equation-root')).toHaveCount(1);
 });
 
 test('scan work and result limits remain explicit in the browser',async({page})=>{

@@ -65,8 +65,9 @@ original right side was nonzero. This keeps the original expression's domain.
 Complex roots have no graph action.
 
 The camera centers approximately on the selected root, with y from -10 to 10.
-Exact-mode previews position a broad camera only; numerical mode uses the full
-checked coordinate. Neither becomes a verified graph marker automatically:
+Exact-mode and multiple-root scan previews position a broad camera only;
+single numerical mode uses the full checked decimal coordinate. Neither
+becomes a verified graph marker automatically:
 intercepts use the existing independent C graph verification, which may omit
 unresolved points. The plot is an approximate visualization, not a second
 equation proof. Existing functions are retained; matching expressions are reused.
@@ -118,10 +119,20 @@ as in the single-root mode; the fixed tolerances stay at 1E-12.
 C samples 128 equal interval sections and refines sign changes using the same
 checked single-root solver. It can also retain exact sampled zeros. A grid
 sample merely rounded to zero needs an opposite-sign neighbour on both sides.
+Extra midpoint/local-quadratic candidates can find simple off-grid contacts,
+such as `(x-1/3)^2=0`, and close pairs such as `(x-0.01)*(x-0.02)=0` even when
+they lie in one section. Candidates are checked in the original equation;
+small minima alone do not qualify. A positive `(x-0.1234)^2+1E-100` has no zero.
 Undefined/non-real samples leave gaps; an unverified bracket contributes no root,
 while the scan can continue elsewhere.
 
-**The list may be incomplete**, even after the scan finishes. Tangent roots
+Scan **Copy point** retains the exact rational coordinate (for example `1/3`),
+while its decimal preview is approximate. The residual refers to that copied
+rational point. This also keeps recurring fractions exact across API and graph
+navigation; the graph camera uses the preview and verifies markers independently.
+Older grid-only cached scan results are discarded while preserving the input.
+
+**The list may be incomplete**, even after the scan finishes. General tangent roots
 between samples, several roots in one section, approximate endpoint zeros and
 very dense oscillations can be missed. An empty list means this scan confirmed
 no root, not that none exist. Try a narrower/shifted interval. The scan stops at

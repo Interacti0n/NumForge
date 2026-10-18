@@ -14,8 +14,12 @@ static const Scene scenes[] = {
     {"sampled_pole", "1/x=0", "-1", "1", 0U, APPLICATION_SCAN_FINISHED},
     {"vanishing_jump", "x-0.1234+1E-30*(x-0.1234)/abs(x-0.1234)=0", "0", "1", 0U, APPLICATION_SCAN_FINISHED},
     {"scaled_pole", "1E-100/(x-0.1234)=0", "0", "1", 0U, APPLICATION_SCAN_FINISHED},
-    {"unsampled_tangent", "(x-0.1234)^2=0", "0", "1", 0U, APPLICATION_SCAN_FINISHED},
-    {"cluster_in_one_cell", "(x-0.01)*(x-0.02)=0", "0", "128", 0U, APPLICATION_SCAN_FINISHED},
+    {"unsampled_tangent", "(x-0.1234)^2=0", "0", "1", 1U, APPLICATION_SCAN_FINISHED},
+    {"cluster_in_one_cell", "(x-0.01)*(x-0.02)=0", "0", "128", 2U, APPLICATION_SCAN_FINISHED},
+    {"rational_tangent", "(x-1/3)^2=0", "0", "1", 1U, APPLICATION_SCAN_FINISHED},
+    {"positive_minimum", "(x-0.1234)^2+1E-100=0", "0", "1", 0U, APPLICATION_SCAN_FINISHED},
+    {"narrow_pair", "(x-0.1234)^2-1E-20=0", "0", "1", 2U, APPLICATION_SCAN_FINISHED},
+    {"nonpolynomial_tangent", "(cos(x)-x)^2=0", "0", "1", 0U, APPLICATION_SCAN_FINISHED},
     {"root_limit", "x=x", "0", "1", 32U, APPLICATION_SCAN_ROOT_LIMIT},
     {"evaluation_limit", "2*mod(floor(x);2)-1=0", "0", "128", 0U, APPLICATION_SCAN_EVALUATION_LIMIT}
 };
@@ -30,7 +34,7 @@ int main(int argc, char **argv)
     bool quick = argc == 2 && !strcmp(argv[1],"--quick");
     if (argc != 1 && !quick) return 2;
     const int precisions[] = {16,34,100}; bool failed = false;
-    puts("case,precision,repeat,ms,status,stop,count,evaluations,iterations,segments,domain_gaps,rejected_brackets,allocation_bytes,checked,xs");
+    puts("case,precision,repeat,ms,status,stop,count,evaluations,iterations,segments,domain_gaps,rejected_brackets,allocation_bytes,checked,candidate_samples,exact_candidate_roots,candidate_gaps,xs");
     for (size_t p = quick ? 1U : 0U; p < (quick ? 2U : 3U); ++p)
         for (size_t i = 0U; i < sizeof(scenes)/sizeof(scenes[0]); ++i) for (int run = 1; run <= (quick ? 1 : 3); ++run) {
             const Scene *scene = &scenes[i]; CalculatorContext context; calculator_context_init(&context); context.division_scale = precisions[p];
@@ -42,9 +46,10 @@ int main(int argc, char **argv)
             bool valid = status == CALCULATOR_OK && scan && scan->count == scene->count && scan->stop == scene->stop &&
                 scan->evaluations <= APPLICATION_ROOT_SCAN_MAX_EVALUATIONS && scan->scanned_segments <= APPLICATION_ROOT_SCAN_SEGMENTS;
             failed |= !valid;
-            printf("%s,%d,%d,%.6f,%d,%s,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%d,",scene->name,precisions[p],run,ms,(int)status,
+            printf("%s,%d,%d,%.6f,%d,%s,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%d,%zu,%zu,%zu,",scene->name,precisions[p],run,ms,(int)status,
                 scan ? application_numeric_roots_stop(scan->stop) : "error",scan ? scan->count : 0U,scan ? scan->evaluations : 0U,
-                scan ? scan->iterations : 0U,scan ? scan->scanned_segments : 0U,scan ? scan->domain_gaps : 0U,scan ? scan->rejected_brackets : 0U,bytes,valid ? 1 : 0);
+                scan ? scan->iterations : 0U,scan ? scan->scanned_segments : 0U,scan ? scan->domain_gaps : 0U,scan ? scan->rejected_brackets : 0U,bytes,valid ? 1 : 0,
+                scan ? scan->candidate_samples : 0U,scan ? scan->candidate_roots : 0U,scan ? scan->candidate_gaps : 0U);
             if (scan) for (size_t j = 0U; j < scan->count; ++j) {
                 char *text = NULL; if (bigrational_to_string(scan->roots[j]->x,&text) != BIGRATIONAL_OK) return 2;
                 printf("%s%s",j ? ";" : "",text); free(text);

@@ -52,14 +52,14 @@ function initEquations() {
         residual:'Residual at the checked point: ', copy:'Copy point', options:'Check that from < to and precision is 16–100.'
     };
     const scanWords = sk ? {
-        help:'Hľadá viac reálnych koreňov na 128 častiach intervalu. Veľmi blízke či dotykové korene môže prehliadnuť; nejde o úplný zoznam.',
+        help:'Hľadá viac reálnych koreňov vrátane jednoduchých dotykov. Zoznam môže byť neúplný; pri chýbajúcom koreni skús užší interval.',
         scanned:'Prehľadávanie skončilo. Ďalšie korene môžu existovať.',
         root_limit:'Dosiahnutý limit 32 výsledkov. Pre ďalšie korene zúž interval.',
         evaluation_limit:'Dosiahnutý limit práce. Pre ďalšie korene zúž interval.',
         found:'Nájdené korene: ', empty:'V tomto prehľadaní sa nepodarilo potvrdiť koreň. ',
         gaps:' Niektoré úseky boli nedefinované alebo sa koreň nepodarilo overiť.'
     } : {
-        help:'Searches for multiple real roots across 128 interval sections. Close or tangent roots may be missed; this is not a complete enumeration.',
+        help:'Searches for multiple real roots, including simple contacts. The list may be incomplete; try a narrower interval if a root is missing.',
         scanned:'Scan finished. Other roots may exist.',
         root_limit:'Reached the 32-result limit. Narrow the interval to look for more roots.',
         evaluation_limit:'Reached the work limit. Narrow the interval to look for more roots.',
@@ -69,7 +69,7 @@ function initEquations() {
     let controller = null, generation = 0, result = null;
     const equationHelp = document.querySelector('#equation-help').textContent;
     function save() {
-        const state = {numericDomainVersion:2, inputs:inputs.map(input => input.value), expression:expression.value, bounds:bounds.map(input=>input.value), mode:mode.value, precision:precision.value, result};
+        const state = {numericDomainVersion:2, scanCandidateVersion:1, inputs:inputs.map(input => input.value), expression:expression.value, bounds:bounds.map(input=>input.value), mode:mode.value, precision:precision.value, result};
         try {
             if (JSON.stringify(state).length > 24000) state.result = null;
             sessionStorage.setItem('numforge-equations-v1', JSON.stringify(state));
@@ -79,7 +79,7 @@ function initEquations() {
         roots.replaceChildren();
         status.textContent = value?.kind === 'numeric_scan' ?
             (value.count ? scanWords.found + value.count + '. ' : scanWords.empty) + scanWords[value.outcome] +
-            (value.domain_gaps || value.rejected_brackets ? scanWords.gaps : '') :
+            (value.domain_gaps || value.rejected_brackets || value.candidate_gaps ? scanWords.gaps : '') :
             value?.kind === 'numeric' ? numericWords[value.outcome] : value ? words[value.kind === 'finite' ? 'finite' : value.kind] : words.idle;
         if (!value || !['finite','numeric','numeric_scan'].includes(value.kind)) return;
         value.roots.forEach((root, index) => {
@@ -104,7 +104,7 @@ function initEquations() {
             actions.append(copy);
             // Decimal previews position the camera only. Graph intercepts still
             // have to pass the graph API's independent C verification.
-            const coordinate = numerical ? root.x : root.approximation;
+            const coordinate = numerical && root.coordinate_kind !== 'rational' ? root.x : root.approximation;
             const x = typeof coordinate === 'string' && coordinate.length <= 65536 && /^[-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?$/.test(coordinate) ? Number(coordinate) : NaN;
             const radius = Math.max(10, Math.abs(x) * .6);
             if ((numerical || value.imaginary === false) && Number.isFinite(x) &&
@@ -227,7 +227,8 @@ function initEquations() {
             if (Array.isArray(saved.bounds) && saved.bounds.length === 2 && saved.bounds.every(value=>typeof value==='string'&&value.length<=47)) bounds.forEach((input,index)=>input.value=saved.bounds[index]);
             if (typeof saved.expression === 'string' && saved.expression.length <= 4096) expression.value = saved.expression;
             if (/^\d+$/.test(saved.precision) && Number(saved.precision) >= 1 && Number(saved.precision) <= 1000) precision.value = saved.precision;
-            if (validResult(saved.result) && (!isNumeric(saved.result.kind) || saved.numericDomainVersion === 2)) result = saved.result;
+            if (validResult(saved.result) && (!isNumeric(saved.result.kind) || saved.numericDomainVersion === 2) &&
+                (saved.result.kind !== 'numeric_scan' || saved.scanCandidateVersion === 1)) result = saved.result;
         }
     } catch (_) { /* Ignore unavailable or obsolete state. */ }
     function validResult(value) {

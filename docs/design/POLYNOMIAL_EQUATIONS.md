@@ -158,6 +158,9 @@ complex arithmetic. Allocation-stat builds verify zero live allocations.
    unchanged.
    Bounded scanning now discovers multiple brackets across a 128-cell rational
    grid with at most 32 stored roots/4096 coordinate pairs and one shared budget.
+   Additional midpoint/local-quadratic samples discover simple rational contacts
+   and some clustered pairs without accepting rounded minima. Scan coordinates
+   retain canonical rationals across HTTP, including recurring fractions.
    Roots link to graphs of the original side difference. Finite sampling does
    not enumerate every root; general tangencies remain future work. See the
    [scan contract](../reference/NUMERIC_ROOT_HTTP_API.md#multiple-root-scan).

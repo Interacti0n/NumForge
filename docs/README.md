@@ -60,6 +60,7 @@ records Firefox/WebKit coverage, test portability and the physical-phone checkli
 - [High-precision Brent experiment](benchmarks/NUMERIC_ROOT_BRENT_2026_10_18.md): paired timings, flat-root/pole regressions, higher-precision residual verification and the decision to keep production bisection.
 - [Decimal-weight hybrid](benchmarks/NUMERIC_ROOT_HYBRID_2026_10_19.md): cheaper centered interpolation, permanent progress fallback and three-method measurements.
 - [Multiple-root scan](benchmarks/NUMERIC_ROOT_SCAN_2026_10_19.md): bounded discovery, independent coordinate checks, timings and explicit missed-root/limit cases.
+- [Local root candidates](benchmarks/NUMERIC_ROOT_CANDIDATES_2026_10_19.md): rational quadratic contacts, close pairs, exact coordinate transport and measured discovery cost.
 - [Formatting/cache measurements](benchmarks/BENCHMARKS.md).
 - [Graph release audit, 15 October 2026](benchmarks/GRAPH_RELEASE_AUDIT_2026_10_15.md): independent geometry checks, before/after timings, sustained cache tests and remaining release gates.
 - [Precision graph camera fix](benchmarks/GRAPH_PRECISION_CAMERA_2026_10_15.md): visible sinh/cosh geometry, preserved narrow peaks, precision deferral metadata and measured tradeoffs.
@@ -99,6 +100,7 @@ for specific source snapshots, not promises about every machine.
 ## Plan and maintain — `project/`
 
 - [Roadmap](project/ROADMAP.md): available features and future work.
+- [Equation release readiness](project/EQUATION_RELEASE_AUDIT_2026_10_19.md): supported scope, remaining editor/device work and CI/package publication gates.
 - [Presentation](project/PROJECT_PRESENTATION.md): README assets and screenshots.
 - [Release packaging](project/RELEASE_PACKAGING.md): archives and automation.
 - [Release readiness, 12 October 2026](project/RELEASE_READINESS_2026_10_12.md): local regression and archive checks before the next release.

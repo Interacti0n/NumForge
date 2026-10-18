@@ -4,6 +4,11 @@ Baseline before this stage: `b2d3a42`. This adds discovery around the existing
 production bisection solver; it does not promote either private interpolation
 experiment. See the [C/HTTP contract](../reference/NUMERIC_ROOT_HTTP_API.md#multiple-root-scan).
 
+Historical baseline: the [local-candidate follow-up](NUMERIC_ROOT_CANDIDATES_2026_10_19.md)
+now recovers the two deliberately missed quadratic cases below and preserves
+recurring rational coordinates in HTTP. These measurements describe the earlier
+grid-only implementation.
+
 ## Method and scope
 
 Sample up to 129 exact rational vertices of 128 equal interval cells. Refine

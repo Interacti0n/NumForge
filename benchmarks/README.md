@@ -98,11 +98,12 @@ Save raw recordings under ignored `build/` directories. Keep timing, allocation
 and phase probes separate, and validate results before drawing performance
 conclusions. Timeouts and reference mismatches remain explicit outcomes.
 
-For multiple-root discovery, `numeric_root_scan_benchmark` measures 11 cases at
+For multiple-root discovery, `numeric_root_scan_benchmark` measures 15 cases at
 16/34/100 digits with three repetitions; `--quick` runs precision 34 once.
 Validate emitted full coordinates with `python scripts/check_numeric_root_scan.py scan.csv`
 from the repository root. See the [scan report](../docs/benchmarks/NUMERIC_ROOT_SCAN_2026_10_19.md)
-for timing, allocation and deliberately incomplete discovery results.
+and [local-candidate follow-up](../docs/benchmarks/NUMERIC_ROOT_CANDIDATES_2026_10_19.md)
+for timing, allocation and explicitly incomplete discovery results.
 
 For numerical roots, `numeric_root_benchmark --compare` records paired bisection
 and private Brent runs at precisions 16/34/100 (three repeats). Add `--quick` for

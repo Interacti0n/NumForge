@@ -48,7 +48,9 @@ const char *application_numeric_root_kind(ApplicationNumericRootKind kind);
 typedef enum ApplicationRootScanStop {
     APPLICATION_SCAN_FINISHED, APPLICATION_SCAN_ROOT_LIMIT, APPLICATION_SCAN_EVALUATION_LIMIT
 } ApplicationRootScanStop;
-/* Fixed rational grid followed by the production single-bracket solver.
+/* Rational grid with bounded midpoint/local-quadratic candidates, followed by
+ * the production single-bracket solver. Candidate samples use ORIGINAL sides;
+ * only typed exact zeros or accepted sign brackets can publish roots.
  * Never a complete enumeration: multiple roots per cell, unsampled tangencies
  * and unresolved domains can be missed. Exact sampled zeros are retained.
  * Ordered owned roots, exact-coordinate duplicates removed (no tolerance merge).
@@ -57,6 +59,7 @@ typedef enum ApplicationRootScanStop {
 typedef struct ApplicationRootScan {
     ApplicationNumericRoot *roots[APPLICATION_ROOT_SCAN_MAX_ROOTS];
     size_t count, evaluations, iterations, scanned_segments, domain_gaps, rejected_brackets;
+    size_t candidate_samples, candidate_roots, candidate_gaps; /* candidate_roots counts exact extra samples only */
     ApplicationRootScanStop stop;
 } ApplicationRootScan;
 /* Same input/context contract and atomic failures as the single-root solver.

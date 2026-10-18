@@ -3,7 +3,8 @@
 ## Controls and behavior
 
 The shared header links the calculator, unit converter, function graphs and guide.
-The equation area remains a preview. Sign-in and registration
+The [equation area](EQUATIONS.md) provides exact linear/quadratic roots and bounded
+real numerical discovery. Sign-in and registration
 currently show informational pages; there is no authentication or payment API.
 
 The local browser page has active keypad buttons for this grammar, including
