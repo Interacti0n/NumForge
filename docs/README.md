@@ -29,6 +29,7 @@ Start with the [API guide](API.md), or open a specific reference:
 - [Graph sampling HTTP API](reference/GRAPH_HTTP_API.md): bounded grids, point errors and session isolation.
 - [Graph points and verification](reference/GRAPH_ANALYSIS_HTTP_API.md): discrete modes, bounded C checks and balanced markers.
 - [Polynomial equation HTTP API](reference/EQUATION_HTTP_API.md): exact coefficient expressions and linear/quadratic solutions.
+- [Numerical interval root](reference/NUMERIC_ROOT_HTTP_API.md): bounded real root searches, residuals and nonconvergence outcomes.
 - [Web/API coverage](reference/WEB_API_PARITY.md): implemented calls and remaining gaps.
 
 ## Understand the code — `design/`

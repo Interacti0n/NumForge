@@ -111,8 +111,10 @@ documented HTTP contract alongside the web implementation, using the versioned
    are available. Whole equations in lowercase x now normalize exact polynomial
    operations on both sides, with intermediate degree <=2 and conservative
    rejection of variable denominators/functions. Coefficient mode remains available.
-   Then add bounded numerical root finding on a specified interval, with
-   residuals and clear convergence limits.
+   [Numerical interval roots](../reference/NUMERIC_ROOT_HTTP_API.md) now find one
+   real root in a sign-changing bracket with rational bisection, high-precision
+   residuals and explicit work limits/outcomes. Multiple-bracket scanning,
+   tangencies, configurable tolerances and graph integration remain future work.
 4. Add session user functions, local parameters and definition management,
    followed by their integration with graphs and solvers.
 5. Extend Quantity with general compound unit strings, named derived units,

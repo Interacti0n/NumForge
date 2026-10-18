@@ -9,6 +9,14 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ### Equation foundation
 
+- Add an explicit numerical interval mode for one real root of general C
+  expressions, using rational bisection and BigDecimal residuals. Bound work to
+  96 iterations/192 points under the shared request budget, with separate
+  non-bracketed/domain/iteration/precision outcomes and no completeness claim.
+- Expose checked coordinates, decimal previews and residuals through C/HTTP and
+  the browser. Check width, residual and endpoint improvement; copy the full
+  checked point and document fixed tolerances and continuity assumptions.
+
 - Accept whole linear/quadratic equations in x through a bounded C polynomial
   AST converter and `mode=expression` HTTP input. Normalize both sides exactly,
   preserve full-input error positions and reject higher intermediate degrees,

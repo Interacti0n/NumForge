@@ -5,6 +5,9 @@ details and the [2.3.0 release record](docs/project/RELEASE_2_3.md) for validati
 
 ## Unreleased
 
+- Find one high-precision numerical root on a chosen interval, with residual
+  checks and explicit diagnostic outcomes in C, HTTP and the browser.
+
 - Enter whole polynomial equations such as `(x-2)*(x+3)=0`; keep coefficient mode
   and exact C/HTTP solving with explicit unsupported-domain errors.
 

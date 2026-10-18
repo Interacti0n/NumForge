@@ -3,7 +3,7 @@ const parts={
  calculator:['intro','syntax','variables','functions','complex','quantities','precision','cache','random','history','calculator-limits'],
  units:['units','unit-results','unit-history','unit-limits'],
  graphs:['graphs','graph-settings','graph-reading','graph-color','graph-library','graph-limits'],
- equations:['equations','equation-results','equation-limits'],
+ equations:['equations','equation-results','equation-numeric','equation-limits'],
  api:['api-intro','http','session-http','unit-http','graph-http','equation-http','limits','library','documentation']
 };
 async function choose(page,part) {

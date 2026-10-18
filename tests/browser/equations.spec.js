@@ -92,6 +92,33 @@ for(const language of ['sk','en'])test(`whole equation entry, products and suppo
  await expect(page.locator('#equation-expression')).toBeFocused();
 });
 
+for(const language of ['sk','en'])test(`numerical interval root, residual and honest diagnostics ${language}`,async({page,request})=>{
+ await page.goto('/solve?lang='+language);await page.locator('#equation-mode').selectOption('numeric');
+ await page.locator('#equation-expression').fill('cos(x)=x');
+ await page.locator('#equation-min').fill('0');await page.locator('#equation-max').fill('1');
+ const response=page.waitForResponse(r=>r.url().includes('mode=numeric')&&r.request().postData()==='cos(x)=x');
+ await page.locator('#equation-submit').click();const payload=await (await response).json();
+ expect(payload.complete).toBe(false);expect(payload.outcome).toBe('found');
+ expect(Math.abs(Number(payload.roots[0].approximation)-0.7390851332151607)).toBeLessThan(1e-12);
+ await expect(page.locator('.equation-root code').first()).toContainText('x ≈ 0.739085133215');
+ await expect(page.locator('.equation-root small')).toContainText(language==='sk'?'Zvyšok':'Residual');
+ await page.locator('.equation-root button').click();
+ await expect.poll(()=>page.evaluate(()=>navigator.clipboard.readText())).toBe(payload.roots[0].x);
+ const checked=await request.post('/api/evaluate?precision=50&angle=rad',{data:`cos(${payload.roots[0].x})-(${payload.roots[0].x})`});
+ expect(checked.ok()).toBe(true);expect(Math.abs(Number((await checked.json()).result))).toBeLessThanOrEqual(1e-12);
+ const other=language==='sk'?'en':'sk';await page.locator(`.language-switch a[lang=${other}]`).click();
+ await expect(page.locator('#equation-mode')).toHaveValue('numeric');await expect(page.locator('#equation-max')).toHaveValue('1');
+ await expect(page.locator('.equation-root')).toHaveCount(1);
+ await page.locator('#equation-expression').fill('(x-0.1234)^2=0');await page.locator('#equation-submit').click();
+ await expect(page.locator('#equation-status')).toContainText(other==='sk'?'Koreň môže existovať':'A root may still exist');
+ await expect(page.locator('.equation-root')).toHaveCount(0);
+ await page.locator('#equation-min').fill('-1');await page.locator('#equation-expression').fill('1/x=0');await page.locator('#equation-submit').click();
+ await expect(page.locator('#equation-status')).toContainText(other==='sk'?'nedefinovaná':'undefined');
+ await page.locator('#equation-min').fill('2');await page.locator('#equation-submit').click();
+ await expect(page.locator('#equation-error')).toContainText(other==='sk'?'Skontroluj interval':'Check that from');
+ await expect(page.locator('#equation-min')).toBeFocused();
+});
+
 test('equation layout fits phone, landscape and desktop',async({page})=>{
  await page.goto('/solve?lang=sk');await page.locator('#equation-submit').click();
  await expect(page.locator('.equation-root')).toHaveCount(2);
@@ -101,5 +128,14 @@ test('equation layout fits phone, landscape and desktop',async({page})=>{
   await expect(page.locator('.equation-entry h1')).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
   await page.screenshot({path:path.resolve(__dirname,`../../build/equations-2026-10-17/layout-${width}.png`),fullPage:true});
+ }
+ await page.locator('#equation-mode').selectOption('numeric');await page.locator('#equation-expression').fill('cos(x)=x');
+ await page.locator('#equation-min').fill('0');await page.locator('#equation-max').fill('1');await page.locator('#equation-submit').click();
+ await expect(page.locator('.equation-root')).toHaveCount(1);
+ for(const [width,height] of [[390,844],[812,375],[1280,800]]){
+  await page.setViewportSize({width,height});
+  await page.evaluate(async()=>{await document.fonts.ready;await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+  await page.screenshot({path:path.resolve(__dirname,`../../build/numeric-root-2026-10-18/layout-${width}.png`),fullPage:true});
  }
 });

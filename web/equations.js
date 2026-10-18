@@ -5,7 +5,8 @@ function initEquations() {
     const lifecycle = new AbortController(), signal = lifecycle.signal;
     const inputs = ['a','b','c'].map(name => document.querySelector('#equation-' + name));
     const mode = document.querySelector('#equation-mode'), expression = document.querySelector('#equation-expression');
-    const fields = [...inputs, expression];
+    const bounds = [document.querySelector('#equation-min'), document.querySelector('#equation-max')];
+    const fields = [...inputs, expression, ...bounds];
     const precision = document.querySelector('#equation-precision');
     const submit = document.querySelector('#equation-submit');
     const status = document.querySelector('#equation-status'), error = document.querySelector('#equation-error');
@@ -32,10 +33,25 @@ function initEquations() {
         coefficient:'Coefficient', column:'position',
         polynomial:'Use a polynomial in x of degree at most 2 with exact real constants. No x in denominators or function calls.', onlyX:'Only x is supported; ans and saved variables are unavailable here.', equationInvalid:'Check the equation, including parentheses and the = sign.'
     };
+    const numericWords = sk ? {
+        found:'Jeden približný koreň. Ďalšie môžu existovať.', not_bracketed:'Interval nepotvrdil zmenu znamienka. Koreň môže existovať; uprav interval.',
+        domain_gap:'V skúmaných bodoch je nedefinovaná alebo nereálna hodnota. Zvoľ interval v reálnej doméne.',
+        iteration_limit:'Koreň sa v rámci počtu krokov nepodarilo potvrdiť. Skús užší interval.',
+        precision_limit:'Výpočet nerozlíšil hodnoty dostatočne. Zvýš presnosť alebo zúž interval.',
+        help:'Jeden reálny koreň, napr. cos(x) = x. Zvoľ spojitý interval so zmenou znamienka rozdielu strán. Nehľadá všetky korene.',
+        residual:'Zvyšok v overenom bode: ', copy:'Kopírovať bod', options:'Skontroluj interval od < do a presnosť 16–100.'
+    } : {
+        found:'One approximate root. Other roots may exist.', not_bracketed:'The interval did not confirm a sign change. A root may still exist; adjust the interval.',
+        domain_gap:'A sampled value is undefined or non-real. Choose an interval within the real domain.',
+        iteration_limit:'Could not confirm a root within the step limit. Try a narrower interval.',
+        precision_limit:'Values could not be distinguished sufficiently. Increase precision or narrow the interval.',
+        help:'One real root, e.g. cos(x) = x. Choose a continuous interval where the difference between sides changes sign. Does not enumerate roots.',
+        residual:'Residual at the checked point: ', copy:'Copy point', options:'Check that from < to and precision is 16–100.'
+    };
     let controller = null, generation = 0, result = null;
     const equationHelp = document.querySelector('#equation-help').textContent;
     function save() {
-        const state = {inputs:inputs.map(input => input.value), expression:expression.value, mode:mode.value, precision:precision.value, result};
+        const state = {inputs:inputs.map(input => input.value), expression:expression.value, bounds:bounds.map(input=>input.value), mode:mode.value, precision:precision.value, result};
         try {
             if (JSON.stringify(state).length > 24000) state.result = null;
             sessionStorage.setItem('numforge-equations-v1', JSON.stringify(state));
@@ -43,20 +59,24 @@ function initEquations() {
     }
     function render(value) {
         roots.replaceChildren();
-        status.textContent = value ? words[value.kind === 'finite' ? 'finite' : value.kind] : words.idle;
-        if (!value || value.kind !== 'finite') return;
+        status.textContent = value?.kind === 'numeric' ? numericWords[value.outcome] : value ? words[value.kind === 'finite' ? 'finite' : value.kind] : words.idle;
+        if (!value || !['finite','numeric'].includes(value.kind)) return;
         value.roots.forEach((root, index) => {
             const row = document.createElement('li'); row.className = 'equation-root';
-            const exact = document.createElement('code'); exact.textContent = 'x' + (value.count === 2 ? (index ? '₂' : '₁') : '') + ' = ' + root.exact;
+            const numerical = value.kind === 'numeric';
+            const exact = document.createElement('code'); exact.textContent = numerical ? 'x ≈ ' + root.approximation : 'x' + (value.count === 2 ? (index ? '₂' : '₁') : '') + ' = ' + root.exact;
             row.append(exact);
             if (root.multiplicity === 2) { const note = document.createElement('small'); note.textContent = words.double; row.append(note); }
-            if (root.approximation !== root.exact) {
+            if (numerical) {
+                const note = document.createElement('small'); note.textContent = numericWords.residual + root.residual;
+                note.style.overflowWrap = 'anywhere'; row.append(note);
+            } else if (root.approximation !== root.exact) {
                 const approximation = document.createElement('code'); approximation.className = 'equation-approx';
                 approximation.textContent = '≈ ' + root.approximation; row.append(approximation);
             }
-            const copy = document.createElement('button'); copy.type = 'button'; copy.textContent = words.copy;
+            const copy = document.createElement('button'); copy.type = 'button'; copy.textContent = numerical ? numericWords.copy : words.copy;
             copy.addEventListener('click', async () => {
-                try { await navigator.clipboard.writeText(root.exact); copy.textContent = words.copied; }
+                try { await navigator.clipboard.writeText(numerical ? root.x : root.exact); copy.textContent = words.copied; }
                 catch (_) { copy.textContent = words.copyError; }
             }, {signal});
             row.append(copy); roots.append(row);
@@ -69,40 +89,49 @@ function initEquations() {
         render(null); save();
     }
     function showError(data) {
+        if (data.code === 'numeric_options_error') {
+            error.textContent = numericWords.options; error.hidden = false; status.textContent = '';
+            bounds.forEach(input=>input.setAttribute('aria-invalid','true')); bounds[0].focus(); return;
+        }
         const field = /^coefficient_([abc])_error$/.exec(data.code || '');
-        let message = mode.value === 'expression' ? words.equationInvalid : words.invalid;
+        let message = mode.value !== 'coefficients' ? words.equationInvalid : words.invalid;
         if (/not implemented|invalid quantity|invalid argument/.test(data.status)) message = words.exact;
         if (mode.value === 'expression' && /not implemented/.test(data.status)) message = words.polynomial;
         if (/undefined/.test(data.status)) message = words.variable;
-        if (mode.value === 'expression' && /undefined/.test(data.status)) message = words.onlyX;
+        if (mode.value !== 'coefficients' && /undefined/.test(data.status)) message = words.onlyX;
         if (/TLE|value too large|out of memory|scale overflow/.test(data.status)) message = words.limit;
         error.textContent = (field ? words.coefficient + ' ' + field[1] + ': ' : '') + message +
-            ((field || mode.value === 'expression') && Number.isInteger(data.column) ? ' · ' + words.column + ' ' + data.column : '');
+            ((field || mode.value !== 'coefficients') && Number.isInteger(data.column) ? ' · ' + words.column + ' ' + data.column : '');
         error.hidden = false; status.textContent = '';
         if (field) { const input = inputs['abc'.indexOf(field[1])]; input.setAttribute('aria-invalid','true'); input.focus(); }
-        else if (mode.value === 'expression') {
+        else if (mode.value !== 'coefficients') {
             expression.setAttribute('aria-invalid','true'); expression.focus();
             const caret = Array.from(expression.value).slice(0, Math.max(0,(data.column || 1)-1)).join('').length;
             expression.setSelectionRange(caret, caret);
         }
     }
     function syncMode() {
-        const whole = mode.value === 'expression';
+        const whole = mode.value !== 'coefficients', numerical = mode.value === 'numeric';
+        document.querySelector('.equation-formula').textContent = numerical ? 'f(x) = g(x)' : 'ax² + bx + c = 0';
         document.querySelector('.equation-coefficients').hidden = whole;
         document.querySelector('#equation-expression-field').hidden = !whole;
         expression.disabled = !whole;
         inputs.forEach(input => input.disabled = whole);
-        document.querySelector('#equation-help').textContent = whole ? equationHelp : (sk
+        document.querySelector('#equation-range').hidden = !numerical;
+        bounds.forEach(input=>input.disabled = !numerical);
+        precision.min = numerical ? '16' : '1'; precision.max = numerical ? '100' : '1000';
+        if (numerical && (Number(precision.value)<16 || Number(precision.value)>100)) precision.value = '34';
+        document.querySelector('#equation-help').textContent = numerical ? numericWords.help : whole ? equationHelp : (sk
             ? 'Čísla alebo presné výrazy, napr. 1/3 či sqrt(4). Pre lineárnu rovnicu nastav a = 0.'
             : 'Numbers or exact expressions, e.g. 1/3 or sqrt(4). Use a = 0 for a linear equation.');
     }
     mode.addEventListener('change', () => { syncMode(); edit(); }, {signal});
     form.addEventListener('input', edit, {signal});
-    document.querySelector('#equation-clear').addEventListener('click', () => { const active = mode.value === 'expression' ? [expression] : inputs; active.forEach(input => input.value = ''); edit(); active[0].focus(); }, {signal});
+    document.querySelector('#equation-clear').addEventListener('click', () => { const active = mode.value !== 'coefficients' ? [expression] : inputs; active.forEach(input => input.value = ''); edit(); active[0].focus(); }, {signal});
     form.addEventListener('submit', async event => {
         event.preventDefault(); cancel(); result = null; render(null); error.hidden = true;
         fields.forEach(input => input.removeAttribute('aria-invalid'));
-        const active = mode.value === 'expression' ? [expression] : inputs;
+        const active = mode.value !== 'coefficients' ? [expression] : inputs;
         const body = active.map(input => input.value).join('\n');
         if (new TextEncoder().encode(body).length > 4096 || active.some(input => /[\r\n]/.test(input.value))) {
             error.textContent = words.size; error.hidden = false; save(); return;
@@ -112,14 +141,15 @@ function initEquations() {
         const timeout = setTimeout(() => request.abort(), 15000);
         submit.disabled = true; form.setAttribute('aria-busy','true'); status.textContent = words.busy; save();
         try {
-            const response = await fetch('/api/equations/solve?mode=' + mode.value + '&precision=' + encodeURIComponent(precision.value), {
+            let target = '/api/equations/solve?mode=' + mode.value + '&precision=' + encodeURIComponent(precision.value);
+            if (mode.value === 'numeric') target += '&min=' + encodeURIComponent(bounds[0].value) + '&max=' + encodeURIComponent(bounds[1].value);
+            const response = await fetch(target, {
                 method:'POST', headers:{'Content-Type':'text/plain; charset=utf-8'}, body, signal:request.signal
             });
             const data = await response.json();
             if (current !== generation) return;
             if (!response.ok || !data.ok) { showError(data); return; }
-            if (!['finite','none','all'].includes(data.kind) || !Array.isArray(data.roots) || data.roots.length > 2 ||
-                data.roots.some(root => typeof root.exact !== 'string' || typeof root.approximation !== 'string')) throw Error('Invalid response');
+            if (!validResult(data)) throw Error('Invalid response');
             result = data; render(data); save();
             if (matchMedia('(max-width:760px)').matches) document.querySelector('.equation-result').scrollIntoView({block:'start',behavior:'smooth'});
         } catch (_) {
@@ -133,13 +163,18 @@ function initEquations() {
         const saved = JSON.parse(sessionStorage.getItem('numforge-equations-v1'));
         if (saved && Array.isArray(saved.inputs) && saved.inputs.length === 3 && saved.inputs.every(value => typeof value === 'string' && value.length <= 4096)) {
             inputs.forEach((input,index) => input.value = saved.inputs[index]);
-            mode.value = saved.mode === 'expression' ? 'expression' : 'coefficients';
+            mode.value = ['expression','numeric'].includes(saved.mode) ? saved.mode : 'coefficients';
+            if (Array.isArray(saved.bounds) && saved.bounds.length === 2 && saved.bounds.every(value=>typeof value==='string'&&value.length<=47)) bounds.forEach((input,index)=>input.value=saved.bounds[index]);
             if (typeof saved.expression === 'string' && saved.expression.length <= 4096) expression.value = saved.expression;
             if (/^\d+$/.test(saved.precision) && Number(saved.precision) >= 1 && Number(saved.precision) <= 1000) precision.value = saved.precision;
-            if (saved.result && ['finite','none','all'].includes(saved.result.kind) && Array.isArray(saved.result.roots) && saved.result.roots.length <= 2 &&
-                saved.result.roots.every(root => typeof root.exact === 'string' && typeof root.approximation === 'string')) result = saved.result;
+            if (validResult(saved.result)) result = saved.result;
         }
     } catch (_) { /* Ignore unavailable or obsolete state. */ }
+    function validResult(value) {
+        return value && ['finite','none','all','numeric'].includes(value.kind) && Array.isArray(value.roots) && value.roots.length <= 2 &&
+            (value.kind !== 'numeric' || Object.hasOwn(numericWords, value.outcome) && ['found','not_bracketed','domain_gap','iteration_limit','precision_limit'].includes(value.outcome)) &&
+            value.roots.every(root=>typeof root.approximation==='string' && (value.kind==='numeric' ? typeof root.x==='string' && typeof root.residual==='string' : typeof root.exact==='string'));
+    }
     syncMode(); render(result);
     return () => { save(); cancel(); lifecycle.abort(); };
 }

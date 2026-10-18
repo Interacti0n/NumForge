@@ -14,6 +14,8 @@ The optional `mode` selects the input grammar:
   `3x + 1 = 7`, `(x-2)*(x+3)=0` or `x^2=2`.
 - `mode=coefficients` (also the default when mode is omitted): exactly three
   coefficient expression lines as documented below. Existing callers are unchanged.
+- `mode=numeric`: a separate [numerical interval search](NUMERIC_ROOT_HTTP_API.md),
+  requiring min/max with different precision/result semantics.
 
 In coefficient mode, use a UTF-8 `text/plain` body with exactly three lines: coefficient expressions
 `a`, `b`, then `c`. Do not append a fourth line, even an empty one. CRLF is also
@@ -21,7 +23,7 @@ accepted. Each line must contain an expression. The total body limit is 4096
 bytes, including separators; the server's 8192-byte request framing limit also
 includes headers. NUL bytes are rejected by HTTP framing/dispatch validation.
 
-The other query option is `precision`, an integer from 1 to 10000 with default
+For expression/coefficient modes, the other query option is `precision`, an integer from 1 to 10000 with default
 34. Duplicate, unknown and malformed options are errors. Precision controls the
 shared evaluator's decimal working projection; accepted coefficients and
 solutions remain exact at every setting. Radians are fixed for this endpoint.

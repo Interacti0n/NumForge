@@ -171,6 +171,7 @@ if(NUMFORGE_BUILD_APPS OR BUILD_TESTING OR NUMFORGE_BUILD_FUZZERS OR NUMFORGE_BU
         src/application/equation.c
         src/application/equation_format.c
         src/application/equation_parse.c
+        src/application/numeric_root.c
         src/application/conversion.c
         src/application/session.c
         src/application/client_store.c)
@@ -735,6 +736,11 @@ if(BUILD_TESTING)
     target_compile_definitions(equation_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
     numforge_enable_diagnostics(equation_tests)
     add_test(NAME equation_tests COMMAND equation_tests)
+    add_executable(numeric_root_tests tests/test_numeric_root.c)
+    target_link_libraries(numeric_root_tests PRIVATE numforge_client unity)
+    target_compile_definitions(numeric_root_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
+    numforge_enable_diagnostics(numeric_root_tests)
+    add_test(NAME numeric_root_tests COMMAND numeric_root_tests)
     add_executable(graph_tests tests/test_graph.c)
     target_link_libraries(graph_tests PRIVATE numforge_client unity)
     target_compile_definitions(graph_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)

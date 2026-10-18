@@ -6,6 +6,7 @@
 #include "fast_graph.h"
 #include "graph_analysis.h"
 #include "equation.h"
+#include "numeric_root.h"
 #include <errno.h>
 #include <math.h>
 #include "exact_functions.h"
@@ -468,9 +469,75 @@ static void equation_rational(Json *json, const BigRational *value)
     free(text);
 }
 
+static void numeric_decimal(Json *json, const BigDecimal *value)
+{
+    if (json->status != CALCULATOR_OK) return;
+    char *text = NULL;
+    json->status = calculator_from_decimal_status(bigdecimal_format_mode(value, -1,
+        BIGDECIMAL_ROUND_HALF_EVEN, BIGDECIMAL_FORMAT_AUTO, CALCULATOR_MAX_OUTPUT_BYTES, &text));
+    if (json->status == CALCULATOR_OK) string(json, text);
+    free(text);
+}
+static CalculatorStatus numeric_equation_request(const char *method, const Query *query,
+    const char *body, char **response, CalculatorError *error, const char **code)
+{
+    *code = "numeric_options_error";
+    uint64_t precision;
+    if (strcmp(method, "POST") != 0 || (query->seen & ~(BIT(MODE)|BIT(PRECISION)|BIT(MINIMUM)|BIT(MAXIMUM))) ||
+        !(query->seen & BIT(MINIMUM)) || !(query->seen & BIT(MAXIMUM)) ||
+        !number(query, PRECISION, CALCULATOR_DEFAULT_DIVISION_SCALE, &precision) || precision < 16U || precision > 100U)
+        return CALCULATOR_INVALID_ARGUMENT;
+    *code = "numeric_equation_error";
+    CalculatorContext context; calculator_context_init(&context); context.division_scale = (int64_t)precision;
+    bool owner = numforge_budget_begin((uint64_t)context.time_limit_ms, CALCULATOR_ALLOCATION_BUDGET, CALCULATOR_SINGLE_ALLOCATION);
+    BigRational *bounds[2] = {bigrational_create(), bigrational_create()};
+    BigDecimal *decimal = bigdecimal_create(), *one = bigdecimal_create();
+    ApplicationNumericRoot *root = NULL;
+    CalculatorStatus status = bounds[0] && bounds[1] && decimal && one ? CALCULATOR_OK : CALCULATOR_OUT_OF_MEMORY;
+    const char *texts[] = {query->values[MINIMUM], query->values[MAXIMUM]};
+    for (size_t i = 0U; i < 2U && status == CALCULATOR_OK; ++i) {
+        status = calculator_from_decimal_status(bigdecimal_set_string(decimal, texts[i]));
+        if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_from_bigdecimal(bounds[i], decimal));
+    }
+    int bound_order = 0;
+    if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_compare(&bound_order, bounds[0], bounds[1]));
+    if (status == CALCULATOR_OK && bound_order >= 0) status = CALCULATOR_INVALID_ARGUMENT;
+    if (status == CALCULATOR_INVALID_ARGUMENT) *code = "numeric_options_error";
+    if (status == CALCULATOR_OK) {
+        *code = "numeric_equation_error";
+        status = application_numeric_root_solve(&root, body, bounds[0], bounds[1], &context, error);
+    }
+    Json json = {NULL, 0U, CALCULATOR_OK, RESPONSE_CAPACITY};
+    if (status == CALCULATOR_OK) { json.data = numforge_malloc(json.capacity); if (!json.data) status = CALCULATOR_OUT_OF_MEMORY; }
+    if (status == CALCULATOR_OK) {
+        append(&json, "{\"ok\":true,\"schema_version\":1,\"kind\":\"numeric\",\"outcome\":\"%s\",\"complete\":false,\"count\":%u,\"evaluations\":%zu,\"iterations\":%zu,\"x_tolerance\":\"1E-12\",\"residual_tolerance\":\"1E-12\",\"lower\":",
+            application_numeric_root_kind(root->kind), root->kind == APPLICATION_ROOT_FOUND ? 1U : 0U, root->evaluations, root->iterations);
+        equation_rational(&json, root->lower); append(&json, ",\"upper\":"); equation_rational(&json, root->upper);
+        append(&json, ",\"roots\":[");
+        if (root->kind == APPLICATION_ROOT_FOUND && json.status == CALCULATOR_OK) {
+            json.status = calculator_from_rational_status(bigrational_to_bigdecimal(decimal, root->x, (int64_t)precision, BIGDECIMAL_ROUND_HALF_EVEN));
+            append(&json, "{\"x\":"); numeric_decimal(&json, decimal);
+            if (json.status == CALCULATOR_OK) json.status = calculator_from_decimal_status(bigdecimal_set_string(one, "1"));
+            if (json.status == CALCULATOR_OK) json.status = calculator_from_decimal_status(bigdecimal_div_significant(decimal, decimal, one, (int64_t)precision, BIGDECIMAL_ROUND_HALF_EVEN));
+            append(&json, ",\"approximation\":"); numeric_decimal(&json, decimal);
+            append(&json, ",\"residual\":"); numeric_decimal(&json, root->residual);
+            append(&json, ",\"exact_zero\":%s}", root->exact_zero ? "true" : "false");
+        }
+        append(&json, "]}"); status = json.status;
+    }
+    status = calculator_budget_status(status);
+    if (status == CALCULATOR_OK) *response = json.data;
+    else { free(json.data); calculator_error_set(error, status, error ? error->offset : 0U); }
+    bigrational_destroy(bounds[0]); bigrational_destroy(bounds[1]); bigdecimal_destroy(decimal); bigdecimal_destroy(one); application_numeric_root_destroy(root);
+    if (owner) numforge_budget_end();
+    return status;
+}
+
 static CalculatorStatus equation_request(const char *method, const Query *query,
     const char *body, char **response, CalculatorError *error, const char **code)
 {
+    if ((query->seen & BIT(MODE)) && strcmp(query->values[MODE], "numeric") == 0)
+        return numeric_equation_request(method, query, body, response, error, code);
     uint64_t precision;
     *code = "equation_request_error";
     bool expression_mode = (query->seen & BIT(MODE)) && strcmp(query->values[MODE], "expression") == 0;

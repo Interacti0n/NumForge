@@ -10,6 +10,7 @@ body { height:auto; min-height:100dvh; overflow:auto; }
 .equation-entry input,.equation-entry select { width:100%; min-width:0; min-height:46px; padding:10px 12px; color:var(--text); background:var(--surface-input); border:1px solid var(--border); border-radius:10px; font:1rem var(--font-math); }
 .equation-entry [hidden] { display:none!important; }
 .equation-mode-label { margin-bottom:20px; }
+.equation-range { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px; margin-top:16px; }
 .equation-entry input[aria-invalid=true] { border-color:var(--danger); }
 .equation-hint,.equation-settings p,#equation-status { color:var(--muted); font-size:.9rem; line-height:1.6; }
 .equation-actions { display:flex; gap:12px; margin:22px 0; }

@@ -510,6 +510,8 @@ int main(int argc, char **argv)
           "HTTP/1.1 200 OK", "\"radicand\":\"2\",\"offset\":null" },
         { "POST /api/equations/solve?mode=expression HTTP/1.1\r\nHost: localhost\r\nContent-Length: 3\r\n\r\nx=2",
           "HTTP/1.1 200 OK", "\"exact\":\"2\"" },
+        { "POST /api/equations/solve?mode=numeric&min=-1&max=1 HTTP/1.1\r\nHost: localhost\r\nContent-Length: 3\r\n\r\nx=0",
+          "HTTP/1.1 200 OK", "\"kind\":\"numeric\",\"outcome\":\"found\"" },
         { "POST /api/equations/solve?mode=expression HTTP/1.1\r\nHost: localhost\r\nContent-Length: 5\r\n\r\nx/x=1",
           "HTTP/1.1 400 Bad Request", "\"code\":\"equation_expression_error\"" },
         { "POST /api/equations/solve HTTP/1.1\r\nHost: localhost\r\nContent-Length: 5\r\n\r\n1\ni\n1",

@@ -8,8 +8,9 @@ the implementation belongs to `numforge_application`.
 This is an implemented coefficient-based foundation with a stateless
 [HTTP operation](../reference/EQUATION_HTTP_API.md). It is not an installed
 numeric SDK API. The [browser equation editor](../guides/EQUATIONS.md) consumes
-this contract with exact root text and decimal previews. Parsing non-polynomial
-equations and numerical interval solving remain subsequent work.
+this contract with exact root text and decimal previews. A separate bounded
+[numerical interval solver](../reference/NUMERIC_ROOT_HTTP_API.md) handles general
+real equation expressions without changing exact polynomial semantics.
 
 ## C operations and ownership
 
@@ -141,6 +142,7 @@ complex arithmetic. Allocation-stat builds verify zero live allocations.
    are implemented, preserving exact typed inputs and one request budget.
 2. Exact algebraic text, cancellation-safe decimal previews, browser coefficient
    controls and a dedicated user guide are implemented around that contract.
-3. Add bounded numerical roots of general prepared expressions on an explicit
-   interval, with residuals and convergence limits; connect those results to
-   graph navigation later. Finite sampling does not enumerate every root.
+3. Bounded numerical roots of general prepared expressions on an explicit
+   sign-changing interval are implemented with residuals and convergence limits.
+   Additional bracket scanning, tangencies and graph navigation remain future
+   work. Finite sampling does not enumerate every root.

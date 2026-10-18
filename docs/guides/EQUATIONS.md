@@ -53,5 +53,28 @@ HTTP response to 128 KiB. More requested digits do not guarantee completion.
 Previews use guard digits and a stable real-root projection to avoid subtracting
 nearly equal numbers. They are approximate, without a certified rounding
 interval. Exact radicals are not necessarily simplified by extracting square
-factors. Non-polynomial equations, irrational coefficients, systems, numerical
-interval roots and graph integration remain subsequent work.
+factors. Irrational coefficients in exact mode, systems and graph integration
+remain subsequent work.
+
+## Numerical interval search
+
+Choose **Numerical interval root / Numericky na intervale** for a real equation
+such as `cos(x)=x`. Default bounds are 0..10; 0..1 is a useful bracket for this
+example. Use a continuous interval where the difference between equation sides
+has opposite signs at the endpoints. Lowercase x and radians are fixed. This
+mode searches for one approximate root and does not enumerate all roots.
+
+The result shows a coordinate and residual evaluated by C. **Copy point /
+Kopírovať bod** copies the full checked coordinate, which can contain more digits
+than the preview. Residuals refer to that full point. Numerical precision is
+16–100 digits; both absolute search width and residual target 1E-12, with strict
+residual improvement over endpoints. Exact rational zeros may be accepted
+immediately. Preview precision does not tighten the fixed tolerances.
+
+Without a confirmed sign change, roots can still exist, especially tangent
+roots. Approximate endpoint zeros alone are not confirmed. Sampled domain gaps,
+insufficient precision and the 96-step/192-coordinate limits produce explanatory
+outcomes instead of “no solutions”. Narrow or shift the interval when needed.
+The same five-second/memory budget applies. All math uses BigRational/BigDecimal;
+these numerical checks are not a proof of continuity or root existence between
+samples. See the [numerical API](../reference/NUMERIC_ROOT_HTTP_API.md).
