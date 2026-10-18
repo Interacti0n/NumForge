@@ -173,6 +173,7 @@ if(NUMFORGE_BUILD_APPS OR BUILD_TESTING OR NUMFORGE_BUILD_FUZZERS OR NUMFORGE_BU
         src/application/equation_format.c
         src/application/equation_parse.c
         src/application/numeric_root.c
+        src/application/numeric_root_brent.c
         src/application/conversion.c
         src/application/session.c
         src/application/client_store.c)
@@ -418,6 +419,9 @@ if(NUMFORGE_BUILD_BENCHMARKS)
     if(BUILD_TESTING)
         add_test(NAME numeric_root_benchmark_smoke COMMAND numeric_root_benchmark --quick)
         add_test(NAME numeric_root_domain_regression COMMAND numeric_root_benchmark --adversarial)
+        add_test(NAME numeric_root_brent_smoke COMMAND numeric_root_benchmark --compare --quick)
+        add_test(NAME numeric_root_brent_domain_regression COMMAND numeric_root_benchmark --compare --adversarial)
+        set_tests_properties(numeric_root_brent_smoke numeric_root_brent_domain_regression PROPERTIES TIMEOUT 120)
         set_tests_properties(numeric_root_benchmark_smoke PROPERTIES TIMEOUT 120)
     endif()
     add_executable(calculator_benchmark benchmarks/calculator_benchmark.c benchmarks/benchmark_clock.c)

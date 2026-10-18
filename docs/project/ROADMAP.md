@@ -114,8 +114,11 @@ documented HTTP contract alongside the web implementation, using the versioned
    [Numerical interval roots](../reference/NUMERIC_ROOT_HTTP_API.md) now find one
    real root in a sign-changing bracket with rational bisection, high-precision
    residuals, conservative local domain checks and explicit work limits/outcomes.
-   Unverified candidate domains expose no root. A high-precision safeguarded
-   Brent experiment is the next measured optimization, retaining those checks.
+   Unverified candidate domains expose no root. Final non-exact candidates are
+   reevaluated at higher precision to detect unstable residuals. A private
+   [Brent experiment](../benchmarks/NUMERIC_ROOT_BRENT_2026_10_18.md) improves
+   several cases but regresses on flat roots/poles; production retains bisection.
+   Cheaper bounded-precision interpolation with a progress fallback comes next.
    Multiple-bracket scanning,
    tangencies, configurable tolerances and graph integration remain future work.
 4. Add session user functions, local parameters and definition management,

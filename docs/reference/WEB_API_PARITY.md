@@ -39,7 +39,7 @@ is added; saved values remain bounded application-owned memory.
 | Integer-domain graph samples | `POST /api/graph/plot?mode=fast&render=auto` | Available; conservative direct-parameter detection and bounded integer lattice |
 | Verify graph intercept/intersection candidates | `POST /api/graph/verify` | Available; bounded original-expression C evaluations and numerical residual checks |
 | Solve a linear/quadratic polynomial | `POST /api/equations/solve?mode=expression` or coefficient body | Available in browser/C/HTTP with whole equations in x, exact coefficient expressions, algebraic root text and approximate decimal previews |
-| Find one real root on an interval | `POST /api/equations/solve?mode=numeric&min=...&max=...` | Available in browser/C/HTTP; high-precision search, residuals and conservative local domain checks; unresolved domains expose no root; no enumeration/certified error bound |
+| Find one real root on an interval | `POST /api/equations/solve?mode=numeric&min=...&max=...` | Available in browser/C/HTTP; bisection, higher-precision residual reevaluation and conservative local domains; unstable/unverified candidates expose no root; no enumeration/certified error bound |
 | List unit catalogue and sources | `GET /api/units` | Available |
 | Validate compatibility, preview a conversion | `POST /api/convert` | Available |
 | Confirm a conversion | `POST /api/conversions?action=commit` | Available, independent ordered history |

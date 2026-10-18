@@ -17,6 +17,8 @@ typedef enum ApplicationNumericRootKind {
  * Otherwise both absolute width and absolute residual must be <= 1E-12 and
  * residual must improve strictly on both original endpoints, and both sides
  * must pass conservative real-continuity checks on the final interval.
+ * Non-exact candidates are reevaluated at twice the search working precision;
+ * disagreement or insufficient residual improvement returns PRECISION_LIMIT.
  * Read-only owned fields, released by application_numeric_root_destroy. */
 typedef struct ApplicationNumericRoot {
     ApplicationNumericRootKind kind;
@@ -27,7 +29,8 @@ typedef struct ApplicationNumericRoot {
 } ApplicationNumericRoot;
 
 /* One equality, lowercase x, radians, no session/RNG/assignment. At most
- * 192 point pairs and 96 bisections; one inherited operation budget. Bounds
+ * 192 point pairs (including final verification) and 96 bisections;
+ * one inherited operation budget. Bounds
  * are borrowed rational values with lower<upper; context precision 16..100.
  * Exact rational endpoint zeros are accepted; otherwise opposite endpoint
  * signs are required. Absence of a bracket does not imply absence of roots.

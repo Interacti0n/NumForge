@@ -1,4 +1,5 @@
 #include "numeric_root.h"
+#include "numeric_root_experiment.h"
 #include "session_api.h"
 #include "expression.h"
 #include "../src/internal/numforge_alloc.h"
@@ -87,7 +88,7 @@ static void test_audit_reference_corpus_at_all_supported_precision_extremes(void
         for (size_t i = 0U; i < sizeof(numeric_root_cases)/sizeof(numeric_root_cases[0]); ++i) {
             const NumericRootCase *scene = &numeric_root_cases[i];
             solve(scene->equation, scene->lower, scene->upper, scene->outcome);
-            if (scene->reference) near(scene->reference);
+            if (root->kind == APPLICATION_ROOT_FOUND) near(scene->reference);
             else { TEST_ASSERT_NULL(root->x); TEST_ASSERT_NULL(root->residual); }
         }
     }
@@ -183,6 +184,104 @@ static void test_domain_verification_allocation_failures_are_atomic(void)
         numforge_budget_end(); numforge_test_allocator_end();
     }
     application_expression_destroy(expression);
+}
+static void test_brent_experiment_corpus_and_work_invariants(void)
+{
+    const int precisions[] = {16, 34, 100};
+    for (size_t p = 0U; p < 3U; ++p) {
+        context.division_scale = precisions[p];
+        for (size_t i = 0U; i < sizeof(numeric_root_cases)/sizeof(numeric_root_cases[0]); ++i) {
+            const NumericRootCase *scene = &numeric_root_cases[i]; ApplicationNumericRootStats stats = {0};
+            application_numeric_root_destroy(root); root = NULL; bound(minimum, scene->lower); bound(maximum, scene->upper);
+            TEST_ASSERT_EQUAL_MESSAGE(CALCULATOR_OK, application_numeric_root_experiment(&root, scene->equation, minimum, maximum, &context, &error, true, &stats), scene->name);
+            TEST_ASSERT_TRUE(root->evaluations <= 192U); TEST_ASSERT_TRUE(root->iterations <= 96U);
+            TEST_ASSERT_EQUAL_UINT64(root->iterations, stats.interpolations+stats.bisections);
+            TEST_ASSERT_EQUAL_UINT64(stats.interpolations, stats.secants+stats.quadratics);
+            TEST_ASSERT_EQUAL_UINT64(stats.bisections, stats.rejections); TEST_ASSERT_TRUE(stats.nudges <= stats.interpolations);
+            int order = -1;
+            TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_compare(&order, root->lower, minimum)); TEST_ASSERT_TRUE(order >= 0);
+            TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_compare(&order, root->upper, maximum)); TEST_ASSERT_TRUE(order <= 0);
+            TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_compare(&order, root->lower, root->upper)); TEST_ASSERT_TRUE(order < 0);
+            if (scene->outcome == APPLICATION_ROOT_FOUND || !strcmp(scene->name, "steep_linear") || !strcmp(scene->name, "wide_linear"))
+                TEST_ASSERT_EQUAL_MESSAGE(APPLICATION_ROOT_FOUND, root->kind, scene->name);
+            if (root->kind == APPLICATION_ROOT_FOUND) { TEST_ASSERT_NOT_NULL(scene->reference); near(scene->reference); }
+            else { TEST_ASSERT_NULL(root->x); TEST_ASSERT_NULL(root->residual); }
+        }
+        bound(minimum, "0"); bound(maximum, "1"); application_numeric_root_destroy(root); root = NULL;
+        TEST_ASSERT_EQUAL(CALCULATOR_OK, application_numeric_root_experiment(&root,
+            "x-0.1234+1E-30*(x-0.1234)/abs(x-0.1234)=0", minimum, maximum, &context, &error, true, NULL));
+        /* An exact sample of the hole may be found before the final domain check. */
+        TEST_ASSERT_TRUE(root->kind == APPLICATION_ROOT_DOMAIN_GAP || root->kind == APPLICATION_ROOT_DOMAIN_UNVERIFIED);
+        TEST_ASSERT_NULL(root->x);
+    }
+}
+static void test_brent_iterative_failures_are_atomic(void)
+{
+    solve("x=0", "-1", "1", APPLICATION_ROOT_FOUND); ApplicationNumericRoot *original = root, *attempt = NULL;
+    bound(minimum, "0"); bound(maximum, "1"); ApplicationNumericRootStats stats = {0};
+    numforge_test_allocator_begin(0U);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_numeric_root_experiment(&attempt, "cos(x)=x", minimum, maximum, &context, &error, true, &stats));
+    size_t calls = numforge_test_allocator_call_count(); numforge_test_allocator_end();
+    TEST_ASSERT_TRUE(stats.quadratics > 0U); application_numeric_root_destroy(attempt);
+    const ApplicationNumericRootStats untouched = {1U, 2U, 3U, 4U, 5U, 6U};
+    for (size_t i = 0U; i < 64U; ++i) {
+        stats = untouched; numforge_test_allocator_begin(1U+(calls-1U)*i/63U);
+        TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY, application_numeric_root_experiment(&root, "cos(x)=x", minimum, maximum, &context, &error, true, &stats));
+        numforge_test_allocator_end(); TEST_ASSERT_EQUAL_PTR(original, root); TEST_ASSERT_EQUAL_MEMORY(&untouched, &stats, sizeof(stats));
+    }
+    for (size_t i = 1U; i <= 40U; ++i) {
+        attempt = NULL; stats = untouched; numforge_test_budget_expire_after(i*100U);
+        CalculatorStatus status = application_numeric_root_experiment(&attempt, "cos(x)=x", minimum, maximum, &context, &error, true, &stats);
+        numforge_test_allocator_end(); TEST_ASSERT_TRUE(status == CALCULATOR_OK || status == CALCULATOR_TIME_LIMIT);
+        if (status != CALCULATOR_OK) { TEST_ASSERT_NULL(attempt); TEST_ASSERT_EQUAL_MEMORY(&untouched, &stats, sizeof(stats)); }
+        application_numeric_root_destroy(attempt);
+    }
+}
+static void test_final_residual_is_checked_at_higher_precision(void)
+{
+    context.division_scale = 34;
+    solve("exp(x)=1E100", "230.25850929940456840179914546843642076010",
+        "230.25850929940456840179914546843642076012", APPLICATION_ROOT_PRECISION_LIMIT);
+    TEST_ASSERT_NULL(root->x); TEST_ASSERT_NULL(root->residual);
+    for (int mode = 0; mode < 2; ++mode) {
+        ApplicationNumericRoot *attempt = NULL; ApplicationNumericRootStats stats = {0};
+        TEST_ASSERT_EQUAL(CALCULATOR_OK, application_numeric_root_experiment(&attempt, "exp(x)=1E100",
+            minimum, maximum, &context, &error, mode != 0, &stats));
+        TEST_ASSERT_EQUAL(APPLICATION_ROOT_PRECISION_LIMIT, attempt->kind); TEST_ASSERT_NULL(attempt->x);
+        application_numeric_root_destroy(attempt);
+    }
+    char *response = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, numforge_web_session_request(&store, "POST",
+        "/api/equations/solve?mode=numeric&precision=34&min=230.25850929940456840179914546843642076010&max=230.25850929940456840179914546843642076012",
+        "exp(x)=1E100", &response));
+    TEST_ASSERT_NOT_NULL(strstr(response, "\"outcome\":\"precision_limit\""));
+    TEST_ASSERT_NOT_NULL(strstr(response, "\"roots\":[]")); free(response);
+}
+static void test_experimental_and_final_check_failures_preserve_outputs(void)
+{
+    solve("x=0", "-1", "1", APPLICATION_ROOT_FOUND); ApplicationNumericRoot *original = root;
+    bound(minimum, "0.3333333333333"); bound(maximum, "0.3333333333334");
+    for (int mode = 0; mode < 2; ++mode) {
+        ApplicationNumericRoot *attempt = NULL; ApplicationNumericRootStats stats = {0};
+        numforge_test_allocator_begin(0U);
+        TEST_ASSERT_EQUAL(CALCULATOR_OK, application_numeric_root_experiment(&attempt, "x=1/3", minimum, maximum, &context, &error, mode != 0, &stats));
+        size_t calls = numforge_test_allocator_call_count(); numforge_test_allocator_end();
+        TEST_ASSERT_EQUAL(APPLICATION_ROOT_FOUND, attempt->kind); application_numeric_root_destroy(attempt);
+        const ApplicationNumericRootStats untouched = {1U, 2U, 3U, 4U, 5U, 6U};
+        for (size_t i = 1U; i <= calls; ++i) {
+            stats = untouched; numforge_test_allocator_begin(i);
+            TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY, application_numeric_root_experiment(&root, "x=1/3", minimum, maximum, &context, &error, mode != 0, &stats));
+            numforge_test_allocator_end(); TEST_ASSERT_EQUAL_PTR(original, root); TEST_ASSERT_EQUAL_MEMORY(&untouched, &stats, sizeof(stats));
+        }
+        TEST_ASSERT_TRUE(numforge_budget_begin(5000U, 1U, 1U)); stats = untouched;
+        TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE, application_numeric_root_experiment(&root, "x=1/3", minimum, maximum, &context, &error, mode != 0, &stats));
+        TEST_ASSERT_EQUAL_PTR(original, root); TEST_ASSERT_EQUAL_MEMORY(&untouched, &stats, sizeof(stats)); numforge_budget_end();
+        for (size_t i = 1U; i <= 80U; ++i) {
+            stats = untouched; numforge_test_budget_expire_after(i);
+            TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT, application_numeric_root_experiment(&root, "x=1/3", minimum, maximum, &context, &error, mode != 0, &stats));
+            numforge_test_allocator_end(); TEST_ASSERT_EQUAL_PTR(original, root); TEST_ASSERT_EQUAL_MEMORY(&untouched, &stats, sizeof(stats));
+        }
+    }
 }
 static void test_invalid_inputs_and_read_only_failures(void)
 {
@@ -285,6 +384,10 @@ int main(void)
     RUN_TEST(test_interval_domains_preserve_holes_and_allow_safe_compositions);
     RUN_TEST(test_candidate_domain_verification_prevents_false_roots);
     RUN_TEST(test_domain_verification_allocation_failures_are_atomic);
+    RUN_TEST(test_brent_experiment_corpus_and_work_invariants);
+    RUN_TEST(test_final_residual_is_checked_at_higher_precision);
+    RUN_TEST(test_experimental_and_final_check_failures_preserve_outputs);
+    RUN_TEST(test_brent_iterative_failures_are_atomic);
     RUN_TEST(test_invalid_inputs_and_read_only_failures); RUN_TEST(test_allocation_failures_and_outer_budgets_are_atomic);
     RUN_TEST(test_iterative_function_allocation_failures_are_atomic);
     RUN_TEST(test_numeric_http_contract_and_diagnostics); RUN_TEST(test_numeric_http_allocation_failures_do_not_publish_roots);

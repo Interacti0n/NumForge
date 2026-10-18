@@ -13,13 +13,15 @@ enumerate roots or provide certified root-error bounds.
 - Required min/max are finite decimal literals, including scientific notation,
   each at most 47 ASCII characters, with min < max. No bound expressions.
 - Precision is 16–100 significant digits, default 34; evaluation adds 16 guard
-  digits. Only mode/min/max/precision are accepted; duplicate/unknown options fail.
+  digits. A final non-exact candidate is reevaluated at twice that working
+  precision. Only mode/min/max/precision are accepted; duplicate/unknown options fail.
 - The body is at most 4096 UTF-8 bytes, without CR/LF or NUL. Existing framing
   limits apply: 8192 bytes including headers and a two-second receive deadline.
 - Preparation, solving and serialization share five cooperative seconds, 64 MiB
   cumulative allocations and 512 KiB single allocations. Response limit: 128 KiB.
 - At most 96 iterations and 192 evaluated coordinates. Each coordinate evaluates
-  both original sides, not just one primitive math operation.
+  both original sides, not just one primitive math operation. This includes the
+  repeated final coordinate used by the higher-precision verification.
 
 The browser's Numerical interval root mode defaults to 0..10. Polynomial and
 coefficient modes retain their existing exact semantics and precision ranges.
@@ -69,6 +71,15 @@ Exactly zero typed rational samples retain their separate acceptance path:
 the original equation is valid at that point without requiring continuity
 throughout its surrounding interval.
 
+A non-exact candidate is also reevaluated through both original expression trees
+at `2*(precision+16)` digits. Its checked residual must remain <=1E-12 and
+improve on both initial endpoint residuals; a changed nonzero sign or failure of
+these checks returns precision_limit without a root. The emitted residual comes
+from this higher-precision evaluation. This catches apparent cancellation zeros
+such as exp(x)=1E100 at insufficient precision. The extra trees/sample inherit
+the same request budget and are freed before publication. This is a stability
+check, not certified error propagation through arbitrary ill-conditioned ASTs.
+
 These checks do not give certified existence or root-error bounds: signs and
 residuals still come from finite-precision evaluation. Even-multiplicity
 roots without a sign change can be missed. Extremely scaled/ill-conditioned
@@ -90,7 +101,7 @@ HTTP 200 numerical results have ok:true, schema_version:1, kind:"numeric" and
 | outcome | found, not_bracketed, domain_gap, domain_unverified, iteration_limit or precision_limit. |
 | count, roots | One root when found; otherwise zero and an empty array. |
 | lower, upper | Final rational search bounds as strings, not certified enclosures. |
-| iterations, evaluations | Refinement steps and evaluated coordinate pairs. |
+| iterations, evaluations | Refinement steps and evaluated coordinate pairs, including final reevaluation. |
 | x_tolerance, residual_tolerance | Both "1E-12"; exact-zero samples are the exception. |
 | roots[0].x | Full decimal coordinate checked by C, as a string. |
 | roots[0].approximation | Rounded display coordinate, as a string. |

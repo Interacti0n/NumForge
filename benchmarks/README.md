@@ -98,6 +98,13 @@ Save raw recordings under ignored `build/` directories. Keep timing, allocation
 and phase probes separate, and validate results before drawing performance
 conclusions. Timeouts and reference mismatches remain explicit outcomes.
 
+For numerical roots, `numeric_root_benchmark --compare` records paired bisection
+and private Brent runs at precisions 16/34/100 (three repeats). Add `--quick` for
+one precision-34 pass, or `--adversarial` for the vanishing-jump domain regression.
+The Python checker independently reevaluates emitted coordinates at 180 digits;
+run it on the complete comparison CSV as well as the default baseline. Production
+C/HTTP still uses bisection. See the [Brent experiment](../docs/benchmarks/NUMERIC_ROOT_BRENT_2026_10_18.md).
+
 The audit also measures 128–1,024-limb division shapes and 2,048–8,192-limb
 balanced/unbalanced multiplication. Complex pipeline probes include forward and
 inverse functions, tiny/boundary/scaled arguments and intermediate 5,000-place

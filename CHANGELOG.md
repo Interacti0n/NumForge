@@ -9,6 +9,13 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ### Equation foundation
 
+- Add a private high-precision Brent comparison experiment; production solving
+  retains bisection after mixed performance results. Independently check both
+  methods and preserve domain/work/atomic-failure contracts.
+- Reevaluate non-exact root candidates at twice the working precision before
+  publication. Withhold unstable apparent zeros caused by large rounded values,
+  expose the checked residual and invalidate pre-check browser numerical results.
+
 - Verify real domains on final numerical candidate intervals with conservative
   exact rational enclosures. Reject the audit's vanishing-jump false root with
   domain_unverified; retain safe divisions/logarithms/square roots, inherited

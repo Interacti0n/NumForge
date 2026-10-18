@@ -70,6 +70,9 @@ than the preview. Residuals refer to that full point. Numerical precision is
 16–100 digits; both absolute search width and residual target 1E-12, with strict
 residual improvement over endpoints. Exact rational zeros may be accepted
 immediately. Preview precision does not tighten the fixed tolerances.
+Before publishing a non-exact result, C checks the original equation again at
+higher precision. If the residual or sign is unstable, it asks for more precision
+instead of showing an apparent root. The displayed residual uses that final check.
 
 Without a confirmed sign change, roots can still exist, especially tangent
 roots. Approximate endpoint zeros alone are not confirmed. Sampled domain gaps,

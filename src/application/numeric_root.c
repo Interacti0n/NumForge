@@ -1,4 +1,5 @@
 #include "numeric_root.h"
+#include "numeric_root_brent_internal.h"
 #include "expression.h"
 #include "exact_functions.h"
 #include "../internal/numforge_alloc.h"
@@ -6,7 +7,7 @@
 #include <string.h>
 
 typedef struct Probe { BigDecimal *value; int sign; bool real, exact_zero; } Probe;
-typedef struct Work { ApplicationExpression *sides[2]; CalculatorContext context; size_t evaluations; size_t rhs; } Work;
+typedef struct Work { ApplicationExpression *sides[2]; const char *sources[2]; const BigDecimal *initial; CalculatorContext context; size_t evaluations; size_t rhs; } Work;
 
 const char *application_numeric_root_kind(ApplicationNumericRootKind kind)
 {
@@ -90,16 +91,51 @@ static CalculatorStatus found(Work *work, ApplicationNumericRoot *result, const 
         if (status != CALCULATOR_OK) return status;
         if (!verified) { result->kind = APPLICATION_ROOT_DOMAIN_UNVERIFIED; return CALCULATOR_OK; }
     }
+    /* A small/zero residual at the search precision can hide subtraction of
+     * large rounded values. Reevaluate the original expressions at twice the
+     * working precision; never substitute a transformed/interpolated formula.
+     * This is a stability check, not certified forward-error arithmetic. */
+    Work verification = {0}; Probe checked = {0};
+    CalculatorStatus status = CALCULATOR_OK;
+    if (!sample->exact_zero) {
+        if (work->evaluations >= 192U) { result->kind = APPLICATION_ROOT_ITERATION_LIMIT; return CALCULATOR_OK; }
+        verification.context = work->context; verification.context.division_scale *= 2;
+        verification.rhs = work->rhs; checked.value = bigdecimal_create();
+        if (!checked.value) status = CALCULATOR_OUT_OF_MEMORY;
+        for (size_t i = 0U; i < 2U && status == CALCULATOR_OK; ++i) {
+            CalculatorError ignored;
+            status = application_expression_prepare(&verification.sides[i], work->sources[i], "x", NULL, &verification.context, &ignored);
+        }
+        if (status == CALCULATOR_OK) status = probe(&verification, x, &checked, NULL);
+        work->evaluations += verification.evaluations;
+        if (status == CALCULATOR_OK && !checked.real) result->kind = APPLICATION_ROOT_DOMAIN_GAP;
+        if (status == CALCULATOR_OK && checked.real) {
+            BigDecimal *tolerance = bigdecimal_create(); int order = 1;
+            if (!tolerance) status = CALCULATOR_OUT_OF_MEMORY;
+            if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_set_string(tolerance, "1E-12"));
+            if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_abs(checked.value, checked.value));
+            if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_compare(&order, checked.value, tolerance));
+            if (status == CALCULATOR_OK && (order > 0 || (sample->sign && checked.sign != sample->sign))) result->kind = APPLICATION_ROOT_PRECISION_LIMIT;
+            if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_compare(&order, checked.value, work->initial));
+            if (status == CALCULATOR_OK && order >= 0) result->kind = APPLICATION_ROOT_PRECISION_LIMIT;
+            bigdecimal_destroy(tolerance);
+        }
+        for (size_t i = 0U; i < 2U; ++i) application_expression_destroy(verification.sides[i]);
+        if (status != CALCULATOR_OK || result->kind != APPLICATION_ROOT_ITERATION_LIMIT) {
+            bigdecimal_destroy(checked.value); return status;
+        }
+    }
     result->x = bigrational_create(); result->residual = bigdecimal_create();
-    CalculatorStatus status = result->x && result->residual ? CALCULATOR_OK : CALCULATOR_OUT_OF_MEMORY;
+    status = result->x && result->residual ? CALCULATOR_OK : CALCULATOR_OUT_OF_MEMORY;
     if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_copy(result->x, x));
-    if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_abs(result->residual, sample->value));
+    if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_abs(result->residual, checked.value ? checked.value : sample->value));
     if (status == CALCULATOR_OK) { result->kind = APPLICATION_ROOT_FOUND; result->exact_zero = sample->exact_zero; }
-    return status;
+    bigdecimal_destroy(checked.value); return status;
 }
 
-CalculatorStatus application_numeric_root_solve(ApplicationNumericRoot **result, const char *input,
-    const BigRational *lower, const BigRational *upper, const CalculatorContext *context, CalculatorError *error)
+static CalculatorStatus solve(ApplicationNumericRoot **result, const char *input,
+    const BigRational *lower, const BigRational *upper, const CalculatorContext *context, CalculatorError *error,
+    bool brent, ApplicationNumericRootStats *statistics)
 {
     calculator_error_clear(error);
     if (!result || !input || !lower || !upper || !context) { calculator_error_set(error, CALCULATOR_NULL_ARGUMENT, 0U); return CALCULATOR_NULL_ARGUMENT; }
@@ -124,12 +160,15 @@ CalculatorStatus application_numeric_root_solve(ApplicationNumericRoot **result,
     BigRational *scratch[SCRATCH_COUNT] = {0};
     Probe probes[3] = {{0}}; BigDecimal *absolute = NULL, *tolerance = NULL, *initial = NULL;
     int order = 0, left_sign = 0, right_sign = 0;
+    NumericRootBrent interpolation = {0}; ApplicationNumericRootStats stats = {0};
     if (!output || !copy) status = CALCULATOR_OUT_OF_MEMORY;
     if (status == CALCULATOR_OK) {
         memcpy(copy, input, length+1U); copy[work.rhs-1U] = '\0';
+        work.sources[0] = copy; work.sources[1] = copy+work.rhs;
         output->kind = APPLICATION_ROOT_ITERATION_LIMIT;
         output->lower = bigrational_create(); output->upper = bigrational_create();
         absolute = bigdecimal_create(); tolerance = bigdecimal_create(); initial = bigdecimal_create();
+        work.initial = initial;
         if (!output->lower || !output->upper || !absolute || !tolerance || !initial) status = CALCULATOR_OUT_OF_MEMORY;
     }
     for (size_t i = 0U; i < SCRATCH_COUNT && status == CALCULATOR_OK; ++i) {
@@ -163,11 +202,14 @@ CalculatorStatus application_numeric_root_solve(ApplicationNumericRoot **result,
         if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_abs(absolute, probes[1].value));
         if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_compare(&order, absolute, initial));
         if (status == CALCULATOR_OK && order < 0) status = calculator_from_decimal_status(bigdecimal_copy(initial, absolute));
+        if (status == CALCULATOR_OK && brent) status = numeric_root_brent_create(&interpolation, work.context.division_scale);
+        if (status == CALCULATOR_OK && brent) status = numeric_root_brent_reset(&interpolation, lower, upper, probes[0].value, probes[1].value);
     }
     for (size_t iteration = 0U; iteration < 96U && status == CALCULATOR_OK &&
-        output->kind == APPLICATION_ROOT_ITERATION_LIMIT && work.evaluations < 190U; ++iteration) {
+        output->kind == APPLICATION_ROOT_ITERATION_LIMIT && work.evaluations < 189U; ++iteration) {
         ++output->iterations;
-        status = midpoint(scratch[MID], output->lower, output->upper, scratch[TWO]);
+        if (brent) status = numeric_root_brent_propose(&interpolation, scratch[MID], &stats);
+        else { status = midpoint(scratch[MID], output->lower, output->upper, scratch[TWO]); ++stats.bisections; }
         if (status == CALCULATOR_OK) status = probe(&work, scratch[MID], &probes[0], error);
         if (status != CALCULATOR_OK) break;
         if (!probes[0].real) { output->kind = APPLICATION_ROOT_DOMAIN_GAP; break; }
@@ -191,20 +233,34 @@ CalculatorStatus application_numeric_root_solve(ApplicationNumericRoot **result,
             left_sign = probes[1].sign; right_sign = probes[2].sign;
             status = calculator_from_rational_status(bigrational_copy(output->lower, scratch[LEFT_QUARTER]));
             if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_copy(output->upper, scratch[RIGHT_QUARTER]));
+            if (status == CALCULATOR_OK && brent) status = numeric_root_brent_reset(&interpolation, output->lower, output->upper, probes[1].value, probes[2].value);
         } else {
             if (order <= 0 && residual_order <= 0 && improvement < 0) { status = found(&work, output, scratch[MID], &probes[0]); break; }
             bool replace_left = probes[0].sign == left_sign;
             status = calculator_from_rational_status(bigrational_copy(replace_left ? output->lower : output->upper, scratch[MID]));
             if (replace_left) left_sign = probes[0].sign; else right_sign = probes[0].sign;
+            if (status == CALCULATOR_OK && brent) status = numeric_root_brent_accept(&interpolation, scratch[MID], probes[0].value);
         }
     }
     status = calculator_budget_status(status);
-    if (status == CALCULATOR_OK) { output->evaluations = work.evaluations; *result = output; output = NULL; }
+    if (status == CALCULATOR_OK) { output->evaluations = work.evaluations; *result = output; output = NULL; if (statistics) *statistics = stats; }
     else calculator_error_set(error, status, error ? error->offset : 0U);
     for (size_t i = 0U; i < 2U; ++i) application_expression_destroy(work.sides[i]);
     for (size_t i = 0U; i < SCRATCH_COUNT; ++i) bigrational_destroy(scratch[i]);
     for (size_t i = 0U; i < 3U; ++i) bigdecimal_destroy(probes[i].value);
     bigdecimal_destroy(absolute); bigdecimal_destroy(tolerance); bigdecimal_destroy(initial); free(copy); application_numeric_root_destroy(output);
+    numeric_root_brent_destroy(&interpolation);
     if (owner) numforge_budget_end();
     return status;
+}
+CalculatorStatus application_numeric_root_solve(ApplicationNumericRoot **result, const char *input,
+    const BigRational *lower, const BigRational *upper, const CalculatorContext *context, CalculatorError *error)
+{
+    return solve(result, input, lower, upper, context, error, false, NULL);
+}
+CalculatorStatus application_numeric_root_experiment(ApplicationNumericRoot **result, const char *input,
+    const BigRational *lower, const BigRational *upper, const CalculatorContext *context, CalculatorError *error,
+    bool brent, ApplicationNumericRootStats *statistics)
+{
+    return solve(result, input, lower, upper, context, error, brent, statistics);
 }

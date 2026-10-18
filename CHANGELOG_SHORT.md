@@ -5,6 +5,9 @@ details and the [2.3.0 release record](docs/project/RELEASE_2_3.md) for validati
 
 ## Unreleased
 
+- Recheck numerical root residuals at higher precision; benchmark a private Brent
+  experiment while retaining bisection in the web/API.
+
 - Check numerical root domains conservatively and withhold unverified candidates,
   including a small-jump false root discovered in the audit.
 

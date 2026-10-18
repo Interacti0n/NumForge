@@ -45,6 +45,10 @@ functions = {
     "steep_exp": lambda x: (100 * x).exp() - 2,
     "multiple_roots": lambda x: (x - 1) * (x - 2) * (x - 3),
     "absolute_corner": lambda x: abs(x - D(".1234")) - x,
+    "steep_linear": lambda x: D("1E20") * (x - D(".1234")),
+    "wide_linear": lambda x: x - D(1) / 3,
+    "huge_exp_target": lambda x: x.exp() - D("1E100"),
+    "log_near_boundary": lambda x: x.ln() + 100,
 }
 
 

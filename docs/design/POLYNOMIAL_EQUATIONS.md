@@ -148,5 +148,9 @@ complex arithmetic. Allocation-stat builds verify zero live allocations.
    conservatively check both original sides' local real domains/continuity.
    Unresolved domains publish no root (domain_unverified); no algebraic
    cancellation discards holes. Exact typed zeros keep their pointwise path.
+   Non-exact candidates undergo a final original-expression reevaluation at
+   twice the working precision; unstable residuals/signs publish no root.
+   Production retains bisection after a private Brent comparison showed mixed
+   costs, including flat-root/pole regressions.
    Additional bracket scanning, tangencies and graph navigation remain future
    work. Finite sampling does not enumerate every root.

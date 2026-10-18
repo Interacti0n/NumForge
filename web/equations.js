@@ -53,7 +53,7 @@ function initEquations() {
     let controller = null, generation = 0, result = null;
     const equationHelp = document.querySelector('#equation-help').textContent;
     function save() {
-        const state = {numericDomainVersion:1, inputs:inputs.map(input => input.value), expression:expression.value, bounds:bounds.map(input=>input.value), mode:mode.value, precision:precision.value, result};
+        const state = {numericDomainVersion:2, inputs:inputs.map(input => input.value), expression:expression.value, bounds:bounds.map(input=>input.value), mode:mode.value, precision:precision.value, result};
         try {
             if (JSON.stringify(state).length > 24000) state.result = null;
             sessionStorage.setItem('numforge-equations-v1', JSON.stringify(state));
@@ -169,7 +169,7 @@ function initEquations() {
             if (Array.isArray(saved.bounds) && saved.bounds.length === 2 && saved.bounds.every(value=>typeof value==='string'&&value.length<=47)) bounds.forEach((input,index)=>input.value=saved.bounds[index]);
             if (typeof saved.expression === 'string' && saved.expression.length <= 4096) expression.value = saved.expression;
             if (/^\d+$/.test(saved.precision) && Number(saved.precision) >= 1 && Number(saved.precision) <= 1000) precision.value = saved.precision;
-            if (validResult(saved.result) && (saved.result.kind !== 'numeric' || saved.numericDomainVersion === 1)) result = saved.result;
+            if (validResult(saved.result) && (saved.result.kind !== 'numeric' || saved.numericDomainVersion === 2)) result = saved.result;
         }
     } catch (_) { /* Ignore unavailable or obsolete state. */ }
     function validResult(value) {

@@ -116,6 +116,13 @@ for(const language of ['sk','en'])test(`numerical interval root, residual and ho
  await page.locator('#equation-submit').click();
  await expect(page.locator('#equation-status')).toContainText(other==='sk'?'nepodarilo overiť spojitosť':'could not be verified');
  await expect(page.locator('.equation-root')).toHaveCount(0);
+ await page.locator('#equation-min').fill('230.25850929940456840179914546843642076010');
+ await page.locator('#equation-max').fill('230.25850929940456840179914546843642076012');
+ await page.locator('.equation-settings summary').click();await page.locator('#equation-precision').fill('34');
+ await page.locator('#equation-expression').fill('exp(x)=1E100');
+ await page.locator('#equation-submit').click();
+ await expect(page.locator('#equation-status')).toContainText(other==='sk'?'Zvýš presnosť':'Increase precision');
+ await expect(page.locator('.equation-root')).toHaveCount(0);await page.locator('#equation-max').fill('1');
  await page.locator('#equation-min').fill('-1');await page.locator('#equation-expression').fill('1/x=0');await page.locator('#equation-submit').click();
  await expect(page.locator('#equation-status')).toContainText(other==='sk'?'nedefinovaná':'undefined');
  await page.locator('#equation-min').fill('2');await page.locator('#equation-submit').click();
@@ -127,6 +134,7 @@ test('legacy numerical results are discarded while keeping the input',async({pag
  await page.goto('/solve?lang=en');
  await page.evaluate(()=>sessionStorage.setItem('numforge-equations-v1',JSON.stringify({
   inputs:['1','0','-2'],mode:'numeric',expression:'cos(x)=x',bounds:['0','1'],precision:'16',
+  numericDomainVersion:1,
   result:{kind:'numeric',outcome:'found',roots:[{x:'0.7',approximation:'0.7',residual:'0'}]}
  })));
  await page.reload();await expect(page.locator('#equation-mode')).toHaveValue('numeric');
