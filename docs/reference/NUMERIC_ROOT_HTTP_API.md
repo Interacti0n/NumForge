@@ -52,6 +52,12 @@ roots without a sign change can be missed. Extremely scaled/ill-conditioned
 functions and very wide intervals may fail to converge. Exact-zero acceptance
 establishes only the typed sampled equation value, not uniqueness/completeness.
 
+The [numerical audit](../benchmarks/NUMERIC_ROOT_AUDIT_2026_10_18.md) records a
+concrete unresolved case: a sufficiently small jump can return found despite
+having no actual root. Width, residual and endpoint improvement do not establish
+continuity. Conservative domain verification remains a prerequisite for stronger
+existence claims.
+
 ## Response and errors
 
 HTTP 200 numerical results have ok:true, schema_version:1, kind:"numeric" and

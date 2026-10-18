@@ -4,6 +4,7 @@
 #include <unity.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../benchmarks/numeric_root_cases.h"
 
 static CalculatorContext context;
 static CalculatorError error;
@@ -76,6 +77,19 @@ static void test_unbracketed_domains_and_jumps_do_not_claim_no_roots(void)
     solve("1E-100/(x-0.1234)=0", "0", "1", APPLICATION_ROOT_ITERATION_LIMIT);
     solve("floor(x)*1E-100=5E-101", "-1", "1", APPLICATION_ROOT_ITERATION_LIMIT);
     solve("round(sin(x);0)=0", "-1", "1", APPLICATION_ROOT_PRECISION_LIMIT);
+}
+static void test_audit_reference_corpus_at_all_supported_precision_extremes(void)
+{
+    const int precisions[] = {16, 34, 100};
+    for (size_t p = 0U; p < sizeof(precisions)/sizeof(precisions[0]); ++p) {
+        context.division_scale = precisions[p];
+        for (size_t i = 0U; i < sizeof(numeric_root_cases)/sizeof(numeric_root_cases[0]); ++i) {
+            const NumericRootCase *scene = &numeric_root_cases[i];
+            solve(scene->equation, scene->lower, scene->upper, scene->outcome);
+            if (scene->reference) near(scene->reference);
+            else { TEST_ASSERT_NULL(root->x); TEST_ASSERT_NULL(root->residual); }
+        }
+    }
 }
 static void test_invalid_inputs_and_read_only_failures(void)
 {
@@ -171,6 +185,7 @@ int main(void)
 {
     UNITY_BEGIN(); RUN_TEST(test_roots_use_original_high_precision_expressions);
     RUN_TEST(test_unbracketed_domains_and_jumps_do_not_claim_no_roots);
+    RUN_TEST(test_audit_reference_corpus_at_all_supported_precision_extremes);
     RUN_TEST(test_invalid_inputs_and_read_only_failures); RUN_TEST(test_allocation_failures_and_outer_budgets_are_atomic);
     RUN_TEST(test_iterative_function_allocation_failures_are_atomic);
     RUN_TEST(test_numeric_http_contract_and_diagnostics); RUN_TEST(test_numeric_http_allocation_failures_do_not_publish_roots);
