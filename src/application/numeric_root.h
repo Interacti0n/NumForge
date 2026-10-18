@@ -41,4 +41,29 @@ CalculatorStatus application_numeric_root_solve(ApplicationNumericRoot **result,
     const CalculatorContext *context, CalculatorError *error);
 void application_numeric_root_destroy(ApplicationNumericRoot *result);
 const char *application_numeric_root_kind(ApplicationNumericRootKind kind);
+
+#define APPLICATION_ROOT_SCAN_SEGMENTS 128U
+#define APPLICATION_ROOT_SCAN_MAX_ROOTS 32U
+#define APPLICATION_ROOT_SCAN_MAX_EVALUATIONS 4096U
+typedef enum ApplicationRootScanStop {
+    APPLICATION_SCAN_FINISHED, APPLICATION_SCAN_ROOT_LIMIT, APPLICATION_SCAN_EVALUATION_LIMIT
+} ApplicationRootScanStop;
+/* Fixed rational grid followed by the production single-bracket solver.
+ * Never a complete enumeration: multiple roots per cell, unsampled tangencies
+ * and unresolved domains can be missed. Exact sampled zeros are retained.
+ * Ordered owned roots, exact-coordinate duplicates removed (no tolerance merge).
+ * Diagnostics count sampled non-real grid edges and rejected sign brackets.
+ * A finished grid does not prove absence of further roots. */
+typedef struct ApplicationRootScan {
+    ApplicationNumericRoot *roots[APPLICATION_ROOT_SCAN_MAX_ROOTS];
+    size_t count, evaluations, iterations, scanned_segments, domain_gaps, rejected_brackets;
+    ApplicationRootScanStop stop;
+} ApplicationRootScan;
+/* Same input/context contract and atomic failures as the single-root solver.
+ * All sampling, refinements and allocation share one inherited budget. */
+CalculatorStatus application_numeric_roots_scan(ApplicationRootScan **result,
+    const char *input, const BigRational *lower, const BigRational *upper,
+    const CalculatorContext *context, CalculatorError *error);
+void application_numeric_roots_destroy(ApplicationRootScan *result);
+const char *application_numeric_roots_stop(ApplicationRootScanStop stop);
 #endif

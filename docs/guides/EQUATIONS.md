@@ -107,3 +107,24 @@ the tab's inputs are retained; solving again checks the current expression.
 The same five-second/memory budget applies. All math uses BigRational/BigDecimal;
 finite-precision signs and residuals still do not give certified existence or
 root-error bounds. See the [numerical API](../reference/NUMERIC_ROOT_HTTP_API.md).
+
+## Multiple roots on an interval
+
+Select **Multiple interval roots / Viac koreňov na intervale**. For example,
+`sin(x)=0` on -10..10 finds seven roots, each with its checked coordinate,
+residual, copy and graph action. Calculation precision is 16–100 digits,
+as in the single-root mode; the fixed tolerances stay at 1E-12.
+
+C samples 128 equal interval sections and refines sign changes using the same
+checked single-root solver. It can also retain exact sampled zeros. A grid
+sample merely rounded to zero needs an opposite-sign neighbour on both sides.
+Undefined/non-real samples leave gaps; an unverified bracket contributes no root,
+while the scan can continue elsewhere.
+
+**The list may be incomplete**, even after the scan finishes. Tangent roots
+between samples, several roots in one section, approximate endpoint zeros and
+very dense oscillations can be missed. An empty list means this scan confirmed
+no root, not that none exist. Try a narrower/shifted interval. The scan stops at
+32 results or its 4096-coordinate work ceiling and explains which limit was
+reached. It shares one five-second/memory budget, rather than granting five
+seconds per root. Resource failures discard the whole pending result.

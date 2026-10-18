@@ -59,6 +59,7 @@ records Firefox/WebKit coverage, test portability and the physical-phone checkli
 - [Numerical root domain checks](benchmarks/NUMERIC_ROOT_DOMAINS_2026_10_18.md): conservative local real domains, withheld candidates, regression checks and measured overhead.
 - [High-precision Brent experiment](benchmarks/NUMERIC_ROOT_BRENT_2026_10_18.md): paired timings, flat-root/pole regressions, higher-precision residual verification and the decision to keep production bisection.
 - [Decimal-weight hybrid](benchmarks/NUMERIC_ROOT_HYBRID_2026_10_19.md): cheaper centered interpolation, permanent progress fallback and three-method measurements.
+- [Multiple-root scan](benchmarks/NUMERIC_ROOT_SCAN_2026_10_19.md): bounded discovery, independent coordinate checks, timings and explicit missed-root/limit cases.
 - [Formatting/cache measurements](benchmarks/BENCHMARKS.md).
 - [Graph release audit, 15 October 2026](benchmarks/GRAPH_RELEASE_AUDIT_2026_10_15.md): independent geometry checks, before/after timings, sustained cache tests and remaining release gates.
 - [Precision graph camera fix](benchmarks/GRAPH_PRECISION_CAMERA_2026_10_15.md): visible sinh/cosh geometry, preserved narrow peaks, precision deferral metadata and measured tradeoffs.

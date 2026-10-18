@@ -124,8 +124,10 @@ documented HTTP contract alongside the web implementation, using the versioned
    cost and convergence coverage, not just fewer evaluations.
    Real equation roots now link to graphs of the original side difference,
    preserving existing functions and independently verifying graph markers.
-   Multiple-bracket scanning, tangencies and configurable tolerances remain
-   future work.
+   Multiple-bracket scanning now uses a bounded 128-cell rational grid, retains
+   up to 32 roots and caps total work at 4096 coordinate pairs under one shared
+   budget. It does not guarantee completeness. General tangency discovery and
+   configurable tolerances remain future work.
 4. Add session user functions, local parameters and definition management,
    followed by their integration with graphs and solvers.
 5. Extend Quantity with general compound unit strings, named derived units,

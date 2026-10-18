@@ -121,5 +121,55 @@ domain_gap means an actually sampled undefined/non-real value; domain_unverified
 means the final candidate interval could not be verified and exposes no x or
 residual. Clients should handle the additional diagnostic outcome.
 
-Multiple-bracket scanning, tangencies, configurable tolerances and graph
-integration remain future work. See the [equation guide](../guides/EQUATIONS.md).
+## Multiple-root scan
+
+`POST /api/equations/solve?mode=numeric_scan&min=-10&max=10&precision=34`
+accepts the same equation, bounds and precision options. For example, `sin(x)=0`
+finds seven roots in this interval. This is **bounded discovery**, not complete
+enumeration or a certified existence test. No new public numeric SDK is installed.
+
+The private `application_numeric_roots_scan` returns an owned `ApplicationRootScan`
+(destroy with `application_numeric_roots_destroy`). It prepares both original
+sides for a grid of 128 equal **BigRational** cells and samples up to 129 vertices.
+Exact typed zeros are retained immediately. Opposite nonzero endpoint signs
+trigger the existing production bisection solver with its unchanged acceptance
+checks and 96-step/192-coordinate ceiling. A grid value rounded to zero needs
+opposite-sign real neighbours on both sides; it is never accepted by itself.
+Refinement prepares its own original ASTs; no simplified difference loses holes.
+
+The scan retains up to 32 ordered roots, removing exact-coordinate duplicates
+without merging distinct points by tolerance. It caps all grid/refinement work
+at 4096 coordinate pairs, conservatively reserving 192 before each refinement.
+The entire scan, all nested solvers and serialization share **one** cooperative
+five-second/64-MiB/512-KiB operation budget. A resource/structural failure preserves
+the C destination and publishes no partial successful HTTP result. A work/result
+ceiling is a successful, explicitly limited discovery result instead.
+
+Responses use schema_version:1, kind:"numeric_scan", complete:false, count and
+roots with the same x/approximation/residual/exact_zero fields as single-root
+mode. `lower` and `upper` are the original interval. Additional fields:
+
+| Field | Meaning |
+| --- | --- |
+| outcome | scanned (grid visited), root_limit (32 stored roots), evaluation_limit (next work cannot fit). None means all mathematical roots were found. |
+| segments, scanned_segments | 128 and the number of processed grid cells, respectively. |
+| max_roots, max_evaluations | 32 and 4096. |
+| evaluations, iterations | Total coordinate-pair evaluations (including final checks) and nested refinement iterations. |
+| domain_gaps | Processed grid cells with an undefined/non-real sampled endpoint. |
+| rejected_brackets | Opposite-sign candidates whose refinement did not confirm a root, including domain/precision/nonconvergence diagnostics. |
+
+The scan continues across sampled gaps and rejected candidates; valid roots in
+other cells remain eligible. Domain diagnostics do not prove every unsampled
+point is valid. Several roots inside one cell can be missed, as can non-grid
+tangencies, approximate endpoint zeros, unresolved domains and very dense
+oscillations. For example `(x-0.01)*(x-0.02)=0` on 0..128 and
+`(x-0.1234)^2=0` on 0..1 currently return an empty, incomplete scan. Conversely,
+`x=x` reaches the result limit rather than enumerating an infinite set. An empty
+array never proves “no solutions”. Narrow/shift the interval when appropriate.
+
+The browser offers **Multiple interval roots / Viac koreňov na intervale**,
+retains the same copy/graph actions and session behavior, and distinguishes
+finished discovery from work/result limits. See the
+[scan benchmarks](../benchmarks/NUMERIC_ROOT_SCAN_2026_10_19.md).
+General tangent discovery and configurable tolerances remain future work.
+See the [equation guide](../guides/EQUATIONS.md) for graph navigation.

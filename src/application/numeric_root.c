@@ -275,3 +275,125 @@ CalculatorStatus application_numeric_root_method(ApplicationNumericRoot **result
 {
     return solve(result, input, lower, upper, context, error, method, statistics);
 }
+
+void application_numeric_roots_destroy(ApplicationRootScan *result)
+{
+    if (!result) return;
+    for (size_t i = 0U; i < result->count; ++i) application_numeric_root_destroy(result->roots[i]);
+    free(result);
+}
+const char *application_numeric_roots_stop(ApplicationRootScanStop stop)
+{
+    switch (stop) {
+        case APPLICATION_SCAN_FINISHED: return "scanned";
+        case APPLICATION_SCAN_ROOT_LIMIT: return "root_limit";
+        case APPLICATION_SCAN_EVALUATION_LIMIT: return "evaluation_limit";
+        default: return "evaluation_limit";
+    }
+}
+static CalculatorStatus scan_append(ApplicationRootScan *output, ApplicationNumericRoot **candidate)
+{
+    int order = 1;
+    CalculatorStatus status = CALCULATOR_OK;
+    if (output->count) status = calculator_from_rational_status(bigrational_compare(&order,
+        output->roots[output->count-1U]->x, (*candidate)->x));
+    if (status == CALCULATOR_OK && order != 0) {
+        output->roots[output->count++] = *candidate; *candidate = NULL;
+        if (output->count == APPLICATION_ROOT_SCAN_MAX_ROOTS) output->stop = APPLICATION_SCAN_ROOT_LIMIT;
+    }
+    return status;
+}
+CalculatorStatus application_numeric_roots_scan(ApplicationRootScan **result, const char *input,
+    const BigRational *lower, const BigRational *upper, const CalculatorContext *context, CalculatorError *error)
+{
+    calculator_error_clear(error);
+    if (!result || !input || !lower || !upper || !context) {
+        calculator_error_set(error, CALCULATOR_NULL_ARGUMENT, 0U); return CALCULATOR_NULL_ARGUMENT;
+    }
+    CalculatorStatus status = calculator_context_validate(context, error);
+    if (status != CALCULATOR_OK) return status;
+    if (context->division_scale < 16 || context->division_scale > 100 || context->angle_unit != CALCULATOR_ANGLE_RADIANS) {
+        calculator_error_set(error, CALCULATOR_INVALID_ARGUMENT, 0U); return CALCULATOR_INVALID_ARGUMENT;
+    }
+    size_t length = 0U;
+    while (length <= CALCULATOR_MAX_INPUT_BYTES && input[length]) ++length;
+    if (length > CALCULATOR_MAX_INPUT_BYTES) { calculator_error_set(error, CALCULATOR_VALUE_TOO_LARGE, 0U); return CALCULATOR_VALUE_TOO_LARGE; }
+    const char *equal = strchr(input, '=');
+    if (!equal || strchr(equal+1, '=') || strchr(input, '\n') || strchr(input, '\r')) {
+        calculator_error_set(error, CALCULATOR_SYNTAX_ERROR, equal ? (size_t)(equal-input) : length); return CALCULATOR_SYNTAX_ERROR;
+    }
+    bool owner = numforge_budget_begin((uint64_t)context->time_limit_ms, CALCULATOR_ALLOCATION_BUDGET, CALCULATOR_SINGLE_ALLOCATION);
+    Work work = {0}; work.context = *context; work.context.division_scale += 16; work.context.significant_division = true;
+    work.rhs = (size_t)(equal-input)+1U;
+    ApplicationRootScan *output = numforge_calloc(1U, sizeof(*output));
+    ApplicationNumericRoot *candidate = NULL;
+    char *copy = numforge_malloc(length+1U);
+    BigRational *current = bigrational_create(), *previous = bigrational_create(), *two_back = bigrational_create(), *step = bigrational_create(), *divisor = bigrational_create();
+    BigDecimal *constant = bigdecimal_create(); Probe samples[2] = {{0}};
+    samples[0].value = bigdecimal_create(); samples[1].value = bigdecimal_create();
+    if (!output || !copy || !current || !previous || !two_back || !step || !divisor || !constant || !samples[0].value || !samples[1].value) status = CALCULATOR_OUT_OF_MEMORY;
+    int order = 0, two_sign = 0; bool two_real = false;
+    if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_compare(&order, lower, upper));
+    if (status == CALCULATOR_OK && order >= 0) status = CALCULATOR_INVALID_ARGUMENT;
+    if (status == CALCULATOR_OK) {
+        memcpy(copy, input, length+1U); copy[work.rhs-1U] = '\0';
+        work.sources[0] = copy; work.sources[1] = copy+work.rhs;
+        status = calculator_from_decimal_status(bigdecimal_set_string(constant, "128"));
+    }
+    if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_from_bigdecimal(divisor, constant));
+    if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_sub(step, upper, lower));
+    if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_div(step, step, divisor));
+    if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_copy(current, lower));
+    for (size_t i = 0U; i < 2U && status == CALCULATOR_OK; ++i) {
+        status = application_expression_prepare(&work.sides[i], work.sources[i], "x", NULL, &work.context, error);
+        if (status != CALCULATOR_OK && i) calculator_error_set(error, status, work.rhs+(error ? error->offset : 0U));
+    }
+    for (size_t i = 0U; i <= APPLICATION_ROOT_SCAN_SEGMENTS && status == CALCULATOR_OK && output->stop == APPLICATION_SCAN_FINISHED; ++i) {
+        if (work.evaluations >= APPLICATION_ROOT_SCAN_MAX_EVALUATIONS) { output->stop = APPLICATION_SCAN_EVALUATION_LIMIT; break; }
+        status = calculator_budget_status(status);
+        if (status == CALCULATOR_OK) status = probe(&work, current, &samples[1], error);
+        if (status != CALCULATOR_OK) break;
+        if (samples[1].real && samples[1].exact_zero) {
+            candidate = numforge_calloc(1U, sizeof(*candidate));
+            if (!candidate) status = CALCULATOR_OUT_OF_MEMORY;
+            if (status == CALCULATOR_OK) {
+                candidate->lower = bigrational_create(); candidate->upper = bigrational_create();
+                if (!candidate->lower || !candidate->upper) status = CALCULATOR_OUT_OF_MEMORY;
+            }
+            if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_copy(candidate->lower, current));
+            if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_copy(candidate->upper, current));
+            if (status == CALCULATOR_OK) status = found(&work, candidate, current, &samples[1]);
+            if (status == CALCULATOR_OK) status = scan_append(output, &candidate);
+        } else if (i && samples[0].real && samples[1].real && samples[1].sign && !samples[0].exact_zero &&
+            ((samples[0].sign && samples[0].sign != samples[1].sign) ||
+             (i >= 2U && !samples[0].sign && two_real && two_sign && two_sign != samples[1].sign))) {
+            // Reserve the entire existing solver allowance before starting it.
+            if (work.evaluations > APPLICATION_ROOT_SCAN_MAX_EVALUATIONS-192U) { output->stop = APPLICATION_SCAN_EVALUATION_LIMIT; break; }
+            // An approximate grid zero is not accepted by itself. Bracket it
+            // using real, opposite-sign neighbours (e.g. sin(0) or ln(1)).
+            status = application_numeric_root_solve(&candidate, input, samples[0].sign ? previous : two_back, current, context, error);
+            if (status == CALCULATOR_OK) {
+                work.evaluations += candidate->evaluations; output->iterations += candidate->iterations;
+                if (candidate->kind == APPLICATION_ROOT_FOUND) status = scan_append(output, &candidate);
+                else ++output->rejected_brackets;
+            }
+        }
+        application_numeric_root_destroy(candidate); candidate = NULL;
+        if (status != CALCULATOR_OK) break;
+        if (i) { output->scanned_segments = i; if (!samples[0].real || !samples[1].real) ++output->domain_gaps; }
+        two_real = samples[0].real; two_sign = samples[0].sign;
+        Probe swap = samples[0]; samples[0] = samples[1]; samples[1] = swap;
+        status = calculator_from_rational_status(bigrational_copy(two_back, previous));
+        if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_copy(previous, current));
+        if (status == CALCULATOR_OK && i < APPLICATION_ROOT_SCAN_SEGMENTS)
+            status = i+1U == APPLICATION_ROOT_SCAN_SEGMENTS ? calculator_from_rational_status(bigrational_copy(current, upper)) : calculator_from_rational_status(bigrational_add(current, current, step));
+    }
+    status = calculator_budget_status(status);
+    if (status == CALCULATOR_OK) { output->evaluations = work.evaluations; *result = output; output = NULL; }
+    else calculator_error_set(error, status, error ? error->offset : 0U);
+    for (size_t i = 0U; i < 2U; ++i) { application_expression_destroy(work.sides[i]); bigdecimal_destroy(samples[i].value); }
+    bigrational_destroy(current); bigrational_destroy(previous); bigrational_destroy(two_back); bigrational_destroy(step); bigrational_destroy(divisor); bigdecimal_destroy(constant);
+    free(copy); application_numeric_root_destroy(candidate); application_numeric_roots_destroy(output);
+    if (owner) numforge_budget_end();
+    return status;
+}

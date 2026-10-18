@@ -12,6 +12,7 @@ function initEquations() {
     const status = document.querySelector('#equation-status'), error = document.querySelector('#equation-error');
     const roots = document.querySelector('#equation-roots');
     const sk = document.documentElement.lang === 'sk';
+    const isNumeric = kind => kind === 'numeric' || kind === 'numeric_scan';
     const words = sk ? {
         idle:'Zadaj rovnicu a zvoľ Vyriešiť.', busy:'Počítam…', finite:'Presné riešenia',
         none:'Rovnica nemá riešenie.', all:'Rovnicu spĺňa každé komplexné číslo.',
@@ -50,6 +51,21 @@ function initEquations() {
         help:'One real root, e.g. cos(x) = x. Choose a continuous interval where the difference between sides changes sign. Does not enumerate roots.',
         residual:'Residual at the checked point: ', copy:'Copy point', options:'Check that from < to and precision is 16–100.'
     };
+    const scanWords = sk ? {
+        help:'Hľadá viac reálnych koreňov na 128 častiach intervalu. Veľmi blízke či dotykové korene môže prehliadnuť; nejde o úplný zoznam.',
+        scanned:'Prehľadávanie skončilo. Ďalšie korene môžu existovať.',
+        root_limit:'Dosiahnutý limit 32 výsledkov. Pre ďalšie korene zúž interval.',
+        evaluation_limit:'Dosiahnutý limit práce. Pre ďalšie korene zúž interval.',
+        found:'Nájdené korene: ', empty:'V tomto prehľadaní sa nepodarilo potvrdiť koreň. ',
+        gaps:' Niektoré úseky boli nedefinované alebo sa koreň nepodarilo overiť.'
+    } : {
+        help:'Searches for multiple real roots across 128 interval sections. Close or tangent roots may be missed; this is not a complete enumeration.',
+        scanned:'Scan finished. Other roots may exist.',
+        root_limit:'Reached the 32-result limit. Narrow the interval to look for more roots.',
+        evaluation_limit:'Reached the work limit. Narrow the interval to look for more roots.',
+        found:'Roots found: ', empty:'This scan could not confirm a root. ',
+        gaps:' Some sections were undefined or a root could not be verified.'
+    };
     let controller = null, generation = 0, result = null;
     const equationHelp = document.querySelector('#equation-help').textContent;
     function save() {
@@ -61,11 +77,14 @@ function initEquations() {
     }
     function render(value) {
         roots.replaceChildren();
-        status.textContent = value?.kind === 'numeric' ? numericWords[value.outcome] : value ? words[value.kind === 'finite' ? 'finite' : value.kind] : words.idle;
-        if (!value || !['finite','numeric'].includes(value.kind)) return;
+        status.textContent = value?.kind === 'numeric_scan' ?
+            (value.count ? scanWords.found + value.count + '. ' : scanWords.empty) + scanWords[value.outcome] +
+            (value.domain_gaps || value.rejected_brackets ? scanWords.gaps : '') :
+            value?.kind === 'numeric' ? numericWords[value.outcome] : value ? words[value.kind === 'finite' ? 'finite' : value.kind] : words.idle;
+        if (!value || !['finite','numeric','numeric_scan'].includes(value.kind)) return;
         value.roots.forEach((root, index) => {
             const row = document.createElement('li'); row.className = 'equation-root';
-            const numerical = value.kind === 'numeric';
+            const numerical = isNumeric(value.kind);
             const exact = document.createElement('code'); exact.textContent = numerical ? 'x ≈ ' + root.approximation : 'x' + (value.count === 2 ? (index ? '₂' : '₁') : '') + ' = ' + root.exact;
             row.append(exact);
             if (root.multiplicity === 2) { const note = document.createElement('small'); note.textContent = words.double; row.append(note); }
@@ -150,7 +169,7 @@ function initEquations() {
         }
     }
     function syncMode() {
-        const whole = mode.value !== 'coefficients', numerical = mode.value === 'numeric';
+        const whole = mode.value !== 'coefficients', numerical = isNumeric(mode.value);
         document.querySelector('.equation-formula').textContent = numerical ? 'f(x) = g(x)' : 'ax² + bx + c = 0';
         document.querySelector('.equation-coefficients').hidden = whole;
         document.querySelector('#equation-expression-field').hidden = !whole;
@@ -160,7 +179,9 @@ function initEquations() {
         bounds.forEach(input=>input.disabled = !numerical);
         precision.min = numerical ? '16' : '1'; precision.max = numerical ? '100' : '1000';
         if (numerical && (Number(precision.value)<16 || Number(precision.value)>100)) precision.value = '34';
-        document.querySelector('#equation-help').textContent = numerical ? numericWords.help : whole ? equationHelp : (sk
+        document.querySelector('.equation-settings summary').textContent = numerical ? (sk ? 'Výpočtová presnosť' : 'Calculation precision') : (sk ? 'Presnosť náhľadu' : 'Preview precision');
+        document.querySelector('.equation-settings p').textContent = numerical ? (sk ? 'Presnosť výpočtu aj náhľadu. Tolerancia zostáva 1E-12; viac číslic nezaručuje nájdenie koreňa.' : 'Calculation and preview precision. Tolerances stay at 1E-12; more digits do not guarantee a root.') : (sk ? 'Presné korene zostávajú zachované. Desatinné náhľady sú približné.' : 'Exact roots are preserved. Decimal previews are approximate.');
+        document.querySelector('#equation-help').textContent = mode.value === 'numeric_scan' ? scanWords.help : numerical ? numericWords.help : whole ? equationHelp : (sk
             ? 'Čísla alebo presné výrazy, napr. 1/3 či sqrt(4). Pre lineárnu rovnicu nastav a = 0.'
             : 'Numbers or exact expressions, e.g. 1/3 or sqrt(4). Use a = 0 for a linear equation.');
     }
@@ -181,7 +202,7 @@ function initEquations() {
         submit.disabled = true; form.setAttribute('aria-busy','true'); status.textContent = words.busy; save();
         try {
             let target = '/api/equations/solve?mode=' + mode.value + '&precision=' + encodeURIComponent(precision.value);
-            if (mode.value === 'numeric') target += '&min=' + encodeURIComponent(bounds[0].value) + '&max=' + encodeURIComponent(bounds[1].value);
+            if (isNumeric(mode.value)) target += '&min=' + encodeURIComponent(bounds[0].value) + '&max=' + encodeURIComponent(bounds[1].value);
             const response = await fetch(target, {
                 method:'POST', headers:{'Content-Type':'text/plain; charset=utf-8'}, body, signal:request.signal
             });
@@ -202,17 +223,18 @@ function initEquations() {
         const saved = JSON.parse(sessionStorage.getItem('numforge-equations-v1'));
         if (saved && Array.isArray(saved.inputs) && saved.inputs.length === 3 && saved.inputs.every(value => typeof value === 'string' && value.length <= 4096)) {
             inputs.forEach((input,index) => input.value = saved.inputs[index]);
-            mode.value = ['expression','numeric'].includes(saved.mode) ? saved.mode : 'coefficients';
+            mode.value = ['expression','numeric','numeric_scan'].includes(saved.mode) ? saved.mode : 'coefficients';
             if (Array.isArray(saved.bounds) && saved.bounds.length === 2 && saved.bounds.every(value=>typeof value==='string'&&value.length<=47)) bounds.forEach((input,index)=>input.value=saved.bounds[index]);
             if (typeof saved.expression === 'string' && saved.expression.length <= 4096) expression.value = saved.expression;
             if (/^\d+$/.test(saved.precision) && Number(saved.precision) >= 1 && Number(saved.precision) <= 1000) precision.value = saved.precision;
-            if (validResult(saved.result) && (saved.result.kind !== 'numeric' || saved.numericDomainVersion === 2)) result = saved.result;
+            if (validResult(saved.result) && (!isNumeric(saved.result.kind) || saved.numericDomainVersion === 2)) result = saved.result;
         }
     } catch (_) { /* Ignore unavailable or obsolete state. */ }
     function validResult(value) {
-        return value && ['finite','none','all','numeric'].includes(value.kind) && Array.isArray(value.roots) && value.roots.length <= 2 &&
+        return value && ['finite','none','all','numeric','numeric_scan'].includes(value.kind) && Array.isArray(value.roots) && value.roots.length <= (value.kind === 'numeric_scan' ? 32 : 2) &&
+            (value.kind !== 'numeric_scan' || ['scanned','root_limit','evaluation_limit'].includes(value.outcome) && value.complete === false && value.count === value.roots.length) &&
             (value.kind !== 'numeric' || Object.hasOwn(numericWords, value.outcome) && ['found','not_bracketed','domain_gap','domain_unverified','iteration_limit','precision_limit'].includes(value.outcome)) &&
-            value.roots.every(root=>typeof root.approximation==='string' && (value.kind==='numeric' ? typeof root.x==='string' && typeof root.residual==='string' : typeof root.exact==='string'));
+            value.roots.every(root=>typeof root.approximation==='string' && (isNumeric(value.kind) ? typeof root.x==='string' && typeof root.residual==='string' : typeof root.exact==='string'));
     }
     syncMode(); render(result);
     return () => { save(); cancel(); lifecycle.abort(); };

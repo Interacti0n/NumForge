@@ -9,6 +9,11 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ### Equation foundation
 
+- Add bounded multiple-root discovery in C, HTTP and both browser languages:
+  128 rational grid cells, independent bracket refinement, at most 32 roots and
+  4096 coordinate pairs sharing one operation budget. Keep incomplete discovery,
+  domain gaps and explicit work/result ceilings separate from “no solutions”.
+
 - Link real equation roots to graphs of the original side difference, preserving
   existing functions and independently verifying graph intercepts in C. Retain
   equation inputs/results when returning and keep complex roots in text.

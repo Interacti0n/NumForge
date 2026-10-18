@@ -5,6 +5,9 @@ details and the [2.3.0 release record](docs/project/RELEASE_2_3.md) for validati
 
 ## Unreleased
 
+- Find multiple real roots on an interval with explicit discovery limits,
+  per-root copy/graph actions and one shared calculation budget.
+
 - Open real equation solutions in Graphs, keeping existing functions and checking
   graph intercepts independently.
 

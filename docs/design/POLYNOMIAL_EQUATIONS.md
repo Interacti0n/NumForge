@@ -156,5 +156,8 @@ complex arithmetic. Allocation-stat builds verify zero live allocations.
    permanent rational-bisection fallback on poor progress. Its faster ordinary
    cases do not imply unconditional promotion; production method selection is
    unchanged.
-   Additional bracket scanning, tangencies and graph navigation remain future
-   work. Finite sampling does not enumerate every root.
+   Bounded scanning now discovers multiple brackets across a 128-cell rational
+   grid with at most 32 stored roots/4096 coordinate pairs and one shared budget.
+   Roots link to graphs of the original side difference. Finite sampling does
+   not enumerate every root; general tangencies remain future work. See the
+   [scan contract](../reference/NUMERIC_ROOT_HTTP_API.md#multiple-root-scan).

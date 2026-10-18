@@ -16,6 +16,8 @@ The optional `mode` selects the input grammar:
   coefficient expression lines as documented below. Existing callers are unchanged.
 - `mode=numeric`: a separate [numerical interval search](NUMERIC_ROOT_HTTP_API.md),
   requiring min/max with different precision/result semantics.
+- `mode=numeric_scan`: [bounded multiple-root discovery](NUMERIC_ROOT_HTTP_API.md#multiple-root-scan)
+  with the same numerical min/max/precision options, always incomplete.
 
 In coefficient mode, use a UTF-8 `text/plain` body with exactly three lines: coefficient expressions
 `a`, `b`, then `c`. Do not append a fourth line, even an empty one. CRLF is also
