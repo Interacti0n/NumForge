@@ -47,7 +47,7 @@ configured CI coverage is not a claim that those remote jobs have already run.
 | `Expression.evaluate(arguments=(), *, precision=34, ...)` | Reuse the AST with positional values or an exact-name mapping |
 | `sqrt(value, *, precision=34, ...)` | Principal root through the C typed evaluator, including exact rational roots and supported complex promotion |
 | `solve_quadratic(a, b, c, *, ...)` | Exact real coefficients; linear/constant reduction, irrational/complex descriptors and multiplicities |
-| `Matrix(rows, *, ...)` | Owned immutable dense rational matrix; exact C product, determinant and unique square-system solve |
+| `Matrix(rows, *, ...)` | Immutable rational matrices; exact products, determinants, rank and square/general system solves |
 | `describe(values, *, ...)` | Exact rational batch count/sum/extrema/mean and population/sample variance, copied into StatisticsSummary |
 
 ```python
@@ -79,20 +79,9 @@ assert s.variance_sample == Fraction(1, 3)
 assert numforge.describe([5]).variance_sample is None
 ```
 
-The frozen `StatisticsSummary` also contains sum, minimum and maximum. Numeric
-fields are copied Fraction values; a singleton's sample variance is None because
-division by n-1 is undefined. Population variance divides by n. Repeated values
-count separately, including repeated Result handles. Empty input raises ValueError.
-Inputs accept the same lossless types as number() and must be exact real values;
-missing values, binary floats, booleans and approximate/complex Results are rejected.
-No input/native state is retained by the report.
-
-`describe` accepts time_limit_ms, allocation_bytes and single_allocation with the
-standard defaults. It has no precision parameter: mean and variances remain exact
-even when recurring. Input conversion precedes the C summary scope; native copies,
-computation and field serialization share it. Python object/Fraction conversion
-is outside C accounting and retains interpreter integer-string limits. Native
-calls retain the GIL. See the [complete C/Python contract](../reference/STATISTICS_API.md).
+`describe` returns a frozen summary of exact real observations. Use the
+[statistics reference](../reference/STATISTICS_API.md#python-and-interface-availability)
+for accepted inputs, all fields, singleton semantics, errors and budget boundaries.
 
 ## Exact matrices
 
@@ -106,20 +95,8 @@ assert x.to_rows() == ((Fraction(1, 3),), (Fraction(7, 2),))
 assert (a @ x).to_rows() == b.to_rows()
 ```
 
-Rows must be nonempty and rectangular. Entries accept the same lossless input
-types as `number()` but must be exact real values; approximate Result inputs and
-complex values are rejected. Construction copies inputs, and operation results
-outlive both input matrices. `to_rows()` returns copied tuples of Fraction;
-`determinant()` returns Fraction; `.multiply(other)` and `@` return Matrix.
-`.solve(right)` accepts a Matrix with one or more RHS columns and returns Matrix.
-The native matrix storage has no mutating public operation.
-
-`a.rank()` returns the exact coefficient rank. `a.solve_general(right)` accepts
-a rectangular a and one RHS column, returning a frozen `LinearSolution` with
-kind `none`, `unique` or `infinite`, rank/nullity, ascending pivot/free column
-tuples and owned particular/nullspace matrix views. A consistent system has all
-solutions `particular + nullspace*t`; free coordinates of particular are zero.
-For example:
+Use `.solve()` for a square invertible coefficient matrix. Use `.solve_general()`
+to classify a rectangular system and obtain its complete solution family:
 
 ```python
 a = numforge.Matrix([[0, 2, 4], [0, 3, 6]])
@@ -129,25 +106,10 @@ assert family.particular.to_rows() == ((0,), (5,), (0,))
 assert family.nullspace.to_rows() == ((1, 0), (0, -2), (0, 1))
 ```
 
-An inconsistent system returns kind `none` with particular=None; its nullspace
-still describes the kernel of a. Nullity zero uses nullspace=None, since no
-zero-column matrix is represented. Native views outlive the analysis wrapper and
-input matrices. See the [complete system contract](../reference/LINEAR_SYSTEM_API.md).
-
-Construction, `to_rows`, `determinant`, `multiply`, `solve`, `rank` and `solve_general` accept
-`time_limit_ms`, `allocation_bytes` and `single_allocation` with the usual defaults.
-Input `number()` conversions precede the matrix scope; conversion of native
-results into Python Fraction objects is Python work outside C allocation accounting.
-There is no precision option: every matrix result is exact. `@` uses default limits;
-use `.multiply(other, ...)` to supply limits. Native calls retain the GIL.
-
-Non-square/incompatible shapes raise Error with status `dimension_mismatch`.
-A zero determinant succeeds; solve raises `singular` when the coefficient matrix
-has no inverse, for both inconsistent and underdetermined systems. Matrix errors
-have offset zero. Resource errors retain `time_limit`/`memory_limit`; Python
-shape/type/policy validation raises ValueError/TypeError. No partial solution is
-returned and both inputs remain usable after errors. The [matrix C contract](../reference/MATRIX_API.md)
-describes the exact algorithm, ownership and initial scope.
+The [matrix reference](../reference/MATRIX_API.md#python-and-other-interfaces)
+owns input/shape rules, method return types, errors and operation budgets.
+The [linear-system reference](../reference/LINEAR_SYSTEM_API.md#python) owns
+classification, pivot/free columns, particular/kernel matrices and their lifetime.
 
 ## Input, precision and results
 
@@ -233,14 +195,8 @@ from a separate consumer folder. It asserts both Python and native module import
 come from the installed directory. The copied tests and standalone example have
 no runtime access to the source package. Nothing is uploaded or globally installed.
 
-The 43 adapter tests include an independent 1000-digit Decimal root reference,
-six rounding modes, lossless inputs, parameter binding, aliases/lifetime,
-exact/approximate provenance, diagnostics, budget recovery and solver degeneracies.
-Matrix checks add independent Fraction determinant/product/known-solution oracles,
-exact 1000-digit cancellation, ownership, shape/singularity and limit recovery.
-General-system tests add independent minor/augmented-rank references, canonical
-particular/kernel identities, rectangular classification and shared native lifetime.
-Statistics adds independent pairwise Fraction variance, shift/scale/permutation
-identities, singleton semantics, 1000-digit cases and serialization budget recovery.
-Existing C tests remain the algorithm-level correctness evidence; this adapter
-does not introduce another mathematical implementation or claim a speedup.
+The installed [adapter tests](../../tests/python/test_numforge.py) cover lossless
+conversion, high precision, rounding, diagnostics, ownership and failure recovery.
+Module references describe their independent mathematical oracles and C coverage.
+The [initial verification record](../project/PYTHON_ADAPTER_2026_10_19.md) preserves
+the platform/build evidence for that revision; it is not a current test count.

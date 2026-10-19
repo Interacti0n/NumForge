@@ -102,19 +102,9 @@ ctest --test-dir build/statistics-example -C Release --output-on-failure
 
 ## Python and interface availability
 
-The source-built [Python adapter](../guides/PYTHON.md) delegates arithmetic to C:
-
-```python
-from fractions import Fraction
-import numforge
-
-s = numforge.describe([0, 0, 1])
-assert s.exact and s.count == 3
-assert s.mean == Fraction(1, 3)
-assert s.variance_population == Fraction(2, 9)
-assert s.variance_sample == Fraction(1, 3)
-assert numforge.describe([5]).variance_sample is None
-```
+The source-built Python adapter delegates arithmetic to C. Start with the
+[summary workflow](../guides/PYTHON.md#exact-descriptive-statistics) for a working
+example.
 
 `describe` consumes a nonempty iterable of exact real number() inputs: int,
 Fraction, finite Decimal/numeric text and exact real Result. Binary floats,
@@ -125,8 +115,9 @@ with the existing status names and offset zero.
 `StatisticsSummary` is frozen, with copied Fraction fields and integer count;
 variance_sample is Fraction or None. It retains no native/input handle. Python
 integer-string conversion limits apply to Fraction conversion. The operation
-accepts time_limit_ms, allocation_bytes and single_allocation, with the standard
-defaults; there is no precision option. Input number() conversion precedes the
+accepts time_limit_ms, allocation_bytes and single_allocation, with the
+[standard execution defaults](../guides/PYTHON.md#errors-lifetime-and-execution-policy);
+there is no precision option. Input number() conversion precedes the
 summary scope; native copies, computation and field serialization share it.
 Python object allocation/Fraction conversion lie outside C budget accounting.
 Native calls retain the GIL.

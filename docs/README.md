@@ -17,6 +17,9 @@ Choose an entry point; detailed contracts and procedures live in their own guide
 interfaces and mathematical semantics. Public C headers contain the authoritative
 parameter, ownership and failure contracts; guides link to them instead of copying
 declarations. [Web assets](../apps/web/assets/README.md) describes browser sources.
+The Python guide owns installation, shared input/result policy and short workflows;
+module references own their C/Python operation details. The Python package README
+is a self-contained introduction for package metadata, not another full reference.
 
 Dated files under `benchmarks/`, `testing/` and `project/` preserve measurements
 and release evidence. They describe the recorded revision, not current guarantees.

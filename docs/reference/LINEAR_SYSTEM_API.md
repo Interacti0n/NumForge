@@ -122,13 +122,13 @@ nullity, pivot_columns/free_columns tuples, particular/nullspace matrices and
 exact=True. Native matrix values retain shared ownership and remain usable after
 the result wrapper and inputs are released. The matrices are immutable and work
 with the other Matrix methods. `rank()` returns int.
+Pivot/free columns are ascending zero-based tuples. Consistent systems represent
+all solutions as `particular + nullspace*t`, with zero free coordinates in
+particular. An inconsistent system has particular=None but retains its kernel;
+nullity zero uses nullspace=None because zero-column matrices are not represented.
 
-Both methods accept the existing `time_limit_ms`, `allocation_bytes` and
-`single_allocation` keyword limits; there is no precision parameter. Structural
-and resource errors retain Error status/offset contracts (offset zero); wrong
-Python argument types raise TypeError. Inconsistency is a successful `none`
-result. The existing `.solve()` still requires a square invertible matrix and
-raises `singular` for both inconsistent and nonunique square systems.
+Both methods use the [matrix input, budget and error rules](MATRIX_API.md#python-and-other-interfaces),
+with no precision parameter. Inconsistency is a successful `none` result.
 
 Matrix expression syntax, CLI/web controls, public REST and WASM bindings remain
 future interfaces. Multiple-RHS general classification, approximate least

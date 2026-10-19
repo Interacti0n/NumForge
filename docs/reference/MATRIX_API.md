@@ -96,19 +96,33 @@ ctest --test-dir build/matrix-example -C Release --output-on-failure
 
 ## Python and other interfaces
 
-The source-built [Python adapter](../guides/PYTHON.md) exposes the same C algorithms:
+The source-built Python adapter exposes the same C algorithms. Start with the
+[matrix workflow](../guides/PYTHON.md#exact-matrices) for a working example.
 
-```python
-from fractions import Fraction
-import numforge
+Rows must be nonempty and rectangular. Entries accept the lossless types of
+[`number()`](../guides/PYTHON.md#input-precision-and-results) and must be exact real
+values. Construction copies inputs; immutable results outlive their input matrices.
+`shape` is a (rows, columns) tuple and `exact` is True. `to_rows()` returns copied
+tuples of Fraction, `determinant()` returns Fraction, and `.multiply(other)`/`@`
+return Matrix. `.solve(right)` accepts one or more RHS columns and returns Matrix.
+For rectangular rank and complete families, see
+[`rank()` and `solve_general()`](LINEAR_SYSTEM_API.md#python).
 
-a = numforge.Matrix([[0, 2], [3, 4]])
-b = numforge.Matrix([[7], [15]])
-x = a.solve(b)
-assert a.determinant() == -6
-assert x.to_rows() == ((Fraction(1, 3),), (Fraction(7, 2),))
-assert (a @ x).to_rows() == b.to_rows()
-```
+Construction, `to_rows`, `determinant`, `multiply`, `solve`, `rank` and
+`solve_general` accept `time_limit_ms`, `allocation_bytes` and `single_allocation`
+with the [standard defaults](../guides/PYTHON.md#errors-lifetime-and-execution-policy).
+Input `number()` conversions precede the matrix scope; Python object/Fraction
+conversion is outside C budget accounting and retains interpreter integer-string
+limits. There is no precision option: every matrix result is exact. `@` uses
+default limits; use `.multiply(other, ...)` for explicit limits. Native calls retain
+the GIL.
+
+Non-square/incompatible shapes raise Error(status="dimension_mismatch"). A zero
+determinant succeeds; `.solve()` raises Error(status="singular") when the
+coefficient matrix has no inverse, including inconsistent and nonunique square
+systems. Native errors have offset zero; resource errors retain `time_limit`/
+`memory_limit`, while Python shape/type/policy validation raises ValueError/TypeError.
+Failures return no partial solution and both inputs remain usable.
 
 Matrix expression syntax, CLI/web controls, REST endpoints and WASM bindings are
 not part of this initial module. Approximate/complex matrix domains,
