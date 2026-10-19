@@ -60,8 +60,13 @@ for(const [width,height] of [[1280,900],[390,844],[844,390]])test(`expanded grap
  await expect(page.locator('#graph-expanded path.graph-line')).toHaveCount(2);
  await svg.press('ArrowUp');await expect(svg).toHaveAttribute('data-ymin','-6');
  const canvasRect=await svg.boundingBox();await svg.dispatchEvent('wheel',{deltaY:-100,clientX:canvasRect.x+canvasRect.width/2,clientY:canvasRect.y+canvasRect.height/2});
+ // Wheel changes the camera immediately, but SVG attributes update on the next
+ // animation frame. Snapshot only after both axes show the completed 0.8 zoom.
+ await expect.poll(()=>svg.evaluate(e=>Math.max(
+  Math.abs(Number(e.dataset.xmax)-Number(e.dataset.xmin)-16),
+  Math.abs(Number(e.dataset.ymax)-Number(e.dataset.ymin)-16)
+ ))).toBeLessThan(1e-10);
  const camera=await svg.evaluate(e=>({xmin:e.dataset.xmin,ymin:e.dataset.ymin}));
- expect(Number(await svg.getAttribute('data-xmax'))-Number(camera.xmin)).toBeLessThan(20);
  expect(await svg.evaluate(e=>!/NaN|Infinity/.test(e.innerHTML))).toBe(true);
  await page.locator('#graph-expanded').screenshot({path:`C:/Incoming/Projekty/NumForge/build/graph-expanded-${width}.png`});
  await page.keyboard.press('Escape');await expect(page.locator('#graph-expanded')).not.toHaveAttribute('open','');await expect(page.locator('body')).not.toHaveClass(/graph-expanded-open/);

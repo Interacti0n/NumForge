@@ -103,6 +103,27 @@ No local regression blocker remains for the supported initial scope. Remote CI,
 physical-device checks and versioned release/package verification remain open;
 these results do not publish a release or certify all numerical roots.
 
+## First remote CI and graph-test follow-up
+
+[Run 39179680154](https://github.com/Interacti0n/NumForge/actions/runs/39179680154)
+tested commit `89dc8f3`: **11/12 jobs passed**, including Linux/Clang sanitizers,
+Linux32, Linux ARM64, macOS ARM64, Windows, coverage, installed C/C++ consumers,
+all three benchmark platforms and browser shard 1. Browser shard 2 had one
+failure and 204 passes: expanded graph camera retention at 844×390.
+
+The test captured SVG camera attributes immediately after a wheel event, before
+the frame-coalesced draw published the new view. A controlled local reproduction
+matched CI exactly: the immediate xmin was `-6`, then the next animation frame
+published `-4.110817941952506`. The graph retained the zoomed view correctly;
+the expected snapshot was stale. The test now waits for both axis spans to show
+the requested 20×0.8 zoom before saving the camera and checking modal exit.
+No application change, retry or timeout increase is required. Follow-up CI must
+still pass before publication.
+
+Local follow-up: all three expansion layouts (1280×900, 390×844, 844×390)
+passed ten times each: **30/30 cases in 1.2 min**, with retries disabled.
+Documentation links and whitespace checks also passed.
+
 ## Later improvements
 
 - Bounded adaptive/derivative-assisted candidates for more general contacts and
