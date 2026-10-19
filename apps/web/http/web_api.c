@@ -1,5 +1,4 @@
 #include "apps/web/http/web_api.h"
-#include "src/engine/formatting/formatter.h"
 
 #include <numforge/runtime.h>
 #include <stdlib.h>

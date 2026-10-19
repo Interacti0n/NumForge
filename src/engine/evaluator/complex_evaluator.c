@@ -9,18 +9,6 @@
 #include <stdio.h>
 #include <string.h>
 
-CalculatorStatus calculator_from_complex_status(BigComplexStatus status)
-{
-    switch (status) {
-        case BIGCOMPLEX_OK: return CALCULATOR_OK;
-        case BIGCOMPLEX_NULL_ARGUMENT: return CALCULATOR_NULL_ARGUMENT;
-        case BIGCOMPLEX_OUT_OF_MEMORY: return CALCULATOR_OUT_OF_MEMORY;
-        case BIGCOMPLEX_DIVISION_BY_ZERO: return CALCULATOR_DIVISION_BY_ZERO;
-        case BIGCOMPLEX_VALUE_TOO_LARGE: return CALCULATOR_VALUE_TOO_LARGE;
-        case BIGCOMPLEX_SCALE_OVERFLOW: return CALCULATOR_SCALE_OVERFLOW;
-        default: return CALCULATOR_INVALID_ARGUMENT;
-    }
-}
 #define mapped calculator_from_complex_status
 static bool function_may_promote(CalculatorFunctionImplementation function)
 {

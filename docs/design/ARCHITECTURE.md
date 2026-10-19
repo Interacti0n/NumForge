@@ -60,6 +60,11 @@ formatting and HTTP serialization use public getters for opaque results. The
 equation research adapter may include the private strategy callback contract,
 which exposes no result storage. Opt-in decimal profiling has one explicit
 core-inspection exception.
+CLI/HTTP code uses private engine/application API contracts and function catalogue
+metadata, without parser, evaluator-storage, value-internal or formatter headers.
+Numeric status conversion is centralized in `src/engine/api/status.h`; it does
+not require evaluator storage or function dispatch declarations. Established
+decimal error policies remain distinct for compatibility.
 This source check complements compilation and consumer tests; it does not prove
 the absence of every indirect or link-time dependency.
 
@@ -129,6 +134,15 @@ classifier. Periodic-phase target selection and callback refinement use the publ
 phase locator; actual typed samples are inserted by the adapter. Typed sampling,
 expression metadata extraction and angular-unit selection remain application-owned;
 numeric rules do not inspect ASTs or sessions.
+
+Some application-to-engine dependencies are deliberate: expression preparation,
+domain analysis, fast-expression compilation and polynomial recognition inspect
+the private AST; sessions use constant/function metadata and RNG state; conversion
+validation uses the tokenizer; graph and fast-expression adapters materialize typed
+values. The public scalar engine currently excludes sessions, degrees, quantities
+and graph phase capture. Replacing these adapters with public handles requires
+equivalent supported contracts first; moving includes alone would not remove that
+semantic dependency. No public API expansion is required for private error mapping.
 
 Fast graphs retain binary floating-point phase guards, dense envelopes and
 Hermite/pixel acceptance in the application layer: these are approximate display

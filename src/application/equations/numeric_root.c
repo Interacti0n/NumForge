@@ -3,7 +3,7 @@
 #include "src/modules/numerical/root_strategy_internal.h"
 #include "src/application/equations/numeric_root_brent_internal.h"
 #include "src/application/expressions/expression.h"
-#include "src/engine/evaluator/exact_functions.h"
+#include "src/engine/api/status.h"
 #include "src/runtime/numforge_alloc.h"
 #include <stdlib.h>
 #include <string.h>

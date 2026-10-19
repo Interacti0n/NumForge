@@ -1,5 +1,4 @@
 #include "src/application/sessions/session.h"
-#include "src/engine/formatting/formatter.h"
 #include "src/engine/evaluator/random.h"
 #include "src/engine/evaluator/constants.h"
 #include "src/engine/evaluator/functions.h"

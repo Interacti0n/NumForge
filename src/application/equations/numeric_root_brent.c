@@ -1,5 +1,5 @@
 #include "src/application/equations/numeric_root_brent_internal.h"
-#include "src/engine/evaluator/exact_functions.h"
+#include "src/engine/api/status.h"
 #include <stdio.h>
 
 /* Small helpers propagate sticky budget/resource failures; a failed arithmetic

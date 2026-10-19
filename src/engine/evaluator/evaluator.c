@@ -134,52 +134,6 @@ bool calculator_time_limit_reached(
     return !numforge_budget_check() && numforge_budget_failure() == NUMFORGE_BUDGET_TIME;
 }
 
-CalculatorStatus calculator_from_bigdecimal_status(
-    BigDecimalStatus status
-)
-{
-    switch (status)
-    {
-        case BIGDECIMAL_OK:
-            return CALCULATOR_OK;
-        case BIGDECIMAL_NULL_ARGUMENT:
-            return CALCULATOR_NULL_ARGUMENT;
-        case BIGDECIMAL_OUT_OF_MEMORY:
-            return CALCULATOR_OUT_OF_MEMORY;
-        case BIGDECIMAL_DIVISION_BY_ZERO:
-            return CALCULATOR_DIVISION_BY_ZERO;
-        case BIGDECIMAL_VALUE_TOO_LARGE:
-            return CALCULATOR_VALUE_TOO_LARGE;
-        case BIGDECIMAL_SCALE_OVERFLOW:
-            return CALCULATOR_SCALE_OVERFLOW;
-        default:
-            return CALCULATOR_INVALID_ARGUMENT;
-    }
-}
-
-CalculatorStatus calculator_from_bigint_status(
-    BigIntStatus status
-)
-{
-    switch (status)
-    {
-        case BIGINT_OK:
-            return CALCULATOR_OK;
-        case BIGINT_NULL_ARGUMENT:
-            return CALCULATOR_NULL_ARGUMENT;
-        case BIGINT_OUT_OF_MEMORY:
-            return CALCULATOR_OUT_OF_MEMORY;
-        case BIGINT_VALUE_TOO_LARGE:
-            return CALCULATOR_VALUE_TOO_LARGE;
-        case BIGINT_DIVISION_BY_ZERO:
-            return CALCULATOR_DIVISION_BY_ZERO;
-        case BIGINT_NEGATIVE_ARGUMENT:
-        case BIGINT_INVALID_ARGUMENT:
-        default:
-            return CALCULATOR_INVALID_ARGUMENT;
-    }
-}
-
 static bool calculator_valid_rounding(
     BigDecimalRoundingMode rounding
 )

@@ -9,6 +9,10 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ### Numerical foundation
 
+- Centralize private numeric status conversion at the engine API boundary, share
+  equivalent integer mappings and retain legacy decimal error semantics. Remove
+  unnecessary application/transport implementation includes and guard transport
+  code against parser, evaluator-storage and formatting dependencies.
 - Audit fast graph and candidate-verification boundaries. Share their lossy
   decimal display projection and residual predicate while retaining exact
   differences, distinct coordinate policies, caches and resource limits. Document

@@ -1,7 +1,7 @@
 #include "src/application/equations/equation.h"
 #include "src/engine/parser/expression_internal.h"
 #include "src/engine/evaluator/evaluator.h"
-#include "src/engine/evaluator/exact_functions.h"
+#include "src/engine/api/status.h"
 #include "src/runtime/numforge_alloc.h"
 #include <stdlib.h>
 #include <string.h>

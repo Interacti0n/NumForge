@@ -2,7 +2,7 @@
 #include "src/application/expressions/fast_expression_internal.h"
 #include "src/engine/parser/expression_internal.h"
 #include "src/application/expressions/expression_domain_internal.h"
-#include "src/engine/evaluator/exact_functions.h"
+#include "src/engine/api/status.h"
 #include "src/engine/evaluator/evaluator.h"
 #include <numforge/runtime.h>
 #include <stdlib.h>

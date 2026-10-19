@@ -37,6 +37,13 @@ for (const name of [...sources, ...walk('include/numforge').filter(n => n.endsWi
             continue;
         }
         if (!fs.existsSync(path.join(root, target))) errors.push(`${name}: missing ${target}`);
+        if (target === 'src/engine/evaluator/evaluator_internal.h' && !name.startsWith('src/engine/')) {
+            errors.push(`${name}: evaluator storage is engine-private; use an engine API header`);
+        }
+        if (name.startsWith('apps/') && /^src\/engine\/(parser|values|formatting|evaluator)\//.test(target) &&
+            target !== 'src/engine/evaluator/functions.h') {
+            errors.push(`${name}: transport must use engine/application APIs, not ${target}`);
+        }
         const module = /^src\/modules\/([^/]+)\//.exec(target);
         if (module && !name.startsWith(`src/modules/${module[1]}/`)) {
             // Private method comparisons share callback hooks, never result storage.

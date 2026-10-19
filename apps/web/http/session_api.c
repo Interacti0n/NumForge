@@ -9,8 +9,7 @@
 #include "src/application/equations/numeric_root.h"
 #include <errno.h>
 #include <math.h>
-#include "src/engine/evaluator/exact_functions.h"
-#include "src/engine/evaluator/evaluator_internal.h"
+#include "src/engine/api/status.h"
 #include <numforge/runtime.h>
 #include <stdarg.h>
 #include <stdio.h>

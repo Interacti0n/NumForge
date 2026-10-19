@@ -1,6 +1,6 @@
 #include "src/application/graphs/graph.h"
 #include "src/application/numerical_status.h"
-#include "src/engine/evaluator/exact_functions.h"
+#include "src/engine/api/status.h"
 #include "src/engine/values/value_internal.h"
 #include "src/runtime/numforge_alloc.h"
 #include <numforge/runtime.h>

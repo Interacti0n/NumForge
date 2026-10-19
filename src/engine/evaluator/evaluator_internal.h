@@ -2,6 +2,7 @@
 #define NUMFORGE_CALCULATOR_EVALUATOR_INTERNAL_H
 
 #include "src/engine/evaluator/evaluator.h"
+#include "src/engine/api/status.h"
 #include "src/engine/evaluator/constants.h"
 
 #include <numforge/bigint.h>
@@ -25,8 +26,6 @@ typedef struct CalculatorEvaluation
 CalculatorStatus calculator_evaluate_expression(
     BigDecimal **result, const CalculatorExpression *expression,
     const CalculatorEvaluation *evaluation, CalculatorError *error);
-CalculatorStatus calculator_from_bigdecimal_status(BigDecimalStatus status);
-CalculatorStatus calculator_from_bigint_status(BigIntStatus status);
 bool calculator_time_limit_reached(const CalculatorEvaluation *evaluation);
 bool calculator_nonnegative_integer(const BigDecimal *value);
 CalculatorStatus calculator_bigdecimal_to_bigint(BigInt **result, const BigDecimal *value, bool signed_input);

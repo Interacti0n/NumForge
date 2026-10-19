@@ -1,6 +1,7 @@
 target_sources(numforge_engine PRIVATE
     api/engine.c
     api/calculator.c
+    api/status.c
     values/value.c
     evaluator/complex_evaluator.c
     values/quantity.c
