@@ -31,6 +31,9 @@ and do not need a Python installation.
 Windows requires a compatible MSVC toolchain and the dynamic Visual C++ runtime
 (`/MD`). A wheel is specific to its CPython ABI, OS and architecture; this is not
 an abi3 wheel. Local execution has been checked on Windows x64 / CPython 3.12.
+Keep the source/output path short on Windows: MSBuild can still reject deeply
+nested paths even when Windows long-path support is enabled. The adapter keeps
+its CMake cache directly under `build/nf-<interpreter-tag>` to reduce nesting.
 The Python CI workflow adds Linux 3.10/3.12, Windows 3.12 and macOS 3.12 checks;
 configured CI coverage is not a claim that those remote jobs have already run.
 

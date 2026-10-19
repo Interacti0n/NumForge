@@ -20,7 +20,9 @@ class CMakeBuild(build_ext):
             raise RuntimeError("The initial NumForge adapter requires CPython")
         source = Path(__file__).resolve().parent
         destination = Path(self.get_ext_fullpath(ext.name)).resolve().parent
-        build = Path(self.build_temp).resolve() / ("cmake-" + sys.implementation.cache_tag)
+        # Keep nested source-distribution builds below MSBuild's path limit.
+        # The interpreter tag separates incompatible native build caches.
+        build = source / "build" / ("nf-" + sys.implementation.cache_tag)
         build.mkdir(parents=True, exist_ok=True)
         args = ["cmake", "-S", str(source), "-B", str(build),
                 "-DCMAKE_BUILD_TYPE=Release", "-DBUILD_TESTING=OFF",

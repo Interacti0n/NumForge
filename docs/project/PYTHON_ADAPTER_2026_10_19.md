@@ -26,6 +26,9 @@ Python headers; that is not a second runtime-platform validation.
 - Existing C/application Release regression: **64/64 CTests passed** after the
   optional build integration. Python remains disabled in ordinary C builds.
 - Documentation links and whitespace checks passed.
+- A final nested archive build exposed MSBuild's path-length limit. The native
+  cache now uses a shorter interpreter-specific path, and the nested archive
+  build was repeated with that layout.
 
 The package checker uses a fresh directory under build/, an installed target
 directory and `python -I`; it asserts both facade and extension originate from
