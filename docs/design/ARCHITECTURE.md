@@ -68,7 +68,7 @@ the absence of every indirect or link-time dependency.
 | Algebra | Polynomials, algebraic equations and exact root representations | Public exact linear/quadratic coefficient solver in the numeric target; application parsing/preview adapters remain private |
 | Linear Algebra | Vectors, matrices, decompositions and linear systems | Public immutable dense rational matrices, products/determinants, rank and complete rectangular single-RHS families; approximate/complex domains and broader decompositions remain future |
 | Calculus / Analysis | Mathematical concepts and user-facing organization | Symbolic and numerical algorithms have separate owners below |
-| Numerical | Root finding, interpolation, quadrature, ODEs and optimization | Public callback-based bisection and bounded multiple-root scanning; expression/domain adapters and Brent/hybrid research remain private |
+| Numerical | Sampling, root finding, interpolation, quadrature, ODEs and optimization | Public exact uniform grids, callback-based bisection and bounded multiple-root scanning; expression/domain adapters and Brent/hybrid research remain private |
 | Statistics | Datasets, aggregates, distributions, regression and tests | Public exact rational batch summaries plus existing decimal scalar aggregates; streaming/multivariate/distribution contracts remain future |
 | Symbolic | Symbolic expression representation, assumptions and rewrites | Future; calculator AST is not automatically a public CAS representation |
 | Scientific | Units, quantities, sourced constants and domain models | Public units and private quantity expressions; broader models remain future |
@@ -118,6 +118,8 @@ expressions snapshot referenced values and evaluate under one operation budget
 without modifying their source session. Numerical interval workflows delegate to
 the [public root-search and scan kernels](../reference/NUMERICAL_API.md); parsing,
 domain analysis and HTTP serialization remain private application operations.
+Uniform graph coordinates and adaptive seed coordinates use the public exact
+grid walker. Typed sampling and adaptive refinement remain application-owned.
 
 The browser handles input and presentation; C performs mathematical evaluation.
 CMake embeds assets and the license in the local server, so installed applications

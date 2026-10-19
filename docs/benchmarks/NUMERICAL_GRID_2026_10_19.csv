@@ -1,0 +1,10 @@
+case,repeat,points,milliseconds,allocation_calls,requested_bytes
+regular,1,1024,8.297000,56209,1015726
+regular,2,1024,5.472100,56209,1015726
+regular,3,1024,6.310400,56209,1015726
+large_offset,1,33,0.355800,1884,175044
+large_offset,2,33,0.397200,1884,175044
+large_offset,3,33,0.368000,1884,175044
+tiny_interval,1,33,0.495900,2123,354572
+tiny_interval,2,33,0.485700,2123,354572
+tiny_interval,3,33,0.471100,2123,354572

@@ -1,8 +1,32 @@
-# Numerical root API
+# Numerical API
 
-`<numforge/numerical.h>` exposes a single real-root search in the numeric target
+`<numforge/numerical.h>` exposes exact rational grids and bounded real-root searches in the numeric target
 `NumForge::numforge`. It needs neither an expression engine nor application state.
 The header is authoritative for callbacks, precision, ownership and failures.
+
+## Exact uniform grids
+
+Call `numforge_grid_visit(lower, upper, count, visit, user)` to visit an inclusive,
+equally spaced grid in increasing order. Bounds must satisfy `lower < upper` and
+`count >= 2`. Each borrowed coordinate is exactly
+`lower + index*(upper-lower)/(count-1)`; no binary or decimal rounding is involved.
+The callback can evaluate a function or collect coordinates in its own format.
+The [standalone C example](../../examples/sdk/numerical_grid.c) computes exact
+`x*x` values at `0`, `1/3`, `2/3` and `1`.
+
+The walker retains no output array and uses a constant number of scratch objects;
+their byte size and arithmetic cost depend on the bounds and count. Callbacks own
+their outputs, error state and value-accuracy policy. Exact coordinates do not
+make approximate evaluations exact or prove continuity between points. The
+walker stops on the first callback/resource failure; earlier callback effects
+remain. Bounds are preserved. An inherited budget is checked before and after
+callbacks, which must cooperate with cancellation themselves.
+
+Private uniform graph sampling and the 33-point adaptive seed grid share this
+kernel. Typed expression evaluation, phase tracking, adaptive refinement and
+screen projection remain private; the root scanner retains its own bounded
+candidate traversal. There is no new Python, CLI or REST grid operation.
+See the [benchmark guide](../../benchmarks/README.md#exact-grid-baseline).
 
 ## Use and result meaning
 

@@ -9,7 +9,7 @@ extern "C" {
 #endif
 
 /** @file numerical.h
- * Bounded real-root search over caller-supplied functions. Link
+ * Exact rational grids and bounded real-root search over caller-supplied functions. Link
  * NumForge::numforge; no parser, engine, session or server is required.
  * Calls inherit an optional runtime.h budget and never begin/end one themselves.
  * Exhaustion returns OUT_OF_MEMORY; inspect numforge_budget_failure() for cause.
@@ -24,6 +24,33 @@ typedef enum NumForgeNumericalStatus {
     NUMFORGE_NUMERICAL_SCALE_OVERFLOW,
     NUMFORGE_NUMERICAL_CALLBACK_FAILED
 } NumForgeNumericalStatus;
+
+/** Visit one borrowed, read-only exact rational coordinate. index is zero-based.
+ * Do not retain x after returning or mutate the grid bounds during the walk.
+ * user may be NULL. The callback owns its outputs and any evaluation/rounding
+ * policy; coordinate exactness says nothing about function-value accuracy.
+ * Return non-OK to stop; callback side effects cannot be rolled back.
+ */
+typedef NumForgeNumericalStatus (*NumForgeGridVisit)(const BigRational *x,
+    size_t index, void *user);
+/** Visit count equally spaced points, including both endpoints, in order:
+ * x[i] = lower + i*(upper-lower)/(count-1). Requires lower<upper and count>=2.
+ * Every coordinate is exact, including nonterminating decimal fractions and
+ * offsets too small for binary floating point. No decimal projection is made.
+ * Uses constant auxiliary object count; does not retain a point array or call
+ * the expression engine. The caller chooses count and owns all sampled values.
+ *
+ * Checks an inherited budget before and after each callback; never starts or
+ * ends a budget. Callbacks must cooperate with it; execution is not preempted.
+ * Failure may follow earlier successful visits. Bounds are always preserved.
+ * @return NULL_ARGUMENT for missing bounds/callback; INVALID_ARGUMENT for invalid
+ * bounds/count; OUT_OF_MEMORY for allocation/budget failure; VALUE_TOO_LARGE or
+ * SCALE_OVERFLOW for representation limits. Callback failures propagate unchanged,
+ * unless budget exhaustion takes precedence. OK means all count visits completed,
+ * not that samples establish continuity, completeness or function-value accuracy.
+ */
+NumForgeNumericalStatus numforge_grid_visit(const BigRational *lower,
+    const BigRational *upper, size_t count, NumForgeGridVisit visit, void *user);
 typedef enum NumForgeRootKind {
     NUMFORGE_ROOT_FOUND = 0,
     NUMFORGE_ROOT_NOT_BRACKETED,

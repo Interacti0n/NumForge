@@ -1,5 +1,22 @@
 # Benchmark tools
 
+## Exact grid baseline
+
+`numerical_grid_benchmark` visits exact coordinates and accumulates their rational
+sum in the callback. It checks `sum = count*(lower+upper)/2` outside timing and
+runs three repetitions per case. Build with `NUMFORGE_BUILD_BENCHMARKS=ON`, then
+run the executable; no engine or server is involved. The measurement includes
+callback arithmetic, but excludes setup, expected-value construction and checking.
+
+On Windows x64, GCC 16.2 Release with allocation instrumentation (19 October 2026),
+the median was 6.310 ms for 1024 points on `[-10,10]`, 0.368 ms for 33 points on
+`[1E1000,1E1000+1]`, and 0.486 ms for 33 points on `[0,1E-1000]`.
+[Raw repetitions](../docs/benchmarks/NUMERICAL_GRID_2026_10_19.csv) also record
+allocation calls and cumulative requested bytes, not peak live memory. These are
+initial observations; this extraction does not establish a speed improvement.
+
+## Other tools
+
 `numerical_benchmark` checks standalone rational bisection at 12 and 100 places;
 `--high-precision` adds a costly 1000-place case. See the
 [checked baseline and resource limits](../docs/benchmarks/NUMERICAL_2026_10_19.md).

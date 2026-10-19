@@ -61,6 +61,12 @@ consumers and SDK examples check the new API with the engine disabled.
 exact rational contacts, 1000-digit offsets/scales, partial-limit diagnostics,
 callback/allocation failure and borrowed result lifetimes. The equation scan
 tests retain the fixed HTTP policies and original-expression domain checks.
+`numerical_grid_tests` verifies exact inclusive coordinates through an independent
+algebraic identity, 1000-digit offsets/scales, callback stops, large counts,
+inherited budgets and every allocation failure. Instrumented runs check zero
+live allocations at teardown. C/C++ consumers and the SDK grid example exercise
+the installed numeric-only interface. The opt-in grid benchmark verifies the
+closed-form sum independently of its timed traversal.
 
 The optional [Python adapter](guides/PYTHON.md) has its own reproducible source-archive,
 wheel, isolated adapter-test and standalone-example check:

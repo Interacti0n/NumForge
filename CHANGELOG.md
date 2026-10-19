@@ -9,6 +9,10 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ### Numerical foundation
 
+- Expose an exact rational uniform-grid visitor without engine/session dependencies.
+  Share it between uniform graphs and adaptive seeds; preserve typed evaluation,
+  graph limits and projections. Add standalone and installed C/C++ coverage,
+  an SDK example, allocation/deadline tests and checked grid measurements.
 - Expose bounded multiple-root scanning over caller-supplied functions, with
   configurable rational grids, root/work limits, ordered borrowed root views and
   diagnostic counters. Exact ordinates propose midpoint/quadratic candidates;

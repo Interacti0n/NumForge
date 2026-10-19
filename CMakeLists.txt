@@ -312,6 +312,13 @@ install(
 # ============================================================
 
 if(NUMFORGE_BUILD_BENCHMARKS)
+    add_executable(numerical_grid_benchmark benchmarks/numerical_grid_benchmark.c benchmarks/benchmark_clock.c)
+    target_link_libraries(numerical_grid_benchmark PRIVATE numforge)
+    numforge_enable_diagnostics(numerical_grid_benchmark)
+    if(BUILD_TESTING)
+        add_test(NAME numerical_grid_benchmark_smoke COMMAND numerical_grid_benchmark)
+        set_tests_properties(numerical_grid_benchmark_smoke PROPERTIES TIMEOUT 120)
+    endif()
     add_executable(numerical_scan_benchmark benchmarks/numerical_scan_benchmark.c benchmarks/benchmark_clock.c)
     target_link_libraries(numerical_scan_benchmark PRIVATE numforge)
     numforge_enable_diagnostics(numerical_scan_benchmark)
@@ -523,7 +530,7 @@ if(BUILD_TESTING)
     target_compile_definitions(engine_tests PRIVATE
         NUMFORGE_ENGINE_REFERENCE_FILE="${PROJECT_SOURCE_DIR}/benchmarks/references/decimal_math_references.tsv")
 
-    foreach(suite engine_parameters polynomial matrix linear_system statistics numerical numerical_scan)
+    foreach(suite engine_parameters polynomial matrix linear_system statistics numerical numerical_scan numerical_grid)
         add_executable(${suite}_tests tests/test_${suite}.c)
         target_compile_definitions(${suite}_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
         numforge_enable_diagnostics(${suite}_tests)
@@ -536,6 +543,7 @@ if(BUILD_TESTING)
     target_link_libraries(statistics_tests PRIVATE numforge unity)
     target_link_libraries(numerical_tests PRIVATE numforge unity)
     target_link_libraries(numerical_scan_tests PRIVATE numforge unity)
+    target_link_libraries(numerical_grid_tests PRIVATE numforge unity)
     set_tests_properties(numerical_scan_tests PROPERTIES TIMEOUT 180)
     set_tests_properties(numerical_tests PROPERTIES TIMEOUT 180)
 

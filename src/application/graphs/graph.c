@@ -3,6 +3,7 @@
 #include "src/engine/values/value_internal.h"
 #include "src/runtime/numforge_alloc.h"
 #include <numforge/runtime.h>
+#include <numforge/numerical.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -25,6 +26,43 @@ ApplicationGraphPointKind application_graph_point_kind(const ApplicationExpressi
     if (sample->value.quantity) return APPLICATION_GRAPH_QUANTITY;
     if (calculator_value_is_complex(&sample->value)) return APPLICATION_GRAPH_COMPLEX;
     return APPLICATION_GRAPH_REAL;
+}
+
+static CalculatorStatus graph_coordinate(CalculatorValue *value,
+    const BigRational *rational, const CalculatorContext *context)
+{
+    value->kind = CALCULATOR_VALUE_RATIONAL;value->context = *context;value->independent = true;
+    value->rational = bigrational_create();value->number = bigdecimal_create();
+    if (value->rational == NULL || value->number == NULL) return CALCULATOR_OUT_OF_MEMORY;
+    CalculatorStatus status = calculator_from_rational_status(bigrational_copy(value->rational, rational));
+    if (status == CALCULATOR_OK) status = calculator_materialize_exact(value->number, value, context);
+    return status;
+}
+
+typedef struct CoordinateGrid {
+    CalculatorValue *coordinates;
+    const CalculatorContext *context;
+    CalculatorStatus status;
+} CoordinateGrid;
+static NumForgeNumericalStatus coordinate_visit(const BigRational *x, size_t index, void *user)
+{
+    CoordinateGrid *grid = user;
+    grid->status = graph_coordinate(&grid->coordinates[index], x, grid->context);
+    return grid->status == CALCULATOR_OK ? NUMFORGE_NUMERICAL_OK : NUMFORGE_NUMERICAL_CALLBACK_FAILED;
+}
+static CalculatorStatus graph_coordinates(CalculatorValue *coordinates, size_t count,
+    const BigRational *minimum, const BigRational *maximum, const CalculatorContext *context)
+{
+    CoordinateGrid grid = {coordinates, context, CALCULATOR_OK};
+    switch (numforge_grid_visit(minimum, maximum, count, coordinate_visit, &grid)) {
+        case NUMFORGE_NUMERICAL_OK: return CALCULATOR_OK;
+        case NUMFORGE_NUMERICAL_NULL_ARGUMENT: return CALCULATOR_NULL_ARGUMENT;
+        case NUMFORGE_NUMERICAL_OUT_OF_MEMORY: return CALCULATOR_OUT_OF_MEMORY;
+        case NUMFORGE_NUMERICAL_VALUE_TOO_LARGE: return CALCULATOR_VALUE_TOO_LARGE;
+        case NUMFORGE_NUMERICAL_SCALE_OVERFLOW: return CALCULATOR_SCALE_OVERFLOW;
+        case NUMFORGE_NUMERICAL_CALLBACK_FAILED: return grid.status;
+        default: return CALCULATOR_INVALID_ARGUMENT;
+    }
 }
 
 CalculatorStatus application_graph_sample(ApplicationGraph **result,
@@ -50,8 +88,6 @@ CalculatorStatus application_graph_sample(ApplicationGraph **result,
         CALCULATOR_ALLOCATION_BUDGET, CALCULATOR_SINGLE_ALLOCATION);
     ApplicationGraph *graph = NULL;
     ApplicationExpression *expression = NULL;
-    BigRational *step = NULL, *divisor = NULL, *cursor = NULL;
-    BigDecimal *intervals = NULL;
     int comparison = 0;
     status = calculator_from_rational_status(bigrational_compare(&comparison, minimum, maximum));
     if (status == CALCULATOR_OK && comparison >= 0) status = CALCULATOR_INVALID_ARGUMENT;
@@ -60,9 +96,7 @@ CalculatorStatus application_graph_sample(ApplicationGraph **result,
     if (status == CALCULATOR_OK)
     {
         graph = numforge_calloc(1U, sizeof(*graph));
-        step = bigrational_create(); divisor = bigrational_create(); cursor = bigrational_create();
-        intervals = bigdecimal_create();
-        if (graph == NULL || step == NULL || divisor == NULL || cursor == NULL || intervals == NULL)
+        if (graph == NULL)
             status = CALCULATOR_OUT_OF_MEMORY;
     }
     if (status == CALCULATOR_OK)
@@ -72,35 +106,11 @@ CalculatorStatus application_graph_sample(ApplicationGraph **result,
         if (graph->coordinates == NULL) status = CALCULATOR_OUT_OF_MEMORY;
     }
     if (status == CALCULATOR_OK)
-    {
-        char count_text[32];
-        (void)snprintf(count_text, sizeof(count_text), "%zu", count - 1U);
-        status = calculator_from_decimal_status(bigdecimal_set_string(intervals, count_text));
-    }
-    if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_from_bigdecimal(divisor, intervals));
-    if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_sub(step, maximum, minimum));
-    if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_div(step, step, divisor));
-    if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_copy(cursor, minimum));
-    for (size_t i = 0; status == CALCULATOR_OK && i < count; ++i)
-    {
-        if (!numforge_budget_check()) { status = CALCULATOR_OUT_OF_MEMORY; break; }
-        CalculatorValue *coordinate = &graph->coordinates[i];
-        coordinate->kind = CALCULATOR_VALUE_RATIONAL;
-        coordinate->context = *context;
-        coordinate->independent = true;
-        coordinate->rational = bigrational_create(); coordinate->number = bigdecimal_create();
-        status = coordinate->rational == NULL || coordinate->number == NULL ? CALCULATOR_OUT_OF_MEMORY :
-            calculator_from_rational_status(bigrational_copy(coordinate->rational, cursor));
-        if (status == CALCULATOR_OK) status = calculator_materialize_exact(coordinate->number, coordinate, context);
-        if (status == CALCULATOR_OK && i + 1U < count)
-            status = calculator_from_rational_status(bigrational_add(cursor, cursor, step));
-    }
+        status = graph_coordinates(graph->coordinates, count, minimum, maximum, context);
     if (status == CALCULATOR_OK)
         status = application_expression_sample(expression, graph->coordinates, count, &graph->samples, error);
     status = calculator_budget_status(status);
     application_expression_destroy(expression);
-    bigrational_destroy(step); bigrational_destroy(divisor); bigrational_destroy(cursor);
-    bigdecimal_destroy(intervals);
     if (status == CALCULATOR_OK) *result = graph;
     else
     {
@@ -156,17 +166,6 @@ static CalculatorStatus adaptive_offscreen(GraphRefinement *work, size_t left, b
     return status;
 }
 
-static CalculatorStatus adaptive_coordinate(CalculatorValue *value,
-    const BigRational *rational, const CalculatorContext *context)
-{
-    value->kind = CALCULATOR_VALUE_RATIONAL;value->context = *context;value->independent = true;
-    value->rational = bigrational_create();value->number = bigdecimal_create();
-    if (value->rational == NULL || value->number == NULL) return CALCULATOR_OUT_OF_MEMORY;
-    CalculatorStatus status = calculator_from_rational_status(bigrational_copy(value->rational, rational));
-    if (status == CALCULATOR_OK) status = calculator_materialize_exact(value->number, value, context);
-    return status;
-}
-
 static CalculatorStatus adaptive_view(ApplicationGraph *graph, bool *any)
 {
     *any = false;
@@ -203,7 +202,7 @@ static CalculatorStatus adaptive_interval(GraphRefinement *work, size_t left,
     CalculatorStatus status = middle == NULL ? CALCULATOR_OUT_OF_MEMORY :
         calculator_from_rational_status(bigrational_add(middle, graph->coordinates[left].rational, graph->coordinates[left + 1U].rational));
     if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_div(middle, middle, work->two));
-    if (status == CALCULATOR_OK) status = adaptive_coordinate(&midpoint, middle, work->context);
+    if (status == CALCULATOR_OK) status = graph_coordinate(&midpoint, middle, work->context);
     if (status == CALCULATOR_OK) status = application_expression_sample(work->expression, &midpoint, 1U, &evaluated, work->error);
     bigrational_destroy(middle);
     if (status != CALCULATOR_OK) { calculator_value_destroy(&midpoint);application_expression_samples_destroy(evaluated, 1U);return status; }
@@ -338,7 +337,7 @@ static CalculatorStatus adaptive_peaks(GraphRefinement *work)
                 PEAK_RAT(bigrational_from_bigdecimal(fraction,ratio));PEAK_RAT(bigrational_sub(position,hi,lo));
                 PEAK_RAT(bigrational_mul(position,position,fraction));PEAK_RAT(bigrational_add(position,position,lo));
                 CalculatorValue coordinate={0};ApplicationExpressionSample *sample=NULL;
-                status=adaptive_coordinate(&coordinate,position,work->context);
+                status=graph_coordinate(&coordinate,position,work->context);
                 if(status==CALCULATOR_OK)status=application_expression_sample(work->expression,&coordinate,1U,&sample,work->error);
                 if(status!=CALCULATOR_OK){calculator_value_destroy(&coordinate);application_expression_samples_destroy(sample,1U);goto cleanup;}
                 bool usable=application_graph_point_kind(sample)==APPLICATION_GRAPH_REAL && !sample->phase_unknown && phase<sample->phase_count && sample->phases[phase]!=NULL;
@@ -438,7 +437,7 @@ static CalculatorStatus adaptive_request(ApplicationGraph **result,
     bool owner = numforge_budget_begin((uint64_t)context->time_limit_ms, CALCULATOR_ALLOCATION_BUDGET, CALCULATOR_SINGLE_ALLOCATION);
     ApplicationGraph *graph = NULL;
     ApplicationExpression *expression = NULL;
-    BigRational *step = NULL, *divisor = NULL, *cursor = NULL;
+    BigRational *divisor = NULL;
     BigDecimal *number = NULL, *factor = NULL;
     GraphRefinement work = {0};work.point_limit = point_limit;work.camera = camera;
     ApplicationExpressionSample *seeds = NULL;
@@ -466,7 +465,7 @@ static CalculatorStatus adaptive_request(ApplicationGraph **result,
         graph->samples = numforge_calloc(point_limit, sizeof(*graph->samples));
         graph->connect = numforge_calloc(point_limit, sizeof(*graph->connect));
         graph->view_minimum = bigdecimal_create();graph->view_maximum = bigdecimal_create();
-        step = bigrational_create();divisor = bigrational_create();cursor = bigrational_create();
+        divisor = bigrational_create();
         number = bigdecimal_create();factor = bigdecimal_create();
         work.half = bigdecimal_create();work.sum = bigdecimal_create();work.delta = bigdecimal_create();work.tolerance = bigdecimal_create();work.phase_span = bigdecimal_create();work.coarse_width = bigdecimal_create();work.strict_phase_span = bigdecimal_create();
         if (camera) {
@@ -474,19 +473,11 @@ static CalculatorStatus adaptive_request(ApplicationGraph **result,
             work.camera_tolerance = bigdecimal_create();work.pixel_width = bigdecimal_create();
         }
         if (graph->coordinates == NULL || graph->samples == NULL || graph->connect == NULL || graph->view_minimum == NULL ||
-            graph->view_maximum == NULL || step == NULL || divisor == NULL || cursor == NULL || number == NULL || factor == NULL ||
+            graph->view_maximum == NULL || divisor == NULL || number == NULL || factor == NULL ||
             work.half == NULL || work.sum == NULL || work.delta == NULL || work.tolerance == NULL || work.phase_span == NULL || work.coarse_width == NULL || work.strict_phase_span == NULL ||
             (camera && (work.clip_minimum == NULL || work.clip_maximum == NULL || work.camera_tolerance == NULL || work.pixel_width == NULL))) status = CALCULATOR_OUT_OF_MEMORY;
     }
-    if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_set_string(number, "32"));
-    if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_from_bigdecimal(divisor, number));
-    if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_sub(step, maximum, minimum));
-    if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_div(step, step, divisor));
-    if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_copy(cursor, minimum));
-    for (size_t i = 0; status == CALCULATOR_OK && i < 33U; ++i) {
-        status = adaptive_coordinate(&graph->coordinates[i], cursor, context);
-        if (status == CALCULATOR_OK && i < 32U) status = calculator_from_rational_status(bigrational_add(cursor, cursor, step));
-    }
+    if (status == CALCULATOR_OK) status = graph_coordinates(graph->coordinates, 33U, minimum, maximum, context);
     if (status == CALCULATOR_OK) status = application_expression_sample(expression, graph->coordinates, 33U, &seeds, error);
     if (status == CALCULATOR_OK) {
         memcpy(graph->samples, seeds, 33U * sizeof(*seeds));free(seeds);seeds = NULL;
@@ -549,7 +540,7 @@ static CalculatorStatus adaptive_request(ApplicationGraph **result,
     }
     status = calculator_budget_status(status);
     application_expression_samples_destroy(seeds, 33U);application_expression_destroy(expression);
-    bigrational_destroy(step);bigrational_destroy(divisor);bigrational_destroy(cursor);
+    bigrational_destroy(divisor);
     bigdecimal_destroy(number);bigdecimal_destroy(factor);bigdecimal_destroy(work.half);
     bigdecimal_destroy(work.sum);bigdecimal_destroy(work.delta);bigdecimal_destroy(work.tolerance);
     bigdecimal_destroy(work.phase_span);
