@@ -2,7 +2,8 @@
 
 This is a readiness checklist, **not a release record**. Equation functionality
 was pushed and passed all 12 jobs in [follow-up CI](https://github.com/Interacti0n/NumForge/actions/runs/39180598916).
-Version 2.4.0 preparation/publication is tracked in the [release record](RELEASE_2_4.md).
+Version 2.4.0 is published; final CI, packaging and independent download evidence
+are recorded in the [release record](RELEASE_2_4.md).
 Current mathematical scope is
 documented in the [guide](../guides/EQUATIONS.md), [exact API](../reference/EQUATION_HTTP_API.md)
 and [numerical API](../reference/NUMERIC_ROOT_HTTP_API.md).
@@ -100,9 +101,10 @@ limit, provided messages do not claim no roots or a complete enumeration.
 - JavaScript syntax, documentation links (**117 Markdown files / 549 local
   links/anchors**) and whitespace checks passed.
 
-No local regression blocker remains for the supported initial scope. Remote CI,
-physical-device checks and versioned release/package verification remain open;
-these results do not publish a release or certify all numerical roots.
+No local regression blocker remained for the supported initial scope. Subsequent
+exact-source CI and versioned release/package/download checks passed, as recorded
+in the release record. Broader physical-device checks remain separate; these
+results do not certify all numerical roots.
 
 ## First remote CI and graph-test follow-up
 

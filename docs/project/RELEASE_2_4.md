@@ -1,8 +1,10 @@
 # Release 2.4.0 record
 
-Version 2.4.0 introduces the Equations tool alongside Calculator, Units and
-Graphs. This record tracks preparation and publication separately; final tagged
-CI, packaging and published-download verification are recorded after completion.
+[NumForge 2.4.0](https://github.com/Interacti0n/NumForge/releases/tag/v2.4.0) was
+published on 19 October 2026 from immutable tag source
+`d2b897a083225b416127bbf2e1deb129f207f00b`. It introduces Equations alongside
+Calculator, Units and Graphs. Exact-source CI, both platform packaging jobs and
+independent published-download checks passed as recorded below.
 
 ## Scope
 
@@ -78,12 +80,35 @@ refresh had created that element. A controlled delayed-history response reproduc
 the missing target while the result already displayed `1/3`; releasing the response
 created the expected mathematical-font element. The test now waits for that target
 before comparing all original font families. No application change, retry or timeout
-increase is involved. The final commit must pass CI before a tag is created.
+increase is involved. The subsequent final commit passed CI before the tag
+was created, as recorded below.
 Both language variants passed ten repetitions each: 20/20 cases in 26.7 s.
 
-## Final publication verification
+## Published release verification
 
-Pending for the versioned source: final CI, immutable `v2.4.0` tag, GitHub release,
-Windows/Linux extracted application and relocated SDK checks, and independent
-published archive/checksum verification. Preparation does not by itself claim
-these steps have completed. Existing release assets and tags are never replaced.
+- [Exact-source CI](https://github.com/Interacti0n/NumForge/actions/runs/39234580890)
+  passed all 12 jobs for the tagged source, including 447 browser cases,
+  platform/sanitizer/fuzz checks, coverage, installed C/C++ consumers and
+  benchmark checks on Windows, Linux and macOS.
+- [Release packaging](https://github.com/Interacti0n/NumForge/actions/runs/39235889260)
+  passed Windows x64 and Linux x64 native tests, extracted application checks
+  and relocated SDK/example/external C/C++ consumer checks. The upload job
+  verified all checksums before attaching the eight assets.
+- Independently downloaded all four public archives and four SHA256 files.
+  Archive sizes, GitHub asset digests, SHA256, ZIP integrity and embedded
+  version/source provenance matched the immutable release source above.
+- Extracted the public Windows application archive into a fresh directory and
+  reran CLI, HTTP calculator and equation checks, including both editor languages,
+  required assets, the function registry, exact radicals and the rational 1/3
+  contact with residual zero. All passed. Linux execution was checked in its
+  packaging job; no local Linux or physical-phone run is claimed.
+
+| Published archive | SHA256 |
+| --- | --- |
+| `NumForge-2.4.0-win-x64.zip` | `19980612ea2aab030d61302c084f94dd4c875b2ecaf23c4e08c86cb8bb0e8e3e` |
+| `NumForge-2.4.0-linux-x64.tar.gz` | `f1321f558da31073919428b4dd0238036d784869714defcc123b3d0f20120a36` |
+| `NumForge-2.4.0-sdk-win-x64.zip` | `043873d16db888e7dc25bfd5d3742bfad582a41268d907b87a243bcf4b6420a7` |
+| `NumForge-2.4.0-sdk-linux-x64.tar.gz` | `75e9deb0ddef7113d3e0321665bbc954bfb8e60482bcfaf574a7a9f3aafd43b7` |
+
+The immutable tag stays on the CI-verified source. This later documentation
+update records publication without moving that tag or replacing its assets.
