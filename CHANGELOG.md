@@ -9,6 +9,12 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ### Numerical foundation
 
+- Expose `phase.h` with bounded, reusable periodic-phase target location over
+  caller-supplied captured phases. Share it with precision graph anchors while
+  retaining actual original-expression samples and private metadata adapters.
+  Reject proposals rounded onto/outside the current coordinate bracket. Add
+  high-precision/reference, limit, allocation/budget and lifetime checks, installed
+  C/C++ consumers, an SDK example and a checked benchmark.
 - Expose `curve.h` with owned, reusable sampled-curve policies for midpoint chord
   error, periodic/step guards, smooth-width relaxation and offscreen deferral.
   Share them with precision graphs through explicit metadata views, keeping AST,

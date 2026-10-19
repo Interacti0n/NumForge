@@ -2,6 +2,7 @@
 #define NUMFORGE_CONSUMER_CHECK_NUMERICAL_H
 #include <numforge/numerical.h>
 #include "check_curve.h"
+#include "check_phase.h"
 #include <stdlib.h>
 #include <string.h>
 typedef struct ConsumerRefinement { int points[5]; size_t count, calls; } ConsumerRefinement;
@@ -44,7 +45,7 @@ static NumForgeNumericalStatus consumer_identity_scan(BigDecimal *value, BigRati
 }
 static int numerical_api_checks(void)
 {
-    if (curve_api_checks()) return 1;
+    if (curve_api_checks() || phase_api_checks()) return 1;
     BigRational *zero = bigrational_create(), *lower = bigrational_create(), *upper = bigrational_create();
     BigInt *integer = bigint_create(); NumForgeRoot *root = NULL; char *text = NULL; int outcome = 1;
     NumForgeRootScan *scan = NULL;

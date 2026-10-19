@@ -2,7 +2,8 @@
 
 `<numforge/numerical.h>` exposes exact rational grids, adaptive interval scheduling
 and bounded real-root searches; `<numforge/curve.h>` supplies sampled curve
-acceptance policies. Both belong to `NumForge::numforge` and need neither an
+acceptance policies and `<numforge/phase.h>` locates periodic-phase anchors.
+All belong to `NumForge::numforge` and need neither an
 expression engine nor application state.
 The public headers are authoritative for callbacks, precision, ownership and failures.
 
@@ -58,7 +59,7 @@ their own error, domain, classification and connection metadata.
 
 The precision graph path shares this scheduler, retaining its 33 seeds, point/depth
 limits, projection reserves, phase/jump/pole checks and atomic outer result.
-Its typed sampling, metadata extraction and periodic-extremum probes remain private;
+Its typed sampling and expression metadata extraction remain private;
 the screen/double sampler is separate. This adds no Python, CLI or REST operation.
 See the [checked benchmark](../../benchmarks/README.md#adaptive-refinement-baseline).
 
@@ -95,10 +96,54 @@ at 1000-digit offsets. Those values may approximate the underlying function.
 Acceptance is a display heuristic: it does not certify continuity, exclude hidden
 features or bound error throughout an interval. Original typed graph values and
 their domain/complex/quantity classifications remain intact in the adapter.
-Precision graphs now use this policy; expression metadata extraction, conservative
-domain analysis and periodic-extremum searches remain private. This adds no new
+Precision graphs now use this policy; expression metadata extraction and conservative
+domain analysis remain private. Phase-anchor location uses the public API below.
+This adds no new
 Python function, CLI command or HTTP route. See the
 [benchmark and graph parity record](../../benchmarks/README.md#curve-acceptance-baseline).
+
+## Periodic-phase anchors
+
+`<numforge/phase.h>` supplies a reusable `NumForgePhaseLocator`. Initialize
+`NumForgePhaseOptions` with `numforge_phase_options_init`, provide a positive
+phase-lattice period and create the locator. Options, period and phase tolerance
+are copied; the caller can then release or change their originals. The defaults
+are 34 significant proposal digits, eight callback evaluations, phase tolerance
+`1E-6` and no optional resource reserve. Phase units are caller-defined and must
+agree across endpoint samples, period, offset, tolerance and callback results.
+
+Call `numforge_phase_locate` with exact increasing rational coordinate bounds,
+captured endpoint phases, an optional lattice offset and an evaluator callback.
+The search considers the first target `offset+k*period` above the smaller phase,
+even for a phase decreasing with x. It skips candidates outside the sampled phase
+range or near its endpoints. This does not enumerate all crossings. Interpolated
+finite decimal ratios become exact rational proposals; rounding that cannot make
+strictly interior progress returns `PRECISION_LIMIT` without evaluating that point.
+
+`FOUND` means an actual usable callback sample met the absolute phase tolerance.
+Other successful diagnostic outcomes are `NO_CANDIDATE`, `UNUSABLE`,
+`EVALUATION_LIMIT`, `RESOURCE_LIMIT` and `PRECISION_LIMIT`. They expose no accepted
+coordinate. Optional reserves stop work before callbacks; an exhausted inherited
+runtime budget instead fails with `OUT_OF_MEMORY` and a runtime failure reason.
+No scope is begun, reset or ended by the locator.
+
+The report contains the outcome and callback count. After `FOUND`, getters return
+borrowed read-only x and target views, valid until the next call or destruction.
+Every new search invalidates those views, including on failure. Fatal errors
+preserve the report but cannot undo callback effects. Callers can retain their
+last callback's original typed sample for insertion without evaluating it twice.
+Destroy the thread-confined handle with `numforge_phase_locator_destroy`.
+The [standalone C example](../../examples/sdk/phase.c) locates a half-period anchor
+of a linear phase in one evaluation.
+
+The coordinate is exact as a rational proposal, not necessarily an exact crossing.
+Phase/period inputs can be approximate; continuity, monotonicity, callback accuracy
+and x-error bounds are not proved. In particular, a sin/cos phase anchor need not
+be an extremum of a larger composed expression. Precision graphs use this kernel
+and retain only actual original-expression samples. Their phase extraction, point
+capacity, angular-unit selection and graph insertion remain in the adapter.
+See the [measurement and parity record](../../benchmarks/README.md#phase-anchor-baseline).
+No new Python, CLI or REST phase operation is added.
 
 ## Use and result meaning
 

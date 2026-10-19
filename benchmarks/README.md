@@ -67,6 +67,40 @@ Precision 40 selects the decimal fallback for those camera cases. This finite
 comparison complements the C and browser graph regressions; it is not a proof
 for all expressions or resource-limited executions.
 
+## Phase anchor baseline
+
+`numerical_phase_benchmark` measures public callback phase location with exact
+rational intermediates and three repetitions per case. Setup, locator creation
+and validation are excluded. Timed work includes target selection, interpolation,
+callback evaluation and phase-residual verification. The linear and large-offset
+cases run 32 searches per repetition; the nonlinear case runs one. Coordinates
+are checked outside timing against a linear closed form or an independent decimal
+square root, and the accepted coordinate must match the last actual callback.
+
+On Windows x64, GCC 16.2 Release with allocation instrumentation (19 October 2026):
+
+| Case | Searches | Evaluations | Median ms |
+| --- | --- | --- | --- |
+| Linear phase, default precision/tolerance | 32 | 32 | 1.055 |
+| Quadratic phase, 64 proposal digits, `1E-30` phase tolerance | 1 | 40 | 1082.772 |
+| `1E1000` coordinate offset, `1E-1000` span, 1010 proposal digits | 32 | 32 | 20.904 |
+
+[Raw repetitions](../docs/benchmarks/NUMERICAL_PHASE_2026_10_19.csv) record allocation
+calls and cumulative requested bytes, not peak memory. A trial batch of 32
+quadratic searches did not complete under the configured 30-second/512-MiB scope;
+the recorded protocol measures individual searches instead. Exact rational
+interpolation can produce expensive growing intermediates. The graph adapter
+retains eight callback evaluations per anchor and phase tolerance `1E-6`.
+These measurements establish no before/after speedup.
+
+The MSVC Release server at `e6750f4` and the extracted implementation also returned
+identical complete parsed JSON for the same eight requests in the
+[curve parity table](#curve-acceptance-baseline), including all actual anchor
+coordinates, classifications, connections and diagnostics. The separate C/browser
+regressions cover sine/cosine anchors, decreasing phases and degree/radian modes.
+The new low-precision progress guard separately rejects rounded proposals on or
+outside the current coordinate bracket; no callback evaluates those proposals.
+
 ## Other tools
 
 `numerical_benchmark` checks standalone rational bisection at 12 and 100 places;

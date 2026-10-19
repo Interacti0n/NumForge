@@ -82,6 +82,15 @@ teardown. C/C++ installed consumers and the SDK phase-guard example require no
 engine. Full before/after graph responses and selected browser graph scenarios
 check the application adapter; the [benchmark guide](../benchmarks/README.md#curve-acceptance-baseline)
 records the scope of that comparison.
+`numerical_phase_tests` checks periodic target selection for both phase directions,
+negative phases, endpoint suppression, nonlinear refinement against an independent
+square-root reference and a `1E-1000` span at a `1E1000` offset. It covers non-interior
+rounded proposals, bounded/unusable outcomes, borrowed-view invalidation, reserve
+versus fatal budget stops, every constructor/search allocation failure and handle
+reuse. Instrumented teardown checks zero live allocations. Installed C/C++ checks
+and the SDK example run without engine dependencies; the
+[phase benchmark](../benchmarks/README.md#phase-anchor-baseline) checks accepted
+coordinates independently and records graph-response parity.
 
 The optional [Python adapter](guides/PYTHON.md) has its own reproducible source-archive,
 wheel, isolated adapter-test and standalone-example check:
