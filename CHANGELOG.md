@@ -49,7 +49,8 @@ No changes yet.
   function registry, exact radicals and checked rational numerical contacts.
 - Synchronize the guide, HTTP contracts, API coverage and release scope. Wait for
   the rendered graph zoom before snapshotting its camera in the expansion test;
-  retain assertions without retries or increased timeouts.
+  wait for independently refreshed history before inspecting its fonts. Retain
+  assertions without retries or increased timeouts.
 
 ## 2.3.0 — 17 October 2026
 

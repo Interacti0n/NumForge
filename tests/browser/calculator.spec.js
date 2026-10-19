@@ -371,6 +371,9 @@ for (const lang of ['sk', 'en']) {
         }
         test('text and mathematical values use their respective font families', async ({ page }) => {
             await calculate(page, '1/3', '1/3');
+            // Confirmation and session history render independently: a ready
+            // result does not imply that the history font targets exist yet.
+            await expect(page.locator('#history-list .history-value').first()).toBeVisible();
             const fonts = await page.evaluate(() => {
                 const font = selector => getComputedStyle(document.querySelector(selector)).fontFamily;
                 return {

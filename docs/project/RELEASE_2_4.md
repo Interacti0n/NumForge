@@ -69,6 +69,18 @@ all 61 native CTest groups passed again (23.43 s). The extended application smok
 also passed against this build, including exact and numerical equation routes.
 Documentation links and whitespace checks passed before the release commit.
 
+## Versioned candidate follow-up
+
+[CI on 34bf0ec](https://github.com/Interacti0n/NumForge/actions/runs/39181793899)
+passed 11/12 jobs and 446/447 browser cases. One font-family test read the history
+element immediately after a confirmed result, before the independent history
+refresh had created that element. A controlled delayed-history response reproduced
+the missing target while the result already displayed `1/3`; releasing the response
+created the expected mathematical-font element. The test now waits for that target
+before comparing all original font families. No application change, retry or timeout
+increase is involved. The final commit must pass CI before a tag is created.
+Both language variants passed ten repetitions each: 20/20 cases in 26.7 s.
+
 ## Final publication verification
 
 Pending for the versioned source: final CI, immutable `v2.4.0` tag, GitHub release,
