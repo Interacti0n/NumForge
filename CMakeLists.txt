@@ -312,6 +312,13 @@ install(
 # ============================================================
 
 if(NUMFORGE_BUILD_BENCHMARKS)
+    add_executable(numerical_benchmark benchmarks/numerical_benchmark.c benchmarks/benchmark_clock.c)
+    target_link_libraries(numerical_benchmark PRIVATE numforge)
+    numforge_enable_diagnostics(numerical_benchmark)
+    if(BUILD_TESTING)
+        add_test(NAME numerical_benchmark_smoke COMMAND numerical_benchmark)
+        set_tests_properties(numerical_benchmark_smoke PROPERTIES TIMEOUT 120)
+    endif()
     add_executable(statistics_benchmark benchmarks/statistics_benchmark.c benchmarks/benchmark_clock.c)
     target_link_libraries(statistics_benchmark PRIVATE numforge)
     numforge_enable_diagnostics(statistics_benchmark)
@@ -509,7 +516,7 @@ if(BUILD_TESTING)
     target_compile_definitions(engine_tests PRIVATE
         NUMFORGE_ENGINE_REFERENCE_FILE="${PROJECT_SOURCE_DIR}/benchmarks/references/decimal_math_references.tsv")
 
-    foreach(suite engine_parameters polynomial matrix linear_system statistics)
+    foreach(suite engine_parameters polynomial matrix linear_system statistics numerical)
         add_executable(${suite}_tests tests/test_${suite}.c)
         target_compile_definitions(${suite}_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
         numforge_enable_diagnostics(${suite}_tests)
@@ -520,6 +527,8 @@ if(BUILD_TESTING)
     target_link_libraries(matrix_tests PRIVATE numforge unity)
     target_link_libraries(linear_system_tests PRIVATE numforge unity)
     target_link_libraries(statistics_tests PRIVATE numforge unity)
+    target_link_libraries(numerical_tests PRIVATE numforge unity)
+    set_tests_properties(numerical_tests PROPERTIES TIMEOUT 180)
 
     numforge_add_unit_test(bigint_property_tests numforge tests/test_bigint_properties.c)
 

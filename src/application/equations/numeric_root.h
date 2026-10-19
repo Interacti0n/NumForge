@@ -2,14 +2,16 @@
 #define NUMFORGE_APPLICATION_NUMERIC_ROOT_H
 #include "src/application/equations/equation.h"
 
-typedef enum ApplicationNumericRootKind {
-    APPLICATION_ROOT_FOUND,
-    APPLICATION_ROOT_NOT_BRACKETED,
-    APPLICATION_ROOT_DOMAIN_GAP,
-    APPLICATION_ROOT_DOMAIN_UNVERIFIED,
-    APPLICATION_ROOT_ITERATION_LIMIT,
-    APPLICATION_ROOT_PRECISION_LIMIT
-} ApplicationNumericRootKind;
+/* Private compatibility names retain the established HTTP/application schema. */
+#include "src/modules/numerical/root_internal.h"
+typedef NumForgeRootKind ApplicationNumericRootKind;
+typedef NumForgeRoot ApplicationNumericRoot;
+#define APPLICATION_ROOT_FOUND NUMFORGE_ROOT_FOUND
+#define APPLICATION_ROOT_NOT_BRACKETED NUMFORGE_ROOT_NOT_BRACKETED
+#define APPLICATION_ROOT_DOMAIN_GAP NUMFORGE_ROOT_DOMAIN_GAP
+#define APPLICATION_ROOT_DOMAIN_UNVERIFIED NUMFORGE_ROOT_DOMAIN_UNVERIFIED
+#define APPLICATION_ROOT_ITERATION_LIMIT NUMFORGE_ROOT_ITERATION_LIMIT
+#define APPLICATION_ROOT_PRECISION_LIMIT NUMFORGE_ROOT_PRECISION_LIMIT
 
 /* One bounded, approximate real root, never an enumeration or certified error bound.
  * x/residual exist only for FOUND; lower/upper retain the final search interval.
@@ -20,13 +22,7 @@ typedef enum ApplicationNumericRootKind {
  * Non-exact candidates are reevaluated at twice the search working precision;
  * disagreement or insufficient residual improvement returns PRECISION_LIMIT.
  * Read-only owned fields, released by application_numeric_root_destroy. */
-typedef struct ApplicationNumericRoot {
-    ApplicationNumericRootKind kind;
-    BigRational *x, *lower, *upper;
-    BigDecimal *residual;
-    size_t evaluations, iterations;
-    bool exact_zero;
-} ApplicationNumericRoot;
+
 
 /* One equality, lowercase x, radians, no session/RNG/assignment. At most
  * 192 point pairs (including final verification) and 96 bisections;

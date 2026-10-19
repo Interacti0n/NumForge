@@ -71,6 +71,11 @@ For stateless scalar expressions, link `NumForge::engine` instead and include
 `<numforge/engine.h>`. It transitively links the numeric library. The public
 engine supports typed results and reusable expressions without a server.
 
+Current source builds also provide `<numforge/numerical.h>` in
+`NumForge::numforge` for [callback-based root search](../reference/NUMERICAL_API.md).
+The `example/numerical.c` project needs no expression engine. Published 2.4.0
+archives predate this addition.
+
 Check return statuses, destroy owned numeric objects with their matching
 `*_destroy()` functions and free returned allocated strings with `free()`.
 See the version-matched online [C API reference](https://github.com/Interacti0n/NumForge/blob/v2.4.0/docs/reference/C_API.md)

@@ -16,6 +16,8 @@ rational matrix products, determinants and square-system solves in C and Python.
 rectangular rank, inconsistency and complete particular/nullspace solution families.
 [Exact descriptive statistics](docs/reference/STATISTICS_API.md) now summarize
 rational datasets with population/sample variances in C and Python.
+The first [Numerical API](docs/reference/NUMERICAL_API.md) now exposes standalone
+callback-based root search in C, shared with the existing equation workflows.
 
 [![CI](https://github.com/Interacti0n/NumForge/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Interacti0n/NumForge/actions/workflows/ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/Interacti0n/NumForge)](https://github.com/Interacti0n/NumForge/releases/latest)

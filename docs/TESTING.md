@@ -52,6 +52,12 @@ and C++ package consumers compile and call the public rational API.
 
 ## Choose a focused check
 
+`numerical_tests` checks the [public root API](reference/NUMERICAL_API.md),
+including exact zeros, continuity, callback/resource failures, preserved outputs
+and an independent 1000-place reference. `numeric_root_tests` and
+`numeric_root_scan_tests` retain equation/domain/scan regressions. Installed C/C++
+consumers and SDK examples check the new API with the engine disabled.
+
 The optional [Python adapter](guides/PYTHON.md) has its own reproducible source-archive,
 wheel, isolated adapter-test and standalone-example check:
 `python scripts/check_python_package.py --output build/python-package-check`.

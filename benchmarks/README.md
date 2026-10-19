@@ -1,5 +1,9 @@
 # Benchmark tools
 
+`numerical_benchmark` checks standalone rational bisection at 12 and 100 places;
+`--high-precision` adds a costly 1000-place case. See the
+[checked baseline and resource limits](../docs/benchmarks/NUMERICAL_2026_10_19.md).
+
 These opt-in tools measure the production library and calculator. Build with
 `NUMFORGE_BUILD_BENCHMARKS=ON`; ordinary builds omit the private instrumentation.
 See [the benchmark guide](../docs/benchmarks/BENCHMARKS.md) for setup and recording commands.

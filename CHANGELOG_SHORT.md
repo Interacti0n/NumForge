@@ -5,6 +5,8 @@ details and the [2.4.0 release record](docs/project/RELEASE_2_4.md) for validati
 
 ## Unreleased
 
+- Add a public numerical root-search kernel shared with existing equation tools.
+
 - Organize the platform for extension, consolidate documentation and remove shared-code/build duplication while preserving public interfaces.
 
 - Add exact rational dataset summaries with mean and population/sample variance in C and Python.

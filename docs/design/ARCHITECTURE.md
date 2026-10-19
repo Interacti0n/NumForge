@@ -68,7 +68,7 @@ the absence of every indirect or link-time dependency.
 | Algebra | Polynomials, algebraic equations and exact root representations | Public exact linear/quadratic coefficient solver in the numeric target; application parsing/preview adapters remain private |
 | Linear Algebra | Vectors, matrices, decompositions and linear systems | Public immutable dense rational matrices, products/determinants, rank and complete rectangular single-RHS families; approximate/complex domains and broader decompositions remain future |
 | Calculus / Analysis | Mathematical concepts and user-facing organization | Symbolic and numerical algorithms have separate owners below |
-| Numerical | Root finding, interpolation, quadrature, ODEs and optimization | Private bounded root solving; expose convergence/coverage diagnostics explicitly |
+| Numerical | Root finding, interpolation, quadrature, ODEs and optimization | Public callback-based single-root bisection; expression/domain adapters, scans and Brent/hybrid research remain private |
 | Statistics | Datasets, aggregates, distributions, regression and tests | Public exact rational batch summaries plus existing decimal scalar aggregates; streaming/multivariate/distribution contracts remain future |
 | Symbolic | Symbolic expression representation, assumptions and rewrites | Future; calculator AST is not automatically a public CAS representation |
 | Scientific | Units, quantities, sourced constants and domain models | Public units and private quantity expressions; broader models remain future |
@@ -115,8 +115,9 @@ require implementing every future language binding in the same change.
 Sessions own confirmed `ans`, variables, history and preview state. Exact values
 remain typed through confirmation, caches and formatting. Prepared application
 expressions snapshot referenced values and evaluate under one operation budget
-without modifying their source session. Numerical interval searches remain a
-private application API; polynomial, matrix and statistics operations are public.
+without modifying their source session. Numerical interval workflows delegate to
+the [public single-root kernel](../reference/NUMERICAL_API.md); parsing, domain
+analysis and multi-root scans remain private application operations.
 
 The browser handles input and presentation; C performs mathematical evaluation.
 CMake embeds assets and the license in the local server, so installed applications

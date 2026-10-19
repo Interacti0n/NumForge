@@ -7,6 +7,17 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+### Numerical foundation
+
+- Add public `numerical.h` and callback-based single-root bisection to the numeric
+  library, with explicit tolerances/work limits, continuity evidence, owned
+  diagnostics and inherited budgets. No engine or session dependency.
+- Route existing equation workflows and private Brent/hybrid comparisons through
+  the same kernel while preserving original-expression checks and HTTP schemas.
+- Add exact-zero, domain, stability, allocation/deadline and 1000-place reference
+  tests, installed C/C++ consumers, an SDK example and checked benchmark. Public
+  multi-root scanning, accelerated methods and Python root callbacks remain future.
+
 ### Platform organization and maintenance
 
 - Organize implementation sources into runtime, numeric core, mathematical

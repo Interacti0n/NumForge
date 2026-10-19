@@ -9,6 +9,9 @@ the public headers: `include/numforge/bigint.h`,
 `include/numforge/statistics.h` and optional
 `include/numforge/runtime.h`.
 
+`include/numforge/numerical.h` adds [callback-based root search](NUMERICAL_API.md)
+in the numeric target without parser or application dependencies.
+
 ## Public C API scope
 
 The public numeric API includes [exact matrices](MATRIX_API.md),
