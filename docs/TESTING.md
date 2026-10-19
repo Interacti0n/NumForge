@@ -68,6 +68,11 @@ an independent 70-place Decimal reference, 1000-digit offsets/tiny spans, explic
 continuity, all diagnostic outcomes, callback exception identity, nested native
 calls, frozen result lifetime and budget failure/recovery. Run it through the
 isolated package check below; no Python search algorithm is used.
+`NumericalScanTests` adds sorted shared endpoints, exact off-grid contacts,
+non-merging close samples, independent high-precision pairs, original ordinates
+at 1000-digit offsets/scales, partial limits, incomplete discovery, domain gaps
+and fatal callback/budget errors after discovery. Single-root regressions also
+run after sharing callback conversion and result serialization.
 `numerical_scan_tests` checks public multiple-root scanning separately, including
 exact rational contacts, 1000-digit offsets/scales, partial-limit diagnostics,
 callback/allocation failure and borrowed result lifetimes. The equation scan

@@ -21,6 +21,10 @@ print(statistics.variance_sample)      # 1/3; None for a singleton
 search = numforge.find_root(lambda x, places: x*x-2, 1, 2, continuous=True)
 print(search.kind, search.x, search.residual, search.exact_zero)
 
+scan = numforge.find_roots(lambda x, places: x*(x-2)*(x+3), -4, 4, segments=8)
+print(tuple(root.x for root in scan.roots))  # (-3, 0, 2), as Fraction
+print(scan.kind, scan.complete)             # finished, False
+
 expression = numforge.prepare("x*x+y", parameters=("x", "y"))
 value = expression.evaluate({"x": Fraction(1, 3), "y": Fraction(1, 9)})
 print(value.as_fraction())  # Fraction(2, 9)
@@ -75,6 +79,12 @@ Fraction coordinate/Decimal residual, final bounds, exact_zero and work counts.
 An exact coordinate is not proof of an exact root or complete discovery. Separate
 absolute tolerances and work limits control convergence. Callback exceptions
 propagate; Python callback work is not preempted by the cooperative C budget.
+`find_roots` shares those rules and adds a bounded grid/candidate scan. It returns
+an immutable tuple of sampled roots plus work/domain diagnostics. `root_limit` and
+`evaluation_limit` return partial lists; `finished` only means the selected grid
+was processed. Discovery is never complete, so `complete` remains False. Exact
+coordinates are deduplicated without a tolerance merge; unseen contacts and
+several roots inside a grid cell can still be missed.
 
 All six C rounding modes are supported by name: `toward_zero`, `away_from_zero`,
 `floor`, `ceiling`, `half_up`, `half_even`. C failures raise `numforge.Error` with

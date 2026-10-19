@@ -5,6 +5,8 @@ details and the [2.4.0 release record](docs/project/RELEASE_2_4.md) for validati
 
 ## Unreleased
 
+- Expose bounded multiple-root scanning in Python with partial-limit and domain diagnostics.
+
 - Expose bounded C root search in Python with exact callback coordinates and explicit diagnostics.
 
 - Consolidate graph display conversion and document the boundary between screen policies and reusable mathematics.

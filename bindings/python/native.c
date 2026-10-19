@@ -614,7 +614,7 @@ typedef struct RootCallback {
     bool continuous;
 } RootCallback;
 
-static NumForgeNumericalStatus root_sample(BigDecimal *value, NumForgeRootSample *sample,
+static NumForgeNumericalStatus root_callback(BigDecimal *value, BigRational *proposal, NumForgeRootSample *sample,
     const BigRational *x, int64_t places, void *user)
 {
     RootCallback *work = user;
@@ -633,18 +633,29 @@ static NumForgeNumericalStatus root_sample(BigDecimal *value, NumForgeRootSample
     if (integer) {
         zero = bigint_is_zero(integer);
         work->status = decimal_status(bigdecimal_from_bigint(value, integer));
+        if (proposal && work->status == NUMFORGE_OK)
+            work->status = rational_status(bigrational_from_bigint(proposal, integer));
     } else if (rational) {
         work->status = rational_status(bigrational_get_numerator(work->numerator, rational));
         if (work->status == NUMFORGE_OK) zero = bigint_is_zero(work->numerator);
         if (work->status == NUMFORGE_OK) work->status = rational_status(
             bigrational_to_bigdecimal(value, rational, places, BIGDECIMAL_ROUND_HALF_EVEN));
-    } else if (decimal) work->status = decimal_status(bigdecimal_copy(value, decimal));
+        if (proposal && work->status == NUMFORGE_OK)
+            work->status = rational_status(bigrational_copy(proposal, rational));
+    } else if (decimal) {
+        work->status = decimal_status(bigdecimal_copy(value, decimal));
+        if (proposal && work->status == NUMFORGE_OK)
+            work->status = rational_status(bigrational_from_bigdecimal(proposal, decimal));
+    }
     else PyErr_SetString(PyExc_TypeError, "root samples must be real values or None");
     sample->real = work->status == NUMFORGE_OK && !PyErr_Occurred();
     sample->exact_zero = sample->real && zero && numforge_result_is_exact(result);
     Py_DECREF(returned);
     return sample->real ? NUMFORGE_NUMERICAL_OK : NUMFORGE_NUMERICAL_CALLBACK_FAILED;
 }
+static NumForgeNumericalStatus root_sample(BigDecimal *value, NumForgeRootSample *sample,
+    const BigRational *x, int64_t places, void *user)
+{ return root_callback(value, NULL, sample, x, places, user); }
 static NumForgeNumericalStatus root_domain(bool *verified, const BigRational *lower,
     const BigRational *upper, void *user)
 {
@@ -663,11 +674,56 @@ static NumForgeStatus numerical_status(NumForgeNumericalStatus status)
         default: return NUMFORGE_INVALID_ARGUMENT;
     }
 }
-static PyObject *native_find_root(PyObject *module, PyObject *args)
+static PyObject *root_dictionary(PyObject *module, const NumForgeRoot *root)
+{
+    char *residual = NULL;
+    NumForgeStatus status = numforge_root_residual(root) ?
+        decimal_status(bigdecimal_to_string(numforge_root_residual(root), &residual)) : NUMFORGE_OK;
+    if (status != NUMFORGE_OK) { free(residual); return raise_status(module, budget_status(status), 0); }
+    static const char *kinds[] = {"found", "not_bracketed", "domain_gap", "domain_unverified", "iteration_limit", "precision_limit"};
+    PyObject *output = PyDict_New();
+    if (output && (!dictionary_put(output, "kind", PyUnicode_FromString(kinds[numforge_root_kind(root)])) ||
+        !dictionary_put(output, "x", fraction_pair(module, numforge_root_x(root))) ||
+        !dictionary_put(output, "lower", fraction_pair(module, numforge_root_lower(root))) ||
+        !dictionary_put(output, "upper", fraction_pair(module, numforge_root_upper(root))) ||
+        !dictionary_put(output, "residual", residual ? PyUnicode_FromString(residual) : Py_NewRef(Py_None)) ||
+        !dictionary_put(output, "exact_zero", PyBool_FromLong(numforge_root_exact_zero(root))) ||
+        !dictionary_put(output, "iterations", PyLong_FromSize_t(numforge_root_iterations(root))) ||
+        !dictionary_put(output, "evaluations", PyLong_FromSize_t(numforge_root_evaluations(root))))) Py_CLEAR(output);
+    free(residual);
+    return output;
+}
+static PyObject *scan_dictionary(PyObject *module, const NumForgeRootScan *scan)
+{
+    size_t count = numforge_root_scan_count(scan);
+    if (count > PY_SSIZE_T_MAX) return raise_status(module, NUMFORGE_VALUE_TOO_LARGE, 0);
+    PyObject *roots = PyTuple_New((Py_ssize_t)count), *output = NULL;
+    if (roots == NULL) return NULL;
+    for (size_t i = 0; i < count; ++i) {
+        PyObject *root = root_dictionary(module, numforge_root_scan_root(scan, i));
+        if (root == NULL) goto done;
+        PyTuple_SET_ITEM(roots, (Py_ssize_t)i, root);
+    }
+    NumForgeRootScanStats stats; numforge_root_scan_stats(scan, &stats);
+    static const char *kinds[] = {"finished", "root_limit", "evaluation_limit"};
+    static const char *names[] = {"evaluations", "iterations", "scanned_segments", "domain_gaps",
+        "rejected_brackets", "candidate_samples", "candidate_roots", "candidate_gaps"};
+    const size_t values[] = {stats.evaluations, stats.iterations, stats.scanned_segments, stats.domain_gaps,
+        stats.rejected_brackets, stats.candidate_samples, stats.candidate_roots, stats.candidate_gaps};
+    output = PyDict_New();
+    if (output && (!dictionary_put(output, "kind", PyUnicode_FromString(kinds[numforge_root_scan_stop(scan)])) ||
+        PyDict_SetItemString(output, "roots", roots) < 0)) Py_CLEAR(output);
+    for (size_t i = 0; output && i < sizeof(values)/sizeof(values[0]); ++i)
+        if (!dictionary_put(output, names[i], PyLong_FromSize_t(values[i]))) Py_CLEAR(output);
+done:
+    Py_DECREF(roots);
+    return output;
+}
+static PyObject *native_root_search(PyObject *module, PyObject *args, bool scanning)
 {
     PyObject *function, *items, *settings, *options; const char *residual_text;
-    if (!PyArg_ParseTuple(args, "OOsOO:find_root", &function, &items, &residual_text, &settings, &options)) return NULL;
-    if (!PyCallable_Check(function) || !PyTuple_Check(settings) || PyTuple_Size(settings) != 4) {
+    if (!PyArg_ParseTuple(args, "OOsOO:root_search", &function, &items, &residual_text, &settings, &options)) return NULL;
+    if (!PyCallable_Check(function) || !PyTuple_Check(settings) || PyTuple_Size(settings) != (scanning ? 7 : 4)) {
         PyErr_SetString(PyExc_TypeError, "invalid root callback/settings"); return NULL;
     }
     NumForgeRootOptions root_options; numforge_root_options_init(&root_options);
@@ -675,6 +731,12 @@ static PyObject *native_find_root(PyObject *module, PyObject *args)
     root_options.max_iterations = PyLong_AsSize_t(PyTuple_GetItem(settings, 1));
     root_options.max_evaluations = PyLong_AsSize_t(PyTuple_GetItem(settings, 2));
     int continuous = PyObject_IsTrue(PyTuple_GetItem(settings, 3));
+    NumForgeRootScanOptions scan_options; numforge_root_scan_options_init(&scan_options);
+    if (scanning) {
+        scan_options.segments = PyLong_AsSize_t(PyTuple_GetItem(settings, 4));
+        scan_options.max_roots = PyLong_AsSize_t(PyTuple_GetItem(settings, 5));
+        scan_options.max_evaluations = PyLong_AsSize_t(PyTuple_GetItem(settings, 6));
+    }
     if (PyErr_Occurred()) return NULL;
     PyObject *values = PySequence_Fast(items, "root bounds/tolerance must be a sequence");
     if (values == NULL) return NULL;
@@ -685,10 +747,10 @@ static PyObject *native_find_root(PyObject *module, PyObject *args)
     if (!policy_parse(module, options, &policy)) { Py_DECREF(values); return NULL; }
     bool owner = numforge_budget_begin(policy.milliseconds, policy.allocation_bytes, policy.single_allocation);
     BigRational **entries = NULL; const BigRational **borrowed = NULL;
-    BigDecimal *tolerance = NULL; NumForgeRoot *root = NULL;
+    BigDecimal *tolerance = NULL; NumForgeRoot *root = NULL; NumForgeRootScan *scan = NULL;
     RootCallback work = {module, function, NULL, NUMFORGE_OK, continuous != 0};
     NumForgeStatus status = exact_inputs(values, 3, "root bounds and x tolerance must be exact real values", &entries, &borrowed);
-    PyObject *output = NULL; char *residual = NULL;
+    PyObject *output = NULL;
     if (PyErr_Occurred()) goto done;
     if (status == NUMFORGE_OK) {
         tolerance = bigdecimal_create(); work.numerator = bigint_create();
@@ -697,36 +759,32 @@ static PyObject *native_find_root(PyObject *module, PyObject *args)
     if (status == NUMFORGE_OK) status = decimal_status(bigdecimal_set_string(tolerance, residual_text));
     root_options.x_tolerance = entries ? entries[2] : NULL;
     root_options.residual_tolerance = tolerance;
+    scan_options.root_options = root_options;
     if (status == NUMFORGE_OK) {
-        NumForgeNumericalStatus solved = numforge_root_solve(&root, root_sample, root_domain,
-            &work, entries[0], entries[1], &root_options);
+        NumForgeNumericalStatus solved = scanning ?
+            numforge_roots_scan(&scan, root_callback, root_domain, &work, entries[0], entries[1], &scan_options) :
+            numforge_root_solve(&root, root_sample, root_domain, &work, entries[0], entries[1], &root_options);
         status = solved == NUMFORGE_NUMERICAL_CALLBACK_FAILED && work.status != NUMFORGE_OK ?
             work.status : numerical_status(solved);
     }
     status = budget_status(status);
     if (PyErr_Occurred()) goto done; /* Preserve callback exceptions, including KeyboardInterrupt. */
     if (status != NUMFORGE_OK) { raise_status(module, status, 0); goto done; }
-    if (numforge_root_residual(root)) status = decimal_status(bigdecimal_to_string(numforge_root_residual(root), &residual));
-    if (status != NUMFORGE_OK) { raise_status(module, budget_status(status), 0); goto done; }
-    static const char *kinds[] = {"found", "not_bracketed", "domain_gap", "domain_unverified", "iteration_limit", "precision_limit"};
-    output = PyDict_New();
-    if (output && (!dictionary_put(output, "kind", PyUnicode_FromString(kinds[numforge_root_kind(root)])) ||
-        !dictionary_put(output, "x", fraction_pair(module, numforge_root_x(root))) ||
-        !dictionary_put(output, "lower", fraction_pair(module, numforge_root_lower(root))) ||
-        !dictionary_put(output, "upper", fraction_pair(module, numforge_root_upper(root))) ||
-        !dictionary_put(output, "residual", residual ? PyUnicode_FromString(residual) : Py_NewRef(Py_None)) ||
-        !dictionary_put(output, "exact_zero", PyBool_FromLong(numforge_root_exact_zero(root))) ||
-        !dictionary_put(output, "iterations", PyLong_FromSize_t(numforge_root_iterations(root))) ||
-        !dictionary_put(output, "evaluations", PyLong_FromSize_t(numforge_root_evaluations(root))))) Py_CLEAR(output);
+    output = scanning ? scan_dictionary(module, scan) : root_dictionary(module, root);
     status = budget_status(NUMFORGE_OK);
     if (status != NUMFORGE_OK && !PyErr_Occurred()) { Py_CLEAR(output); raise_status(module, status, 0); }
 done:
-    free(residual); numforge_root_destroy(root); bigint_destroy(work.numerator); bigdecimal_destroy(tolerance);
+    numforge_root_destroy(root); numforge_root_scan_destroy(scan);
+    bigint_destroy(work.numerator); bigdecimal_destroy(tolerance);
     exact_inputs_destroy(entries, borrowed, 3); Py_DECREF(values);
     if (owner) numforge_budget_end();
     numforge_context_destroy(policy.context);
     return output;
 }
+static PyObject *native_find_root(PyObject *module, PyObject *args)
+{ return native_root_search(module, args, false); }
+static PyObject *native_find_roots(PyObject *module, PyObject *args)
+{ return native_root_search(module, args, true); }
 
 static PyMethodDef methods[] = {
     {"number", native_number, METH_VARARGS, "Copy a lossless numeric input through C."},
@@ -739,6 +797,7 @@ static PyMethodDef methods[] = {
     {"fraction", native_fraction, METH_VARARGS, "Copy exact rational components."},
     {"solve", native_solve, METH_VARARGS, "Solve exact polynomial coefficients in C."},
     {"find_root", native_find_root, METH_VARARGS, "Run bounded C bisection with a Python sample callback."},
+    {"find_roots", native_find_roots, METH_VARARGS, "Run bounded C root scanning with a Python sample callback."},
     {"describe", native_describe, METH_VARARGS, "Compute an exact C descriptive statistics summary."},
     {"matrix_create", native_matrix_create, METH_VARARGS, "Copy exact real entries into a C matrix."},
     {"matrix_shape", native_matrix_shape, METH_VARARGS, "Read a C matrix shape."},

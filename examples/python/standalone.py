@@ -11,6 +11,11 @@ assert search.kind == "found" and not search.exact_zero
 assert abs(search.x*search.x-2) <= Fraction(1, 10**12)
 print("Bounded root:", search.x, "residual:", search.residual)
 
+scan = numforge.find_roots(lambda x, places: x*(x-2)*(x+3), -4, 4, segments=8)
+assert tuple(root.x for root in scan.roots) == (-3, 0, 2)
+assert scan.kind == "finished" and not scan.complete
+print("Sampled roots:", *(root.x for root in scan.roots), "complete:", scan.complete)
+
 a = numforge.Matrix([[0, 2], [3, 4]])
 b = numforge.Matrix([[7], [15]])
 print("Exact determinant:", a.determinant())

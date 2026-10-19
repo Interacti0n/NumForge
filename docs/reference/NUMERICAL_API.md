@@ -278,8 +278,8 @@ diagnostic outcomes, frozen lifetime, callback exceptions, nested calls and budg
 failure/recovery. The [standalone example](../../examples/python/standalone.py)
 runs from an installed wheel. The C [root benchmark](../benchmarks/NUMERICAL_2026_10_19.md)
 remains the algorithm baseline; Python callback overhead is additional and no
-cross-language speedup is claimed. Multiple-root scanning and other numerical
-Python adapters remain future work.
+cross-language speedup is claimed. Multiple-root scanning is available below;
+other numerical Python adapters remain future work.
 
 ## Multiple-root scanning
 
@@ -326,6 +326,56 @@ are separate counters. See the header for their precise counting rules.
 The zero function produces only a bounded sample list; no result claims complete
 enumeration. Unseen contacts, unresolved domains and several roots inside a cell
 can still be missed. More grid cells do not establish completeness.
+
+## Python multiple-root scanning
+
+`find_roots(function, lower, upper, *, continuous=False, decimal_places=34,
+x_tolerance="1E-12", residual_tolerance="1E-12", max_iterations=96,
+max_root_evaluations=192, segments=128, max_roots=32, max_evaluations=4096,
+time_limit_ms=5000, allocation_bytes=64*1024*1024, single_allocation=512*1024)`
+delegates to `numforge_roots_scan`, sharing the
+[single-root callback, exactness, continuity, input and budget rules](#python-single-root-search).
+There is no additional Python discovery/refinement algorithm or private AST access.
+The [Python guide](../guides/PYTHON.md#bounded-numerical-roots) has a working example.
+
+`segments` is positive and less than SIZE_MAX; `max_roots` and `max_evaluations`
+are positive platform-size integers. `max_iterations` and `max_root_evaluations`
+(at least four) apply to each bracket. `max_evaluations` counts all grid, candidate,
+refinement and verification calls. The C kernel reserves a full per-bracket
+allowance before refinement and can therefore stop with total slots unused.
+
+The callback's original exact integer/rational ordinate supplies the C candidate
+proposal without passing through a rounded decimal. An approximate Result supplies
+its stored decimal as an advisory rational. These values propose midpoint/local
+parabola-vertex samples; they never prove a root without reevaluating the original
+callback. Exact sampled contacts can succeed without a continuity assertion;
+approximate bracket roots retain the single-root safeguards. This is not a general
+tangency solver. A coarse grid can miss several roots in one cell even when the
+callback is an exact polynomial.
+
+The frozen `RootScanResult` owns a sorted tuple `roots` of independent `RootResult`
+values. `count` is len(roots); `complete` is always False, including for zero roots.
+Only exactly equal coordinates are deduplicated, not close coordinates within a
+tolerance. Root values remain usable after discarding the scan, callback and inputs.
+`kind` is `finished`, `root_limit` or `evaluation_limit`, following the C stop reasons
+above. Explicit limits preserve a partial list; allocation, callback and cooperative
+budget errors return no report, including after earlier roots were discovered.
+Existing reports and input values remain usable; callback side effects remain.
+
+Copied integer diagnostics are `evaluations`, `iterations`, `scanned_segments`,
+`domain_gaps`, `rejected_brackets`, `candidate_samples`, `candidate_roots` and
+`candidate_gaps`, with the C statistics meanings above. Every retained root has
+its own bounds/residual/exact-zero flag and work counters. Aggregate counters can
+include discarded candidates and rejected refinements, not just returned roots.
+
+Python coverage includes exact shared endpoints/order, off-grid rational contacts,
+close sampled roots without tolerance merging, rejected positive minima, an
+independent 35-place Decimal reference for both signs of sqrt(2), prepared-engine
+samples, 1000-digit offsets/tiny contacts, all stop reasons, missed contacts,
+domain gaps, exceptions after partial discovery and budget failure/recovery.
+The installed [standalone example](../../examples/python/standalone.py) exercises
+both search modes. The existing C [scan baseline](../benchmarks/NUMERICAL_SCAN_2026_10_19.md)
+is reused; Python callback overhead is additional and no speedup is claimed.
 
 ## Cost and verification
 

@@ -12,7 +12,7 @@ have different ownership and compatibility contracts.
 | [Exact matrix C API](reference/MATRIX_API.md) | Dense rational products, determinants and unique square-system solves; numeric target only. |
 | [General linear systems](reference/LINEAR_SYSTEM_API.md) | Exact rectangular rank, inconsistency/uniqueness, particular solutions and a complete nullspace basis in C/Python. |
 | [Exact descriptive statistics](reference/STATISTICS_API.md) | Rational dataset count, sum, extrema, mean and population/sample variances in C/Python. |
-| [Python adapter](guides/PYTHON.md) | Source-built CPython subset for typed values, expressions, principal roots, exact equations, matrices, statistics and callback-based numerical root searches. |
+| [Python adapter](guides/PYTHON.md) | Source-built CPython subset for typed values, expressions, principal roots, exact equations, matrices, statistics and bounded single/multiple-root searches. |
 | [BigComplex foundation](reference/BIGCOMPLEX.md) | Standalone complex arithmetic, principal functions, precision and calculator integration. |
 | [Calculator expressions](reference/CALCULATOR_EXPRESSIONS.md) | Operators, named calls, precision, syntax and limits. |
 | [Polynomial equation application](design/POLYNOMIAL_EQUATIONS.md) | Private parsing/preview/context adapters over the public exact coefficient solver. |

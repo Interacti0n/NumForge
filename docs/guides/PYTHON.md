@@ -50,6 +50,7 @@ configured CI coverage is not a claim that those remote jobs have already run.
 | `Matrix(rows, *, ...)` | Immutable rational matrices; exact products, determinants, rank and square/general system solves |
 | `describe(values, *, ...)` | Exact rational batch count/sum/extrema/mean and population/sample variance, copied into StatisticsSummary |
 | `find_root(function, lower, upper, *, ...)` | Public C bracket search with exact callback coordinates and explicit convergence diagnostics |
+| `find_roots(function, lower, upper, *, ...)` | Bounded public C scan returning sampled roots, stop reason and work/domain diagnostics |
 
 ```python
 from decimal import Decimal
@@ -124,6 +125,16 @@ The callback receives an exact Fraction coordinate and requested fractional scal
 the C numerical kernel performs the search. Here `continuous=True` asserts the
 known continuity of this polynomial. See the [Python root contract](../reference/NUMERICAL_API.md#python-single-root-search)
 for sample accuracy, tolerances, outcomes, budgets and caller responsibilities.
+
+```python
+scan = numforge.find_roots(lambda x, places: x*(x-2)*(x+3), -4, 4, segments=8)
+assert tuple(root.x for root in scan.roots) == (-3, 0, 2)
+assert scan.kind == "finished" and not scan.complete
+```
+
+`finished` describes grid processing, not complete root discovery. See the
+[Python scan contract](../reference/NUMERICAL_API.md#python-multiple-root-scanning)
+for partial-limit results, exact contacts and separate scan/per-bracket limits.
 
 ## Input, precision and results
 

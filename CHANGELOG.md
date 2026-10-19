@@ -9,6 +9,11 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ### Numerical foundation
 
+- Add Python `find_roots` and immutable `RootScanResult` over the public C bounded
+  scanner. Share callback conversion and root serialization with single-root search;
+  retain original rational ordinates for contact proposals, partial-limit diagnostics,
+  exact-coordinate deduplication and explicit incomplete discovery. Add independent
+  precision, lifetime, domain, callback and budget tests plus an installed example.
 - Add Python `find_root` and immutable `RootResult` over the public C bisection
   kernel. Preserve exact Fraction coordinates, explicit continuity assumptions,
   diagnostic outcomes, callback exceptions and shared cooperative budgets. Add

@@ -16,7 +16,7 @@ index; dated reports preserve evidence for their recorded revisions.
 | Numerical | [Exact grids, adaptive sampling rules, phase anchors and bounded root searches](../reference/NUMERICAL_API.md), shared with graph/equation applications. |
 | Scientific | [Unit conversion](../reference/UNITS.md), a sourced catalogue and private [quantity expressions](../reference/QUANTITIES.md). |
 | Applications | SK/EN CLI/browser calculator, sessions, converter, four-function graphs and bounded numerical equation searches. |
-| Integration | Installed C/C++ packages and an experimental source-built [Python adapter](../guides/PYTHON.md), including callback-based single-root search through the C kernel. |
+| Integration | Installed C/C++ packages and an experimental source-built [Python adapter](../guides/PYTHON.md), including callback-based single/multiple-root searches through the C kernels. |
 
 The [architecture](../design/ARCHITECTURE.md) defines ownership and extension
 rules. Numeric-only use does not require an engine, application session or web

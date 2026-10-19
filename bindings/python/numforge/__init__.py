@@ -11,7 +11,7 @@ core_version = _native.core_version
 Error = _native.Error
 __all__ = ["Error", "Result", "Expression", "PolynomialRoot", "PolynomialSolution",
            "number", "evaluate", "prepare", "sqrt", "solve_quadratic", "Matrix", "LinearSolution",
-           "describe", "StatisticsSummary", "find_root", "RootResult", "core_version"]
+           "describe", "StatisticsSummary", "find_root", "RootResult", "find_roots", "RootScanResult", "core_version"]
 
 _ROUNDING = {"toward_zero": 0, "away_from_zero": 1, "floor": 2,
              "ceiling": 3, "half_up": 4, "half_even": 5}
@@ -196,6 +196,73 @@ class RootResult:
     evaluations: int
 
 
+@dataclass(frozen=True, slots=True)
+class RootScanResult:
+    """Bounded sampled roots and diagnostics; finished never proves completeness.
+
+    roots is a sorted immutable tuple of independently owned RootResult values.
+    Explicit root/evaluation limits return partial lists; fatal errors return none.
+    """
+    kind: str
+    roots: tuple[RootResult, ...]
+    evaluations: int
+    iterations: int
+    scanned_segments: int
+    domain_gaps: int
+    rejected_brackets: int
+    candidate_samples: int
+    candidate_roots: int
+    candidate_gaps: int
+
+    @property
+    def complete(self):
+        return False
+
+    @property
+    def count(self):
+        return len(self.roots)
+
+
+def _root_integer(name, value, minimum, maximum):
+    if type(value) is not int:
+        raise TypeError(f"{name} must be an integer")
+    if not minimum <= value <= maximum:
+        raise ValueError(f"{name} must be between {minimum} and {maximum}")
+
+
+def _root_arguments(function, lower, upper, *, continuous=False, decimal_places=34,
+              x_tolerance="1E-12", residual_tolerance="1E-12", max_iterations=96,
+              max_evaluations=192, time_limit_ms=5000,
+              allocation_bytes=64 * 1024 * 1024, single_allocation=512 * 1024):
+    """Shared conversion and callback bridge; no Python search or root discovery."""
+    if not callable(function):
+        raise TypeError("function must be callable as function(x, decimal_places)")
+    if type(continuous) is not bool:
+        raise TypeError("continuous must be a bool")
+    for name, value, minimum, maximum in (("decimal_places", decimal_places, 1, 10000),
+            ("max_iterations", max_iterations, 1, _native.MAX_ALLOCATION),
+            ("max_evaluations", max_evaluations, 4, _native.MAX_ALLOCATION)):
+        _root_integer(name, value, minimum, maximum)
+    if type(residual_tolerance) is not int and not isinstance(residual_tolerance, (str, Decimal)):
+        raise TypeError("residual_tolerance must be a finite decimal literal, Decimal or int")
+    options = _options(time_limit_ms=time_limit_ms, allocation_bytes=allocation_bytes,
+                       single_allocation=single_allocation)
+    values = tuple(number(value) for value in (lower, upper, x_tolerance))
+
+    def sample(pair, places):
+        value = function(_fraction(pair), places)
+        return None if value is None else number(value)._handle
+
+    return (sample, tuple(value._handle for value in values), str(residual_tolerance),
+            (decimal_places, max_iterations, max_evaluations, continuous), options)
+
+
+def _root_result(data):
+    return RootResult(data["kind"], _fraction(data["x"]), _fraction(data["lower"]),
+                      _fraction(data["upper"]), None if data["residual"] is None else Decimal(data["residual"]),
+                      data["exact_zero"], data["iterations"], data["evaluations"])
+
+
 def find_root(function, lower, upper, *, continuous=False, decimal_places=34,
               x_tolerance="1E-12", residual_tolerance="1E-12", max_iterations=96,
               max_evaluations=192, time_limit_ms=5000,
@@ -214,32 +281,41 @@ def find_root(function, lower, upper, *, continuous=False, decimal_places=34,
     Native work shares one cooperative budget; Python work is not preempted or
     counted as C allocation. No session, expression parser or Python root algorithm.
     """
-    if not callable(function):
-        raise TypeError("function must be callable as function(x, decimal_places)")
-    if type(continuous) is not bool:
-        raise TypeError("continuous must be a bool")
-    for name, value, minimum, maximum in (("decimal_places", decimal_places, 1, 10000),
-            ("max_iterations", max_iterations, 1, _native.MAX_ALLOCATION),
-            ("max_evaluations", max_evaluations, 4, _native.MAX_ALLOCATION)):
-        if type(value) is not int:
-            raise TypeError(f"{name} must be an integer")
-        if not minimum <= value <= maximum:
-            raise ValueError(f"{name} must be between {minimum} and {maximum}")
-    if type(residual_tolerance) is not int and not isinstance(residual_tolerance, (str, Decimal)):
-        raise TypeError("residual_tolerance must be a finite decimal literal, Decimal or int")
-    options = _options(time_limit_ms=time_limit_ms, allocation_bytes=allocation_bytes,
-                       single_allocation=single_allocation)
-    values = tuple(number(value) for value in (lower, upper, x_tolerance))
+    return _root_result(_native.find_root(*_root_arguments(function, lower, upper,
+        continuous=continuous, decimal_places=decimal_places, x_tolerance=x_tolerance,
+        residual_tolerance=residual_tolerance, max_iterations=max_iterations,
+        max_evaluations=max_evaluations, time_limit_ms=time_limit_ms,
+        allocation_bytes=allocation_bytes, single_allocation=single_allocation)))
 
-    def sample(pair, places):
-        value = function(_fraction(pair), places)
-        return None if value is None else number(value)._handle
 
-    data = _native.find_root(sample, tuple(value._handle for value in values), str(residual_tolerance),
-                            (decimal_places, max_iterations, max_evaluations, continuous), options)
-    return RootResult(data["kind"], _fraction(data["x"]), _fraction(data["lower"]),
-                      _fraction(data["upper"]), None if data["residual"] is None else Decimal(data["residual"]),
-                      data["exact_zero"], data["iterations"], data["evaluations"])
+def find_roots(function, lower, upper, *, continuous=False, decimal_places=34,
+               x_tolerance="1E-12", residual_tolerance="1E-12", max_iterations=96,
+               max_root_evaluations=192, segments=128, max_roots=32, max_evaluations=4096,
+               time_limit_ms=5000, allocation_bytes=64 * 1024 * 1024, single_allocation=512 * 1024):
+    """Scan an exact rational grid using the public C multiple-root kernel.
+
+    Callback, precision, continuity, exceptions and budgets follow find_root().
+    max_root_evaluations limits one bracket; max_evaluations limits the whole scan.
+    Results are sorted, with exact-coordinate deduplication, not tolerance merging.
+    kind='finished' means the grid was processed, never that all roots were found.
+    Root/evaluation limits return partial diagnostic results; fatal errors do not.
+    Exact callback ordinates also supply advisory C quadratic contact proposals.
+    Unseen tangencies, domain gaps and several roots inside a cell may be missed.
+    """
+    for name, value, maximum in (("segments", segments, _native.MAX_ALLOCATION-1),
+            ("max_roots", max_roots, _native.MAX_ALLOCATION),
+            ("max_evaluations", max_evaluations, _native.MAX_ALLOCATION)):
+        _root_integer(name, value, 1, maximum)
+    _root_integer("max_root_evaluations", max_root_evaluations, 4, _native.MAX_ALLOCATION)
+    args = list(_root_arguments(function, lower, upper, continuous=continuous,
+        decimal_places=decimal_places, x_tolerance=x_tolerance, residual_tolerance=residual_tolerance,
+        max_iterations=max_iterations, max_evaluations=max_root_evaluations,
+        time_limit_ms=time_limit_ms, allocation_bytes=allocation_bytes, single_allocation=single_allocation))
+    args[3] += (segments, max_roots, max_evaluations)
+    data = _native.find_roots(*args)
+    return RootScanResult(data["kind"], tuple(_root_result(root) for root in data["roots"]),
+        data["evaluations"], data["iterations"], data["scanned_segments"], data["domain_gaps"],
+        data["rejected_brackets"], data["candidate_samples"], data["candidate_roots"], data["candidate_gaps"])
 
 
 @dataclass(frozen=True, slots=True)
