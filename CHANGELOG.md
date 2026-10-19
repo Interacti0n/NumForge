@@ -9,6 +9,13 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ### Exact Linear Algebra foundation
 
+- Extend shared elimination to rectangular rank and complete single-RHS general
+  solves. Report unique, infinite or inconsistent outcomes, ascending pivot/free
+  columns, canonical particular solutions and nullspace bases, including the
+  kernel for inconsistent systems. Preserve square multi-RHS solve semantics.
+- Add C/Python ownership and failure regressions, independent minor/augmented-rank
+  references, installed examples/consumers and rank/general-solve benchmarks.
+
 - Add public `matrix.h` in the numeric target: immutable dense rational matrices,
   exact multiplication, determinants and unique square-system solving with
   multiple right-hand sides. No expression parser or application dependency.
@@ -18,7 +25,7 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
   output, `@`, determinant and solve; retain structured resource diagnostics.
 - Add independent Fraction references, 1000-digit cancellation and allocation/
   deadline failures, installed C/C++ consumers, SDK examples and a checked
-  Release benchmark. Rank/nullspaces and approximate/complex matrix domains
+  Release benchmark. Approximate/complex matrix domains
   remain outside this initial slice.
 
 ### Python adapter
@@ -30,7 +37,7 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
   limits, and retain native ownership through Python capsules without duplicating
   numerical algorithms. Reject implicit binary float inputs.
 - Build a platform wheel from a self-contained source archive and verify isolated
-  installation with 29 adapter tests and a standalone example. Add optional
+  installation with 36 adapter tests and a standalone example. Add optional
   CPython CI coverage; Python remains disabled in ordinary C builds. No package
   publication, new REST endpoint or parallel native execution is included.
 

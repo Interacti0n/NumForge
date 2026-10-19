@@ -37,7 +37,7 @@ flowchart TD
 | Core / Arithmetic | Numeric representations, elementary arithmetic and conversions | Public BigInt, BigDecimal, BigRational and complex APIs |
 | Number Theory | Primality, factors, congruences and modular arithmetic | Selected public BigInt operations; broaden with individual contracts |
 | Algebra | Polynomials, algebraic equations and exact root representations | Public exact linear/quadratic coefficient solver in the numeric target; application parsing/preview adapters remain private |
-| Linear Algebra | Vectors, matrices, decompositions and linear systems | Public immutable dense rational matrices, exact products/determinants and unique square solves; approximate/complex domains and broader decompositions remain future |
+| Linear Algebra | Vectors, matrices, decompositions and linear systems | Public immutable dense rational matrices, products/determinants, rank and complete rectangular single-RHS families; approximate/complex domains and broader decompositions remain future |
 | Calculus / Analysis | Mathematical concepts and user-facing organization | Symbolic and numerical algorithms have separate owners below |
 | Numerical | Root finding, interpolation, quadrature, ODEs and optimization | Private bounded root solving; expose convergence/coverage diagnostics explicitly |
 | Statistics | Datasets, aggregates, distributions, regression and tests | Public scalar aggregates/statistics; dataset API remains future work |
@@ -106,6 +106,8 @@ require implementing every future language binding in the same change.
    parallel/free-threaded execution remain separate work.
 5. **New mathematics:** the first [exact matrix slice](../reference/MATRIX_API.md)
    is implemented in the numeric target and Python, with no parser dependency.
+   [Rectangular system analysis](../reference/LINEAR_SYSTEM_API.md) now adds exact
+   rank, inconsistency and canonical particular/nullspace representations.
    Extend individual use cases deliberately; dataset statistics, approximate
    matrix semantics and public numerical methods remain next candidates. Make
    dependencies optional when this has a real benefit.

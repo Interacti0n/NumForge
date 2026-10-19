@@ -10,6 +10,7 @@
 #define RESULT_CAPSULE "numforge.Result.v1"
 #define EXPRESSION_CAPSULE "numforge.Expression.v1"
 #define MATRIX_CAPSULE "numforge.Matrix.v1"
+#define LINEAR_CAPSULE "numforge.LinearSolution.v1"
 
 typedef struct ModuleState { PyObject *error; } ModuleState;
 typedef struct Policy {
@@ -380,6 +381,57 @@ static PyObject *matrix_wrap(NumForgeMatrix *matrix)
     if (capsule == NULL) numforge_matrix_destroy(matrix);
     return capsule;
 }
+static void linear_destroy(PyObject *capsule)
+{
+    NumForgeLinearSolution *solution = PyCapsule_GetPointer(capsule, LINEAR_CAPSULE);
+    if (solution != NULL) numforge_linear_solution_destroy(solution); else PyErr_Clear();
+}
+static void borrowed_matrix_destroy(PyObject *capsule)
+{
+    /* The analysis owns this immutable matrix; retain it until the last view. */
+    PyObject *owner = PyCapsule_GetContext(capsule);
+    Py_XDECREF(owner);
+}
+static PyObject *matrix_view(const NumForgeMatrix *matrix, PyObject *owner)
+{
+    if (matrix == NULL) return Py_NewRef(Py_None);
+    PyObject *view = PyCapsule_New((void *)matrix, MATRIX_CAPSULE, borrowed_matrix_destroy);
+    if (view == NULL) return NULL;
+    if (PyCapsule_SetContext(view, owner) < 0) { Py_DECREF(view); return NULL; }
+    Py_INCREF(owner); return view;
+}
+static PyObject *linear_wrap(NumForgeLinearSolution *solution)
+{
+    PyObject *owner = PyCapsule_New(solution, LINEAR_CAPSULE, linear_destroy);
+    if (owner == NULL) { numforge_linear_solution_destroy(solution); return NULL; }
+    size_t rank = numforge_linear_solution_rank(solution), nullity = numforge_linear_solution_nullity(solution);
+    PyObject *output = PyDict_New(), *pivots = PyTuple_New((Py_ssize_t)rank), *free_columns = PyTuple_New((Py_ssize_t)nullity);
+    if (!output || !pivots || !free_columns) goto failed;
+    for (size_t i = 0; i < rank; ++i) {
+        PyObject *column = PyLong_FromSize_t(numforge_linear_solution_pivot_column(solution, i));
+        if (column == NULL) goto failed;
+        PyTuple_SET_ITEM(pivots, (Py_ssize_t)i, column);
+    }
+    for (size_t i = 0; i < nullity; ++i) {
+        PyObject *column = PyLong_FromSize_t(numforge_linear_solution_free_column(solution, i));
+        if (column == NULL) goto failed;
+        PyTuple_SET_ITEM(free_columns, (Py_ssize_t)i, column);
+    }
+    const char *kind = numforge_linear_solution_kind(solution) == NUMFORGE_LINEAR_NONE ? "none" :
+        numforge_linear_solution_kind(solution) == NUMFORGE_LINEAR_UNIQUE ? "unique" : "infinite";
+    if (!dictionary_put(output, "kind", PyUnicode_FromString(kind)) ||
+        !dictionary_put(output, "rank", PyLong_FromSize_t(rank)) ||
+        !dictionary_put(output, "nullity", PyLong_FromSize_t(nullity)) ||
+        !dictionary_put(output, "particular", matrix_view(numforge_linear_solution_particular(solution), owner)) ||
+        !dictionary_put(output, "nullspace", matrix_view(numforge_linear_solution_nullspace(solution), owner)) ||
+        PyDict_SetItemString(output, "pivot_columns", pivots) < 0 ||
+        PyDict_SetItemString(output, "free_columns", free_columns) < 0) goto failed;
+    goto done;
+failed:
+    Py_CLEAR(output);
+done:
+    Py_XDECREF(pivots); Py_XDECREF(free_columns); Py_DECREF(owner); return output;
+}
 static PyObject *matrix_error(PyObject *module, NumForgeMatrixStatus status)
 {
     NumForgeStatus budget = budget_status(NUMFORGE_OK);
@@ -452,10 +504,11 @@ static PyObject *native_matrix_operation(PyObject *module, PyObject *args)
     if (a == NULL) return NULL;
     bool multiply = strcmp(operation, "multiply") == 0, solve = strcmp(operation, "solve") == 0;
     bool determinant = strcmp(operation, "determinant") == 0, rows = strcmp(operation, "rows") == 0;
-    if (!multiply && !solve && !determinant && !rows) {
+    bool rank = strcmp(operation, "rank") == 0, general = strcmp(operation, "solve_general") == 0;
+    if (!multiply && !solve && !determinant && !rows && !rank && !general) {
         PyErr_SetString(PyExc_ValueError, "unknown matrix operation"); return NULL;
     }
-    if (multiply || solve) {
+    if (multiply || solve || general) {
         b = PyCapsule_GetPointer(other, MATRIX_CAPSULE); if (b == NULL) return NULL;
     }
     Policy policy;
@@ -466,6 +519,14 @@ static PyObject *native_matrix_operation(PyObject *module, PyObject *args)
     if (multiply || solve) {
         status = multiply ? numforge_matrix_multiply(&matrix, a, b) : numforge_matrix_solve(&matrix, a, b);
         if (status == NUMFORGE_MATRIX_OK) { output = matrix_wrap(matrix); matrix = NULL; }
+    } else if (rank) {
+        size_t coefficient_rank = 0;
+        status = numforge_matrix_rank(&coefficient_rank, a);
+        if (status == NUMFORGE_MATRIX_OK) output = PyLong_FromSize_t(coefficient_rank);
+    } else if (general) {
+        NumForgeLinearSolution *solution = NULL;
+        status = numforge_matrix_solve_general(&solution, a, b);
+        if (status == NUMFORGE_MATRIX_OK) output = linear_wrap(solution);
     } else if (determinant) {
         value = bigrational_create();
         status = value ? numforge_matrix_determinant(value, a) : NUMFORGE_MATRIX_OUT_OF_MEMORY;

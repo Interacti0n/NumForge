@@ -615,7 +615,7 @@ if(BUILD_TESTING)
     numforge_enable_diagnostics(engine_tests)
     add_test(NAME engine_tests COMMAND engine_tests)
 
-    foreach(suite engine_parameters polynomial matrix)
+    foreach(suite engine_parameters polynomial matrix linear_system)
         add_executable(${suite}_tests tests/test_${suite}.c)
         target_include_directories(${suite}_tests PRIVATE ${PROJECT_SOURCE_DIR}/src/internal)
         target_compile_definitions(${suite}_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
@@ -625,6 +625,7 @@ if(BUILD_TESTING)
     target_link_libraries(engine_parameters_tests PRIVATE numforge_engine unity)
     target_link_libraries(polynomial_tests PRIVATE numforge unity)
     target_link_libraries(matrix_tests PRIVATE numforge unity)
+    target_link_libraries(linear_system_tests PRIVATE numforge unity)
 
     target_link_libraries(bigint_tests
         PRIVATE

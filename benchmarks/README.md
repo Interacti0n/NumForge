@@ -10,6 +10,8 @@ See the [initial solver baseline](../docs/benchmarks/PLATFORM_SOLVER_2026_10_19.
 The opt-in `matrix_benchmark` measures dense exact rational products, determinants
 and solves with closed-form references and allocation counters; see the
 [matrix baseline](../docs/benchmarks/MATRIX_2026_10_19.md).
+Its [general-system extension](../docs/benchmarks/MATRIX_SYSTEMS_2026_10_19.md)
+also measures exact rectangular rank and complete solution families/inconsistency.
 The [11 October optimization report](../docs/benchmarks/PERFORMANCE_OPTIMIZATIONS_2026_10_11.md)
 compares direct integer conversion and combinatorial arithmetic with the audit.
 The [factor grouping report](../docs/benchmarks/FACTORIAL_GROUPING_2026_10_11.md)

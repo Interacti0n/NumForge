@@ -23,6 +23,7 @@ Start with the [API guide](API.md), or open a specific reference:
 - [Standalone engine C API](reference/ENGINE_API.md): reusable expressions, typed results and operation policy.
 - [Exact polynomial C API](reference/POLYNOMIAL_API.md): standalone coefficient solving and exact root descriptors.
 - [Exact matrix C API](reference/MATRIX_API.md): immutable rational matrices, products, determinants and square-system solves.
+- [General linear systems](reference/LINEAR_SYSTEM_API.md): rectangular rank, complete solution families and inconsistency.
 - [BigComplex](reference/BIGCOMPLEX.md): complex arithmetic, principal branches, precision and display forms.
 - [Calculator expressions](reference/CALCULATOR_EXPRESSIONS.md): syntax and calls.
 - [Local HTTP API](reference/HTTP_API.md): evaluation, sessions, revisions and errors.
@@ -60,6 +61,7 @@ records Firefox/WebKit coverage, test portability and the physical-phone checkli
 
 - [Harnesses and reference data](../benchmarks/README.md).
 - [Exact matrix baseline](benchmarks/MATRIX_2026_10_19.md): rational products/determinants/solves, exact reference checks and allocation traffic.
+- [General-system verification](benchmarks/MATRIX_SYSTEMS_2026_10_19.md): rectangular rank, complete families, inconsistency and independent minor references.
 - [Numerical equation audit, 18 October 2026](benchmarks/NUMERIC_ROOT_AUDIT_2026_10_18.md): high-precision root timings, independent checks, scaling limits and the original false-acceptance case.
 - [Numerical root domain checks](benchmarks/NUMERIC_ROOT_DOMAINS_2026_10_18.md): conservative local real domains, withheld candidates, regression checks and measured overhead.
 - [High-precision Brent experiment](benchmarks/NUMERIC_ROOT_BRENT_2026_10_18.md): paired timings, flat-root/pole regressions, higher-precision residual verification and the decision to keep production bisection.

@@ -7,6 +7,11 @@ b = numforge.Matrix([[7], [15]])
 print("Exact determinant:", a.determinant())
 print("Exact linear solution:", a.solve(b).to_rows())
 
+family = numforge.Matrix([[0, 2, 4], [0, 3, 6]]).solve_general(numforge.Matrix([[10], [15]]))
+print("General solution:", family.kind, "rank:", family.rank, "nullity:", family.nullity)
+print("Particular:", family.particular.to_rows())
+print("Nullspace columns:", family.nullspace.to_rows())
+
 root = numforge.sqrt(2, precision=1000)
 assert not root.exact
 print("sqrt(2), 1000 working digits:", root)

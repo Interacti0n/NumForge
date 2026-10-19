@@ -10,7 +10,7 @@ __version__ = "0.1.0.dev0"
 core_version = _native.core_version
 Error = _native.Error
 __all__ = ["Error", "Result", "Expression", "PolynomialRoot", "PolynomialSolution",
-           "number", "evaluate", "prepare", "sqrt", "solve_quadratic", "Matrix", "core_version"]
+           "number", "evaluate", "prepare", "sqrt", "solve_quadratic", "Matrix", "LinearSolution", "core_version"]
 
 _ROUNDING = {"toward_zero": 0, "away_from_zero": 1, "floor": 2,
              "ceiling": 3, "half_up": 4, "half_even": 5}
@@ -284,6 +284,10 @@ class Matrix:
         """Exact Fraction determinant; requires a square matrix, zero if singular."""
         return _fraction(self._operation("determinant", **limits))
 
+    def rank(self, **limits):
+        """Exact coefficient rank of a rectangular matrix, with optional C limits."""
+        return self._operation("rank", **limits)
+
     def multiply(self, other, **limits):
         """Exact matrix product; optional time_limit_ms/allocation_bytes/single_allocation."""
         if not isinstance(other, Matrix):
@@ -305,3 +309,41 @@ class Matrix:
         if not isinstance(right, Matrix):
             raise TypeError("right-hand sides must be a Matrix")
         return self._from_handle(self._operation("solve", right, **limits))
+
+    def solve_general(self, right, **limits):
+        """Complete exact rectangular solve for ONE RHS column, returning LinearSolution.
+
+        kind='none' is a successful inconsistent-system result, not an exception.
+        Otherwise all solutions are particular + nullspace*t. If nullity==0,
+        nullspace is None and the particular solution is unique. Native matrices
+        retain shared ownership of the analysis and outlive inputs/the wrapper.
+        """
+        if not isinstance(right, Matrix):
+            raise TypeError("right-hand side must be a Matrix with one column")
+        data = self._operation("solve_general", right, **limits)
+        return LinearSolution(data["kind"], data["rank"], data["nullity"], data["pivot_columns"], data["free_columns"],
+            None if data["particular"] is None else self._from_handle(data["particular"]),
+            None if data["nullspace"] is None else self._from_handle(data["nullspace"]))
+
+
+@dataclass(frozen=True, slots=True)
+class LinearSolution:
+    """Complete exact a*x=b analysis. kind is 'none', 'unique' or 'infinite'.
+
+    particular has zero free coordinates, or is None for inconsistent systems.
+    nullspace columns form ker(a), including inconsistent systems; None if nullity
+    is zero. Pivot/free coefficient columns are zero-based ascending tuples.
+    For a consistent system nullspace's free rows form an identity matrix, so its
+    columns parameterize all solutions without redundancy. No least-squares result.
+    """
+    kind: str
+    rank: int
+    nullity: int
+    pivot_columns: tuple[int, ...]
+    free_columns: tuple[int, ...]
+    particular: Matrix | None
+    nullspace: Matrix | None
+
+    @property
+    def exact(self):
+        return True

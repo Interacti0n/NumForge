@@ -53,7 +53,7 @@ and C++ package consumers compile and call the public rational API.
 ## Choose a focused check
 
 The optional [Python adapter](guides/PYTHON.md) has its own reproducible source-archive,
-wheel, isolated installation, 29-test and standalone-example check:
+wheel, isolated installation, 36-test and standalone-example check:
 `python scripts/check_python_package.py --output build/python-package-check`.
 It uses installed build tools with network lookup disabled and never installs
 globally. The separate Python workflow covers Linux 3.10/3.12, Windows 3.12 and
@@ -80,6 +80,14 @@ Fraction permutation-determinant/product/known-solution references. Installed
 C/C++ consumers and SDK examples verify numeric-only use. The opt-in
 `matrix_benchmark` checks closed-form exact references outside timing;
 see [the baseline](benchmarks/MATRIX_2026_10_19.md).
+
+`linear_system_tests` verifies exact rectangular rank, skipped pivots, unique/
+infinite/inconsistent outcomes, canonical particular/nullspace matrices, 1000-digit
+inputs, queries/lifetime and atomic allocation/deadline failure. Python checks
+minor-based ranks, augmented-matrix consistency and kernel/particular identities
+independently with Fraction; installed C/C++ and SDK examples cover the new API.
+The [follow-up benchmark](benchmarks/MATRIX_SYSTEMS_2026_10_19.md) extends the
+existing matrix harness with rank and general solves, including rank deficiency.
 
 `application_expression_tests` covers the
 [parametric C application foundation](design/PARAMETRIC_EXPRESSIONS.md), including

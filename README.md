@@ -12,6 +12,8 @@ An experimental [Python adapter](docs/guides/PYTHON.md) can now be built from so
 and installed independently of the web application; it has not been published to PyPI.
 The first [Linear Algebra module](docs/reference/MATRIX_API.md) now provides exact
 rational matrix products, determinants and square-system solves in C and Python.
+[General linear systems](docs/reference/LINEAR_SYSTEM_API.md) also provide exact
+rectangular rank, inconsistency and complete particular/nullspace solution families.
 
 [![CI](https://github.com/Interacti0n/NumForge/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Interacti0n/NumForge/actions/workflows/ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/Interacti0n/NumForge)](https://github.com/Interacti0n/NumForge/releases/latest)

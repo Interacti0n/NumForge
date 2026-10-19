@@ -24,6 +24,11 @@ a = numforge.Matrix([[0, 2], [3, 4]])
 b = numforge.Matrix([[7], [15]])
 print(a.determinant())       # Fraction(-6)
 print(a.solve(b).to_rows())  # ((Fraction(1, 3),), (Fraction(7, 2),))
+
+family = numforge.Matrix([[0, 2, 4], [0, 3, 6]]).solve_general(numforge.Matrix([[10], [15]]))
+print(family.kind, family.rank, family.nullity)  # infinite 1 2
+print(family.particular.to_rows())              # ((0,), (5,), (0,)), as Fraction
+print(family.nullspace.to_rows())               # ((1, 0), (0, -2), (0, 1)), as Fraction
 ```
 
 The source build needs CPython 3.10+ with development headers, CMake 3.20+,
@@ -43,6 +48,9 @@ roots. Arithmetic, evaluation and solving are implemented in C.
 Dense Matrix values contain exact real rationals, with `@`/multiply, determinant
 and unique square-system solve performed by the public C matrix module. Singular
 solves raise Error(status="singular"); shape failures use "dimension_mismatch".
+`rank()` and `solve_general(right)` cover rectangular systems with one RHS column.
+General solves return complete `none`/`unique`/`infinite` analyses with canonical
+particular solutions and kernel bases. Inconsistency is a successful `none` result.
 
 All six C rounding modes are supported by name: `toward_zero`, `away_from_zero`,
 `floor`, `ceiling`, `half_up`, `half_even`. C failures raise `numforge.Error` with

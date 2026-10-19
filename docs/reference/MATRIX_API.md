@@ -15,6 +15,8 @@ archives predate this API. The public header's Doxygen comments are authoritativ
 | `numforge_matrix_multiply(&product, a, b)` | Exact product, a.columns must equal b.rows |
 | `numforge_matrix_determinant(value, a)` | Exact determinant into an initialized BigRational, square a |
 | `numforge_matrix_solve(&x, a, b)` | Unique exact solution of a*x=b; square invertible a, matching rows, one or more RHS columns |
+| `numforge_matrix_rank(&rank, a)` | Exact coefficient rank of a rectangular matrix |
+| `numforge_matrix_solve_general(&solution, a, b)` | [Complete rectangular single-RHS solve](LINEAR_SYSTEM_API.md), including inconsistency and a nullspace basis |
 | `numforge_matrix_destroy(m)` | Release all entries and storage; NULL accepted |
 
 All arithmetic is exact over the rationals. Reduced entries have positive
@@ -58,7 +60,8 @@ failure. Shared handles require external synchronization.
 
 Status names have the `NUMFORGE_MATRIX_` prefix. Singular means no **unique**
 solution; it deliberately does not distinguish inconsistency from infinitely many
-solutions. The initial API does not return rank, nullspaces or partial solutions.
+solutions. Use [solve_general](LINEAR_SYSTEM_API.md) for classification,
+coefficient rank and a complete particular-plus-nullspace representation.
 
 No implicit time/allocation budget is started. Library callers can use
 `numforge_budget_begin` from `runtime.h`, query `numforge_budget_failure` to
@@ -108,7 +111,7 @@ assert (a @ x).to_rows() == b.to_rows()
 ```
 
 Matrix expression syntax, CLI/web controls, REST endpoints and WASM bindings are
-not part of this initial module. Approximate/complex matrix domains, rank,
+not part of this initial module. Approximate/complex matrix domains,
 eigenvalues, decompositions and symbolic elements remain future work.
 
 ## Verification
@@ -125,3 +128,5 @@ installed adapter and example.
 The opt-in [benchmark](../benchmarks/MATRIX_2026_10_19.md) records an initial
 Release baseline, validates exact closed-form results outside timing and reports
 allocation counts/volume. No speedup relative to another library is claimed.
+The [general-system follow-up](../benchmarks/MATRIX_SYSTEMS_2026_10_19.md) adds
+rank and complete-family measurements under the same exact arithmetic contracts.

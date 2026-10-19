@@ -49,6 +49,8 @@ The project also builds a typed-parameter example and, when `polynomial.h` is
 present, a standalone exact polynomial example linked only to the numeric library.
 When `matrix.h` is present, `numforge_matrix_example` checks an exact determinant
 and rational linear-system solution using only the numeric target.
+`numforge_linear_system_example` demonstrates exact rank, free coordinates and a
+complete rectangular solution family from the same public matrix header.
 
 ## Use in your project
 

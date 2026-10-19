@@ -10,7 +10,8 @@ the public headers: `include/numforge/bigint.h`,
 
 ## Public C API scope
 
-The public numeric API includes [exact matrices](MATRIX_API.md) and the [exact polynomial solver](POLYNOMIAL_API.md)
+The public numeric API includes [exact matrices](MATRIX_API.md),
+[general linear systems](LINEAR_SYSTEM_API.md) and the [exact polynomial solver](POLYNOMIAL_API.md)
 alongside numeric types, units and runtime support. The optional
 [expression engine](ENGINE_API.md) adds `engine.h` and the `NumForge::engine`
 target independently of numeric-only use. Existing 1.x numeric signatures
