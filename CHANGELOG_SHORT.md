@@ -5,6 +5,8 @@ details and the [2.4.0 release record](docs/project/RELEASE_2_4.md) for validati
 
 ## Unreleased
 
+- Add exact rational dataset summaries with mean and population/sample variance in C and Python.
+
 - Add exact rank and complete rectangular linear-system families, including inconsistent and nonunique cases, in C/Python.
 
 - Add exact rational matrices, products, determinants and square-system solves in C and Python.

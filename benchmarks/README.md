@@ -3,6 +3,9 @@
 These opt-in tools measure the production library and calculator. Build with
 `NUMFORGE_BUILD_BENCHMARKS=ON`; ordinary builds omit the private instrumentation.
 See [the benchmark guide](../docs/benchmarks/BENCHMARKS.md) for setup and recording commands.
+The opt-in `statistics_benchmark` measures exact rational dataset summaries,
+including 1024-sample and 1000-digit offset/spread cases, with closed-form checks
+and allocation counters; see [the baseline](../docs/benchmarks/STATISTICS_2026_10_19.md).
 The opt-in `polynomial_benchmark` measures the [standalone exact solver](../docs/reference/POLYNOMIAL_API.md)
 on rational, irrational, complex and 1000-digit-coefficient cases, checking exact
 root-sum/product invariants outside timing and claiming no algorithmic speedup.

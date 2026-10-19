@@ -12,6 +12,11 @@ root = numforge.sqrt(2, precision=1000)
 print(root, root.exact)  # approximate stored C value, False
 print(numforge.evaluate("0.1+0.2").as_fraction())  # Fraction(3, 10), exact
 
+statistics = numforge.describe([0, 0, 1])
+print(statistics.mean)                 # 1/3
+print(statistics.variance_population)  # 2/9
+print(statistics.variance_sample)      # 1/3; None for a singleton
+
 expression = numforge.prepare("x*x+y", parameters=("x", "y"))
 value = expression.evaluate({"x": Fraction(1, 3), "y": Fraction(1, 9)})
 print(value.as_fraction())  # Fraction(2, 9)
@@ -51,6 +56,11 @@ solves raise Error(status="singular"); shape failures use "dimension_mismatch".
 `rank()` and `solve_general(right)` cover rectangular systems with one RHS column.
 General solves return complete `none`/`unique`/`infinite` analyses with canonical
 particular solutions and kernel bases. Inconsistency is a successful `none` result.
+`describe(values)` computes an exact rational batch summary in C and returns a
+frozen StatisticsSummary with count, sum, minimum, maximum, mean and both variances.
+Population variance divides by n; sample variance divides by n-1 and is None for
+a singleton. Inputs must be nonempty and exact real values. There is no precision
+option; no dataset is retained by the copied Fraction result fields.
 
 All six C rounding modes are supported by name: `toward_zero`, `away_from_zero`,
 `floor`, `ceiling`, `half_up`, `half_even`. C failures raise `numforge.Error` with

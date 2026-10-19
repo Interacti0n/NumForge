@@ -5,13 +5,15 @@ all edge-case constraints remain in
 the public headers: `include/numforge/bigint.h`,
 `include/numforge/bigdecimal.h`, `include/numforge/bigrational.h`,
 `include/numforge/bigcomplex.h`, `include/numforge/bigrationalcomplex.h`,
-`include/numforge/units.h`, `include/numforge/polynomial.h`, `include/numforge/matrix.h` and optional
+`include/numforge/units.h`, `include/numforge/polynomial.h`, `include/numforge/matrix.h`,
+`include/numforge/statistics.h` and optional
 `include/numforge/runtime.h`.
 
 ## Public C API scope
 
 The public numeric API includes [exact matrices](MATRIX_API.md),
-[general linear systems](LINEAR_SYSTEM_API.md) and the [exact polynomial solver](POLYNOMIAL_API.md)
+[general linear systems](LINEAR_SYSTEM_API.md), [exact dataset statistics](STATISTICS_API.md)
+and the [exact polynomial solver](POLYNOMIAL_API.md)
 alongside numeric types, units and runtime support. The optional
 [expression engine](ENGINE_API.md) adds `engine.h` and the `NumForge::engine`
 target independently of numeric-only use. Existing 1.x numeric signatures

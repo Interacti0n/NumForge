@@ -51,6 +51,8 @@ When `matrix.h` is present, `numforge_matrix_example` checks an exact determinan
 and rational linear-system solution using only the numeric target.
 `numforge_linear_system_example` demonstrates exact rank, free coordinates and a
 complete rectangular solution family from the same public matrix header.
+When `statistics.h` is present, `numforge_statistics_example` checks an exact
+recurring mean and population/sample variances from the numeric library.
 
 ## Use in your project
 

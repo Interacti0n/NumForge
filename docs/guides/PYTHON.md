@@ -48,6 +48,7 @@ configured CI coverage is not a claim that those remote jobs have already run.
 | `sqrt(value, *, precision=34, ...)` | Principal root through the C typed evaluator, including exact rational roots and supported complex promotion |
 | `solve_quadratic(a, b, c, *, ...)` | Exact real coefficients; linear/constant reduction, irrational/complex descriptors and multiplicities |
 | `Matrix(rows, *, ...)` | Owned immutable dense rational matrix; exact C product, determinant and unique square-system solve |
+| `describe(values, *, ...)` | Exact rational batch count/sum/extrema/mean and population/sample variance, copied into StatisticsSummary |
 
 ```python
 from decimal import Decimal
@@ -66,6 +67,32 @@ assert value.exact and value.as_fraction() == Fraction(2, 9)
 
 These are actual source-built Python APIs. The standalone example in
 `examples/python/standalone.py` is tested after installing the wheel.
+
+## Exact descriptive statistics
+
+```python
+s = numforge.describe([0, 0, 1])
+assert s.count == 3 and s.exact
+assert s.mean == Fraction(1, 3)
+assert s.variance_population == Fraction(2, 9)
+assert s.variance_sample == Fraction(1, 3)
+assert numforge.describe([5]).variance_sample is None
+```
+
+The frozen `StatisticsSummary` also contains sum, minimum and maximum. Numeric
+fields are copied Fraction values; a singleton's sample variance is None because
+division by n-1 is undefined. Population variance divides by n. Repeated values
+count separately, including repeated Result handles. Empty input raises ValueError.
+Inputs accept the same lossless types as number() and must be exact real values;
+missing values, binary floats, booleans and approximate/complex Results are rejected.
+No input/native state is retained by the report.
+
+`describe` accepts time_limit_ms, allocation_bytes and single_allocation with the
+standard defaults. It has no precision parameter: mean and variances remain exact
+even when recurring. Input conversion precedes the C summary scope; native copies,
+computation and field serialization share it. Python object/Fraction conversion
+is outside C accounting and retains interpreter integer-string limits. Native
+calls retain the GIL. See the [complete C/Python contract](../reference/STATISTICS_API.md).
 
 ## Exact matrices
 
@@ -206,12 +233,14 @@ from a separate consumer folder. It asserts both Python and native module import
 come from the installed directory. The copied tests and standalone example have
 no runtime access to the source package. Nothing is uploaded or globally installed.
 
-The 36 adapter tests include an independent 1000-digit Decimal root reference,
+The 43 adapter tests include an independent 1000-digit Decimal root reference,
 six rounding modes, lossless inputs, parameter binding, aliases/lifetime,
 exact/approximate provenance, diagnostics, budget recovery and solver degeneracies.
 Matrix checks add independent Fraction determinant/product/known-solution oracles,
 exact 1000-digit cancellation, ownership, shape/singularity and limit recovery.
 General-system tests add independent minor/augmented-rank references, canonical
 particular/kernel identities, rectangular classification and shared native lifetime.
+Statistics adds independent pairwise Fraction variance, shift/scale/permutation
+identities, singleton semantics, 1000-digit cases and serialization budget recovery.
 Existing C tests remain the algorithm-level correctness evidence; this adapter
 does not introduce another mathematical implementation or claim a speedup.

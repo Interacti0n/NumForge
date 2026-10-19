@@ -7,6 +7,17 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+### Exact Statistics foundation
+
+- Add public `statistics.h`: exact rational batch count, sum, minimum, maximum,
+  arithmetic mean and population/sample variance with owned immutable summaries.
+- Accumulate centered rational moments without rounding the mean. Define singleton
+  population variance as zero and sample variance as unavailable (NULL/None).
+- Add Python `describe`/`StatisticsSummary` over the same C implementation,
+  independent pairwise/transform references, 1000-digit cases, atomic resource
+  failure checks, installed C/C++ consumers, SDK examples and a checked benchmark.
+  Existing decimal statistics and calculator semantics remain compatible.
+
 ### Exact Linear Algebra foundation
 
 - Extend shared elimination to rectangular rank and complete single-RHS general
@@ -37,7 +48,7 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
   limits, and retain native ownership through Python capsules without duplicating
   numerical algorithms. Reject implicit binary float inputs.
 - Build a platform wheel from a self-contained source archive and verify isolated
-  installation with 36 adapter tests and a standalone example. Add optional
+  installation with 43 adapter tests and a standalone example. Add optional
   CPython CI coverage; Python remains disabled in ordinary C builds. No package
   publication, new REST endpoint or parallel native execution is included.
 

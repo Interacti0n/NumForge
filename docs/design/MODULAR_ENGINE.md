@@ -40,7 +40,7 @@ flowchart TD
 | Linear Algebra | Vectors, matrices, decompositions and linear systems | Public immutable dense rational matrices, products/determinants, rank and complete rectangular single-RHS families; approximate/complex domains and broader decompositions remain future |
 | Calculus / Analysis | Mathematical concepts and user-facing organization | Symbolic and numerical algorithms have separate owners below |
 | Numerical | Root finding, interpolation, quadrature, ODEs and optimization | Private bounded root solving; expose convergence/coverage diagnostics explicitly |
-| Statistics | Datasets, aggregates, distributions, regression and tests | Public scalar aggregates/statistics; dataset API remains future work |
+| Statistics | Datasets, aggregates, distributions, regression and tests | Public exact rational batch summaries plus existing decimal scalar aggregates; streaming/multivariate/distribution contracts remain future |
 | Symbolic | Symbolic expression representation, assumptions and rewrites | Future; calculator AST is not automatically a public CAS representation |
 | Scientific | Units, quantities, sourced constants and domain models | Public units and private quantity expressions; broader models remain future |
 
@@ -108,7 +108,9 @@ require implementing every future language binding in the same change.
    is implemented in the numeric target and Python, with no parser dependency.
    [Rectangular system analysis](../reference/LINEAR_SYSTEM_API.md) now adds exact
    rank, inconsistency and canonical particular/nullspace representations.
-   Extend individual use cases deliberately; dataset statistics, approximate
+   [Exact dataset summaries](../reference/STATISTICS_API.md) now add descriptive
+   rational statistics in C/Python, with defined singleton sample-variance behavior.
+   Extend individual use cases deliberately; multivariate statistics, approximate
    matrix semantics and public numerical methods remain next candidates. Make
    dependencies optional when this has a real benefit.
 6. **Later:** symbolic representation/assumptions, scientific simulations, WASM

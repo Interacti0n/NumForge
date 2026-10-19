@@ -24,6 +24,7 @@ Start with the [API guide](API.md), or open a specific reference:
 - [Exact polynomial C API](reference/POLYNOMIAL_API.md): standalone coefficient solving and exact root descriptors.
 - [Exact matrix C API](reference/MATRIX_API.md): immutable rational matrices, products, determinants and square-system solves.
 - [General linear systems](reference/LINEAR_SYSTEM_API.md): rectangular rank, complete solution families and inconsistency.
+- [Exact descriptive statistics](reference/STATISTICS_API.md): rational dataset summaries, mean and population/sample variances.
 - [BigComplex](reference/BIGCOMPLEX.md): complex arithmetic, principal branches, precision and display forms.
 - [Calculator expressions](reference/CALCULATOR_EXPRESSIONS.md): syntax and calls.
 - [Local HTTP API](reference/HTTP_API.md): evaluation, sessions, revisions and errors.
@@ -60,6 +61,7 @@ records Firefox/WebKit coverage, test portability and the physical-phone checkli
 ## Investigate performance — `benchmarks/`
 
 - [Harnesses and reference data](../benchmarks/README.md).
+- [Exact statistics baseline](benchmarks/STATISTICS_2026_10_19.md): dataset summaries, independent variance checks and 1000-digit fixtures.
 - [Exact matrix baseline](benchmarks/MATRIX_2026_10_19.md): rational products/determinants/solves, exact reference checks and allocation traffic.
 - [General-system verification](benchmarks/MATRIX_SYSTEMS_2026_10_19.md): rectangular rank, complete families, inconsistency and independent minor references.
 - [Numerical equation audit, 18 October 2026](benchmarks/NUMERIC_ROOT_AUDIT_2026_10_18.md): high-precision root timings, independent checks, scaling limits and the original false-acceptance case.

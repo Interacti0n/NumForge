@@ -10,7 +10,8 @@ __version__ = "0.1.0.dev0"
 core_version = _native.core_version
 Error = _native.Error
 __all__ = ["Error", "Result", "Expression", "PolynomialRoot", "PolynomialSolution",
-           "number", "evaluate", "prepare", "sqrt", "solve_quadratic", "Matrix", "LinearSolution", "core_version"]
+           "number", "evaluate", "prepare", "sqrt", "solve_quadratic", "Matrix", "LinearSolution",
+           "describe", "StatisticsSummary", "core_version"]
 
 _ROUNDING = {"toward_zero": 0, "away_from_zero": 1, "floor": 2,
              "ceiling": 3, "half_up": 4, "half_even": 5}
@@ -230,6 +231,49 @@ def solve_quadratic(a, b, c, *, time_limit_ms=5000,
         data["multiplicities"][index], None if handle is None else Result(handle))
         for index, handle in enumerate(data["values"]))
     return PolynomialSolution(data["kind"], data["degree"], roots, _fraction(data["discriminant"]))
+
+
+@dataclass(frozen=True, slots=True)
+class StatisticsSummary:
+    """Exact descriptive statistics copied from C, with no borrowed input state.
+
+    Variance denominators are n (population) and n-1 (sample). A singleton has
+    population variance zero and sample variance None, because it is undefined.
+    All numeric fields are Fraction; no uncertainty estimate or inference is implied.
+    """
+    count: int
+    sum: Fraction
+    minimum: Fraction
+    maximum: Fraction
+    mean: Fraction
+    variance_population: Fraction
+    variance_sample: Fraction | None
+
+    @property
+    def exact(self):
+        return True
+
+
+def describe(values, *, time_limit_ms=5000,
+             allocation_bytes=64 * 1024 * 1024, single_allocation=512 * 1024):
+    """Exact summary of a nonempty iterable of real number() inputs, through C.
+
+    Accepts integers, Fraction, finite Decimal/numeric text and exact real Result.
+    Binary floats, booleans, complex/approximate values and missing values are
+    rejected. Repeated observations count separately. Inputs are converted before
+    the summary's C scope; native copies/computation/field serialization share it.
+    Python object memory and Fraction conversion are outside C accounting. No
+    precision option is needed; native calls retain the GIL.
+    """
+    options = _options(34, "half_even", time_limit_ms, allocation_bytes, single_allocation)
+    if isinstance(values, (str, bytes)):
+        raise TypeError("samples must be an iterable of numeric values")
+    samples = tuple(number(value) for value in values)
+    if not samples:
+        raise ValueError("statistics requires at least one sample")
+    data = _native.describe(tuple(value._handle for value in samples), options)
+    return StatisticsSummary(data["count"], _fraction(data["sum"]), _fraction(data["minimum"]), _fraction(data["maximum"]),
+        _fraction(data["mean"]), _fraction(data["variance_population"]), _fraction(data["variance_sample"]))
 
 
 class Matrix:

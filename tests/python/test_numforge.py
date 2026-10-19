@@ -489,5 +489,111 @@ class LinearSystemTests(unittest.TestCase):
         self.assertEqual(caught.exception.status, "singular")
 
 
+class StatisticsTests(unittest.TestCase):
+    def assert_summary(self, report, values):
+        values = tuple(map(Fraction, values))
+        count = len(values)
+        total = sum(values, Fraction(0))
+        # Independent pairwise identity, unlike the C centered-moment algorithm.
+        pairwise = sum(((values[i] - values[j])**2 for i in range(count) for j in range(i)), Fraction(0))
+        self.assertIsInstance(report, nf.StatisticsSummary)
+        self.assertTrue(report.exact)
+        self.assertEqual(report.count, count)
+        self.assertEqual((report.sum, report.minimum, report.maximum, report.mean),
+                         (total, min(values), max(values), total / count))
+        self.assertEqual(report.variance_population, pairwise / (count * count))
+        self.assertEqual(report.variance_sample, None if count == 1 else pairwise / (count * (count - 1)))
+        for field in ("sum", "minimum", "maximum", "mean", "variance_population"):
+            self.assertIsInstance(getattr(report, field), Fraction)
+
+    def test_known_population_and_sample_reference(self):
+        report = nf.describe([2, 4, 4, 4, 5, 5, 7, 9])
+        self.assertEqual((report.count, report.sum, report.minimum, report.maximum, report.mean), (8, 40, 2, 9, 5))
+        self.assertEqual((report.variance_population, report.variance_sample), (4, Fraction(32, 7)))
+        with self.assertRaises(FrozenInstanceError):
+            report.mean = Fraction(0)
+
+    def test_singleton_duplicates_and_nonterminating_moments(self):
+        single = nf.describe([Fraction(-9, 5)])
+        self.assert_summary(single, [Fraction(-9, 5)])
+        self.assertIsNone(single.variance_sample)
+        value = nf.number(Fraction(7, 11))
+        repeated = nf.describe([value, value, value])
+        self.assert_summary(repeated, [Fraction(7, 11)] * 3)
+        self.assertEqual(repeated.variance_sample, 0)
+        report = nf.describe([0, 0, 1])
+        self.assertEqual((report.mean, report.variance_population, report.variance_sample),
+                         (Fraction(1, 3), Fraction(2, 9), Fraction(1, 3)))
+
+    def test_lossless_iterable_inputs_and_independent_lifetime(self):
+        values = [2**128, Decimal("0.1"), Fraction(-7, 19), "1E-1000", nf.number(Fraction(1, 3))]
+        report = nf.describe(value for value in values)
+        values.clear()
+        gc.collect()
+        self.assert_summary(report, [2**128, Fraction(1, 10), Fraction(-7, 19), Fraction(1, 10**1000), Fraction(1, 3)])
+
+    def test_random_rational_pairwise_reference(self):
+        rng = random.Random(191023)
+        for count in (1, 2, 3, 8, 16):
+            for fixture in range(5):
+                values = [Fraction(rng.randrange(-50, 51), rng.randrange(1, 16)) for _ in range(count)]
+                with self.subTest(count=count, fixture=fixture):
+                    self.assert_summary(nf.describe(values), values)
+
+    def test_thousand_digit_offset_and_tiny_spread(self):
+        n = 10**1000
+        report = nf.describe([n, n + 1, n + 2])
+        self.assertEqual((report.sum, report.mean, report.minimum, report.maximum), (3*n+3, n+1, n, n+2))
+        self.assertEqual((report.variance_population, report.variance_sample), (Fraction(2, 3), 1))
+        tiny = nf.describe([Fraction(i, n) for i in (1, 2, 3)])
+        self.assertEqual(tiny.mean, Fraction(2, n))
+        self.assertEqual((tiny.variance_population, tiny.variance_sample), (Fraction(2, 3*n*n), Fraction(1, n*n)))
+
+    def test_translation_scaling_and_permutation_identities(self):
+        values = [Fraction(-2, 3), Fraction(1, 5), Fraction(7, 11), Fraction(2)]
+        base = nf.describe(values)
+        self.assertEqual(base, nf.describe(reversed(values)))
+        shift, scale = Fraction(123, 5), Fraction(-7, 11)
+        translated = nf.describe([value + shift for value in values])
+        self.assertEqual(translated.mean, base.mean + shift)
+        self.assertEqual((translated.variance_population, translated.variance_sample), (base.variance_population, base.variance_sample))
+        scaled = nf.describe([value * scale for value in values])
+        self.assertEqual(scaled.mean, base.mean * scale)
+        self.assertEqual((scaled.minimum, scaled.maximum), (base.maximum * scale, base.minimum * scale))
+        self.assertEqual((scaled.variance_population, scaled.variance_sample),
+                         (base.variance_population * scale**2, base.variance_sample * scale**2))
+
+    def test_validation_limits_and_failure_recovery(self):
+        with self.assertRaises(ValueError):
+            nf.describe([])
+        for values in ("123", b"123", [True], [0.1], [complex(1, 2)], [None], [nf.sqrt(2)], [nf.sqrt(-1)]):
+            with self.subTest(values=values), self.assertRaises(TypeError):
+                nf.describe(values)
+        for value in (Decimal("NaN"), Decimal("Infinity"), "NaN"):
+            with self.assertRaises(nf.Error):
+                nf.describe([value])
+        with self.assertRaises(TypeError):
+            nf.describe([1], precision=100)
+        for limits, status in (({"time_limit_ms": 0}, "time_limit"), ({"allocation_bytes": 0}, "memory_limit"),
+                               ({"single_allocation": 0}, "memory_limit")):
+            with self.assertRaises(nf.Error) as caught:
+                nf.describe([1, 2, 3], **limits)
+            self.assertEqual((caught.exception.status, caught.exception.offset), (status, 0))
+        # Exercise failures during copying, computation and field serialization.
+        complete = False
+        for allocation_bytes in range(1024, 65537, 1024):
+            try:
+                report = nf.describe([1, 2, 3], allocation_bytes=allocation_bytes)
+            except nf.Error as error:
+                self.assertEqual(error.status, "memory_limit")
+            else:
+                self.assert_summary(report, [1, 2, 3])
+                complete = True
+                break
+        self.assertTrue(complete)
+        self.assert_summary(nf.describe([Fraction(-1, 3), Fraction(1, 6), Fraction(2, 3)]),
+                            [Fraction(-1, 3), Fraction(1, 6), Fraction(2, 3)])
+
+
 if __name__ == "__main__":
     unittest.main()

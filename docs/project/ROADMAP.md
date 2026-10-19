@@ -9,6 +9,8 @@ of development, not a schedule or promise of a particular release.
   ownership, documented aliasing and strong failure guarantees.
 - [Dense rational matrices](../reference/MATRIX_API.md): exact products,
   determinants and unique square-system solves, available in C and source-built Python.
+- [Exact rational statistics](../reference/STATISTICS_API.md): batch count, sum,
+  extrema, mean and population/sample variance, available in C and source-built Python.
 - Exact integer/decimal/rational arithmetic; configurable precision/rounding for
   approximations; roots, logarithms, trigonometric/hyperbolic functions,
   constants, statistics and selected integer operations.
@@ -164,7 +166,9 @@ documented HTTP contract alongside the web implementation, using the versioned
    Dimensional equations and graph axes need explicit unit contracts first.
 
 The remaining stages are a proposed order, not implemented features or release dates.
-Matrices/vectors and dataset statistics follow once their initial scope is set.
+Exact rational matrices/general systems and batch descriptive statistics now have
+public C/Python APIs. Broader vector/decomposition, multivariate and streaming
+dataset capabilities follow individual use cases and contracts.
 Measured arithmetic optimizations can proceed independently of these tools.
 
 ## Later, according to use cases

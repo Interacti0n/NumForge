@@ -14,6 +14,8 @@ The first [Linear Algebra module](docs/reference/MATRIX_API.md) now provides exa
 rational matrix products, determinants and square-system solves in C and Python.
 [General linear systems](docs/reference/LINEAR_SYSTEM_API.md) also provide exact
 rectangular rank, inconsistency and complete particular/nullspace solution families.
+[Exact descriptive statistics](docs/reference/STATISTICS_API.md) now summarize
+rational datasets with population/sample variances in C and Python.
 
 [![CI](https://github.com/Interacti0n/NumForge/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Interacti0n/NumForge/actions/workflows/ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/Interacti0n/NumForge)](https://github.com/Interacti0n/NumForge/releases/latest)

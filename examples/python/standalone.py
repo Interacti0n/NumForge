@@ -2,6 +2,9 @@
 from fractions import Fraction
 import numforge
 
+statistics = numforge.describe([0, 0, 1])
+print("Exact statistics:", statistics.count, statistics.mean, statistics.variance_population, statistics.variance_sample)
+
 a = numforge.Matrix([[0, 2], [3, 4]])
 b = numforge.Matrix([[7], [15]])
 print("Exact determinant:", a.determinant())

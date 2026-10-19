@@ -3,6 +3,7 @@
 #include <numforge/engine.h>
 #include <numforge/polynomial.h>
 #include <numforge/matrix.h>
+#include <numforge/statistics.h>
 #include <numforge/runtime.h>
 #include <stdlib.h>
 #include <string.h>
@@ -370,6 +371,58 @@ done:
     return output;
 }
 
+static PyObject *native_describe(PyObject *module, PyObject *args)
+{
+    PyObject *items, *options;
+    if (!PyArg_ParseTuple(args, "OO:describe", &items, &options)) return NULL;
+    PyObject *values = PySequence_Fast(items, "samples must be a sequence");
+    if (values == NULL) return NULL;
+    Py_ssize_t count = PySequence_Fast_GET_SIZE(values);
+    if (count == 0) { Py_DECREF(values); return raise_status(module, NUMFORGE_INVALID_ARGUMENT, 0); }
+    Policy policy;
+    if (!policy_parse(module, options, &policy)) { Py_DECREF(values); return NULL; }
+    bool owner = numforge_budget_begin(policy.milliseconds, policy.allocation_bytes, policy.single_allocation);
+    BigRational **entries = NULL; const BigRational **borrowed = NULL;
+    NumForgeStatisticsSummary *summary = NULL; PyObject *output = NULL; NumForgeStatus status = NUMFORGE_OK;
+    if ((size_t)count > SIZE_MAX / sizeof(*entries)) { status = NUMFORGE_VALUE_TOO_LARGE; goto done; }
+    entries = numforge_calloc((size_t)count, sizeof(*entries));
+    borrowed = numforge_calloc((size_t)count, sizeof(*borrowed));
+    if (entries == NULL || borrowed == NULL) { status = NUMFORGE_OUT_OF_MEMORY; goto done; }
+    for (Py_ssize_t i = 0; i < count && status == NUMFORGE_OK; ++i) {
+        const NumForgeResult *input = PyCapsule_GetPointer(PySequence_Fast_GET_ITEM(values, i), RESULT_CAPSULE);
+        if (input == NULL) goto done;
+        if (numforge_result_integer(input) == NULL && numforge_result_rational(input) == NULL) {
+            PyErr_SetString(PyExc_TypeError, "statistics samples must be exact real values"); goto done;
+        }
+        entries[i] = bigrational_create(); borrowed[i] = entries[i];
+        if (entries[i] == NULL) status = NUMFORGE_OUT_OF_MEMORY;
+        else status = rational_status(numforge_result_integer(input) != NULL ?
+            bigrational_from_bigint(entries[i], numforge_result_integer(input)) :
+            bigrational_copy(entries[i], numforge_result_rational(input)));
+    }
+    if (status == NUMFORGE_OK) status = rational_status(numforge_statistics_describe(&summary, borrowed, (size_t)count));
+    if (status != NUMFORGE_OK) goto done;
+    output = PyDict_New();
+    if (output == NULL) goto done;
+    if (!dictionary_put(output, "count", PyLong_FromSize_t(numforge_statistics_summary_count(summary))) ||
+        !dictionary_put(output, "sum", fraction_pair(module, numforge_statistics_summary_sum(summary))) ||
+        !dictionary_put(output, "minimum", fraction_pair(module, numforge_statistics_summary_minimum(summary))) ||
+        !dictionary_put(output, "maximum", fraction_pair(module, numforge_statistics_summary_maximum(summary))) ||
+        !dictionary_put(output, "mean", fraction_pair(module, numforge_statistics_summary_mean(summary))) ||
+        !dictionary_put(output, "variance_population", fraction_pair(module, numforge_statistics_summary_variance_population(summary))) ||
+        !dictionary_put(output, "variance_sample", fraction_pair(module, numforge_statistics_summary_variance_sample(summary)))) Py_CLEAR(output);
+done:
+    status = budget_status(status);
+    if (status != NUMFORGE_OK) {
+        Py_CLEAR(output);
+        if (!PyErr_Occurred()) raise_status(module, status, 0);
+    }
+    if (entries) for (Py_ssize_t i = 0; i < count; ++i) bigrational_destroy(entries[i]);
+    free(entries); free(borrowed); numforge_statistics_summary_destroy(summary);
+    if (owner) numforge_budget_end();
+    numforge_context_destroy(policy.context); Py_DECREF(values); return output;
+}
+
 static void matrix_destroy(PyObject *capsule)
 {
     NumForgeMatrix *matrix = PyCapsule_GetPointer(capsule, MATRIX_CAPSULE);
@@ -564,6 +617,7 @@ static PyMethodDef methods[] = {
     {"text", native_text, METH_VARARGS, "Serialize a stored C result."},
     {"fraction", native_fraction, METH_VARARGS, "Copy exact rational components."},
     {"solve", native_solve, METH_VARARGS, "Solve exact polynomial coefficients in C."},
+    {"describe", native_describe, METH_VARARGS, "Compute an exact C descriptive statistics summary."},
     {"matrix_create", native_matrix_create, METH_VARARGS, "Copy exact real entries into a C matrix."},
     {"matrix_shape", native_matrix_shape, METH_VARARGS, "Read a C matrix shape."},
     {"matrix_operation", native_matrix_operation, METH_VARARGS, "Run an exact C matrix operation."},
