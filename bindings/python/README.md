@@ -8,6 +8,8 @@ It is built locally from source and has not been published to PyPI.
 from fractions import Fraction
 import numforge
 
+print(numforge.grid(0, 1, 4))  # exact Fraction coordinates: 0, 1/3, 2/3, 1
+
 root = numforge.sqrt(2, precision=1000)
 print(root, root.exact)  # approximate stored C value, False
 print(numforge.evaluate("0.1+0.2").as_fraction())  # Fraction(3, 10), exact
@@ -85,6 +87,14 @@ an immutable tuple of sampled roots plus work/domain diagnostics. `root_limit` a
 was processed. Discovery is never complete, so `complete` remains False. Exact
 coordinates are deduplicated without a tolerance merge; unseen contacts and
 several roots inside a grid cell can still be missed.
+
+`grid(lower, upper, count)` collects an immutable tuple of exact Fraction
+coordinates from the public C grid walker. `visit_grid(lower, upper, count, visit)`
+calls visit(x, index) synchronously without retaining an array in C. Both include
+the endpoints, require lower < upper and count >= 2, and accept exact real bounds.
+Visitor return values are ignored; exceptions stop traversal and earlier callback
+effects remain. The grid has no precision setting; sampled values keep their own
+accuracy policy. Collected Python objects are outside C allocation accounting.
 
 All six C rounding modes are supported by name: `toward_zero`, `away_from_zero`,
 `floor`, `ceiling`, `half_up`, `half_even`. C failures raise `numforge.Error` with

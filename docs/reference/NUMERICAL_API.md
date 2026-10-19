@@ -28,8 +28,57 @@ callbacks, which must cooperate with cancellation themselves.
 Private uniform graph sampling and the 33-point adaptive seed grid share this
 kernel. Typed expression evaluation, phase capture and
 screen projection remain private; the root scanner retains its own bounded
-candidate traversal. There is no new Python, CLI or REST grid operation.
+candidate traversal. Python uses the same walker below; no new CLI command or
+REST grid route is added.
 See the [benchmark guide](../../benchmarks/README.md#exact-grid-baseline).
+
+## Python exact grids
+
+`grid(lower, upper, count, *, time_limit_ms=5000, allocation_bytes=64*1024*1024,
+single_allocation=512*1024)` returns an immutable tuple of exact Fraction
+coordinates. `visit_grid(lower, upper, count, visit, *, same limits)` visits those
+coordinates synchronously and returns None after all visits succeed. Both call
+`numforge_grid_visit`; Python does not duplicate the spacing algorithm. See the
+[working example](../guides/PYTHON.md#exact-grids).
+
+Bounds accept the lossless inputs of number() and must be exact real values;
+approximate/complex Results, binary floats and booleans are rejected. lower must
+be strictly less than upper. count is an integer >= 2, excluding bool. For
+visit_grid it may fit the full platform size_t range; grid additionally requires
+count <= sys.maxsize because it constructs Python containers. There is no
+precision/rounding parameter and no decimal projection of coordinates. Recurring
+fractions, 1000-digit offsets and tiny spans retain exact spacing; this does not
+establish accuracy or continuity of any sampled function.
+
+`visit(x, index)` receives a new immutable Fraction and zero-based Python int.
+Coordinates may be retained independently of the C walker and original bounds.
+Return values, including False, are ignored. Exceptions stop traversal and retain
+their original identity/type, including KeyboardInterrupt. Previously completed
+callback effects remain visible; they cannot be rolled back. Nested NumForge
+operations share the outer cooperative budget without resetting/ending it.
+Callbacks run under the GIL and are not preempted by the native deadline.
+
+Input number() conversion precedes the traversal scope. Native input copies,
+coordinate arithmetic and per-visit field serialization share its limits. Python
+Fraction/object allocation and arbitrary callback work are outside native memory
+accounting. The C walker retains constant auxiliary object count, with byte size
+depending on the bounds/count. grid collects O(count) Python objects and returns
+no partial tuple on failure; use visit_grid to avoid retaining that point list.
+Neither interface promises hard process time/memory isolation.
+
+Invalid count/callback types raise TypeError; invalid Python count ranges raise
+ValueError. Nonincreasing bounds and native numeric/resource failures use Error
+with existing statuses and offset zero, including time_limit/memory_limit. No
+callback runs on invalid bounds or failure before traversal. All inputs remain
+usable and subsequent calls recover after errors. Python integer/text conversion
+limits still apply to copying large coordinates and are not changed globally.
+
+Python tests cover order, exact recurring coordinates, independent spacing/sum
+identities, 1000-digit offsets with 1000-digit tiny spans, retained values, nested
+calls, signed/unsigned count boundaries, exception identity, partial visits and
+budget failure/recovery. The installed [standalone example](../../examples/python/standalone.py)
+uses grid. The existing [C grid baseline](../../benchmarks/README.md#exact-grid-baseline)
+is reused; Python conversion/callback costs are additional and no speedup is claimed.
 
 ## Adaptive interval scheduling
 

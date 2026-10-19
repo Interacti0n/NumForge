@@ -5,6 +5,8 @@ details and the [2.4.0 release record](docs/project/RELEASE_2_4.md) for validati
 
 ## Unreleased
 
+- Expose exact C grid coordinates in Python as a tuple or through a visitor callback.
+
 - Expose bounded multiple-root scanning in Python with partial-limit and domain diagnostics.
 
 - Expose bounded C root search in Python with exact callback coordinates and explicit diagnostics.

@@ -51,6 +51,8 @@ configured CI coverage is not a claim that those remote jobs have already run.
 | `describe(values, *, ...)` | Exact rational batch count/sum/extrema/mean and population/sample variance, copied into StatisticsSummary |
 | `find_root(function, lower, upper, *, ...)` | Public C bracket search with exact callback coordinates and explicit convergence diagnostics |
 | `find_roots(function, lower, upper, *, ...)` | Bounded public C scan returning sampled roots, stop reason and work/domain diagnostics |
+| `grid(lower, upper, count, *, ...)` | Immutable tuple of exact Fraction coordinates from the C uniform-grid walker |
+| `visit_grid(lower, upper, count, visit, *, ...)` | Visit the same exact C coordinates without collecting a Python point list |
 
 ```python
 from decimal import Decimal
@@ -112,6 +114,21 @@ The [matrix reference](../reference/MATRIX_API.md#python-and-other-interfaces)
 owns input/shape rules, method return types, errors and operation budgets.
 The [linear-system reference](../reference/LINEAR_SYSTEM_API.md#python) owns
 classification, pivot/free columns, particular/kernel matrices and their lifetime.
+
+## Exact grids
+
+```python
+coordinates = numforge.grid(0, 1, 4)
+assert coordinates == (0, Fraction(1, 3), Fraction(2, 3), 1)
+
+visited = []
+numforge.visit_grid(0, 1, 4, lambda x, index: visited.append((index, x)))
+assert visited == list(enumerate(coordinates))
+```
+
+Use `visit_grid` to process points without retaining the whole collection. Both
+functions delegate coordinate generation to C. The [Python grid contract](../reference/NUMERICAL_API.md#python-exact-grids)
+describes inputs, ownership, count ranges, callback failures and memory accounting.
 
 ## Bounded numerical roots
 

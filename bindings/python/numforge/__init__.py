@@ -3,6 +3,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from decimal import Decimal
 from fractions import Fraction
+import sys as _sys
 
 from . import _native
 
@@ -11,7 +12,8 @@ core_version = _native.core_version
 Error = _native.Error
 __all__ = ["Error", "Result", "Expression", "PolynomialRoot", "PolynomialSolution",
            "number", "evaluate", "prepare", "sqrt", "solve_quadratic", "Matrix", "LinearSolution",
-           "describe", "StatisticsSummary", "find_root", "RootResult", "find_roots", "RootScanResult", "core_version"]
+           "describe", "StatisticsSummary", "find_root", "RootResult", "find_roots", "RootScanResult",
+           "grid", "visit_grid", "core_version"]
 
 _ROUNDING = {"toward_zero": 0, "away_from_zero": 1, "floor": 2,
              "ceiling": 3, "half_up": 4, "half_even": 5}
@@ -223,7 +225,7 @@ class RootScanResult:
         return len(self.roots)
 
 
-def _root_integer(name, value, minimum, maximum):
+def _integer_range(name, value, minimum, maximum):
     if type(value) is not int:
         raise TypeError(f"{name} must be an integer")
     if not minimum <= value <= maximum:
@@ -242,7 +244,7 @@ def _root_arguments(function, lower, upper, *, continuous=False, decimal_places=
     for name, value, minimum, maximum in (("decimal_places", decimal_places, 1, 10000),
             ("max_iterations", max_iterations, 1, _native.MAX_ALLOCATION),
             ("max_evaluations", max_evaluations, 4, _native.MAX_ALLOCATION)):
-        _root_integer(name, value, minimum, maximum)
+        _integer_range(name, value, minimum, maximum)
     if type(residual_tolerance) is not int and not isinstance(residual_tolerance, (str, Decimal)):
         raise TypeError("residual_tolerance must be a finite decimal literal, Decimal or int")
     options = _options(time_limit_ms=time_limit_ms, allocation_bytes=allocation_bytes,
@@ -305,8 +307,8 @@ def find_roots(function, lower, upper, *, continuous=False, decimal_places=34,
     for name, value, maximum in (("segments", segments, _native.MAX_ALLOCATION-1),
             ("max_roots", max_roots, _native.MAX_ALLOCATION),
             ("max_evaluations", max_evaluations, _native.MAX_ALLOCATION)):
-        _root_integer(name, value, 1, maximum)
-    _root_integer("max_root_evaluations", max_root_evaluations, 4, _native.MAX_ALLOCATION)
+        _integer_range(name, value, 1, maximum)
+    _integer_range("max_root_evaluations", max_root_evaluations, 4, _native.MAX_ALLOCATION)
     args = list(_root_arguments(function, lower, upper, continuous=continuous,
         decimal_places=decimal_places, x_tolerance=x_tolerance, residual_tolerance=residual_tolerance,
         max_iterations=max_iterations, max_evaluations=max_root_evaluations,
@@ -316,6 +318,47 @@ def find_roots(function, lower, upper, *, continuous=False, decimal_places=34,
     return RootScanResult(data["kind"], tuple(_root_result(root) for root in data["roots"]),
         data["evaluations"], data["iterations"], data["scanned_segments"], data["domain_gaps"],
         data["rejected_brackets"], data["candidate_samples"], data["candidate_roots"], data["candidate_gaps"])
+
+
+def visit_grid(lower, upper, count, visit, *, time_limit_ms=5000,
+               allocation_bytes=64 * 1024 * 1024, single_allocation=512 * 1024):
+    """Visit count exact Fraction coordinates through the C uniform-grid kernel.
+
+    Both endpoints are included, lower < upper, count >= 2. visit(x, index) is
+    synchronous and receives independent Fraction values and zero-based indices.
+    Return values are ignored; exceptions stop traversal and propagate unchanged.
+    Earlier callback effects remain on failure. No point array is retained by C.
+    Native work shares a cooperative budget, including nested NumForge calls;
+    Python allocation/work is not a hard native memory/time limit. No precision
+    option: coordinate exactness does not establish sampled function accuracy.
+    """
+    if not callable(visit):
+        raise TypeError("visit must be callable as visit(x, index)")
+    _integer_range("count", count, 2, _native.MAX_ALLOCATION)
+    options = _options(time_limit_ms=time_limit_ms, allocation_bytes=allocation_bytes,
+                       single_allocation=single_allocation)
+    values = tuple(number(value) for value in (lower, upper))
+
+    def callback(pair, index):
+        return visit(_fraction(pair), index)
+
+    return _native.visit_grid(tuple(value._handle for value in values), count, callback, options)
+
+
+def grid(lower, upper, count, *, time_limit_ms=5000,
+         allocation_bytes=64 * 1024 * 1024, single_allocation=512 * 1024):
+    """Return an immutable tuple of exact Fraction grid coordinates from C.
+
+    Bounds/count follow visit_grid(), with count additionally fitting sys.maxsize.
+    This convenience collects all points in Python memory; use visit_grid() to
+    process coordinates without retaining a point list. No partial tuple is
+    returned on failure. Python object allocation is outside C budget accounting.
+    """
+    _integer_range("count", count, 2, _sys.maxsize)
+    points = []
+    visit_grid(lower, upper, count, lambda x, index: points.append(x), time_limit_ms=time_limit_ms,
+               allocation_bytes=allocation_bytes, single_allocation=single_allocation)
+    return tuple(points)
 
 
 @dataclass(frozen=True, slots=True)

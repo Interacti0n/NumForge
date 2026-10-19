@@ -73,6 +73,10 @@ non-merging close samples, independent high-precision pairs, original ordinates
 at 1000-digit offsets/scales, partial limits, incomplete discovery, domain gaps
 and fatal callback/budget errors after discovery. Single-root regressions also
 run after sharing callback conversion and result serialization.
+`NumericalGridTests` checks exact recurring coordinates, independent spacing/sum
+identities, 1000-digit offsets with tiny spans, retained values, nested native
+calls, count/type validation, callback exception identity and partial-visit budget
+recovery. Both collected and visitor APIs use the public C grid walker.
 `numerical_scan_tests` checks public multiple-root scanning separately, including
 exact rational contacts, 1000-digit offsets/scales, partial-limit diagnostics,
 callback/allocation failure and borrowed result lifetimes. The equation scan

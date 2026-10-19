@@ -9,6 +9,11 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ### Numerical foundation
 
+- Add Python `grid` and `visit_grid` over the public exact C grid walker. Return
+  independent Fraction coordinates, preserve visitor exception identity/partial
+  effects and shared budgets, and keep Python collection memory accounting explicit.
+  Add exact 1000-digit spacing, lifetime, nesting and failure/recovery tests plus
+  installed/documentation examples; reuse common integer-policy validation.
 - Add Python `find_roots` and immutable `RootScanResult` over the public C bounded
   scanner. Share callback conversion and root serialization with single-root search;
   retain original rational ordinates for contact proposals, partial-limit diagnostics,

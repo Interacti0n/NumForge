@@ -674,6 +674,49 @@ static NumForgeStatus numerical_status(NumForgeNumericalStatus status)
         default: return NUMFORGE_INVALID_ARGUMENT;
     }
 }
+typedef struct GridCallback { PyObject *module, *function; } GridCallback;
+static NumForgeNumericalStatus grid_visit(const BigRational *x, size_t index, void *user)
+{
+    GridCallback *work = user;
+    PyObject *coordinate = fraction_pair(work->module, x), *position = NULL, *returned = NULL;
+    if (coordinate) position = PyLong_FromSize_t(index);
+    if (position) returned = PyObject_CallFunctionObjArgs(work->function, coordinate, position, NULL);
+    Py_XDECREF(coordinate); Py_XDECREF(position);
+    if (returned == NULL) return NUMFORGE_NUMERICAL_CALLBACK_FAILED;
+    Py_DECREF(returned); /* Visit return values do not decide traversal. */
+    return NUMFORGE_NUMERICAL_OK;
+}
+static PyObject *native_visit_grid(PyObject *module, PyObject *args)
+{
+    PyObject *items, *count_object, *function, *options;
+    if (!PyArg_ParseTuple(args, "OOOO:visit_grid", &items, &count_object, &function, &options)) return NULL;
+    size_t count = PyLong_AsSize_t(count_object);
+    if (PyErr_Occurred()) return NULL;
+    if (!PyCallable_Check(function)) { PyErr_SetString(PyExc_TypeError, "visit must be callable"); return NULL; }
+    PyObject *values = PySequence_Fast(items, "grid bounds must be a sequence");
+    if (values == NULL) return NULL;
+    if (PySequence_Fast_GET_SIZE(values) != 2) {
+        Py_DECREF(values); PyErr_SetString(PyExc_ValueError, "expected two grid bounds"); return NULL;
+    }
+    Policy policy;
+    if (!policy_parse(module, options, &policy)) { Py_DECREF(values); return NULL; }
+    bool owner = numforge_budget_begin(policy.milliseconds, policy.allocation_bytes, policy.single_allocation);
+    BigRational **entries = NULL; const BigRational **borrowed = NULL;
+    NumForgeStatus status = exact_inputs(values, 2, "grid bounds must be exact real values", &entries, &borrowed);
+    GridCallback work = {module, function}; PyObject *output = NULL;
+    if (status == NUMFORGE_OK && !PyErr_Occurred())
+        status = numerical_status(numforge_grid_visit(entries[0], entries[1], count, grid_visit, &work));
+    status = budget_status(status);
+    if (!PyErr_Occurred()) {
+        if (status == NUMFORGE_OK) output = Py_NewRef(Py_None);
+        else raise_status(module, status, 0);
+    }
+    exact_inputs_destroy(entries, borrowed, 2); Py_DECREF(values);
+    if (owner) numforge_budget_end();
+    numforge_context_destroy(policy.context);
+    return output;
+}
+
 static PyObject *root_dictionary(PyObject *module, const NumForgeRoot *root)
 {
     char *residual = NULL;
@@ -798,6 +841,7 @@ static PyMethodDef methods[] = {
     {"solve", native_solve, METH_VARARGS, "Solve exact polynomial coefficients in C."},
     {"find_root", native_find_root, METH_VARARGS, "Run bounded C bisection with a Python sample callback."},
     {"find_roots", native_find_roots, METH_VARARGS, "Run bounded C root scanning with a Python sample callback."},
+    {"visit_grid", native_visit_grid, METH_VARARGS, "Visit exact rational coordinates from the public C grid walker."},
     {"describe", native_describe, METH_VARARGS, "Compute an exact C descriptive statistics summary."},
     {"matrix_create", native_matrix_create, METH_VARARGS, "Copy exact real entries into a C matrix."},
     {"matrix_shape", native_matrix_shape, METH_VARARGS, "Read a C matrix shape."},

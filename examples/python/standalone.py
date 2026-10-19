@@ -2,6 +2,10 @@
 from fractions import Fraction
 import numforge
 
+coordinates = numforge.grid(0, 1, 4)
+assert coordinates == (0, Fraction(1, 3), Fraction(2, 3), 1)
+print("Exact grid:", coordinates)
+
 statistics = numforge.describe([0, 0, 1])
 print("Exact statistics:", statistics.count, statistics.mean, statistics.variance_population, statistics.variance_sample)
 

@@ -887,5 +887,127 @@ class NumericalScanTests(unittest.TestCase):
         self.assertEqual(nf.find_roots(lambda x, p: x, 0, 1, segments=1).count, 1)
 
 
+class NumericalGridTests(unittest.TestCase):
+    def test_exact_recurring_coordinates_and_visit_order(self):
+        expected = (Fraction(0), Fraction(1, 3), Fraction(2, 3), Fraction(1))
+        coordinates = nf.grid(0, 1, 4)
+        self.assertEqual(coordinates, expected)
+        self.assertIsInstance(coordinates, tuple)
+        self.assertTrue(all(type(value) is Fraction for value in coordinates))
+        visits = []
+        class Ignored:
+            def __bool__(self):
+                raise AssertionError("visit return values must not control traversal")
+        def visit(x, index):
+            visits.append((x, index))
+            return Ignored()
+        self.assertIsNone(nf.visit_grid(0, 1, 4, visit))
+        self.assertEqual(visits, list(zip(expected, range(4))))
+        self.assertEqual(sum(coordinates), 2)
+
+    def test_independent_exact_spacing_at_thousand_digit_offsets_and_scales(self):
+        cases = [(Fraction(-7, 13), Fraction(11, 17)),
+                 (Fraction(10**1000), Fraction(10**1000)+1),
+                 (Fraction(10**1000), Fraction(10**1000)+Fraction(1, 10**1000)),
+                 (Fraction(0), Fraction(1, 10**1000))]
+        for lower, upper in cases:
+            for count in (2, 3, 7, 17):
+                with self.subTest(count=count, magnitude=len(str(lower.numerator))):
+                    values = nf.grid(lower, upper, count)
+                    self.assertEqual((len(values), values[0], values[-1]), (count, lower, upper))
+                    for i, x in enumerate(values):
+                        self.assertEqual((x-lower)*(count-1), i*(upper-lower))
+                    self.assertEqual(2*sum(values), count*(lower+upper))
+
+    def test_input_policy_nested_calls_and_retained_coordinate_lifetime(self):
+        lower, upper = nf.number(Decimal("0.1")), nf.evaluate("13/10")
+        expected = tuple(Fraction(x, 10) for x in (1, 5, 9, 13))
+        values = nf.grid(lower, upper, 4)
+        self.assertEqual(values, expected)
+        visits = []
+        def nested(x, index):
+            self.assertEqual(nf.grid(0, 1, 2), (0, 1))
+            self.assertEqual(nf.evaluate("x+1", variables={"x": x}).as_fraction(), x+1)
+            visits.append(x)
+        nf.visit_grid(lower, upper, 4, nested)
+        del lower, upper
+        gc.collect()
+        self.assertEqual(tuple(visits), expected)
+        self.assertEqual(values, expected)
+
+    def test_callback_exceptions_preserve_identity_and_earlier_effects(self):
+        for error in (ValueError("stop after two coordinates"), KeyboardInterrupt()):
+            visits = []
+            def visit(x, index):
+                visits.append((x, index))
+                if index == 1:
+                    raise error
+            with self.assertRaises(type(error)) as caught:
+                nf.visit_grid(0, 1, 4, visit)
+            self.assertIs(caught.exception, error)
+            self.assertEqual(visits, [(0, 0), (Fraction(1, 3), 1)])
+        # Streaming counts can exceed a Python container's signed length range.
+        calls = []
+        sentinel = ValueError("bounded early stop")
+        def stop(x, index):
+            calls.append(index)
+            raise sentinel
+        with self.assertRaises(ValueError) as caught:
+            nf.visit_grid(0, 1, sys.maxsize+1, stop)
+        self.assertIs(caught.exception, sentinel)
+        self.assertEqual(calls, [0])
+        self.assertEqual(nf.grid(0, 1, 2), (0, 1))
+
+    def test_validation_and_lossless_bound_requirements(self):
+        for count, error in ((True, TypeError), (2.0, TypeError), ("4", TypeError),
+                             (1, ValueError), (-2, ValueError), (2**130, ValueError)):
+            with self.subTest(count=count), self.assertRaises(error):
+                nf.grid(0, 1, count)
+        with self.assertRaises(ValueError):
+            nf.grid(0, 1, sys.maxsize+1)
+        with self.assertRaises(TypeError):
+            nf.visit_grid(0, 1, 4, None)
+        with self.assertRaises(TypeError):
+            nf.grid(0, 1, 4, precision=100)
+        for lower, upper in ((0.1, 1), (nf.sqrt(2), 2), (nf.sqrt(-1), 2)):
+            with self.assertRaises(TypeError):
+                nf.grid(lower, upper, 4)
+        for lower, upper in ((1, 1), (2, 1)):
+            calls = []
+            with self.assertRaises(nf.Error) as caught:
+                nf.visit_grid(lower, upper, 4, lambda x, i: calls.append(x))
+            self.assertEqual((caught.exception.status, caught.exception.offset), ("invalid_argument", 0))
+            self.assertFalse(calls)
+
+    def test_budget_failure_partial_visits_and_recovery(self):
+        for limits, status in (({"time_limit_ms": 0}, "time_limit"), ({"allocation_bytes": 0}, "memory_limit"),
+                               ({"single_allocation": 0}, "memory_limit")):
+            calls = []
+            with self.assertRaises(nf.Error) as caught:
+                nf.visit_grid(0, 1, 4, lambda x, i: calls.append(x), **limits)
+            self.assertEqual((caught.exception.status, caught.exception.offset), (status, 0))
+            self.assertFalse(calls)
+            with self.assertRaises(nf.Error):
+                nf.grid(0, 1, 4, **limits)
+        partial = False
+        recovered = False
+        for size in range(1024, 65537, 1024):
+            calls = []
+            try:
+                nf.visit_grid(0, 1, 20, lambda x, i: calls.append((x, i)), allocation_bytes=size)
+            except nf.Error as error:
+                self.assertEqual(error.status, "memory_limit")
+                partial |= bool(calls)
+            else:
+                self.assertEqual(len(calls), 20)
+                recovered = True
+                break
+            for x, i in calls:
+                self.assertEqual(19*x, i)
+        self.assertTrue(partial)
+        self.assertTrue(recovered)
+        self.assertEqual(nf.grid(0, 1, 2), (0, 1))
+
+
 if __name__ == "__main__":
     unittest.main()
