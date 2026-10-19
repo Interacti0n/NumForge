@@ -197,7 +197,10 @@ check callbacks, getters, ownership and exact sampled zeros without an engine.
 The existing [HTTP equation workflow](NUMERIC_ROOT_HTTP_API.md) now delegates to
 this kernel through private expression/domain adapters. Its limits, syntax,
 scanning rules and response schema remain compatible. Bounded scans use the
-public API below; Brent/hybrid research remains private. Bracket refinement uses bisection.
+public API below; production single-root solving also calls the public entry point.
+Formatting and HTTP serialization read opaque results through public getters.
+Brent/hybrid research retains a private callback hook without result storage.
+Bracket refinement uses bisection.
 This slice adds no direct Python root function, CLI root command or new REST route.
 
 ## Multiple-root scanning

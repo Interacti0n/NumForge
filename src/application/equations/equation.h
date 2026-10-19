@@ -3,10 +3,10 @@
 
 #include "src/engine/api/calculator_internal.h"
 
-/* Legacy application adapter over the standalone public numeric solver.
- * Internal consumers may inspect the read-only descriptor layout for formatting;
- * public consumers use polynomial.h accessors instead. */
-#include "src/modules/algebra/polynomial_internal.h"
+/* Application adapter over the standalone solver. Results remain opaque and
+ * formatting uses the same public accessors as external consumers. */
+#include <numforge/polynomial.h>
+
 typedef NumForgePolynomialSolution ApplicationEquationSolution;
 typedef NumForgePolynomialKind ApplicationEquationKind;
 #define APPLICATION_EQUATION_NONE NUMFORGE_POLYNOMIAL_NONE

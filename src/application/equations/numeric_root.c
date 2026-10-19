@@ -1,4 +1,6 @@
 #include "src/application/equations/numeric_root.h"
+#include "src/application/numerical_status.h"
+#include "src/modules/numerical/root_strategy_internal.h"
 #include "src/application/equations/numeric_root_brent_internal.h"
 #include "src/application/expressions/expression.h"
 #include "src/engine/evaluator/exact_functions.h"
@@ -143,19 +145,6 @@ static NumForgeNumericalStatus strategy_accept(const BigRational *x, const BigDe
     return strategy->interpolation.disabled ? NUMFORGE_NUMERICAL_OK :
         callback_status(strategy->work, numeric_root_brent_accept(&strategy->interpolation, x, value, &strategy->stats));
 }
-static CalculatorStatus numerical_status(Work *work, NumForgeNumericalStatus status)
-{
-    switch (status) {
-        case NUMFORGE_NUMERICAL_OK: return CALCULATOR_OK;
-        case NUMFORGE_NUMERICAL_NULL_ARGUMENT: return CALCULATOR_NULL_ARGUMENT;
-        case NUMFORGE_NUMERICAL_OUT_OF_MEMORY: return CALCULATOR_OUT_OF_MEMORY;
-        case NUMFORGE_NUMERICAL_VALUE_TOO_LARGE: return CALCULATOR_VALUE_TOO_LARGE;
-        case NUMFORGE_NUMERICAL_SCALE_OVERFLOW: return CALCULATOR_SCALE_OVERFLOW;
-        case NUMFORGE_NUMERICAL_CALLBACK_FAILED: return work->callback_status;
-        default: return CALCULATOR_INVALID_ARGUMENT;
-    }
-}
-
 /* Application ownership only: the numerical kernels never parse or own sources. */
 static CalculatorStatus prepare_work(Work *work, const char *input, size_t length, size_t rhs,
     const CalculatorContext *context, CalculatorError *error)
@@ -207,11 +196,15 @@ static CalculatorStatus solve(ApplicationNumericRoot **result, const char *input
     NumForgeRootOptions options; numforge_root_options_init(&options);
     options.decimal_places = work.context.division_scale;
     ApplicationNumericRoot *output = NULL;
-    if (status == CALCULATOR_OK) status = numerical_status(&work, numforge_root_solve_strategy(&output,
-        evaluate_callback, domain_callback, &work, lower, upper, &options, brent ? &strategy : NULL));
+    if (status == CALCULATOR_OK) {
+        NumForgeNumericalStatus numerical = brent ?
+            numforge_root_solve_strategy(&output, evaluate_callback, domain_callback, &work, lower, upper, &options, &strategy) :
+            numforge_root_solve(&output, evaluate_callback, domain_callback, &work, lower, upper, &options);
+        status = application_from_numerical_status(numerical, work.callback_status);
+    }
     status = calculator_budget_status(status);
     if (status == CALCULATOR_OK) {
-        if (!brent) strategy_work.stats.bisections = output->iterations;
+        if (!brent) strategy_work.stats.bisections = numforge_root_iterations(output);
         *result = output; output = NULL;
         if (statistics) *statistics = strategy_work.stats;
     } else calculator_error_set(error, status, error ? error->offset : 0U);
@@ -278,8 +271,11 @@ CalculatorStatus application_numeric_roots_scan(ApplicationRootScan **result, co
     options.segments = APPLICATION_ROOT_SCAN_SEGMENTS; options.max_roots = APPLICATION_ROOT_SCAN_MAX_ROOTS;
     options.max_evaluations = APPLICATION_ROOT_SCAN_MAX_EVALUATIONS;
     ApplicationRootScan *output = NULL;
-    if (status == CALCULATOR_OK) status = numerical_status(&work, numforge_roots_scan(&output,
-        scan_evaluate_callback, domain_callback, &work, lower, upper, &options));
+    if (status == CALCULATOR_OK) {
+        NumForgeNumericalStatus numerical = numforge_roots_scan(&output, scan_evaluate_callback, domain_callback,
+            &work, lower, upper, &options);
+        status = application_from_numerical_status(numerical, work.callback_status);
+    }
     status = calculator_budget_status(status);
     if (status == CALCULATOR_OK) { *result = output; output = NULL; }
     else calculator_error_set(error, status, error ? error->offset : 0U);

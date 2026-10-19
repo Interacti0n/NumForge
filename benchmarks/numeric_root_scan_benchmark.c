@@ -43,15 +43,16 @@ int main(int argc, char **argv)
             numforge_alloc_stats_reset(); double start = benchmark_seconds(); if (start < 0) return 2;
             CalculatorStatus status = application_numeric_roots_scan(&scan,scene->input,low,high,&context,&error);
             double ms = (benchmark_seconds()-start)*1000; size_t bytes = numforge_alloc_stats_bytes();
-            bool valid = status == CALCULATOR_OK && scan && scan->count == scene->count && scan->stop == scene->stop &&
-                scan->evaluations <= APPLICATION_ROOT_SCAN_MAX_EVALUATIONS && scan->scanned_segments <= APPLICATION_ROOT_SCAN_SEGMENTS;
+            NumForgeRootScanStats scan_stats; numforge_root_scan_stats(scan, &scan_stats);
+            bool valid = status == CALCULATOR_OK && scan && numforge_root_scan_count(scan) == scene->count && numforge_root_scan_stop(scan) == scene->stop &&
+                scan_stats.evaluations <= APPLICATION_ROOT_SCAN_MAX_EVALUATIONS && scan_stats.scanned_segments <= APPLICATION_ROOT_SCAN_SEGMENTS;
             failed |= !valid;
             printf("%s,%d,%d,%.6f,%d,%s,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%d,%zu,%zu,%zu,",scene->name,precisions[p],run,ms,(int)status,
-                scan ? application_numeric_roots_stop(scan->stop) : "error",scan ? scan->count : 0U,scan ? scan->evaluations : 0U,
-                scan ? scan->iterations : 0U,scan ? scan->scanned_segments : 0U,scan ? scan->domain_gaps : 0U,scan ? scan->rejected_brackets : 0U,bytes,valid ? 1 : 0,
-                scan ? scan->candidate_samples : 0U,scan ? scan->candidate_roots : 0U,scan ? scan->candidate_gaps : 0U);
-            if (scan) for (size_t j = 0U; j < scan->count; ++j) {
-                char *text = NULL; if (bigrational_to_string(scan->roots[j]->x,&text) != BIGRATIONAL_OK) return 2;
+                scan ? application_numeric_roots_stop(numforge_root_scan_stop(scan)) : "error",scan ? numforge_root_scan_count(scan) : 0U,scan ? scan_stats.evaluations : 0U,
+                scan ? scan_stats.iterations : 0U,scan ? scan_stats.scanned_segments : 0U,scan ? scan_stats.domain_gaps : 0U,scan ? scan_stats.rejected_brackets : 0U,bytes,valid ? 1 : 0,
+                scan ? scan_stats.candidate_samples : 0U,scan ? scan_stats.candidate_roots : 0U,scan ? scan_stats.candidate_gaps : 0U);
+            if (scan) for (size_t j = 0U; j < numforge_root_scan_count(scan); ++j) {
+                char *text = NULL; if (bigrational_to_string(numforge_root_x(numforge_root_scan_root(scan, j)),&text) != BIGRATIONAL_OK) return 2;
                 printf("%s%s",j ? ";" : "",text); free(text);
             }
             putchar('\n'); application_numeric_roots_destroy(scan); bigrational_destroy(low); bigrational_destroy(high);

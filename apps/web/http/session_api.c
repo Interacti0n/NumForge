@@ -482,15 +482,15 @@ static void numeric_root_json(Json *json, const ApplicationNumericRoot *root,
     BigDecimal *decimal, BigDecimal *one, int64_t precision, bool rational_coordinate)
 {
     if (json->status != CALCULATOR_OK) return;
-    json->status = calculator_from_rational_status(bigrational_to_bigdecimal(decimal, root->x, precision, BIGDECIMAL_ROUND_HALF_EVEN));
+    json->status = calculator_from_rational_status(bigrational_to_bigdecimal(decimal, numforge_root_x(root), precision, BIGDECIMAL_ROUND_HALF_EVEN));
     append(json, "{\"x\":");
-    if (rational_coordinate) { equation_rational(json, root->x); append(json, ",\"coordinate_kind\":\"rational\""); }
+    if (rational_coordinate) { equation_rational(json, numforge_root_x(root)); append(json, ",\"coordinate_kind\":\"rational\""); }
     else numeric_decimal(json, decimal);
     if (json->status == CALCULATOR_OK) json->status = calculator_from_decimal_status(bigdecimal_set_string(one, "1"));
     if (json->status == CALCULATOR_OK) json->status = calculator_from_decimal_status(bigdecimal_div_significant(decimal, decimal, one, precision, BIGDECIMAL_ROUND_HALF_EVEN));
     append(json, ",\"approximation\":"); numeric_decimal(json, decimal);
-    append(json, ",\"residual\":"); numeric_decimal(json, root->residual);
-    append(json, ",\"exact_zero\":%s}", root->exact_zero ? "true" : "false");
+    append(json, ",\"residual\":"); numeric_decimal(json, numforge_root_residual(root));
+    append(json, ",\"exact_zero\":%s}", numforge_root_exact_zero(root) ? "true" : "false");
 }
 static CalculatorStatus numeric_equation_request(const char *method, const Query *query,
     const char *body, char **response, CalculatorError *error, const char **code)
@@ -526,20 +526,22 @@ static CalculatorStatus numeric_equation_request(const char *method, const Query
     Json json = {NULL, 0U, CALCULATOR_OK, RESPONSE_CAPACITY};
     if (status == CALCULATOR_OK) { json.data = numforge_malloc(json.capacity); if (!json.data) status = CALCULATOR_OUT_OF_MEMORY; }
     if (status == CALCULATOR_OK) {
+        NumForgeRootScanStats scan_stats;
+        numforge_root_scan_stats(scan, &scan_stats);
         if (scan_mode) append(&json, "{\"ok\":true,\"schema_version\":1,\"kind\":\"numeric_scan\",\"outcome\":\"%s\",\"complete\":false,\"count\":%zu,\"evaluations\":%zu,\"iterations\":%zu,\"segments\":%u,\"scanned_segments\":%zu,\"domain_gaps\":%zu,\"rejected_brackets\":%zu,\"max_roots\":%u,\"max_evaluations\":%u,\"x_tolerance\":\"1E-12\",\"residual_tolerance\":\"1E-12\",\"lower\":",
-            application_numeric_roots_stop(scan->stop), scan->count, scan->evaluations, scan->iterations,
-            APPLICATION_ROOT_SCAN_SEGMENTS, scan->scanned_segments, scan->domain_gaps, scan->rejected_brackets,
+            application_numeric_roots_stop(numforge_root_scan_stop(scan)), numforge_root_scan_count(scan), scan_stats.evaluations, scan_stats.iterations,
+            APPLICATION_ROOT_SCAN_SEGMENTS, scan_stats.scanned_segments, scan_stats.domain_gaps, scan_stats.rejected_brackets,
             APPLICATION_ROOT_SCAN_MAX_ROOTS, APPLICATION_ROOT_SCAN_MAX_EVALUATIONS);
         else append(&json, "{\"ok\":true,\"schema_version\":1,\"kind\":\"numeric\",\"outcome\":\"%s\",\"complete\":false,\"count\":%u,\"evaluations\":%zu,\"iterations\":%zu,\"x_tolerance\":\"1E-12\",\"residual_tolerance\":\"1E-12\",\"lower\":",
-            application_numeric_root_kind(root->kind), root->kind == APPLICATION_ROOT_FOUND ? 1U : 0U, root->evaluations, root->iterations);
-        equation_rational(&json, scan_mode ? bounds[0] : root->lower); append(&json, ",\"upper\":"); equation_rational(&json, scan_mode ? bounds[1] : root->upper);
-        if (scan_mode) append(&json, ",\"candidate_samples\":%zu,\"exact_candidate_roots\":%zu,\"candidate_gaps\":%zu", scan->candidate_samples, scan->candidate_roots, scan->candidate_gaps);
+            application_numeric_root_kind(numforge_root_kind(root)), numforge_root_kind(root) == APPLICATION_ROOT_FOUND ? 1U : 0U, numforge_root_evaluations(root), numforge_root_iterations(root));
+        equation_rational(&json, scan_mode ? bounds[0] : numforge_root_lower(root)); append(&json, ",\"upper\":"); equation_rational(&json, scan_mode ? bounds[1] : numforge_root_upper(root));
+        if (scan_mode) append(&json, ",\"candidate_samples\":%zu,\"exact_candidate_roots\":%zu,\"candidate_gaps\":%zu", scan_stats.candidate_samples, scan_stats.candidate_roots, scan_stats.candidate_gaps);
         append(&json, ",\"roots\":[");
-        if (scan_mode) for (size_t i = 0U; i < scan->count && json.status == CALCULATOR_OK; ++i) {
+        if (scan_mode) for (size_t i = 0U; i < numforge_root_scan_count(scan) && json.status == CALCULATOR_OK; ++i) {
             if (i) append(&json, ",");
-            numeric_root_json(&json, scan->roots[i], decimal, one, (int64_t)precision, true);
+            numeric_root_json(&json, numforge_root_scan_root(scan, i), decimal, one, (int64_t)precision, true);
         }
-        else if (root->kind == APPLICATION_ROOT_FOUND) numeric_root_json(&json, root, decimal, one, (int64_t)precision, false);
+        else if (numforge_root_kind(root) == APPLICATION_ROOT_FOUND) numeric_root_json(&json, root, decimal, one, (int64_t)precision, false);
         append(&json, "]}"); status = json.status;
     }
     status = calculator_budget_status(status);
@@ -600,21 +602,21 @@ static CalculatorStatus equation_request(const char *method, const Query *query,
         if (!json.data) status = CALCULATOR_OUT_OF_MEMORY;
     }
     if (status == CALCULATOR_OK) {
-        const char *kind = solution->kind == APPLICATION_EQUATION_FINITE ? "finite" :
-            solution->kind == APPLICATION_EQUATION_ALL ? "all" : "none";
+        const char *kind = numforge_polynomial_kind(solution) == APPLICATION_EQUATION_FINITE ? "finite" :
+            numforge_polynomial_kind(solution) == APPLICATION_EQUATION_ALL ? "all" : "none";
         append(&json, "{\"ok\":true,\"schema_version\":1,\"kind\":\"%s\",\"degree\":%u,\"count\":%zu,\"imaginary\":%s,\"center\":",
-            kind, solution->degree, solution->count, solution->imaginary ? "true" : "false");
-        equation_rational(&json, solution->center);
-        append(&json, ",\"radicand\":"); equation_rational(&json, solution->radicand);
-        append(&json, ",\"offset\":"); equation_rational(&json, solution->offset);
-        append(&json, ",\"discriminant\":"); equation_rational(&json, solution->discriminant);
+            kind, numforge_polynomial_degree(solution), numforge_polynomial_root_count(solution), numforge_polynomial_is_imaginary(solution) ? "true" : "false");
+        equation_rational(&json, numforge_polynomial_center(solution));
+        append(&json, ",\"radicand\":"); equation_rational(&json, numforge_polynomial_radicand(solution));
+        append(&json, ",\"offset\":"); equation_rational(&json, numforge_polynomial_rational_offset(solution));
+        append(&json, ",\"discriminant\":"); equation_rational(&json, numforge_polynomial_discriminant(solution));
         append(&json, ",\"roots\":[");
-        for (size_t i = 0U; i < solution->count && json.status == CALCULATOR_OK; ++i) {
+        for (size_t i = 0U; i < numforge_polynomial_root_count(solution) && json.status == CALCULATOR_OK; ++i) {
             ApplicationEquationRootText *text = NULL;
             json.status = application_equation_format_root(&text, solution, i, &context, error);
             if (json.status == CALCULATOR_OK) {
                 append(&json, "%s{\"branch\":\"%s\",\"multiplicity\":%u,\"exact\":", i ? "," : "",
-                    solution->count == 1U ? "single" : i ? "plus" : "minus", solution->multiplicity[i]);
+                    numforge_polynomial_root_count(solution) == 1U ? "single" : i ? "plus" : "minus", numforge_polynomial_root_multiplicity(solution, i));
                 string(&json, text->exact); append(&json, ",\"approximation\":"); string(&json, text->approximation); append(&json, "}");
             }
             application_equation_root_text_destroy(text);

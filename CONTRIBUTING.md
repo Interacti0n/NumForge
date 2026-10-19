@@ -49,7 +49,10 @@ For a new mathematical capability:
    Avoid duplicating public declarations and historical implementation narratives.
 
 Use repository-qualified paths for private headers and `<numforge/...>` for public
-headers. Keep only the public include directory in installed target interfaces.
+headers. Keep module-private headers inside their owning module and read opaque
+results through public getters. The existing equation research hook is limited
+to strategy callbacks, without result layouts. Keep only the public include
+directory in installed target interfaces.
 Run `node scripts/check_architecture.cjs` and `node scripts/check_docs.cjs` in
 addition to relevant tests. CTest runs the architecture check when Node is present.
 For broad structural changes, also validate a numeric-only installation, external

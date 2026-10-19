@@ -37,38 +37,44 @@ static void bound(BigRational *value, const char *text)
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(decimal, text));
     TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_from_bigdecimal(value, decimal)); bigdecimal_destroy(decimal);
 }
+static NumForgeRootScanStats statistics(void)
+{
+    NumForgeRootScanStats stats;
+    numforge_root_scan_stats(result, &stats);
+    return stats;
+}
 static void scan(const char *input, const char *from, const char *to, size_t count)
 {
     application_numeric_roots_destroy(result); result = NULL; bound(low, from); bound(high, to);
     TEST_ASSERT_EQUAL_MESSAGE(CALCULATOR_OK, application_numeric_roots_scan(&result, input, low, high, &context, &error), input);
-    TEST_ASSERT_NOT_NULL(result); TEST_ASSERT_EQUAL_UINT64(count, result->count);
-    TEST_ASSERT_LESS_OR_EQUAL_UINT64(APPLICATION_ROOT_SCAN_MAX_EVALUATIONS, result->evaluations);
-    TEST_ASSERT_LESS_OR_EQUAL_UINT64(APPLICATION_ROOT_SCAN_SEGMENTS, result->scanned_segments);
+    TEST_ASSERT_NOT_NULL(result); TEST_ASSERT_EQUAL_UINT64(count, numforge_root_scan_count(result));
+    TEST_ASSERT_LESS_OR_EQUAL_UINT64(APPLICATION_ROOT_SCAN_MAX_EVALUATIONS, statistics().evaluations);
+    TEST_ASSERT_LESS_OR_EQUAL_UINT64(APPLICATION_ROOT_SCAN_SEGMENTS, statistics().scanned_segments);
     for (size_t i = 0U; i < count; ++i) {
         int order = 0;
-        TEST_ASSERT_EQUAL(APPLICATION_ROOT_FOUND, result->roots[i]->kind);
-        TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_compare(&order, low, result->roots[i]->x)); TEST_ASSERT_TRUE(order <= 0);
-        TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_compare(&order, high, result->roots[i]->x)); TEST_ASSERT_TRUE(order >= 0);
-        if (i) { TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_compare(&order, result->roots[i-1U]->x, result->roots[i]->x)); TEST_ASSERT_TRUE(order < 0); }
+        TEST_ASSERT_EQUAL(APPLICATION_ROOT_FOUND, numforge_root_kind(numforge_root_scan_root(result, i)));
+        TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_compare(&order, low, numforge_root_x(numforge_root_scan_root(result, i)))); TEST_ASSERT_TRUE(order <= 0);
+        TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_compare(&order, high, numforge_root_x(numforge_root_scan_root(result, i)))); TEST_ASSERT_TRUE(order >= 0);
+        if (i) { TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_compare(&order, numforge_root_x(numforge_root_scan_root(result, i-1U)), numforge_root_x(numforge_root_scan_root(result, i)))); TEST_ASSERT_TRUE(order < 0); }
     }
 }
 static void near(size_t index, const char *reference)
 {
     BigDecimal *actual = bigdecimal_create(), *expected = bigdecimal_create(), *tolerance = bigdecimal_create();
     TEST_ASSERT_NOT_NULL(actual); TEST_ASSERT_NOT_NULL(expected); TEST_ASSERT_NOT_NULL(tolerance); int order = 1;
-    TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_to_bigdecimal(actual, result->roots[index]->x, 140, BIGDECIMAL_ROUND_HALF_EVEN));
+    TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_to_bigdecimal(actual, numforge_root_x(numforge_root_scan_root(result, index)), 140, BIGDECIMAL_ROUND_HALF_EVEN));
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(expected, reference));
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_sub(actual, actual, expected));
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_abs(actual, actual));
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(tolerance, "1E-12"));
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_compare(&order, actual, tolerance)); TEST_ASSERT_TRUE(order <= 0);
-    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_compare(&order, result->roots[index]->residual, tolerance)); TEST_ASSERT_TRUE(order <= 0);
+    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_compare(&order, numforge_root_residual(numforge_root_scan_root(result, index)), tolerance)); TEST_ASSERT_TRUE(order <= 0);
     bigdecimal_destroy(actual); bigdecimal_destroy(expected); bigdecimal_destroy(tolerance);
 }
 static void test_ordered_roots_and_shared_endpoint_uniqueness(void)
 {
     scan("x*(x-2)*(x+3)=0", "-4", "4", 3U); near(0U,"-3"); near(1U,"0"); near(2U,"2");
-    TEST_ASSERT_EQUAL(APPLICATION_SCAN_FINISHED, result->stop); TEST_ASSERT_EQUAL_UINT64(128U, result->scanned_segments);
+    TEST_ASSERT_EQUAL(APPLICATION_SCAN_FINISHED, numforge_root_scan_stop(result)); TEST_ASSERT_EQUAL_UINT64(128U, statistics().scanned_segments);
     scan("x*(x-1)=0", "0", "1", 2U); near(0U,"0"); near(1U,"1");
     scan("(x-0.125)^2=0", "0", "1", 1U); near(0U,"0.125");
 }
@@ -86,20 +92,20 @@ static void test_transcendental_references_at_precision_extremes(void)
 }
 static void test_domain_gaps_and_rejected_brackets_do_not_become_roots(void)
 {
-    scan("1/x=0", "-1", "1", 0U); TEST_ASSERT_EQUAL_UINT64(2U, result->domain_gaps);
-    scan("ln(x)=0", "-2", "2", 1U); near(0U,"1"); TEST_ASSERT_TRUE(result->domain_gaps > 0U);
+    scan("1/x=0", "-1", "1", 0U); TEST_ASSERT_EQUAL_UINT64(2U, statistics().domain_gaps);
+    scan("ln(x)=0", "-2", "2", 1U); near(0U,"1"); TEST_ASSERT_TRUE(statistics().domain_gaps > 0U);
     scan("x-0.1234+1E-30*(x-0.1234)/abs(x-0.1234)=0", "0", "1", 0U);
-    TEST_ASSERT_EQUAL_UINT64(1U, result->rejected_brackets);
-    scan("1E-100/(x-0.1234)=0", "0", "1", 0U); TEST_ASSERT_EQUAL_UINT64(1U, result->rejected_brackets);
+    TEST_ASSERT_EQUAL_UINT64(1U, statistics().rejected_brackets);
+    scan("1E-100/(x-0.1234)=0", "0", "1", 0U); TEST_ASSERT_EQUAL_UINT64(1U, statistics().rejected_brackets);
 }
 static void test_grid_is_explicitly_incomplete_and_limits_are_bounded(void)
 {
-    scan("(x-0.1234)^2=0", "0", "1", 1U); near(0U,"0.1234"); TEST_ASSERT_EQUAL(APPLICATION_SCAN_FINISHED, result->stop);
-    TEST_ASSERT_EQUAL_UINT64(1U,result->candidate_roots); TEST_ASSERT_TRUE(result->roots[0]->exact_zero);
+    scan("(x-0.1234)^2=0", "0", "1", 1U); near(0U,"0.1234"); TEST_ASSERT_EQUAL(APPLICATION_SCAN_FINISHED, numforge_root_scan_stop(result));
+    TEST_ASSERT_EQUAL_UINT64(1U,statistics().candidate_roots); TEST_ASSERT_TRUE(numforge_root_exact_zero(numforge_root_scan_root(result, 0)));
     scan("(x-0.01)*(x-0.02)=0", "0", "128", 2U); near(0U,"0.01"); near(1U,"0.02");
-    scan("x=x", "0", "1", 32U); TEST_ASSERT_EQUAL(APPLICATION_SCAN_ROOT_LIMIT, result->stop); TEST_ASSERT_LESS_THAN_UINT64(128U, result->scanned_segments);
+    scan("x=x", "0", "1", 32U); TEST_ASSERT_EQUAL(APPLICATION_SCAN_ROOT_LIMIT, numforge_root_scan_stop(result)); TEST_ASSERT_LESS_THAN_UINT64(128U, statistics().scanned_segments);
     scan("2*mod(floor(x);2)-1=0", "0", "128", 0U);
-    TEST_ASSERT_EQUAL(APPLICATION_SCAN_EVALUATION_LIMIT, result->stop); TEST_ASSERT_TRUE(result->rejected_brackets > 0U);
+    TEST_ASSERT_EQUAL(APPLICATION_SCAN_EVALUATION_LIMIT, numforge_root_scan_stop(result)); TEST_ASSERT_TRUE(statistics().rejected_brackets > 0U);
 }
 static void test_quadratic_contacts_keep_exact_rational_ordinates(void)
 {
@@ -107,7 +113,7 @@ static void test_quadratic_contacts_keep_exact_rational_ordinates(void)
     for (size_t p = 0U; p < 3U; ++p) {
         context.division_scale=digits[p];
         scan("9*x^2-6*x+1=0","0","1",1U); near(0U,"0.333333333333333333333333333333333333");
-        TEST_ASSERT_TRUE(result->roots[0]->exact_zero);
+        TEST_ASSERT_TRUE(numforge_root_exact_zero(numforge_root_scan_root(result, 0)));
         scan("(x-1/3)^2=0","0","1",1U); near(0U,"0.333333333333333333333333333333333333");
         scan("-1E-100*(x-0.1234)^2=0","0","1",1U); near(0U,"0.1234");
         scan("(x-0.1234)^2+1E-100=0","0","1",0U);
@@ -116,10 +122,10 @@ static void test_quadratic_contacts_keep_exact_rational_ordinates(void)
     scan("(cos(x)-x)^2=0","0","1",0U); // Rounded minima are not root proofs.
     scan("1/((x-0.1234)^2)=0","0","1",0U);
     scan("(x-1/3)^2=0/(x-1/3)","0","1",0U);
-    TEST_ASSERT_EQUAL_UINT64(1U,result->candidate_gaps);
+    TEST_ASSERT_EQUAL_UINT64(1U,statistics().candidate_gaps);
     scan("(x-1E-101)^2=0","0","1E-100",1U);
     BigRational *expected = bigrational_create(); TEST_ASSERT_NOT_NULL(expected); bound(expected,"1E-101");
-    int order=1; TEST_ASSERT_EQUAL(BIGRATIONAL_OK,bigrational_compare(&order,result->roots[0]->x,expected)); TEST_ASSERT_EQUAL_INT(0,order);
+    int order=1; TEST_ASSERT_EQUAL(BIGRATIONAL_OK,bigrational_compare(&order,numforge_root_x(numforge_root_scan_root(result, 0)),expected)); TEST_ASSERT_EQUAL_INT(0,order);
     bigrational_destroy(expected);
 }
 static void test_candidate_coordinates_preserve_large_common_offsets(void)
@@ -130,8 +136,8 @@ static void test_candidate_coordinates_preserve_large_common_offsets(void)
     TEST_ASSERT_EQUAL(BIGRATIONAL_OK,bigrational_add(high,low,one));
     TEST_ASSERT_EQUAL(BIGRATIONAL_OK,bigrational_div(expected,one,three)); TEST_ASSERT_EQUAL(BIGRATIONAL_OK,bigrational_add(expected,expected,low));
     TEST_ASSERT_EQUAL(CALCULATOR_OK,application_numeric_roots_scan(&result,"(x-1E100-1/3)^2=0",low,high,&context,&error));
-    TEST_ASSERT_EQUAL_UINT64(1U,result->count); TEST_ASSERT_TRUE(result->roots[0]->exact_zero);
-    int order=1; TEST_ASSERT_EQUAL(BIGRATIONAL_OK,bigrational_compare(&order,result->roots[0]->x,expected)); TEST_ASSERT_EQUAL_INT(0,order);
+    TEST_ASSERT_EQUAL_UINT64(1U,numforge_root_scan_count(result)); TEST_ASSERT_TRUE(numforge_root_exact_zero(numforge_root_scan_root(result, 0)));
+    int order=1; TEST_ASSERT_EQUAL(BIGRATIONAL_OK,bigrational_compare(&order,numforge_root_x(numforge_root_scan_root(result, 0)),expected)); TEST_ASSERT_EQUAL_INT(0,order);
     bigrational_destroy(one); bigrational_destroy(three); bigrational_destroy(expected);
 }
 static void test_failures_preserve_outputs_and_inherit_the_outer_budget(void)

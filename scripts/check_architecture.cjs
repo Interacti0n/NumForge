@@ -37,6 +37,13 @@ for (const name of [...sources, ...walk('include/numforge').filter(n => n.endsWi
             continue;
         }
         if (!fs.existsSync(path.join(root, target))) errors.push(`${name}: missing ${target}`);
+        const module = /^src\/modules\/([^/]+)\//.exec(target);
+        if (module && !name.startsWith(`src/modules/${module[1]}/`)) {
+            // Private method comparisons share callback hooks, never result storage.
+            const research = name === 'src/application/equations/numeric_root.c' &&
+                target === 'src/modules/numerical/root_strategy_internal.h';
+            if (!research) errors.push(`${name}: module-private dependency on ${target}; use its public API`);
+        }
         const owner = layerOf(name);
         // Opt-in decimal instrumentation inspects limb storage for measurements.
         const probe = name === 'src/runtime/instrumentation/decimal_profile.c' && dependency === 1;

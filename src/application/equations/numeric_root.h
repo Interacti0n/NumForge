@@ -3,7 +3,7 @@
 #include "src/application/equations/equation.h"
 
 /* Private compatibility names retain the established HTTP/application schema. */
-#include "src/modules/numerical/root_internal.h"
+#include <numforge/numerical.h>
 typedef NumForgeRootKind ApplicationNumericRootKind;
 typedef NumForgeRoot ApplicationNumericRoot;
 #define APPLICATION_ROOT_FOUND NUMFORGE_ROOT_FOUND
@@ -21,7 +21,8 @@ typedef NumForgeRoot ApplicationNumericRoot;
  * must pass conservative real-continuity checks on the final interval.
  * Non-exact candidates are reevaluated at twice the search working precision;
  * disagreement or insufficient residual improvement returns PRECISION_LIMIT.
- * Read-only owned fields, released by application_numeric_root_destroy. */
+ * Query owned results with public numerical.h getters; release with
+ * application_numeric_root_destroy. */
 
 
 /* One equality, lowercase x, radians, no session/RNG/assignment. At most

@@ -9,6 +9,11 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ### Numerical foundation
 
+- Keep polynomial and numerical-root result layouts inside their owning modules.
+  Application formatting, HTTP responses, tests and benchmarks use public getters;
+  production root solving uses the public entry point. Restrict the private research
+  hook to callbacks, enforce module-private include boundaries and share numerical
+  status conversion between graph and equation adapters.
 - Expose `phase.h` with bounded, reusable periodic-phase target location over
   caller-supplied captured phases. Share it with precision graph anchors while
   retaining actual original-expression samples and private metadata adapters.

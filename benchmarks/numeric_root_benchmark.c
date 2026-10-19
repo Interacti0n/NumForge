@@ -16,20 +16,20 @@ static bool bound(BigRational *target, const char *text)
 }
 static bool verify(const ApplicationNumericRoot *root, const NumericRootCase *scene, bool experiment)
 {
-    if (!root || root->evaluations > 192U || root->iterations > 96U) return false;
-    if (root->kind != APPLICATION_ROOT_FOUND) return scene->outcome != APPLICATION_ROOT_FOUND &&
-        (experiment || root->kind == scene->outcome) && !root->x && !root->residual;
+    if (!root || numforge_root_evaluations(root) > 192U || numforge_root_iterations(root) > 96U) return false;
+    if (numforge_root_kind(root) != APPLICATION_ROOT_FOUND) return scene->outcome != APPLICATION_ROOT_FOUND &&
+        (experiment || numforge_root_kind(root) == scene->outcome) && !numforge_root_x(root) && !numforge_root_residual(root);
     if (!scene->reference || (!experiment && scene->outcome != APPLICATION_ROOT_FOUND)) return false;
     BigDecimal *actual = bigdecimal_create(), *expected = bigdecimal_create(), *tolerance = bigdecimal_create();
     int comparison = 1;
-    bool ok = actual && expected && tolerance && root->x && root->residual &&
-        bigrational_to_bigdecimal(actual, root->x, 140, BIGDECIMAL_ROUND_HALF_EVEN) == BIGRATIONAL_OK &&
+    bool ok = actual && expected && tolerance && numforge_root_x(root) && numforge_root_residual(root) &&
+        bigrational_to_bigdecimal(actual, numforge_root_x(root), 140, BIGDECIMAL_ROUND_HALF_EVEN) == BIGRATIONAL_OK &&
         bigdecimal_set_string(expected, scene->reference) == BIGDECIMAL_OK &&
         bigdecimal_sub(actual, actual, expected) == BIGDECIMAL_OK &&
         bigdecimal_abs(actual, actual) == BIGDECIMAL_OK &&
         bigdecimal_set_string(tolerance, "1E-12") == BIGDECIMAL_OK &&
         bigdecimal_compare(&comparison, actual, tolerance) == BIGDECIMAL_OK && comparison <= 0 &&
-        bigdecimal_compare(&comparison, root->residual, tolerance) == BIGDECIMAL_OK && comparison <= 0;
+        bigdecimal_compare(&comparison, numforge_root_residual(root), tolerance) == BIGDECIMAL_OK && comparison <= 0;
     bigdecimal_destroy(actual); bigdecimal_destroy(expected); bigdecimal_destroy(tolerance); return ok;
 }
 int main(int argc, char **argv)
@@ -60,17 +60,17 @@ int main(int argc, char **argv)
             double ms = (benchmark_seconds()-start)*1000;
             size_t calls = numforge_alloc_stats_calls(), bytes = numforge_alloc_stats_bytes();
             bool valid = status == CALCULATOR_OK && verify(root, scene, algorithm != 0) &&
-                stats.bisections+stats.interpolations == root->iterations &&
+                stats.bisections+stats.interpolations == numforge_root_iterations(root) &&
                 stats.secants+stats.quadratics == stats.interpolations && stats.nudges <= stats.interpolations &&
                 (algorithm ? stats.rejections+stats.fallback_steps == stats.bisections : stats.rejections == 0U) &&
                 stats.switch_offs <= 1U && (!stats.fallback_steps || stats.switch_offs == 1U);
             failed |= !valid;
             char *x = NULL, *residual = NULL;
-            if (root && root->x && (bigrational_to_string(root->x, &x) != BIGRATIONAL_OK ||
-                bigdecimal_to_string(root->residual, &residual) != BIGDECIMAL_OK)) return 2;
+            if (root && numforge_root_x(root) && (bigrational_to_string(numforge_root_x(root), &x) != BIGRATIONAL_OK ||
+                bigdecimal_to_string(numforge_root_residual(root), &residual) != BIGDECIMAL_OK)) return 2;
             printf("%s,%d,%d,%.6f,%d,%s,%zu,%zu,%zu,%zu,%d,%s,%s,%s,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu\n", scene->name, precisions[p], run, ms,
-                (int)status, root ? application_numeric_root_kind(root->kind) : "error", root ? root->evaluations : 0U,
-                root ? root->iterations : 0U, calls, bytes, valid ? 1 : 0, x ? x : "", residual ? residual : "", algorithm == 2 ? "hybrid" : algorithm ? "brent" : "bisection",
+                (int)status, root ? application_numeric_root_kind(numforge_root_kind(root)) : "error", root ? numforge_root_evaluations(root) : 0U,
+                root ? numforge_root_iterations(root) : 0U, calls, bytes, valid ? 1 : 0, x ? x : "", residual ? residual : "", algorithm == 2 ? "hybrid" : algorithm ? "brent" : "bisection",
                 stats.bisections, stats.interpolations, stats.secants, stats.quadratics, stats.nudges, stats.rejections, stats.fallback_steps, stats.switch_offs);
             free(x); free(residual);
             application_numeric_root_destroy(root); bigrational_destroy(lower); bigrational_destroy(upper);

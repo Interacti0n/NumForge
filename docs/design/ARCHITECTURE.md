@@ -55,7 +55,11 @@ Private includes use repository-qualified paths. CMake exposes the repository
 root privately, while installed consumers see only public headers.
 `scripts/check_architecture.cjs`, also registered in CTest when Node is available,
 checks upward source includes, private leaks in public headers and module source
-manifests. Opt-in decimal profiling has one explicit core-inspection exception.
+manifests. Module-private headers are restricted to their owning module; application
+formatting and HTTP serialization use public getters for opaque results. The
+equation research adapter may include the private strategy callback contract,
+which exposes no result storage. Opt-in decimal profiling has one explicit
+core-inspection exception.
 This source check complements compilation and consumer tests; it does not prove
 the absence of every indirect or link-time dependency.
 

@@ -1,4 +1,5 @@
 #include "src/application/graphs/graph.h"
+#include "src/application/numerical_status.h"
 #include "src/engine/evaluator/exact_functions.h"
 #include "src/engine/values/value_internal.h"
 #include "src/runtime/numforge_alloc.h"
@@ -52,25 +53,12 @@ static NumForgeNumericalStatus coordinate_visit(const BigRational *x, size_t ind
     grid->status = graph_coordinate(&grid->coordinates[index], x, grid->context);
     return grid->status == CALCULATOR_OK ? NUMFORGE_NUMERICAL_OK : NUMFORGE_NUMERICAL_CALLBACK_FAILED;
 }
-static CalculatorStatus graph_numerical_status(NumForgeNumericalStatus status, CalculatorStatus callback_status)
-{
-    switch (status) {
-        case NUMFORGE_NUMERICAL_OK: return CALCULATOR_OK;
-        case NUMFORGE_NUMERICAL_NULL_ARGUMENT: return CALCULATOR_NULL_ARGUMENT;
-        case NUMFORGE_NUMERICAL_OUT_OF_MEMORY: return CALCULATOR_OUT_OF_MEMORY;
-        case NUMFORGE_NUMERICAL_VALUE_TOO_LARGE: return CALCULATOR_VALUE_TOO_LARGE;
-        case NUMFORGE_NUMERICAL_SCALE_OVERFLOW: return CALCULATOR_SCALE_OVERFLOW;
-        case NUMFORGE_NUMERICAL_CALLBACK_FAILED: return callback_status;
-        default: return CALCULATOR_INVALID_ARGUMENT;
-    }
-}
-
 static CalculatorStatus graph_coordinates(CalculatorValue *coordinates, size_t count,
     const BigRational *minimum, const BigRational *maximum, const CalculatorContext *context)
 {
     CoordinateGrid grid = {coordinates, context, CALCULATOR_OK};
     NumForgeNumericalStatus status = numforge_grid_visit(minimum, maximum, count, coordinate_visit, &grid);
-    return graph_numerical_status(status, grid.status);
+    return application_from_numerical_status(status, grid.status);
 }
 
 CalculatorStatus application_graph_sample(ApplicationGraph **result,
@@ -206,7 +194,7 @@ static CalculatorStatus adaptive_interval(GraphRefinement *work, size_t left,
         for (size_t j = 0; j < sample->phase_count; ++j) channels[i][j] = sample->phases[j];
     }
     NumForgeCurveAssessment assessment;
-    status = graph_numerical_status(numforge_curve_assess(&assessment, work->classifier, samples), CALCULATOR_OK);
+    status = application_from_numerical_status(numforge_curve_assess(&assessment, work->classifier, samples), CALCULATOR_OK);
     if (status == CALCULATOR_OK) {
         *accepted = assessment.decision == NUMFORGE_REFINEMENT_ACCEPT;
         *empty = assessment.decision == NUMFORGE_REFINEMENT_SKIP;
@@ -262,7 +250,7 @@ static CalculatorStatus adaptive_peaks(GraphRefinement *work)
         NumForgePhaseOptions options; numforge_phase_options_init(&options);
         options.period = period; options.significant_digits = digits;
         options.reserve_bytes = 3U * 1024U * 1024U; options.reserve_ms = 300;
-        status = graph_numerical_status(numforge_phase_locator_create(&locator, &options), CALCULATOR_OK);
+        status = application_from_numerical_status(numforge_phase_locator_create(&locator, &options), CALCULATOR_OK);
     }
     for (size_t edge = 1; status == CALCULATOR_OK && edge < graph->count; ++edge) {
         if (!graph->connect[edge]) continue;
@@ -276,7 +264,7 @@ static CalculatorStatus adaptive_peaks(GraphRefinement *work)
             NumForgeNumericalStatus found = numforge_phase_locate(&report, locator,
                 graph->coordinates[edge - 1].rational, graph->coordinates[edge].rational,
                 p, q, kind ? offset : NULL, phase_evaluate, &probe);
-            status = graph_numerical_status(found, work->callback_status);
+            status = application_from_numerical_status(found, work->callback_status);
             if (status != CALCULATOR_OK) break;
             if (probe.point_limited || report.kind == NUMFORGE_PHASE_RESOURCE_LIMIT) { graph->limited = true; goto cleanup; }
             if (report.kind == NUMFORGE_PHASE_FOUND) {
@@ -318,7 +306,7 @@ static CalculatorStatus adaptive_refine(GraphRefinement *work)
     NumForgeNumericalStatus status = numforge_refine_intervals(&stats, work->graph->count,
         &options, adaptive_probe_callback, work);
     if (status == NUMFORGE_NUMERICAL_OK && stats.limits) work->graph->limited = true;
-    return graph_numerical_status(status, work->callback_status);
+    return application_from_numerical_status(status, work->callback_status);
 }
 
 static CalculatorStatus adaptive_request(ApplicationGraph **result,
@@ -441,7 +429,7 @@ static CalculatorStatus adaptive_request(ApplicationGraph **result,
         NumForgeCurveCamera view = {work.clip_minimum, work.clip_maximum, work.camera_tolerance, work.pixel_width};
         NumForgeCurveOptions options = {work.tolerance, work.phase_span, work.strict_phase_span,
             work.coarse_width, work.smooth, camera ? &view : NULL, channels, channel_count};
-        status = graph_numerical_status(numforge_curve_classifier_create(&work.classifier, &options), CALCULATOR_OK);
+        status = application_from_numerical_status(numforge_curve_classifier_create(&work.classifier, &options), CALCULATOR_OK);
     }
     if (status == CALCULATOR_OK) status = adaptive_refine(&work);
     if (status == CALCULATOR_OK) status = adaptive_peaks(&work);

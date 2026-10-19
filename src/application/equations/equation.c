@@ -128,9 +128,9 @@ CalculatorStatus application_equation_root_exact(BigRationalComplex **result,
     }
     CalculatorStatus status = calculator_context_validate(context, error);
     if (status != CALCULATOR_OK) return status;
-    if (solution->kind != APPLICATION_EQUATION_FINITE || index >= solution->count)
+    if (numforge_polynomial_kind(solution) != APPLICATION_EQUATION_FINITE || index >= numforge_polynomial_root_count(solution))
         status = CALCULATOR_INVALID_ARGUMENT;
-    else if (!solution->offset) status = CALCULATOR_NOT_IMPLEMENTED;
+    else if (!numforge_polynomial_rational_offset(solution)) status = CALCULATOR_NOT_IMPLEMENTED;
     if (status != CALCULATOR_OK) { calculator_error_set(error, status, 0U); return status; }
     bool owner = numforge_budget_begin((uint64_t)context->time_limit_ms,
         CALCULATOR_ALLOCATION_BUDGET, CALCULATOR_SINGLE_ALLOCATION);

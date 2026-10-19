@@ -52,6 +52,12 @@ and C++ package consumers compile and call the public rational API.
 
 ## Choose a focused check
 
+The architecture check rejects module-private includes outside their owning
+module, with a narrow exception for the existing equation research callbacks.
+For result-boundary changes, compare complete equation HTTP responses against
+the preceding build, covering exact/radical/complex solutions, single roots,
+domain gaps, contact roots and scan limits alongside the equation browser tests.
+
 `numerical_tests` checks the [public root API](reference/NUMERICAL_API.md),
 including exact zeros, continuity, callback/resource failures, preserved outputs
 and an independent 1000-place reference. `numeric_root_tests` and

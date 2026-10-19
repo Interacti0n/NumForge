@@ -81,16 +81,16 @@ static void root_parts(size_t index, const char *real, const char *imaginary)
 }
 static void test_degree_reduction_and_multiplicity(void)
 {
-    equation(0, 0, 0); TEST_ASSERT_EQUAL(APPLICATION_EQUATION_ALL, solution->kind);
-    TEST_ASSERT_EQUAL(0U, solution->count); TEST_ASSERT_NULL(solution->center);
-    equation(0, 0, 7); TEST_ASSERT_EQUAL(APPLICATION_EQUATION_NONE, solution->kind);
-    TEST_ASSERT_EQUAL(0U, solution->degree); TEST_ASSERT_EQUAL(0U, solution->count);
-    equation(0, 3, -2); TEST_ASSERT_EQUAL(1U, solution->degree);
-    TEST_ASSERT_EQUAL(1U, solution->count); TEST_ASSERT_EQUAL(1U, solution->multiplicity[0]);
-    TEST_ASSERT_NULL(solution->discriminant); root_parts(0U, "2/3", "0");
-    equation(4, 12, 9); TEST_ASSERT_EQUAL(2U, solution->degree);
-    TEST_ASSERT_EQUAL(1U, solution->count); TEST_ASSERT_EQUAL(2U, solution->multiplicity[0]);
-    rational_text(solution->discriminant, "0"); root_parts(0U, "-3/2", "0");
+    equation(0, 0, 0); TEST_ASSERT_EQUAL(APPLICATION_EQUATION_ALL, numforge_polynomial_kind(solution));
+    TEST_ASSERT_EQUAL(0U, numforge_polynomial_root_count(solution)); TEST_ASSERT_NULL(numforge_polynomial_center(solution));
+    equation(0, 0, 7); TEST_ASSERT_EQUAL(APPLICATION_EQUATION_NONE, numforge_polynomial_kind(solution));
+    TEST_ASSERT_EQUAL(0U, numforge_polynomial_degree(solution)); TEST_ASSERT_EQUAL(0U, numforge_polynomial_root_count(solution));
+    equation(0, 3, -2); TEST_ASSERT_EQUAL(1U, numforge_polynomial_degree(solution));
+    TEST_ASSERT_EQUAL(1U, numforge_polynomial_root_count(solution)); TEST_ASSERT_EQUAL(1U, numforge_polynomial_root_multiplicity(solution, 0));
+    TEST_ASSERT_NULL(numforge_polynomial_discriminant(solution)); root_parts(0U, "2/3", "0");
+    equation(4, 12, 9); TEST_ASSERT_EQUAL(2U, numforge_polynomial_degree(solution));
+    TEST_ASSERT_EQUAL(1U, numforge_polynomial_root_count(solution)); TEST_ASSERT_EQUAL(2U, numforge_polynomial_root_multiplicity(solution, 0));
+    rational_text(numforge_polynomial_discriminant(solution), "0"); root_parts(0U, "-3/2", "0");
     equation(1, 0, 0); root_parts(0U, "0", "0");
 }
 static void test_fractional_and_complex_roots(void)
@@ -99,20 +99,20 @@ static void test_fractional_and_complex_roots(void)
     TEST_ASSERT_EQUAL(CALCULATOR_OK, application_equation_solve(&solution, coefficients[0], coefficients[1], coefficients[2], &context, &error));
     root_parts(0U, "2/3", "0"); root_parts(1U, "1", "0");
     equation(-6, 5, -1); root_parts(0U, "1/3", "0"); root_parts(1U, "1/2", "0");
-    equation(9, -6, 5); TEST_ASSERT_TRUE(solution->imaginary);
+    equation(9, -6, 5); TEST_ASSERT_TRUE(numforge_polynomial_is_imaginary(solution));
     root_parts(0U, "1/3", "-2/3"); root_parts(1U, "1/3", "2/3");
     equation(1, 0, 1); root_parts(0U, "0", "-1"); root_parts(1U, "0", "1");
 }
 static void test_irrational_roots_stay_exact_algebraic_values(void)
 {
-    equation(1, 0, -2); TEST_ASSERT_NULL(solution->offset); TEST_ASSERT_FALSE(solution->imaginary);
-    rational_text(solution->center, "0"); rational_text(solution->radicand, "2");
-    rational_text(solution->discriminant, "8"); TEST_ASSERT_EQUAL(2U, solution->count);
+    equation(1, 0, -2); TEST_ASSERT_NULL(numforge_polynomial_rational_offset(solution)); TEST_ASSERT_FALSE(numforge_polynomial_is_imaginary(solution));
+    rational_text(numforge_polynomial_center(solution), "0"); rational_text(numforge_polynomial_radicand(solution), "2");
+    rational_text(numforge_polynomial_discriminant(solution), "8"); TEST_ASSERT_EQUAL(2U, numforge_polynomial_root_count(solution));
     TEST_ASSERT_EQUAL(CALCULATOR_NOT_IMPLEMENTED, application_equation_root_exact(&root, solution, 0U, &context, &error));
     TEST_ASSERT_NULL(root);
-    equation(3, 1, 1); TEST_ASSERT_NULL(solution->offset); TEST_ASSERT_TRUE(solution->imaginary);
-    rational_text(solution->center, "-1/6"); rational_text(solution->radicand, "11/36");
-    rational_text(solution->discriminant, "-11");
+    equation(3, 1, 1); TEST_ASSERT_NULL(numforge_polynomial_rational_offset(solution)); TEST_ASSERT_TRUE(numforge_polynomial_is_imaginary(solution));
+    rational_text(numforge_polynomial_center(solution), "-1/6"); rational_text(numforge_polynomial_radicand(solution), "11/36");
+    rational_text(numforge_polynomial_discriminant(solution), "-11");
     /* Discriminant is exactly one despite cancellation of large products. */
     context.division_scale = 1;
     fraction(coefficients[0], "1", "1");
@@ -120,7 +120,7 @@ static void test_irrational_roots_stay_exact_algebraic_values(void)
     fraction(coefficients[2], "10000000000000000000100000000000000000000", "1");
     application_equation_destroy(solution); solution = NULL;
     TEST_ASSERT_EQUAL(CALCULATOR_OK, application_equation_solve(&solution, coefficients[0], coefficients[1], coefficients[2], &context, &error));
-    rational_text(solution->discriminant, "1");
+    rational_text(numforge_polynomial_discriminant(solution), "1");
     root_parts(0U, "100000000000000000000", "0"); root_parts(1U, "100000000000000000001", "0");
 }
 static void check_original_polynomial(size_t index)
@@ -148,12 +148,12 @@ static void test_known_root_families_and_original_expression_residuals(void)
             char first[32], second[32];
             (void)snprintf(first, sizeof(first), "%" PRId64, p); (void)snprintf(second, sizeof(second), "%" PRId64, q);
             root_parts(0U, first, "0"); check_original_polynomial(0U);
-            TEST_ASSERT_EQUAL(p == q ? 1U : 2U, solution->count);
+            TEST_ASSERT_EQUAL(p == q ? 1U : 2U, numforge_polynomial_root_count(solution));
             if (p != q) { root_parts(1U, second, "0"); check_original_polynomial(1U); }
         }
         for (int64_t re = -2; re <= 2; ++re) for (int64_t im = 1; im <= 2; ++im) {
             equation(scale, -2*scale*re, scale*(re*re+im*im));
-            TEST_ASSERT_TRUE(solution->imaginary); TEST_ASSERT_EQUAL(2U, solution->count);
+            TEST_ASSERT_TRUE(numforge_polynomial_is_imaginary(solution)); TEST_ASSERT_EQUAL(2U, numforge_polynomial_root_count(solution));
             check_original_polynomial(0U); check_original_polynomial(1U);
         }
     }
@@ -162,7 +162,7 @@ static void test_inputs_are_borrowed_and_context_is_always_validated(void)
 {
     integer(coefficients[0], 1);
     TEST_ASSERT_EQUAL(CALCULATOR_OK, application_equation_solve(&solution, coefficients[0], coefficients[0], coefficients[0], &context, &error));
-    rational_text(coefficients[0], "1"); rational_text(solution->radicand, "3/4");
+    rational_text(coefficients[0], "1"); rational_text(numforge_polynomial_radicand(solution), "3/4");
     ApplicationEquationSolution *original = solution;
     TEST_ASSERT_EQUAL(CALCULATOR_NULL_ARGUMENT, application_equation_solve(&solution, NULL, coefficients[1], coefficients[2], &context, &error));
     TEST_ASSERT_EQUAL_PTR(original, solution);
@@ -362,7 +362,7 @@ static void test_root_text_and_cancellation_safe_preview(void)
     fraction(coefficients[1], "100000000000000000000000000000000000000000000000000000000000000000000000000000000", "1");
     application_equation_destroy(solution); solution = NULL;
     TEST_ASSERT_EQUAL(CALCULATOR_OK, application_equation_solve(&solution, coefficients[0], coefficients[1], coefficients[2], &context, &error));
-    TEST_ASSERT_NULL(solution->offset);
+    TEST_ASSERT_NULL(numforge_polynomial_rational_offset(solution));
     TEST_ASSERT_EQUAL(CALCULATOR_OK, application_equation_format_root(&root_text, solution, 1U, &context, &error));
     BigDecimal *actual = bigdecimal_create(), *expected = bigdecimal_create(); int comparison = 1;
     TEST_ASSERT_NOT_NULL(actual); TEST_ASSERT_NOT_NULL(expected);
@@ -411,14 +411,14 @@ static void test_polynomial_equations_normalize_both_sides_exactly(void)
 {
     text_equation("3x + 1 = 7"); root_parts(0U, "2", "0");
     text_equation("(x - 2)*(x + 3) = 0"); root_parts(0U, "-3", "0"); root_parts(1U, "2", "0");
-    text_equation("x*x + 2*x + 1 = 0"); root_parts(0U, "-1", "0"); TEST_ASSERT_EQUAL(2U, solution->multiplicity[0]);
-    text_equation("x\xC2\xB2 = 2"); rational_text(solution->radicand, "2"); TEST_ASSERT_NULL(solution->offset);
+    text_equation("x*x + 2*x + 1 = 0"); root_parts(0U, "-1", "0"); TEST_ASSERT_EQUAL(2U, numforge_polynomial_root_multiplicity(solution, 0));
+    text_equation("x\xC2\xB2 = 2"); rational_text(numforge_polynomial_radicand(solution), "2"); TEST_ASSERT_NULL(numforge_polynomial_rational_offset(solution));
     text_equation("x^2 + 1 = 0"); root_parts(0U, "0", "-1"); root_parts(1U, "0", "1");
     text_equation("(x + 1)/sqrt(4) = 1/3"); root_parts(0U, "-1/3", "0");
     text_equation("x^0 + x^1 = 4"); root_parts(0U, "3", "0");
     text_equation("-x^2 = -4"); root_parts(0U, "-2", "0"); root_parts(1U, "2", "0");
-    text_equation("x^2 - x^2 = x - x"); TEST_ASSERT_EQUAL(APPLICATION_EQUATION_ALL, solution->kind);
-    text_equation("x + 1 = x + 2"); TEST_ASSERT_EQUAL(APPLICATION_EQUATION_NONE, solution->kind);
+    text_equation("x^2 - x^2 = x - x"); TEST_ASSERT_EQUAL(APPLICATION_EQUATION_ALL, numforge_polynomial_kind(solution));
+    text_equation("x + 1 = x + 2"); TEST_ASSERT_EQUAL(APPLICATION_EQUATION_NONE, numforge_polynomial_kind(solution));
     context.significant_division = false; context.division_scale = 1;
     text_equation("0.5x = 1/3"); root_parts(0U, "2/3", "0"); TEST_ASSERT_FALSE(context.significant_division);
     for (int64_t p = -3; p <= 3; ++p) for (int64_t q = p; q <= 3; ++q) {

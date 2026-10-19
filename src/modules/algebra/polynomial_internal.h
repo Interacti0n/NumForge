@@ -2,7 +2,7 @@
 #define NUMFORGE_POLYNOMIAL_INTERNAL_H
 #include <numforge/polynomial.h>
 
-/* Shared read-only layout for legacy application formatting. Not installed. */
+/* Result storage belongs exclusively to the algebra module. Not installed. */
 struct NumForgePolynomialSolution {
     NumForgePolynomialKind kind;
     unsigned degree;

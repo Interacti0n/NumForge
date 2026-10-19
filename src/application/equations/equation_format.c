@@ -15,9 +15,9 @@ void application_equation_root_text_destroy(ApplicationEquationRootText *text)
 static CalculatorStatus radical_text(char **result, const ApplicationEquationSolution *solution, size_t index)
 {
     char *center = NULL, *radicand = NULL;
-    CalculatorStatus status = calculator_from_rational_status(bigrational_to_string(solution->center, &center));
+    CalculatorStatus status = calculator_from_rational_status(bigrational_to_string(numforge_polynomial_center(solution), &center));
     if (status == CALCULATOR_OK)
-        status = calculator_from_rational_status(bigrational_to_string(solution->radicand, &radicand));
+        status = calculator_from_rational_status(bigrational_to_string(numforge_polynomial_radicand(solution), &radicand));
     if (status == CALCULATOR_OK) {
         bool zero = strcmp(center, "0") == 0;
         const char *prefix = zero ? (index ? "" : "-") : (index ? " + " : " - ");
@@ -27,7 +27,7 @@ static CalculatorStatus radical_text(char **result, const ApplicationEquationSol
             *result = numforge_malloc(size);
             if (!*result) status = CALCULATOR_OUT_OF_MEMORY;
             else (void)snprintf(*result, size, "%s%s%ssqrt(%s)", zero ? "" : center,
-                prefix, solution->imaginary ? "i*" : "", radicand);
+                prefix, numforge_polynomial_is_imaginary(solution) ? "i*" : "", radicand);
         }
     }
     free(center); free(radicand);
@@ -44,7 +44,7 @@ CalculatorStatus application_equation_format_root(ApplicationEquationRootText **
     }
     CalculatorStatus status = calculator_context_validate(context, error);
     if (status != CALCULATOR_OK) return status;
-    if (solution->kind != APPLICATION_EQUATION_FINITE || index >= solution->count ||
+    if (numforge_polynomial_kind(solution) != APPLICATION_EQUATION_FINITE || index >= numforge_polynomial_root_count(solution) ||
         context->division_scale < 1 || context->division_scale > CALCULATOR_MAX_OUTPUT_SCALE) {
         calculator_error_set(error, CALCULATOR_INVALID_ARGUMENT, 0U); return CALCULATOR_INVALID_ARGUMENT;
     }
@@ -59,7 +59,7 @@ CalculatorStatus application_equation_format_root(ApplicationEquationRootText **
     int sign = 0;
     int64_t digits = context->division_scale, working = digits + 24;
     if (!text) status = CALCULATOR_OUT_OF_MEMORY;
-    if (status == CALCULATOR_OK && solution->offset) {
+    if (status == CALCULATOR_OK && numforge_polynomial_rational_offset(solution)) {
         status = application_equation_root_exact(&exact, solution, index, context, error);
         if (status == CALCULATOR_OK)
             status = calculator_from_complex_status(bigrationalcomplex_to_string(exact, CALCULATOR_MAX_OUTPUT_BYTES, &text->exact));
@@ -77,12 +77,12 @@ CalculatorStatus application_equation_format_root(ApplicationEquationRootText **
         if (status == CALCULATOR_OK) status = calculator_from_complex_status(bigcomplex_get_real(decimal[REAL], preview));
         if (status == CALCULATOR_OK) status = calculator_from_complex_status(bigcomplex_get_imaginary(decimal[IMAGINARY], preview));
     } else if (status == CALCULATOR_OK) {
-        status = calculator_from_rational_status(bigrational_to_bigdecimal(decimal[CENTER], solution->center, working, BIGDECIMAL_ROUND_HALF_EVEN));
+        status = calculator_from_rational_status(bigrational_to_bigdecimal(decimal[CENTER], numforge_polynomial_center(solution), working, BIGDECIMAL_ROUND_HALF_EVEN));
         if (status == CALCULATOR_OK)
-            status = calculator_from_rational_status(bigrational_to_bigdecimal(decimal[RADICAL], solution->radicand, working, BIGDECIMAL_ROUND_HALF_EVEN));
+            status = calculator_from_rational_status(bigrational_to_bigdecimal(decimal[RADICAL], numforge_polynomial_radicand(solution), working, BIGDECIMAL_ROUND_HALF_EVEN));
         if (status == CALCULATOR_OK)
             status = calculator_from_decimal_status(bigdecimal_sqrt(decimal[RADICAL], decimal[RADICAL], working, BIGDECIMAL_ROUND_HALF_EVEN));
-        if (status == CALCULATOR_OK && solution->imaginary) {
+        if (status == CALCULATOR_OK && numforge_polynomial_is_imaginary(solution)) {
             status = calculator_from_decimal_status(bigdecimal_copy(decimal[REAL], decimal[CENTER]));
             if (status == CALCULATOR_OK) status = calculator_from_decimal_status(index
                 ? bigdecimal_copy(decimal[IMAGINARY], decimal[RADICAL])
@@ -91,7 +91,7 @@ CalculatorStatus application_equation_format_root(ApplicationEquationRootText **
             product = bigrational_create(); zero = bigrational_create();
             if (!product || !zero) status = CALCULATOR_OUT_OF_MEMORY;
             if (status == CALCULATOR_OK)
-                status = calculator_from_rational_status(bigrational_compare(&sign, solution->center, zero));
+                status = calculator_from_rational_status(bigrational_compare(&sign, numforge_polynomial_center(solution), zero));
             /* Choose the root with no cancellation, then recover its partner
              * from the exact rational product instead of center - radical. */
             if (status == CALCULATOR_OK) status = calculator_from_decimal_status(sign < 0
@@ -100,8 +100,8 @@ CalculatorStatus application_equation_format_root(ApplicationEquationRootText **
             if (status == CALCULATOR_OK && ((sign < 0 && index == 0U) || (sign >= 0 && index == 1U)))
                 status = calculator_from_decimal_status(bigdecimal_copy(decimal[REAL], decimal[STABLE]));
             else if (status == CALCULATOR_OK) {
-                status = calculator_from_rational_status(bigrational_mul(product, solution->center, solution->center));
-                if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_sub(product, product, solution->radicand));
+                status = calculator_from_rational_status(bigrational_mul(product, numforge_polynomial_center(solution), numforge_polynomial_center(solution)));
+                if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_sub(product, product, numforge_polynomial_radicand(solution)));
                 if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_to_bigdecimal(decimal[PRODUCT], product, working, BIGDECIMAL_ROUND_HALF_EVEN));
                 if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_div_significant(decimal[REAL], decimal[PRODUCT], decimal[STABLE], working, BIGDECIMAL_ROUND_HALF_EVEN));
             }
