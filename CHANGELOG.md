@@ -7,7 +7,19 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
-No changes yet.
+### Modular engine foundation
+
+- Adopt a staged modular mathematics architecture and a public-feature completion
+  checklist covering contracts, exactness, examples, independent tests and benchmarks.
+- Add optional installed `NumForge::engine` and Doxygen-commented `engine.h` for
+  deterministic scalar expressions, reusable prepared handles and borrowed typed
+  numeric results, using the existing C parser/evaluator without sessions or HTTP.
+- Expose working precision, rounding, conservative exactness and cooperative
+  time/allocation policies, with atomic failures and UTF-8 byte diagnostics.
+  Preserve the numeric-only target and existing CLI/web behavior; public solvers,
+  parameter binding, quantities, Python and WASM remain subsequent work.
+- Verify independent 1000-digit roots, shared-evaluator parity, ownership,
+  allocation failures and installed C/C++ consumers; extend SDK packaging/examples.
 
 ## 2.4.0 — 19 October 2026
 

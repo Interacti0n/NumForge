@@ -76,6 +76,14 @@ complex functions retain their existing approximation contracts.
 
 ## Planned tool development
 
+The [modular mathematics platform](../design/MODULAR_ENGINE.md) is the adopted
+architecture direction. Its first public stateless expression slice is implemented
+in the current source tree as `NumForge::engine`; see the [engine API](../reference/ENGINE_API.md).
+Next: deliberate application convergence/parameter contracts, a public typed solver
+slice, then a narrow Python proof. New mathematics follows the
+[feature completion checklist](FEATURE_CHECKLIST.md). Symbolic mathematics, WASM
+and a public REST service remain later work, not present interfaces.
+
 The [web/API contract](../reference/WEB_API_PARITY.md) now covers session lists,
 lifecycle commands, function discovery and saved conversion history. New
 mathematical/session features must expose their application operation and

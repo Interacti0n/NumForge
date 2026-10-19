@@ -6,6 +6,7 @@ have different ownership and compatibility contracts.
 | Reference | What it covers |
 | --- | --- |
 | [Public C API](reference/C_API.md) | BigInt, BigDecimal, BigRational, BigComplex, BigRationalComplex, units, runtime scopes and ownership. |
+| [Standalone engine C API](reference/ENGINE_API.md) | Public stateless scalar expressions, reusable handles, typed results, precision and budgets. |
 | [BigComplex foundation](reference/BIGCOMPLEX.md) | Standalone complex arithmetic, principal functions, precision and calculator integration. |
 | [Calculator expressions](reference/CALCULATOR_EXPRESSIONS.md) | Operators, named calls, precision, syntax and limits. |
 | [Polynomial equation foundation](design/POLYNOMIAL_EQUATIONS.md) | Private coefficient-based C solver, exact linear/quadratic roots and resource/ownership rules. |
@@ -26,7 +27,8 @@ have different ownership and compatibility contracts.
 - [Quantities](reference/QUANTITIES.md): `qty(...)`, dimensions, arithmetic and temperature rules.
 - [Browser calculator](guides/CALCULATOR_WEB.md) and [converter](guides/UNIT_CONVERTER.md): user controls.
 
-The public installed interface is the seven headers under `include/numforge/`.
-Calculator/session headers are private. The HTTP server is a local loopback tool;
+Public installed interfaces are declared under `include/numforge/`; expression
+evaluation links the optional `NumForge::engine` target. Internal calculator/session
+headers remain private. The HTTP server is a local loopback tool;
 it is not a separately versioned public Internet service. See
 [Application design](design/APPLICATION_DESIGN.md) for the boundaries.

@@ -19,6 +19,7 @@ testing entry points remain directly under `docs/`.
 Start with the [API guide](API.md), or open a specific reference:
 
 - [Public C API](reference/C_API.md): numeric types, functions and ownership.
+- [Standalone engine C API](reference/ENGINE_API.md): reusable expressions, typed results and operation policy.
 - [BigComplex](reference/BIGCOMPLEX.md): complex arithmetic, principal branches, precision and display forms.
 - [Calculator expressions](reference/CALCULATOR_EXPRESSIONS.md): syntax and calls.
 - [Local HTTP API](reference/HTTP_API.md): evaluation, sessions, revisions and errors.
@@ -98,6 +99,9 @@ Measurements retain their dates, environments and limitations. They are evidence
 for specific source snapshots, not promises about every machine.
 
 ## Plan and maintain — `project/`
+
+- [Modular mathematics platform](design/MODULAR_ENGINE.md): adopted boundaries, module ownership and staged implementation.
+- [Feature completion checklist](project/FEATURE_CHECKLIST.md): API, accuracy, examples, testing and performance requirements.
 
 - [Roadmap](project/ROADMAP.md): available features and future work.
 - [Equation release readiness](project/EQUATION_RELEASE_AUDIT_2026_10_19.md): supported scope, completed editor, regression/device checks and CI/package publication gates.

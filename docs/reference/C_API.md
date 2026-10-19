@@ -10,7 +10,9 @@ the public headers: `include/numforge/bigint.h`,
 
 ## Public C API scope
 
-The public API consists of these seven headers. Existing 1.x numeric signatures
+The public numeric API consists of these seven headers. The optional
+[expression engine](ENGINE_API.md) adds `engine.h` and the `NumForge::engine`
+target independently of numeric-only use. Existing 1.x numeric signatures
 remain source compatible in 2.x, and the new operations are additive.
 The calculator implementation and `src/web/web_api.h` are private application
 code, not headers for library consumers. `numforge_web` and its loopback HTTP
@@ -47,7 +49,8 @@ public API and is compiled out of non-test builds.
 
 Installed CMake consumers use `find_package(NumForge CONFIG REQUIRED)` and
 link `NumForge::numforge`. This contains numeric code and runtime support only.
-The non-exported `numforge_calculator` target owns expression evaluation,
+The optional exported `NumForge::engine` target owns expression evaluation behind
+`engine.h`; its calculator implementation headers remain private.
 `numforge_application` owns sessions/client storage, and `numforge_client` owns
 HTTP adapters. See [Application design](../design/APPLICATION_DESIGN.md). Their private
 headers are not a public C ABI.

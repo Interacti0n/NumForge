@@ -43,12 +43,15 @@ GitHub release notes. Packaging rejects unexpected archive files.
 
 ## Developer SDK contents and verification
 
-SDKs contain only public headers, the Release static numeric library, relocatable
-CMake exports, an exact-decimal C example, a short README, license and compiler/
+SDKs contain only public headers, the Release static numeric library, the optional
+standalone expression engine (current post-2.4.0 source), relocatable CMake
+exports, numeric/engine C examples, a short README, license and compiler/
 runtime provenance in `BUILDINFO.json`. See the [SDK guide](../guides/SDK.md).
 Windows SDKs use MSVC x64 `/MD`, separately from the self-contained `/MT`
-application build. Linux SDKs use GCC x64/glibc. No calculator/session/HTTP
-internals, test frameworks, screenshots or full source documentation are shipped.
+application build. Linux SDKs use GCC x64/glibc. Internal calculator/session/HTTP
+headers, test frameworks, screenshots and full source documentation are not shipped.
+The engine archive includes the shared parser/evaluator behind its public API.
+Backfilled older source tags retain their numeric-only scope.
 
 `scripts/package_sdk.py` validates the source version/build configuration,
 allowlists installed headers/library/exports, extracts the final archive into

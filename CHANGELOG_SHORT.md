@@ -5,7 +5,9 @@ details and the [2.4.0 release record](docs/project/RELEASE_2_4.md) for validati
 
 ## Unreleased
 
-No changes yet.
+- Begin the modular mathematics platform with a standalone public C expression engine.
+- Preserve typed exact/approximate results, reusable expressions and operation budgets.
+- Establish feature completion rules and extend installed C/C++ SDK checks/examples.
 
 ## 2.4.0 — 19 October 2026
 

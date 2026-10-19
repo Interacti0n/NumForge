@@ -4,6 +4,12 @@ NumForge installs a standalone C library. The calculator and local web server
 are optional clients; applications that only need arbitrary-precision numbers
 link `NumForge::numforge` and include the public headers.
 
+For stateless expression evaluation, the optional `NumForge::engine` target and
+`<numforge/engine.h>` are also installed by current source builds; see the
+[engine API](../reference/ENGINE_API.md). It shares the CLI/web parser/evaluator
+without requiring sessions or a server. Numeric-only builds can additionally set
+`-DNUMFORGE_BUILD_ENGINE=OFF` with applications/tests/fuzzers/benchmarks disabled.
+
 To use a prebuilt library, see the [developer SDK quick start](SDK.md).
 The release SDK supplies headers, the static library and CMake exports for
 MSVC x64 Release `/MD` or Linux GCC x64/glibc. Build from source below when

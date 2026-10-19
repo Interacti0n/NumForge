@@ -52,6 +52,13 @@ and C++ package consumers compile and call the public rational API.
 
 ## Choose a focused check
 
+`engine_tests` verifies the [public standalone engine](reference/ENGINE_API.md):
+typed exact/approximate results, reusable expression ownership, a frozen independent
+1000-digit sqrt(2) reference, six-rounding-mode parity with the existing evaluator,
+atomic failures, allocation/deadline injection and inherited budgets. Installed
+C/C++ consumers also link `NumForge::engine` without source-tree includes; use
+`-DNUMFORGE_TEST_ENGINE=OFF` only for an intentionally numeric-only installation.
+
 `application_expression_tests` covers the
 [parametric C application foundation](design/PARAMETRIC_EXPRESSIONS.md), including
 snapshot lifetime, typed samples, per-point errors and shared resource budgets.

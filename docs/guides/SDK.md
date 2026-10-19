@@ -3,9 +3,11 @@
 Use the `sdk-win-x64.zip` or `sdk-linux-x64.tar.gz` release asset to link the
 public numeric C API from C or C++. Download its matching `.sha256` file and
 verify the checksum before extracting the whole archive. This SDK contains
-BigInt, BigDecimal, BigRational, units and runtime APIs, not the calculator
-parser, sessions or HTTP server. For HTTP clients, use the separate application
-download and its documented HTTP API.
+BigInt, BigDecimal, BigRational, complex, units and runtime APIs. SDKs built from
+the current post-2.4.0 source also contain the optional public expression engine,
+not sessions or the HTTP server. Older published archives retain their original
+numeric-only scope. For HTTP clients, use the separate application download and
+its documented HTTP API.
 
 ## Choose a compatible toolchain
 
@@ -40,6 +42,10 @@ add `-A x64 -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL` to the configure
 command when using the Visual Studio generator. Build with `--config Release`.
 The example prints `0.1 + 0.2 = 0.3` using exact decimal arithmetic.
 
+When `NumForge::engine` is available, the example project also builds and tests
+`numforge_engine_example`, evaluating sqrt(2) at 1000 working significant digits.
+See `engine.h` and the standalone engine contract in the full source documentation.
+
 ## Use in your project
 
 ```cmake
@@ -52,6 +58,10 @@ Include public headers such as `<numforge/bigint.h>` or
 `<numforge/bigdecimal.h>`. CMake supplies include paths and the library; the
 export is relocatable. C++ headers provide C linkage automatically. A static
 library is linked into your application; there is no NumForge DLL to copy.
+
+For stateless scalar expressions, link `NumForge::engine` instead and include
+`<numforge/engine.h>`. It transitively links the numeric library. The public
+engine supports typed results and reusable expressions without a server.
 
 Check return statuses, destroy owned numeric objects with their matching
 `*_destroy()` functions and free returned allocated strings with `free()`.

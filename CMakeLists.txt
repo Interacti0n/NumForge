@@ -28,6 +28,7 @@ option(NUMFORGE_ENABLE_SANITIZERS
 include(CTest)
 
 option(NUMFORGE_BUILD_APPS "Build and install CLI and local web applications" ON)
+option(NUMFORGE_BUILD_ENGINE "Build and install the standalone expression engine" ON)
 
 option(NUMFORGE_BUILD_BENCHMARKS "Build opt-in performance benchmarks" OFF)
 option(NUMFORGE_REQUIRE_NODE_TESTS "Fail test configuration if Node.js is unavailable" OFF)
@@ -135,10 +136,14 @@ add_library(numforge STATIC
     src/internal/numforge_alloc.c
 )
 
-# Private expression engine, application state and HTTP adapters. None are
-# exported or installed as the public numeric API.
-if(NUMFORGE_BUILD_APPS OR BUILD_TESTING OR NUMFORGE_BUILD_FUZZERS OR NUMFORGE_BUILD_BENCHMARKS)
-    add_library(numforge_calculator STATIC
+# Public expression engine; application state and HTTP remain private.
+if(NOT NUMFORGE_BUILD_ENGINE AND
+   (NUMFORGE_BUILD_APPS OR BUILD_TESTING OR NUMFORGE_BUILD_FUZZERS OR NUMFORGE_BUILD_BENCHMARKS))
+    message(FATAL_ERROR "Applications, tests, fuzzers and benchmarks require NUMFORGE_BUILD_ENGINE=ON")
+endif()
+if(NUMFORGE_BUILD_ENGINE)
+    add_library(numforge_engine STATIC
+        src/engine/engine.c
         src/calculator/calculator.c
         src/calculator/value.c
         src/calculator/complex_evaluator.c
@@ -155,13 +160,22 @@ if(NUMFORGE_BUILD_APPS OR BUILD_TESTING OR NUMFORGE_BUILD_FUZZERS OR NUMFORGE_BU
         src/calculator/functions.c
         src/calculator/formatter.c
     )
-    target_link_libraries(numforge_calculator PUBLIC numforge)
+    add_library(NumForge::engine ALIAS numforge_engine)
+    add_library(numforge_calculator ALIAS numforge_engine)
+    set_target_properties(numforge_engine PROPERTIES EXPORT_NAME engine)
+    target_link_libraries(numforge_engine PUBLIC numforge)
     if(WIN32)
-        target_link_libraries(numforge_calculator PRIVATE bcrypt)
+        target_link_libraries(numforge_engine PRIVATE bcrypt)
     endif()
-    target_include_directories(numforge_calculator PUBLIC ${PROJECT_SOURCE_DIR}/src/calculator)
-    numforge_enable_diagnostics(numforge_calculator)
+    if(NOT MSVC)
+        target_link_libraries(numforge_engine PUBLIC m)
+    endif()
+    target_include_directories(numforge_engine PUBLIC
+        $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/calculator>)
+    numforge_enable_diagnostics(numforge_engine)
+endif()
 
+if(NUMFORGE_BUILD_APPS OR BUILD_TESTING OR NUMFORGE_BUILD_FUZZERS OR NUMFORGE_BUILD_BENCHMARKS)
     add_library(numforge_application STATIC
         src/application/expression.c
         src/application/expression_domain.c
@@ -316,6 +330,10 @@ install(
     EXPORT NumForgeTargets
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
+if(NUMFORGE_BUILD_ENGINE)
+    install(TARGETS numforge_engine EXPORT NumForgeTargets
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+endif()
 
 if(NUMFORGE_BUILD_APPS)
     install(
@@ -552,6 +570,15 @@ if(BUILD_TESTING)
     target_link_libraries(public_api_tests PRIVATE numforge unity)
     numforge_enable_diagnostics(public_api_tests)
     add_test(NAME public_api_tests COMMAND public_api_tests)
+
+    add_executable(engine_tests tests/test_engine.c)
+    target_link_libraries(engine_tests PRIVATE numforge_engine unity)
+    target_include_directories(engine_tests PRIVATE ${PROJECT_SOURCE_DIR}/src/internal)
+    target_compile_definitions(engine_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
+    target_compile_definitions(engine_tests PRIVATE
+        NUMFORGE_ENGINE_REFERENCE_FILE="${PROJECT_SOURCE_DIR}/benchmarks/references/decimal_math_references.tsv")
+    numforge_enable_diagnostics(engine_tests)
+    add_test(NAME engine_tests COMMAND engine_tests)
 
     target_link_libraries(bigint_tests
         PRIVATE

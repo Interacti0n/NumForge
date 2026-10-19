@@ -1,9 +1,11 @@
 # Architecture overview
 
-NumForge has a standalone numeric library and two optional clients. The installed
-`NumForge::numforge` CMake target contains the numeric types and optional runtime
-budget API. Parser, sessions and HTTP transport belong to the clients, not the
-installed numeric API.
+NumForge has a standalone numeric library, an optional public expression engine
+and optional application clients. `NumForge::numforge` contains numeric types and
+the runtime budget API. `NumForge::engine` adds the public stateless expression
+API over the same parser/evaluator used by CLI/web. Sessions and HTTP remain
+private application layers. See the [modular platform direction](MODULAR_ENGINE.md)
+and [engine contract](../reference/ENGINE_API.md) for implemented scope and next steps.
 
 ## Numeric layers
 
@@ -52,7 +54,8 @@ AST and snapshots of referenced session values. Graph sampling and future solver
 adapters reuse the typed evaluator with a local parameter and one operation budget,
 without modifying the source session. The [HTTP sampler](../reference/GRAPH_HTTP_API.md)
 and [browser graph page](../guides/GRAPHS.md) are implemented, including bounded adaptive C refinement and automatic AST
-parameter selection. Numerical solving remains future work.
+parameter selection. Polynomial and bounded numerical solving are implemented
+as private C application operations; public solver extraction remains future work.
 
 The browser handles input, navigation and presentation in JavaScript. Expressions
 are sent to the local C server for numerical evaluation. The server embeds the
@@ -66,6 +69,7 @@ It is not a production public-hosting architecture.
 | Location | Role |
 | --- | --- |
 | `include/numforge/` | Installed public API contracts. |
+| `src/engine/` | Public stateless expression handles, context and typed result adapter. |
 | `src/bigint/`, `src/bigdecimal/`, `src/bigrational/` | Numeric implementations. |
 | `src/units/` | Static unit registry and exact compatible-unit conversion over public BigRational API. |
 | `src/web/unit_web.c` | Local HTTP unit catalogue and conversion adapter; borrows session values, preserves typed exact input and shares calculator budgets. |
@@ -87,7 +91,8 @@ Read [the API overview](../API.md), [BigInt design](BIGINT_DESIGN.md),
 [BigDecimal design](BIGDECIMAL_DESIGN.md) and
 [calculator design](CALCULATOR_DESIGN.md) for the detailed contracts and modules.
 
-The private targets enforce the boundaries: `numforge_calculator` links the
-numeric library, `numforge_application` links the expression engine, and
+The targets enforce the boundaries: public `numforge_engine` links the numeric
+library (`numforge_calculator` is its private build-tree alias),
+`numforge_application` links the expression engine, and
 `numforge_client` contains HTTP adapters and links the application. CLI links
 the application directly. See [Application design](APPLICATION_DESIGN.md).

@@ -1,4 +1,4 @@
-"""Package the installed numeric C API and verify relocated C/C++ consumers."""
+"""Package public numeric/engine APIs and verify relocated C/C++ consumers."""
 import argparse
 import hashlib
 import json
@@ -43,6 +43,9 @@ def main():
         raise RuntimeError('Build uses a different checkout')
     if any(cache.get(key) != 'OFF' for key in ['BUILD_TESTING', 'NUMFORGE_BUILD_APPS', 'NUMFORGE_BUILD_BENCHMARKS']):
         raise RuntimeError('SDK requires an uninstrumented library-only build')
+    engine_enabled = cache.get('NUMFORGE_BUILD_ENGINE') == 'ON'
+    if (source / 'include/numforge/engine.h').exists() and not engine_enabled:
+        raise RuntimeError('SDK requires the standalone expression engine')
     if any(cache.get(key) == 'ON' for key in ['NUMFORGE_ENABLE_SANITIZERS', 'NUMFORGE_ENABLE_COVERAGE', 'NUMFORGE_BUILD_FUZZERS']):
         raise RuntimeError('Instrumentation is unsuitable for the SDK')
     windows = args.platform == 'win-x64'
@@ -77,7 +80,10 @@ def main():
     shutil.copytree(installed / 'include', package / 'include')
     shutil.copytree(installed / 'lib', package / 'lib')
     library = 'numforge.lib' if windows else 'libnumforge.a'
+    engine_library = 'numforge_engine.lib' if windows else 'libnumforge_engine.a'
     expected = {'lib/' + library} | {'include/numforge/' + p.name for p in (source / 'include/numforge').glob('*.h')}
+    if engine_enabled:
+        expected.add('lib/' + engine_library)
     expected |= {'lib/cmake/NumForge/' + filename for filename in ['NumForgeConfig.cmake', 'NumForgeConfigVersion.cmake', 'NumForgeTargets.cmake', 'NumForgeTargets-release.cmake']}
     actual = {p.relative_to(package).as_posix() for p in package.rglob('*') if p.is_file()}
     if actual != expected:
@@ -114,7 +120,8 @@ def main():
     shutil.rmtree(installed)
     shutil.rmtree(package)
     for label, project, extra in [('example', prefix / 'example', []),
-                                  ('consumer', source / 'tests/package_consumer', ['-DNUMFORGE_TEST_CPP=ON'])]:
+                                  ('consumer', source / 'tests/package_consumer', ['-DNUMFORGE_TEST_CPP=ON',
+                                    '-DNUMFORGE_TEST_ENGINE=' + ('ON' if engine_enabled else 'OFF')])]:
         consumer_build = output / ('verify-' + label)
         command = ['cmake', '-S', project, '-B', consumer_build, '-DCMAKE_BUILD_TYPE=Release',
                    '-DCMAKE_PREFIX_PATH=' + str(prefix), '-DNumForge_DIR=' + str(prefix / 'lib/cmake/NumForge')]

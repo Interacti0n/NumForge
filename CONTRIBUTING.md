@@ -38,6 +38,11 @@ Windows, use Visual Studio's C++ build tools or a supported GCC setup. Consult
 
 The [architecture overview](docs/design/ARCHITECTURE.md) explains the boundaries.
 Calculators compose the numeric API rather than duplicating its algorithms.
+The [modular platform direction](docs/design/MODULAR_ENGINE.md) guides new work;
+new public mathematical capabilities follow the
+[feature completion checklist](docs/project/FEATURE_CHECKLIST.md).
+The installed stateless engine adapter belongs in `src/engine/`; sessions and
+HTTP remain private. Link `NumForge::engine` for public expression evaluation.
 
 Keep disposable builds, package staging and local measurements under `build/`.
 Reusable developer tools belong in `scripts/`; one-time source rewrite scripts
