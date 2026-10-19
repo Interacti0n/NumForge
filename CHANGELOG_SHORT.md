@@ -1,41 +1,23 @@
 # Changelog highlights
 
 The main changes in a few words. See the [full changelog](CHANGELOG.md) for
-details and the [2.3.0 release record](docs/project/RELEASE_2_3.md) for validation.
+details and the [2.4.0 release record](docs/project/RELEASE_2_4.md) for validation.
 
 ## Unreleased
 
-- Complete equation editing with the shared function catalogue, examples for each
-  mode and expandable checked-point details.
+No changes yet.
 
-- Find simple quadratic contacts and close root pairs; keep checked rational
-  coordinates exact and retain explicit incomplete-discovery limits.
+## 2.4.0 — 19 October 2026
 
-- Find multiple real roots on an interval with explicit discovery limits,
-  per-root copy/graph actions and one shared calculation budget.
+- Solve exact linear/quadratic equations with rational, radical and complex roots.
+- Find one or multiple real roots on a chosen interval, with checked coordinates,
+  explicit work limits and incomplete-discovery diagnostics.
+- Edit equations using shared searchable functions/constants and mode-specific examples.
+- Copy full checked points, inspect residuals and open real solutions in Graphs.
+- Preserve inputs/results across tools and languages with responsive mobile editing.
+- Expand independent correctness, failure, benchmark and extracted-package checks.
 
-- Open real equation solutions in Graphs, keeping existing functions and checking
-  graph intercepts independently.
-
-- Improve the private numerical-root experiment with cheaper interpolation and
-  automatic bisection fallback; retain the current production method.
-
-- Recheck numerical root residuals at higher precision; benchmark a private Brent
-  experiment while retaining bisection in the web/API.
-
-- Check numerical root domains conservatively and withhold unverified candidates,
-  including a small-jump false root discovered in the audit.
-
-- Find one high-precision numerical root on a chosen interval, with residual
-  checks and explicit diagnostic outcomes in C, HTTP and the browser.
-
-- Enter whole polynomial equations such as `(x-2)*(x+3)=0`; keep coefficient mode
-  and exact C/HTTP solving with explicit unsupported-domain errors.
-
-- Add C/HTTP support for exact linear/quadratic equations, including coefficient
-  expressions, irrational and complex roots.
-- Add the browser equation editor, exact root text, stable decimal previews,
-  copy actions and a dedicated guide in both languages.
+Numerical discovery is bounded and does not guarantee all roots or certified error bounds.
 
 ## 2.3.0 — 17 October 2026
 

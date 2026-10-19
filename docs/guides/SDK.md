@@ -55,8 +55,8 @@ library is linked into your application; there is no NumForge DLL to copy.
 
 Check return statuses, destroy owned numeric objects with their matching
 `*_destroy()` functions and free returned allocated strings with `free()`.
-See the version-matched online [C API reference](https://github.com/Interacti0n/NumForge/blob/v2.3.0/docs/reference/C_API.md)
-and [library guide](https://github.com/Interacti0n/NumForge/blob/v2.3.0/docs/guides/LIBRARY_GUIDE.md).
+See the version-matched online [C API reference](https://github.com/Interacti0n/NumForge/blob/v2.4.0/docs/reference/C_API.md)
+and [library guide](https://github.com/Interacti0n/NumForge/blob/v2.4.0/docs/guides/LIBRARY_GUIDE.md).
 
 The SDK includes only `include/`, `lib/` (with CMake exports), `example/`, this
 guide, `LICENSE` and `BUILDINFO.json`. Source and full documentation are available

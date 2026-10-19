@@ -1,8 +1,9 @@
 # Equation release readiness — 19 October 2026
 
-This is a readiness checklist for the next release, **not a release record**.
-The published release remains 2.3.0. Equation work is local/unreleased until
-explicitly pushed, validated in CI and packaged. Current mathematical scope is
+This is a readiness checklist, **not a release record**. Equation functionality
+was pushed and passed all 12 jobs in [follow-up CI](https://github.com/Interacti0n/NumForge/actions/runs/39180598916).
+Version 2.4.0 preparation/publication is tracked in the [release record](RELEASE_2_4.md).
+Current mathematical scope is
 documented in the [guide](../guides/EQUATIONS.md), [exact API](../reference/EQUATION_HTTP_API.md)
 and [numerical API](../reference/NUMERIC_ROOT_HTTP_API.md).
 
@@ -118,7 +119,8 @@ published `-4.110817941952506`. The graph retained the zoomed view correctly;
 the expected snapshot was stale. The test now waits for both axis spans to show
 the requested 20×0.8 zoom before saving the camera and checking modal exit.
 No application change, retry or timeout increase is required. Follow-up CI must
-still pass before publication.
+pass before publication; [run 39180598916](https://github.com/Interacti0n/NumForge/actions/runs/39180598916)
+subsequently passed all 12 jobs for `6ddd475`, including all 447 browser cases.
 
 Local follow-up: all three expansion layouts (1280×900, 390×844, 844×390)
 passed ten times each: **30/30 cases in 1.2 min**, with retries disabled.

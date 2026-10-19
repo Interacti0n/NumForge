@@ -7,84 +7,49 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
-### Equation foundation
+No changes yet.
 
-- Complete the equation editor with shared function/constant search metadata,
-  mode-aware catalogue and examples, balanced insertion, coefficient switching,
-  native validation focus and responsive pagination. Keep checked coordinates
-  and residuals expandable and preserve manual editing on catalogue failures.
-  Extend extracted-application checks to equation assets, the function registry,
-  exact radicals and checked rational numerical contacts.
+## 2.4.0 — 19 October 2026
 
-- Discover simple off-grid quadratic contacts and close root pairs through
-  bounded original-expression midpoint/vertex samples. Preserve recurring
-  rational scan coordinates in HTTP/copy actions, reject positive minima and
-  candidate domain holes, and include scan benchmark checks in CI.
+### Equations
 
-- Add bounded multiple-root discovery in C, HTTP and both browser languages:
-  128 rational grid cells, independent bracket refinement, at most 32 roots and
-  4096 coordinate pairs sharing one operation budget. Keep incomplete discovery,
-  domain gaps and explicit work/result ceilings separate from “no solutions”.
+- Add the Equations tool in English and Slovak, backed by private C application
+  operations and a documented stateless HTTP API. Solve whole linear/quadratic
+  equations in x or enter exact real coefficient expressions a, b and c.
+- Preserve exact rational, radical and complex roots, repeated roots and
+  constant/linear reductions. Keep guarded decimal previews separate from exact
+  values, with stable small-root projection and per-root copy actions.
+- Find one real numerical root in an explicit sign-changing interval using
+  BigRational coordinates, BigDecimal residuals, conservative original-domain
+  checks and higher-precision final reevaluation. Expose nonconvergence and
+  unsupported-domain outcomes instead of claiming no solutions.
+- Discover multiple interval roots through a bounded rational grid and local
+  midpoint/quadratic candidates, including simple rational contacts and some
+  close pairs. Preserve full rational checked coordinates and their residuals.
+  Limit discovery to 32 roots/4096 coordinate pairs; completeness is not promised.
+- Add a mode-aware editor with shared function/constant metadata, translated
+  search aliases, balanced calls, coefficient switching and examples. Preserve
+  same-tab inputs/results across tools and languages. Support compact mobile
+  layouts, catalogue retry and manual input, validation focus and stale-request
+  cancellation. Make checked numerical details expandable and available for
+  manual copying when clipboard access fails.
+- Open real solutions in graphs of the original side difference while preserving
+  existing curves and independently verifying graph intercepts in C.
+- Share cooperative calculation time, allocation and output limits across each
+  request. Preserve original domain holes and atomic failures; exact polynomial
+  conversion rejects unsupported higher intermediate degrees and variable divisors.
 
-- Link real equation roots to graphs of the original side difference, preserving
-  existing functions and independently verifying graph intercepts in C. Retain
-  equation inputs/results when returning and keep complex roots in text.
+### Verification and packaging
 
-- Add a private decimal-weight hybrid comparison with bounded local proposals
-  and permanent bisection fallback on repeated rejections or poor bracket
-  contraction. Preserve large common coordinate offsets and validate method,
-  work statistics and atomic failures; production continues to use bisection.
-
-- Add a private high-precision Brent comparison experiment; production solving
-  retains bisection after mixed performance results. Independently check both
-  methods and preserve domain/work/atomic-failure contracts.
-- Reevaluate non-exact root candidates at twice the working precision before
-  publication. Withhold unstable apparent zeros caused by large rounded values,
-  expose the checked residual and invalidate pre-check browser numerical results.
-
-- Verify real domains on final numerical candidate intervals with conservative
-  exact rational enclosures. Reject the audit's vanishing-jump false root with
-  domain_unverified; retain safe divisions/logarithms/square roots, inherited
-  budgets and separate exact-point acceptance. Explain the outcome in both
-  browser languages and discard obsolete saved numerical results.
-
-- Add a 27-case numerical root corpus at precisions 16/34/100, benchmark timings
-  and independent Decimal residual checks. Record scaling/iteration limits and
-  retain the audit's adversarial discontinuity as a domain-check regression.
-
-- Add an explicit numerical interval mode for one real root of general C
-  expressions, using rational bisection and BigDecimal residuals. Bound work to
-  96 iterations/192 points under the shared request budget, with separate
-  non-bracketed/domain/iteration/precision outcomes and no completeness claim.
-- Expose checked coordinates, decimal previews and residuals through C/HTTP and
-  the browser. Check width, residual and endpoint improvement; copy the full
-  checked point and document fixed tolerances and continuity assumptions.
-
-- Accept whole linear/quadratic equations in x through a bounded C polynomial
-  AST converter and `mode=expression` HTTP input. Normalize both sides exactly,
-  preserve full-input error positions and reject higher intermediate degrees,
-  variable denominators and unsupported functions without losing domain holes.
-- Default the browser editor to a single equation line; retain coefficient mode,
-  per-tab continuation and localized errors/guides. Preserve the original HTTP
-  three-coefficient grammar when mode is omitted.
-
-- Add exact root expressions, guarded decimal previews and cancellation-safe
-  projection of small real roots. Expose both strings through the same C/HTTP
-  operation. Preserve exact values separately from approximate previews.
-- Replace the Equations placeholder with a localized mobile/desktop coefficient
-  editor, copyable roots, multiplicities, typed errors and per-tab continuation.
-  Cancel stale requests on editing/navigation and add focused equation guides.
-
-- Add a private coefficient-based C solver for linear/quadratic equations with
-  exact rational coefficients, algebraic radicals, complex conjugates, repeated
-  roots and constant/linear degree reduction. Keep irrational roots exact rather
-  than silently rounding them into rational-component complex values.
-- Document ownership, shared time/memory budgets and the application/UI boundary;
-  add exact residual, allocation-failure, deadline and memory-leak regressions.
-- Add stateless C coefficient-expression evaluation and `POST /api/equations/solve`
-  with exact algebraic JSON roots, coefficient-specific errors and shared request
-  budgets. Reject random/assignment, quantity, complex and approximate coefficients;
-  add exhaustive adapter allocation failures and real-server HTTP regressions.
+- Add numerical-root correctness/performance corpora, independent Decimal/Fraction
+  coordinate checks, allocation/deadline regressions and three-platform benchmark
+  smoke checks. Compare private Brent and decimal-weight hybrid experiments;
+  production interval refinement retains bisection after mixed performance results.
+- Extend extracted application checks to both equation languages/assets, the C
+  function registry, exact radicals and checked rational numerical contacts.
+- Synchronize the guide, HTTP contracts, API coverage and release scope. Wait for
+  the rendered graph zoom before snapshotting its camera in the expansion test;
+  retain assertions without retries or increased timeouts.
 
 ## 2.3.0 — 17 October 2026
 
