@@ -1,0 +1,18 @@
+target_sources(numforge_engine PRIVATE
+    api/engine.c
+    api/calculator.c
+    values/value.c
+    evaluator/complex_evaluator.c
+    values/quantity.c
+    evaluator/random.c
+    evaluator/constants.c
+    parser/tokenizer.c
+    parser/parser.c
+    evaluator/evaluator.c
+    evaluator/evaluator_functions.c
+    evaluator/evaluator_trigonometric.c
+    evaluator/exact_evaluator.c
+    evaluator/exact_functions.c
+    evaluator/functions.c
+    formatting/formatter.c
+)

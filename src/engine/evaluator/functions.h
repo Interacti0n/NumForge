@@ -1,0 +1,92 @@
+#ifndef NUMFORGE_CALCULATOR_FUNCTIONS_H
+#define NUMFORGE_CALCULATOR_FUNCTIONS_H
+
+#include <stddef.h>
+
+/*
+------------------------------------------------------------------------------------------------------------------------------
+    Internal function registry. Names are lowercase ASCII letters only.
+    A zero maximum denotes variadic arity, bounded by input/allocation limits.
+    Arity counts literal units too; qty/convert AST children are numeric only.
+    Recognized calls need not have a numerical implementation yet.
+
+    Implementation: src/engine/evaluator/functions.c
+------------------------------------------------------------------------------------------------------------------------------
+*/
+
+typedef enum CalculatorFunctionImplementation
+{
+    CALCULATOR_FUNCTION_PENDING,
+    CALCULATOR_FUNCTION_POWER,
+    CALCULATOR_FUNCTION_FACTORIAL,
+    CALCULATOR_FUNCTION_ABS,
+    CALCULATOR_FUNCTION_SIGN,
+    CALCULATOR_FUNCTION_MIN,
+    CALCULATOR_FUNCTION_MAX,
+    CALCULATOR_FUNCTION_SUM,
+    CALCULATOR_FUNCTION_PRODUCT,
+    CALCULATOR_FUNCTION_MEAN,
+    CALCULATOR_FUNCTION_MEDIAN,
+    CALCULATOR_FUNCTION_GEOMETRIC_MEAN,
+    CALCULATOR_FUNCTION_HARMONIC_MEAN,
+    CALCULATOR_FUNCTION_VARIANCE,
+    CALCULATOR_FUNCTION_STANDARD_DEVIATION_POPULATION,
+    CALCULATOR_FUNCTION_STANDARD_DEVIATION_SAMPLE,
+    CALCULATOR_FUNCTION_FLOOR,
+    CALCULATOR_FUNCTION_CEIL,
+    CALCULATOR_FUNCTION_TRUNC,
+    CALCULATOR_FUNCTION_ROUND,
+    CALCULATOR_FUNCTION_GCD,
+    CALCULATOR_FUNCTION_LCM,
+    CALCULATOR_FUNCTION_MOD,
+    CALCULATOR_FUNCTION_NPR,
+    CALCULATOR_FUNCTION_NCR,
+    CALCULATOR_FUNCTION_ISQRT,
+    CALCULATOR_FUNCTION_SQRT,
+    CALCULATOR_FUNCTION_CBRT,
+    CALCULATOR_FUNCTION_ROOT,
+    CALCULATOR_FUNCTION_EXP,
+    CALCULATOR_FUNCTION_LN,
+    CALCULATOR_FUNCTION_LOG,
+    CALCULATOR_FUNCTION_SIN,
+    CALCULATOR_FUNCTION_COS,
+    CALCULATOR_FUNCTION_TAN,
+    CALCULATOR_FUNCTION_ASIN,
+    CALCULATOR_FUNCTION_ACOS,
+    CALCULATOR_FUNCTION_ATAN,
+    CALCULATOR_FUNCTION_SINH,
+    CALCULATOR_FUNCTION_COSH,
+    CALCULATOR_FUNCTION_TANH,
+    CALCULATOR_FUNCTION_ASINH,
+    CALCULATOR_FUNCTION_ACOSH,
+    CALCULATOR_FUNCTION_ATANH,
+    CALCULATOR_FUNCTION_RADIANS,
+    CALCULATOR_FUNCTION_DEGREES,
+    CALCULATOR_FUNCTION_QUANTITY,
+    CALCULATOR_FUNCTION_CONVERT,
+    CALCULATOR_FUNCTION_RANDOM,
+    CALCULATOR_FUNCTION_COMPLEX,
+    CALCULATOR_FUNCTION_REAL_PART,
+    CALCULATOR_FUNCTION_IMAGINARY_PART,
+    CALCULATOR_FUNCTION_CONJUGATE,
+    CALCULATOR_FUNCTION_ARGUMENT
+} CalculatorFunctionImplementation;
+
+typedef struct CalculatorFunction
+{
+    const char *name;
+    size_t minimum_arguments;
+    size_t maximum_arguments;
+    CalculatorFunctionImplementation implementation;
+} CalculatorFunction;
+
+/* Returns an immutable registry entry, or NULL for an unknown name. */
+
+const CalculatorFunction *calculator_function_find(
+    const char *text,
+    size_t length
+);
+size_t calculator_function_count(void);
+const CalculatorFunction *calculator_function_at(size_t index);
+
+#endif

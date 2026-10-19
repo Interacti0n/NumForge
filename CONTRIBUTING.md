@@ -23,31 +23,44 @@ Windows, use Visual Studio's C++ build tools or a supported GCC setup. Consult
 [TESTING.md](docs/TESTING.md) for explicit builds, sanitizers, browser checks,
 32-bit/ARM64 coverage and installed C/C++ package consumers.
 
-## Where changes belong
+## Extend the platform
 
-- Public numeric APIs: `include/numforge/` and `src/bigint/`, `src/bigdecimal/`,
-  `src/bigrational/`. Keep representation details private.
-- Calculator parsing, typed evaluation and sessions: `src/calculator/`.
-- Local HTTP transport: `src/web/`.
-- Browser UI: `web/`. Keep English and Slovak behavior aligned; rebuild the
-  server after editing assets. Never edit the generated embedded-asset header.
-- Tests: `tests/`; opt-in measurement harnesses: `benchmarks/`. See the
-  [benchmark tools guide](benchmarks/README.md); frozen math references and their
-  generator belong in `benchmarks/references/`.
-- Guides and reports: `docs/`; start with the [documentation guide](docs/README.md).
+Use the [architecture source map and dependency rules](docs/design/ARCHITECTURE.md)
+to choose an owner. Core representations live in `src/core/`, mathematical
+capabilities in `src/modules/`, parsing/evaluation in `src/engine/`, and sessions
+and workflow state in `src/application/`. CLI and web transport/assets live in
+`apps/`; language adapters live in `bindings/`. Create directories when they gain
+an implementation, not for speculative modules or bindings.
 
-The [architecture overview](docs/design/ARCHITECTURE.md) explains the boundaries.
-Calculators compose the numeric API rather than duplicating its algorithms.
-The [modular platform direction](docs/design/MODULAR_ENGINE.md) guides new work;
-new public mathematical capabilities follow the
-[feature completion checklist](docs/project/FEATURE_CHECKLIST.md).
-The installed stateless engine adapter belongs in `src/engine/`; sessions and
-HTTP remain private. Link `NumForge::engine` for public expression evaluation.
+For a new mathematical capability:
 
-Keep disposable builds, package staging and local measurements under `build/`.
-Reusable developer tools belong in `scripts/`; one-time source rewrite scripts
-should not be kept as build tooling. Check documentation links with
-`node scripts/check_docs.cjs`.
+1. Define the public contract in `include/numforge/`, using opaque owned handles
+   where appropriate. Specify exactness, precision units, errors and lifetimes.
+2. Implement the algorithm once in its owning module. Add sources explicitly to
+   that module's `CMakeLists.txt`; a new module is registered by one
+   `add_subdirectory` in `src/modules/CMakeLists.txt`. Do not use source globs.
+3. Add independent numerical, boundary and failure checks, an installed consumer
+   example and a benchmark for expensive operations. Follow the
+   [feature checklist](docs/project/FEATURE_CHECKLIST.md).
+4. Add thin engine/binding/application adapters where supported. Keep exact input
+   lossless and typed results separate from their display text. UI code presents
+   results; it does not reimplement the mathematics.
+5. Document workflows in the relevant guide and link the API index to the contract.
+   Avoid duplicating public declarations and historical implementation narratives.
+
+Use repository-qualified paths for private headers and `<numforge/...>` for public
+headers. Keep only the public include directory in installed target interfaces.
+Run `node scripts/check_architecture.cjs` and `node scripts/check_docs.cjs` in
+addition to relevant tests. CTest runs the architecture check when Node is present.
+For broad structural changes, also validate a numeric-only installation, external
+C/C++ consumers, Python source/wheel packaging and affected browser flows as
+described in [TESTING.md](docs/TESTING.md).
+
+Comments should explain invariants, numerical choices, ownership or surprising
+constraints; avoid restating each line. Keep disposable builds and measurements
+under `build/`; reusable tools belong in `scripts/`. Edit web assets under
+`apps/web/assets/`, keep English/Slovak behavior aligned and rebuild the embedded
+server. Never edit generated asset headers.
 
 ## Numerical changes
 

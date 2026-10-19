@@ -1,12 +1,12 @@
-#include "numeric_root.h"
-#include "numeric_root_experiment.h"
-#include "session_api.h"
-#include "expression.h"
-#include "../src/internal/numforge_alloc.h"
+#include "src/application/equations/numeric_root.h"
+#include "src/application/equations/numeric_root_experiment.h"
+#include "apps/web/http/session_api.h"
+#include "src/application/expressions/expression.h"
+#include "src/runtime/numforge_alloc.h"
 #include <unity.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../benchmarks/numeric_root_cases.h"
+#include "benchmarks/numeric_root_cases.h"
 
 static CalculatorContext context;
 static CalculatorError error;

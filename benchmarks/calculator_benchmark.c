@@ -1,7 +1,7 @@
-#include "evaluator.h"
-#include "formatter.h"
-#include "benchmark_clock.h"
-#include "../src/internal/numforge_alloc.h"
+#include "src/engine/evaluator/evaluator.h"
+#include "src/engine/formatting/formatter.h"
+#include "benchmarks/benchmark_clock.h"
+#include "src/runtime/numforge_alloc.h"
 
 #include <inttypes.h>
 #include <stdio.h>

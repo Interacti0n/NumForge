@@ -1,6 +1,6 @@
-#include "equation.h"
-#include "session_api.h"
-#include "../src/internal/numforge_alloc.h"
+#include "src/application/equations/equation.h"
+#include "apps/web/http/session_api.h"
+#include "src/runtime/numforge_alloc.h"
 #include <unity.h>
 #include <inttypes.h>
 #include <stdio.h>

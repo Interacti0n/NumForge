@@ -8,7 +8,7 @@ The public numeric library can still be built and installed alone.
 | `numforge` / installed `NumForge::numforge` | Numeric source directories | Numeric types, algorithms, unit conversion and optional caller-owned budgets. |
 | `numforge_engine` / installed `NumForge::engine` | `src/engine`, `src/calculator` | Public stateless expression API over the shared parser/evaluator; calculator implementation details and application-only capabilities remain private. `numforge_calculator` is a build-tree alias. |
 | `numforge_application` (private) | `src/application` | Session lifecycle, variables, ans/history, preview/replay, random-state ownership, confirmed conversions and bounded client/cache storage. |
-| `numforge_client` (private HTTP adapters) | `src/web/web_api.c`, `unit_web.c`, `session_api.c`, `http_request.c` | Translate HTTP-oriented options into shared calls; frame requests and serialize unit responses. |
+| `numforge_client` (private HTTP adapters) | `apps/web/http/web_api.c`, `unit_web.c`, `session_api.c`, `http_request.c` | Translate HTTP-oriented options into shared calls; frame requests and serialize unit responses. |
 | `calculator` / `numforge_web` | CLI / server entry points | CLI interaction / sockets, route dispatch, JSON and embedded assets. |
 | Browser | `web` | Input/caret, navigation, language, categories, tabs, clipboard and display mirrors. |
 
@@ -26,7 +26,7 @@ pools, confirmation history, UI fields, accounts or persistence. For random
 expressions the caller supplies state; the application decides whether preview
 draws become confirmed state.
 
-`CalculatorSession`, in `src/application/session.h`, owns variable/history
+`CalculatorSession`, in `src/application/sessions/session.h`, owns variable/history
 values, confirmed conversions and one preview. Clearing calculator history moves
 its latest typed value into separately owned ans storage. Reset destroys values;
 release retains a bounded tombstone until FIFO eviction. Confirmation, deletion and revision handling remain

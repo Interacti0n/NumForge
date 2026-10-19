@@ -17,7 +17,7 @@ typedef struct BigInt BigInt;
 
     BIGINT_OK is 0, matching the usual C convention for success.
 
-    Implementation: src/bigint/bigint.c
+    Implementation: src/core/bigint/bigint.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 typedef enum BigIntStatus
@@ -45,7 +45,7 @@ const char *bigint_status_to_string( /*Human-readable description of a BigIntSta
 ------------------------------------------------------------------------------------------------------------------------------
     Lifetime and copy functions for BigInt.
 
-    Implementation: src/bigint/bigint.c
+    Implementation: src/core/bigint/bigint.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
@@ -64,7 +64,7 @@ BigIntStatus bigint_copy( /*Create a copy of a BigInt*/
 ------------------------------------------------------------------------------------------------------------------------------
     Decimal text conversion functions for BigInt.
 
-    Implementation: src/bigint/conversion.c
+    Implementation: src/core/bigint/conversion.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
@@ -96,7 +96,7 @@ BigIntStatus bigint_to_string_base(const BigInt *value, unsigned base,
 ------------------------------------------------------------------------------------------------------------------------------
     Comparison and inspection functions for BigInt.
 
-    Implementation: src/bigint/comparison.c
+    Implementation: src/core/bigint/comparison.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
@@ -125,7 +125,7 @@ bool bigint_is_negative( /*Check if a BigInt is negative*/
     exception: if quotient and remainder are passed as the SAME object to
     bigint_div_mod, the function will return BIGINT_INVALID_ARGUMENT and not modify either.
 
-    Implementation: src/bigint/arithmetic.c
+    Implementation: src/core/bigint/arithmetic.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
@@ -179,7 +179,7 @@ BigIntStatus bigint_pow( /*Exponentiation for BigInts (base^exponent). Negative 
 ------------------------------------------------------------------------------------------------------------------------------
     Root functions for BigInt.
 
-    Implementation: src/bigint/roots.c
+    Implementation: src/core/bigint/roots.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
@@ -192,7 +192,7 @@ BigIntStatus bigint_isqrt( /*Floor integer square root for non-negative values. 
 ------------------------------------------------------------------------------------------------------------------------------
     Number-theory functions for BigInt.
 
-    Implementation: src/bigint/number_theory.c
+    Implementation: src/core/bigint/number_theory.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
@@ -227,7 +227,7 @@ BigIntStatus bigint_combination( /* Calculate nCr exactly. Requires 0 <= r <= n.
     Bitwise operation functions for BigInt. AND, OR, and XOR currently accept
     only non-negative operands. bigint_not is defined for every value.
 
-    Implementation: src/bigint/bitwise.c
+    Implementation: src/core/bigint/bitwise.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 
@@ -265,7 +265,7 @@ BigIntStatus bigint_shift_right( /*Right shift for BigInts (a>>n), truncating to
 ------------------------------------------------------------------------------------------------------------------------------
     Parity, primality, and perfect-square functions for BigInt.
 
-    Implementation: src/bigint/primality.c
+    Implementation: src/core/bigint/primality.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 

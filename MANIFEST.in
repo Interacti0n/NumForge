@@ -2,7 +2,7 @@ include CMakeLists.txt LICENSE README.md CHANGELOG.md CHANGELOG_SHORT.md
 include scripts/check_python_package.py
 recursive-include cmake *.cmake *.in
 recursive-include include *.h
-recursive-include src *.c *.h *.inc
+recursive-include src CMakeLists.txt *.c *.h *.inc
 recursive-include bindings/python *.c *.py *.md
 recursive-include tests/python *.py
 recursive-include examples/python *.py

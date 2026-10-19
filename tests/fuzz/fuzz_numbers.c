@@ -3,7 +3,7 @@
 #include <string.h>
 #include <numforge/bigint.h>
 #include <numforge/bigdecimal.h>
-#include "../../src/internal/numforge_alloc.h"
+#include "src/runtime/numforge_alloc.h"
 
 /* Budget huge compact exponents; verify successful decimal serialization is
  * stable after reparsing. Failed resource-limited conversions are legitimate. */

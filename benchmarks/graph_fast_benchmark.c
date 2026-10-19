@@ -1,7 +1,7 @@
-#include "graph.h"
-#include "fast_expression.h"
-#include "benchmark_clock.h"
-#include "../src/internal/numforge_alloc.h"
+#include "src/application/graphs/graph.h"
+#include "src/application/expressions/fast_expression.h"
+#include "benchmarks/benchmark_clock.h"
+#include "src/runtime/numforge_alloc.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>

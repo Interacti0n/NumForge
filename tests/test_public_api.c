@@ -2,7 +2,7 @@
 #include <numforge/bigdecimal.h>
 #include <numforge/runtime.h>
 #include <stdlib.h>
-#include "package_consumer/check_api.h"
+#include "tests/package_consumer/check_api.h"
 
 void setUp(void) { numforge_budget_end(); }
 void tearDown(void) { numforge_budget_end(); }

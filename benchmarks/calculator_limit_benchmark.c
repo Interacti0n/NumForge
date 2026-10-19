@@ -1,7 +1,7 @@
-#include "calculator_internal.h"
-#include "benchmark_clock.h"
-#include "../src/internal/numforge_alloc.h"
-#include "../src/internal/decimal_profile.h"
+#include "src/engine/api/calculator_internal.h"
+#include "benchmarks/benchmark_clock.h"
+#include "src/runtime/numforge_alloc.h"
+#include "src/runtime/instrumentation/decimal_profile.h"
 #include <errno.h>
 #include <inttypes.h>
 #include <stdio.h>

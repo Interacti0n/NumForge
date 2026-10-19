@@ -80,7 +80,7 @@ complex functions retain their existing approximation contracts.
 
 ## Planned tool development
 
-The [modular mathematics platform](../design/MODULAR_ENGINE.md) is the adopted
+The [modular mathematics platform](../design/ARCHITECTURE.md) is the adopted
 architecture direction. Its first public stateless expression slice is implemented
 in the current source tree as `NumForge::engine`; see the [engine API](../reference/ENGINE_API.md).
 Explicit expression parameters and direct typed argument constructors are public.

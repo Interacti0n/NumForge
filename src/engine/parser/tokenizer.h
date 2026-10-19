@@ -1,0 +1,80 @@
+#ifndef NUMFORGE_CALCULATOR_TOKENIZER_H
+#define NUMFORGE_CALCULATOR_TOKENIZER_H
+
+#include "src/engine/api/calculator_internal.h"
+
+/*
+------------------------------------------------------------------------------------------------------------------------------
+    Token types produced from calculator source text.
+
+    The tokenizer deliberately leaves unary plus/minus to the parser. This
+    makes -2^2 and 2*-3 unambiguous.
+
+    Implementation: src/engine/parser/tokenizer.c
+------------------------------------------------------------------------------------------------------------------------------
+*/
+
+typedef enum CalculatorTokenType
+{
+    CALCULATOR_TOKEN_NUMBER,
+    CALCULATOR_TOKEN_UNIT,
+    CALCULATOR_TOKEN_IDENTIFIER,
+    CALCULATOR_TOKEN_PLUS,
+    CALCULATOR_TOKEN_MINUS,
+    CALCULATOR_TOKEN_STAR,
+    CALCULATOR_TOKEN_SLASH,
+    CALCULATOR_TOKEN_CARET,
+    CALCULATOR_TOKEN_SQUARE,
+    CALCULATOR_TOKEN_CUBE,
+    CALCULATOR_TOKEN_FACTORIAL,
+    CALCULATOR_TOKEN_SQRT,
+    CALCULATOR_TOKEN_SEMICOLON,
+    CALCULATOR_TOKEN_LEFT_PAREN,
+    CALCULATOR_TOKEN_RIGHT_PAREN,
+    CALCULATOR_TOKEN_END
+} CalculatorTokenType;
+
+/*
+------------------------------------------------------------------------------------------------------------------------------
+    text points into the original input; it is never separately allocated.
+------------------------------------------------------------------------------------------------------------------------------
+*/
+
+typedef struct CalculatorToken
+{
+    CalculatorTokenType type;
+    const char *text;
+    size_t length;
+    size_t offset;
+} CalculatorToken;
+
+typedef struct CalculatorTokenizer
+{
+    const char *input;
+    size_t length;
+    size_t offset;
+} CalculatorTokenizer;
+
+/*
+------------------------------------------------------------------------------------------------------------------------------
+    Tokenizer operation functions. next skips whitespace and produces NUMBER,
+    IDENTIFIER, operator, postfix operator, parenthesis, or END tokens. An uppercase E suffix
+    becomes a scientific exponent only when it has exponent digits; lowercase
+    e is a constant when standalone; whole letter sequences such as exp are
+    identifiers. Digits never belong to names, preserving 1e3 multiplication.
+    Invalid characters return CALCULATOR_INVALID_TOKEN
+    with a source offset.
+------------------------------------------------------------------------------------------------------------------------------
+*/
+
+CalculatorStatus calculator_tokenizer_init( /*Initialize a tokenizer over a NUL-terminated input string*/
+    CalculatorTokenizer *tokenizer,
+    const char *input
+);
+CalculatorStatus calculator_tokenizer_next(
+    CalculatorTokenizer *tokenizer,
+    CalculatorToken *token,
+    CalculatorError *error
+);
+
+#endif

@@ -1,5 +1,5 @@
-#include "graph_analysis.h"
-#include "benchmark_clock.h"
+#include "src/application/graphs/graph_analysis.h"
+#include "benchmarks/benchmark_clock.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>

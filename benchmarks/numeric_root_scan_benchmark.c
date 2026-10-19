@@ -1,6 +1,6 @@
-#include "numeric_root.h"
-#include "benchmark_clock.h"
-#include "../src/internal/numforge_alloc.h"
+#include "src/application/equations/numeric_root.h"
+#include "benchmarks/benchmark_clock.h"
+#include "src/runtime/numforge_alloc.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

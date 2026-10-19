@@ -3,7 +3,7 @@
 
 #include <unity.h>
 #include <numforge/bigint.h>
-#include "bigint_base_references.h"
+#include "tests/bigint_base_references.h"
 
 
 /* ============================================================

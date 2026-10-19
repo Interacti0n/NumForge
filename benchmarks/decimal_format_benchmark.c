@@ -1,6 +1,6 @@
-#include "benchmark_clock.h"
-#include "../src/internal/benchmark_profile.h"
-#include "../src/internal/numforge_alloc.h"
+#include "benchmarks/benchmark_clock.h"
+#include "src/runtime/instrumentation/benchmark_profile.h"
+#include "src/runtime/numforge_alloc.h"
 
 #include <numforge/bigdecimal.h>
 #include <numforge/bigint.h>

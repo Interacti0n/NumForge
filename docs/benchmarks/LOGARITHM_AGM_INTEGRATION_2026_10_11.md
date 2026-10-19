@@ -2,7 +2,7 @@
 
 This follows the [fixed-guard prototype](LOGARITHM_AGM_PROTOTYPE_2026_10_11.md).
 The production path is a separate outward-rounded interval implementation in
-`src/bigdecimal/logarithm_agm.c`, reached through the existing `bigdecimal_ln`.
+`src/core/bigdecimal/logarithm_agm.c`, reached through the existing `bigdecimal_ln`.
 No installed header, function syntax, calculator budget or release version changes.
 
 ## Selection and failure contract

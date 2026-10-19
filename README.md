@@ -1,10 +1,10 @@
 # NumForge
 
-<img align="right" src="web/logo.png" alt="NumForge logo" width="96" height="96">
+<img align="right" src="apps/web/assets/logo.png" alt="NumForge logo" width="96" height="96">
 
 **Exact arithmetic. High-precision math. One C17 core.**
 
-Current development is moving toward a [modular mathematics platform](docs/design/MODULAR_ENGINE.md).
+Current development is moving toward a [modular mathematics platform](docs/design/ARCHITECTURE.md).
 The first [public expression engine API](docs/reference/ENGINE_API.md) is available
 in source as `NumForge::engine`, with reusable expressions and typed results
 independent of CLI/web. Published 2.4.0 archives predate this addition.
@@ -381,7 +381,7 @@ Browse the [documentation guide](docs/README.md) by task or the
 | [BigInt design](docs/design/BIGINT_DESIGN.md) | Representation, semantics, and implementation. |
 | [BigDecimal design](docs/design/BIGDECIMAL_DESIGN.md) | Decimal representation, rounding, and future work. |
 | [Calculator design](docs/design/CALCULATOR_DESIGN.md) | Parser, evaluation, CLI/web behavior, and limits. |
-| [Web source](web/README.md) | Editable HTML, CSS, JavaScript, and embedded asset build. |
+| [Web source](apps/web/assets/README.md) | Editable HTML, CSS, JavaScript, and embedded asset build. |
 | [Testing guide](docs/TESTING.md) | Test suites, CI, fuzzing, and performance checks. |
 | [BigInt measurements](docs/benchmarks/BIGINT_BENCHMARKS.md) | Arithmetic baseline, exact references and private experiments. |
 | [Formatting/cache measurements](docs/benchmarks/BENCHMARKS.md) | Timing phases, memory measurements and reproduction. |

@@ -1,7 +1,7 @@
-#include "expression.h"
-#include "fast_expression.h"
+#include "src/application/expressions/expression.h"
+#include "src/application/expressions/fast_expression.h"
 #include <math.h>
-#include "../src/internal/numforge_alloc.h"
+#include "src/runtime/numforge_alloc.h"
 #include <unity.h>
 #include <stdlib.h>
 #include <string.h>

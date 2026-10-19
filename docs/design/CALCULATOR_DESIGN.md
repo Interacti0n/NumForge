@@ -1,7 +1,7 @@
 # Calculator design
 
 The calculator is an application layer over `BigInt`, `BigRational` and `BigDecimal`. Its source stays in
-`src/calculator/` rather than the public include tree; it is an application
+`src/engine/` rather than the public include tree; it is an application
 client over the public numeric API.
 
 Expression evaluation is the private `numforge_calculator` target. Session
@@ -14,8 +14,8 @@ depend on that layer. See [Application design](APPLICATION_DESIGN.md).
 | --- | --- |
 | `calculator.c` | Shared status/error handling, precision defaults and the bounded complete `calculator_compute` pipeline used by CLI and HTTP. |
 | `value.c` | Owns typed values, projects exact values to the requested decimal precision, and selects fraction or decimal output. |
-| `src/application/session.c` | Private application session: confirmed values, bounded history, preview reuse and idempotent confirmation. |
-| `src/application/client_store.c` | Transport-independent ownership of bounded session and legacy-cache pools. |
+| `src/application/sessions/session.c` | Private application session: confirmed values, bounded history, preview reuse and idempotent confirmation. |
+| `src/application/clients/client_store.c` | Transport-independent ownership of bounded session and legacy-cache pools. |
 | `constants.c` | Maps `π`, `e`, and `φ` to the precision-aware public BigDecimal constant API. |
 | `tokenizer.c` | Converts source text into location-aware tokens. Implemented for decimal literals, identifiers, whitespace, binary and postfix operators, and parentheses. |
 | `parser.c` | Converts tokens into an opaque expression tree (AST). Implemented as recursive descent with postfix, power, unary, multiplicative, and additive precedence layers. |
@@ -26,11 +26,11 @@ depend on that layer. See [Application design](APPLICATION_DESIGN.md).
 | `exact_functions.c` | Implements exact powers, proven rational roots, selected integer operations and rounding. |
 | `formatter.c` | Formats a completed result at the requested output scale and notation without changing the stored value. |
 | `functions.c` | Immutable registry of named calls, accepted arities and implementation dispatch identifiers. |
-| `src/main.c` | Interactive command-line shell around the calculator pipeline. |
-| `src/web/web_api.c` | Text-to-result adapter used by the local web server. |
-| `src/web/web_main.c` | Starts the loopback server, parses command-line options and opens the browser when requested. |
-| `src/web/web_server.c` | Handles bounded HTTP connections, embedded assets, calculator sessions and `POST /api/evaluate`. |
-| `src/web/http_request.c` | Bounded, socket-independent HTTP framing and header validation; returns incomplete, ready, malformed or oversized status. |
+| `apps/cli/main.c` | Interactive command-line shell around the calculator pipeline. |
+| `apps/web/http/web_api.c` | Text-to-result adapter used by the local web server. |
+| `apps/web/server/web_main.c` | Starts the loopback server, parses command-line options and opens the browser when requested. |
+| `apps/web/server/web_server.c` | Handles bounded HTTP connections, embedded assets, calculator sessions and `POST /api/evaluate`. |
+| `apps/web/http/http_request.c` | Bounded, socket-independent HTTP framing and header validation; returns incomplete, ready, malformed or oversized status. |
 | `web/` | Editable SK/EN calculator and API HTML, shared CSS, and calculator JavaScript. |
 | `cmake/EmbedWeb.cmake` | Generates the private web asset header in the build tree; it is never edited by hand. |
 

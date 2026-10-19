@@ -1,8 +1,8 @@
 #include <stdlib.h>
 #include <unity.h>
 
-#include "calculator_internal.h"
-#include "../src/bigdecimal/bigdecimal_internal.h"
+#include "src/engine/api/calculator_internal.h"
+#include "src/core/bigdecimal/bigdecimal_internal.h"
 
 /* ============================================================
    Calculator grammar and intermediate-rounding contract

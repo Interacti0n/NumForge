@@ -58,7 +58,7 @@ fs.writeFileSync(path.join(output, 'working-tree.patch'), optional('git', ['diff
 // Include new harness/profiler sources: git diff excludes untracked files.
 const untracked = optional('git', ['ls-files', '--others', '--exclude-standard']);
 if (untracked !== 'unavailable') for (const file of untracked.split(/\r?\n/).filter(Boolean)) {
-    if (!file.startsWith('benchmarks/') && !file.startsWith('src/internal/')) continue;
+    if (!file.startsWith('benchmarks/') && !file.startsWith('src/runtime/')) continue;
     const target = path.join(output, 'untracked-source', file);
     fs.mkdirSync(path.dirname(target), { recursive: true }); fs.copyFileSync(path.join(root, file), target);
 }

@@ -9,7 +9,7 @@ set(numforge_web_generated
     "#ifndef NUMFORGE_GENERATED_WEB_PAGE_H\n"
     "#define NUMFORGE_GENERATED_WEB_PAGE_H\n\n"
     "#include <stddef.h>\n\n"
-    "/* Generated from web/ sources at build time. Edit those files, not this header. */\n\n")
+    "/* Generated from apps/web/assets/ sources at build time. Edit those files, not this header. */\n\n")
 string(JOIN "" numforge_web_generated ${numforge_web_generated})
 
 macro(numforge_embed_web_file symbol filename)
@@ -45,7 +45,7 @@ numforge_embed_web_file(NUMFORGE_GRAPH_SK_HTML graph.sk.html)
 numforge_embed_web_file(NUMFORGE_GRAPH_EN_HTML graph.en.html)
 numforge_embed_web_file(NUMFORGE_GRAPH_CSS graph.css)
 numforge_embed_web_file(NUMFORGE_GRAPH_JS graph.js)
-numforge_embed_web_file(NUMFORGE_LICENSE_TEXT ../LICENSE)
+numforge_embed_web_file(NUMFORGE_LICENSE_TEXT ../../../LICENSE)
 
 # CMake strings cannot hold NUL bytes, so read PNG assets directly as hex.
 macro(numforge_embed_web_binary symbol filename)

@@ -8,10 +8,10 @@
 #include <string.h>
 #include <numforge/bigint.h>
 #include <numforge/bigdecimal.h>
-#include "bigdecimal_internal.h"
-#include "../src/bigint/bigint_internal.h"
-#include "../src/calculator/evaluator.h"
-#include "../src/internal/numforge_alloc.h"
+#include "src/core/bigdecimal/bigdecimal_internal.h"
+#include "src/core/bigint/bigint_internal.h"
+#include "src/engine/evaluator/evaluator.h"
+#include "src/runtime/numforge_alloc.h"
 
 int main(void)
 {

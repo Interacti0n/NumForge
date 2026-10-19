@@ -1,8 +1,8 @@
 #include <unity.h>
 #include <numforge/engine.h>
 #include <numforge/runtime.h>
-#include "numforge_alloc.h"
-#include "calculator_internal.h"
+#include "src/runtime/numforge_alloc.h"
+#include "src/engine/api/calculator_internal.h"
 
 #include <stdio.h>
 #include <stdlib.h>

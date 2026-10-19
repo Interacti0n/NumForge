@@ -1,8 +1,8 @@
 #include <numforge/bigint.h>
 #include <numforge/bigdecimal.h>
-#include "../src/bigdecimal/bigdecimal_internal.h"
-#include "benchmark_clock.h"
-#include "../src/internal/numforge_alloc.h"
+#include "src/core/bigdecimal/bigdecimal_internal.h"
+#include "benchmarks/benchmark_clock.h"
+#include "src/runtime/numforge_alloc.h"
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>

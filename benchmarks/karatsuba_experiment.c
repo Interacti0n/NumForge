@@ -1,5 +1,5 @@
-#include "karatsuba_experiment.h"
-#include "../src/internal/numforge_alloc.h"
+#include "benchmarks/karatsuba_experiment.h"
+#include "src/runtime/numforge_alloc.h"
 #include <stdio.h>
 #include <stdlib.h>
 

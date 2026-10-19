@@ -18,7 +18,7 @@ alongside numeric types, units and runtime support. The optional
 [expression engine](ENGINE_API.md) adds `engine.h` and the `NumForge::engine`
 target independently of numeric-only use. Existing 1.x numeric signatures
 remain source compatible in 2.x, and the new operations are additive.
-The calculator implementation and `src/web/web_api.h` are private application
+The calculator implementation and `apps/web/http/web_api.h` are private application
 code, not headers for library consumers. `numforge_web` and its loopback HTTP
 endpoint are shipped local-tool features; they are not an Internet-facing or
 separately versioned remote service.

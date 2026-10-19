@@ -5,8 +5,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../benchmarks/benchmark_clock.h"
-#include "../src/internal/numforge_alloc.h"
+#include "benchmarks/benchmark_clock.h"
+#include "src/runtime/numforge_alloc.h"
 
 /* Output conversion is outside the timed public C API call. */
 int main(int argc,char **argv) {

@@ -1,8 +1,8 @@
 #include <unity.h>
-#include "session.h"
-#include "session_api.h"
-#include "numforge_alloc.h"
-#include "value_internal.h"
+#include "src/application/sessions/session.h"
+#include "apps/web/http/session_api.h"
+#include "src/runtime/numforge_alloc.h"
+#include "src/engine/values/value_internal.h"
 #include <stdlib.h>
 #include <string.h>
 

@@ -48,4 +48,4 @@ cooperative budgets and approximation limitations remain unchanged. No new
 mathematical algorithm or performance improvement is claimed.
 
 See the [Python guide](../guides/PYTHON.md) for the actual API and reproduction
-command; [the architecture](../design/MODULAR_ENGINE.md) records subsequent work.
+command; [the architecture](../design/ARCHITECTURE.md) records subsequent work.

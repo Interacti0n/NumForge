@@ -1,6 +1,6 @@
 #include <numforge/statistics.h>
 #include <numforge/runtime.h>
-#include "numforge_alloc.h"
+#include "src/runtime/numforge_alloc.h"
 #include <unity.h>
 #include <stdlib.h>
 #include <string.h>

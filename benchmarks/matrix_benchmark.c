@@ -1,7 +1,7 @@
 #include <numforge/matrix.h>
 #include <numforge/runtime.h>
-#include "benchmark_clock.h"
-#include "../src/internal/numforge_alloc.h"
+#include "benchmarks/benchmark_clock.h"
+#include "src/runtime/numforge_alloc.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

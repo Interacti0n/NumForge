@@ -23,7 +23,7 @@ extern "C" {
     use standard free(). Failed realloc preserves the original allocation.
     No resource scope makes arithmetic constant-time or suitable for cryptography.
 
-    Implementation: src/internal/numforge_alloc.c
+    Implementation: src/runtime/numforge_alloc.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 

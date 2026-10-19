@@ -7,14 +7,14 @@
 #include <numforge/bigint.h>
 #include <numforge/bigrational.h>
 
-#include "numforge_alloc.h"
-#include "evaluator.h"
-#include "formatter.h"
-#include "parser.h"
-#include "calculator_internal.h"
-#include "web_api.h"
-#include "../src/bigint/bigint_internal.h"
-#include "../src/bigdecimal/bigdecimal_internal.h"
+#include "src/runtime/numforge_alloc.h"
+#include "src/engine/evaluator/evaluator.h"
+#include "src/engine/formatting/formatter.h"
+#include "src/engine/parser/parser.h"
+#include "src/engine/api/calculator_internal.h"
+#include "apps/web/http/web_api.h"
+#include "src/core/bigint/bigint_internal.h"
+#include "src/core/bigdecimal/bigdecimal_internal.h"
 
 #ifndef NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING
 #error "allocation_failure_tests requires NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING"

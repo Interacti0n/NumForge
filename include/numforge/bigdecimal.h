@@ -15,7 +15,7 @@ extern "C" {
     Opaque exact base-10 number. Values must be created and destroyed through
     this API; their coefficient and scale remain private implementation details.
 
-    Implementation: src/bigdecimal/bigdecimal.c
+    Implementation: src/core/bigdecimal/bigdecimal.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 typedef struct BigDecimal BigDecimal;
@@ -24,7 +24,7 @@ typedef struct BigDecimal BigDecimal;
 ------------------------------------------------------------------------------------------------------------------------------
     Status codes returned by BigDecimal operations.
 
-    Implementation: src/bigdecimal/bigdecimal.c
+    Implementation: src/core/bigdecimal/bigdecimal.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 typedef enum BigDecimalStatus
@@ -42,7 +42,7 @@ typedef enum BigDecimalStatus
 ------------------------------------------------------------------------------------------------------------------------------
     Rounding modes used by division and rescaling.
 
-    Used by: src/bigdecimal/division.c, roots.c, transcendental.c, and format.c
+    Used by: src/core/bigdecimal/division.c, roots.c, transcendental.c, and format.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 typedef enum BigDecimalRoundingMode
@@ -70,8 +70,8 @@ const char *bigdecimal_status_to_string( /*Human-readable description of a BigDe
     released with free(). On failure, output BigDecimal values and *result are
     unchanged.
 
-    Implementation: lifecycle and copy in src/bigdecimal/bigdecimal.c;
-    text conversion in src/bigdecimal/conversion.c.
+    Implementation: lifecycle and copy in src/core/bigdecimal/bigdecimal.c;
+    text conversion in src/core/bigdecimal/conversion.c.
 ------------------------------------------------------------------------------------------------------------------------------
 */
 BigDecimal *bigdecimal_create(
@@ -101,7 +101,7 @@ BigDecimalStatus bigdecimal_to_string(
     comparison receives a value less than, equal to, or greater than zero;
     boolean results are written on success.
 
-    Implementation: src/bigdecimal/comparison.c
+    Implementation: src/core/bigdecimal/comparison.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 BigDecimalStatus bigdecimal_compare(
@@ -125,7 +125,7 @@ BigDecimalStatus bigdecimal_is_negative(
     All operations support output/input aliasing, for example
     bigdecimal_add(value, value, other). On failure, result is unchanged.
 
-    Implementation: src/bigdecimal/arithmetic.c
+    Implementation: src/core/bigdecimal/arithmetic.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 BigDecimalStatus bigdecimal_abs(
@@ -161,7 +161,7 @@ BigDecimalStatus bigdecimal_mul(
     digits. At least one non-NULL value is required. Output/input aliasing is
     supported and failure preserves result.
 
-    Implementation: src/bigdecimal/aggregation.c
+    Implementation: src/core/bigdecimal/aggregation.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 BigDecimalStatus bigdecimal_sum(
@@ -193,7 +193,7 @@ BigDecimalStatus bigdecimal_mean(
     Only final division and roots use the requested significant digits and
     rounding mode. Failure preserves result.
 
-    Implementation: src/bigdecimal/statistics.c
+    Implementation: src/core/bigdecimal/statistics.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 BigDecimalStatus bigdecimal_median(
@@ -248,7 +248,7 @@ BigDecimalStatus bigdecimal_standard_deviation_sample(
     places round to tens, hundreds, and larger powers of ten. Division by zero
     leaves result unchanged.
 
-    Implementation: src/bigdecimal/division.c
+    Implementation: src/core/bigdecimal/division.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 BigDecimalStatus bigdecimal_rescale(
@@ -293,7 +293,7 @@ BigDecimalStatus bigdecimal_div(
     with a negative exponent is division by zero. All outputs are preserved
     on failure, and output/input aliasing is supported where applicable.
 
-    Implementation: src/bigdecimal/operations.c
+    Implementation: src/core/bigdecimal/operations.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 BigDecimalStatus bigdecimal_from_bigint(
@@ -345,7 +345,7 @@ BigDecimalStatus bigdecimal_pow_signed(
     result, output/input aliasing is supported, and calculator limits do not
     apply to these library calls.
 
-    Implementation: src/bigdecimal/roots.c
+    Implementation: src/core/bigdecimal/roots.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 BigDecimalStatus bigdecimal_root(
@@ -377,7 +377,7 @@ BigDecimalStatus bigdecimal_cbrt(
     are rounded to significant digits. Failure preserves result and
     output/input aliasing is supported.
 
-    Implementation: src/bigdecimal/transcendental.c
+    Implementation: src/core/bigdecimal/transcendental.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 BigDecimalStatus bigdecimal_exp(
@@ -415,7 +415,7 @@ BigDecimalStatus bigdecimal_log(
     transformed formulas protect small arguments and large finite magnitudes.
     Failure preserves result and output/input aliasing is supported.
 
-    Implementation: src/bigdecimal/hyperbolic.c
+    Implementation: src/core/bigdecimal/hyperbolic.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 BigDecimalStatus bigdecimal_sinh(
@@ -463,7 +463,7 @@ BigDecimalStatus bigdecimal_atanh(
     value in [-1, 1]; atan accepts any value. Inverse results are radians.
     Failure preserves result and output/input aliasing is supported.
 
-    Implementation: src/bigdecimal/trigonometric.c
+    Implementation: src/core/bigdecimal/trigonometric.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 BigDecimalStatus bigdecimal_sin(
@@ -510,7 +510,7 @@ BigDecimalStatus bigdecimal_atan(
     The exact-first variant preserves finite quotients and rounds only
     recurring results. bigdecimal_div retains fixed-scale semantics.
 
-    Implementation: src/bigdecimal/division.c
+    Implementation: src/core/bigdecimal/division.c
 ------------------------------------------------------------------------------------------------------------------------------
 */
 BigDecimalStatus bigdecimal_div_significant(
@@ -550,8 +550,8 @@ typedef enum BigDecimalConstant
     after the decimal point, or after the scientific mantissa; -1 keeps all
     stored digits. The caller releases the returned string with free().
 
-    Implementation: constants in src/bigdecimal/constants.c;
-    formatting in src/bigdecimal/format.c.
+    Implementation: constants in src/core/bigdecimal/constants.c;
+    formatting in src/core/bigdecimal/format.c.
 ------------------------------------------------------------------------------------------------------------------------------
 */
 BigDecimalStatus bigdecimal_set_constant(

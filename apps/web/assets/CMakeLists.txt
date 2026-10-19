@@ -1,0 +1,30 @@
+set(NUMFORGE_WEB_ASSETS
+    LICENSE
+    apps/web/assets/calculator.sk.html
+    apps/web/assets/calculator.en.html
+    apps/web/assets/api.sk.html
+    apps/web/assets/api.en.html
+    apps/web/assets/upcoming.sk.html
+    apps/web/assets/upcoming.en.html
+    apps/web/assets/calculator.css
+    apps/web/assets/api.css
+    apps/web/assets/chrome.css
+    apps/web/assets/navigation.js
+    apps/web/assets/calculator.js
+    apps/web/assets/function-library.js
+    apps/web/assets/units.sk.html
+    apps/web/assets/units.en.html
+    apps/web/assets/units.css
+    apps/web/assets/units.js
+    apps/web/assets/equations.sk.html
+    apps/web/assets/equations.en.html
+    apps/web/assets/equations.css
+    apps/web/assets/equations.js
+    apps/web/assets/graph.sk.html
+    apps/web/assets/graph.en.html
+    apps/web/assets/graph.css
+    apps/web/assets/graph.js
+    apps/web/assets/logo.png
+    apps/web/assets/wordmark.png
+    PARENT_SCOPE
+)

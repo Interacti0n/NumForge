@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include <unity.h>
 
-#include "parser.h"
+#include "src/engine/parser/parser.h"
 
 /* ============================================================
    Reproducible bounded parser fuzz smoke (no evaluation)

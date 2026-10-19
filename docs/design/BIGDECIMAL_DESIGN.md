@@ -3,7 +3,7 @@
 `BigDecimal` provides exact base-10 values on top of `BigInt`, without using
 binary floating point. Its public API is declared in
 `include/numforge/bigdecimal.h` and implemented in
-`src/bigdecimal/`. No numeric implementation depends on calculator headers.
+`src/core/bigdecimal/`. No numeric implementation depends on calculator headers.
 
 ## Source layout
 
@@ -158,7 +158,7 @@ value = coefficient × 10^(-scale)
 - A negative scale represents trailing whole-number zeroes: `12 × 10^2` is
   `1200`.
 
-The internal struct lives in `src/bigdecimal/bigdecimal_internal.h`. Keep it
+The internal struct lives in `src/core/bigdecimal/bigdecimal_internal.h`. Keep it
 private: consumers must only see the opaque `BigDecimal` type.
 
 ## Canonical form

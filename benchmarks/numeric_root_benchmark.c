@@ -1,8 +1,8 @@
-#include "numeric_root.h"
-#include "numeric_root_experiment.h"
-#include "numeric_root_cases.h"
-#include "benchmark_clock.h"
-#include "../src/internal/numforge_alloc.h"
+#include "src/application/equations/numeric_root.h"
+#include "src/application/equations/numeric_root_experiment.h"
+#include "benchmarks/numeric_root_cases.h"
+#include "benchmarks/benchmark_clock.h"
+#include "src/runtime/numforge_alloc.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

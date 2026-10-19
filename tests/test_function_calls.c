@@ -3,8 +3,8 @@
 #include <string.h>
 #include <unity.h>
 
-#include "expression_internal.h"
-#include "calculator_internal.h"
+#include "src/engine/parser/expression_internal.h"
+#include "src/engine/api/calculator_internal.h"
 
 /* Function grammar, aliases, limits and constant/scientific token boundaries. */
 void setUp(void) {}

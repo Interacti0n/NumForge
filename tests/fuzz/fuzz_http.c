@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../../src/web/http_request.h"
+#include "apps/web/http/http_request.h"
 
 /* Arbitrary bytes and selected partial prefixes must never expose metadata
  * outside the supplied buffer. No sockets or calculation are involved. */

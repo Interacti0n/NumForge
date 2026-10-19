@@ -1,9 +1,9 @@
 #include <numforge/units.h>
-#include "numforge_alloc.h"
+#include "src/runtime/numforge_alloc.h"
 #include <unity.h>
 #include <stdlib.h>
 #include <string.h>
-#include "unit_angle_references.h"
+#include "tests/unit_angle_references.h"
 
 void setUp(void) {}
 void tearDown(void) { numforge_test_allocator_end(); }

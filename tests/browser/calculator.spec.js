@@ -237,7 +237,7 @@ test('pages stay hidden until their stylesheet is available', async ({ page }) =
 });
 
 test('header logo and favicon use the same complete PNG', async ({ page, request }) => {
-    const original = fs.readFileSync(path.join(__dirname, '../../web/logo.png'));
+    const original = fs.readFileSync(path.join(__dirname, '../../apps/web/assets/logo.png'));
     const response = await request.get('/assets/logo.png');
     expect(response.ok()).toBe(true);
     expect(response.headers()['content-type']).toBe('image/png');
@@ -252,7 +252,7 @@ test('header logo and favicon use the same complete PNG', async ({ page, request
 });
 
 test('guide titles identify the calculator and embedded branding remains available', async ({ page, request }) => {
-    const original = fs.readFileSync(path.join(__dirname, '../../web/wordmark.png'));
+    const original = fs.readFileSync(path.join(__dirname, '../../apps/web/assets/wordmark.png'));
     const response = await request.get('/assets/wordmark.png');
     expect(response.ok()).toBe(true);expect((await response.body()).equals(original)).toBe(true);
     for (const [language, title] of [['sk', 'Návod ku kalkulačke'], ['en', 'Calculator guide']]) {

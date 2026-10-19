@@ -52,6 +52,8 @@ if(NUMFORGE_BUILD_FUZZERS AND (NOT CMAKE_C_COMPILER_ID STREQUAL "Clang" OR WIN32
 endif()
 
 function(numforge_enable_diagnostics target)
+    # Repository-qualified private includes never enter installed interfaces.
+    target_include_directories(${target} PRIVATE "${PROJECT_SOURCE_DIR}")
     if(NUMFORGE_BUILD_BENCHMARKS AND NOT "${target}" STREQUAL "web_server_smoke_tests")
         target_compile_definitions(${target} PRIVATE NUMFORGE_ENABLE_ALLOC_STATS)
         if(APPLE)
@@ -65,10 +67,10 @@ function(numforge_enable_diagnostics target)
             # The forced include loads stdlib before source-local CRT defines.
             target_compile_definitions(${target} PRIVATE "_CRT_SECURE_NO_WARNINGS=")
             target_compile_options(${target} PRIVATE
-                "/FI${PROJECT_SOURCE_DIR}/src/internal/benchmark_redirect.h")
+                "/FI${PROJECT_SOURCE_DIR}/src/runtime/instrumentation/benchmark_redirect.h")
         else()
             target_compile_options(${target} PRIVATE -include
-                "${PROJECT_SOURCE_DIR}/src/internal/benchmark_redirect.h")
+                "${PROJECT_SOURCE_DIR}/src/runtime/instrumentation/benchmark_redirect.h")
         endif()
     endif()
     if(NUMFORGE_ENABLE_COVERAGE)
@@ -101,45 +103,10 @@ endfunction()
 # NumForge library
 # ============================================================
 
-add_library(numforge STATIC
-    src/bigint/bigint.c
-    src/bigint/arithmetic.c
-    src/bigint/multiplication.c
-    src/bigint/factorial.c
-    src/bigint/normalization.c
-    src/bigint/bitwise.c
-    src/bigint/comparison.c
-    src/bigint/conversion.c
-    src/bigint/number_theory.c
-    src/bigint/primality.c
-    src/bigint/roots.c
-    src/bigdecimal/bigdecimal.c
-    src/bigdecimal/arithmetic.c
-    src/bigdecimal/aggregation.c
-    src/bigdecimal/statistics.c
-    src/bigdecimal/comparison.c
-    src/bigdecimal/conversion.c
-    src/bigdecimal/division.c
-    src/bigdecimal/workspace.c
-    src/bigdecimal/operations.c
-    src/bigdecimal/roots.c
-    src/bigdecimal/transcendental.c
-    src/bigdecimal/logarithm_agm.c
-    src/bigdecimal/hyperbolic.c
-    src/bigdecimal/trigonometric.c
-    src/bigdecimal/format.c
-    src/bigdecimal/format_mode.c
-    src/bigdecimal/constants.c
-    src/bigrational/bigrational.c
-    src/bigrational/sqrt.c
-    src/algebra/polynomial.c
-    src/linear_algebra/matrix.c
-    src/statistics/describe.c
-    src/bigcomplex/bigcomplex.c
-    src/bigcomplex/bigrationalcomplex.c
-    src/units/units.c
-    src/internal/numforge_alloc.c
-)
+add_library(numforge STATIC)
+add_subdirectory(src/runtime)
+add_subdirectory(src/core)
+add_subdirectory(src/modules)
 
 # Public expression engine; application state and HTTP remain private.
 if(NOT NUMFORGE_BUILD_ENGINE AND
@@ -147,24 +114,8 @@ if(NOT NUMFORGE_BUILD_ENGINE AND
     message(FATAL_ERROR "Applications, tests, fuzzers, benchmarks and Python require NUMFORGE_BUILD_ENGINE=ON")
 endif()
 if(NUMFORGE_BUILD_ENGINE)
-    add_library(numforge_engine STATIC
-        src/engine/engine.c
-        src/calculator/calculator.c
-        src/calculator/value.c
-        src/calculator/complex_evaluator.c
-        src/calculator/quantity.c
-        src/calculator/random.c
-        src/calculator/constants.c
-        src/calculator/tokenizer.c
-        src/calculator/parser.c
-        src/calculator/evaluator.c
-        src/calculator/evaluator_functions.c
-        src/calculator/evaluator_trigonometric.c
-        src/calculator/exact_evaluator.c
-        src/calculator/exact_functions.c
-        src/calculator/functions.c
-        src/calculator/formatter.c
-    )
+    add_library(numforge_engine STATIC)
+    add_subdirectory(src/engine)
     add_library(NumForge::engine ALIAS numforge_engine)
     add_library(numforge_calculator ALIAS numforge_engine)
     set_target_properties(numforge_engine PROPERTIES EXPORT_NAME engine)
@@ -175,42 +126,21 @@ if(NUMFORGE_BUILD_ENGINE)
     if(NOT MSVC)
         target_link_libraries(numforge_engine PUBLIC m)
     endif()
-    target_include_directories(numforge_engine PUBLIC
-        $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/calculator>)
     numforge_enable_diagnostics(numforge_engine)
 endif()
 
 if(NUMFORGE_BUILD_APPS OR BUILD_TESTING OR NUMFORGE_BUILD_FUZZERS OR NUMFORGE_BUILD_BENCHMARKS)
-    add_library(numforge_application STATIC
-        src/application/expression.c
-        src/application/expression_domain.c
-        src/application/fast_expression.c
-        src/application/fast_graph.c
-        src/application/graph.c
-        src/application/graph_analysis.c
-        src/application/equation.c
-        src/application/equation_format.c
-        src/application/equation_parse.c
-        src/application/numeric_root.c
-        src/application/numeric_root_brent.c
-        src/application/conversion.c
-        src/application/session.c
-        src/application/client_store.c)
+    add_library(numforge_application STATIC)
+    add_subdirectory(src/application)
     target_link_libraries(numforge_application PUBLIC numforge_calculator)
     if(NOT MSVC)
         target_link_libraries(numforge_application PUBLIC m)
     endif()
-    target_include_directories(numforge_application PUBLIC ${PROJECT_SOURCE_DIR}/src/application)
     numforge_enable_diagnostics(numforge_application)
 
-    add_library(numforge_client STATIC
-        src/web/session_api.c
-        src/web/web_api.c
-        src/web/unit_web.c
-        src/web/http_request.c)
+    add_library(numforge_client STATIC)
+    add_subdirectory(apps/web/http)
     target_link_libraries(numforge_client PUBLIC numforge_application)
-    target_include_directories(numforge_client PUBLIC
-        ${PROJECT_SOURCE_DIR}/src/web)
     numforge_enable_diagnostics(numforge_client)
 endif()
 
@@ -256,14 +186,9 @@ endif()
 # ============================================================
 
 if(NUMFORGE_BUILD_APPS)
-add_executable(calculator
-    src/main.c
-)
+add_executable(calculator)
+add_subdirectory(apps/cli)
 
-target_include_directories(calculator
-    PRIVATE
-        ${PROJECT_SOURCE_DIR}/src/calculator
-)
 
 target_link_libraries(calculator
     PRIVATE
@@ -275,41 +200,13 @@ numforge_enable_diagnostics(calculator)
 # Local web application
 # ============================================================
 
-set(NUMFORGE_WEB_ASSETS
-    LICENSE
-    web/calculator.sk.html
-    web/calculator.en.html
-    web/api.sk.html
-    web/api.en.html
-    web/upcoming.sk.html
-    web/upcoming.en.html
-    web/calculator.css
-    web/api.css
-    web/chrome.css
-    web/navigation.js
-    web/calculator.js
-    web/function-library.js
-    web/units.sk.html
-    web/units.en.html
-    web/units.css
-    web/units.js
-    web/equations.sk.html
-    web/equations.en.html
-    web/equations.css
-    web/equations.js
-    web/graph.sk.html
-    web/graph.en.html
-    web/graph.css
-    web/graph.js
-    web/logo.png
-    web/wordmark.png
-)
+add_subdirectory(apps/web/assets)
 set(NUMFORGE_WEB_GENERATED_DIR "${PROJECT_BINARY_DIR}/generated/web")
 set(NUMFORGE_WEB_GENERATED_HEADER "${NUMFORGE_WEB_GENERATED_DIR}/web_page.h")
 add_custom_command(
     OUTPUT "${NUMFORGE_WEB_GENERATED_HEADER}"
     COMMAND "${CMAKE_COMMAND}"
-        "-DNUMFORGE_WEB_SOURCE_DIR=${PROJECT_SOURCE_DIR}/web"
+        "-DNUMFORGE_WEB_SOURCE_DIR=${PROJECT_SOURCE_DIR}/apps/web/assets"
         "-DNUMFORGE_WEB_OUTPUT=${NUMFORGE_WEB_GENERATED_HEADER}"
         "-DNUMFORGE_WEB_VERSION=${PROJECT_VERSION}"
         -P "${PROJECT_SOURCE_DIR}/cmake/EmbedWeb.cmake"
@@ -318,16 +215,13 @@ add_custom_command(
     VERBATIM
 )
 
-add_executable(numforge_web
-    src/web/web_main.c
-    src/web/web_server.c
-    "${NUMFORGE_WEB_GENERATED_HEADER}"
-)
+add_executable(numforge_web "${NUMFORGE_WEB_GENERATED_HEADER}")
+add_subdirectory(apps/web/server)
 
 target_include_directories(numforge_web
     PRIVATE
-        ${PROJECT_SOURCE_DIR}/src/calculator
-        ${PROJECT_SOURCE_DIR}/src/web
+        ${PROJECT_SOURCE_DIR}
+        ${PROJECT_SOURCE_DIR}
         ${NUMFORGE_WEB_GENERATED_DIR}
 )
 
@@ -438,7 +332,7 @@ if(NUMFORGE_BUILD_BENCHMARKS)
     add_executable(polynomial_benchmark benchmarks/polynomial_benchmark.c benchmarks/benchmark_clock.c)
     target_link_libraries(polynomial_benchmark PRIVATE numforge)
     numforge_enable_diagnostics(polynomial_benchmark)
-    target_sources(numforge PRIVATE src/internal/benchmark_profile.c src/internal/decimal_profile.c)
+    target_sources(numforge PRIVATE src/runtime/instrumentation/benchmark_profile.c src/runtime/instrumentation/decimal_profile.c)
     if(WIN32)
         target_link_libraries(numforge PRIVATE psapi)
     elseif(APPLE)
@@ -495,12 +389,10 @@ if(NUMFORGE_BUILD_BENCHMARKS)
     endif()
     add_executable(calculator_benchmark benchmarks/calculator_benchmark.c benchmarks/benchmark_clock.c)
     target_compile_definitions(calculator_benchmark PRIVATE NUMFORGE_ENABLE_ALLOC_STATS)
-    target_include_directories(calculator_benchmark PRIVATE ${PROJECT_SOURCE_DIR}/src/calculator)
     target_link_libraries(calculator_benchmark PRIVATE numforge_client)
     numforge_enable_diagnostics(calculator_benchmark)
     add_executable(calculator_limit_benchmark benchmarks/calculator_limit_benchmark.c benchmarks/benchmark_clock.c)
     target_compile_definitions(calculator_limit_benchmark PRIVATE NUMFORGE_ENABLE_ALLOC_STATS)
-    target_include_directories(calculator_limit_benchmark PRIVATE ${PROJECT_SOURCE_DIR}/src/calculator)
     target_link_libraries(calculator_limit_benchmark PRIVATE numforge_client)
     numforge_enable_diagnostics(calculator_limit_benchmark)
     add_executable(bigint_materialization_benchmark benchmarks/bigint_materialization_benchmark.c benchmarks/benchmark_clock.c)
@@ -569,7 +461,6 @@ endif()
 if(NUMFORGE_BUILD_FUZZERS)
     foreach(kind IN ITEMS parser numbers formatter http)
         add_executable(fuzz_${kind} tests/fuzz/fuzz_${kind}.c)
-        target_include_directories(fuzz_${kind} PRIVATE ${PROJECT_SOURCE_DIR}/src/calculator)
         target_link_libraries(fuzz_${kind} PRIVATE numforge_client)
         numforge_enable_diagnostics(fuzz_${kind})
         target_link_options(fuzz_${kind} PRIVATE -fsanitize=fuzzer)
@@ -581,7 +472,6 @@ if(BUILD_TESTING)
 
     foreach(kind IN ITEMS parser numbers formatter http)
         add_executable(fuzz_${kind}_smoke tests/fuzz/fuzz_${kind}.c tests/fuzz/replay.c)
-        target_include_directories(fuzz_${kind}_smoke PRIVATE ${PROJECT_SOURCE_DIR}/src/calculator)
         target_link_libraries(fuzz_${kind}_smoke PRIVATE numforge_client)
         numforge_enable_diagnostics(fuzz_${kind}_smoke)
         add_test(NAME fuzz_${kind}_smoke COMMAND fuzz_${kind}_smoke)
@@ -616,7 +506,6 @@ if(BUILD_TESTING)
 
     add_executable(engine_tests tests/test_engine.c)
     target_link_libraries(engine_tests PRIVATE numforge_engine unity)
-    target_include_directories(engine_tests PRIVATE ${PROJECT_SOURCE_DIR}/src/internal)
     target_compile_definitions(engine_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
     target_compile_definitions(engine_tests PRIVATE
         NUMFORGE_ENGINE_REFERENCE_FILE="${PROJECT_SOURCE_DIR}/benchmarks/references/decimal_math_references.tsv")
@@ -625,7 +514,6 @@ if(BUILD_TESTING)
 
     foreach(suite engine_parameters polynomial matrix linear_system statistics)
         add_executable(${suite}_tests tests/test_${suite}.c)
-        target_include_directories(${suite}_tests PRIVATE ${PROJECT_SOURCE_DIR}/src/internal)
         target_compile_definitions(${suite}_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
         numforge_enable_diagnostics(${suite}_tests)
         add_test(NAME ${suite}_tests COMMAND ${suite}_tests)
@@ -675,7 +563,6 @@ if(BUILD_TESTING)
 
     add_executable(bigcomplex_tests tests/test_bigcomplex.c)
     target_link_libraries(bigcomplex_tests PRIVATE numforge unity)
-    target_include_directories(bigcomplex_tests PRIVATE src/internal)
     target_compile_definitions(bigcomplex_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
     numforge_enable_diagnostics(bigcomplex_tests)
     add_test(NAME bigcomplex_tests COMMAND bigcomplex_tests --numeric-only)
@@ -700,7 +587,6 @@ if(BUILD_TESTING)
 
     add_executable(units_tests tests/test_units.c)
     target_link_libraries(units_tests PRIVATE numforge unity)
-    target_include_directories(units_tests PRIVATE src/internal)
     target_compile_definitions(units_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
     numforge_enable_diagnostics(units_tests)
     add_test(NAME units_tests COMMAND units_tests)
@@ -737,10 +623,6 @@ if(BUILD_TESTING)
         tests/test_calculator.c
     )
 
-    target_include_directories(calculator_tests
-        PRIVATE
-        ${PROJECT_SOURCE_DIR}/src/calculator
-    )
 
     target_link_libraries(calculator_tests
         PRIVATE
@@ -756,7 +638,6 @@ if(BUILD_TESTING)
 
     foreach(suite IN ITEMS calculator_contract parser_fuzz http_request function_calls roots transcendental trigonometric hyperbolic constants web_cache)
         add_executable(${suite}_tests tests/test_${suite}.c)
-        target_include_directories(${suite}_tests PRIVATE ${PROJECT_SOURCE_DIR}/src/calculator)
         target_link_libraries(${suite}_tests PRIVATE numforge_client unity)
         numforge_enable_diagnostics(${suite}_tests)
         add_test(NAME ${suite}_tests COMMAND ${suite}_tests)
@@ -765,7 +646,6 @@ if(BUILD_TESTING)
 
     add_executable(unit_web_tests tests/test_unit_web.c)
     target_link_libraries(unit_web_tests PRIVATE numforge_client unity)
-    target_include_directories(unit_web_tests PRIVATE src/internal)
     target_compile_definitions(unit_web_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
     numforge_enable_diagnostics(unit_web_tests)
     add_test(NAME unit_web_tests COMMAND unit_web_tests)
@@ -774,11 +654,6 @@ if(BUILD_TESTING)
         tests/test_web_api.c
     )
 
-    target_include_directories(web_api_tests
-        PRIVATE
-            ${PROJECT_SOURCE_DIR}/src/calculator
-            ${PROJECT_SOURCE_DIR}/src/web
-    )
 
     target_link_libraries(web_api_tests
         PRIVATE
@@ -819,7 +694,6 @@ if(BUILD_TESTING)
     add_executable(session_tests tests/test_session.c)
     add_executable(calculator_complex_tests tests/test_calculator_complex.c)
     target_link_libraries(calculator_complex_tests PRIVATE numforge_client unity)
-    target_include_directories(calculator_complex_tests PRIVATE src/internal)
     target_compile_definitions(calculator_complex_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
     numforge_enable_diagnostics(calculator_complex_tests)
     add_test(NAME calculator_complex_tests COMMAND calculator_complex_tests --numeric-only)
@@ -856,19 +730,12 @@ if(BUILD_TESTING)
     target_compile_definitions(graph_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
     numforge_enable_diagnostics(graph_tests)
     add_test(NAME graph_tests COMMAND graph_tests)
-    target_include_directories(session_tests PRIVATE ${PROJECT_SOURCE_DIR}/src/internal)
     target_compile_definitions(session_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
     target_link_libraries(session_tests PRIVATE numforge_client unity)
     numforge_enable_diagnostics(session_tests)
     add_test(NAME session_tests COMMAND session_tests)
     set_tests_properties(session_tests PROPERTIES TIMEOUT 60)
 
-    target_include_directories(allocation_failure_tests
-        PRIVATE
-            ${PROJECT_SOURCE_DIR}/src/calculator
-            ${PROJECT_SOURCE_DIR}/src/internal
-            ${PROJECT_SOURCE_DIR}/src/web
-    )
 
     target_compile_definitions(allocation_failure_tests PRIVATE
         NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING
@@ -899,6 +766,8 @@ if(BUILD_TESTING)
 
     find_program(NUMFORGE_NODE_EXECUTABLE NAMES node nodejs HINTS "C:/Program Files/nodejs")
     if(NUMFORGE_NODE_EXECUTABLE)
+        add_test(NAME architecture_check COMMAND "${NUMFORGE_NODE_EXECUTABLE}"
+            "${PROJECT_SOURCE_DIR}/scripts/check_architecture.cjs")
         add_test(NAME unit_catalog_check COMMAND "${NUMFORGE_NODE_EXECUTABLE}"
             "${PROJECT_SOURCE_DIR}/scripts/generate_unit_catalog.cjs" --check)
         if(NUMFORGE_BUILD_APPS)
@@ -910,7 +779,6 @@ if(BUILD_TESTING)
         set_tests_properties(web_remote_tests PROPERTIES TIMEOUT 60)
         endif()
         add_executable(numeric_oracle_driver tests/numeric_oracle_driver.c)
-        target_include_directories(numeric_oracle_driver PRIVATE ${PROJECT_SOURCE_DIR}/src/bigdecimal)
         target_link_libraries(numeric_oracle_driver PRIVATE numforge_client)
         numforge_enable_diagnostics(numeric_oracle_driver)
         add_test(NAME numeric_oracle_tests COMMAND "${NUMFORGE_NODE_EXECUTABLE}"

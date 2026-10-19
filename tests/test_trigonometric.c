@@ -3,8 +3,8 @@
 #include <unity.h>
 
 #include <numforge/bigdecimal.h>
-#include "tangent_references.h"
-#include "../src/bigdecimal/bigdecimal_internal.h"
+#include "tests/tangent_references.h"
+#include "src/core/bigdecimal/bigdecimal_internal.h"
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------

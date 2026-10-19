@@ -28,7 +28,7 @@ coefficient modes retain their existing exact semantics and precision ranges.
 
 ## C method and acceptance
 
-`application_numeric_root_solve` in `src/application/numeric_root.h` returns an
+`application_numeric_root_solve` in `src/application/equations/numeric_root.h` returns an
 owned `ApplicationNumericRoot`, released by `application_numeric_root_destroy`.
 Bounds/context are borrowed, failures preserve the destination, and nested calls
 inherit an outer budget without resetting it. Both expressions are prepared once

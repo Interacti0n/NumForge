@@ -3,11 +3,11 @@
 #include <stdio.h>
 #include <unity.h>
 
-#include "session.h"
-#include "formatter.h"
-#include "random.h"
-#include "web_api.h"
-#include "numforge_alloc.h"
+#include "src/application/sessions/session.h"
+#include "src/engine/formatting/formatter.h"
+#include "src/engine/evaluator/random.h"
+#include "apps/web/http/web_api.h"
+#include "src/runtime/numforge_alloc.h"
 
 static CalculatorSession session;
 static CalculatorContext context;

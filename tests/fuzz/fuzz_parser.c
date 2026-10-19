@@ -1,8 +1,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include "parser.h"
-#include "../../src/internal/numforge_alloc.h"
+#include "src/engine/parser/parser.h"
+#include "src/runtime/numforge_alloc.h"
 
 /* Exercise arbitrary bytes without evaluating random powers or factorials. */
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)

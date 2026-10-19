@@ -1,100 +1,128 @@
-# Architecture overview
+# Architecture and extension boundaries
 
-NumForge has a standalone numeric library, an optional public expression engine
-and optional application clients. `NumForge::numforge` contains numeric types and
-the runtime budget API. `NumForge::engine` adds the public stateless expression
-API over the same parser/evaluator used by CLI/web. Sessions and HTTP remain
-private application layers. See the [modular platform direction](MODULAR_ENGINE.md)
-and [engine contract](../reference/ENGINE_API.md) for implemented scope and next steps.
+NumForge is a modular mathematics platform built on one C17 implementation.
+Typed mathematical operations work independently of expression parsing, sessions
+and the web. Only declarations in installed `include/numforge/` headers are public
+contracts; private symbols in a static archive are not supported APIs.
 
-## Numeric layers
+## Source ownership
 
-| Layer | Representation and responsibility |
+| Location | Responsibility |
 | --- | --- |
-| BigInt | Signed integers with little-endian 64-bit magnitude limbs; exact integer operations, division, roots and number theory. |
-| BigDecimal | An integer coefficient and signed decimal scale; exact decimal operations plus precision/rounding-aware division and higher functions. |
-| BigRational | Reduced numerator/denominator BigInts; exact fractions, arithmetic and conversion to/from decimals. |
-| Runtime budgets | Optional caller-owned, thread-local allocation/deadline scopes; ordinary library calls start no implicit budget. |
+| `src/runtime/` | Allocation, cooperative budgets and opt-in instrumentation. |
+| `src/core/` | BigInt, BigDecimal, BigRational and complex representations and arithmetic. |
+| `src/modules/` | Independently callable mathematical capabilities; each module owns a CMake manifest. |
+| `src/engine/api/` | Public expression context, prepared handles, typed results and compatibility calculator entry points. |
+| `src/engine/parser/` | Tokenizer and expression AST. |
+| `src/engine/evaluator/` | Shared typed evaluation, functions and constants. |
+| `src/engine/values/`, `formatting/` | Owned values, quantities and numerical formatting. |
+| `src/application/` | Sessions, clients, conversions, prepared graph expressions and equation adapters. |
+| `apps/cli/` | Interactive command line. |
+| `apps/web/http/`, `server/`, `assets/` | Local transport, embedded server and SK/EN browser interface. |
+| `bindings/python/` | Experimental source-built CPython adapter over public C APIs. |
+| `include/numforge/` | Installed C API and authoritative ownership/error contracts. |
+| `tests/`, `benchmarks/`, `examples/` | Regressions, opt-in measurements and consumer examples. |
 
-All public numeric types are opaque. Callers own created objects and returned
-text according to each API's contract. Mutating public operations preserve the
-destination on failure and support documented output/input aliasing. Exact
-operations stay exact; approximate functions take precision and rounding
-explicitly. Guard digits do not by themselves prove correct rounding in every
-case; the [roadmap](../project/ROADMAP.md) records that remaining work.
-
-## Client dependency flow
+## Dependencies
 
 ```mermaid
-flowchart LR
-    CLI[CLI] --> Session[Shared calculator session]
-    Browser[Browser UI] --> HTTP[Loopback HTTP adapter]
-    HTTP --> Session
-    HTTP --> Store[Application client/cache store]
-    HTTP --> Prepared
-    Store --> Session
-    Session --> Parser[Tokenizer and parser / AST]
-    Parser --> Evaluator[Typed evaluator]
-    Prepared[Prepared parametric expression] --> Parser
-    Prepared --> Evaluator
-    Prepared -. read-only snapshot .-> Session
-    Evaluator --> Library[Public numeric library]
-    Evaluator --> Value[Owned calculator value]
-    Value --> Formatter[Display and copy formatting]
+flowchart TD
+    Apps[CLI and local web] --> Application[Sessions and application workflows]
+    Application --> Engine[Parser and typed evaluator]
+    Python[Python adapter] --> Engine
+    Python --> Modules[Mathematical modules]
+    Engine --> Modules
+    Modules --> Core[Numeric types]
+    Engine --> Core
+    Core --> Runtime[Allocation and budgets]
+    Modules --> Runtime
 ```
 
-Arrows show the simplified call/data path. The session owns confirmed `ans`,
-history and preview state; parsing and evaluation are shared by CLI/web. Exact
-branches use BigRational and retain their internal value through confirmation,
-history and cache. Decimal/approximate branches use BigDecimal. Formatting
-projects the stored value for display without replacing it with rounded text.
+Lower layers never depend on applications, transport or bindings. Modules may
+reuse core types and other mathematical modules; avoid cyclic ownership. Parser
+dispatch and adapters call the same implementation rather than copying algorithms.
+Public engine handles conceal AST/value details. Sessions and graph-specific
+snapshots remain private application state; the initial public engine subset does
+not redefine established calculator behavior.
 
-The [parametric expression foundation](PARAMETRIC_EXPRESSIONS.md) owns a parsed
-AST and snapshots of referenced session values. Graph sampling and future solver
-adapters reuse the typed evaluator with a local parameter and one operation budget,
-without modifying the source session. The [HTTP sampler](../reference/GRAPH_HTTP_API.md)
-and [browser graph page](../guides/GRAPHS.md) are implemented, including bounded adaptive C refinement and automatic AST
-parameter selection. Polynomial and bounded numerical solving are implemented
-through C application adapters. The exact coefficient solver is public in the
-numeric library; numerical interval solving remains a private application API.
+`NumForge::numforge` contains runtime, core and mathematical modules.
+`NumForge::engine` adds stateless expression evaluation. Private application and
+HTTP targets compose them; CLI links the application directly. Numeric-only,
+engine-only and Python builds remain possible. A source module does not require a
+separate shared library or a runtime plugin framework.
 
-The browser handles input, navigation and presentation in JavaScript. Expressions
-are sent to the local C server for numerical evaluation. The server embeds the
-HTML/CSS/JavaScript/image assets at build time; its installed executable does
-not need Node.js, an asset directory or a database to run. It listens on loopback
-and has bounded requests, cooperative resource budgets and in-memory sessions.
-It is not a production public-hosting architecture.
+Private includes use repository-qualified paths. CMake exposes the repository
+root privately, while installed consumers see only public headers.
+`scripts/check_architecture.cjs`, also registered in CTest when Node is available,
+checks upward source includes, private leaks in public headers and module source
+manifests. Opt-in decimal profiling has one explicit core-inspection exception.
+This source check complements compilation and consumer tests; it does not prove
+the absence of every indirect or link-time dependency.
 
-## Source map
+## Mathematical ownership
 
-| Location | Role |
-| --- | --- |
-| `include/numforge/` | Installed public API contracts. |
-| `src/engine/` | Public stateless expression handles, context and typed result adapter. |
-| `src/algebra/` | Standalone exact polynomial solver shared with equation application adapters. |
-| `src/bigint/`, `src/bigdecimal/`, `src/bigrational/` | Numeric implementations. |
-| `src/units/` | Static unit registry and exact compatible-unit conversion over public BigRational API. |
-| `src/web/unit_web.c` | Local HTTP unit catalogue and conversion adapter; borrows session values, preserves typed exact input and shares calculator budgets. |
-| `src/internal/` | Private allocation boundaries and optional benchmark instrumentation. |
-| `src/calculator/` | Expression engine: tokenizer, AST, typed evaluator, values and numerical formatting. |
-| `src/application/` | Session ownership, variables/ans/history/replay and bounded client/cache pools. |
-| `src/main.c` | Interactive CLI. |
-| `src/web/` | Local server, HTTP framing and evaluation adapter. |
-| `web/` | Editable English/Slovak browser assets. |
-| `web/units.*` | Responsive unit-converter pages, calculator component styles and cancellable read-only conversion requests. |
-| `cmake/EmbedWeb.cmake` | Generates the embedded assets in the build tree. |
-| `tests/`, `benchmarks/` | Correctness checks and opt-in performance measurements. |
+| Module | Responsibility | Current foundation / next boundary |
+| --- | --- | --- |
+| Core / Arithmetic | Numeric representations, elementary arithmetic and conversions | Public BigInt, BigDecimal, BigRational and complex APIs |
+| Number Theory | Primality, factors, congruences and modular arithmetic | Selected public BigInt operations; broaden with individual contracts |
+| Algebra | Polynomials, algebraic equations and exact root representations | Public exact linear/quadratic coefficient solver in the numeric target; application parsing/preview adapters remain private |
+| Linear Algebra | Vectors, matrices, decompositions and linear systems | Public immutable dense rational matrices, products/determinants, rank and complete rectangular single-RHS families; approximate/complex domains and broader decompositions remain future |
+| Calculus / Analysis | Mathematical concepts and user-facing organization | Symbolic and numerical algorithms have separate owners below |
+| Numerical | Root finding, interpolation, quadrature, ODEs and optimization | Private bounded root solving; expose convergence/coverage diagnostics explicitly |
+| Statistics | Datasets, aggregates, distributions, regression and tests | Public exact rational batch summaries plus existing decimal scalar aggregates; streaming/multivariate/distribution contracts remain future |
+| Symbolic | Symbolic expression representation, assumptions and rewrites | Future; calculator AST is not automatically a public CAS representation |
+| Scientific | Units, quantities, sourced constants and domain models | Public units and private quantity expressions; broader models remain future |
 
-Benchmark diagnostics are opt-in and are not part of the public API or ordinary
-release package. Phase timing and live-allocation tracking are separate probes.
-Private product-tree/square experiments do not change production arithmetic.
+Numerical integration belongs to Numerical and symbolic integration to Symbolic;
+both can appear under Calculus in the product. Linear systems belong to Linear
+Algebra. Shared operations have one owner, even when documented in several topics.
 
-Read [the API overview](../API.md), [BigInt design](BIGINT_DESIGN.md),
-[BigDecimal design](BIGDECIMAL_DESIGN.md) and
-[calculator design](CALCULATOR_DESIGN.md) for the detailed contracts and modules.
+## Common contracts
 
-The targets enforce the boundaries: public `numforge_engine` links the numeric
-library (`numforge_calculator` is its private build-tree alias),
-`numforge_application` links the expression engine, and
-`numforge_client` contains HTTP adapters and links the application. CLI links
-the application directly. See [Application design](APPLICATION_DESIGN.md).
+**Precision.** Distinguish working significant digits, decimal scale, display
+digits and a proven error bound. Never reinterpret an existing numeric API's
+scale parameter as significant digits. Working precision cannot promise the same
+final accuracy after arbitrary cancellation or poorly conditioned composition.
+Integer/rational arithmetic remains exact rather than rounding to a digit budget.
+
+**Results.** Preserve typed values independently of formatted strings. Exactness
+means a proven property of the computation, not simply a decimal/integer label or
+cache independence. A conservative approximate classification may include a value
+that happens to be mathematically exact. Certified enclosures require separate
+evidence; a residual alone is not a certified root error bound.
+
+**Failures.** Document domains, branch choices, ownership, output/input aliasing,
+unchanged-output-on-failure behavior and resource exhaustion. Solver nonconvergence
+and incomplete discovery are numerical outcomes, not claims that solutions do not
+exist. Existing public numeric status enums remain supported; engine statuses map
+them without forcing a project-wide rename.
+
+**Runtime.** Context policy is per operation, not mutable global state. Prepared
+expressions are reusable independently of the context that prepared them. A
+compound operation shares one cooperative budget. Nested operations reuse an
+existing scope and never reset its counters or end a caller-owned scope. Limits
+are not hard process isolation. Thread-confined handles can be used independently
+on separate threads; sharing requires caller synchronization.
+
+**Adapters.** Preserve large integers and decimal inputs losslessly. Python
+and future JSON adapters must not pass exact decimal input through a binary floating
+point conversion. Version transport schemas separately from internal structures.
+An adapter's availability is explicit; supporting a new C operation does not
+require implementing every future language binding in the same change.
+
+## Application behavior
+
+Sessions own confirmed `ans`, variables, history and preview state. Exact values
+remain typed through confirmation, caches and formatting. Prepared application
+expressions snapshot referenced values and evaluate under one operation budget
+without modifying their source session. Numerical interval searches remain a
+private application API; polynomial, matrix and statistics operations are public.
+
+The browser handles input and presentation; C performs mathematical evaluation.
+CMake embeds assets and the license in the local server, so installed applications
+need no asset directory or Node runtime. The loopback server uses bounded requests
+and in-memory sessions. Remote deployment requirements have a separate
+[hosting guide](../guides/HOSTING.md).
+
+See [application design](APPLICATION_DESIGN.md), [engine API](../reference/ENGINE_API.md),
+[roadmap](../project/ROADMAP.md) and the [contributor guide](../../CONTRIBUTING.md).

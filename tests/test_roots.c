@@ -1,8 +1,8 @@
 #include <stdlib.h>
 #include <unity.h>
 #include <numforge/bigdecimal.h>
-#include "calculator_internal.h"
-#include "../src/internal/numforge_alloc.h"
+#include "src/engine/api/calculator_internal.h"
+#include "src/runtime/numforge_alloc.h"
 
 /* Real-root domains, exactness, scales and rounding (separate from grammar). */
 void setUp(void) {}

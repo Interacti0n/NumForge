@@ -9,7 +9,7 @@ that roadmap items already work.
 
 | Item | Where it lives / current state |
 | --- | --- |
-| Hero | README title, existing `web/logo.png`, concise positioning and navigation links. |
+| Hero | README title, existing `apps/web/assets/logo.png`, concise positioning and navigation links. |
 | Quick demo | README's verified exact decimal, integer, fraction/root and high-precision examples. |
 | Status badges | Live GitHub CI and latest-release badges; MIT/C17/CMake requirements verified from the repo. |
 | Screenshots | `docs/images/calculator-desktop.png` and `calculator-mobile.png`, captured from the real local Release server. |

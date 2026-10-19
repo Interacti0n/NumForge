@@ -6,7 +6,7 @@ evaluation stage: exact integers/fractions, complex numbers, quantities, angle
 units and approximation metadata follow the existing calculator contracts.
 
 The [bounded HTTP graph sampler](../reference/GRAPH_HTTP_API.md) now calls this
-foundation through the C application operation in `src/application/graph.h`.
+foundation through the C application operation in `src/application/graphs/graph.h`.
 The [browser graph page](../guides/GRAPHS.md) now draws [adaptive curves](../reference/ADAPTIVE_GRAPH_HTTP_API.md).
 General expression solvers and an installed public SDK evaluator remain future
 work. The separate [coefficient-based linear/quadratic foundation](POLYNOMIAL_EQUATIONS.md)
@@ -16,7 +16,7 @@ mathematics in JavaScript or reparse the expression for every point.
 
 ## C application operation
 
-Declarations are in `src/application/expression.h`:
+Declarations are in `src/application/expressions/expression.h`:
 
 - `application_expression_prepare` parses one expression and returns an owned
   opaque handle. The parameter follows [session naming rules](../guides/VARIABLES.md#syntax-and-lifetime)

@@ -3,12 +3,12 @@
 
 #include <unity.h>
 
-#include "calculator_internal.h"
-#include "evaluator.h"
-#include "expression_internal.h"
-#include "formatter.h"
-#include "parser.h"
-#include "tokenizer.h"
+#include "src/engine/api/calculator_internal.h"
+#include "src/engine/evaluator/evaluator.h"
+#include "src/engine/parser/expression_internal.h"
+#include "src/engine/formatting/formatter.h"
+#include "src/engine/parser/parser.h"
+#include "src/engine/parser/tokenizer.h"
 
 void setUp(void)
 {

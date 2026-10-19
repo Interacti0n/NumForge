@@ -54,7 +54,7 @@ evaluated arguments are rejected; prior arithmetic still follows the working
 precision policy. Temporaries are cleaned up on domain, allocation and budget
 failures without replacing the caller's destination.
 
-Real roots are implemented in `src/bigdecimal/roots.c` and exposed through the
+Real roots are implemented in `src/core/bigdecimal/roots.c` and exposed through the
 public BigDecimal API. The evaluator validates the calculator's degree limit
 and passes working precision and rounding to these library calls. For canonical
 `C * 10^-s`, a finite kth root exists exactly when `s` is divisible by k and
@@ -72,7 +72,7 @@ automatically promotes negative even roots to principal complex roots through
 the public BigComplex API; real odd roots remain real. Intermediate size and cooperative time limits still apply.
 
 Exponential and logarithmic functions are implemented in
-`src/bigdecimal/transcendental.c` and exposed through the public BigDecimal API.
+`src/core/bigdecimal/transcendental.c` and exposed through the public BigDecimal API.
 In the real kernels, `exp(x)` computes e^x, `ln(x)` requires x > 0, `log(x)`
 has base 10, and `log(x;b)` requires x > 0, b > 0 and b != 1. The typed
 calculator promotes negative logarithm arguments/bases automatically through

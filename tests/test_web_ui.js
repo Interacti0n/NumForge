@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-const source = fs.readFileSync(path.join(__dirname, '../web/calculator.js'), 'utf8').replace(/\r\n/g, '\n');
+const source = fs.readFileSync(path.join(__dirname, '../apps/web/assets/calculator.js'), 'utf8').replace(/\r\n/g, '\n');
 const instrumentedSource = source.replace('return () => {\n    lifecycle.abort();',
     'window.__numforgeTest = {ensureSession, calculate, refreshSession};\nreturn () => {\n    lifecycle.abort();');
 assert.notEqual(instrumentedSource, source, 'calculator test hooks must be installed');
@@ -75,7 +75,7 @@ async function createUI(english) {
         }
     };
     runtime.window.matchMedia = () => ({matches: false, addEventListener() {}});
-    vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../web/function-library.js'), 'utf8'), runtime);
+    vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../apps/web/assets/function-library.js'), 'utf8'), runtime);
     vm.runInNewContext(instrumentedSource, runtime);
     Object.assign(runtime, runtime.window.__numforgeTest);
     await runtime.ensureSession();

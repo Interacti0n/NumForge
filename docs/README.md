@@ -1,131 +1,30 @@
 # Documentation guide
 
-Start with your task. Folders follow the same categories as this page; API and
-testing entry points remain directly under `docs/`.
+Choose an entry point; detailed contracts and procedures live in their own guide.
 
-## Use NumForge — `guides/`
+| Task | Start here |
+| --- | --- |
+| Use the browser calculator | [Calculator](guides/CALCULATOR_WEB.md), [variables](guides/VARIABLES.md), [graphs](guides/GRAPHS.md), [equations](guides/EQUATIONS.md), [units](guides/UNIT_CONVERTER.md) |
+| Use the library | [C/C++ library guide](guides/LIBRARY_GUIDE.md), [SDK](guides/SDK.md), [Python](guides/PYTHON.md) |
+| Look up supported operations | [API index](API.md), then the linked `reference/` contracts |
+| Extend the platform | [Architecture](design/ARCHITECTURE.md), [contributing](../CONTRIBUTING.md), [feature checklist](project/FEATURE_CHECKLIST.md) |
+| Validate a change | [Testing](TESTING.md), [numerical methodology](testing/NUMERIC_TESTING.md) |
+| Measure performance | [Benchmark tools](../benchmarks/README.md), [measurement methodology](testing/PERFORMANCE.md) |
+| Plan or publish a release | [Roadmap](project/ROADMAP.md), [release packaging](project/RELEASE_PACKAGING.md), [changelog](../CHANGELOG.md) |
+| Deploy remotely | [Hosting](guides/HOSTING.md) |
 
-- [Browser calculator](guides/CALCULATOR_WEB.md): controls, results and precision.
-- [Remote hosting](guides/HOSTING.md): HTTPS tunnels, reverse proxies and capacity.
-- [Variables](guides/VARIABLES.md): assignments, deletion, snapshots and lifetime.
-- [Function graphs](guides/GRAPHS.md): function/color controls, typed gaps, smooth curves and axes.
-- [Equations](guides/EQUATIONS.md): shared function editor, exact polynomial roots, numerical interval searches and limits.
-- [Unit converter](guides/UNIT_CONVERTER.md): categories, preview, swap and history.
-- [C library guide](guides/LIBRARY_GUIDE.md): build, install and consume the library.
-- [Developer SDK](guides/SDK.md): prebuilt C/C++ library, toolchains and quick start.
-- [Python adapter](guides/PYTHON.md): source-built CPython package, lossless inputs and isolated installation checks.
+`design/` explains implementation decisions. `reference/` describes supported
+interfaces and mathematical semantics. Public C headers contain the authoritative
+parameter, ownership and failure contracts; guides link to them instead of copying
+declarations. [Web assets](../apps/web/assets/README.md) describes browser sources.
 
-## Look up a contract — `reference/`
+Dated files under `benchmarks/`, `testing/` and `project/` preserve measurements
+and release evidence. They describe the recorded revision, not current guarantees.
+Future proposals, such as [accounts](design/ACCOUNT_DESIGN.md), are explicitly
+labelled and do not establish implemented functionality.
 
-Start with the [API guide](API.md), or open a specific reference:
-
-- [Public C API](reference/C_API.md): numeric types, functions and ownership.
-- [Standalone engine C API](reference/ENGINE_API.md): reusable expressions, typed results and operation policy.
-- [Exact polynomial C API](reference/POLYNOMIAL_API.md): standalone coefficient solving and exact root descriptors.
-- [Exact matrix C API](reference/MATRIX_API.md): immutable rational matrices, products, determinants and square-system solves.
-- [General linear systems](reference/LINEAR_SYSTEM_API.md): rectangular rank, complete solution families and inconsistency.
-- [Exact descriptive statistics](reference/STATISTICS_API.md): rational dataset summaries, mean and population/sample variances.
-- [BigComplex](reference/BIGCOMPLEX.md): complex arithmetic, principal branches, precision and display forms.
-- [Calculator expressions](reference/CALCULATOR_EXPRESSIONS.md): syntax and calls.
-- [Local HTTP API](reference/HTTP_API.md): evaluation, sessions, revisions and errors.
-- [Session HTTP API](reference/SESSION_HTTP_API.md): saved values, pagination, lifecycle and conversion history.
-- [Units](reference/UNITS.md) and [Quantity](reference/QUANTITIES.md): conversion and dimensions.
-- [Unit catalogue](reference/UNIT_CATALOG.md): 233 units, localized names and sources.
-- [Unit HTTP API](reference/UNIT_HTTP_API.md): catalogue and conversion routes.
-- [Graph sampling HTTP API](reference/GRAPH_HTTP_API.md): bounded grids, point errors and session isolation.
-- [Graph points and verification](reference/GRAPH_ANALYSIS_HTTP_API.md): discrete modes, bounded C checks and balanced markers.
-- [Polynomial equation HTTP API](reference/EQUATION_HTTP_API.md): exact coefficient expressions and linear/quadratic solutions.
-- [Numerical interval root](reference/NUMERIC_ROOT_HTTP_API.md): bounded real root searches, residuals and nonconvergence outcomes.
-- [Web/API coverage](reference/WEB_API_PARITY.md): implemented calls and remaining gaps.
-
-## Understand the code — `design/`
-
-- [Architecture](design/ARCHITECTURE.md): dependency flow and source map.
-- [Application design](design/APPLICATION_DESIGN.md): sessions, adapters and future storage.
-- [Parametric expressions](design/PARAMETRIC_EXPRESSIONS.md): implemented C application foundation for future graphs/solvers, snapshots and shared budgets.
-- [Polynomial equations](design/POLYNOMIAL_EQUATIONS.md): private C linear/quadratic solver, exact radicals, complex roots, coefficient expressions, formatting and ownership.
-- [Account proposal](design/ACCOUNT_DESIGN.md): planned C/HTTP login, registration, recovery and storage contracts; not implemented.
-- [BigInt](design/BIGINT_DESIGN.md) and [BigDecimal](design/BIGDECIMAL_DESIGN.md): representation and arithmetic.
-- [Calculator](design/CALCULATOR_DESIGN.md): modules, evaluation and budgets.
-- [Expression parser](design/EXPRESSION_PARSER.md): grammar and name resolution.
-- [Browser/result design](design/WEB_DESIGN.md): layout, precision, caches and history.
-- [Web assets](../web/README.md): editable assets and embedding.
-
-## Verify a change — `testing/`
-
-The [testing guide](TESTING.md) gives the complete local command and links to
-numerical references, session/unit regressions, browser/CI checks and profiling.
-The [graph browser check, 16 October 2026](testing/GRAPH_BROWSER_CHECK_2026_10_16.md)
-records Firefox/WebKit coverage, test portability and the physical-phone checklist.
-
-## Investigate performance — `benchmarks/`
-
-- [Harnesses and reference data](../benchmarks/README.md).
-- [Exact statistics baseline](benchmarks/STATISTICS_2026_10_19.md): dataset summaries, independent variance checks and 1000-digit fixtures.
-- [Exact matrix baseline](benchmarks/MATRIX_2026_10_19.md): rational products/determinants/solves, exact reference checks and allocation traffic.
-- [General-system verification](benchmarks/MATRIX_SYSTEMS_2026_10_19.md): rectangular rank, complete families, inconsistency and independent minor references.
-- [Numerical equation audit, 18 October 2026](benchmarks/NUMERIC_ROOT_AUDIT_2026_10_18.md): high-precision root timings, independent checks, scaling limits and the original false-acceptance case.
-- [Numerical root domain checks](benchmarks/NUMERIC_ROOT_DOMAINS_2026_10_18.md): conservative local real domains, withheld candidates, regression checks and measured overhead.
-- [High-precision Brent experiment](benchmarks/NUMERIC_ROOT_BRENT_2026_10_18.md): paired timings, flat-root/pole regressions, higher-precision residual verification and the decision to keep production bisection.
-- [Decimal-weight hybrid](benchmarks/NUMERIC_ROOT_HYBRID_2026_10_19.md): cheaper centered interpolation, permanent progress fallback and three-method measurements.
-- [Multiple-root scan](benchmarks/NUMERIC_ROOT_SCAN_2026_10_19.md): bounded discovery, independent coordinate checks, timings and explicit missed-root/limit cases.
-- [Local root candidates](benchmarks/NUMERIC_ROOT_CANDIDATES_2026_10_19.md): rational quadratic contacts, close pairs, exact coordinate transport and measured discovery cost.
-- [Formatting/cache measurements](benchmarks/BENCHMARKS.md).
-- [Graph release audit, 15 October 2026](benchmarks/GRAPH_RELEASE_AUDIT_2026_10_15.md): independent geometry checks, before/after timings, sustained cache tests and remaining release gates.
-- [Precision graph camera fix](benchmarks/GRAPH_PRECISION_CAMERA_2026_10_15.md): visible sinh/cosh geometry, preserved narrow peaks, precision deferral metadata and measured tradeoffs.
-- [Narrow graph features](benchmarks/GRAPH_NARROW_FEATURES_2026_10_15.md): derivative-guided peak discovery, independent accuracy checks and before/after timings.
-- [Exponential graph tails](benchmarks/GRAPH_EXP_TAILS_2026_10_15.md): bounded screen projection, Gaussian peak/shoulder seeds and regression measurements.
-- [Graph step guards](benchmarks/GRAPH_STEP_GUARDS_2026_10_15.md): precision metadata for discrete jumps, composition regressions and bounded-work measurements.
-- [Graph view reconciliation](benchmarks/GRAPH_VIEW_RECONCILIATION_2026_10_15.md): completed loading states, retained central tiles and bounded cache-pressure recovery.
-- [Dense graph sums](benchmarks/GRAPH_DENSE_SUMS_2026_10_15.md): bounded affine sin/cos sums, conservative range limits and before/after measurements.
-- [Quadratic graph phases](benchmarks/GRAPH_QUADRATIC_PHASES_2026_10_15.md): sampled phase turns, dense outer ranges and wide-chirp accuracy measurements.
-- [Mixed graph ranges](benchmarks/GRAPH_MIXED_RANGES_2026_10_15.md): bounded slow terms alongside dense carriers, zoom regressions and before/after measurements.
-- [Subpixel graph curves](benchmarks/GRAPH_SUBPIXEL_CURVES_2026_10_15.md): validated cubic arcs, stationary anchors and efficient intermediate zoom.
-- [Absolute-value graph valleys](benchmarks/GRAPH_ABSOLUTE_2026_10_16.md): actual corners, zero-reaching dense ranges, equivalent root forms and independent before/after checks.
-- [Brent graph refinement](benchmarks/GRAPH_BRENT_2026_10_17.md): diagnose wasted bisections, confirm more intersections under unchanged limits and compare native/browser results.
-- [Graph verification reuse](benchmarks/GRAPH_VERIFY_REUSE_2026_10_16.md): bounded C sample-check reuse, cache-off/on comparisons and browser work counters.
-- [Graph regression review, 16 October](benchmarks/GRAPH_RELEASE_REGRESSION_2026_10_16.md): complete Chromium graph corpus, multi-curve camera cycles and independent marker checks across browsers.
-- [Discrete graphs and verified intersections](benchmarks/GRAPH_DISCRETE_VERIFIED_2026_10_16.md): integer points, original-expression verification, fair marker selection and cold/warm timings.
-- [Graph intercept and intersection checks](benchmarks/GRAPH_INTERSECTIONS_2026_10_16.md): marker correctness, y-intercept lookup and cached rendering overhead.
-- [Smooth graph zoom](benchmarks/GRAPH_SMOOTH_ZOOM_2026_10_13.md): derivative anchors, interpolation accuracy and prepared detail.
-- [BigInt measurements](benchmarks/BIGINT_BENCHMARKS.md).
-- [Karatsuba experiment](benchmarks/KARATSUBA_EXPERIMENT_2026_10_11.md): private threshold measurements, whole-product references and bounded scratch.
-- [Karatsuba integration](benchmarks/KARATSUBA_INTEGRATION_2026_10_11.md): compiler/shape crossover, budget-aware dispatch and composition regressions.
-- [Factorial tree integration](benchmarks/FACTORIAL_TREE_INTEGRATION_2026_10_11.md): reusable bounded workspace, complete references and calculator/HTTP verification through 200000.
-- [Factorial stress diagnostics](benchmarks/FACTORIAL_STRESS_2026_10_11.md): admission boundary, real scratch limits and normalization cost through 300000.
-- [Exact zero normalization](benchmarks/ZERO_NORMALIZATION_2026_10_11.md): inverse division, bounded scratch and whole-request regressions.
-- [Factorial admission bounds](benchmarks/FACTORIAL_ADMISSION_2026_10_12.md): checked range/workspace planning and complete requests at the new boundary.
-- [Split factorial scratch](benchmarks/SPLIT_WORKSPACE_2026_10_12.md): bounded final experiment, wider admission and full-request validation.
-- [Decimal/math measurements](benchmarks/DECIMAL_MATH_BENCHMARKS.md).
-- [Performance audit, 10 October 2026](benchmarks/PERFORMANCE_AUDIT_2026_10_10.md): current measurements, five-second risks and optimization priorities.
-- [Logarithm algorithm review](benchmarks/LOGARITHM_ALGORITHM_REVIEW_2026_10_11.md) and
-  [theta/AGM prototype](benchmarks/LOGARITHM_AGM_PROTOTYPE_2026_10_11.md): experimental path, independent checks and production prerequisites.
-- [Factorial budgets and text conversion](benchmarks/FACTORIAL_BUDGETS_2026_10_11.md): removal of the practical cap, cancellation and calculation versus formatting timings.
-- [Bounded AGM integration](benchmarks/LOGARITHM_AGM_INTEGRATION_2026_10_11.md): production logarithm selection, interval error bounds and adaptive precision.
-
-Measurements retain their dates, environments and limitations. They are evidence
-for specific source snapshots, not promises about every machine.
-
-## Plan and maintain — `project/`
-
-- [Modular mathematics platform](design/MODULAR_ENGINE.md): adopted boundaries, module ownership and staged implementation.
-- [Feature completion checklist](project/FEATURE_CHECKLIST.md): API, accuracy, examples, testing and performance requirements.
-
-- [Roadmap](project/ROADMAP.md): available features and future work.
-- [Initial Python adapter verification](project/PYTHON_ADAPTER_2026_10_19.md): installed-wheel isolation, accuracy checks and remaining release scope.
-- [Equation release readiness](project/EQUATION_RELEASE_AUDIT_2026_10_19.md): supported scope, completed editor, regression/device checks and CI/package publication gates.
-- [Presentation](project/PROJECT_PRESENTATION.md): README assets and screenshots.
-- [Release packaging](project/RELEASE_PACKAGING.md): archives and automation.
-- [Release readiness, 12 October 2026](project/RELEASE_READINESS_2026_10_12.md): local regression and archive checks before the next release.
-- [Release 2.1 record](project/RELEASE_2_1.md): scope, validation and limitations.
-- [Release 2.2 record](project/RELEASE_2_2.md): stability scope and publication checks.
-- [Release 2.4.0 record](project/RELEASE_2_4.md): equation scope, successful CI and verified published archives.
-- [Release 2.3.0 record](project/RELEASE_2_3.md): graph scope, successful CI and verified published archives.
-- [Release 2.2.1 record](project/RELEASE_2_2_1.md): performance scope and validation.
-- [Short changelog](../CHANGELOG_SHORT.md) or [full changelog](../CHANGELOG.md).
-
-Screenshots live in `images/`. Generated output and benchmark runs stay in
-ignored build directories. Run documented shell commands from the repository
-root unless a guide explicitly says otherwise.
-
-See the [adaptive graph API](reference/ADAPTIVE_GRAPH_HTTP_API.md) for the automatic web plotter.
+Keep one canonical home for each contract or procedure. Link from other pages;
+remove obsolete proposals when their decisions have been absorbed into current
+documentation. Keep reproducible benchmark evidence. Generated files and local
+measurements belong under ignored `build/` directories. Check links with
+`node scripts/check_docs.cjs` from any working directory.

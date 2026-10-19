@@ -1,8 +1,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include "formatter.h"
-#include "../../src/internal/numforge_alloc.h"
+#include "src/engine/formatting/formatter.h"
+#include "src/runtime/numforge_alloc.h"
 
 /* Formatting is deterministic and non-mutating. Full output round-trips
  * exactly when its exponent can be represented by the numeric parser. */

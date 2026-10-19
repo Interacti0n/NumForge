@@ -35,4 +35,4 @@ incrementally when working on that area.
 
 See [numerical testing](../testing/NUMERIC_TESTING.md),
 [performance methodology](../testing/PERFORMANCE.md) and
-[the platform architecture](../design/MODULAR_ENGINE.md).
+[the platform architecture](../design/ARCHITECTURE.md).

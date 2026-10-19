@@ -1,9 +1,9 @@
-#include "graph.h"
-#include "fast_graph.h"
-#include "graph_analysis.h"
-#include "session_api.h"
-#include "web_api.h"
-#include "../src/internal/numforge_alloc.h"
+#include "src/application/graphs/graph.h"
+#include "src/application/graphs/fast_graph.h"
+#include "src/application/graphs/graph_analysis.h"
+#include "apps/web/http/session_api.h"
+#include "apps/web/http/web_api.h"
+#include "src/runtime/numforge_alloc.h"
 #include <unity.h>
 #include <stdlib.h>
 #include <string.h>

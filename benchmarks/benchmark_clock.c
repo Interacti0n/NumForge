@@ -2,7 +2,7 @@
 #define _POSIX_C_SOURCE 200809L
 #endif
 
-#include "benchmark_clock.h"
+#include "benchmarks/benchmark_clock.h"
 
 #ifdef _WIN32
 #include <windows.h>
