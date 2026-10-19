@@ -46,9 +46,13 @@ for (const name of [...sources, ...walk('include/numforge').filter(n => n.endsWi
     }
 }
 // Every mathematical module owns an explicit manifest. No implicit source glob.
+const moduleIndex = fs.readFileSync(path.join(root, 'src/modules/CMakeLists.txt'), 'utf8');
+const registeredModules = new Set([...moduleIndex.matchAll(/add_subdirectory\(\s*"?([^"\s)]+)"?\s*\)/g)]
+    .map(match => match[1]));
 for (const entry of fs.readdirSync(path.join(root, 'src/modules'), {withFileTypes: true})) {
     if (!entry.isDirectory()) continue;
     const directory = 'src/modules/' + entry.name;
+    if (!registeredModules.has(entry.name)) errors.push(`${directory}: absent from module index`);
     const manifest = path.join(root, directory, 'CMakeLists.txt');
     if (!fs.existsSync(manifest)) { errors.push(`${directory}: missing CMakeLists.txt`); continue; }
     const text = fs.readFileSync(manifest, 'utf8');

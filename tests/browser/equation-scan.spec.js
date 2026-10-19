@@ -1,3 +1,4 @@
+const { artifactPath } = require('./artifacts');
 const {test,expect}=require('@playwright/test');
 async function scan(page,input,low,high){
  await page.locator('#equation-mode').selectOption('numeric_scan');await page.locator('#equation-expression').fill(input);
@@ -77,5 +78,5 @@ test('scan results fit narrow screens and long lists preserve navigation',async(
  await page.setViewportSize({width:390,height:844});await page.goto('/solve?lang=sk');await scan(page,'sin(x)=0','-10','10');
  await expect(page.locator('.equation-root')).toHaveCount(7);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
- await page.screenshot({path:'build/numeric-root-scan-2026-10-19/mobile.png',fullPage:true});
+ await page.screenshot({path:artifactPath('numeric-root-scan-2026-10-19/mobile.png'),fullPage:true});
 });

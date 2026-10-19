@@ -1,3 +1,4 @@
+const { artifactPath } = require('./artifacts');
 const {test,expect}=require('@playwright/test');
 test.use({hasTouch:true});
 async function point(page,x,y){await page.locator('#graph-plot').scrollIntoViewIfNeeded();return page.locator('#graph-plot').evaluate((svg,{x,y})=>{const w=svg.viewBox.baseVal.width,h=svg.viewBox.baseVal.height,px=64+(x-Number(svg.dataset.xmin))/(Number(svg.dataset.xmax)-Number(svg.dataset.xmin))*(w-86),py=h-46-(y-Number(svg.dataset.ymin))/(Number(svg.dataset.ymax)-Number(svg.dataset.ymin))*(h-68),p=new DOMPoint(px,py).matrixTransform(svg.getScreenCTM());return{x:p.x,y:p.y};},{x,y});}
@@ -22,7 +23,7 @@ for(const lang of ['en','sk'])for(const width of [390,1280])test(`cached mouse c
  for(const x of [-2.1,0,1.25,Math.PI/2]){const actualX=await hover(page,x,Math.sin(x));await expect(readout).toBeVisible();if(x===0){await expect.poll(async()=>(await value(page)).x).toBeCloseTo(0,5);expect(Math.abs(actualX)).toBeLessThan(.1);await expect(readout).toHaveAttribute('data-feature',/axis/);}else{await expect.poll(async()=>(await value(page)).x).toBeCloseTo(actualX,5);await expect(page.locator('#graph-inspector-name')).toHaveText('1. sin(x)');}const data=await value(page);expect(data.y).toBeCloseTo(Math.sin(data.x),3);await expect(page.locator('.graph-inspection')).toHaveAttribute('visibility','visible');}
  await exactHover(page,1.25,1);await expect(page.locator('#graph-inspector-coordinates')).toContainText(lang==='sk'?'1,25':'1.25');
  expect(calls).toBe(0);expect(await page.locator('#graph-plot').evaluate(e=>window.originalDrawing===e.querySelector('.graph-drawing'))).toBe(true);
- await page.locator('.graph-result').screenshot({path:`C:/Incoming/Projekty/NumForge/build/graph-inspector-${lang}-${width}.png`});
+ await page.locator('.graph-result').screenshot({path:artifactPath(`graph-inspector-${lang}-${width}.png`)});
  await exactHover(page,0,0);await expect(page.locator('#graph-inspector-coordinates')).toHaveText('≈ x = 0, y = 0');
  await page.mouse.move(0,0);await expect(readout).toBeHidden();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
 });

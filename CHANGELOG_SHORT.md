@@ -5,6 +5,8 @@ details and the [2.4.0 release record](docs/project/RELEASE_2_4.md) for validati
 
 ## Unreleased
 
+- Organize the platform for extension, consolidate documentation and remove shared-code/build duplication while preserving public interfaces.
+
 - Add exact rational dataset summaries with mean and population/sample variance in C and Python.
 
 - Add exact rank and complete rectangular linear-system families, including inconsistent and nonunique cases, in C/Python.

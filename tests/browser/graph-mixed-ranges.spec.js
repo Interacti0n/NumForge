@@ -1,3 +1,4 @@
+const { artifactPath } = require('./artifacts');
 const {test,expect}=require('@playwright/test');
 const {assess}=require('../../scripts/benchmark_graph_audit.cjs');
 const defaults={mode:'fast',width:800,height:440,min:-10.001,max:9.999,ymin:-10,ymax:10,interpolation:'hermite',dense:'band'};
@@ -29,7 +30,7 @@ test('slow trig extrema give tight ranges, degrees and unresolved non-dense sums
 for(const width of [390,1280])test(`mixed range becomes an inspected curve after zoom at width ${width}`,async({page})=>{
  await page.setViewportSize({width,height:844});await page.goto('/graph?lang=en');await page.locator('#graph-expression').fill('sin(x*x)+cos(1000x)');await page.locator('#graph-submit').click();
  await expect(page.locator('.graph-workspace')).not.toHaveAttribute('aria-busy','true');await expect(page.locator('path.graph-band')).toHaveCount(1);await expect(page.locator('path.graph-line')).toHaveCount(0);await expect(page.locator('#graph-status')).not.toContainText('unresolved');
- await page.locator('.graph-result').screenshot({path:`C:/Incoming/Projekty/NumForge/build/graph-mixed-${width}.png`});
+ await page.locator('.graph-result').screenshot({path:artifactPath(`graph-mixed-${width}.png`)});
  await page.locator('#graph-plot').evaluate(svg=>{for(let i=0;i<5;i++)svg.dispatchEvent(new KeyboardEvent('keydown',{key:'+',bubbles:true,cancelable:true}));});
  await expect(page.locator('.graph-workspace')).not.toHaveAttribute('aria-busy','true');await expect(page.locator('path.graph-band')).toHaveCount(0);await expect(page.locator('path.graph-line')).toHaveCount(1);
  await page.locator('#graph-plot').press('Home');await expect(page.locator('path.graph-band')).toHaveCount(1);

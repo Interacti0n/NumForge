@@ -1,3 +1,4 @@
+const { artifactPath } = require('./artifacts');
 const {test,expect}=require('@playwright/test');
 const rows=page=>page.locator('.graph-curve');
 const input=(page,i)=>rows(page).nth(i).locator('input:not([type=color])');
@@ -21,7 +22,7 @@ for(const [lang,width] of [['en',1280],['sk',390]])test(`multiple functions have
  await input(page,1).fill('cos(2x)');await expect(page.locator('path.graph-line')).toHaveCount(2);await expect(page.locator('#graph-plot')).toHaveAttribute('data-ymin','-6');
  await expect(page.locator('#graph-zoom-in,#graph-zoom-out')).toHaveCount(0);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
- await page.locator('.graph-workspace').screenshot({path:`C:/Incoming/Projekty/NumForge/build/graph-multiple-${lang}.png`});
+ await page.locator('.graph-workspace').screenshot({path:artifactPath(`graph-multiple-${lang}.png`)});
 });
 test('one failed function does not hide valid curves and the four-row limit is enforced',async({page})=>{
  await page.goto('/graph?lang=en');await add(page,'x+y');await add(page,'cos(t)');await add(page,'x*x');
@@ -48,7 +49,7 @@ for(const lang of ['en','sk'])test(`graph library searches shared aliases and in
  await search.fill('ARCTG');await expect(page.locator('#graph-functions button[data-function=atan]')).toBeVisible();
  await search.fill('');await expect(page.locator('#graph-functions button[data-function=rand]')).toHaveCount(0);
  await page.locator('#graph-function-categories button[data-category="2"]').click();await expect(page.locator('#graph-functions button[data-function=sin]')).toBeVisible();await expect(page.locator('#graph-functions button[data-function=sqrt]')).toBeHidden();
- await page.locator('#graph-library').screenshot({path:`C:/Incoming/Projekty/NumForge/build/graph-library-${lang}.png`});
+ await page.locator('#graph-library').screenshot({path:artifactPath(`graph-library-${lang}.png`)});
 });
 for(const [width,height] of [[1280,900],[390,844],[844,390]])test(`expanded graph keeps the canvas and camera and returns cleanly ${width}x${height}`,async({page})=>{
  await page.setViewportSize({width,height});await page.goto('/graph?lang=en');await add(page,'cos(x)');await plot(page);
@@ -68,7 +69,7 @@ for(const [width,height] of [[1280,900],[390,844],[844,390]])test(`expanded grap
  ))).toBeLessThan(1e-10);
  const camera=await svg.evaluate(e=>({xmin:e.dataset.xmin,ymin:e.dataset.ymin}));
  expect(await svg.evaluate(e=>!/NaN|Infinity/.test(e.innerHTML))).toBe(true);
- await page.locator('#graph-expanded').screenshot({path:`C:/Incoming/Projekty/NumForge/build/graph-expanded-${width}.png`});
+ await page.locator('#graph-expanded').screenshot({path:artifactPath(`graph-expanded-${width}.png`)});
  await page.keyboard.press('Escape');await expect(page.locator('#graph-expanded')).not.toHaveAttribute('open','');await expect(page.locator('body')).not.toHaveClass(/graph-expanded-open/);
  await expect(svg).toHaveAttribute('data-xmin',camera.xmin);await expect(svg).toHaveAttribute('data-ymin',camera.ymin);await expect(page.locator('#graph-expand')).toBeFocused();expect(await page.evaluate(()=>({x:scrollX,y:scrollY}))).toEqual(beforeScroll);
  await page.locator('#graph-expand').click();await page.locator(width===844?'#graph-expanded-back':'#graph-expand').click();await expect(page.locator('#graph-expanded')).not.toHaveAttribute('open','');

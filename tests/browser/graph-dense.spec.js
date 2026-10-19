@@ -1,3 +1,4 @@
+const { artifactPath } = require('./artifacts');
 const {test,expect}=require('@playwright/test');
 const defaults={mode:'fast',width:'800',height:'440',min:'-10',max:'10',ymin:'-10',ymax:'10',interpolation:'hermite',dense:'band'};
 async function sample(request,expression,options={}){const response=await request.post('/api/graph/plot?'+new URLSearchParams({...defaults,...options}),{data:expression});expect(response.ok(),expression).toBe(true);return response.json();}
@@ -45,7 +46,7 @@ test('mixed dense curve stays visible as a range beside a resolved function',asy
 for(const [lang,width] of [['en',1280],['sk',390]])test(`dense range transitions to an inspected curve after zoom ${lang} ${width}`,async({page})=>{
  await page.setViewportSize({width,height:844});await page.goto('/graph?lang='+lang);await page.locator('#graph-expression').fill('sin(1000x)');await page.locator('#graph-submit').click();await expect(page.locator('path.graph-band')).toHaveCount(1);await expect(page.locator('path.graph-line')).toHaveCount(0);await expect(page.locator('#graph-status')).toContainText(lang==='en'?'approximate range':'približný rozsah');
  const rect=await page.locator('#graph-plot').boundingBox();await page.mouse.move(rect.x+rect.width/2,rect.y+rect.height/2);await expect(page.locator('#graph-inspector')).toBeHidden();
- await page.locator('.graph-result').screenshot({path:`C:/Incoming/Projekty/NumForge/build/graph-dense-${lang}-${width}.png`});
+ await page.locator('.graph-result').screenshot({path:artifactPath(`graph-dense-${lang}-${width}.png`)});
  await page.locator('#graph-plot').evaluate(svg=>{for(let i=0;i<4;i++)svg.dispatchEvent(new KeyboardEvent('keydown',{key:'+',bubbles:true,cancelable:true}));});await expect(page.locator('.graph-workspace')).not.toHaveAttribute('aria-busy','true');await expect(page.locator('path.graph-line')).toBeVisible();await expect(page.locator('path.graph-band')).toHaveCount(0);
  await page.locator('#graph-reset').click();await expect(page.locator('path.graph-band')).toHaveCount(1);await expect(page.locator('#graph-plot')).toHaveAttribute('data-xmin','-10');
 });

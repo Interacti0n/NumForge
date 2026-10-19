@@ -189,7 +189,6 @@ if(NUMFORGE_BUILD_APPS)
 add_executable(calculator)
 add_subdirectory(apps/cli)
 
-
 target_link_libraries(calculator
     PRIVATE
         numforge_application
@@ -220,8 +219,6 @@ add_subdirectory(apps/web/server)
 
 target_include_directories(numforge_web
     PRIVATE
-        ${PROJECT_SOURCE_DIR}
-        ${PROJECT_SOURCE_DIR}
         ${NUMFORGE_WEB_GENERATED_DIR}
 )
 
@@ -491,26 +488,26 @@ if(BUILD_TESTING)
     # counters even when the test executable itself is built for 32 bits.
     target_compile_definitions(unity PUBLIC UNITY_SUPPORT_64)
 
+    # Keep registration consistent while each suite retains its own contracts.
+    function(numforge_add_unit_test target library source)
+        add_executable(${target} ${source})
+        target_link_libraries(${target} PRIVATE ${library} unity)
+        numforge_enable_diagnostics(${target})
+        add_test(NAME ${target} COMMAND ${target} ${ARGN})
+    endfunction()
+
     # Unity is a test-only dependency. Excluding its source directory keeps
     # its own install rules out of NumForge installation packages.
     set_property(DIRECTORY "${unity_SOURCE_DIR}" PROPERTY EXCLUDE_FROM_ALL TRUE)
 
-    add_executable(bigint_tests
-        tests/test_bigint.c
-    )
+    numforge_add_unit_test(bigint_tests numforge tests/test_bigint.c)
 
-    add_executable(public_api_tests tests/test_public_api.c)
-    target_link_libraries(public_api_tests PRIVATE numforge unity)
-    numforge_enable_diagnostics(public_api_tests)
-    add_test(NAME public_api_tests COMMAND public_api_tests)
+    numforge_add_unit_test(public_api_tests numforge tests/test_public_api.c)
 
-    add_executable(engine_tests tests/test_engine.c)
-    target_link_libraries(engine_tests PRIVATE numforge_engine unity)
+    numforge_add_unit_test(engine_tests numforge_engine tests/test_engine.c)
     target_compile_definitions(engine_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
     target_compile_definitions(engine_tests PRIVATE
         NUMFORGE_ENGINE_REFERENCE_FILE="${PROJECT_SOURCE_DIR}/benchmarks/references/decimal_math_references.tsv")
-    numforge_enable_diagnostics(engine_tests)
-    add_test(NAME engine_tests COMMAND engine_tests)
 
     foreach(suite engine_parameters polynomial matrix linear_system statistics)
         add_executable(${suite}_tests tests/test_${suite}.c)
@@ -524,48 +521,14 @@ if(BUILD_TESTING)
     target_link_libraries(linear_system_tests PRIVATE numforge unity)
     target_link_libraries(statistics_tests PRIVATE numforge unity)
 
-    target_link_libraries(bigint_tests
-        PRIVATE
-        numforge
-        unity
-    )
-    numforge_enable_diagnostics(bigint_tests)
+    numforge_add_unit_test(bigint_property_tests numforge tests/test_bigint_properties.c)
 
-    add_test(
-        NAME bigint_tests
-        COMMAND bigint_tests
-    )
+    numforge_add_unit_test(bigdecimal_tests numforge tests/test_bigdecimal.c)
 
-    add_executable(bigint_property_tests
-        tests/test_bigint_properties.c
-    )
+    numforge_add_unit_test(bigrational_tests numforge tests/test_bigrational.c)
 
-    target_link_libraries(bigint_property_tests
-        PRIVATE
-        numforge
-        unity
-    )
-    numforge_enable_diagnostics(bigint_property_tests)
-
-    add_test(
-        NAME bigint_property_tests
-        COMMAND bigint_property_tests
-    )
-
-    add_executable(bigdecimal_tests
-        tests/test_bigdecimal.c
-    )
-
-    add_executable(bigrational_tests tests/test_bigrational.c)
-    target_link_libraries(bigrational_tests PRIVATE numforge unity)
-    numforge_enable_diagnostics(bigrational_tests)
-    add_test(NAME bigrational_tests COMMAND bigrational_tests)
-
-    add_executable(bigcomplex_tests tests/test_bigcomplex.c)
-    target_link_libraries(bigcomplex_tests PRIVATE numforge unity)
+    numforge_add_unit_test(bigcomplex_tests numforge tests/test_bigcomplex.c --numeric-only)
     target_compile_definitions(bigcomplex_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
-    numforge_enable_diagnostics(bigcomplex_tests)
-    add_test(NAME bigcomplex_tests COMMAND bigcomplex_tests --numeric-only)
     foreach(shard RANGE 0 7)
         add_test(NAME bigcomplex_allocation_${shard} COMMAND bigcomplex_tests --allocation-shard ${shard} 8)
         set_tests_properties(bigcomplex_allocation_${shard} PROPERTIES LABELS allocation TIMEOUT 1500)
@@ -585,56 +548,12 @@ if(BUILD_TESTING)
         set_tests_properties(complex_memory_smoke PROPERTIES TIMEOUT 150)
     endif()
 
-    add_executable(units_tests tests/test_units.c)
-    target_link_libraries(units_tests PRIVATE numforge unity)
+    numforge_add_unit_test(units_tests numforge tests/test_units.c)
     target_compile_definitions(units_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
-    numforge_enable_diagnostics(units_tests)
-    add_test(NAME units_tests COMMAND units_tests)
 
-    target_link_libraries(bigdecimal_tests
-        PRIVATE
-        numforge
-        unity
-    )
-    numforge_enable_diagnostics(bigdecimal_tests)
+    numforge_add_unit_test(bigdecimal_property_tests numforge tests/test_bigdecimal_properties.c)
 
-    add_test(
-        NAME bigdecimal_tests
-        COMMAND bigdecimal_tests
-    )
-
-    add_executable(bigdecimal_property_tests
-        tests/test_bigdecimal_properties.c
-    )
-
-    target_link_libraries(bigdecimal_property_tests
-        PRIVATE
-        numforge
-        unity
-    )
-    numforge_enable_diagnostics(bigdecimal_property_tests)
-
-    add_test(
-        NAME bigdecimal_property_tests
-        COMMAND bigdecimal_property_tests
-    )
-
-    add_executable(calculator_tests
-        tests/test_calculator.c
-    )
-
-
-    target_link_libraries(calculator_tests
-        PRIVATE
-        numforge_client
-        unity
-    )
-    numforge_enable_diagnostics(calculator_tests)
-
-    add_test(
-        NAME calculator_tests
-        COMMAND calculator_tests
-    )
+    numforge_add_unit_test(calculator_tests numforge_client tests/test_calculator.c)
 
     foreach(suite IN ITEMS calculator_contract parser_fuzz http_request function_calls roots transcendental trigonometric hyperbolic constants web_cache)
         add_executable(${suite}_tests tests/test_${suite}.c)
@@ -644,28 +563,10 @@ if(BUILD_TESTING)
         set_tests_properties(${suite}_tests PROPERTIES TIMEOUT 60)
     endforeach()
 
-    add_executable(unit_web_tests tests/test_unit_web.c)
-    target_link_libraries(unit_web_tests PRIVATE numforge_client unity)
+    numforge_add_unit_test(unit_web_tests numforge_client tests/test_unit_web.c)
     target_compile_definitions(unit_web_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
-    numforge_enable_diagnostics(unit_web_tests)
-    add_test(NAME unit_web_tests COMMAND unit_web_tests)
 
-    add_executable(web_api_tests
-        tests/test_web_api.c
-    )
-
-
-    target_link_libraries(web_api_tests
-        PRIVATE
-            numforge_client
-            unity
-    )
-    numforge_enable_diagnostics(web_api_tests)
-
-    add_test(
-        NAME web_api_tests
-        COMMAND web_api_tests
-    )
+    numforge_add_unit_test(web_api_tests numforge_client tests/test_web_api.c)
 
     if(NUMFORGE_BUILD_APPS)
     add_executable(web_server_smoke_tests
@@ -687,70 +588,31 @@ if(BUILD_TESTING)
     set_tests_properties(web_server_smoke_tests PROPERTIES TIMEOUT 60)
     endif()
 
-    add_executable(allocation_failure_tests
-        tests/test_allocation_failures.c
-    )
+    numforge_add_unit_test(allocation_failure_tests numforge_client tests/test_allocation_failures.c)
 
-    add_executable(session_tests tests/test_session.c)
-    add_executable(calculator_complex_tests tests/test_calculator_complex.c)
-    target_link_libraries(calculator_complex_tests PRIVATE numforge_client unity)
+    numforge_add_unit_test(session_tests numforge_client tests/test_session.c)
+    numforge_add_unit_test(calculator_complex_tests numforge_client tests/test_calculator_complex.c --numeric-only)
     target_compile_definitions(calculator_complex_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
-    numforge_enable_diagnostics(calculator_complex_tests)
-    add_test(NAME calculator_complex_tests COMMAND calculator_complex_tests --numeric-only)
     foreach(shard RANGE 0 7)
         add_test(NAME calculator_complex_allocation_${shard} COMMAND calculator_complex_tests --allocation-shard ${shard} 8)
         set_tests_properties(calculator_complex_allocation_${shard} PROPERTIES LABELS allocation TIMEOUT 1500)
     endforeach()
-    add_executable(application_tests tests/test_application.c)
-    target_link_libraries(application_tests PRIVATE numforge_application unity)
-    numforge_enable_diagnostics(application_tests)
-    add_test(NAME application_tests COMMAND application_tests)
-    add_executable(application_expression_tests tests/test_application_expression.c)
-    target_link_libraries(application_expression_tests PRIVATE numforge_application unity)
+    numforge_add_unit_test(application_tests numforge_application tests/test_application.c)
+    numforge_add_unit_test(application_expression_tests numforge_application tests/test_application_expression.c)
     target_compile_definitions(application_expression_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
-    numforge_enable_diagnostics(application_expression_tests)
-    add_test(NAME application_expression_tests COMMAND application_expression_tests)
-    add_executable(equation_tests tests/test_equation.c)
-    target_link_libraries(equation_tests PRIVATE numforge_client unity)
+    numforge_add_unit_test(equation_tests numforge_client tests/test_equation.c)
     target_compile_definitions(equation_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
-    numforge_enable_diagnostics(equation_tests)
-    add_test(NAME equation_tests COMMAND equation_tests)
-    add_executable(numeric_root_tests tests/test_numeric_root.c)
-    target_link_libraries(numeric_root_tests PRIVATE numforge_client unity)
+    numforge_add_unit_test(numeric_root_tests numforge_client tests/test_numeric_root.c)
     target_compile_definitions(numeric_root_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
-    numforge_enable_diagnostics(numeric_root_tests)
-    add_test(NAME numeric_root_tests COMMAND numeric_root_tests)
-    add_executable(numeric_root_scan_tests tests/test_numeric_root_scan.c)
-    target_link_libraries(numeric_root_scan_tests PRIVATE numforge_client unity)
+    numforge_add_unit_test(numeric_root_scan_tests numforge_client tests/test_numeric_root_scan.c)
     target_compile_definitions(numeric_root_scan_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
-    numforge_enable_diagnostics(numeric_root_scan_tests)
-    add_test(NAME numeric_root_scan_tests COMMAND numeric_root_scan_tests)
-    add_executable(graph_tests tests/test_graph.c)
-    target_link_libraries(graph_tests PRIVATE numforge_client unity)
+    numforge_add_unit_test(graph_tests numforge_client tests/test_graph.c)
     target_compile_definitions(graph_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
-    numforge_enable_diagnostics(graph_tests)
-    add_test(NAME graph_tests COMMAND graph_tests)
     target_compile_definitions(session_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
-    target_link_libraries(session_tests PRIVATE numforge_client unity)
-    numforge_enable_diagnostics(session_tests)
-    add_test(NAME session_tests COMMAND session_tests)
     set_tests_properties(session_tests PROPERTIES TIMEOUT 60)
-
 
     target_compile_definitions(allocation_failure_tests PRIVATE
         NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING
-    )
-
-    target_link_libraries(allocation_failure_tests
-        PRIVATE
-            numforge_client
-            unity
-    )
-    numforge_enable_diagnostics(allocation_failure_tests)
-
-    add_test(
-        NAME allocation_failure_tests
-        COMMAND allocation_failure_tests
     )
 
     set_tests_properties(

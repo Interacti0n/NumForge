@@ -7,6 +7,18 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+### Platform organization and maintenance
+
+- Organize implementation sources into runtime, numeric core, mathematical
+  modules, expression engine, application workflows, apps and bindings. Keep
+  public headers, installed targets, executable names and supported APIs compatible.
+- Give each implemented module an explicit source manifest and check architectural
+  dependencies in CTest. Consolidate architecture documentation, contributor rules
+  and roadmap; keep historical benchmark evidence separate from current contracts.
+- Share Python exact-input conversion/cleanup and unit-test registration; verify
+  partial input-allocation failures. Resolve browser diagnostic output under the
+  checkout's ignored build directory rather than machine-specific absolute paths.
+
 ### Exact Statistics foundation
 
 - Add public `statistics.h`: exact rational batch count, sum, minimum, maximum,

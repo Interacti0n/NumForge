@@ -1,3 +1,4 @@
+const { artifactPath } = require('./artifacts');
 const {test,expect}=require('@playwright/test');
 for(const [width,height,lang] of [[1280,800,'en'],[390,844,'sk'],[844,390,'en'],[320,568,'sk']]){
  test(`library fits without scrolling and every function remains reachable ${width}x${height}`,async({page})=>{
@@ -14,7 +15,7 @@ for(const [width,height,lang] of [[1280,800,'en'],[390,844,'sk'],[844,390,'en'],
   }
   expect(visited.size).toBe(total);expect(await page.evaluate(()=>document.documentElement.scrollHeight)).toBeLessThanOrEqual(before+1);
   await page.locator('#function-search').fill('LUDOLPH');await expect(page.locator('#graph-functions button[data-insert="π"]')).toBeVisible();
-  await dialog.screenshot({path:`C:/Incoming/Projekty/NumForge/build/graph-library-compact-${width}.png`});
+  await dialog.screenshot({path:artifactPath(`graph-library-compact-${width}.png`)});
   await page.locator('#graph-library-close').click();await expect(dialog).not.toBeVisible();await expect(page.locator('#graph-expression')).toBeFocused();await expect(page.locator('body')).not.toHaveClass(/graph-library-open/);
  });
  test(`expanded graph spends its height on the canvas ${width}x${height}`,async({page})=>{
@@ -23,7 +24,7 @@ for(const [width,height,lang] of [[1280,800,'en'],[390,844,'sk'],[844,390,'en'],
   await expect(page.locator('#graph-interaction-hint')).not.toBeVisible();await expect(page.locator('#graph-status')).not.toBeVisible();
   const geometry=await dialog.evaluate(d=>{const plot=d.querySelector('#graph-plot').getBoundingClientRect(),r=d.getBoundingClientRect(),result=d.querySelector('.graph-result');return {fraction:plot.height/r.height,bottom:plot.bottom,limit:r.bottom,overflow:result.scrollHeight-result.clientHeight};});
   expect(geometry.fraction).toBeGreaterThan(.72);expect(geometry.bottom).toBeLessThanOrEqual(geometry.limit);expect(geometry.overflow).toBeLessThanOrEqual(1);
-  await expect(page.locator('path.graph-line')).toBeVisible();await dialog.screenshot({path:`C:/Incoming/Projekty/NumForge/build/graph-expanded-tall-${width}.png`});
+  await expect(page.locator('path.graph-line')).toBeVisible();await dialog.screenshot({path:artifactPath(`graph-expanded-tall-${width}.png`)});
   if(width===844)await page.locator('#graph-tools-toggle').click();
   await page.locator('#graph-reset').click();await expect(page.locator('#graph-plot')).toHaveAttribute('data-xmin','-10');await page.keyboard.press('Escape');await expect(dialog).not.toBeVisible();
  });
@@ -44,7 +45,7 @@ for(const width of [390,1280])test(`library edits the selected complete expressi
  await expect(editor).toHaveValue('x + sqrt(2)');await expect(target).toHaveValue('x + sqrt(2)');await expect(page.locator('#graph-expression')).toHaveValue('sin(x)');
  await editor.evaluate(e=>e.setSelectionRange(0,1));await page.locator('#function-search').fill('sine');await page.locator('#graph-functions button[data-function=sin]').click();
  await expect(editor).toHaveValue('sin(x) + sqrt(2)');await editor.press('End');await editor.press('+');await editor.press('3');
- await page.locator('#graph-library-dialog').screenshot({path:`C:/Incoming/Projekty/NumForge/build/graph-library-editor-${width}.png`});
+ await page.locator('#graph-library-dialog').screenshot({path:artifactPath(`graph-library-editor-${width}.png`)});
  await editor.press('Enter');await expect(page.locator('#graph-library-dialog')).not.toBeVisible();await expect(target).toHaveValue('sin(x) + sqrt(2)+3');await expect(page.locator('path.graph-line')).toHaveCount(2);
 });
 
@@ -56,5 +57,5 @@ test('desktop editor categories match the calculator style and search across cat
  await page.locator('#function-search').fill('square root');await expect(page.locator('#graph-functions button[data-function=sqrt]')).toBeVisible();
  await expect(categories.getByRole('button',{name:'All categories',exact:true})).toHaveAttribute('aria-pressed','true');
  await categories.getByRole('button',{name:'Constants',exact:true}).click();await expect(page.locator('#function-search')).toHaveValue('');await expect(page.locator('#graph-functions button[data-insert="π"]')).toBeVisible();
- await page.locator('#graph-library-dialog').screenshot({path:'C:/Incoming/Projekty/NumForge/build/graph-editor-categories.png'});
+ await page.locator('#graph-library-dialog').screenshot({path:artifactPath('graph-editor-categories.png')});
 });

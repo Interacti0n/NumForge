@@ -1,3 +1,4 @@
+const { artifactPath } = require('./artifacts');
 const {test,expect}=require('@playwright/test');
 const {assess}=require('../../scripts/benchmark_graph_audit.cjs');
 async function plot(request,expression,extra={}){
@@ -41,6 +42,6 @@ for(const width of [390,1280])test(`absolute graph transitions between actual va
  await page.setViewportSize({width,height:900});await page.goto('/graph?lang=en');await page.locator('#graph-expression').fill('abs(x*sin(x))');await page.locator('#graph-submit').click();await expect(page.locator('path.graph-line')).toBeVisible();
  for(let i=0;i<8;i++)await page.locator('#graph-plot').dispatchEvent('keydown',{key:'-'});
  await expect(page.locator('#graph-plot')).toHaveAttribute('data-xmin','-2560');await expect(page.locator('path.graph-band')).toBeVisible();await expect(page.locator('#graph-status')).toContainText('approximate range');
- await page.locator('.graph-result').screenshot({path:`C:/Incoming/Projekty/NumForge/build/graph-absolute-${width}.png`});
+ await page.locator('.graph-result').screenshot({path:artifactPath(`graph-absolute-${width}.png`)});
  await page.locator('#graph-reset').click();await expect(page.locator('path.graph-band')).toHaveCount(0);await expect(page.locator('path.graph-line')).toBeVisible();
 });

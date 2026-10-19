@@ -1,3 +1,4 @@
+const { artifactPath } = require('./artifacts');
 const {test,expect}=require('@playwright/test');
 const {assess}=require('../../scripts/benchmark_graph_audit.cjs');
 const expression='sin(x*x)+cos(1000x)',f=x=>Math.sin(x*x)+Math.cos(1000*x);
@@ -39,6 +40,6 @@ for(const width of [390,1280])test(`sequential zoom stays visible and draws accu
  // Dense subpixel waves require an exact coordinate: native mouse injection
  // rounds to a CSS pixel in Firefox, potentially selecting a different phase.
  await page.locator('#graph-plot').dispatchEvent('pointermove',{pointerType:'mouse',clientX:target.x,clientY:target.y});await expect(page.locator('#graph-inspector')).toBeVisible();const point=await page.locator('#graph-inspector').evaluate(e=>({x:Number(e.dataset.x),y:Number(e.dataset.y)}));expect(Math.abs(point.y-f(point.x))*target.scale).toBeLessThan(.8);
- await page.locator('.graph-result').screenshot({path:`C:/Incoming/Projekty/NumForge/build/graph-subpixel-${width}.png`});
+ await page.locator('.graph-result').screenshot({path:artifactPath(`graph-subpixel-${width}.png`)});
  await page.locator('#graph-plot').press('Home');await expect(page.locator('path.graph-band')).toHaveCount(1);
 });

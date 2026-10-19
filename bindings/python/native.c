@@ -371,6 +371,35 @@ done:
     return output;
 }
 
+/* Own both arrays even after partial conversion so callers share one cleanup. */
+static NumForgeStatus exact_inputs(PyObject *values, Py_ssize_t count, const char *error,
+    BigRational ***entries, const BigRational ***borrowed)
+{
+    if ((size_t)count > SIZE_MAX / sizeof(**entries)) return NUMFORGE_VALUE_TOO_LARGE;
+    *entries = numforge_calloc((size_t)count, sizeof(**entries));
+    *borrowed = numforge_calloc((size_t)count, sizeof(**borrowed));
+    if (*entries == NULL || *borrowed == NULL) return NUMFORGE_OUT_OF_MEMORY;
+    for (Py_ssize_t i = 0; i < count; ++i) {
+        const NumForgeResult *input = PyCapsule_GetPointer(PySequence_Fast_GET_ITEM(values, i), RESULT_CAPSULE);
+        if (input == NULL) return NUMFORGE_OK; /* Preserve the Python exception. */
+        if (numforge_result_integer(input) == NULL && numforge_result_rational(input) == NULL) {
+            PyErr_SetString(PyExc_TypeError, error); return NUMFORGE_OK;
+        }
+        (*entries)[i] = bigrational_create(); (*borrowed)[i] = (*entries)[i];
+        if ((*entries)[i] == NULL) return NUMFORGE_OUT_OF_MEMORY;
+        NumForgeStatus status = rational_status(numforge_result_integer(input) != NULL ?
+            bigrational_from_bigint((*entries)[i], numforge_result_integer(input)) :
+            bigrational_copy((*entries)[i], numforge_result_rational(input)));
+        if (status != NUMFORGE_OK) return status;
+    }
+    return NUMFORGE_OK;
+}
+static void exact_inputs_destroy(BigRational **entries, const BigRational **borrowed, Py_ssize_t count)
+{
+    if (entries) for (Py_ssize_t i = 0; i < count; ++i) bigrational_destroy(entries[i]);
+    free(entries); free(borrowed);
+}
+
 static PyObject *native_describe(PyObject *module, PyObject *args)
 {
     PyObject *items, *options;
@@ -384,22 +413,8 @@ static PyObject *native_describe(PyObject *module, PyObject *args)
     bool owner = numforge_budget_begin(policy.milliseconds, policy.allocation_bytes, policy.single_allocation);
     BigRational **entries = NULL; const BigRational **borrowed = NULL;
     NumForgeStatisticsSummary *summary = NULL; PyObject *output = NULL; NumForgeStatus status = NUMFORGE_OK;
-    if ((size_t)count > SIZE_MAX / sizeof(*entries)) { status = NUMFORGE_VALUE_TOO_LARGE; goto done; }
-    entries = numforge_calloc((size_t)count, sizeof(*entries));
-    borrowed = numforge_calloc((size_t)count, sizeof(*borrowed));
-    if (entries == NULL || borrowed == NULL) { status = NUMFORGE_OUT_OF_MEMORY; goto done; }
-    for (Py_ssize_t i = 0; i < count && status == NUMFORGE_OK; ++i) {
-        const NumForgeResult *input = PyCapsule_GetPointer(PySequence_Fast_GET_ITEM(values, i), RESULT_CAPSULE);
-        if (input == NULL) goto done;
-        if (numforge_result_integer(input) == NULL && numforge_result_rational(input) == NULL) {
-            PyErr_SetString(PyExc_TypeError, "statistics samples must be exact real values"); goto done;
-        }
-        entries[i] = bigrational_create(); borrowed[i] = entries[i];
-        if (entries[i] == NULL) status = NUMFORGE_OUT_OF_MEMORY;
-        else status = rational_status(numforge_result_integer(input) != NULL ?
-            bigrational_from_bigint(entries[i], numforge_result_integer(input)) :
-            bigrational_copy(entries[i], numforge_result_rational(input)));
-    }
+    status = exact_inputs(values, count, "statistics samples must be exact real values", &entries, &borrowed);
+    if (status != NUMFORGE_OK || PyErr_Occurred()) goto done;
     if (status == NUMFORGE_OK) status = rational_status(numforge_statistics_describe(&summary, borrowed, (size_t)count));
     if (status != NUMFORGE_OK) goto done;
     output = PyDict_New();
@@ -417,8 +432,7 @@ done:
         Py_CLEAR(output);
         if (!PyErr_Occurred()) raise_status(module, status, 0);
     }
-    if (entries) for (Py_ssize_t i = 0; i < count; ++i) bigrational_destroy(entries[i]);
-    free(entries); free(borrowed); numforge_statistics_summary_destroy(summary);
+    exact_inputs_destroy(entries, borrowed, count); numforge_statistics_summary_destroy(summary);
     if (owner) numforge_budget_end();
     numforge_context_destroy(policy.context); Py_DECREF(values); return output;
 }
@@ -512,22 +526,8 @@ static PyObject *native_matrix_create(PyObject *module, PyObject *args)
     bool owner = numforge_budget_begin(policy.milliseconds, policy.allocation_bytes, policy.single_allocation);
     BigRational **entries = NULL; const BigRational **borrowed = NULL; NumForgeMatrix *matrix = NULL;
     PyObject *output = NULL; NumForgeStatus status = NUMFORGE_OK;
-    if ((size_t)count > SIZE_MAX / sizeof(*entries)) { status = NUMFORGE_VALUE_TOO_LARGE; goto done; }
-    entries = numforge_calloc((size_t)count, sizeof(*entries));
-    borrowed = numforge_calloc((size_t)count, sizeof(*borrowed));
-    if (entries == NULL || borrowed == NULL) { status = NUMFORGE_OUT_OF_MEMORY; goto done; }
-    for (Py_ssize_t i = 0; i < count && status == NUMFORGE_OK; ++i) {
-        const NumForgeResult *input = PyCapsule_GetPointer(PySequence_Fast_GET_ITEM(values, i), RESULT_CAPSULE);
-        if (input == NULL) goto done;
-        if (numforge_result_integer(input) == NULL && numforge_result_rational(input) == NULL) {
-            PyErr_SetString(PyExc_TypeError, "matrix entries must be exact real values"); goto done;
-        }
-        entries[i] = bigrational_create(); borrowed[i] = entries[i];
-        if (entries[i] == NULL) status = NUMFORGE_OUT_OF_MEMORY;
-        else status = rational_status(numforge_result_integer(input) != NULL ?
-            bigrational_from_bigint(entries[i], numforge_result_integer(input)) :
-            bigrational_copy(entries[i], numforge_result_rational(input)));
-    }
+    status = exact_inputs(values, count, "matrix entries must be exact real values", &entries, &borrowed);
+    if (status != NUMFORGE_OK || PyErr_Occurred()) goto done;
     if (status == NUMFORGE_OK) {
         NumForgeMatrixStatus created = numforge_matrix_create(&matrix, (size_t)rows, (size_t)columns, borrowed);
         if (created != NUMFORGE_MATRIX_OK) { matrix_error(module, created); goto done; }
@@ -535,8 +535,7 @@ static PyObject *native_matrix_create(PyObject *module, PyObject *args)
     }
 done:
     if (status != NUMFORGE_OK) raise_status(module, budget_status(status), 0);
-    if (entries) for (Py_ssize_t i = 0; i < count; ++i) bigrational_destroy(entries[i]);
-    free(entries); free(borrowed); numforge_matrix_destroy(matrix);
+    exact_inputs_destroy(entries, borrowed, count); numforge_matrix_destroy(matrix);
     if (owner) numforge_budget_end();
     numforge_context_destroy(policy.context); Py_DECREF(values);
     return output;

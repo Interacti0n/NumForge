@@ -325,6 +325,24 @@ class MatrixTests(unittest.TestCase):
         with self.assertRaises(TypeError):
             a.determinant(precision=1000)
 
+    def test_partial_matrix_input_allocation_and_recovery(self):
+        values = [[Fraction(-1, 3), 2], [5, Fraction(7, 11)]]
+        failures = successes = 0
+        # Exercise failure after some entries have already been converted, as
+        # well as exhaustion inside matrix construction; the next call must work.
+        for allocation_bytes in range(256, 32769, 256):
+            try:
+                matrix = nf.Matrix(values, allocation_bytes=allocation_bytes)
+            except nf.Error as error:
+                self.assertEqual(error.status, "memory_limit")
+                failures += 1
+            else:
+                self.assertEqual(matrix.to_rows(), tuple(map(tuple, values)))
+                successes += 1
+        self.assertGreater(failures, 0)
+        self.assertGreater(successes, 0)
+        self.assertEqual(nf.Matrix(values).determinant(), Fraction(-337, 33))
+
 
 class LinearSystemTests(unittest.TestCase):
     @staticmethod

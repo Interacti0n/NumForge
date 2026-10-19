@@ -53,7 +53,7 @@ and C++ package consumers compile and call the public rational API.
 ## Choose a focused check
 
 The optional [Python adapter](guides/PYTHON.md) has its own reproducible source-archive,
-wheel, isolated installation, 43-test and standalone-example check:
+wheel, isolated adapter-test and standalone-example check:
 `python scripts/check_python_package.py --output build/python-package-check`.
 It uses installed build tools with network lookup disabled and never installs
 globally. The separate Python workflow covers Linux 3.10/3.12, Windows 3.12 and

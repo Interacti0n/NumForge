@@ -1,3 +1,4 @@
+const { artifactPath } = require('./artifacts');
 const {test,expect}=require('@playwright/test');
 const rows=page=>page.locator('.graph-curve');
 const expression=(page,i)=>rows(page).nth(i).locator('input:not([type=color])');
@@ -15,7 +16,7 @@ await expect(expression(page,1)).toHaveValue('cos(x)');
  await toggle(page,1).click();await page.locator('#graph-plot').press('ArrowRight');await expect(page.locator('#graph-plot')).toHaveAttribute('data-xmin','-6');await page.waitForTimeout(350);expect(calls.every(r=>r.postData()!=='cos(x)')).toBe(true);
  await rows(page).nth(1).locator('input[type=color]').evaluate(e=>{e.value='#ff2233';e.dispatchEvent(new Event('input',{bubbles:true}));});
  calls.length=0;await toggle(page,1).click();await expect(page.locator(`path.graph-line[data-curve="${id}"]`)).toHaveCSS('stroke','rgb(255, 34, 51)');await page.waitForTimeout(250);expect(calls.filter(r=>r.postData()==='cos(x)').length).toBe(0);
- await page.locator('.graph-workspace').screenshot({path:`C:/Incoming/Projekty/NumForge/build/graph-visibility-${lang}.png`});
+ await page.locator('.graph-workspace').screenshot({path:artifactPath(`graph-visibility-${lang}.png`)});
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
 });
 test('all hidden curves preserve axes and do no work until explicitly shown',async({page})=>{

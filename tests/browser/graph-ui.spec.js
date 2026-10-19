@@ -1,3 +1,4 @@
+const { artifactPath } = require('./artifacts');
 const {test,expect}=require('@playwright/test');
 const normalize=data=>data.schema_version===3?{...data,points:data.points.map(p=>({x:String(p[0]),y:p[1]===null?null:String(p[1]),connect:!!p[2],kind:['real','domain_error','complex','quantity','unresolved'][p[3]],source_approximate:!!p[4]}))}:data;
 test('dense background preparation preserves the active cached viewport',async({page})=>{
@@ -24,7 +25,7 @@ test('dense cached camera motion keeps the curve visible across animation frames
    if(!svg.querySelector('path.graph-line'))throw Error('curve disappeared during camera movement');
   }return frames;
  });
- require('node:fs').writeFileSync('C:/Incoming/Projekty/NumForge/build/graph-motion-frames.json',JSON.stringify(gaps));
+ require('node:fs').writeFileSync(artifactPath('graph-motion-frames.json'),JSON.stringify(gaps));
  expect(gaps).toHaveLength(20);await expect(page.locator('path.graph-line')).toBeVisible();
 });
 test('covered viewport reuses accepted cached preview before refinement and cancels obsolete work',async({page})=>{
@@ -290,8 +291,8 @@ test('automatic radians, parameter and resize retain a simple graph layout',asyn
  const data=await sample(page,'sin(t)');expect(data.parameter).toBe('t');
  for(const p of data.points)if(p.kind==='real')expect(Number(p.y)).toBeCloseTo(Math.sin(Number(p.x)),9);
  await expect(page.locator('#graph-settings,.graph-settings,#graph-session,#graph-precision,#graph-angle,#graph-min,#graph-max,#graph-ymin,#graph-ymax,#graph-values')).toHaveCount(0);
- await page.screenshot({path:'C:/Incoming/Projekty/NumForge/build/simple-graph-desktop.png',fullPage:true});
+ await page.screenshot({path:artifactPath('simple-graph-desktop.png'),fullPage:true});
  await page.setViewportSize({width:390,height:844});await expect(page.locator('#graph-plot')).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
- await page.screenshot({path:'C:/Incoming/Projekty/NumForge/build/simple-graph-mobile.png',fullPage:true});
+ await page.screenshot({path:artifactPath('simple-graph-mobile.png'),fullPage:true});
 });

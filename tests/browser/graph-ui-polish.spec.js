@@ -1,3 +1,4 @@
+const { artifactPath } = require('./artifacts');
 const {test,expect}=require('@playwright/test');
 test('row editor and palette target only their own curve and retain custom colors',async({page})=>{
  await page.setViewportSize({width:390,height:844});await page.goto('/graph?lang=en');await page.locator('#graph-add').click();
@@ -12,7 +13,7 @@ test('row editor and palette target only their own curve and retain custom color
  await page.locator('#graph-submit').click();await expect(page.locator('path.graph-line')).toHaveCount(2);
  await expect(page.locator('path.graph-line').last()).toHaveCSS('stroke','rgb(18, 58, 188)');
  await page.reload();await expect(page.locator('.graph-curve input[type=color]').last()).toHaveValue('#123abc');
- await page.screenshot({path:'../../build/graph-mobile-polish.png',fullPage:true});
+ await page.screenshot({path:artifactPath('graph-mobile-polish.png'),fullPage:true});
 });
 test('landscape expanded canvas fills screen with dismissible controls and a direct exit',async({page})=>{
  await page.setViewportSize({width:844,height:390});await page.goto('/graph?lang=sk');await page.locator('#graph-submit').click();await expect(page.locator('path.graph-line')).toBeVisible();await page.locator('#graph-expand').click();
@@ -21,7 +22,7 @@ test('landscape expanded canvas fills screen with dismissible controls and a dir
  await page.locator('#graph-tools-toggle').click();await expect(page.locator('#graph-reset')).toBeVisible();await expect(page.locator('#graph-legend')).toBeVisible();
  await page.locator('#graph-reset').click();await expect(page.locator('#graph-plot')).toHaveAttribute('data-xmin','-10');
  await page.locator('#graph-plot').click({position:{x:300,y:240}});await expect(page.locator('#graph-reset')).not.toBeVisible();await expect(page.locator('#graph-tools-toggle')).toHaveAttribute('aria-expanded','false');
- await page.screenshot({path:'../../build/graph-landscape-polish.png'});await page.locator('#graph-expanded-back').click();await expect(page.locator('#graph-expanded')).not.toBeVisible();await expect(page.locator('#graph-expand')).toBeFocused();
+ await page.screenshot({path:artifactPath('graph-landscape-polish.png')});await page.locator('#graph-expanded-back').click();await expect(page.locator('#graph-expanded')).not.toBeVisible();await expect(page.locator('#graph-expand')).toBeFocused();
  await page.locator('#graph-expand').click();await page.keyboard.press('Escape');await expect(page.locator('#graph-expanded')).not.toBeVisible();
 });
 test('informational curve notes stay quiet while invalid expressions remain visible',async({page})=>{

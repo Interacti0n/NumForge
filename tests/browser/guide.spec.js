@@ -1,3 +1,4 @@
+const { artifactPath } = require('./artifacts');
 const {test,expect}=require('@playwright/test');
 const parts={
  calculator:['intro','syntax','variables','functions','complex','quantities','precision','cache','random','history','calculator-limits'],
@@ -31,7 +32,7 @@ for(const lang of ['sk','en'])test(`focused guide parts, scroll tracking and mob
    await expect(page.locator('.guide-toc a[aria-current="location"]')).toHaveCount(1);
   }
  }
- await page.screenshot({path:`C:/Incoming/Projekty/NumForge/build/guide-parts-${lang}.png`,fullPage:true});
+ await page.screenshot({path:artifactPath(`guide-parts-${lang}.png`),fullPage:true});
  const docs=page.locator('[data-guide-panel="api"] a[href^="https://github.com/Interacti0n/NumForge/blob/main/docs/"]');
  expect(await docs.count()).toBeGreaterThanOrEqual(10);
  for(const link of await docs.all()){await expect(link).toHaveAttribute('target','_blank');await expect(link).toHaveAttribute('rel','noopener noreferrer');}
@@ -79,9 +80,9 @@ test('tools open focused help, expandable detail and readable mobile/desktop lay
  const details=page.locator('[data-guide-panel=calculator] .guide-reference').nth(1);
  await expect(details).not.toHaveAttribute('open','');await details.locator('summary').click();await expect(details).toHaveAttribute('open','');
  await page.setViewportSize({width:1280,height:720});await choose(page,'calculator');
- await page.screenshot({path:'C:/Incoming/Projekty/NumForge/build/guide-parts-desktop.png',fullPage:true});
+ await page.screenshot({path:artifactPath('guide-parts-desktop.png'),fullPage:true});
  await page.setViewportSize({width:390,height:844});await choose(page,'units');
- await page.screenshot({path:'C:/Incoming/Projekty/NumForge/build/guide-parts-mobile.png',fullPage:true});
+ await page.screenshot({path:artifactPath('guide-parts-mobile.png'),fullPage:true});
 });
 
 test('complete guide stays readable without JavaScript',async({browser,baseURL})=>{

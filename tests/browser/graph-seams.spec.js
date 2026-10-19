@@ -1,3 +1,4 @@
+const { artifactPath } = require('./artifacts');
 const {test,expect}=require('@playwright/test');
 async function returnFromDetail(page){
  await page.goto('/graph?lang=en');await page.locator('#graph-expression').fill('x*x');
@@ -13,7 +14,7 @@ for(const width of [390,1280])test(`zoomed-out x*x uses one continuous stroke ac
  await page.setViewportSize({width,height:900});await returnFromDetail(page);
  await expect(page.locator('path.graph-line')).toHaveCount(1);
  expect((await page.locator('path.graph-line').getAttribute('d')).match(/M/g)).toHaveLength(1);
- await page.locator('.graph-result').screenshot({path:`C:/Incoming/Projekty/NumForge/build/graph-seams-${width}.png`});
+ await page.locator('.graph-result').screenshot({path:artifactPath(`graph-seams-${width}.png`)});
 });
 for(const gap of [false,true])test(`tile joins share actual boundary values and preserve rejected edges: ${gap}`,async({page})=>{
  await page.route('**/api/graph/plot?**',route=>{

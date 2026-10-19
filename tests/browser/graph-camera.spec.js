@@ -1,3 +1,4 @@
+const { artifactPath } = require('./artifacts');
 const {test,expect}=require('@playwright/test');
 async function draw(page,input='sin(x)'){
  await page.goto('/graph?lang=en');await page.locator('#graph-expression').fill(input);
@@ -13,10 +14,10 @@ test('fixed origin view and integer ticks stay independent of function extrema',
   const labels=await page.locator(`.graph-tick[data-axis="${axis}"]`).allTextContents();
   expect(labels).toContain('0');expect(labels.every(t=>/^-?\d+$/.test(t))).toBe(true);
  }
- await page.locator('.graph-result').screenshot({path:'C:/Incoming/Projekty/NumForge/build/graph-sine-origin.png'});
+ await page.locator('.graph-result').screenshot({path:artifactPath('graph-sine-origin.png')});
  await page.locator('#graph-expression').fill('1000*x');await page.locator('#graph-submit').click();
  await expect(svg).toHaveAttribute('data-ymin','-10');await expect(svg).toHaveAttribute('data-ymax','10');
- await page.locator('.graph-result').screenshot({path:'C:/Incoming/Projekty/NumForge/build/graph-fixed-camera.png'});
+ await page.locator('.graph-result').screenshot({path:artifactPath('graph-fixed-camera.png')});
 });
 test('visible-first drawing prepares a later buffer for immediate horizontal and vertical movement',async({page})=>{
  const calls=[];page.on('request',r=>{if(r.url().includes('/api/graph/plot?'))calls.push(new URL(r.url()));});

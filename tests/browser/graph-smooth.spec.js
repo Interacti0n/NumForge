@@ -1,3 +1,4 @@
+const { artifactPath } = require('./artifacts');
 const {test,expect}=require('@playwright/test');
 const fs=require('node:fs');
 async function plot(request,expression,extra={}){
@@ -52,7 +53,7 @@ for(const width of [390,1280])test(`rendered smooth curves follow analytic extre
   },expression);
   expect(result.cubic,expression).toBe(true);expect(result.maxError,expression).toBeLessThan(.15);
  }
- await page.locator('.graph-result').screenshot({path:`C:/Incoming/Projekty/NumForge/build/graph-smooth-${width}.png`});
+ await page.locator('.graph-result').screenshot({path:artifactPath(`graph-smooth-${width}.png`)});
 });
 test('next zoom is prepared before interaction and redraws from the cache',async({page})=>{
  await page.goto('/graph?lang=en');const calls=[];
@@ -68,7 +69,7 @@ test('next zoom is prepared before interaction and redraws from the cache',async
  expect(await page.locator('path.graph-line').getAttribute('d')).toContain('C');
  await page.waitForTimeout(350);
  expect(calls.slice(before).some(q=>q.get('min')==='-5'&&q.get('max')==='5'&&q.get('ymin')==='-5'&&q.get('ymax')==='5')).toBe(false);
- fs.writeFileSync('C:/Incoming/Projekty/NumForge/build/graph-smooth-zoom-frame.json',JSON.stringify({event_to_animation_frame_ms:ms}));
+ fs.writeFileSync(artifactPath('graph-smooth-zoom-frame.json'),JSON.stringify({event_to_animation_frame_ms:ms}));
 });
 test('missing slope data draws linear fallback and malformed slope data is rejected',async({page})=>{
  let malformed=false;

@@ -1,5 +1,5 @@
+const { artifactPath } = require('./artifacts');
 const {test,expect}=require('@playwright/test');
-const path=require('node:path');
 async function coefficients(page,a,b,c) {
  await page.locator('#equation-mode').selectOption('coefficients');
  for(const [name,value] of Object.entries({a,b,c}))await page.locator('#equation-'+name).fill(value);
@@ -152,7 +152,7 @@ test('equation layout fits phone, landscape and desktop',async({page})=>{
   await page.evaluate(async()=>{await document.fonts.ready;await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));});
   await expect(page.locator('.equation-entry h1')).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
-  await page.screenshot({path:path.resolve(__dirname,`../../build/equations-2026-10-17/layout-${width}.png`),fullPage:true});
+  await page.screenshot({path:artifactPath(`equations-2026-10-17/layout-${width}.png`),fullPage:true});
  }
  await page.locator('#equation-mode').selectOption('numeric');await page.locator('#equation-expression').fill('cos(x)=x');
  await page.locator('#equation-min').fill('0');await page.locator('#equation-max').fill('1');await page.locator('#equation-submit').click();
@@ -161,6 +161,6 @@ test('equation layout fits phone, landscape and desktop',async({page})=>{
   await page.setViewportSize({width,height});
   await page.evaluate(async()=>{await document.fonts.ready;await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));});
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
-  await page.screenshot({path:path.resolve(__dirname,`../../build/numeric-root-2026-10-18/layout-${width}.png`),fullPage:true});
+  await page.screenshot({path:artifactPath(`numeric-root-2026-10-18/layout-${width}.png`),fullPage:true});
  }
 });

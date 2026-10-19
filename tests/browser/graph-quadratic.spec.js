@@ -1,3 +1,4 @@
+const { artifactPath } = require('./artifacts');
 const {test,expect}=require('@playwright/test');
 const {assess}=require('../../scripts/benchmark_graph_audit.cjs');
 const query={mode:'fast',width:800,height:440,min:-100,max:100,ymin:-10,ymax:10,interpolation:'hermite',dense:'band'};
@@ -29,7 +30,7 @@ for(const width of [390,1280])test(`actual quadratic SVG survives range transiti
  await expect(page.locator('.graph-workspace')).not.toHaveAttribute('aria-busy','true');
  for(let i=0;i<4;i++){await page.locator('#graph-plot').press('-');await page.waitForTimeout(220);await expect(page.locator('.graph-workspace')).not.toHaveAttribute('aria-busy','true');}
  await expect(page.locator('path.graph-band')).toHaveCount(1);await expect(page.locator('path.graph-line')).toHaveCount(1);await expect(page.locator('#graph-status')).not.toContainText('unresolved');
- await page.locator('.graph-result').screenshot({path:`C:/Incoming/Projekty/NumForge/build/graph-quadratic-${width}.png`});
+ await page.locator('.graph-result').screenshot({path:artifactPath(`graph-quadratic-${width}.png`)});
  await page.locator('#graph-plot').press('Home');await expect(page.locator('.graph-workspace')).not.toHaveAttribute('aria-busy','true');await expect(page.locator('path.graph-band')).toHaveCount(0);
  const checked=await page.locator('#graph-plot').evaluate(svg=>{
   const w=svg.viewBox.baseVal.width,h=svg.viewBox.baseVal.height;let error=0,checks=0;

@@ -1,5 +1,5 @@
+const { artifactPath } = require('./artifacts');
 const {test,expect}=require('@playwright/test');
-const path=require('node:path');
 async function open(page){await page.locator('#equation-edit').click();await expect(page.locator('#equation-editor')).toBeVisible();}
 async function find(page,name){await page.locator('#equation-editor-search').fill(name);}
 
@@ -90,7 +90,7 @@ test('editor pagination fits phone, landscape and desktop without window scrolli
   await page.setViewportSize({width,height});await page.evaluate(async()=>{await document.fonts.ready;await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));});
   const dimensions=await page.locator('#equation-editor').evaluate(e=>({scroll:e.scrollHeight,client:e.clientHeight,width:e.getBoundingClientRect().width}));
   expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.client+1);expect(dimensions.width).toBeLessThanOrEqual(width);
-  await page.screenshot({path:path.resolve(`build/equation-editor-2026-10-19/editor-${width}.png`)});
+  await page.screenshot({path:artifactPath(`equation-editor-2026-10-19/editor-${width}.png`)});
  }
  await page.locator('#equation-editor-category').selectOption('algebra');await page.locator('#equation-editor-search').fill('');
  const pageText=await page.locator('#equation-editor-page').textContent();await page.locator('#equation-editor-next').click();await expect(page.locator('#equation-editor-page')).not.toHaveText(pageText);
