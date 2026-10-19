@@ -1,10 +1,10 @@
 #include "src/application/graphs/fast_graph.h"
+#include "src/application/graphs/graph_projection.h"
 #include "src/application/expressions/fast_expression.h"
 #include "src/engine/evaluator/exact_functions.h"
 #include "src/engine/values/value_internal.h"
 #include "src/runtime/numforge_alloc.h"
 #include <numforge/runtime.h>
-#include <errno.h>
 #include <float.h>
 #include <math.h>
 #include <stdio.h>
@@ -122,13 +122,6 @@ static bool band_covered(const ApplicationFastGraph *graph,double low,double hig
     }
     return end>=high;
 }
-static CalculatorStatus project(const BigDecimal *number,double *value)
-{
-    char *text=NULL;CalculatorStatus status=calculator_from_decimal_status(bigdecimal_format_mode(number,
-        16,BIGDECIMAL_ROUND_HALF_EVEN,BIGDECIMAL_FORMAT_SCIENTIFIC,128U,&text));
-    if(status==CALCULATOR_OK){char *end=NULL;errno=0;double x=strtod(text,&end);*value=errno==ERANGE||!isfinite(x)||end==text||*end?NAN:x;}
-    free(text);return status;
-}
 static CalculatorStatus point(Work *work,double x,ApplicationFastGraphPoint *result,ApplicationFastProbe *observed)
 {
     CalculatorStatus status=probe(work,x,observed);
@@ -148,7 +141,7 @@ static CalculatorStatus point(Work *work,double x,ApplicationFastGraphPoint *res
     if(status==CALCULATOR_OK)status=calculator_from_rational_status(bigrational_from_bigdecimal(coordinate.rational,coordinate.number));
     if(status==CALCULATOR_OK)status=application_expression_sample(work->exact,&coordinate,1U,&sample,work->error);
     if(status==CALCULATOR_OK){result->kind=application_graph_point_kind(sample);result->approximate=sample->value.kind==CALCULATOR_VALUE_DECIMAL||sample->value.kind==CALCULATOR_VALUE_COMPLEX_DECIMAL;
-        if(result->kind==APPLICATION_GRAPH_REAL){status=project(sample->value.number,&result->y);result->derivative=observed->derivative;}}
+        if(result->kind==APPLICATION_GRAPH_REAL){status=application_graph_project(sample->value.number,&result->y);result->derivative=observed->derivative;}}
     calculator_value_destroy(&coordinate);application_expression_samples_destroy(sample,1U);return status;
 }
 static bool same_sign(double a,double b,double c){return (a>0&&b>0&&c>0)||(a<0&&b<0&&c<0);}

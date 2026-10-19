@@ -130,6 +130,17 @@ phase locator; actual typed samples are inserted by the adapter. Typed sampling,
 expression metadata extraction and angular-unit selection remain application-owned;
 numeric rules do not inspect ASTs or sessions.
 
+Fast graphs retain binary floating-point phase guards, dense envelopes and
+Hermite/pixel acceptance in the application layer: these are approximate display
+policies tied to the camera and expression metadata. Candidate verification also
+retains its 16-digit coordinate keys, request-local sample cache, 24-step
+refinement and residual/contact checks. It is not interchangeable with the public
+bounded root solver or a completeness/certification contract. Shared decimal-to-double
+projection belongs to the private graph adapter; exact rational differences and
+original-expression checks happen before that lossy conversion. A future reusable
+screen arithmetic API needs an explicit approximation and failure contract before
+these rules move into the numeric library.
+
 The browser handles input and presentation; C performs mathematical evaluation.
 CMake embeds assets and the license in the local server, so installed applications
 need no asset directory or Node runtime. The loopback server uses bounded requests

@@ -5,6 +5,7 @@ target_sources(numforge_application PRIVATE
     graphs/fast_graph.c
     graphs/graph.c
     graphs/graph_analysis.c
+    graphs/graph_projection.c
     equations/equation.c
     equations/equation_format.c
     equations/equation_parse.c

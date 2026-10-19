@@ -1,9 +1,9 @@
 #include "src/application/graphs/fast_graph.h"
 #include "src/application/graphs/graph_analysis.h"
+#include "src/application/graphs/graph_projection.h"
 #include "src/engine/evaluator/exact_functions.h"
 #include "src/runtime/numforge_alloc.h"
 #include <numforge/runtime.h>
-#include <errno.h>
 #include <float.h>
 #include <math.h>
 #include <stdio.h>
@@ -19,19 +19,13 @@ static CalculatorStatus graph_argument(CalculatorValue *value,const char *text,c
     if(status==CALCULATOR_OK)status=calculator_from_rational_status(bigrational_from_bigdecimal(value->rational,value->number));
     return status;
 }
-static CalculatorStatus graph_projection(const BigDecimal *number,double *value)
-{
-    char *text=NULL;CalculatorStatus status=calculator_from_decimal_status(bigdecimal_format_mode(number,16,BIGDECIMAL_ROUND_HALF_EVEN,BIGDECIMAL_FORMAT_SCIENTIFIC,128U,&text));
-    if(status==CALCULATOR_OK){char *end=NULL;errno=0;double projected=strtod(text,&end);*value=errno==ERANGE||!isfinite(projected)||end==text||*end?NAN:projected;}
-    free(text);return status;
-}
 static CalculatorStatus graph_actual_point(ApplicationExpression *expression,const CalculatorValue *argument,ApplicationFastGraphPoint *point,CalculatorError *error)
 {
     ApplicationExpressionSample *sample=NULL;CalculatorStatus status=application_expression_sample(expression,argument,1U,&sample,error);
     if(status==CALCULATOR_OK){
         point->kind=application_graph_point_kind(sample);point->y=NAN;point->derivative=NAN;point->connect=false;
         point->approximate=sample->value.kind==CALCULATOR_VALUE_DECIMAL||sample->value.kind==CALCULATOR_VALUE_COMPLEX_DECIMAL;
-        if(point->kind==APPLICATION_GRAPH_REAL)status=graph_projection(sample->value.number,&point->y);
+        if(point->kind==APPLICATION_GRAPH_REAL)status=application_graph_project(sample->value.number,&point->y);
     }
     application_expression_samples_destroy(sample,1U);return status;
 }
@@ -117,8 +111,8 @@ static CalculatorStatus verify_sample(VerifyWork *work,double x,bool pair,Verifi
                 if(status==CALCULATOR_OK)status=calculator_from_rational_status(bigrational_to_bigdecimal(difference,rational,work->context->division_scale,BIGDECIMAL_ROUND_HALF_EVEN));
             }else status=calculator_from_decimal_status(bigdecimal_sub(difference,first->value.number,second->value.number));
         }
-        if(status==CALCULATOR_OK)status=graph_projection(first->value.number,&result->y);
-        if(status==CALCULATOR_OK)status=graph_projection(difference,&result->difference);
+        if(status==CALCULATOR_OK)status=application_graph_project(first->value.number,&result->y);
+        if(status==CALCULATOR_OK)status=application_graph_project(difference,&result->difference);
         if(status==CALCULATOR_OK)status=calculator_from_decimal_status(bigdecimal_sign(&result->sign,difference));
         result->real=status==CALCULATOR_OK&&isfinite(result->y)&&isfinite(result->difference);
         result->approximate=first->value.kind==CALCULATOR_VALUE_DECIMAL||(pair&&second->value.kind==CALCULATOR_VALUE_DECIMAL);
@@ -208,7 +202,7 @@ static CalculatorStatus verify_candidate(VerifyWork *work,const ApplicationGraph
     if(left.sign==0){verified_output(result,&left,root);return CALCULATOR_OK;}
     if(right.sign==0){verified_output(result,&right,root);return CALCULATOR_OK;}
     VerifiedSample best=center;
-    if(fabs(best.difference)<=fmin(candidate->y_tolerance,1e-11*fmax(1,fabs(best.y)))){verified_output(result,&best,root);return CALCULATOR_OK;}
+    if(verified_residual(candidate,&best)){verified_output(result,&best,root);return CALCULATOR_OK;}
     if(center.x>left.x&&center.x<right.x){if(center.sign==left.sign)left=center;else right=center;}
     if(work->brent)return verify_brent(work,candidate,pair,root,left,right,best,result);
     unsigned iterations=0;
@@ -222,11 +216,9 @@ static CalculatorStatus verify_candidate(VerifyWork *work,const ApplicationGraph
         if(fabs(mid.difference)<fabs(best.difference))best=mid;
         if(mid.sign==0){verified_output(result,&mid,root);return CALCULATOR_OK;}
         if(mid.sign==left.sign)left=mid;else right=mid;
-        double tolerance=fmin(candidate->y_tolerance,1e-11*fmax(1,fabs(best.y)));
-        if(fabs(best.difference)<=tolerance){verified_output(result,&best,root);return CALCULATOR_OK;}
+        if(verified_residual(candidate,&best)){verified_output(result,&best,root);return CALCULATOR_OK;}
     }
-    double tolerance=fmin(candidate->y_tolerance,1e-11*fmax(1,fabs(best.y)));
-    if(!work->limited&&fabs(best.difference)<=tolerance)verified_output(result,&best,root);
+    if(!work->limited&&verified_residual(candidate,&best))verified_output(result,&best,root);
     if(iterations==24U)work->reason=VERIFY_ITERATIONS;
     return CALCULATOR_OK;
 }

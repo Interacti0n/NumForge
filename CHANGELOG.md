@@ -9,6 +9,10 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ### Numerical foundation
 
+- Audit fast graph and candidate-verification boundaries. Share their lossy
+  decimal display projection and residual predicate while retaining exact
+  differences, distinct coordinate policies, caches and resource limits. Document
+  why screen/camera rules remain private application behavior.
 - Keep polynomial and numerical-root result layouts inside their owning modules.
   Application formatting, HTTP responses, tests and benchmarks use public getters;
   production root solving uses the public entry point. Restrict the private research

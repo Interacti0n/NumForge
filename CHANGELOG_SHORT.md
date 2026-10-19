@@ -5,6 +5,8 @@ details and the [2.4.0 release record](docs/project/RELEASE_2_4.md) for validati
 
 ## Unreleased
 
+- Consolidate graph display conversion and document the boundary between screen policies and reusable mathematics.
+
 - Enforce module boundaries and use opaque polynomial/root results throughout application adapters.
 
 - Expose exact grids, adaptive sampling rules, phase anchors and bounded root searches in C, shared with graph and equation tools.
