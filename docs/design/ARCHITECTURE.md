@@ -55,7 +55,8 @@ adapters reuse the typed evaluator with a local parameter and one operation budg
 without modifying the source session. The [HTTP sampler](../reference/GRAPH_HTTP_API.md)
 and [browser graph page](../guides/GRAPHS.md) are implemented, including bounded adaptive C refinement and automatic AST
 parameter selection. Polynomial and bounded numerical solving are implemented
-as private C application operations; public solver extraction remains future work.
+through C application adapters. The exact coefficient solver is public in the
+numeric library; numerical interval solving remains a private application API.
 
 The browser handles input, navigation and presentation in JavaScript. Expressions
 are sent to the local C server for numerical evaluation. The server embeds the
@@ -70,6 +71,7 @@ It is not a production public-hosting architecture.
 | --- | --- |
 | `include/numforge/` | Installed public API contracts. |
 | `src/engine/` | Public stateless expression handles, context and typed result adapter. |
+| `src/algebra/` | Standalone exact polynomial solver shared with equation application adapters. |
 | `src/bigint/`, `src/bigdecimal/`, `src/bigrational/` | Numeric implementations. |
 | `src/units/` | Static unit registry and exact compatible-unit conversion over public BigRational API. |
 | `src/web/unit_web.c` | Local HTTP unit catalogue and conversion adapter; borrows session values, preserves typed exact input and shares calculator budgets. |

@@ -4,7 +4,7 @@ Use the `sdk-win-x64.zip` or `sdk-linux-x64.tar.gz` release asset to link the
 public numeric C API from C or C++. Download its matching `.sha256` file and
 verify the checksum before extracting the whole archive. This SDK contains
 BigInt, BigDecimal, BigRational, complex, units and runtime APIs. SDKs built from
-the current post-2.4.0 source also contain the optional public expression engine,
+the current post-2.4.0 source also contain exact polynomial solving and the optional public expression engine,
 not sessions or the HTTP server. Older published archives retain their original
 numeric-only scope. For HTTP clients, use the separate application download and
 its documented HTTP API.
@@ -45,6 +45,8 @@ The example prints `0.1 + 0.2 = 0.3` using exact decimal arithmetic.
 When `NumForge::engine` is available, the example project also builds and tests
 `numforge_engine_example`, evaluating sqrt(2) at 1000 working significant digits.
 See `engine.h` and the standalone engine contract in the full source documentation.
+The project also builds a typed-parameter example and, when `polynomial.h` is
+present, a standalone exact polynomial example linked only to the numeric library.
 
 ## Use in your project
 

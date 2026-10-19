@@ -1,13 +1,14 @@
 # Exact linear and quadratic equations
 
-The private C application layer solves `a*x^2 + b*x + c = 0` for real rational
-coefficients. It preserves exact fractions and irrational radicals, including
-complex conjugate roots. Declarations are in `src/application/equation.h` and
-the implementation belongs to `numforge_application`.
+The public [numeric coefficient solver](../reference/POLYNOMIAL_API.md) solves
+`a*x^2 + b*x + c = 0` for real rational coefficients in `NumForge::numforge`.
+It preserves exact fractions and irrational radicals, including complex conjugate
+roots. `src/application/equation.h` retains private context/error/parsing/formatting
+adapters over that implementation for existing application clients.
 
 This is an implemented coefficient-based foundation with a stateless
-[HTTP operation](../reference/EQUATION_HTTP_API.md). It is not an installed
-numeric SDK API. The [browser equation editor](../guides/EQUATIONS.md) consumes
+[HTTP operation](../reference/EQUATION_HTTP_API.md). The numeric solver is now in
+the source-built SDK; application adapters remain private. The [browser equation editor](../guides/EQUATIONS.md) consumes
 this contract with exact root text and decimal previews. A separate bounded
 [numerical interval solver](../reference/NUMERIC_ROOT_HTTP_API.md) handles general
 real equation expressions without changing exact polynomial semantics.

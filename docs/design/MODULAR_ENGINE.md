@@ -36,7 +36,7 @@ flowchart TD
 | --- | --- | --- |
 | Core / Arithmetic | Numeric representations, elementary arithmetic and conversions | Public BigInt, BigDecimal, BigRational and complex APIs |
 | Number Theory | Primality, factors, congruences and modular arithmetic | Selected public BigInt operations; broaden with individual contracts |
-| Algebra | Polynomials, algebraic equations and exact root representations | Private linear/quadratic solver; design a public typed solver API next |
+| Algebra | Polynomials, algebraic equations and exact root representations | Public exact linear/quadratic coefficient solver in the numeric target; application parsing/preview adapters remain private |
 | Linear Algebra | Vectors, matrices, decompositions and linear systems | Future; choose exact/approximate element semantics before implementation |
 | Calculus / Analysis | Mathematical concepts and user-facing organization | Symbolic and numerical algorithms have separate owners below |
 | Numerical | Root finding, interpolation, quadrature, ODEs and optimization | Private bounded root solving; expose convergence/coverage diagnostics explicitly |
@@ -88,12 +88,15 @@ require implementing every future language binding in the same change.
    exactness, per-operation limits and C/C++ package consumers. CLI/web retain
    their existing entry points and use the same parser/evaluator implementation.
    See [the engine contract](../reference/ENGINE_API.md).
-2. **Application convergence:** gradually use the public engine boundary where its
-   scope fits. Design parameter/variable binding and quantity value contracts
+2. **Application convergence:** explicit declared parameters and typed argument
+   constructors are now public; arguments are borrowed for one evaluation only.
+   Gradually use the public engine boundary where its scope fits. Design persistent
+   variable binding and quantity value contracts
    before moving sessions or graph-specific prepared expressions. Do not change
    established CLI/web semantics just to match the initial public subset.
-3. **Public solver slice:** extract exact coefficient solving from calculator
-   context/session terminology. Keep root multiplicity, exact radicals,
+3. **Public solver slice:** exact coefficient solving is extracted into the numeric
+   target as [polynomial.h](../reference/POLYNOMIAL_API.md), with no engine dependency.
+   The application delegates to it. Further solver work must keep root multiplicity, exact radicals,
    approximation, domain checks and convergence/coverage diagnostics explicit.
    Validate using an installed external consumer before adapting HTTP.
 4. **Python proof:** a small binding over the C APIs, including lossless inputs,

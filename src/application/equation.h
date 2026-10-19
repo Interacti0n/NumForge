@@ -3,31 +3,15 @@
 
 #include "calculator_internal.h"
 
-typedef enum ApplicationEquationKind {
-    APPLICATION_EQUATION_NONE,
-    APPLICATION_EQUATION_FINITE,
-    APPLICATION_EQUATION_ALL
-} ApplicationEquationKind;
-
-/* Owned exact solution of a*x^2+b*x+c=0 for real rational coefficients.
- * Fields are read-only to callers. NONE/ALL have count=0 and no root fields.
- * FINITE roots are center +/- sqrt(radicand), or center +/- i*sqrt(radicand)
- * when imaginary=true. For two roots index 0 uses minus and index 1 plus.
- * A single root is center, with the indicated multiplicity. offset is the exact
- * nonnegative rational sqrt(radicand), or NULL if the radical is irrational.
- * discriminant is b*b-4*a*c for degree 2 only. No decimal rounding is performed.
- * This private application API is not installed with the numeric SDK. */
-typedef struct ApplicationEquationSolution {
-    ApplicationEquationKind kind;
-    unsigned degree;
-    size_t count;
-    unsigned multiplicity[2];
-    bool imaginary;
-    BigRational *center;
-    BigRational *radicand;
-    BigRational *offset;
-    BigRational *discriminant;
-} ApplicationEquationSolution;
+/* Legacy application adapter over the standalone public numeric solver.
+ * Internal consumers may inspect the read-only descriptor layout for formatting;
+ * public consumers use polynomial.h accessors instead. */
+#include "../algebra/polynomial_internal.h"
+typedef NumForgePolynomialSolution ApplicationEquationSolution;
+typedef NumForgePolynomialKind ApplicationEquationKind;
+#define APPLICATION_EQUATION_NONE NUMFORGE_POLYNOMIAL_NONE
+#define APPLICATION_EQUATION_FINITE NUMFORGE_POLYNOMIAL_FINITE
+#define APPLICATION_EQUATION_ALL NUMFORGE_POLYNOMIAL_ALL
 
 /* Borrowed coefficients, including aliases; no expression parsing or sessions.
  * Zero leading coefficients reduce the degree. All work shares an inherited

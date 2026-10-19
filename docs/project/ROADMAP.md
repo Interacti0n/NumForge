@@ -79,8 +79,10 @@ complex functions retain their existing approximation contracts.
 The [modular mathematics platform](../design/MODULAR_ENGINE.md) is the adopted
 architecture direction. Its first public stateless expression slice is implemented
 in the current source tree as `NumForge::engine`; see the [engine API](../reference/ENGINE_API.md).
-Next: deliberate application convergence/parameter contracts, a public typed solver
-slice, then a narrow Python proof. New mathematics follows the
+Explicit expression parameters and direct typed argument constructors are public.
+The [exact polynomial coefficient solver](../reference/POLYNOMIAL_API.md) is now
+part of the numeric library and shared with application adapters. Next: deliberate
+application convergence, public numerical-solver contracts, then a narrow Python proof. New mathematics follows the
 [feature completion checklist](FEATURE_CHECKLIST.md). Symbolic mathematics, WASM
 and a public REST service remain later work, not present interfaces.
 

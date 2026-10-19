@@ -10,6 +10,9 @@ static int engine_api_checks(void)
     NumForgeContext *context = numforge_context_create();
     NumForgeExpression *expression = NULL;
     NumForgeResult *result = NULL;
+    NumForgeResult *argument = NULL;
+    const NumForgeResult *arguments[1] = {NULL};
+    const char *parameters[1] = {"x"};
     NumForgeError error = {NUMFORGE_OK, 0};
     char *text = NULL;
     int outcome = 1;
@@ -18,6 +21,15 @@ static int engine_api_checks(void)
         numforge_expression_evaluate(&result, expression, context, &error) != NUMFORGE_OK ||
         !numforge_result_is_exact(result) || numforge_result_rational(result) == NULL ||
         numforge_result_to_string(result, &text) != NUMFORGE_OK || strcmp(text, "1/2") != 0)
+        goto cleanup;
+    free(text); text = NULL; numforge_result_destroy(result); result = NULL;
+    numforge_expression_destroy(expression); expression = NULL;
+    if (numforge_evaluate(&argument, "1/3", NULL, NULL) != NUMFORGE_OK ||
+        numforge_expression_prepare_parameters(&expression, "x+x", parameters, 1U, NULL, NULL) != NUMFORGE_OK)
+        goto cleanup;
+    arguments[0] = argument;
+    if (numforge_expression_evaluate_arguments(&result, expression, arguments, 1U, NULL, NULL) != NUMFORGE_OK ||
+        numforge_result_to_string(result, &text) != NUMFORGE_OK || strcmp(text, "2/3") != 0)
         goto cleanup;
     free(text); text = NULL;
     numforge_result_destroy(result); result = NULL;
@@ -32,6 +44,7 @@ static int engine_api_checks(void)
 cleanup:
     free(text);
     numforge_result_destroy(result);
+    numforge_result_destroy(argument);
     numforge_expression_destroy(expression);
     numforge_context_destroy(context);
     return outcome;

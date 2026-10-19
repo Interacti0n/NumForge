@@ -14,7 +14,8 @@ extern "C" {
  * @brief Stateless, deterministic expressions over the shared C numeric core.
  * @details Link NumForge::engine. No server, sessions or application headers are
  * required. This initial API supports scalar real/complex expressions in radians.
- * Variables, ans, random calls, assignments and quantities are not supported.
+ * Explicit parameters are supported; sessions, ans, random calls, assignments
+ * and quantities are not supported.
  * See docs/reference/ENGINE_API.md for grammar, limits and numerical guarantees.
  */
 
@@ -95,6 +96,21 @@ NumForgeStatus numforge_context_set_limits(NumForgeContext *context, uint64_t mi
  */
 NumForgeStatus numforge_expression_prepare(NumForgeExpression **result, const char *input,
     const NumForgeContext *context, NumForgeError *error);
+/** Prepare an expression with an explicit ordered parameter declaration.
+ * Same ownership/errors/budgets as prepare(). Up to 32 distinct case-sensitive
+ * names, each 1..31 ASCII letters, excluding constants, functions, i and ans.
+ * Names are copied; unused parameters are allowed. Undeclared variables return
+ * UNDEFINED_VARIABLE at their source offset. Invalid declarations return
+ * INVALID_ARGUMENT at offset zero; NULL names/arrays return NULL_ARGUMENT.
+ * A zero count accepts a NULL names array and is equivalent to prepare().
+ */
+NumForgeStatus numforge_expression_prepare_parameters(NumForgeExpression **result,
+    const char *input, const char *const *names, size_t count,
+    const NumForgeContext *context, NumForgeError *error);
+/** Query declared parameters. NULL expression returns zero/NULL; an out-of-range
+ * index returns NULL. Names are borrowed until expression destruction. */
+size_t numforge_expression_parameter_count(const NumForgeExpression *expression);
+const char *numforge_expression_parameter_name(const NumForgeExpression *expression, size_t index);
 /** Release an expression; NULL is accepted. */
 void numforge_expression_destroy(NumForgeExpression *expression);
 /** Evaluate a prepared expression without parsing again.
@@ -109,11 +125,46 @@ void numforge_expression_destroy(NumForgeExpression *expression);
  */
 NumForgeStatus numforge_expression_evaluate(NumForgeResult **result,
     const NumForgeExpression *expression, const NumForgeContext *context, NumForgeError *error);
+/** Evaluate with borrowed typed arguments in declaration order, without parsing
+ * or converting them to text. Count must equal the declaration count, including
+ * unused parameters (ARGUMENT_COUNT otherwise). NULL array/elements for a
+ * nonzero count return NULL_ARGUMENT. Aliased arguments are accepted; the output
+ * slot may hold one of the input handles, whose ownership remains with the caller.
+ * No arguments are retained after success or failure. A copied approximate input
+ * remains approximate; higher working precision cannot recover its lost digits.
+ * The expression remains thread-confined. Failure preserves *result.
+ * evaluate() is the zero-argument form and returns ARGUMENT_COUNT for parameters.
+ */
+NumForgeStatus numforge_expression_evaluate_arguments(NumForgeResult **result,
+    const NumForgeExpression *expression, const NumForgeResult *const *arguments,
+    size_t count, const NumForgeContext *context, NumForgeError *error);
 /** Prepare and evaluate under one shared operation budget.
  * Same ownership, numerical and error contracts as the two operations above.
  */
 NumForgeStatus numforge_evaluate(NumForgeResult **result, const char *input,
     const NumForgeContext *context, NumForgeError *error);
+
+/** @name Construct owned arguments directly from public numeric objects
+ * Copy the input without text conversion. Inputs remain caller-owned and may
+ * be destroyed after success. Integer/rational/rational-complex inputs are exact;
+ * decimal and decimal-complex inputs conservatively retain approximate provenance.
+ * NULL context selects defaults. Operations share/inherit context budgets and
+ * preserve *result on every failure. Return OK, NULL_ARGUMENT or a numeric/resource
+ * status; optional error has offset zero. Exact scalar copies also create the
+ * evaluator's decimal projection at working precision, without rounding the
+ * authoritative exact value. No session or expression parsing is involved.
+ * @{ */
+NumForgeStatus numforge_result_from_integer(NumForgeResult **result, const BigInt *value,
+    const NumForgeContext *context, NumForgeError *error);
+NumForgeStatus numforge_result_from_rational(NumForgeResult **result, const BigRational *value,
+    const NumForgeContext *context, NumForgeError *error);
+NumForgeStatus numforge_result_from_decimal(NumForgeResult **result, const BigDecimal *value,
+    const NumForgeContext *context, NumForgeError *error);
+NumForgeStatus numforge_result_from_complex_rational(NumForgeResult **result, const BigRationalComplex *value,
+    const NumForgeContext *context, NumForgeError *error);
+NumForgeStatus numforge_result_from_complex_decimal(NumForgeResult **result, const BigComplex *value,
+    const NumForgeContext *context, NumForgeError *error);
+/** @} */
 
 /** Release a result; NULL is accepted. */
 void numforge_result_destroy(NumForgeResult *result);

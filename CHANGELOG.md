@@ -9,6 +9,16 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ### Modular engine foundation
 
+- Add explicit ordered expression parameters and direct typed numeric argument
+  constructors, preserving ownership and approximate provenance without text conversion.
+- Extract exact linear/quadratic coefficient solving into public `polynomial.h`
+  in the numeric library, including multiplicity and rational/irrational/complex
+  root descriptors. Application equations delegate to the shared implementation;
+  the solver has no parser, engine or session dependency.
+- Share the rational-square-root proof between the solver and calculator, and
+  add parameter/solver failure regressions, installed C/C++ consumers, SDK examples
+  and an opt-in exact-invariant-checked polynomial benchmark.
+
 - Adopt a staged modular mathematics architecture and a public-feature completion
   checklist covering contracts, exactness, examples, independent tests and benchmarks.
 - Add optional installed `NumForge::engine` and Doxygen-commented `engine.h` for
@@ -16,8 +26,8 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
   numeric results, using the existing C parser/evaluator without sessions or HTTP.
 - Expose working precision, rounding, conservative exactness and cooperative
   time/allocation policies, with atomic failures and UTF-8 byte diagnostics.
-  Preserve the numeric-only target and existing CLI/web behavior; public solvers,
-  parameter binding, quantities, Python and WASM remain subsequent work.
+  Preserve the numeric-only target and existing CLI/web behavior; public numerical
+  interval solvers, quantities, Python and WASM remain subsequent work.
 - Verify independent 1000-digit roots, shared-evaluator parity, ownership,
   allocation failures and installed C/C++ consumers; extend SDK packaging/examples.
 

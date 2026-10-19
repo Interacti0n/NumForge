@@ -7,9 +7,10 @@ have different ownership and compatibility contracts.
 | --- | --- |
 | [Public C API](reference/C_API.md) | BigInt, BigDecimal, BigRational, BigComplex, BigRationalComplex, units, runtime scopes and ownership. |
 | [Standalone engine C API](reference/ENGINE_API.md) | Public stateless scalar expressions, reusable handles, typed results, precision and budgets. |
+| [Exact polynomial C API](reference/POLYNOMIAL_API.md) | Standalone linear/quadratic coefficient solver with exact radical/complex descriptors; numeric target only. |
 | [BigComplex foundation](reference/BIGCOMPLEX.md) | Standalone complex arithmetic, principal functions, precision and calculator integration. |
 | [Calculator expressions](reference/CALCULATOR_EXPRESSIONS.md) | Operators, named calls, precision, syntax and limits. |
-| [Polynomial equation foundation](design/POLYNOMIAL_EQUATIONS.md) | Private coefficient-based C solver, exact linear/quadratic roots and resource/ownership rules. |
+| [Polynomial equation application](design/POLYNOMIAL_EQUATIONS.md) | Private parsing/preview/context adapters over the public exact coefficient solver. |
 | [Polynomial equation HTTP API](reference/EQUATION_HTTP_API.md) | Whole polynomial equations or exact coefficient expressions, algebraic root text and approximate decimal previews. |
 | [Numerical interval roots](reference/NUMERIC_ROOT_HTTP_API.md) | One high-precision bracketed root or bounded multiple-root scanning, residuals and diagnostic outcomes. |
 | [Local HTTP API](reference/HTTP_API.md) | Evaluation, preview/confirmation, client IDs, revisions and errors. |

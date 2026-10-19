@@ -130,6 +130,8 @@ add_library(numforge STATIC
     src/bigdecimal/format_mode.c
     src/bigdecimal/constants.c
     src/bigrational/bigrational.c
+    src/bigrational/sqrt.c
+    src/algebra/polynomial.c
     src/bigcomplex/bigcomplex.c
     src/bigcomplex/bigrationalcomplex.c
     src/units/units.c
@@ -395,6 +397,9 @@ install(
 # ============================================================
 
 if(NUMFORGE_BUILD_BENCHMARKS)
+    add_executable(polynomial_benchmark benchmarks/polynomial_benchmark.c benchmarks/benchmark_clock.c)
+    target_link_libraries(polynomial_benchmark PRIVATE numforge)
+    numforge_enable_diagnostics(polynomial_benchmark)
     target_sources(numforge PRIVATE src/internal/benchmark_profile.c src/internal/decimal_profile.c)
     if(WIN32)
         target_link_libraries(numforge PRIVATE psapi)
@@ -579,6 +584,16 @@ if(BUILD_TESTING)
         NUMFORGE_ENGINE_REFERENCE_FILE="${PROJECT_SOURCE_DIR}/benchmarks/references/decimal_math_references.tsv")
     numforge_enable_diagnostics(engine_tests)
     add_test(NAME engine_tests COMMAND engine_tests)
+
+    foreach(suite engine_parameters polynomial)
+        add_executable(${suite}_tests tests/test_${suite}.c)
+        target_include_directories(${suite}_tests PRIVATE ${PROJECT_SOURCE_DIR}/src/internal)
+        target_compile_definitions(${suite}_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
+        numforge_enable_diagnostics(${suite}_tests)
+        add_test(NAME ${suite}_tests COMMAND ${suite}_tests)
+    endforeach()
+    target_link_libraries(engine_parameters_tests PRIVATE numforge_engine unity)
+    target_link_libraries(polynomial_tests PRIVATE numforge unity)
 
     target_link_libraries(bigint_tests
         PRIVATE

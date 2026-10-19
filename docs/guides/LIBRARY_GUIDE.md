@@ -11,6 +11,8 @@ without requiring sessions or a server. Numeric-only builds can additionally set
 `-DNUMFORGE_BUILD_ENGINE=OFF` with applications/tests/fuzzers/benchmarks disabled.
 
 To use a prebuilt library, see the [developer SDK quick start](SDK.md).
+The [exact coefficient solver](../reference/POLYNOMIAL_API.md) is available through
+`<numforge/polynomial.h>` on the numeric target, independently of the engine.
 The release SDK supplies headers, the static library and CMake exports for
 MSVC x64 Release `/MD` or Linux GCC x64/glibc. Build from source below when
 your compiler, runtime, architecture or configuration differs.

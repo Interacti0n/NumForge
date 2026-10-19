@@ -1,4 +1,5 @@
 #include "exact_functions.h"
+#include "../bigrational/sqrt_internal.h"
 
 #include <errno.h>
 #include <inttypes.h>
@@ -138,61 +139,9 @@ done:
 
 CalculatorStatus calculator_exact_sqrt(BigRational *result, const BigRational *operand)
 {
-    BigInt *numerator = bigint_create();
-    BigInt *denominator = bigint_create();
-    BigInt *top = bigint_create();
-    BigInt *bottom = bigint_create();
-    BigInt *square = bigint_create();
-    CalculatorStatus status = CALCULATOR_OUT_OF_MEMORY;
-
-    if (numerator == NULL || denominator == NULL || top == NULL || bottom == NULL || square == NULL)
-    {
-        goto done;
-    }
-    status = calculator_from_rational_status(bigrational_get_numerator(numerator, operand));
-    if (status == CALCULATOR_OK)
-    {
-        status = calculator_from_rational_status(bigrational_get_denominator(denominator, operand));
-    }
-    if (status == CALCULATOR_OK && bigint_is_negative(numerator))
-    {
-        status = CALCULATOR_INVALID_ARGUMENT;
-    }
-    if (status == CALCULATOR_OK)
-    {
-        status = calculator_from_integer_status(bigint_isqrt(top, numerator));
-    }
-    if (status == CALCULATOR_OK)
-    {
-        status = calculator_from_integer_status(bigint_mul(square, top, top));
-    }
-    if (status == CALCULATOR_OK && bigint_compare(square, numerator) != 0)
-    {
-        status = CALCULATOR_NOT_IMPLEMENTED;
-    }
-    if (status == CALCULATOR_OK)
-    {
-        status = calculator_from_integer_status(bigint_isqrt(bottom, denominator));
-    }
-    if (status == CALCULATOR_OK)
-    {
-        status = calculator_from_integer_status(bigint_mul(square, bottom, bottom));
-    }
-    if (status == CALCULATOR_OK && bigint_compare(square, denominator) != 0)
-    {
-        status = CALCULATOR_NOT_IMPLEMENTED;
-    }
-    if (status == CALCULATOR_OK)
-    {
-        status = calculator_from_rational_status(bigrational_set_fraction(result, top, bottom));
-    }
-done:
-    bigint_destroy(numerator);
-    bigint_destroy(denominator);
-    bigint_destroy(top);
-    bigint_destroy(bottom);
-    bigint_destroy(square);
-    return status;
+    bool exact = false;
+    BigRationalStatus status = numforge_rational_sqrt_exact(result, operand, &exact);
+    return status == BIGRATIONAL_OK && !exact ? CALCULATOR_NOT_IMPLEMENTED : calculator_from_rational_status(status);
 }
 
 static CalculatorStatus calculator_exact_integer_root(BigInt *result, const BigInt *operand, uint32_t degree)

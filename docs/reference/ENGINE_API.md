@@ -2,7 +2,9 @@
 
 Status: implemented in the current source tree, after 2.4.0. Previously published
 2.4.0 SDK archives do not contain this API. It is the first public engine subset,
-not a public solver, symbolic system, Python package or new REST endpoint.
+not a symbolic system, Python package or new REST endpoint. The separate
+[exact polynomial solver](POLYNOMIAL_API.md) is available directly in the numeric
+library, without the engine.
 
 ## Build and link
 
@@ -79,8 +81,35 @@ parsing again. Release it with `numforge_expression_destroy()`. Preparation chec
 grammar and capability support; numeric domains are checked during evaluation.
 Results are independent of both the expression and the context lifetimes.
 
-Prepared expressions currently have no free parameters, variables or bindings.
-The application's existing parametric/graph handles remain private and separate.
+Explicit parameters are supported through
+`numforge_expression_prepare_parameters(&expression, input, names, count, context, &error)`.
+Declare up to 32 distinct case-sensitive names of 1..31 ASCII letters, excluding
+built-in function/constant names, `i` and `ans`. Declarations and source are copied;
+unused declarations are allowed. Undeclared variables return UNDEFINED_VARIABLE
+at their source byte offset. Invalid/duplicate declarations return INVALID_ARGUMENT
+at offset zero; absent required arrays/names return NULL_ARGUMENT.
+
+`numforge_expression_parameter_count()` and `numforge_expression_parameter_name()`
+describe declaration order. `numforge_expression_evaluate_arguments(&result,
+expression, arguments, count, context, &error)` accepts an array of borrowed
+`const NumForgeResult *` in that order. Count must match, including unused parameters;
+otherwise ARGUMENT_COUNT. NULL required arrays/elements return NULL_ARGUMENT.
+No argument is retained after success or failure. Repeated argument handles and
+an output slot previously holding an argument are supported; the caller still owns
+the old handle. The zero-argument evaluate function reports ARGUMENT_COUNT for
+parameterized expressions. Handles remain thread-confined.
+
+Construct arguments directly from BigInt, BigRational, BigDecimal, BigComplex or
+BigRationalComplex with the matching `numforge_result_from_*()` function. These
+copy numeric objects, never convert through text. Integer/rational inputs remain
+exact; decimal input retains conservative approximate provenance, even if it is
+the finite decimal 0.3. All constructors preserve output on failure, use optional
+context budgets, and copy their policy. Increasing working precision cannot recover
+digits already lost in an approximate argument. See the compiled
+`examples/sdk/parameters.c` example (`x*x+y` with x=3 and y=4 yields exact 13).
+
+Application graph/session prepared handles remain private; persistent variables,
+assignments and user function definitions are outside this public parameter API.
 
 ## Supported expressions and numerical meaning
 
@@ -91,7 +120,7 @@ existing semicolon separator. `sqrt(-1)` returns the principal complex value.
 
 The initial public subset rejects `ans`, random calls, quantity/conversion calls
 and pending functions as UNSUPPORTED, including nested occurrences. Unbound
-variables return UNDEFINED_VARIABLE. Assignments are outside the expression grammar
+variables without explicit declarations return UNDEFINED_VARIABLE. Assignments are outside the expression grammar
 and produce a syntax/token error. No session state is created or modified.
 
 Precision sets requested **working significant digits**, from 1 through 10000;
@@ -160,6 +189,9 @@ the calculator evaluator, prepared-handle lifetime/precision changes, UTF-8 erro
 offsets, atomic failures, resource inheritance and exhaustive representative
 allocation failures. Installed C/C++ consumers compile using only public headers.
 The packaged SDK contains a compiled 1000-digit example when the engine is present.
+`engine_parameters_tests` additionally checks declared/undeclared names, ownership,
+typed input copies, exact/approximate provenance, repeated/aliased arguments,
+1000-digit parameterized evaluation, allocation failure and cancellation recovery.
 
 No mathematical algorithm is duplicated or optimized by this wrapper. Existing
 [decimal/math benchmarks](../benchmarks/DECIMAL_MATH_BENCHMARKS.md) remain the

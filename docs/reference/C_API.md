@@ -5,12 +5,13 @@ all edge-case constraints remain in
 the public headers: `include/numforge/bigint.h`,
 `include/numforge/bigdecimal.h`, `include/numforge/bigrational.h`,
 `include/numforge/bigcomplex.h`, `include/numforge/bigrationalcomplex.h`,
-`include/numforge/units.h` and optional
+`include/numforge/units.h`, `include/numforge/polynomial.h` and optional
 `include/numforge/runtime.h`.
 
 ## Public C API scope
 
-The public numeric API consists of these seven headers. The optional
+The public numeric API includes the [exact polynomial solver](POLYNOMIAL_API.md)
+alongside numeric types, units and runtime support. The optional
 [expression engine](ENGINE_API.md) adds `engine.h` and the `NumForge::engine`
 target independently of numeric-only use. Existing 1.x numeric signatures
 remain source compatible in 2.x, and the new operations are additive.

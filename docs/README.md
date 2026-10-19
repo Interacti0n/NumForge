@@ -20,6 +20,7 @@ Start with the [API guide](API.md), or open a specific reference:
 
 - [Public C API](reference/C_API.md): numeric types, functions and ownership.
 - [Standalone engine C API](reference/ENGINE_API.md): reusable expressions, typed results and operation policy.
+- [Exact polynomial C API](reference/POLYNOMIAL_API.md): standalone coefficient solving and exact root descriptors.
 - [BigComplex](reference/BIGCOMPLEX.md): complex arithmetic, principal branches, precision and display forms.
 - [Calculator expressions](reference/CALCULATOR_EXPRESSIONS.md): syntax and calls.
 - [Local HTTP API](reference/HTTP_API.md): evaluation, sessions, revisions and errors.

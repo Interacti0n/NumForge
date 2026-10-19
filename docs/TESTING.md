@@ -59,6 +59,13 @@ atomic failures, allocation/deadline injection and inherited budgets. Installed
 C/C++ consumers also link `NumForge::engine` without source-tree includes; use
 `-DNUMFORGE_TEST_ENGINE=OFF` only for an intentionally numeric-only installation.
 
+`engine_parameters_tests` checks explicit declarations, borrowed/aliased typed
+arguments, input copies, high precision, ownership and failure recovery.
+`polynomial_tests` links only the numeric library and verifies the public exact
+coefficient solver, degeneracies, complex/radical descriptors, 1000-digit inputs
+and allocation/deadline failures. `polynomial_benchmark` is opt-in and validates
+exact sum/product invariants outside its timing interval.
+
 `application_expression_tests` covers the
 [parametric C application foundation](design/PARAMETRIC_EXPRESSIONS.md), including
 snapshot lifetime, typed samples, per-point errors and shared resource budgets.

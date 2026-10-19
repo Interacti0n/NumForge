@@ -3,6 +3,10 @@
 These opt-in tools measure the production library and calculator. Build with
 `NUMFORGE_BUILD_BENCHMARKS=ON`; ordinary builds omit the private instrumentation.
 See [the benchmark guide](../docs/benchmarks/BENCHMARKS.md) for setup and recording commands.
+The opt-in `polynomial_benchmark` measures the [standalone exact solver](../docs/reference/POLYNOMIAL_API.md)
+on rational, irrational, complex and 1000-digit-coefficient cases, checking exact
+root-sum/product invariants outside timing and claiming no algorithmic speedup.
+See the [initial solver baseline](../docs/benchmarks/PLATFORM_SOLVER_2026_10_19.md).
 The [11 October optimization report](../docs/benchmarks/PERFORMANCE_OPTIMIZATIONS_2026_10_11.md)
 compares direct integer conversion and combinatorial arithmetic with the audit.
 The [factor grouping report](../docs/benchmarks/FACTORIAL_GROUPING_2026_10_11.md)
