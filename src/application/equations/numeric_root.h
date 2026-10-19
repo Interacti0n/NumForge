@@ -41,9 +41,11 @@ const char *application_numeric_root_kind(ApplicationNumericRootKind kind);
 #define APPLICATION_ROOT_SCAN_SEGMENTS 128U
 #define APPLICATION_ROOT_SCAN_MAX_ROOTS 32U
 #define APPLICATION_ROOT_SCAN_MAX_EVALUATIONS 4096U
-typedef enum ApplicationRootScanStop {
-    APPLICATION_SCAN_FINISHED, APPLICATION_SCAN_ROOT_LIMIT, APPLICATION_SCAN_EVALUATION_LIMIT
-} ApplicationRootScanStop;
+typedef NumForgeRootScanStop ApplicationRootScanStop;
+#define APPLICATION_SCAN_FINISHED NUMFORGE_SCAN_FINISHED
+#define APPLICATION_SCAN_ROOT_LIMIT NUMFORGE_SCAN_ROOT_LIMIT
+#define APPLICATION_SCAN_EVALUATION_LIMIT NUMFORGE_SCAN_EVALUATION_LIMIT
+typedef NumForgeRootScan ApplicationRootScan;
 /* Rational grid with bounded midpoint/local-quadratic candidates, followed by
  * the production single-bracket solver. Candidate samples use ORIGINAL sides;
  * only typed exact zeros or accepted sign brackets can publish roots.
@@ -52,12 +54,7 @@ typedef enum ApplicationRootScanStop {
  * Ordered owned roots, exact-coordinate duplicates removed (no tolerance merge).
  * Diagnostics count sampled non-real grid edges and rejected sign brackets.
  * A finished grid does not prove absence of further roots. */
-typedef struct ApplicationRootScan {
-    ApplicationNumericRoot *roots[APPLICATION_ROOT_SCAN_MAX_ROOTS];
-    size_t count, evaluations, iterations, scanned_segments, domain_gaps, rejected_brackets;
-    size_t candidate_samples, candidate_roots, candidate_gaps; /* candidate_roots counts exact extra samples only */
-    ApplicationRootScanStop stop;
-} ApplicationRootScan;
+
 /* Same input/context contract and atomic failures as the single-root solver.
  * All sampling, refinements and allocation share one inherited budget. */
 CalculatorStatus application_numeric_roots_scan(ApplicationRootScan **result,

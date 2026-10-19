@@ -3,6 +3,9 @@
 `numerical_benchmark` checks standalone rational bisection at 12 and 100 places;
 `--high-precision` adds a costly 1000-place case. See the
 [checked baseline and resource limits](../docs/benchmarks/NUMERICAL_2026_10_19.md).
+`numerical_scan_benchmark` measures the public multiple-root API using independent
+sqrt references and exact contact coordinates, including 1000-digit offsets/scales;
+see [its baseline](../docs/benchmarks/NUMERICAL_SCAN_2026_10_19.md).
 
 These opt-in tools measure the production library and calculator. Build with
 `NUMFORGE_BUILD_BENCHMARKS=ON`; ordinary builds omit the private instrumentation.

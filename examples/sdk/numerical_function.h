@@ -38,4 +38,13 @@ static NumForgeNumericalStatus numerical_function_domain(bool *verified,
     /* A real polynomial is continuous on every finite real interval. */
     *verified = true; return NUMFORGE_NUMERICAL_OK;
 }
+static inline NumForgeNumericalStatus numerical_function_scan_evaluate(BigDecimal *value,
+    BigRational *proposal, NumForgeRootSample *sample, const BigRational *x, int64_t digits, void *user)
+{
+    NumForgeNumericalStatus status = numerical_function_evaluate(value, sample, x, digits, user);
+    if (status == NUMFORGE_NUMERICAL_OK && proposal &&
+        bigrational_copy(proposal, ((NumericalFunction *)user)->value) != BIGRATIONAL_OK)
+        status = NUMFORGE_NUMERICAL_OUT_OF_MEMORY;
+    return status;
+}
 #endif

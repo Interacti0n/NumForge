@@ -1,5 +1,8 @@
 # Public numerical bisection baseline — 19 October 2026
 
+This records the first single-root slice. The subsequent same-day
+[scan extraction](NUMERICAL_SCAN_2026_10_19.md) moves scan orchestration into Numerical.
+
 The first [Numerical API](../reference/NUMERICAL_API.md) extracts the production
 single-bracket loop into the numeric library. Parsing, domain analysis and scan
 orchestration remain application-owned. Private Brent/hybrid experiments reuse

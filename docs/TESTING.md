@@ -57,6 +57,10 @@ including exact zeros, continuity, callback/resource failures, preserved outputs
 and an independent 1000-place reference. `numeric_root_tests` and
 `numeric_root_scan_tests` retain equation/domain/scan regressions. Installed C/C++
 consumers and SDK examples check the new API with the engine disabled.
+`numerical_scan_tests` checks public multiple-root scanning separately, including
+exact rational contacts, 1000-digit offsets/scales, partial-limit diagnostics,
+callback/allocation failure and borrowed result lifetimes. The equation scan
+tests retain the fixed HTTP policies and original-expression domain checks.
 
 The optional [Python adapter](guides/PYTHON.md) has its own reproducible source-archive,
 wheel, isolated adapter-test and standalone-example check:

@@ -9,6 +9,15 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ### Numerical foundation
 
+- Expose bounded multiple-root scanning over caller-supplied functions, with
+  configurable rational grids, root/work limits, ordered borrowed root views and
+  diagnostic counters. Exact ordinates propose midpoint/quadratic candidates;
+  only original-function zero proofs or guarded brackets publish roots.
+- Reuse the public scanner in equation workflows and share expression preparation.
+  Preserve fixed web limits, coordinates, diagnostics and incomplete-discovery
+  semantics. Add standalone tests, C/C++ consumers, an SDK example and a checked
+  benchmark including 1000-digit offsets/scales and atomic failure coverage.
+
 - Add public `numerical.h` and callback-based single-root bisection to the numeric
   library, with explicit tolerances/work limits, continuity evidence, owned
   diagnostics and inherited budgets. No engine or session dependency.
@@ -16,7 +25,7 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
   the same kernel while preserving original-expression checks and HTTP schemas.
 - Add exact-zero, domain, stability, allocation/deadline and 1000-place reference
   tests, installed C/C++ consumers, an SDK example and checked benchmark. Public
-  multi-root scanning, accelerated methods and Python root callbacks remain future.
+  accelerated methods and Python root callbacks remain future.
 
 ### Platform organization and maintenance
 

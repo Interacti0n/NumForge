@@ -72,8 +72,8 @@ For stateless scalar expressions, link `NumForge::engine` instead and include
 engine supports typed results and reusable expressions without a server.
 
 Current source builds also provide `<numforge/numerical.h>` in
-`NumForge::numforge` for [callback-based root search](../reference/NUMERICAL_API.md).
-The `example/numerical.c` project needs no expression engine. Published 2.4.0
+`NumForge::numforge` for [callback-based root search and scans](../reference/NUMERICAL_API.md).
+The `example/numerical.c` and `example/numerical_scan.c` programs need no expression engine. Published 2.4.0
 archives predate this addition.
 
 Check return statuses, destroy owned numeric objects with their matching

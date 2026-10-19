@@ -1,4 +1,5 @@
 #include "src/modules/numerical/root_internal.h"
+#include "src/modules/numerical/numerical_internal.h"
 #include <numforge/runtime.h>
 #include <stdlib.h>
 
@@ -11,26 +12,6 @@ typedef struct Work {
     size_t evaluations, max_evaluations;
     const BigDecimal *initial, *tolerance;
 } Work;
-static NumForgeNumericalStatus rational(BigRationalStatus status)
-{
-    switch (status) {
-        case BIGRATIONAL_OK: return NUMFORGE_NUMERICAL_OK;
-        case BIGRATIONAL_OUT_OF_MEMORY: return NUMFORGE_NUMERICAL_OUT_OF_MEMORY;
-        case BIGRATIONAL_VALUE_TOO_LARGE: return NUMFORGE_NUMERICAL_VALUE_TOO_LARGE;
-        case BIGRATIONAL_SCALE_OVERFLOW: return NUMFORGE_NUMERICAL_SCALE_OVERFLOW;
-        default: return NUMFORGE_NUMERICAL_INVALID_ARGUMENT;
-    }
-}
-static NumForgeNumericalStatus decimal(BigDecimalStatus status)
-{
-    switch (status) {
-        case BIGDECIMAL_OK: return NUMFORGE_NUMERICAL_OK;
-        case BIGDECIMAL_OUT_OF_MEMORY: return NUMFORGE_NUMERICAL_OUT_OF_MEMORY;
-        case BIGDECIMAL_VALUE_TOO_LARGE: return NUMFORGE_NUMERICAL_VALUE_TOO_LARGE;
-        case BIGDECIMAL_SCALE_OVERFLOW: return NUMFORGE_NUMERICAL_SCALE_OVERFLOW;
-        default: return NUMFORGE_NUMERICAL_INVALID_ARGUMENT;
-    }
-}
 void numforge_root_options_init(NumForgeRootOptions *options)
 {
     if (options) {
@@ -55,12 +36,6 @@ static NumForgeNumericalStatus probe(Work *work, const BigRational *x, int64_t d
     if (status == NUMFORGE_NUMERICAL_OK && sample.real) status = decimal(bigdecimal_sign(&result->sign, result->value));
     if (status == NUMFORGE_NUMERICAL_OK && sample.exact_zero && result->sign) return NUMFORGE_NUMERICAL_INVALID_ARGUMENT;
     return numforge_budget_check() ? status : NUMFORGE_NUMERICAL_OUT_OF_MEMORY;
-}
-static NumForgeNumericalStatus midpoint(BigRational *result, const BigRational *a,
-    const BigRational *b, const BigRational *two)
-{
-    NumForgeNumericalStatus status = rational(bigrational_add(result, a, b));
-    return status == NUMFORGE_NUMERICAL_OK ? rational(bigrational_div(result, result, two)) : status;
 }
 static NumForgeNumericalStatus found(Work *work, NumForgeRoot *result,
     const BigRational *x, const Probe *sample)
@@ -105,8 +80,7 @@ NumForgeNumericalStatus numforge_root_solve_strategy(NumForgeRoot **result,
     if (!result || !evaluate || !lower || !upper) return NUMFORGE_NUMERICAL_NULL_ARGUMENT;
     NumForgeRootOptions defaults; numforge_root_options_init(&defaults);
     if (!options) options = &defaults;
-    if (options->decimal_places < 1 || options->decimal_places > INT64_MAX/2 ||
-        !options->max_iterations || options->max_evaluations < 4) return NUMFORGE_NUMERICAL_INVALID_ARGUMENT;
+    if (!numerical_options_valid(options)) return NUMFORGE_NUMERICAL_INVALID_ARGUMENT;
     if (strategy && (!strategy->reset || !strategy->propose || !strategy->accept)) return NUMFORGE_NUMERICAL_INVALID_ARGUMENT;
     NumForgeNumericalStatus status = NUMFORGE_NUMERICAL_OK;
     Work work = {evaluate, domain, user, options->decimal_places, 0, options->max_evaluations, NULL, NULL};

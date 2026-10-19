@@ -9,6 +9,12 @@ struct NumForgeRoot {
     size_t evaluations, iterations;
     bool exact_zero;
 };
+struct NumForgeRootScan {
+    NumForgeRoot **roots;
+    size_t capacity, count, evaluations, iterations, scanned_segments, domain_gaps, rejected_brackets;
+    size_t candidate_samples, candidate_roots, candidate_gaps;
+    NumForgeRootScanStop stop;
+};
 /* Optional research proposals do not change sampling/acceptance safeguards.
  * used=false requests the production midpoint; reset/accept track the bracket. */
 typedef struct NumForgeRootStrategy {

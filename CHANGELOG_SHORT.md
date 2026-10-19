@@ -5,6 +5,8 @@ details and the [2.4.0 release record](docs/project/RELEASE_2_4.md) for validati
 
 ## Unreleased
 
+- Make bounded multiple-root scanning independently available in C and reuse it in equation tools.
+
 - Add a public numerical root-search kernel shared with existing equation tools.
 
 - Organize the platform for extension, consolidate documentation and remove shared-code/build duplication while preserving public interfaces.
