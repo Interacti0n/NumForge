@@ -10,7 +10,7 @@ __version__ = "0.1.0.dev0"
 core_version = _native.core_version
 Error = _native.Error
 __all__ = ["Error", "Result", "Expression", "PolynomialRoot", "PolynomialSolution",
-           "number", "evaluate", "prepare", "sqrt", "solve_quadratic", "core_version"]
+           "number", "evaluate", "prepare", "sqrt", "solve_quadratic", "Matrix", "core_version"]
 
 _ROUNDING = {"toward_zero": 0, "away_from_zero": 1, "floor": 2,
              "ceiling": 3, "half_up": 4, "half_even": 5}
@@ -230,3 +230,78 @@ def solve_quadratic(a, b, c, *, time_limit_ms=5000,
         data["multiplicities"][index], None if handle is None else Result(handle))
         for index, handle in enumerate(data["values"]))
     return PolynomialSolution(data["kind"], data["degree"], roots, _fraction(data["discriminant"]))
+
+
+class Matrix:
+    """Owned immutable dense rational matrix, with all arithmetic performed in C.
+
+    Rows must be nonempty, rectangular and contain exact real number() inputs.
+    Binary floats, complex values and approximate Result inputs are rejected.
+    Input number conversions happen before the matrix call's C budget begins.
+    No precision option is needed: all entries/results are exact fractions.
+    """
+    __slots__ = ("_handle",)
+
+    def __init__(self, rows, *, time_limit_ms=5000,
+                 allocation_bytes=64 * 1024 * 1024, single_allocation=512 * 1024):
+        options = _options(34, "half_even", time_limit_ms, allocation_bytes, single_allocation)
+        if isinstance(rows, (str, bytes)):
+            raise TypeError("matrix rows must be a sequence of sequences")
+        rows = tuple(rows)
+        if any(isinstance(row, (str, bytes)) for row in rows):
+            raise TypeError("each matrix row must be a sequence of values")
+        rows = tuple(tuple(row) for row in rows)
+        if not rows or not rows[0] or any(len(row) != len(rows[0]) for row in rows):
+            raise ValueError("matrix rows must be nonempty and rectangular")
+        values = tuple(number(value) for row in rows for value in row)
+        self._handle = _native.matrix_create(len(rows), len(rows[0]), tuple(value._handle for value in values), options)
+
+    @classmethod
+    def _from_handle(cls, handle):
+        _native.matrix_shape(handle)
+        matrix = cls.__new__(cls)
+        matrix._handle = handle
+        return matrix
+
+    @property
+    def shape(self):
+        return _native.matrix_shape(self._handle)
+
+    @property
+    def exact(self):
+        return True
+
+    def _operation(self, name, other=None, *, time_limit_ms=5000,
+                   allocation_bytes=64 * 1024 * 1024, single_allocation=512 * 1024):
+        options = _options(34, "half_even", time_limit_ms, allocation_bytes, single_allocation)
+        return _native.matrix_operation(name, self._handle, None if other is None else other._handle, options)
+
+    def to_rows(self, **limits):
+        """Copy entries into immutable tuples of Fraction, with optional C limits."""
+        return tuple(tuple(_fraction(pair) for pair in row) for row in self._operation("rows", **limits))
+
+    def determinant(self, **limits):
+        """Exact Fraction determinant; requires a square matrix, zero if singular."""
+        return _fraction(self._operation("determinant", **limits))
+
+    def multiply(self, other, **limits):
+        """Exact matrix product; optional time_limit_ms/allocation_bytes/single_allocation."""
+        if not isinstance(other, Matrix):
+            raise TypeError("matrix multiplication requires another Matrix")
+        return self._from_handle(self._operation("multiply", other, **limits))
+
+    def __matmul__(self, other):
+        if not isinstance(other, Matrix):
+            return NotImplemented
+        return self.multiply(other)
+
+    def solve(self, right, **limits):
+        """Solve self*x=right for one or more RHS columns, returning a Matrix.
+
+        Requires square self with matching right rows. A singular coefficient
+        matrix raises Error(status='singular') for both inconsistent systems and
+        infinitely many solutions. Neither input is modified; no partial result.
+        """
+        if not isinstance(right, Matrix):
+            raise TypeError("right-hand sides must be a Matrix")
+        return self._from_handle(self._operation("solve", right, **limits))

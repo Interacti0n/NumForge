@@ -1,5 +1,7 @@
 """Run against the installed wheel, without importing repository Python sources."""
 import gc
+import itertools
+import random
 import unittest
 from dataclasses import FrozenInstanceError
 from decimal import Decimal, localcontext
@@ -227,6 +229,101 @@ class PythonAdapterTests(unittest.TestCase):
         nf.sqrt(2, precision=1000)
         if before is not None:
             self.assertEqual(sys.get_int_max_str_digits(), before)
+
+
+class MatrixTests(unittest.TestCase):
+    def test_lossless_rectangular_inputs_and_ownership(self):
+        rows = [[Decimal("0.1"), Fraction(1, 3)], [2**128, "1E-1000"]]
+        matrix = nf.Matrix(rows)
+        rows[0][0] = 9
+        self.assertEqual(matrix.shape, (2, 2))
+        self.assertTrue(matrix.exact)
+        self.assertEqual(matrix.to_rows(), ((Fraction(1, 10), Fraction(1, 3)),
+                                           (Fraction(2**128), Fraction(1, 10**1000))))
+        with self.assertRaises(AttributeError):
+            matrix.shape = (3, 3)
+
+    def test_exact_product_and_swapped_pivot_solve(self):
+        a = nf.Matrix([[0, 2], [3, 4]])
+        b = nf.Matrix([[7, -4], [15, 7]])
+        x = a.solve(b)
+        self.assertEqual(a.determinant(), -6)
+        self.assertEqual(x.to_rows(), ((Fraction(1, 3), Fraction(5)), (Fraction(7, 2), Fraction(-2))))
+        self.assertEqual((a @ x).to_rows(), b.to_rows())
+        self.assertEqual(a.solve(a).to_rows(), ((1, 0), (0, 1)))
+        del a, b
+        gc.collect()
+        self.assertEqual(x.to_rows()[0][0], Fraction(1, 3))
+
+    def test_fraction_oracle_for_determinants_and_products(self):
+        rng = random.Random(3419)
+        for size in (1, 2, 3, 4):
+            for _ in range(5):
+                rows = [[Fraction(rng.randrange(-7, 8), rng.randrange(1, 8)) for _ in range(size)] for _ in range(size)]
+                reference = Fraction(0)
+                for permutation in itertools.permutations(range(size)):
+                    inversions = sum(permutation[i] > permutation[j] for i in range(size) for j in range(i + 1, size))
+                    term = Fraction((-1)**inversions)
+                    for i in range(size):
+                        term *= rows[i][permutation[i]]
+                    reference += term
+                matrix = nf.Matrix(rows)
+                self.assertEqual(matrix.determinant(), reference)
+                expected = tuple(tuple(sum((rows[i][k] * rows[k][j] for k in range(size)), Fraction(0))
+                                       for j in range(size)) for i in range(size))
+                self.assertEqual((matrix @ matrix).to_rows(), expected)
+                if reference:
+                    # Independently calculate b=A*x with Python Fraction; C must recover x.
+                    x = [[Fraction(i + 1, j + 2) for j in range(2)] for i in range(size)]
+                    b = [[sum((rows[i][k] * x[k][j] for k in range(size)), Fraction(0))
+                          for j in range(2)] for i in range(size)]
+                    self.assertEqual(matrix.solve(nf.Matrix(b)).to_rows(), tuple(map(tuple, x)))
+
+    def test_thousand_digit_cancellation_is_exact(self):
+        n = 10**1000
+        a = nf.Matrix([[n, n + 1], [n - 1, n]])
+        self.assertEqual(a.determinant(), 1)
+        self.assertEqual(a.solve(nf.Matrix([[-1], [-1]])).to_rows(), ((1,), (-1,)))
+
+    def test_singular_and_dimension_diagnostics(self):
+        singular = nf.Matrix([[1, 2], [2, 4]])
+        self.assertEqual(singular.determinant(), 0)
+        for right in ([[3], [6]], [[3], [7]]):
+            with self.assertRaises(nf.Error) as caught:
+                singular.solve(nf.Matrix(right))
+            self.assertEqual(caught.exception.status, "singular")
+            self.assertEqual(caught.exception.offset, 0)
+        rectangular = nf.Matrix([[1, 2, 3]])
+        for call in (rectangular.determinant, lambda: rectangular @ rectangular,
+                     lambda: rectangular.solve(nf.Matrix([[1]]))):
+            with self.assertRaises(nf.Error) as caught:
+                call()
+            self.assertEqual(caught.exception.status, "dimension_mismatch")
+
+    def test_reject_shapes_and_approximate_entries(self):
+        for rows in ([], [[]], [[1], [1, 2]]):
+            with self.subTest(rows=rows), self.assertRaises(ValueError):
+                nf.Matrix(rows)
+        for rows in ("12", ["12"], [[0.1]], [[True]], [[nf.sqrt(2)]], [[nf.sqrt(-1)]]):
+            with self.subTest(rows=rows), self.assertRaises(TypeError):
+                nf.Matrix(rows)
+        a = nf.Matrix([[1]])
+        for call in (lambda: a @ 2, lambda: a.multiply([[1]]), lambda: a.solve([[1]])):
+            with self.assertRaises(TypeError):
+                call()
+
+    def test_matrix_limits_and_recovery(self):
+        a = nf.Matrix([[0, 2], [3, 4]])
+        for call in (lambda **limits: nf.Matrix([[1]], **limits), a.determinant, a.to_rows,
+                     lambda **limits: a.multiply(a, **limits), lambda **limits: a.solve(a, **limits)):
+            for limits, status in (({"allocation_bytes": 0}, "memory_limit"), ({"time_limit_ms": 0}, "time_limit")):
+                with self.assertRaises(nf.Error) as caught:
+                    call(**limits)
+                self.assertEqual(caught.exception.status, status)
+        self.assertEqual(a.determinant(), -6)
+        self.assertEqual(a.solve(a).to_rows(), ((1, 0), (0, 1)))
+        with self.assertRaises(TypeError):
+            a.determinant(precision=1000)
 
 
 if __name__ == "__main__":

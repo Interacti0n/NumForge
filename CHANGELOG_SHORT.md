@@ -5,6 +5,8 @@ details and the [2.4.0 release record](docs/project/RELEASE_2_4.md) for validati
 
 ## Unreleased
 
+- Add exact rational matrices, products, determinants and square-system solves in C and Python.
+
 - Add a source-built Python adapter with exact inputs, high-precision roots, parameters and exact equation descriptors.
 
 - Add typed expression parameters and a public exact polynomial solver without parser dependencies.

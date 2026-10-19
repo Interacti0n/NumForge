@@ -8,7 +8,7 @@ It does not promise a release date or an already complete mathematics system.
 
 ```mermaid
 flowchart TD
-    Clients[CLI / Web / future Python / REST / WASM] --> API[Public C APIs]
+    Clients[CLI / Web / Python / future REST and WASM] --> API[Public C APIs]
     API --> Expressions[Expression parser and typed evaluator]
     API --> Modules[Mathematical modules]
     Expressions --> Modules
@@ -37,7 +37,7 @@ flowchart TD
 | Core / Arithmetic | Numeric representations, elementary arithmetic and conversions | Public BigInt, BigDecimal, BigRational and complex APIs |
 | Number Theory | Primality, factors, congruences and modular arithmetic | Selected public BigInt operations; broaden with individual contracts |
 | Algebra | Polynomials, algebraic equations and exact root representations | Public exact linear/quadratic coefficient solver in the numeric target; application parsing/preview adapters remain private |
-| Linear Algebra | Vectors, matrices, decompositions and linear systems | Future; choose exact/approximate element semantics before implementation |
+| Linear Algebra | Vectors, matrices, decompositions and linear systems | Public immutable dense rational matrices, exact products/determinants and unique square solves; approximate/complex domains and broader decompositions remain future |
 | Calculus / Analysis | Mathematical concepts and user-facing organization | Symbolic and numerical algorithms have separate owners below |
 | Numerical | Root finding, interpolation, quadrature, ODEs and optimization | Private bounded root solving; expose convergence/coverage diagnostics explicitly |
 | Statistics | Datasets, aggregates, distributions, regression and tests | Public scalar aggregates/statistics; dataset API remains future work |
@@ -75,8 +75,8 @@ existing scope and never reset its counters or end a caller-owned scope. Limits
 are not hard process isolation. Thread-confined handles can be used independently
 on separate threads; sharing requires caller synchronization.
 
-**Adapters.** Preserve large integers and decimal inputs losslessly. Future Python
-and JSON adapters must not pass exact decimal input through a binary floating
+**Adapters.** Preserve large integers and decimal inputs losslessly. Python
+and future JSON adapters must not pass exact decimal input through a binary floating
 point conversion. Version transport schemas separately from internal structures.
 An adapter's availability is explicit; supporting a new C operation does not
 require implementing every future language binding in the same change.
@@ -104,8 +104,11 @@ require implementing every future language binding in the same change.
    parameters and exact polynomial descriptors. Its source/wheel installation is
    checked separately. Native calls retain the GIL; broad wheel publication and
    parallel/free-threaded execution remain separate work.
-5. **New mathematics:** add matrices, dataset statistics and numerical methods
-   as complete use cases; make dependencies optional when this has a real benefit.
+5. **New mathematics:** the first [exact matrix slice](../reference/MATRIX_API.md)
+   is implemented in the numeric target and Python, with no parser dependency.
+   Extend individual use cases deliberately; dataset statistics, approximate
+   matrix semantics and public numerical methods remain next candidates. Make
+   dependencies optional when this has a real benefit.
 6. **Later:** symbolic representation/assumptions, scientific simulations, WASM
    and independently versioned public REST deployment. No new endpoint or language
    binding is implied by the architectural diagram.

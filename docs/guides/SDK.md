@@ -47,6 +47,8 @@ When `NumForge::engine` is available, the example project also builds and tests
 See `engine.h` and the standalone engine contract in the full source documentation.
 The project also builds a typed-parameter example and, when `polynomial.h` is
 present, a standalone exact polynomial example linked only to the numeric library.
+When `matrix.h` is present, `numforge_matrix_example` checks an exact determinant
+and rational linear-system solution using only the numeric target.
 
 ## Use in your project
 

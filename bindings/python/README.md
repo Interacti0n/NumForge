@@ -19,6 +19,11 @@ print(value.as_fraction())  # Fraction(2, 9)
 solution = numforge.solve_quadratic(1, 0, -2)
 for exact_root in solution.roots:
     print(exact_root.center, exact_root.sign, exact_root.radicand)
+
+a = numforge.Matrix([[0, 2], [3, 4]])
+b = numforge.Matrix([[7], [15]])
+print(a.determinant())       # Fraction(-6)
+print(a.solve(b).to_rows())  # ((Fraction(1, 3),), (Fraction(7, 2),))
 ```
 
 The source build needs CPython 3.10+ with development headers, CMake 3.20+,
@@ -35,6 +40,9 @@ Result objects preserve their provenance. Calculator text is passed separately t
 error bound or display rounding. Prepared expressions have explicit arguments,
 not persistent sessions. Polynomial descriptors remain exact even for irrational
 roots. Arithmetic, evaluation and solving are implemented in C.
+Dense Matrix values contain exact real rationals, with `@`/multiply, determinant
+and unique square-system solve performed by the public C matrix module. Singular
+solves raise Error(status="singular"); shape failures use "dimension_mismatch".
 
 All six C rounding modes are supported by name: `toward_zero`, `away_from_zero`,
 `floor`, `ceiling`, `half_up`, `half_even`. C failures raise `numforge.Error` with

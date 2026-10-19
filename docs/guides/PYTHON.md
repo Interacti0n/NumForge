@@ -47,6 +47,7 @@ configured CI coverage is not a claim that those remote jobs have already run.
 | `Expression.evaluate(arguments=(), *, precision=34, ...)` | Reuse the AST with positional values or an exact-name mapping |
 | `sqrt(value, *, precision=34, ...)` | Principal root through the C typed evaluator, including exact rational roots and supported complex promotion |
 | `solve_quadratic(a, b, c, *, ...)` | Exact real coefficients; linear/constant reduction, irrational/complex descriptors and multiplicities |
+| `Matrix(rows, *, ...)` | Owned immutable dense rational matrix; exact C product, determinant and unique square-system solve |
 
 ```python
 from decimal import Decimal
@@ -65,6 +66,41 @@ assert value.exact and value.as_fraction() == Fraction(2, 9)
 
 These are actual source-built Python APIs. The standalone example in
 `examples/python/standalone.py` is tested after installing the wheel.
+
+## Exact matrices
+
+```python
+a = numforge.Matrix([[0, 2], [3, 4]])
+b = numforge.Matrix([[7], [15]])
+x = a.solve(b)
+assert a.shape == (2, 2) and a.exact
+assert a.determinant() == -6
+assert x.to_rows() == ((Fraction(1, 3),), (Fraction(7, 2),))
+assert (a @ x).to_rows() == b.to_rows()
+```
+
+Rows must be nonempty and rectangular. Entries accept the same lossless input
+types as `number()` but must be exact real values; approximate Result inputs and
+complex values are rejected. Construction copies inputs, and operation results
+outlive both input matrices. `to_rows()` returns copied tuples of Fraction;
+`determinant()` returns Fraction; `.multiply(other)` and `@` return Matrix.
+`.solve(right)` accepts a Matrix with one or more RHS columns and returns Matrix.
+The native matrix storage has no mutating public operation.
+
+Construction, `to_rows`, `determinant`, `multiply` and `solve` accept
+`time_limit_ms`, `allocation_bytes` and `single_allocation` with the usual defaults.
+Input `number()` conversions precede the matrix scope; conversion of native
+results into Python Fraction objects is Python work outside C allocation accounting.
+There is no precision option: every matrix result is exact. `@` uses default limits;
+use `.multiply(other, ...)` to supply limits. Native calls retain the GIL.
+
+Non-square/incompatible shapes raise Error with status `dimension_mismatch`.
+A zero determinant succeeds; solve raises `singular` when the coefficient matrix
+has no inverse, for both inconsistent and underdetermined systems. Matrix errors
+have offset zero. Resource errors retain `time_limit`/`memory_limit`; Python
+shape/type/policy validation raises ValueError/TypeError. No partial solution is
+returned and both inputs remain usable after errors. The [matrix C contract](../reference/MATRIX_API.md)
+describes the exact algorithm, ownership and initial scope.
 
 ## Input, precision and results
 
@@ -150,8 +186,10 @@ from a separate consumer folder. It asserts both Python and native module import
 come from the installed directory. The copied tests and standalone example have
 no runtime access to the source package. Nothing is uploaded or globally installed.
 
-The 22 adapter tests include an independent 1000-digit Decimal root reference,
+The 29 adapter tests include an independent 1000-digit Decimal root reference,
 six rounding modes, lossless inputs, parameter binding, aliases/lifetime,
 exact/approximate provenance, diagnostics, budget recovery and solver degeneracies.
+Matrix checks add independent Fraction determinant/product/known-solution oracles,
+exact 1000-digit cancellation, ownership, shape/singularity and limit recovery.
 Existing C tests remain the algorithm-level correctness evidence; this adapter
 does not introduce another mathematical implementation or claim a speedup.

@@ -10,6 +10,13 @@ target_compile_features(numforge_example PRIVATE c_std_17)
 target_link_libraries(numforge_example PRIVATE NumForge::numforge)
 
 enable_testing()
+if(EXISTS "${NumForge_DIR}/../../../include/numforge/matrix.h")
+    add_executable(numforge_matrix_example matrix.c)
+    target_compile_features(numforge_matrix_example PRIVATE c_std_17)
+    target_link_libraries(numforge_matrix_example PRIVATE NumForge::numforge)
+    add_test(NAME matrix_example COMMAND numforge_matrix_example)
+    set_tests_properties(matrix_example PROPERTIES PASS_REGULAR_EXPRESSION "1/3; 7/2")
+endif()
 add_test(NAME exact_decimal_example COMMAND numforge_example)
 set_tests_properties(exact_decimal_example PROPERTIES PASS_REGULAR_EXPRESSION "0\\.1 \\+ 0\\.2 = 0\\.3")
 

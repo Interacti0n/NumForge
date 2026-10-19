@@ -7,6 +7,8 @@ of development, not a schedule or promise of a particular release.
 
 - C17 BigInt, BigDecimal, BigRational and BigComplex APIs with opaque types, explicit
   ownership, documented aliasing and strong failure guarantees.
+- [Dense rational matrices](../reference/MATRIX_API.md): exact products,
+  determinants and unique square-system solves, available in C and source-built Python.
 - Exact integer/decimal/rational arithmetic; configurable precision/rounding for
   approximations; roots, logarithms, trigonometric/hyperbolic functions,
   constants, statistics and selected integer operations.
@@ -87,6 +89,13 @@ application convergence and public numerical-solver contracts. A narrow source-b
 publication and broader parallel/threading support remain separate work. New mathematics follows the
 [feature completion checklist](FEATURE_CHECKLIST.md). Symbolic mathematics, WASM
 and a public REST service remain later work, not present interfaces.
+
+The first Linear Algebra slice now owns immutable dense rational matrices, exact
+products/determinants and square-system solving with multiple RHS columns.
+It links only the numeric library and has a Python adapter, installed consumers,
+independent references and a [measured baseline](../benchmarks/MATRIX_2026_10_19.md).
+Rank/nullspaces, approximate/complex matrices and decompositions require later
+contracts; a singular solve currently reports absence of a unique solution.
 
 The [web/API contract](../reference/WEB_API_PARITY.md) now covers session lists,
 lifecycle commands, function discovery and saved conversion history. New

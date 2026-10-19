@@ -2,6 +2,11 @@
 from fractions import Fraction
 import numforge
 
+a = numforge.Matrix([[0, 2], [3, 4]])
+b = numforge.Matrix([[7], [15]])
+print("Exact determinant:", a.determinant())
+print("Exact linear solution:", a.solve(b).to_rows())
+
 root = numforge.sqrt(2, precision=1000)
 assert not root.exact
 print("sqrt(2), 1000 working digits:", root)

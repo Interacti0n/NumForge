@@ -7,6 +7,9 @@ The opt-in `polynomial_benchmark` measures the [standalone exact solver](../docs
 on rational, irrational, complex and 1000-digit-coefficient cases, checking exact
 root-sum/product invariants outside timing and claiming no algorithmic speedup.
 See the [initial solver baseline](../docs/benchmarks/PLATFORM_SOLVER_2026_10_19.md).
+The opt-in `matrix_benchmark` measures dense exact rational products, determinants
+and solves with closed-form references and allocation counters; see the
+[matrix baseline](../docs/benchmarks/MATRIX_2026_10_19.md).
 The [11 October optimization report](../docs/benchmarks/PERFORMANCE_OPTIMIZATIONS_2026_10_11.md)
 compares direct integer conversion and combinatorial arithmetic with the audit.
 The [factor grouping report](../docs/benchmarks/FACTORIAL_GROUPING_2026_10_11.md)

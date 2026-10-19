@@ -53,7 +53,7 @@ and C++ package consumers compile and call the public rational API.
 ## Choose a focused check
 
 The optional [Python adapter](guides/PYTHON.md) has its own reproducible source-archive,
-wheel, isolated installation, 22-test and standalone-example check:
+wheel, isolated installation, 29-test and standalone-example check:
 `python scripts/check_python_package.py --output build/python-package-check`.
 It uses installed build tools with network lookup disabled and never installs
 globally. The separate Python workflow covers Linux 3.10/3.12, Windows 3.12 and
@@ -72,6 +72,14 @@ arguments, input copies, high precision, ownership and failure recovery.
 coefficient solver, degeneracies, complex/radical descriptors, 1000-digit inputs
 and allocation/deadline failures. `polynomial_benchmark` is opt-in and validates
 exact sum/product invariants outside its timing interval.
+
+`matrix_tests` links only the numeric library and checks exact rectangular
+products, row pivoting, multiple RHS columns, singularity, 1000-digit cancellation,
+overflow, ownership and atomic allocation/deadline failures. Python adds independent
+Fraction permutation-determinant/product/known-solution references. Installed
+C/C++ consumers and SDK examples verify numeric-only use. The opt-in
+`matrix_benchmark` checks closed-form exact references outside timing;
+see [the baseline](benchmarks/MATRIX_2026_10_19.md).
 
 `application_expression_tests` covers the
 [parametric C application foundation](design/PARAMETRIC_EXPRESSIONS.md), including

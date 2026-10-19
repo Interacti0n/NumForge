@@ -133,6 +133,7 @@ add_library(numforge STATIC
     src/bigrational/bigrational.c
     src/bigrational/sqrt.c
     src/algebra/polynomial.c
+    src/linear_algebra/matrix.c
     src/bigcomplex/bigcomplex.c
     src/bigcomplex/bigrationalcomplex.c
     src/units/units.c
@@ -419,6 +420,13 @@ install(
 # ============================================================
 
 if(NUMFORGE_BUILD_BENCHMARKS)
+    add_executable(matrix_benchmark benchmarks/matrix_benchmark.c benchmarks/benchmark_clock.c)
+    target_link_libraries(matrix_benchmark PRIVATE numforge)
+    numforge_enable_diagnostics(matrix_benchmark)
+    if(BUILD_TESTING)
+        add_test(NAME matrix_benchmark_smoke COMMAND matrix_benchmark)
+        set_tests_properties(matrix_benchmark_smoke PROPERTIES TIMEOUT 120)
+    endif()
     add_executable(polynomial_benchmark benchmarks/polynomial_benchmark.c benchmarks/benchmark_clock.c)
     target_link_libraries(polynomial_benchmark PRIVATE numforge)
     numforge_enable_diagnostics(polynomial_benchmark)
@@ -607,7 +615,7 @@ if(BUILD_TESTING)
     numforge_enable_diagnostics(engine_tests)
     add_test(NAME engine_tests COMMAND engine_tests)
 
-    foreach(suite engine_parameters polynomial)
+    foreach(suite engine_parameters polynomial matrix)
         add_executable(${suite}_tests tests/test_${suite}.c)
         target_include_directories(${suite}_tests PRIVATE ${PROJECT_SOURCE_DIR}/src/internal)
         target_compile_definitions(${suite}_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
@@ -616,6 +624,7 @@ if(BUILD_TESTING)
     endforeach()
     target_link_libraries(engine_parameters_tests PRIVATE numforge_engine unity)
     target_link_libraries(polynomial_tests PRIVATE numforge unity)
+    target_link_libraries(matrix_tests PRIVATE numforge unity)
 
     target_link_libraries(bigint_tests
         PRIVATE

@@ -2,12 +2,14 @@
 #include <Python.h>
 #include <numforge/engine.h>
 #include <numforge/polynomial.h>
+#include <numforge/matrix.h>
 #include <numforge/runtime.h>
 #include <stdlib.h>
 #include <string.h>
 
 #define RESULT_CAPSULE "numforge.Result.v1"
 #define EXPRESSION_CAPSULE "numforge.Expression.v1"
+#define MATRIX_CAPSULE "numforge.Matrix.v1"
 
 typedef struct ModuleState { PyObject *error; } ModuleState;
 typedef struct Policy {
@@ -16,15 +18,11 @@ typedef struct Policy {
     size_t allocation_bytes, single_allocation;
 } Policy;
 
-static PyObject *raise_status(PyObject *module, NumForgeStatus status, size_t offset)
+static PyObject *raise_named(PyObject *module, const char *message, const char *name, size_t offset)
 {
-    static const char *names[] = {"ok", "null_argument", "invalid_argument", "invalid_token",
-        "syntax_error", "division_by_zero", "value_too_large", "scale_overflow", "out_of_memory",
-        "time_limit", "memory_limit", "unsupported", "argument_count", "undefined_variable"};
     ModuleState *state = PyModule_GetState(module);
-    PyObject *error = PyObject_CallFunction(state->error, "s", numforge_status_to_string(status));
+    PyObject *error = PyObject_CallFunction(state->error, "s", message);
     if (error == NULL) return NULL;
-    const char *name = (unsigned)status < sizeof(names)/sizeof(names[0]) ? names[status] : "unknown";
     PyObject *label = PyUnicode_FromString(name), *position = PyLong_FromSize_t(offset);
     if (label == NULL || position == NULL || PyObject_SetAttrString(error, "status", label) < 0 ||
         PyObject_SetAttrString(error, "offset", position) < 0) {
@@ -32,6 +30,14 @@ static PyObject *raise_status(PyObject *module, NumForgeStatus status, size_t of
     }
     Py_DECREF(label); Py_DECREF(position); PyErr_SetObject(state->error, error); Py_DECREF(error);
     return NULL;
+}
+static PyObject *raise_status(PyObject *module, NumForgeStatus status, size_t offset)
+{
+    static const char *names[] = {"ok", "null_argument", "invalid_argument", "invalid_token",
+        "syntax_error", "division_by_zero", "value_too_large", "scale_overflow", "out_of_memory",
+        "time_limit", "memory_limit", "unsupported", "argument_count", "undefined_variable"};
+    const char *name = (unsigned)status < sizeof(names)/sizeof(names[0]) ? names[status] : "unknown";
+    return raise_named(module, numforge_status_to_string(status), name, offset);
 }
 
 static NumForgeStatus rational_status(BigRationalStatus status)
@@ -363,6 +369,130 @@ done:
     return output;
 }
 
+static void matrix_destroy(PyObject *capsule)
+{
+    NumForgeMatrix *matrix = PyCapsule_GetPointer(capsule, MATRIX_CAPSULE);
+    if (matrix != NULL) numforge_matrix_destroy(matrix); else PyErr_Clear();
+}
+static PyObject *matrix_wrap(NumForgeMatrix *matrix)
+{
+    PyObject *capsule = PyCapsule_New(matrix, MATRIX_CAPSULE, matrix_destroy);
+    if (capsule == NULL) numforge_matrix_destroy(matrix);
+    return capsule;
+}
+static PyObject *matrix_error(PyObject *module, NumForgeMatrixStatus status)
+{
+    NumForgeStatus budget = budget_status(NUMFORGE_OK);
+    if (budget != NUMFORGE_OK) return raise_status(module, budget, 0);
+    static const char *names[] = {"ok", "null_argument", "invalid_argument", "dimension_mismatch",
+        "singular", "out_of_memory", "value_too_large", "scale_overflow"};
+    const char *name = (unsigned)status < sizeof(names)/sizeof(names[0]) ? names[status] : "unknown";
+    return raise_named(module, numforge_matrix_status_to_string(status), name, 0);
+}
+static PyObject *native_matrix_create(PyObject *module, PyObject *args)
+{
+    Py_ssize_t rows, columns; PyObject *items, *options;
+    if (!PyArg_ParseTuple(args, "nnOO:matrix_create", &rows, &columns, &items, &options)) return NULL;
+    if (rows <= 0 || columns <= 0 || rows > PY_SSIZE_T_MAX / columns) {
+        PyErr_SetString(PyExc_ValueError, "matrix dimensions must be positive and fit the platform"); return NULL;
+    }
+    PyObject *values = PySequence_Fast(items, "matrix entries must be a sequence");
+    if (values == NULL) return NULL;
+    Py_ssize_t count = rows * columns;
+    if (PySequence_Fast_GET_SIZE(values) != count) {
+        Py_DECREF(values); PyErr_SetString(PyExc_ValueError, "matrix entry count does not match shape"); return NULL;
+    }
+    Policy policy;
+    if (!policy_parse(module, options, &policy)) { Py_DECREF(values); return NULL; }
+    bool owner = numforge_budget_begin(policy.milliseconds, policy.allocation_bytes, policy.single_allocation);
+    BigRational **entries = NULL; const BigRational **borrowed = NULL; NumForgeMatrix *matrix = NULL;
+    PyObject *output = NULL; NumForgeStatus status = NUMFORGE_OK;
+    if ((size_t)count > SIZE_MAX / sizeof(*entries)) { status = NUMFORGE_VALUE_TOO_LARGE; goto done; }
+    entries = numforge_calloc((size_t)count, sizeof(*entries));
+    borrowed = numforge_calloc((size_t)count, sizeof(*borrowed));
+    if (entries == NULL || borrowed == NULL) { status = NUMFORGE_OUT_OF_MEMORY; goto done; }
+    for (Py_ssize_t i = 0; i < count && status == NUMFORGE_OK; ++i) {
+        const NumForgeResult *input = PyCapsule_GetPointer(PySequence_Fast_GET_ITEM(values, i), RESULT_CAPSULE);
+        if (input == NULL) goto done;
+        if (numforge_result_integer(input) == NULL && numforge_result_rational(input) == NULL) {
+            PyErr_SetString(PyExc_TypeError, "matrix entries must be exact real values"); goto done;
+        }
+        entries[i] = bigrational_create(); borrowed[i] = entries[i];
+        if (entries[i] == NULL) status = NUMFORGE_OUT_OF_MEMORY;
+        else status = rational_status(numforge_result_integer(input) != NULL ?
+            bigrational_from_bigint(entries[i], numforge_result_integer(input)) :
+            bigrational_copy(entries[i], numforge_result_rational(input)));
+    }
+    if (status == NUMFORGE_OK) {
+        NumForgeMatrixStatus created = numforge_matrix_create(&matrix, (size_t)rows, (size_t)columns, borrowed);
+        if (created != NUMFORGE_MATRIX_OK) { matrix_error(module, created); goto done; }
+        output = matrix_wrap(matrix); matrix = NULL;
+    }
+done:
+    if (status != NUMFORGE_OK) raise_status(module, budget_status(status), 0);
+    if (entries) for (Py_ssize_t i = 0; i < count; ++i) bigrational_destroy(entries[i]);
+    free(entries); free(borrowed); numforge_matrix_destroy(matrix);
+    if (owner) numforge_budget_end();
+    numforge_context_destroy(policy.context); Py_DECREF(values);
+    return output;
+}
+static PyObject *native_matrix_shape(PyObject *module, PyObject *args)
+{
+    (void)module; PyObject *capsule;
+    if (!PyArg_ParseTuple(args, "O:matrix_shape", &capsule)) return NULL;
+    const NumForgeMatrix *matrix = PyCapsule_GetPointer(capsule, MATRIX_CAPSULE);
+    if (matrix == NULL) return NULL;
+    return Py_BuildValue("nn", (Py_ssize_t)numforge_matrix_rows(matrix), (Py_ssize_t)numforge_matrix_columns(matrix));
+}
+static PyObject *native_matrix_operation(PyObject *module, PyObject *args)
+{
+    const char *operation; PyObject *capsule, *other, *options;
+    if (!PyArg_ParseTuple(args, "sOOO:matrix_operation", &operation, &capsule, &other, &options)) return NULL;
+    const NumForgeMatrix *a = PyCapsule_GetPointer(capsule, MATRIX_CAPSULE), *b = NULL;
+    if (a == NULL) return NULL;
+    bool multiply = strcmp(operation, "multiply") == 0, solve = strcmp(operation, "solve") == 0;
+    bool determinant = strcmp(operation, "determinant") == 0, rows = strcmp(operation, "rows") == 0;
+    if (!multiply && !solve && !determinant && !rows) {
+        PyErr_SetString(PyExc_ValueError, "unknown matrix operation"); return NULL;
+    }
+    if (multiply || solve) {
+        b = PyCapsule_GetPointer(other, MATRIX_CAPSULE); if (b == NULL) return NULL;
+    }
+    Policy policy;
+    if (!policy_parse(module, options, &policy)) return NULL;
+    bool owner = numforge_budget_begin(policy.milliseconds, policy.allocation_bytes, policy.single_allocation);
+    NumForgeMatrixStatus status = NUMFORGE_MATRIX_OK;
+    NumForgeMatrix *matrix = NULL; BigRational *value = NULL; PyObject *output = NULL;
+    if (multiply || solve) {
+        status = multiply ? numforge_matrix_multiply(&matrix, a, b) : numforge_matrix_solve(&matrix, a, b);
+        if (status == NUMFORGE_MATRIX_OK) { output = matrix_wrap(matrix); matrix = NULL; }
+    } else if (determinant) {
+        value = bigrational_create();
+        status = value ? numforge_matrix_determinant(value, a) : NUMFORGE_MATRIX_OUT_OF_MEMORY;
+        if (status == NUMFORGE_MATRIX_OK) output = fraction_pair(module, value);
+    } else {
+        output = PyTuple_New((Py_ssize_t)numforge_matrix_rows(a));
+        for (size_t i = 0; output && i < numforge_matrix_rows(a); ++i) {
+            PyObject *row = PyTuple_New((Py_ssize_t)numforge_matrix_columns(a));
+            if (row == NULL) { Py_CLEAR(output); break; }
+            PyTuple_SET_ITEM(output, (Py_ssize_t)i, row);
+            for (size_t j = 0; j < numforge_matrix_columns(a); ++j) {
+                PyObject *pair = fraction_pair(module, numforge_matrix_entry(a, i, j));
+                if (pair == NULL) { Py_CLEAR(output); break; }
+                PyTuple_SET_ITEM(row, (Py_ssize_t)j, pair);
+            }
+        }
+    }
+    if (status != NUMFORGE_MATRIX_OK || budget_status(NUMFORGE_OK) != NUMFORGE_OK) {
+        Py_CLEAR(output);
+        if (!PyErr_Occurred()) matrix_error(module, status);
+    }
+    numforge_matrix_destroy(matrix); bigrational_destroy(value);
+    if (owner) numforge_budget_end();
+    numforge_context_destroy(policy.context);
+    return output;
+}
+
 static PyMethodDef methods[] = {
     {"number", native_number, METH_VARARGS, "Copy a lossless numeric input through C."},
     {"evaluate", native_evaluate, METH_VARARGS, "Evaluate with the C engine."},
@@ -373,6 +503,9 @@ static PyMethodDef methods[] = {
     {"text", native_text, METH_VARARGS, "Serialize a stored C result."},
     {"fraction", native_fraction, METH_VARARGS, "Copy exact rational components."},
     {"solve", native_solve, METH_VARARGS, "Solve exact polynomial coefficients in C."},
+    {"matrix_create", native_matrix_create, METH_VARARGS, "Copy exact real entries into a C matrix."},
+    {"matrix_shape", native_matrix_shape, METH_VARARGS, "Read a C matrix shape."},
+    {"matrix_operation", native_matrix_operation, METH_VARARGS, "Run an exact C matrix operation."},
     {NULL, NULL, 0, NULL}
 };
 static int module_traverse(PyObject *module, visitproc visit, void *arg)

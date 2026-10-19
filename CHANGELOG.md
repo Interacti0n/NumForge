@@ -7,6 +7,20 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+### Exact Linear Algebra foundation
+
+- Add public `matrix.h` in the numeric target: immutable dense rational matrices,
+  exact multiplication, determinants and unique square-system solving with
+  multiple right-hand sides. No expression parser or application dependency.
+- Preserve exact fractions, owned results and unchanged outputs on failure;
+  distinguish shape mismatch and singularity without numeric pivot tolerances.
+- Expose the same algorithms as Python `Matrix`, with lossless input, Fraction
+  output, `@`, determinant and solve; retain structured resource diagnostics.
+- Add independent Fraction references, 1000-digit cancellation and allocation/
+  deadline failures, installed C/C++ consumers, SDK examples and a checked
+  Release benchmark. Rank/nullspaces and approximate/complex matrix domains
+  remain outside this initial slice.
+
 ### Python adapter
 
 - Add an experimental source-built CPython package over the public C APIs:
@@ -16,7 +30,7 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
   limits, and retain native ownership through Python capsules without duplicating
   numerical algorithms. Reject implicit binary float inputs.
 - Build a platform wheel from a self-contained source archive and verify isolated
-  installation with 22 adapter tests and a standalone example. Add optional
+  installation with 29 adapter tests and a standalone example. Add optional
   CPython CI coverage; Python remains disabled in ordinary C builds. No package
   publication, new REST endpoint or parallel native execution is included.
 
