@@ -1,207 +1,72 @@
 # Current scope and roadmap
 
-This page distinguishes implemented behavior from future work. It is a direction
-of development, not a schedule or promise of a particular release.
+This is a development direction, not a release schedule. Source development can
+be ahead of published archives. [API.md](../API.md) is the supported-operation
+index; dated reports preserve evidence for their recorded revisions.
 
-## Available today
+## Available in the current source
 
-- C17 BigInt, BigDecimal, BigRational and BigComplex APIs with opaque types, explicit
-  ownership, documented aliasing and strong failure guarantees.
-- [Dense rational matrices](../reference/MATRIX_API.md): exact products,
-  determinants and unique square-system solves, available in C and source-built Python.
-- [Exact rational statistics](../reference/STATISTICS_API.md): batch count, sum,
-  extrema, mean and population/sample variance, available in C and source-built Python.
-- Exact integer/decimal/rational arithmetic; configurable precision/rounding for
-  approximations; roots, logarithms, trigonometric/hyperbolic functions,
-  constants, statistics and selected integer operations.
-- [Complex arithmetic](../reference/BIGCOMPLEX.md), principal-branch functions,
-  automatic domain promotion and Cartesian/trigonometric/exponential display.
-- Shared CLI/local browser calculator with English/Slovak UI, confirmed `ans`,
-  [session variables](../guides/VARIABLES.md),
-  session history, stable random previews and a bounded loopback HTTP API.
-- [Unit-conversion C foundation](../reference/UNITS.md): a sourced 233-unit catalogue,
-  compatibility checks, exact rational factors and guarded angle projection.
-  [Local HTTP catalogue and conversion](../reference/UNIT_HTTP_API.md) with read-only session
-  access and a [SK/EN browser converter](../guides/UNIT_CONVERTER.md) are available.
-  [Quantity expressions](../reference/QUANTITIES.md) support dimension-checked arithmetic,
-  powers/roots, temperature points/intervals and selected functions.
-- CMake installation and C/C++ consumer support; numerical, property,
-  allocation-failure, integration, browser and fuzz-smoke checks.
-- Formatting/cache/HTTP/memory, BigInt and BigDecimal/math benchmarks with independent
-  result checks and repeated local Release baselines.
+| Area | Supported foundation |
+| --- | --- |
+| Arithmetic | Opaque C17 integer, finite-decimal, rational and complex types; exact arithmetic and precision-aware approximations. |
+| Expression engine | [Stateless public C API](../reference/ENGINE_API.md), reusable prepared expressions, explicit parameters, typed results and operation budgets. |
+| Algebra | [Exact linear/quadratic coefficient solver](../reference/POLYNOMIAL_API.md), shared by application equation adapters. |
+| Linear algebra | [Dense rational matrices](../reference/MATRIX_API.md), products, determinants, square solves and [complete rectangular single-RHS systems](../reference/LINEAR_SYSTEM_API.md). |
+| Statistics | [Exact rational batch summaries](../reference/STATISTICS_API.md), including population/sample variance. |
+| Scientific | [Unit conversion](../reference/UNITS.md), a sourced catalogue and private [quantity expressions](../reference/QUANTITIES.md). |
+| Applications | SK/EN CLI/browser calculator, sessions, converter, four-function graphs and bounded numerical equation searches. |
+| Integration | Installed C/C++ packages and an experimental source-built [Python adapter](../guides/PYTHON.md). |
 
-For exact supported functions and limits, use [API.md](../API.md). Screenshots in
-the README show development code and may be newer than a published release.
+The [architecture](../design/ARCHITECTURE.md) defines ownership and extension
+rules. Numeric-only use does not require an engine, application session or web
+server. Source directories now follow those boundaries; each implemented module
+owns its source manifest. There are no empty future-module placeholders.
 
-## Next accuracy and optimization work
+## Recommended next work
 
-Direct BigDecimal arithmetic and higher-function/constant measurements are
-implemented with independent references through 2,000 significant digits;
-see [Decimal/math measurements](../benchmarks/DECIMAL_MATH_BENCHMARKS.md). The historical stress matrix
-exposed tangent-pole cancellation, now addressed by adaptive reduction and
-strict independent regressions through 2,000 digits. General correctly rounded
-approximate functions remain a separate goal. Some high-precision cases exceed
-the collection deadline and need dedicated longer measurements.
+1. Extend one concrete mathematical use case at a time, following the
+   [feature checklist](FEATURE_CHECKLIST.md). Likely candidates include matrix
+   decompositions and multivariate/streaming statistics; each needs its own
+   numerical and failure contract.
+2. Define public numerical-method contracts before extracting private root
+   searches. Include convergence, incomplete discovery and residual/error meaning.
+   Preserve graph/session semantics while gradually adopting public engine handles
+   where their supported scope fits.
+3. Add session user-function definitions and their graph/solver integration when
+   required. Define unit semantics before adding dimensional equations or axes.
+4. Broaden adapter publication and platform coverage deliberately. Python wheel
+   distribution and parallel/free-threaded execution remain separate work. Public
+   REST, WASM and other language bindings are future interfaces.
+5. Evolve documentation incrementally: Doxygen syntax in public C headers is the
+   contract source; Markdown explains use and mathematical meaning. Generated
+   Doxygen/MkDocs publication can follow without becoming a library prerequisite.
 
-Short scientific formatting now uses bounded prefix conversion with exact
-fallback. Normalized limb division, grouped factorial multiplication, private
-GCD remainder buffers and per-call ln/exp arithmetic workspaces are implemented.
-The practical factorial cap is removed; the uint64 counter range and shared
-application time/memory/output budgets remain. See
-[factorial budgets and final text conversion](../benchmarks/FACTORIAL_BUDGETS_2026_10_11.md).
-Budget-aware Karatsuba now serves sufficiently large balanced products;
-see the [integration report](../benchmarks/KARATSUBA_INTEGRATION_2026_10_11.md).
-Budget-admitted product-tree factorial now reuses per-depth Karatsuba frames;
-see [factorial tree integration](../benchmarks/FACTORIAL_TREE_INTEGRATION_2026_10_11.md).
-The [larger factorial stress matrix](../benchmarks/FACTORIAL_STRESS_2026_10_11.md)
-identifies decimal zero stripping as the dominant successful-path cost and
-separates conservative admission from real scratch allocation constraints.
-Large decimal coefficients now use exact 27-zero inverse division with optional
-scratch; see [normalization integration](../benchmarks/ZERO_NORMALIZATION_2026_10_11.md).
-Checked factor-range bounds and shared workspace planning now tighten admission;
-see [the boundary verification](../benchmarks/FACTORIAL_ADMISSION_2026_10_12.md).
-Split sum/cross scratch is now implemented and measured in the
-[bounded final factorial experiment](../benchmarks/SPLIT_WORKSPACE_2026_10_12.md).
-Further factorial/bound/multiplication research is deferred; next work is the
-overall regression, UX and CI review followed by release preparation.
-The [private Karatsuba experiment](../benchmarks/KARATSUBA_EXPERIMENT_2026_10_11.md)
-adds bounded scratch, exact references and cancellation/failure checks, with
-threshold and grouped product-tree comparisons preceding the integration.
-Existing experiments are described with their measured tradeoffs in
-[BIGINT_BENCHMARKS.md](../benchmarks/BIGINT_BENCHMARKS.md).
+## Accuracy and performance priorities
 
-The [bounded theta/AGM logarithm](../benchmarks/LOGARITHM_AGM_INTEGRATION_2026_10_11.md)
-is integrated with outward-rounded theta tails, AGM/pi enclosures, adaptive
-precision and a private precision-dependent dispatcher. The original series
-remains for low precision and near-one inputs. Next numerical candidates are
-lower interval allocation traffic and enclosure-based rounding for further
-functions after release validation. Composed
-complex functions retain their existing approximation contracts.
+General correctly rounded approximate functions remain an open goal. Working
+precision and guard digits are not universal error guarantees, particularly after
+cancellation or poorly conditioned composition. Preserve existing rounding
+exceptions until supported by stronger evidence. Independent decimal references
+and [measurements](../benchmarks/DECIMAL_MATH_BENCHMARKS.md) cover selected cases
+through 2,000 significant digits, not every possible input.
 
-## Planned tool development
+Further optimizations need repeated Release measurements with independently
+validated results. Existing arithmetic, factorial and logarithm optimizations are
+recorded in the [benchmark guide](../../benchmarks/README.md); their implementation
+chronology is not repeated here. Lower interval-allocation traffic and stronger
+enclosure-based rounding remain candidates. Reorganization or code reduction
+alone does not establish a speedup.
 
-The [modular mathematics platform](../design/ARCHITECTURE.md) is the adopted
-architecture direction. Its first public stateless expression slice is implemented
-in the current source tree as `NumForge::engine`; see the [engine API](../reference/ENGINE_API.md).
-Explicit expression parameters and direct typed argument constructors are public.
-The [exact polynomial coefficient solver](../reference/POLYNOMIAL_API.md) is now
-part of the numeric library and shared with application adapters. Next: deliberate
-application convergence and public numerical-solver contracts. A narrow source-built
-[Python adapter](../guides/PYTHON.md) now validates use outside the application;
-publication and broader parallel/threading support remain separate work. New mathematics follows the
-[feature completion checklist](FEATURE_CHECKLIST.md). Symbolic mathematics, WASM
-and a public REST service remain later work, not present interfaces.
-
-The first Linear Algebra slice now owns immutable dense rational matrices, exact
-products/determinants and square-system solving with multiple RHS columns.
-It links only the numeric library and has a Python adapter, installed consumers,
-independent references and a [measured baseline](../benchmarks/MATRIX_2026_10_19.md).
-The [general-system extension](../reference/LINEAR_SYSTEM_API.md) now adds exact
-rank and complete single-RHS rectangular solutions, including inconsistency and
-canonical nullspace bases. The old square solve retains its SINGULAR contract.
-Approximate/complex matrices and broader decompositions require later contracts.
-
-The [web/API contract](../reference/WEB_API_PARITY.md) now covers session lists,
-lifecycle commands, function discovery and saved conversion history. New
-mathematical/session features must expose their application operation and
-documented HTTP contract alongside the web implementation, using the versioned
-[session value schema](../reference/SESSION_HTTP_API.md) where appropriate.
-
-1. The [parametric C application foundation](../design/PARAMETRIC_EXPRESSIONS.md)
-   now parses once, binds a local parameter and snapshots referenced session
-   values. Typed batches share one budget and preserve calculator state.
-   The [HTTP graph sampler](../reference/GRAPH_HTTP_API.md) now adds bounded exact
-   uniform coordinates, plotting projections and point classifications.
-2. [Browser graphs](../guides/GRAPHS.md) now display up to four colored `y = f(x)`
-   curves with inferred parameters, automatic sampling, pan/zoom, visibility,
-   a shared function editor/palette, an expanded canvas and cached coordinate inspection.
-   Automatic rendering includes bounded integer-domain sampling without a mode selector.
-   Axis/pair markers are numerically verified against original C expressions and
-   selected across curve groups and screen regions. Arbitrary discrete lattices
-   and complete/symbolic root enumeration remain outside this feature.
-   Visible-first sampling, reusable resolution levels and accepted cached previews
-   reduce repeated work; missing/gapped views keep coarse/refined sampling.
-   Supported affine/quadratic sin/cos carriers, selected sums and absolute-value
-   forms have approximate envelope displays; broader domains remain future work.
-   [Sustained interaction/memory diagnostics](../benchmarks/GRAPH_STABILITY_2026_10_14.md)
-   are available. [Domain-sensitive view refinement and per-function diagnostics](../benchmarks/GRAPH_DOMAIN_VIEWS_2026_10_15.md)
-   are implemented; informational notes are hidden in the UI. Initial phone feedback
-   is positive; broader physical-device checks and graph export/import remain next. Adaptive refinement
-   and connection flags remain heuristics, not continuity proofs.
-3. The [private C linear/quadratic foundation](../design/POLYNOMIAL_EQUATIONS.md)
-   now solves real rational coefficients exactly, including irrational and
-   complex roots and degenerate cases. Stateless coefficient expressions and
-   the [HTTP adapter](../reference/EQUATION_HTTP_API.md), exact root text,
-   stable decimal previews and the [browser editor](../guides/EQUATIONS.md)
-   are available. Whole equations in lowercase x now normalize exact polynomial
-   operations on both sides, with intermediate degree <=2 and conservative
-   rejection of variable denominators/functions. Coefficient mode remains available.
-   [Numerical interval roots](../reference/NUMERIC_ROOT_HTTP_API.md) now find one
-   real root in a sign-changing bracket with rational bisection, high-precision
-   residuals, conservative local domain checks and explicit work limits/outcomes.
-   Unverified candidate domains expose no root. Final non-exact candidates are
-   reevaluated at higher precision to detect unstable residuals. A private
-   [Brent experiment](../benchmarks/NUMERIC_ROOT_BRENT_2026_10_18.md) improves
-   several cases but regresses on flat roots/poles; production retains bisection.
-   A third [decimal-weight hybrid](../benchmarks/NUMERIC_ROOT_HYBRID_2026_10_19.md)
-   now provides cheaper interpolation with a permanent progress fallback.
-   Production still retains bisection: method selection must consider flat-root
-   cost and convergence coverage, not just fewer evaluations.
-   Real equation roots now link to graphs of the original side difference,
-   preserving existing functions and independently verifying graph markers.
-   Multiple-bracket scanning now uses a bounded 128-cell rational grid, retains
-   up to 32 roots and caps total work at 4096 coordinate pairs under one shared
-   budget. Midpoint/local-quadratic candidates now recover simple rational
-   contacts and close pairs; positive minima and original domain holes remain
-   excluded. A mode-aware editor shares function descriptions and search aliases
-   with the calculator and graphs, inserts balanced calls and offers examples.
-   Checked numerical coordinates and residuals are expandable. Final regression,
-   device and publication gates are tracked in the [release checklist](EQUATION_RELEASE_AUDIT_2026_10_19.md).
-   Numerical discovery does not guarantee completeness. General tangency discovery and
-   configurable tolerances remain future work.
-4. Add session user functions, local parameters and definition management,
-   followed by their integration with graphs and solvers.
-5. Extend Quantity with general compound unit strings, named derived units,
-   further functions and a possible public C API.
-   Dimensional equations and graph axes need explicit unit contracts first.
-
-The remaining stages are a proposed order, not implemented features or release dates.
-Exact rational matrices/general systems and batch descriptive statistics now have
-public C/Python APIs. Broader vector/decomposition, multivariate and streaming
-dataset capabilities follow individual use cases and contracts.
-Measured arithmetic optimizations can proceed independently of these tools.
+Graph refinement remains heuristic rather than a continuity proof; numerical
+root discovery is bounded and does not guarantee completeness. General tangency
+discovery, configurable tolerances, broader physical-device validation and
+graph export/import remain future work. Release gates are tracked in the
+[equation readiness record](EQUATION_RELEASE_AUDIT_2026_10_19.md).
 
 ## Later, according to use cases
 
-- [Accounts and authentication](../design/ACCOUNT_DESIGN.md): proposed private
-  C application operations and HTTP contracts for verified registration, login,
-  session revocation and password recovery. Storage, crypto and mail adapters
-  precede implementation; account-bound saved values remain a separate stage.
-  The [post-login product proposal](../design/ACCOUNT_DESIGN.md#proposed-benefits-after-login--product-review)
-  prioritizes settings, named workspaces, favorite calculations/conversions and
-  cross-device continuation with explicit revision conflicts. Export/deletion
-  precedes public rollout; saved graphs/functions and explicit sharing follow later.
-- Stable serialization and language bindings; BigInt numeral bases 2–36 are implemented.
-- Further numerical analysis and graphing beyond the basic tools above.
-- Improvements to directed rounding of approximate functions, supported by
-  rigorous error bounds or adaptive precision and independent references.
-- Additional constants and mathematical types/functions where there is a
-  concrete application need.
-
-Sign-in and account-creation navigation entries currently
-open informational pages. Accounts and synchronization are not implemented;
-coefficient-based equation solving is available in C, HTTP and the browser.
-The app has no Premium feature or subscription system.
-
-## Distribution and project presentation
-
-Releases provide source archives for library developers and portable Windows/Linux
-x64 application archives through the verified binary workflow in
-[RELEASE_PACKAGING.md](RELEASE_PACKAGING.md). The [2.1 release record](RELEASE_2_1.md)
-documents scope and verification. A hosted interactive demo needs a hosting plan.
-Publishing the current loopback server directly is insufficient: public service
-work requires worker isolation, queues, rate limiting and hard resource limits.
-
-README screenshots, architecture and benchmark highlights are maintained in
-[PROJECT_PRESENTATION.md](PROJECT_PRESENTATION.md). A portfolio connection is
-deferred until the portfolio is ready; no connection is configured now.
+Symbolic mathematics requires an explicit expression/assumption model; the current
+calculator AST is not a public CAS. Scientific simulations, approximate/complex
+matrix domains and broader distributions need individual contracts.
+[Accounts and persistence](../design/ACCOUNT_DESIGN.md) remain proposals behind
+the application layer, independent of mathematical algorithms.

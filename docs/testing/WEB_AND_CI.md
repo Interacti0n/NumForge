@@ -47,6 +47,12 @@ failure artifact name. The dedicated browser CI job installs Chromium with OS de
 screenshots and traces for 14 days. Local reports, dependencies and test results
 are ignored by Git. That CI job remains Chromium-only.
 
+Diagnostic screenshots and JSON written by browser specs use the shared
+`tests/browser/artifacts.js` helper and land under ignored
+`build/browser-artifacts/`, independently of the checkout location or runner's
+working directory. Use this helper for new diagnostics instead of absolute local
+paths. Playwright failure artifacts and HTML reports keep their configured paths.
+
 ### Optional Firefox and WebKit graph checks
 
 The separate configuration reuses the same C server and runs graph/guide tests

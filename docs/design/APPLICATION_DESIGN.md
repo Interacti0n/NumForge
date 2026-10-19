@@ -3,20 +3,10 @@
 The application uses memory only; there is no database or account backend.
 The public numeric library can still be built and installed alone.
 
-| Target | Source | Responsibility |
-| --- | --- | --- |
-| `numforge` / installed `NumForge::numforge` | Numeric source directories | Numeric types, algorithms, unit conversion and optional caller-owned budgets. |
-| `numforge_engine` / installed `NumForge::engine` | `src/engine`, `src/calculator` | Public stateless expression API over the shared parser/evaluator; calculator implementation details and application-only capabilities remain private. `numforge_calculator` is a build-tree alias. |
-| `numforge_application` (private) | `src/application` | Session lifecycle, variables, ans/history, preview/replay, random-state ownership, confirmed conversions and bounded client/cache storage. |
-| `numforge_client` (private HTTP adapters) | `apps/web/http/web_api.c`, `unit_web.c`, `session_api.c`, `http_request.c` | Translate HTTP-oriented options into shared calls; frame requests and serialize unit responses. |
-| `calculator` / `numforge_web` | CLI / server entry points | CLI interaction / sockets, route dispatch, JSON and embedded assets. |
-| Browser | `web` | Input/caret, navigation, language, categories, tabs, clipboard and display mirrors. |
-
-Dependency direction is HTTP adapter → application → expression engine →
-numeric library. CLI links the application directly, without the HTTP adapter.
-The expression target has no application/web include directories. Its public
+The [architecture](ARCHITECTURE.md) owns the source map and target dependency
+rules. Application and HTTP support targets remain private. The public expression
 contract is [engine.h](../reference/ENGINE_API.md); calculator implementation
-headers are not installed. Application and HTTP support targets remain private.
+headers are not installed.
 
 ## Ownership
 

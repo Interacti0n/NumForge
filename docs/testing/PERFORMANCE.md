@@ -115,3 +115,27 @@ references are checked outside timing and errors above 1e-9 return a failure.
 Resource statuses remain diagnostic rows rather than universal timing gates.
 No connected chords means zero chord error **and zero coverage**, not a perfect
 curve. See the [graph audit](../benchmarks/GRAPH_AUDIT_2026_10_12.md).
+
+### Graph interaction diagnostics
+
+After installing the [browser dependencies](WEB_AND_CI.md), run from the repository
+root with the executables produced by your own Release builds:
+
+```sh
+node scripts/benchmark_graph_multi.cjs --before build/before/numforge_web --after build/after/numforge_web --repeats 3 --output build/graph-multi.json
+node scripts/benchmark_graph_stress.cjs --server build/after/numforge_web --cycles 16 --output build/graph-stress.json
+```
+
+Use the configuration subdirectory and `.exe` suffix on Windows where applicable.
+The tools start and stop their own servers. The comparison records HTTP work,
+rendering, drag/zoom, warm visibility toggles and heap observations. Stress runs
+exercise cache replacement, expansion, cancellation and SPA lifecycle; optional
+`--profile` selects `desktop`, `portrait` or `landscape`, and `--case` selects
+`mixed` or `poles`. Test-only routed JavaScript exposes cache diagnostics without
+adding production hooks. Warm toggles must issue no graph requests; leaked graph
+roots produce local heap snapshots. Timing excludes diagnostic probes and forced
+GC; PC mobile emulation does not establish physical-phone behavior.
+
+Recorded workloads, bounds and caveats: [multi-function comparison](../project/GRAPH_MULTI_BENCHMARK_2026_10_13.md),
+[sustained stability](../benchmarks/GRAPH_STABILITY_2026_10_14.md) and
+[domain-sensitive views](../benchmarks/GRAPH_DOMAIN_VIEWS_2026_10_15.md).

@@ -34,25 +34,7 @@ library.
 with a shared function editor, checked coordinates and graph integration.
 See the [release record](docs/project/RELEASE_2_4.md).
 
-**Previously in 2.3.0:** interactive graphs with up to four functions, adaptive C sampling,
-mouse/touch navigation, automatic integer points and C-verified intersections.
-See the [release record](docs/project/RELEASE_2_3.md).
-
-**Previously in 2.2.1:** faster large-number arithmetic, factorials and high-precision logarithms,
-reduced allocation traffic, delayed web previews and stronger regression checks.
-See the [release record](docs/project/RELEASE_2_2_1.md).
-
-**Released in 2.2.0:** [decimal and exact rational complex APIs](docs/reference/BIGCOMPLEX.md),
-calculator `a+bi` / `complex(re;im)` arithmetic, re/im/conj/abs/arg and complex
-exponentials, principal square roots, natural/custom-base logarithms, general powers,
-trigonometry, inverse trigonometry, hyperbolic and inverse hyperbolic functions,
-automatic principal complex results for supported out-of-real-domain inputs,
-exact rational complex `sum`, `product` and `mean`,
-typed sessions and Cartesian/trigonometric/
-exponential display. The 2.1.0 release archives predate these features.
-
-**Released in 2.1.0:** unit conversion, dimensional arithmetic with `qty(...)`,
-session variables and ready-to-use application and C/C++ SDK downloads.
+Earlier release history is recorded in the [changelog](CHANGELOG_SHORT.md).
 
 [Try it locally](#get-started) · [See the calculator](#in-the-browser) ·
 [Use the C/C++ SDK](#cc-sdk) ·

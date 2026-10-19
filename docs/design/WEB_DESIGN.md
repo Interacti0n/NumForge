@@ -3,7 +3,7 @@
 ## Local web interface
 
 `numforge_web` serves Slovak and English calculator, guide and future-tool pages and their CSS/JavaScript/PNG assets from the C
-executable. CMake embeds the files from `web/` into a generated header; asset
+executable. CMake embeds the files from `apps/web/assets/` into a generated header; asset
 routes use `/assets/calculator.css`, `/assets/api.css`, shared `/assets/chrome.css` and
 `/assets/calculator.js`; `/assets/logo.png` supplies the header mark and favicon,
 and `/assets/wordmark.png` supplies the guide introduction.

@@ -1,12 +1,10 @@
 # Calculator design
 
-The calculator is an application layer over `BigInt`, `BigRational` and `BigDecimal`. Its source stays in
-`src/engine/` rather than the public include tree; it is an application
-client over the public numeric API.
-
-Expression evaluation is the private `numforge_calculator` target. Session
-ownership lives in `src/application/` / `numforge_application`; HTTP adapters
-depend on that layer. See [Application design](APPLICATION_DESIGN.md).
+The calculators compose application sessions with the shared expression engine
+over the public numeric API. `NumForge::engine` also exposes stateless evaluation
+independently of the apps; calculator implementation headers remain private.
+See [architecture](ARCHITECTURE.md) for source ownership and
+[application design](APPLICATION_DESIGN.md) for session lifetime and transport.
 
 ## Modules
 
@@ -31,7 +29,7 @@ depend on that layer. See [Application design](APPLICATION_DESIGN.md).
 | `apps/web/server/web_main.c` | Starts the loopback server, parses command-line options and opens the browser when requested. |
 | `apps/web/server/web_server.c` | Handles bounded HTTP connections, embedded assets, calculator sessions and `POST /api/evaluate`. |
 | `apps/web/http/http_request.c` | Bounded, socket-independent HTTP framing and header validation; returns incomplete, ready, malformed or oversized status. |
-| `web/` | Editable SK/EN calculator and API HTML, shared CSS, and calculator JavaScript. |
+| `apps/web/assets/` | Editable SK/EN calculator and API HTML, shared CSS, and calculator JavaScript. |
 | `cmake/EmbedWeb.cmake` | Generates the private web asset header in the build tree; it is never edited by hand. |
 
 The dependencies run in one direction:
