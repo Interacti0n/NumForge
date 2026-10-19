@@ -8,6 +8,8 @@ Current development is moving toward a [modular mathematics platform](docs/desig
 The first [public expression engine API](docs/reference/ENGINE_API.md) is available
 in source as `NumForge::engine`, with reusable expressions and typed results
 independent of CLI/web. Published 2.4.0 archives predate this addition.
+An experimental [Python adapter](docs/guides/PYTHON.md) can now be built from source
+and installed independently of the web application; it has not been published to PyPI.
 
 [![CI](https://github.com/Interacti0n/NumForge/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Interacti0n/NumForge/actions/workflows/ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/Interacti0n/NumForge)](https://github.com/Interacti0n/NumForge/releases/latest)

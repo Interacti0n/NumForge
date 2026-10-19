@@ -7,6 +7,19 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+### Python adapter
+
+- Add an experimental source-built CPython package over the public C APIs:
+  lossless typed input, expression evaluation, reusable parameters, principal
+  square roots and exact linear/quadratic solution descriptors.
+- Preserve exactness/approximation, expose structured C errors and cooperative
+  limits, and retain native ownership through Python capsules without duplicating
+  numerical algorithms. Reject implicit binary float inputs.
+- Build a platform wheel from a self-contained source archive and verify isolated
+  installation with 22 adapter tests and a standalone example. Add optional
+  CPython CI coverage; Python remains disabled in ordinary C builds. No package
+  publication, new REST endpoint or parallel native execution is included.
+
 ### Modular engine foundation
 
 - Add explicit ordered expression parameters and direct typed numeric argument

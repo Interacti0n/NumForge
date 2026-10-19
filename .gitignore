@@ -33,6 +33,8 @@ Testing/
 # Python developer tools
 __pycache__/
 *.py[cod]
+*.egg-info/
+/dist/
 
 # Editor and IDE state
 /.vscode/

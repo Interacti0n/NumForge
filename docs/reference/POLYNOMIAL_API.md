@@ -89,5 +89,6 @@ The [initial Windows/GCC baseline](../benchmarks/PLATFORM_SOLVER_2026_10_19.md)
 records three runs, allocation traffic and validation scope.
 
 CLI/Web/local HTTP already expose equation tools through the application adapter;
-their syntax, formatting and limits are unchanged. Python, WASM and a new public
-REST service remain future work. See [the existing equation design](../design/POLYNOMIAL_EQUATIONS.md).
+their syntax, formatting and limits are unchanged. The source-built
+[Python adapter](../guides/PYTHON.md) exposes the exact coefficient solver. WASM
+and a new public REST service remain future work. See [the existing equation design](../design/POLYNOMIAL_EQUATIONS.md).

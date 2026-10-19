@@ -29,6 +29,7 @@ include(CTest)
 
 option(NUMFORGE_BUILD_APPS "Build and install CLI and local web applications" ON)
 option(NUMFORGE_BUILD_ENGINE "Build and install the standalone expression engine" ON)
+option(NUMFORGE_BUILD_PYTHON "Build the optional CPython extension" OFF)
 
 option(NUMFORGE_BUILD_BENCHMARKS "Build opt-in performance benchmarks" OFF)
 option(NUMFORGE_REQUIRE_NODE_TESTS "Fail test configuration if Node.js is unavailable" OFF)
@@ -140,8 +141,8 @@ add_library(numforge STATIC
 
 # Public expression engine; application state and HTTP remain private.
 if(NOT NUMFORGE_BUILD_ENGINE AND
-   (NUMFORGE_BUILD_APPS OR BUILD_TESTING OR NUMFORGE_BUILD_FUZZERS OR NUMFORGE_BUILD_BENCHMARKS))
-    message(FATAL_ERROR "Applications, tests, fuzzers and benchmarks require NUMFORGE_BUILD_ENGINE=ON")
+   (NUMFORGE_BUILD_APPS OR BUILD_TESTING OR NUMFORGE_BUILD_FUZZERS OR NUMFORGE_BUILD_BENCHMARKS OR NUMFORGE_BUILD_PYTHON))
+    message(FATAL_ERROR "Applications, tests, fuzzers, benchmarks and Python require NUMFORGE_BUILD_ENGINE=ON")
 endif()
 if(NUMFORGE_BUILD_ENGINE)
     add_library(numforge_engine STATIC
@@ -220,6 +221,27 @@ target_include_directories(numforge
 )
 
 numforge_enable_diagnostics(numforge)
+
+if(NUMFORGE_BUILD_PYTHON)
+    if(NUMFORGE_BUILD_BENCHMARKS OR NUMFORGE_ENABLE_COVERAGE OR NUMFORGE_BUILD_FUZZERS)
+        message(FATAL_ERROR "Build Python separately from benchmark/coverage/fuzzer instrumentation")
+    endif()
+    find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter Development.Module)
+    set_target_properties(numforge numforge_engine PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    Python3_add_library(numforge_python MODULE WITH_SOABI bindings/python/native.c)
+    set_target_properties(numforge_python PROPERTIES OUTPUT_NAME _native)
+    target_link_libraries(numforge_python PRIVATE numforge_engine)
+    target_compile_definitions(numforge_python PRIVATE NUMFORGE_CORE_VERSION="${PROJECT_VERSION}")
+    numforge_enable_diagnostics(numforge_python)
+    if(DEFINED NUMFORGE_PYTHON_OUTPUT_DIRECTORY)
+        set_target_properties(numforge_python PROPERTIES
+            LIBRARY_OUTPUT_DIRECTORY "${NUMFORGE_PYTHON_OUTPUT_DIRECTORY}")
+        foreach(config DEBUG RELEASE RELWITHDEBINFO MINSIZEREL)
+            set_target_properties(numforge_python PROPERTIES
+                LIBRARY_OUTPUT_DIRECTORY_${config} "${NUMFORGE_PYTHON_OUTPUT_DIRECTORY}")
+        endforeach()
+    endif()
+endif()
 
 if(BUILD_TESTING)
     target_compile_definitions(numforge PRIVATE

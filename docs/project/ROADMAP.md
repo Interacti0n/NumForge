@@ -82,7 +82,9 @@ in the current source tree as `NumForge::engine`; see the [engine API](../refere
 Explicit expression parameters and direct typed argument constructors are public.
 The [exact polynomial coefficient solver](../reference/POLYNOMIAL_API.md) is now
 part of the numeric library and shared with application adapters. Next: deliberate
-application convergence, public numerical-solver contracts, then a narrow Python proof. New mathematics follows the
+application convergence and public numerical-solver contracts. A narrow source-built
+[Python adapter](../guides/PYTHON.md) now validates use outside the application;
+publication and broader parallel/threading support remain separate work. New mathematics follows the
 [feature completion checklist](FEATURE_CHECKLIST.md). Symbolic mathematics, WASM
 and a public REST service remain later work, not present interfaces.
 

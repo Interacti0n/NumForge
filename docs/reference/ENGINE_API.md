@@ -2,7 +2,8 @@
 
 Status: implemented in the current source tree, after 2.4.0. Previously published
 2.4.0 SDK archives do not contain this API. It is the first public engine subset,
-not a symbolic system, Python package or new REST endpoint. The separate
+not a symbolic system or new REST endpoint. A separate source-built
+[Python adapter](../guides/PYTHON.md) now uses this API. The separate
 [exact polynomial solver](POLYNOMIAL_API.md) is available directly in the numeric
 library, without the engine.
 
@@ -201,4 +202,5 @@ algorithm performance evidence; this change claims no speedup.
 | --- | --- |
 | C / C++ | Public numeric calls and this engine API |
 | CLI / local HTTP / Web | Existing interfaces over the same parser/evaluator; session/quantity capabilities remain application-owned |
-| Python / WASM / versioned public REST service | Planned; no binding, endpoint or deployment added here |
+| Python | Experimental source-built CPython adapter; see its guide for supported subset and packaging |
+| WASM / versioned public REST service | Planned; no endpoint or deployment added here |

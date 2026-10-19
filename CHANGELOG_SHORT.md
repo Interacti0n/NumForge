@@ -5,6 +5,8 @@ details and the [2.4.0 release record](docs/project/RELEASE_2_4.md) for validati
 
 ## Unreleased
 
+- Add a source-built Python adapter with exact inputs, high-precision roots, parameters and exact equation descriptors.
+
 - Add typed expression parameters and a public exact polynomial solver without parser dependencies.
 
 - Begin the modular mathematics platform with a standalone public C expression engine.

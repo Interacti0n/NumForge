@@ -13,6 +13,7 @@ testing entry points remain directly under `docs/`.
 - [Unit converter](guides/UNIT_CONVERTER.md): categories, preview, swap and history.
 - [C library guide](guides/LIBRARY_GUIDE.md): build, install and consume the library.
 - [Developer SDK](guides/SDK.md): prebuilt C/C++ library, toolchains and quick start.
+- [Python adapter](guides/PYTHON.md): source-built CPython package, lossless inputs and isolated installation checks.
 
 ## Look up a contract — `reference/`
 
@@ -105,6 +106,7 @@ for specific source snapshots, not promises about every machine.
 - [Feature completion checklist](project/FEATURE_CHECKLIST.md): API, accuracy, examples, testing and performance requirements.
 
 - [Roadmap](project/ROADMAP.md): available features and future work.
+- [Initial Python adapter verification](project/PYTHON_ADAPTER_2026_10_19.md): installed-wheel isolation, accuracy checks and remaining release scope.
 - [Equation release readiness](project/EQUATION_RELEASE_AUDIT_2026_10_19.md): supported scope, completed editor, regression/device checks and CI/package publication gates.
 - [Presentation](project/PROJECT_PRESENTATION.md): README assets and screenshots.
 - [Release packaging](project/RELEASE_PACKAGING.md): archives and automation.

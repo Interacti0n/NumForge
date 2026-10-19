@@ -99,9 +99,11 @@ require implementing every future language binding in the same change.
    The application delegates to it. Further solver work must keep root multiplicity, exact radicals,
    approximation, domain checks and convergence/coverage diagnostics explicit.
    Validate using an installed external consumer before adapting HTTP.
-4. **Python proof:** a small binding over the C APIs, including lossless inputs,
-   ownership, exceptions and precision. Distribution/wheels and thread behavior
-   need their own validation. Python is not implemented by this first slice.
+4. **Python proof:** the experimental [CPython adapter](../guides/PYTHON.md) is now
+   source-built over the public APIs, with lossless inputs, owned results, exceptions,
+   parameters and exact polynomial descriptors. Its source/wheel installation is
+   checked separately. Native calls retain the GIL; broad wheel publication and
+   parallel/free-threaded execution remain separate work.
 5. **New mathematics:** add matrices, dataset statistics and numerical methods
    as complete use cases; make dependencies optional when this has a real benefit.
 6. **Later:** symbolic representation/assumptions, scientific simulations, WASM
