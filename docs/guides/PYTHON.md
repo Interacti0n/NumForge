@@ -49,6 +49,7 @@ configured CI coverage is not a claim that those remote jobs have already run.
 | `solve_quadratic(a, b, c, *, ...)` | Exact real coefficients; linear/constant reduction, irrational/complex descriptors and multiplicities |
 | `Matrix(rows, *, ...)` | Immutable rational matrices; exact products, determinants, rank and square/general system solves |
 | `describe(values, *, ...)` | Exact rational batch count/sum/extrema/mean and population/sample variance, copied into StatisticsSummary |
+| `find_root(function, lower, upper, *, ...)` | Public C bracket search with exact callback coordinates and explicit convergence diagnostics |
 
 ```python
 from decimal import Decimal
@@ -110,6 +111,19 @@ The [matrix reference](../reference/MATRIX_API.md#python-and-other-interfaces)
 owns input/shape rules, method return types, errors and operation budgets.
 The [linear-system reference](../reference/LINEAR_SYSTEM_API.md#python) owns
 classification, pivot/free columns, particular/kernel matrices and their lifetime.
+
+## Bounded numerical roots
+
+```python
+root = numforge.find_root(lambda x, places: x*x-2, 1, 2, continuous=True)
+assert root.kind == "found" and not root.exact_zero
+assert abs(root.x*root.x-2) <= Fraction(1, 10**12)
+```
+
+The callback receives an exact Fraction coordinate and requested fractional scale;
+the C numerical kernel performs the search. Here `continuous=True` asserts the
+known continuity of this polynomial. See the [Python root contract](../reference/NUMERICAL_API.md#python-single-root-search)
+for sample accuracy, tolerances, outcomes, budgets and caller responsibilities.
 
 ## Input, precision and results
 

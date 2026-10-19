@@ -63,6 +63,11 @@ including exact zeros, continuity, callback/resource failures, preserved outputs
 and an independent 1000-place reference. `numeric_root_tests` and
 `numeric_root_scan_tests` retain equation/domain/scan regressions. Installed C/C++
 consumers and SDK examples check the new API with the engine disabled.
+Python `NumericalRootTests` exercises the same kernel through callable samples:
+an independent 70-place Decimal reference, 1000-digit offsets/tiny spans, explicit
+continuity, all diagnostic outcomes, callback exception identity, nested native
+calls, frozen result lifetime and budget failure/recovery. Run it through the
+isolated package check below; no Python search algorithm is used.
 `numerical_scan_tests` checks public multiple-root scanning separately, including
 exact rational contacts, 1000-digit offsets/scales, partial-limit diagnostics,
 callback/allocation failure and borrowed result lifetimes. The equation scan

@@ -11,7 +11,7 @@ core_version = _native.core_version
 Error = _native.Error
 __all__ = ["Error", "Result", "Expression", "PolynomialRoot", "PolynomialSolution",
            "number", "evaluate", "prepare", "sqrt", "solve_quadratic", "Matrix", "LinearSolution",
-           "describe", "StatisticsSummary", "core_version"]
+           "describe", "StatisticsSummary", "find_root", "RootResult", "core_version"]
 
 _ROUNDING = {"toward_zero": 0, "away_from_zero": 1, "floor": 2,
              "ceiling": 3, "half_up": 4, "half_even": 5}
@@ -176,6 +176,70 @@ def sqrt(value, *, precision=34, rounding="half_even", time_limit_ms=5000,
     value = number(value)
     expression = prepare("sqrt(x)", ("x",))
     return Result(_native.evaluate_prepared(expression._handle, (value._handle,), options))
+
+
+@dataclass(frozen=True, slots=True)
+class RootResult:
+    """Bounded search diagnostics, not a certified root enclosure or completeness proof.
+
+    x is an exact sampled Fraction coordinate only when kind='found'; its root
+    status may be approximate. exact_zero records a proven zero of the callback's
+    returned value. lower/upper are final search bounds, residual is Decimal/None.
+    """
+    kind: str
+    x: Fraction | None
+    lower: Fraction
+    upper: Fraction
+    residual: Decimal | None
+    exact_zero: bool
+    iterations: int
+    evaluations: int
+
+
+def find_root(function, lower, upper, *, continuous=False, decimal_places=34,
+              x_tolerance="1E-12", residual_tolerance="1E-12", max_iterations=96,
+              max_evaluations=192, time_limit_ms=5000,
+              allocation_bytes=64 * 1024 * 1024, single_allocation=512 * 1024):
+    """Search a bracket with the public C bisection kernel.
+
+    function(x, decimal_places) receives an exact Fraction and working fractional
+    scale (including a doubled-scale verification call). Return a real number()/
+    Result input, or None for a non-real/undefined sample. Decimal inputs denote
+    exact finite values; use an approximate Result for unproven computed decimals.
+    Supply accurate deterministic samples; callback exceptions propagate unchanged.
+
+    continuous=True is YOUR assertion of continuity on the interval, not an engine
+    proof. Without it only proven sampled zeros can be accepted. Width/residual
+    thresholds are separate positive absolute tolerances, never certified errors.
+    Native work shares one cooperative budget; Python work is not preempted or
+    counted as C allocation. No session, expression parser or Python root algorithm.
+    """
+    if not callable(function):
+        raise TypeError("function must be callable as function(x, decimal_places)")
+    if type(continuous) is not bool:
+        raise TypeError("continuous must be a bool")
+    for name, value, minimum, maximum in (("decimal_places", decimal_places, 1, 10000),
+            ("max_iterations", max_iterations, 1, _native.MAX_ALLOCATION),
+            ("max_evaluations", max_evaluations, 4, _native.MAX_ALLOCATION)):
+        if type(value) is not int:
+            raise TypeError(f"{name} must be an integer")
+        if not minimum <= value <= maximum:
+            raise ValueError(f"{name} must be between {minimum} and {maximum}")
+    if type(residual_tolerance) is not int and not isinstance(residual_tolerance, (str, Decimal)):
+        raise TypeError("residual_tolerance must be a finite decimal literal, Decimal or int")
+    options = _options(time_limit_ms=time_limit_ms, allocation_bytes=allocation_bytes,
+                       single_allocation=single_allocation)
+    values = tuple(number(value) for value in (lower, upper, x_tolerance))
+
+    def sample(pair, places):
+        value = function(_fraction(pair), places)
+        return None if value is None else number(value)._handle
+
+    data = _native.find_root(sample, tuple(value._handle for value in values), str(residual_tolerance),
+                            (decimal_places, max_iterations, max_evaluations, continuous), options)
+    return RootResult(data["kind"], _fraction(data["x"]), _fraction(data["lower"]),
+                      _fraction(data["upper"]), None if data["residual"] is None else Decimal(data["residual"]),
+                      data["exact_zero"], data["iterations"], data["evaluations"])
 
 
 @dataclass(frozen=True, slots=True)

@@ -9,6 +9,10 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ### Numerical foundation
 
+- Add Python `find_root` and immutable `RootResult` over the public C bisection
+  kernel. Preserve exact Fraction coordinates, explicit continuity assumptions,
+  diagnostic outcomes, callback exceptions and shared cooperative budgets. Add
+  independent high-precision, lifetime, limit/recovery tests and an installed example.
 - Centralize private numeric status conversion at the engine API boundary, share
   equivalent integer mappings and retain legacy decimal error semantics. Remove
   unnecessary application/transport implementation includes and guard transport

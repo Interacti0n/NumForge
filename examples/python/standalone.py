@@ -5,6 +5,12 @@ import numforge
 statistics = numforge.describe([0, 0, 1])
 print("Exact statistics:", statistics.count, statistics.mean, statistics.variance_population, statistics.variance_sample)
 
+# The caller supplies exact samples and explicitly asserts continuity of x*x-2.
+search = numforge.find_root(lambda x, places: x*x-2, 1, 2, continuous=True)
+assert search.kind == "found" and not search.exact_zero
+assert abs(search.x*search.x-2) <= Fraction(1, 10**12)
+print("Bounded root:", search.x, "residual:", search.residual)
+
 a = numforge.Matrix([[0, 2], [3, 4]])
 b = numforge.Matrix([[7], [15]])
 print("Exact determinant:", a.determinant())

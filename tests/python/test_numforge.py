@@ -613,5 +613,142 @@ class StatisticsTests(unittest.TestCase):
                             [Fraction(-1, 3), Fraction(1, 6), Fraction(2, 3)])
 
 
+class NumericalRootTests(unittest.TestCase):
+    @staticmethod
+    def square(x, places):
+        return x*x-2
+
+    def test_exact_coordinates_and_owned_frozen_diagnostics(self):
+        calls = []
+        def linear(x, places):
+            self.assertIsInstance(x, Fraction)
+            calls.append(places)
+            return x-Fraction(1, 2)
+        report = nf.find_root(linear, 0, 1)
+        self.assertEqual((report.kind, report.x, report.residual, report.exact_zero),
+                         ("found", Fraction(1, 2), Decimal(0), True))
+        self.assertEqual((report.iterations, report.evaluations), (1, len(calls)))
+        with self.assertRaises(FrozenInstanceError):
+            report.x = 0
+        del linear
+        gc.collect()
+        self.assertEqual(report.x, Fraction(1, 2))
+        endpoint = nf.find_root(lambda x, p: x-1, 1, 2)
+        self.assertEqual((endpoint.x, endpoint.iterations, endpoint.evaluations), (1, 0, 1))
+
+    def test_independent_high_precision_reference_and_verification_scale(self):
+        scales = []
+        def square(x, places):
+            scales.append(places)
+            return x*x-2
+        report = nf.find_root(square, 1, 2, continuous=True, decimal_places=100,
+            x_tolerance="1E-70", residual_tolerance="1E-70", max_iterations=260,
+            max_evaluations=300, time_limit_ms=10000, allocation_bytes=256*1024*1024)
+        with localcontext() as context:
+            context.prec = 110
+            reference = Fraction(Decimal(2).sqrt())
+        self.assertEqual(report.kind, "found")
+        self.assertFalse(report.exact_zero)
+        self.assertLess(abs(report.x-reference), Fraction(1, 10**70))
+        self.assertLessEqual(report.residual, Decimal("1E-70"))
+        self.assertEqual(scales[-1], 200)
+        self.assertEqual(len(scales), report.evaluations)
+        self.assertLessEqual(report.iterations, 260)
+        self.assertLessEqual(report.evaluations, 300)
+
+    def test_thousand_digit_offset_and_tiny_span_are_lossless(self):
+        for lower, step in ((Fraction(10**1000), Fraction(1)), (Fraction(0), Fraction(1, 10**1000))):
+            target = lower+step/2
+            result = nf.find_root(lambda x, p: x-target, lower, lower+step, decimal_places=1010)
+            self.assertEqual((result.kind, result.x, result.exact_zero), ("found", target, True))
+
+    def test_outcomes_are_not_exceptions_or_no_root_proofs(self):
+        self.assertEqual(nf.find_root(self.square, 1, 2).kind, "domain_unverified")
+        self.assertEqual(nf.find_root(lambda x, p: x*x+1, 0, 1).kind, "not_bracketed")
+        self.assertEqual(nf.find_root(lambda x, p: None, 0, 1).kind, "domain_gap")
+        limited = nf.find_root(self.square, 1, 2, continuous=True, max_iterations=1)
+        self.assertEqual((limited.kind, limited.x, limited.residual), ("iteration_limit", None, None))
+        self.assertFalse(limited.exact_zero)
+        unstable = nf.find_root(lambda x, p: self.square(x, p) if p == 34 else 1,
+                                1, 2, continuous=True)
+        self.assertEqual(unstable.kind, "precision_limit")
+
+    def test_sample_provenance_and_callback_exceptions_are_preserved(self):
+        approximate = nf.sqrt(2)
+        result = nf.find_root(lambda x, p: approximate, 0, 1)
+        self.assertEqual(result.kind, "not_bracketed")
+        rounded_zero = nf.evaluate("sqrt(2)-sqrt(2)")
+        self.assertFalse(rounded_zero.exact)
+        result = nf.find_root(lambda x, p: rounded_zero, 0, 1, continuous=True)
+        self.assertEqual((result.kind, result.x, result.exact_zero), ("not_bracketed", None, False))
+        for bad in (0.5, True, [], nf.sqrt(-1)):
+            with self.subTest(bad=bad), self.assertRaises(TypeError):
+                nf.find_root(lambda x, p: bad, 0, 1)
+        for error in (ValueError("callback failed"), KeyboardInterrupt()):
+            def failing(x, p):
+                raise error
+            with self.assertRaises(type(error)) as caught:
+                nf.find_root(failing, 0, 1)
+            self.assertIs(caught.exception, error)
+        # A callback may invoke other NumForge operations under the same scope.
+        def nested(x, p):
+            inner = nf.find_root(lambda t, q: t, 0, 1)
+            return nf.evaluate("x-0.5", variables={"x": x-inner.x}, precision=p)
+        self.assertTrue(nf.find_root(nested, 0, 1).exact_zero)
+
+    def test_prepared_engine_callback_shares_the_search_scope(self):
+        expression = nf.prepare("cos(x)-x", ("x",))
+        def sample(x, places):
+            # Additional significant digits accommodate cancellation in cos(x)-x.
+            return expression.evaluate((x,), precision=places+24)
+        result = nf.find_root(sample, 0, 1, continuous=True)
+        self.assertEqual(result.kind, "found")
+        self.assertFalse(result.exact_zero)
+        reference = Fraction(Decimal("0.7390851332151606416553120876738734040134117589007574649656806357732846548835475945993761069317665318"))
+        self.assertLess(abs(result.x-reference), Fraction(1, 10**12))
+        self.assertLessEqual(result.residual, Decimal("1E-12"))
+        # A transcendental path retains approximate provenance even at cos(0)=1.
+        self.assertEqual(Decimal(str(expression.evaluate((0,)))), 1)
+
+    def test_validation_and_resource_failure_recovery(self):
+        for kwargs, error in (({"continuous": 1}, TypeError), ({"decimal_places": True}, TypeError),
+                ({"decimal_places": 0}, ValueError), ({"decimal_places": 10001}, ValueError),
+                ({"max_iterations": 0}, ValueError), ({"max_evaluations": 3}, ValueError),
+                ({"residual_tolerance": Fraction(1, 3)}, TypeError), ({"x_tolerance": 0.1}, TypeError)):
+            with self.subTest(kwargs=kwargs), self.assertRaises(error):
+                nf.find_root(self.square, 1, 2, **kwargs)
+        for lower, upper in ((1, 1), (2, 1)):
+            with self.assertRaises(nf.Error) as caught:
+                nf.find_root(self.square, lower, upper)
+            self.assertEqual(caught.exception.status, "invalid_argument")
+        for bounds in ((0.1, 1), (nf.sqrt(2), 2), (nf.sqrt(-1), 2)):
+            with self.subTest(bounds=bounds), self.assertRaises(TypeError):
+                nf.find_root(self.square, *bounds)
+        with self.assertRaises(TypeError):
+            nf.find_root("x*x-2", 1, 2)
+        for kwargs in ({"x_tolerance": 0}, {"residual_tolerance": "-1"}, {"residual_tolerance": "NaN"}):
+            with self.assertRaises(nf.Error):
+                nf.find_root(self.square, 1, 2, **kwargs)
+        for limits, status in (({"time_limit_ms": 0}, "time_limit"), ({"allocation_bytes": 0}, "memory_limit"),
+                               ({"single_allocation": 0}, "memory_limit")):
+            calls = []
+            with self.assertRaises(nf.Error) as caught:
+                nf.find_root(lambda x, p: calls.append(x), 0, 1, **limits)
+            self.assertEqual((caught.exception.status, caught.exception.offset), (status, 0))
+            self.assertFalse(calls)
+        success = False
+        for size in range(1024, 65537, 1024):
+            try:
+                result = nf.find_root(lambda x, p: x, 0, 1, allocation_bytes=size)
+            except nf.Error as error:
+                self.assertEqual(error.status, "memory_limit")
+            else:
+                self.assertEqual((result.x, result.exact_zero), (0, True))
+                success = True
+                break
+        self.assertTrue(success)
+        self.assertTrue(nf.find_root(lambda x, p: x, 0, 1).exact_zero)
+
+
 if __name__ == "__main__":
     unittest.main()

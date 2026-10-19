@@ -201,7 +201,85 @@ public API below; production single-root solving also calls the public entry poi
 Formatting and HTTP serialization read opaque results through public getters.
 Brent/hybrid research retains a private callback hook without result storage.
 Bracket refinement uses bisection.
-This slice adds no direct Python root function, CLI root command or new REST route.
+The Python adapter below exposes this same kernel. No new CLI command or REST
+route is added.
+
+## Python single-root search
+
+The source-built [Python adapter](../guides/PYTHON.md#bounded-numerical-roots)
+provides `find_root(function, lower, upper, *, continuous=False,
+decimal_places=34, x_tolerance="1E-12", residual_tolerance="1E-12",
+max_iterations=96, max_evaluations=192, time_limit_ms=5000,
+allocation_bytes=64*1024*1024, single_allocation=512*1024)`.
+It calls `numforge_root_solve`; there is no separate Python search algorithm.
+
+`function(x, decimal_places)` receives an exact Fraction coordinate and the
+requested working fractional scale, including a doubled-scale final check.
+It must return an accurate deterministic real sample as int, Fraction, finite
+Decimal/numeric literal text or Result; None denotes an undefined/non-real point.
+Binary floats, booleans and complex samples are rejected. Exceptions, including
+KeyboardInterrupt, propagate unchanged after native cleanup. Callback side effects
+are not rolled back. Text expressions are not accepted directly; a callback can
+use a prepared expression or another public numeric operation.
+
+Fraction/int arithmetic can supply exact samples. Decimal/text are interpreted
+as exact finite input, including zero: do not use a rounded decimal zero as proof
+of a mathematical zero. For unproven computed approximations return an approximate
+Result instead. The adapter proves zero only from exact integer/rational storage;
+it does not validate that a callback implements the intended mathematical function.
+For approximate evaluation the callback must choose sufficient working precision
+for its magnitudes and cancellation. Engine `precision` means significant digits;
+it is not interchangeable with the callback's fractional scale. Reusing a stale
+approximation at doubled scale does not establish improved accuracy.
+
+`continuous=True` is the caller's assertion of real continuity on the interval,
+not automatic domain analysis. The default supplies no evidence, so approximate
+acceptance reports `domain_unverified`; proven sampled zeros can still succeed.
+Never assert continuity for an unknown expression or across a pole to force a
+successful result. The HTTP expression workflow has a separate private domain
+adapter; this callable interface does not inherit that analysis.
+
+Bounds and x_tolerance accept exact real number() inputs, with lower < upper
+and x_tolerance > 0. residual_tolerance accepts a positive finite decimal literal,
+Decimal or int, avoiding silent conversion of a recurring tolerance. decimal_places
+is an integer 1..10000; max_iterations is positive and max_evaluations >= 4,
+both fitting the platform size range. Increasing scale alone does not tighten
+the absolute tolerances; raise scale, iteration/evaluation limits and budgets
+together for demanding searches.
+
+The frozen `RootResult` copies all fields and retains no native or callback handle:
+
+| Field | Python value |
+| --- | --- |
+| `kind` | `found`, `not_bracketed`, `domain_gap`, `domain_unverified`, `iteration_limit` or `precision_limit`, with the meanings above |
+| `x` | Sampled Fraction coordinate for `found`; otherwise None |
+| `lower`, `upper` | Final Fraction search bounds, not certified enclosures |
+| `residual` | Nonnegative stored Decimal residual for `found`; otherwise None |
+| `exact_zero` | Whether the accepted sample had an exact-zero proof from its returned value |
+| `iterations`, `evaluations` | Native work counts, including final verification |
+
+An exact Fraction coordinate does not make the root exact. A non-`found` result
+does not prove there are no roots. There is no universal error certificate,
+multiple-root enumeration or automatic tangent discovery.
+
+Input number() conversion precedes the search scope. Native input copies, callback
+conversion, search and field serialization inherit one cooperative scope. Nested
+NumForge calls do not reset/end it. Python Fraction/Decimal/object work is outside
+C allocation accounting; callbacks retain the GIL and cannot be preempted by the
+native deadline. Runtime failures publish no partial report and use the existing
+Error time/memory/numeric statuses with offset zero. Callback exceptions keep their
+original type, identity and diagnostics. Python validation uses TypeError/ValueError;
+invalid native bounds/tolerances use Error. Results and inputs remain usable
+independently after success or failure.
+
+Python tests compare a 70-place result with an independent Decimal square root,
+check doubled-scale verification, 1000-digit offsets/tiny spans, exact endpoints,
+diagnostic outcomes, frozen lifetime, callback exceptions, nested calls and budget
+failure/recovery. The [standalone example](../../examples/python/standalone.py)
+runs from an installed wheel. The C [root benchmark](../benchmarks/NUMERICAL_2026_10_19.md)
+remains the algorithm baseline; Python callback overhead is additional and no
+cross-language speedup is claimed. Multiple-root scanning and other numerical
+Python adapters remain future work.
 
 ## Multiple-root scanning
 

@@ -17,6 +17,10 @@ print(statistics.mean)                 # 1/3
 print(statistics.variance_population)  # 2/9
 print(statistics.variance_sample)      # 1/3; None for a singleton
 
+# Exact samples of a known continuous polynomial; the search itself runs in C.
+search = numforge.find_root(lambda x, places: x*x-2, 1, 2, continuous=True)
+print(search.kind, search.x, search.residual, search.exact_zero)
+
 expression = numforge.prepare("x*x+y", parameters=("x", "y"))
 value = expression.evaluate({"x": Fraction(1, 3), "y": Fraction(1, 9)})
 print(value.as_fraction())  # Fraction(2, 9)
@@ -61,6 +65,16 @@ frozen StatisticsSummary with count, sum, minimum, maximum, mean and both varian
 Population variance divides by n; sample variance divides by n-1 and is None for
 a singleton. Inputs must be nonempty and exact real values. There is no precision
 option; no dataset is retained by the copied Fraction result fields.
+
+`find_root(function, lower, upper)` delegates bounded bisection to the public C
+numerical kernel. The callback receives an exact Fraction and requested fractional
+scale; it returns a real sample or None for a domain gap. `continuous=True` is the
+caller's continuity assertion, required for approximate acceptance; it is not
+automatic domain analysis. The frozen RootResult has diagnostic kind, optional
+Fraction coordinate/Decimal residual, final bounds, exact_zero and work counts.
+An exact coordinate is not proof of an exact root or complete discovery. Separate
+absolute tolerances and work limits control convergence. Callback exceptions
+propagate; Python callback work is not preempted by the cooperative C budget.
 
 All six C rounding modes are supported by name: `toward_zero`, `away_from_zero`,
 `floor`, `ceiling`, `half_up`, `half_even`. C failures raise `numforge.Error` with
