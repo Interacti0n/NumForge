@@ -1,9 +1,10 @@
 # Numerical API
 
 `<numforge/numerical.h>` exposes exact rational grids, adaptive interval scheduling
-and bounded real-root searches in `NumForge::numforge`. It needs neither an
+and bounded real-root searches; `<numforge/curve.h>` supplies sampled curve
+acceptance policies. Both belong to `NumForge::numforge` and need neither an
 expression engine nor application state.
-The header is authoritative for callbacks, precision, ownership and failures.
+The public headers are authoritative for callbacks, precision, ownership and failures.
 
 ## Exact uniform grids
 
@@ -24,7 +25,7 @@ remain. Bounds are preserved. An inherited budget is checked before and after
 callbacks, which must cooperate with cancellation themselves.
 
 Private uniform graph sampling and the 33-point adaptive seed grid share this
-kernel. Typed expression evaluation, phase tracking, adaptive acceptance and
+kernel. Typed expression evaluation, phase capture and
 screen projection remain private; the root scanner retains its own bounded
 candidate traversal. There is no new Python, CLI or REST grid operation.
 See the [benchmark guide](../../benchmarks/README.md#exact-grid-baseline).
@@ -57,9 +58,47 @@ their own error, domain, classification and connection metadata.
 
 The precision graph path shares this scheduler, retaining its 33 seeds, point/depth
 limits, projection reserves, phase/jump/pole checks and atomic outer result.
-Its typed sampling, acceptance rules and periodic-extremum probes remain private;
+Its typed sampling, metadata extraction and periodic-extremum probes remain private;
 the screen/double sampler is separate. This adds no Python, CLI or REST operation.
 See the [checked benchmark](../../benchmarks/README.md#adaptive-refinement-baseline).
+
+## Sampled curve acceptance
+
+Create an owned `NumForgeCurveClassifier` with `numforge_curve_classifier_create`
+from `<numforge/curve.h>`, then call `numforge_curve_assess` with left, midpoint and
+right sample views. The classifier copies all policy decimals, camera settings
+and channel kinds; those inputs can be changed or released afterwards. Samples
+are borrowed for the assessment only. Destroy the thread-confined handle with
+`numforge_curve_classifier_destroy`. Failures preserve the output/handle pointer;
+runtime budgets are inherited without being reset. A failed assessment's scratch
+state can be reused after ending the caller's failure scope.
+
+The policy supplies chord tolerance, broad/tight phase spans, coarse width,
+optional expanded camera bounds/tolerance/pixel width and explicit permission
+for smooth display relaxation. Captured channels describe corresponding periodic
+arguments (`PHASE`, in the same units as the spans) or step-function values
+(`STEP`, requiring equality). Unknown, missing or mismatched channels block
+acceptance. The caller must provide the actual parameter midpoint, even when its
+decimal projection collapses onto another coordinate; real x projections must
+be nondecreasing. The [C example](../../examples/sdk/curve.c) accepts a linear
+triple and then rejects it when a captured phase becomes unsafe.
+
+The result is `ACCEPT`, `SPLIT` or `SKIP`, with a flag for offscreen deferral.
+All-non-real triples skip; mixed triples split. A monotone triple narrowly outside
+one camera edge may defer refinement, without connecting it. STEP changes cannot
+be accepted, including under smooth-width relaxation. Camera relaxation needs
+both a small pixel width and a passing camera chord error with tight phases.
+The public header specifies the precise sampled policy.
+
+Arithmetic is exact on the supplied finite decimal values, including cancellation
+at 1000-digit offsets. Those values may approximate the underlying function.
+Acceptance is a display heuristic: it does not certify continuity, exclude hidden
+features or bound error throughout an interval. Original typed graph values and
+their domain/complex/quantity classifications remain intact in the adapter.
+Precision graphs now use this policy; expression metadata extraction, conservative
+domain analysis and periodic-extremum searches remain private. This adds no new
+Python function, CLI command or HTTP route. See the
+[benchmark and graph parity record](../../benchmarks/README.md#curve-acceptance-baseline).
 
 ## Use and result meaning
 

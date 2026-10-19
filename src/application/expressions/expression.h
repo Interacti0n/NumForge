@@ -10,6 +10,7 @@
 typedef struct ApplicationExpression ApplicationExpression;
 
 #define APPLICATION_EXPRESSION_MAX_SAMPLES 1024U
+#define APPLICATION_EXPRESSION_MAX_PHASES 64U
 
 typedef struct ApplicationExpressionSample
 {
@@ -50,6 +51,7 @@ CalculatorStatus application_expression_domain(bool *verified, const Application
 bool application_expression_graph_integer_domain(const ApplicationExpression *expression);
 /* Forward trig offset: 1 = sin half-period, 0 = cos, -1 = tan/unsupported;
  * -2 = discrete step value, which must match across an accepted interval. */
+size_t application_expression_graph_phase_count(const ApplicationExpression *expression);
 int application_expression_graph_peak_offset(const ApplicationExpression *expression,size_t phase);
 void application_expression_destroy(ApplicationExpression *expression);
 

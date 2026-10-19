@@ -9,6 +9,11 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ### Numerical foundation
 
+- Expose `curve.h` with owned, reusable sampled-curve policies for midpoint chord
+  error, periodic/step guards, smooth-width relaxation and offscreen deferral.
+  Share them with precision graphs through explicit metadata views, keeping AST,
+  session and typed-domain handling in the adapter. Add high-precision/boundary,
+  allocation/budget/reuse tests, installed C/C++ checks, an SDK example and benchmark.
 - Expose bounded breadth-first interval refinement with caller-owned samples and
   acceptance rules. Share scheduling, shifted-index tracking and adaptive resource
   admission with precision graphs; retain private phase/domain/connection checks.

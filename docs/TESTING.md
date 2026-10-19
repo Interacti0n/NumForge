@@ -74,6 +74,14 @@ also covers a `1E-1000` span at a `1E1000` offset. Instrumented teardown checks
 zero live allocations. Installed C/C++ consumers and the standalone SDK example
 exercise callbacks without engine/application dependencies; the opt-in benchmark
 checks expected quadratic point counts and exact spacing outside timing.
+`numerical_curve_tests` checks shared chord, periodic-phase, step and camera rules,
+including missing metadata, strict boundary comparisons, offscreen gaps, owned
+policy copies and 1000-digit cancellation. Every constructor/assessment allocation
+failure preserves outputs, permits reuse and leaves no tracked allocations at
+teardown. C/C++ installed consumers and the SDK phase-guard example require no
+engine. Full before/after graph responses and selected browser graph scenarios
+check the application adapter; the [benchmark guide](../benchmarks/README.md#curve-acceptance-baseline)
+records the scope of that comparison.
 
 The optional [Python adapter](guides/PYTHON.md) has its own reproducible source-archive,
 wheel, isolated adapter-test and standalone-example check:

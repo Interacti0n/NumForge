@@ -4,6 +4,7 @@
 #include "src/runtime/numforge_alloc.h"
 #include <numforge/runtime.h>
 #include <numforge/numerical.h>
+#include <numforge/curve.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -139,39 +140,11 @@ typedef struct GraphRefinement {
     BigDecimal *coarse_width;
     BigDecimal *strict_phase_span;
     BigDecimal *clip_minimum, *clip_maximum, *camera_tolerance, *pixel_width;
-    bool camera;
+    NumForgeCurveClassifier *classifier;
     bool smooth;
     size_t point_limit;
     CalculatorStatus callback_status;
 } GraphRefinement;
-
-/* Deferral never accepts an edge. Three real, ordered probes outside one camera
- * edge are a bounded display heuristic, not proof that a hidden turn is absent.
- * Small x spans and the existing phase checks constrain the deferred region. */
-static CalculatorStatus adaptive_offscreen(GraphRefinement *work, size_t left, bool *deferred)
-{
-    *deferred = false;
-    int width = 0, ab = 0, bc = 0;
-    CalculatorStatus status = calculator_from_decimal_status(bigdecimal_sub(work->delta,
-        work->graph->coordinates[left + 2U].number, work->graph->coordinates[left].number));
-    if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_compare(&width, work->delta, work->coarse_width));
-    if (status != CALCULATOR_OK || width > 0) return status;
-    const BigDecimal *a = work->graph->samples[left].value.number;
-    const BigDecimal *b = work->graph->samples[left + 1U].value.number;
-    const BigDecimal *c = work->graph->samples[left + 2U].value.number;
-    status = calculator_from_decimal_status(bigdecimal_compare(&ab, a, b));
-    if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_compare(&bc, b, c));
-    if (status != CALCULATOR_OK || !((ab <= 0 && bc <= 0) || (ab >= 0 && bc >= 0))) return status;
-    bool below = true, above = true;
-    for (size_t i = left; status == CALCULATOR_OK && i <= left + 2U; ++i) {
-        int low = 0, high = 0;
-        status = calculator_from_decimal_status(bigdecimal_compare(&low, work->graph->samples[i].value.number, work->clip_minimum));
-        if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_compare(&high, work->graph->samples[i].value.number, work->clip_maximum));
-        below = below && low < 0;above = above && high > 0;
-    }
-    if (status == CALCULATOR_OK) *deferred = below || above;
-    return status;
-}
 
 static CalculatorStatus adaptive_view(ApplicationGraph *graph, bool *any)
 {
@@ -221,78 +194,23 @@ static CalculatorStatus adaptive_interval(GraphRefinement *work, size_t left,
     graph->samples[left + 1U] = evaluated[0];free(evaluated);
     graph->connect[left + 1U] = false;++graph->count;
     graph->connect[left + 2U] = false;
-    bool a = application_graph_point_kind(&graph->samples[left]) == APPLICATION_GRAPH_REAL;
-    bool b = application_graph_point_kind(&graph->samples[left + 1U]) == APPLICATION_GRAPH_REAL;
-    bool c = application_graph_point_kind(&graph->samples[left + 2U]) == APPLICATION_GRAPH_REAL;
-    if (!a && !b && !c) { *empty = true;return CALCULATOR_OK; }
-    if (a && b && c) {
-        status = calculator_from_decimal_status(bigdecimal_add(work->sum, graph->samples[left].value.number, graph->samples[left + 2U].value.number));
-        if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_mul(work->sum, work->sum, work->half));
-        if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_sub(work->delta, graph->samples[left + 1U].value.number, work->sum));
-        if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_abs(work->delta, work->delta));
-        int comparison = 0;
-        if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_compare(&comparison, work->delta, work->tolerance));
-        int camera_comparison = 1;
-        if (status == CALCULATOR_OK && work->camera) status = calculator_from_decimal_status(bigdecimal_compare(&camera_comparison, work->delta, work->camera_tolerance));
-        if (status != CALCULATOR_OK) return status;
-        bool phases_safe = true, phases_tight = true, steps_safe = true;
-        for (size_t i = left; i <= left + 2U; ++i)
-            if (graph->samples[i].phase_unknown || graph->samples[i].phase_count != graph->samples[left].phase_count) phases_safe = false;
-        /* Small phase steps avoid accepting a chord that hides whole periods.
-         * This is a sampled safeguard, not a proof of continuity. */
-        for (size_t phase = 0; phases_safe && phase < graph->samples[left].phase_count; ++phase)
-            for (size_t i = left; phases_safe && i < left + 2U; ++i)
-                for (size_t j = i + 1U; phases_safe && j <= left + 2U; ++j) {
-                    const BigDecimal *p = graph->samples[i].phases[phase], *q = graph->samples[j].phases[phase];
-                    if (p == NULL || q == NULL) { phases_safe = false;break; }
-                    if(application_expression_graph_peak_offset(work->expression,phase)==-2){
-                        int step_comparison=0;status=calculator_from_decimal_status(bigdecimal_compare(&step_comparison,p,q));
-                        if(status!=CALCULATOR_OK)return status;
-                        if(step_comparison!=0)steps_safe=false;
-                        continue;
-                    }
-                    status = calculator_from_decimal_status(bigdecimal_sub(work->delta, p, q));
-                    if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_abs(work->delta, work->delta));
-                    int phase_comparison = 0;
-                    if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_compare(&phase_comparison, work->delta, work->phase_span));
-                    if (status != CALCULATOR_OK) return status;
-                    if (phase_comparison > 0) phases_safe = false;
-                    if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_compare(&phase_comparison,work->delta,work->strict_phase_span));
-                    if (status != CALCULATOR_OK) return status;
-                    if (phase_comparison > 0) phases_tight = false;
-                }
-        bool coarse = false;
-        if (work->camera && (comparison > 0 || !steps_safe) && phases_safe && phases_tight) {
-            bool deferred = false;
-            status = adaptive_offscreen(work, left, &deferred);
-            if (status != CALCULATOR_OK) return status;
-            if (deferred) { graph->screen_clipped = true;*empty = true;return CALCULATOR_OK; }
-        }
-        /* Display approximation for a restricted continuous AST: a parent
-         * narrower than 1/256 of the view contributes two short chords.
-         * Domain/pole/jump operations keep the original strict criterion. */
-        if (!work->camera && work->smooth && phases_safe && (comparison > 0 || !phases_tight)) {
-            status = calculator_from_decimal_status(bigdecimal_sub(work->delta,
-                graph->coordinates[left + 2U].number, graph->coordinates[left].number));
-            int width_comparison = 0;
-            if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_compare(&width_comparison,work->delta,work->coarse_width));
-            if (status != CALCULATOR_OK) return status;
-            coarse = width_comparison <= 0;
-        }
-        /* Preserve small seed signals while searching large intervals, then
-         * avoid refining a discovered smooth feature beyond screen needs.
-         * Unlike the legacy floor, both pixel width AND camera error must pass. */
-        if (work->camera && work->smooth && phases_safe && phases_tight && camera_comparison <= 0) {
-            int width_comparison = 0;
-            status = calculator_from_decimal_status(bigdecimal_sub(work->delta,
-                graph->coordinates[left + 2U].number, graph->coordinates[left].number));
-            if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_compare(&width_comparison, work->delta, work->pixel_width));
-            if (status != CALCULATOR_OK) return status;
-            coarse = width_comparison <= 0;
-        }
-        if (((comparison <= 0 && phases_tight) || coarse) && phases_safe && steps_safe) {
-            graph->connect[left + 1U] = true;graph->connect[left + 2U] = true;*accepted = true;
-        }
+    NumForgeCurveSample samples[3] = {0};
+    const BigDecimal *channels[3][APPLICATION_EXPRESSION_MAX_PHASES];
+    for (size_t i = 0; i < 3; ++i) {
+        const ApplicationExpressionSample *sample = &graph->samples[left + i];
+        samples[i].x = graph->coordinates[left + i].number; samples[i].y = sample->value.number;
+        samples[i].real = application_graph_point_kind(sample) == APPLICATION_GRAPH_REAL;
+        samples[i].channel_count = sample->phase_count; samples[i].channels_unknown = sample->phase_unknown;
+        samples[i].channels = channels[i];
+        for (size_t j = 0; j < sample->phase_count; ++j) channels[i][j] = sample->phases[j];
+    }
+    NumForgeCurveAssessment assessment;
+    status = graph_numerical_status(numforge_curve_assess(&assessment, work->classifier, samples), CALCULATOR_OK);
+    if (status == CALCULATOR_OK) {
+        *accepted = assessment.decision == NUMFORGE_REFINEMENT_ACCEPT;
+        *empty = assessment.decision == NUMFORGE_REFINEMENT_SKIP;
+        graph->connect[left + 1] = graph->connect[left + 2] = *accepted;
+        graph->screen_clipped = graph->screen_clipped || assessment.screen_clipped;
     }
     return status;
 }
@@ -430,7 +348,7 @@ static CalculatorStatus adaptive_request(ApplicationGraph **result,
     ApplicationExpression *expression = NULL;
     BigRational *divisor = NULL;
     BigDecimal *number = NULL, *factor = NULL;
-    GraphRefinement work = {0};work.point_limit = point_limit;work.camera = camera;
+    GraphRefinement work = {0};work.point_limit = point_limit;
     ApplicationExpressionSample *seeds = NULL;
     bool any = false;
     int comparison = 0;
@@ -520,6 +438,16 @@ static CalculatorStatus adaptive_request(ApplicationGraph **result,
     if (status == CALCULATOR_OK) status = calculator_from_decimal_status(bigdecimal_set_string(number, "2"));
     if (status == CALCULATOR_OK) status = calculator_from_rational_status(bigrational_from_bigdecimal(divisor, number));
     work.graph = graph;work.expression = expression;work.context = context;work.error = error;work.two = divisor;
+    if (status == CALCULATOR_OK) {
+        NumForgeCurveChannelKind channels[APPLICATION_EXPRESSION_MAX_PHASES];
+        size_t channel_count = application_expression_graph_phase_count(expression);
+        for (size_t i = 0; i < channel_count; ++i) channels[i] =
+            application_expression_graph_peak_offset(expression, i) == -2 ? NUMFORGE_CURVE_STEP : NUMFORGE_CURVE_PHASE;
+        NumForgeCurveCamera view = {work.clip_minimum, work.clip_maximum, work.camera_tolerance, work.pixel_width};
+        NumForgeCurveOptions options = {work.tolerance, work.phase_span, work.strict_phase_span,
+            work.coarse_width, work.smooth, camera ? &view : NULL, channels, channel_count};
+        status = graph_numerical_status(numforge_curve_classifier_create(&work.classifier, &options), CALCULATOR_OK);
+    }
     if (status == CALCULATOR_OK) status = adaptive_refine(&work);
     if (status == CALCULATOR_OK) status = adaptive_peaks(&work);
     /* Include newly discovered extrema for resolved/smooth curves. Unresolved
@@ -531,6 +459,7 @@ static CalculatorStatus adaptive_request(ApplicationGraph **result,
     }
     status = calculator_budget_status(status);
     application_expression_samples_destroy(seeds, 33U);application_expression_destroy(expression);
+    numforge_curve_classifier_destroy(work.classifier);
     bigrational_destroy(divisor);
     bigdecimal_destroy(number);bigdecimal_destroy(factor);bigdecimal_destroy(work.half);
     bigdecimal_destroy(work.sum);bigdecimal_destroy(work.delta);bigdecimal_destroy(work.tolerance);

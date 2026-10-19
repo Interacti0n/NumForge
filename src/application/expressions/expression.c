@@ -23,8 +23,8 @@ struct ApplicationExpression
     size_t variable_count;
     bool uses_variables;
     bool graph_phases, phase_overflow;
-    const CalculatorExpression *phase_nodes[64];
-    int phase_kinds[64];
+    const CalculatorExpression *phase_nodes[APPLICATION_EXPRESSION_MAX_PHASES];
+    int phase_kinds[APPLICATION_EXPRESSION_MAX_PHASES];
     size_t phase_count;
 };
 
@@ -323,7 +323,7 @@ static void collect_graph_phases(ApplicationExpression *expression, const Calcul
                 function==CALCULATOR_FUNCTION_TRUNC||function==CALCULATOR_FUNCTION_ROUND;
             if (function == CALCULATOR_FUNCTION_SIN || function == CALCULATOR_FUNCTION_COS ||
                 function == CALCULATOR_FUNCTION_TAN || step) {
-                if (expression->phase_count < 64U) {
+                if (expression->phase_count < APPLICATION_EXPRESSION_MAX_PHASES) {
                     size_t i=expression->phase_count++;
                     expression->phase_nodes[i] = step?node:node->data.call.arguments[0];
                     expression->phase_kinds[i] = step?-2:function == CALCULATOR_FUNCTION_COS ? 0 :
@@ -341,6 +341,10 @@ void application_expression_enable_graph_phases(ApplicationExpression *expressio
 {
     if (expression == NULL || expression->graph_phases) return;
     expression->graph_phases = true;collect_graph_phases(expression,expression->tree);
+}
+size_t application_expression_graph_phase_count(const ApplicationExpression *expression)
+{
+    return expression ? expression->phase_count : 0;
 }
 int application_expression_graph_peak_offset(const ApplicationExpression *expression,size_t phase)
 {

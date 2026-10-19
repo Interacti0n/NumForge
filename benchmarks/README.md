@@ -33,6 +33,40 @@ allocation calls and cumulative requested bytes, not peak live memory. This is
 an initial baseline; no before/after speedup is established. Scheduler index
 updates retain the original worst-case quadratic work in the point limit.
 
+## Curve acceptance baseline
+
+`numerical_curve_benchmark` measures 1000 calls to the reusable public curve
+classifier, with three repetitions per case. It checks the expected decision
+outside timing. Setup, classifier creation and validation are excluded; decimal
+arithmetic and phase checks are included. The cases accept a linear triple,
+reject an unsafe phase and reject a `1E-1000` midpoint deviation at a `1E1000`
+offset under tolerance `1E-1001`. No expression parsing or rendering is measured.
+
+On Windows x64, GCC 16.2 Release with allocation instrumentation (19 October 2026),
+median times for 1000 assessments were 6.228 ms, 4.110 ms and 38.239 ms respectively.
+[Raw repetitions](../docs/benchmarks/NUMERICAL_CURVE_2026_10_19.csv) record allocation
+calls and cumulative requested bytes, not peak memory. This is an initial baseline,
+not evidence of a speedup from extraction.
+
+The MSVC Release server at `5759ea5` and the extracted implementation also returned
+identical complete parsed JSON for these `POST /api/graph/plot` requests, including
+every coordinate, connection, classification and diagnostic field:
+
+| Expression | x range | Extra query | Points |
+| --- | --- | --- | --- |
+| `x*x` | `[-1,1]` | defaults | 65 |
+| `sin(33x)` | `[-10,10]` | defaults | 723 |
+| `1/(x-0.1)` | `[-1,1]` | defaults | 771 |
+| `floor(x)` | `[-2,2]` | defaults | 153 |
+| `sqrt(x)` | `[-1,1]` | defaults | 127 |
+| `sin(x)` | `[-4.71238798038469,-4.71238098038469]` | defaults | 65 |
+| `sinh(10x)` | `[-2,2]` | fast mode, precision 40, 800x440, y `[-2,2]` | 265 |
+| `floor(x)` | `[-2,2]` | fast mode, precision 40, 800x440, y `[-1,1]` | 153 |
+
+Precision 40 selects the decimal fallback for those camera cases. This finite
+comparison complements the C and browser graph regressions; it is not a proof
+for all expressions or resource-limited executions.
+
 ## Other tools
 
 `numerical_benchmark` checks standalone rational bisection at 12 and 100 places;

@@ -5,7 +5,7 @@ details and the [2.4.0 release record](docs/project/RELEASE_2_4.md) for validati
 
 ## Unreleased
 
-- Expose exact rational grids, adaptive interval scheduling and bounded single/multiple-root searches in C, shared with graph and equation tools.
+- Expose exact grids, adaptive scheduling/curve acceptance and bounded root searches in C, shared with graph and equation tools.
 
 - Organize the platform for extension, consolidate documentation and remove shared-code/build duplication while preserving public interfaces.
 

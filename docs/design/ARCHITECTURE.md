@@ -68,7 +68,7 @@ the absence of every indirect or link-time dependency.
 | Algebra | Polynomials, algebraic equations and exact root representations | Public exact linear/quadratic coefficient solver in the numeric target; application parsing/preview adapters remain private |
 | Linear Algebra | Vectors, matrices, decompositions and linear systems | Public immutable dense rational matrices, products/determinants, rank and complete rectangular single-RHS families; approximate/complex domains and broader decompositions remain future |
 | Calculus / Analysis | Mathematical concepts and user-facing organization | Symbolic and numerical algorithms have separate owners below |
-| Numerical | Sampling, root finding, interpolation, quadrature, ODEs and optimization | Public exact uniform grids, adaptive interval scheduling, callback-based bisection and bounded multiple-root scanning; expression/domain adapters and Brent/hybrid research remain private |
+| Numerical | Sampling, root finding, interpolation, quadrature, ODEs and optimization | Public exact grids, adaptive scheduling/curve acceptance, bisection and bounded multiple-root scanning; expression/domain adapters and Brent/hybrid research remain private |
 | Statistics | Datasets, aggregates, distributions, regression and tests | Public exact rational batch summaries plus existing decimal scalar aggregates; streaming/multivariate/distribution contracts remain future |
 | Symbolic | Symbolic expression representation, assumptions and rewrites | Future; calculator AST is not automatically a public CAS representation |
 | Scientific | Units, quantities, sourced constants and domain models | Public units and private quantity expressions; broader models remain future |
@@ -120,7 +120,9 @@ the [public root-search and scan kernels](../reference/NUMERICAL_API.md); parsin
 domain analysis and HTTP serialization remain private application operations.
 Uniform graph coordinates and adaptive seed coordinates use the public exact
 grid walker. Precision graphs also share bounded breadth-first interval scheduling.
-Typed sampling, acceptance criteria and extremum probes remain application-owned.
+Their chord/phase/step acceptance and offscreen deferral share the public curve
+classifier. Typed sampling, expression metadata extraction and extremum probes
+remain application-owned; numeric rules do not inspect ASTs or sessions.
 
 The browser handles input and presentation; C performs mathematical evaluation.
 CMake embeds assets and the license in the local server, so installed applications
