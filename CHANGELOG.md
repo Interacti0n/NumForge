@@ -9,6 +9,13 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ### Equation foundation
 
+- Complete the equation editor with shared function/constant search metadata,
+  mode-aware catalogue and examples, balanced insertion, coefficient switching,
+  native validation focus and responsive pagination. Keep checked coordinates
+  and residuals expandable and preserve manual editing on catalogue failures.
+  Extend extracted-application checks to equation assets, the function registry,
+  exact radicals and checked rational numerical contacts.
+
 - Discover simple off-grid quadratic contacts and close root pairs through
   bounded original-expression midpoint/vertex samples. Preserve recurring
   rational scan coordinates in HTTP/copy actions, reject positive minima and

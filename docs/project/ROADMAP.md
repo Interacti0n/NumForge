@@ -128,7 +128,11 @@ documented HTTP contract alongside the web implementation, using the versioned
    up to 32 roots and caps total work at 4096 coordinate pairs under one shared
    budget. Midpoint/local-quadratic candidates now recover simple rational
    contacts and close pairs; positive minima and original domain holes remain
-   excluded. It does not guarantee completeness. General tangency discovery and
+   excluded. A mode-aware editor shares function descriptions and search aliases
+   with the calculator and graphs, inserts balanced calls and offers examples.
+   Checked numerical coordinates and residuals are expandable. Final regression,
+   device and publication gates are tracked in the [release checklist](EQUATION_RELEASE_AUDIT_2026_10_19.md).
+   Numerical discovery does not guarantee completeness. General tangency discovery and
    configurable tolerances remain future work.
 4. Add session user functions, local parameters and definition management,
    followed by their integration with graphs and solvers.

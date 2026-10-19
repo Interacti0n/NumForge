@@ -1,4 +1,4 @@
-# Browser polynomial equations
+# Browser equations
 
 Open **Equations / Rovnice** (`/solve?lang=en` or `/solve?lang=sk`). Enter a
 whole equation, then choose **Solve / Vyriešiť** or press Enter. For example:
@@ -15,9 +15,39 @@ have degree at most two; `x^3-x^3=0` is deliberately unsupported. Calls involvin
 x, x-dependent exponents and denominators are rejected. In particular, `x/x=1`
 is not simplified to an identity that would lose the excluded value zero.
 
-Choose **Coefficients a, b, c / Koeficienty a, b, c** in the input selector to
+Choose **Coefficients a, b, c / Koeficienty a, b, c** in the mode selector to
 use the original three fields for `a*x^2 + b*x + c = 0`. With `a = 0` this solves
 `b*x + c = 0`; `a = 0`, `b = 3`, `c = -1` gives `x = 1/3`.
+
+### Editor and examples
+
+**Functions & constants / Funkcie a konštanty** opens an editor for the current
+equation or last-focused coefficient. Keep typing while it is open. In coefficient
+mode, its a/b/c selector switches fields without losing edits. The catalogue uses
+the same C availability registry and localized descriptions/search aliases as
+the calculator and graphs. Functions insert balanced parentheses with the caret
+inside; selected text becomes the first argument, and required further arguments
+use semicolon separators. Search supports names, abbreviations and translated
+aliases. Categories and pagination keep the catalogue within ordinary phone,
+landscape and desktop viewports.
+
+Exact modes offer notation and functions for **constant exact real values**;
+functions of x and irrational constants remain unsupported there. Numerical
+modes additionally offer trigonometric/hyperbolic functions, statistics and
+π/e/φ. RNG and calculator variables are not inserted. Function availability
+does not guarantee that every argument/domain will pass numerical verification.
+
+The editor updates the original field immediately. Escape/Close returns to that
+field and keeps its caret. Clear affects the selected field. Solve/Enter closes
+the editor and submits the whole form, including all coefficients or interval
+bounds. Opening, searching or selecting an example does **not** run a solve.
+If the catalogue cannot load, manual input still works and reopening retries.
+The editor closes cleanly on tool/language navigation without losing input.
+
+**Examples / Príklady** provides three inputs per mode, including complex
+quadratic roots, a fractional coefficient, a cosine bracket, sine roots and a
+rational contact. Examples fill the appropriate coefficients/bounds and clear
+old results; explicitly choose Solve to evaluate them.
 
 Coefficients accept exact real numbers and calculator expressions, including
 finite decimal literals, fractions, integer powers and exact roots such as
@@ -108,6 +138,12 @@ the tab's inputs are retained; solving again checks the current expression.
 The same five-second/memory budget applies. All math uses BigRational/BigDecimal;
 finite-precision signs and residuals still do not give certified existence or
 root-error bounds. See the [numerical API](../reference/NUMERIC_ROOT_HTTP_API.md).
+
+Open **Checked point / Overený bod** below a numerical result to read the full
+coordinate and residual. These details stay collapsed to keep result lists
+readable. If clipboard access fails, the details open for manual selection.
+Live announcements use the result status and errors rather than rereading the
+whole root list when a copy button changes its label.
 
 ## Multiple roots on an interval
 

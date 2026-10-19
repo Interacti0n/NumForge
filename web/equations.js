@@ -12,6 +12,8 @@ function initEquations() {
     const status = document.querySelector('#equation-status'), error = document.querySelector('#equation-error');
     const roots = document.querySelector('#equation-roots');
     const sk = document.documentElement.lang === 'sk';
+    const editor = document.querySelector('#equation-editor'), editorInput = document.querySelector('#equation-editor-input');
+    let editorTarget = expression, submittingEditor = false;
     const isNumeric = kind => kind === 'numeric' || kind === 'numeric_scan';
     const words = sk ? {
         idle:'Zadaj rovnicu a zvoľ Vyriešiť.', busy:'Počítam…', finite:'Presné riešenia',
@@ -19,20 +21,20 @@ function initEquations() {
         double:'Dvojnásobný koreň', copy:'Kopírovať', copied:'Skopírované', copyError:'Kopírovanie sa nepodarilo.',
         exact:'Použi presný reálny koeficient, napr. 1/3 alebo sqrt(4).',
         variable:'Premenné ani ans tu nie sú dostupné.', invalid:'Skontroluj výraz koeficientu.',
-        limit:'Výpočet prekročil dostupný čas alebo pamäť. Skús jednoduchšie koeficienty.',
+        limit:'Výpočet prekročil dostupný čas alebo pamäť. Zjednoduš zadanie alebo zníž presnosť.',
         network:'Spojenie so serverom sa nepodarilo. Skús to znova.', size:'Celé zadanie môže mať najviac 4096 bajtov.',
         coefficient:'Koeficient', column:'pozícia',
-        polynomial:'Podporujeme polynómy v x do stupňa 2 s presnými reálnymi konštantami. Bez x v menovateli či vo funkciách.', onlyX:'Neznáma môže byť iba x; ans ani uložené premenné tu nie sú dostupné.', equationInvalid:'Skontroluj zápis rovnice vrátane zátvoriek a znaku =.'
+        polynomial:'Podporujeme polynómy v x do stupňa 2 s presnými reálnymi konštantami. Bez x v menovateli či vo funkciách. Pre všeobecné funkcie zvoľ numerický režim.', onlyX:'Neznáma môže byť iba x; ans ani uložené premenné tu nie sú dostupné.', equationInvalid:'Skontroluj zápis rovnice vrátane zátvoriek a znaku =.'
     } : {
         idle:'Enter an equation and choose Solve.', busy:'Calculating…', finite:'Exact solutions',
         none:'The equation has no solutions.', all:'Every complex number satisfies the equation.',
         double:'Double root', copy:'Copy', copied:'Copied', copyError:'Could not copy.',
         exact:'Use an exact real coefficient, e.g. 1/3 or sqrt(4).',
         variable:'Variables and ans are unavailable here.', invalid:'Check the coefficient expression.',
-        limit:'The calculation exceeded the available time or memory. Try simpler coefficients.',
+        limit:'The calculation exceeded the available time or memory. Simplify the input or reduce precision.',
         network:'Could not connect to the server. Try again.', size:'The complete input must fit in 4096 bytes.',
         coefficient:'Coefficient', column:'position',
-        polynomial:'Use a polynomial in x of degree at most 2 with exact real constants. No x in denominators or function calls.', onlyX:'Only x is supported; ans and saved variables are unavailable here.', equationInvalid:'Check the equation, including parentheses and the = sign.'
+        polynomial:'Use a polynomial in x of degree at most 2 with exact real constants. No x in denominators or function calls. Choose a numerical mode for general functions.', onlyX:'Only x is supported; ans and saved variables are unavailable here.', equationInvalid:'Check the equation, including parentheses and the = sign.'
     };
     const numericWords = sk ? {
         found:'Jeden približný koreň. Ďalšie môžu existovať.', not_bracketed:'Interval nepotvrdil zmenu znamienka. Koreň môže existovať; uprav interval.',
@@ -85,12 +87,16 @@ function initEquations() {
         value.roots.forEach((root, index) => {
             const row = document.createElement('li'); row.className = 'equation-root';
             const numerical = isNumeric(value.kind);
+            let verification = null;
             const exact = document.createElement('code'); exact.textContent = numerical ? 'x ≈ ' + root.approximation : 'x' + (value.count === 2 ? (index ? '₂' : '₁') : '') + ' = ' + root.exact;
             row.append(exact);
             if (root.multiplicity === 2) { const note = document.createElement('small'); note.textContent = words.double; row.append(note); }
             if (numerical) {
+                verification=document.createElement('details');verification.className='equation-verification';
+                const summary=document.createElement('summary');summary.textContent=sk?'Overený bod':'Checked point';
+                const coordinate=document.createElement('code');coordinate.textContent='x = '+root.x;
                 const note = document.createElement('small'); note.textContent = numericWords.residual + root.residual;
-                note.style.overflowWrap = 'anywhere'; row.append(note);
+                note.style.overflowWrap = 'anywhere';verification.append(summary,coordinate,note);row.append(verification);
             } else if (root.approximation !== root.exact) {
                 const approximation = document.createElement('code'); approximation.className = 'equation-approx';
                 approximation.textContent = '≈ ' + root.approximation; row.append(approximation);
@@ -98,7 +104,7 @@ function initEquations() {
             const copy = document.createElement('button'); copy.type = 'button'; copy.textContent = numerical ? numericWords.copy : words.copy;
             copy.addEventListener('click', async () => {
                 try { await navigator.clipboard.writeText(numerical ? root.x : root.exact); copy.textContent = words.copied; }
-                catch (_) { copy.textContent = words.copyError; }
+                catch (_) { copy.textContent = words.copyError;if(verification)verification.open=true; }
             }, {signal});
             const actions = document.createElement('div'); actions.className = 'equation-root-actions';
             actions.append(copy);
@@ -184,7 +190,142 @@ function initEquations() {
         document.querySelector('#equation-help').textContent = mode.value === 'numeric_scan' ? scanWords.help : numerical ? numericWords.help : whole ? equationHelp : (sk
             ? 'Čísla alebo presné výrazy, napr. 1/3 či sqrt(4). Pre lineárnu rovnicu nastav a = 0.'
             : 'Numbers or exact expressions, e.g. 1/3 or sqrt(4). Use a = 0 for a linear equation.');
+        renderExamples();
     }
+    const examples = {
+        expression:[['3x + 1 = 7','3x+1=7'],['x² = 2','x^2=2'],['x² + 1 = 0','x^2+1=0']],
+        coefficients:[['1/3 · x − 2 = 0',['0','1/3','-2']],['x² − 2 = 0',['1','0','-2']],['(2x + 3)² = 0',['4','12','9']]],
+        numeric:[['cos(x) = x','cos(x)=x','0','1'],['ln(x) = 2','ln(x)=2','1','10'],['√x = 2','sqrt(x)=2','0','8']],
+        numeric_scan:[['sin(x) = 0','sin(x)=0','-10','10'],['(x − 1/3)² = 0','(x-1/3)^2=0','0','1'],['(x − 0.01)(x − 0.02) = 0','(x-0.01)*(x-0.02)=0','0','1']]
+    };
+    function renderExamples() {
+        const container = document.querySelector('#equation-examples'); container.replaceChildren();
+        for (const [index,[label]] of examples[mode.value].entries()) {
+            const button = document.createElement('button'); button.type='button'; button.textContent=label;button.dataset.example=String(index);
+            container.append(button);
+        }
+    }
+    const $ = id => document.querySelector('#'+id);
+    $('equation-examples').addEventListener('click',event=>{
+        const button=event.target.closest('button[data-example]');if(!button)return;
+        const [,value,low,high]=examples[mode.value][Number(button.dataset.example)];
+        if (Array.isArray(value)) inputs.forEach((input,index)=>input.value=value[index]);
+        else { expression.value=value;if(low!==undefined){bounds[0].value=low;bounds[1].value=high;} }
+        edit();(mode.value==='coefficients'?inputs[0]:expression).focus({preventScroll:true});
+    },{signal});
+    const catalogueWords = sk ? {
+        all:'Všetky kategórie', algebra:'Zápis', basic:'Základné', powers:'Mocniny a logaritmy', trig:'Goniometria', hyperbolic:'Hyperbolické', integers:'Celé čísla', stats:'Štatistika', constants:'Konštanty',
+        noMatch:'Žiadna zhoda. Skús iný názov.', unavailable:'Knižnica nie je dostupná. Skús ju znovu otvoriť; zadanie môžeš písať ručne.',
+        exact:'V presnom režime sú funkcie iba pre konštanty; výsledok musí byť presný a reálny. x patrí iba do polynómu do stupňa 2.',
+        numeric:'Použi x a radiány. Argumenty oddeľuj bodkočiarkou; niektoré definičné obory nemusí riešič overiť.',
+        coefficient:'Koeficient ', equation:'Rovnica v x', tooLong:'Zadanie môže mať najviac 4096 znakov.'
+    } : {
+        all:'All categories', algebra:'Notation', basic:'Basic', powers:'Powers & logs', trig:'Trigonometry', hyperbolic:'Hyperbolic', integers:'Integers', stats:'Statistics', constants:'Constants',
+        noMatch:'No match. Try another name.', unavailable:'The library is unavailable. Try reopening it; you can still type the input.',
+        exact:'In exact mode, functions apply to constants only and must yield an exact real value. x belongs only in a polynomial of degree at most 2.',
+        numeric:'Use x and radians. Separate arguments with semicolons; some domains may remain unverified.',
+        coefficient:'Coefficient ', equation:'Equation in x', tooLong:'The input must fit in 4096 characters.'
+    };
+    let cataloguePromise = null, registry = null, catalogueEntries = [], cataloguePage = 0, catalogueFailed = false;
+    const category = $('equation-editor-category'), search = $('equation-editor-search'), help = $('equation-editor-help');
+    const targets = $('equation-editor-target'), libraryStatus = $('equation-editor-status');
+    const editorTitle=$('equation-editor-title').textContent;
+    function syncEditor() {
+        if (!editorTarget || !editor.open) return;
+        editorTarget.value=editorInput.value; editorTarget.setSelectionRange(editorInput.selectionStart,editorInput.selectionEnd);
+        editorTarget.dispatchEvent(new Event('input',{bubbles:true}));
+    }
+    function filterCatalogue(reset=true) {
+        if (reset) cataloguePage=0;
+        const library=window.numforgeFunctionLibrary;
+        const height=window.visualViewport?.height||innerHeight, compact=height<=460;
+        editor.toggleAttribute('data-compact',compact);
+        editor.style.setProperty('--editor-height',Math.max(120,height-24)+'px');
+        const perPage=compact?3:height<=700?6:9, query=library?.normalize(search.value.trim())||'';
+        const matches=catalogueEntries.filter(entry=>(!category.value||entry.category===category.value)&&entry.searchable.includes(query));
+        const pages=Math.max(1,Math.ceil(matches.length/perPage)); cataloguePage=Math.min(cataloguePage,pages-1);
+        const shown=new Set(matches.slice(cataloguePage*perPage,(cataloguePage+1)*perPage));
+        catalogueEntries.forEach(entry=>entry.button.hidden=!shown.has(entry));
+        for (const tab of $('equation-editor-tabs').children) tab.setAttribute('aria-pressed',String(tab.dataset.category===category.value));
+        $('equation-editor-page').textContent=`${cataloguePage+1} / ${pages}`;
+        $('equation-editor-previous').disabled=cataloguePage===0; $('equation-editor-next').disabled=cataloguePage===pages-1;
+        libraryStatus.hidden=registry?!!matches.length:!catalogueFailed; if (registry) libraryStatus.textContent=catalogueWords.noMatch;
+    }
+    function insertEditor(value,name='') {
+        const start=editorInput.selectionStart??editorInput.value.length,end=editorInput.selectionEnd??start;
+        const selected=editorInput.value.slice(start,end),arity=name?(registry.get(name)?.minimum_arguments||1):0;
+        const insertion=name?name+'('+selected+';'.repeat(Math.max(0,arity-1))+')':value;
+        if (editorInput.value.length-(end-start)+insertion.length>4096) { libraryStatus.hidden=false; libraryStatus.textContent=catalogueWords.tooLong; return; }
+        editorInput.setRangeText(insertion,start,end,'end'); editorInput.focus({preventScroll:true});
+        if (name) { const caret=selected?(arity>1?start+name.length+selected.length+2:start+insertion.length):start+name.length+1; editorInput.setSelectionRange(caret,caret); }
+        syncEditor();
+    }
+    function renderCatalogue() {
+        if (!registry) return;
+        const library=window.numforgeFunctionLibrary, numeric=isNumeric(mode.value), coefficients=mode.value==='coefficients', query=search.value;
+        const groups = numeric ? [
+            ['basic',['abs','sign','min','max','floor','ceil','trunc','round']],['powers',['pow','sqrt','cbrt','root','exp','ln','log']],
+            ['trig',['sin','cos','tan','asin','acos','atan','radians','degrees']],['hyperbolic',['sinh','cosh','tanh','asinh','acosh','atanh']],
+            ['integers',['gcd','lcm','mod','npr','ncr','factorial','isqrt']],['stats',['sum','product','mean','median','geomean','harmean','variance','stdevp','stdev']]
+        ] : [['basic',['abs','sign','min','max','sum','product']],['powers',['pow','sqrt','cbrt','root']],['integers',['gcd','lcm','mod','npr','ncr','factorial','isqrt']]];
+        const buttons=$('equation-editor-functions'),tabs=$('equation-editor-tabs'); buttons.replaceChildren();tabs.replaceChildren();category.replaceChildren();catalogueEntries=[];
+        category.add(new Option(catalogueWords.all,''));
+        function add(label,value,terms,group,name='',description='') {
+            const button=document.createElement('button');button.type='button';button.textContent=label;button.dataset.insert=value;button.dataset.function=name;button.title=description;
+            buttons.append(button);catalogueEntries.push({button,category:group,searchable:library.normalize([label,value,description,...terms].join(' '))});
+        }
+        const groupIds=['algebra',...groups.map(([id])=>id),...(numeric?['constants']:[])];
+        for (const id of groupIds) {
+            category.add(new Option(catalogueWords[id],id)); const button=document.createElement('button');button.type='button';button.textContent=catalogueWords[id];button.dataset.category=id;
+            tabs.append(button);
+        }
+        for (const [label,value] of [...(!coefficients?[['x','x'],['x²','x^2'],['=','=']]:[]),['+','+'],['−','-'],['×','*'],['÷','/'],['(', '('],[')',')'],[';',';'],['1/3','1/3']]) add(label,value,[],'algebra');
+        for (const [id,names] of groups) for (const name of names) {
+            const entry=registry.get(name),info=library.functionHelp[name];if(!entry?.implemented||!info)continue;
+            const aliases=[...registry.values()].filter(e=>e.canonical===name).map(e=>e.name);
+            const description=info[1]+' · '+info[sk?2:3].replaceAll('RAD/DEG',sk?'radiány':'radians');
+            add(name,name+'(',[...aliases,...(library.functionSearchAliases[name]||[]),...(library.inverseFunctionAliases[name]||[])],id,name,description);
+        }
+        if (numeric) for (const [symbol,en,sl] of [['π','Pi','Pí'],['e','Euler’s number','Eulerovo číslo'],['φ','Golden ratio','Zlatý rez']]) add(symbol,symbol,library.constantAliasesFor(!sk)[symbol],'constants','',sk?sl:en);
+        help.textContent=catalogueWords[numeric?'numeric':'exact'];category.value=query?'':'algebra';search.value=query;filterCatalogue();
+    }
+    async function loadCatalogue() {
+        if (registry) { renderCatalogue(); return; }
+        if (!cataloguePromise) { catalogueFailed=false; cataloguePromise=fetch('/api/functions',{signal}).then(async response=>{
+            const data=await response.json();if(!response.ok||!data.ok||!Array.isArray(data.functions)||!window.numforgeFunctionLibrary)throw Error();
+            registry=new Map(data.functions.map(entry=>[entry.name,entry]));
+        }).catch(error=>{cataloguePromise=null;throw error;}); }
+        try { await cataloguePromise;if(!signal.aborted)renderCatalogue(); }
+        catch (error) { if(!signal.aborted&&error.name!=='AbortError') { catalogueFailed=true;libraryStatus.hidden=false;libraryStatus.textContent=catalogueWords.unavailable; } }
+    }
+    function openEditor() {
+        if (editorTarget.disabled || ![expression,...inputs].includes(editorTarget)) editorTarget=mode.value==='coefficients'?inputs[0]:expression;
+        targets.hidden=mode.value!=='coefficients'; targets.value=inputs.includes(editorTarget)?editorTarget.id.slice(-1):'expression';
+        $('equation-editor-title').textContent=mode.value==='coefficients'?catalogueWords.coefficient+targets.value:editorTitle;
+        editorInput.value=editorTarget.value;editorInput.setAttribute('aria-label',mode.value==='coefficients'?catalogueWords.coefficient+targets.value:catalogueWords.equation);
+        editorInput.setSelectionRange(editorTarget.selectionStart,editorTarget.selectionEnd);submittingEditor=false;search.value='';
+        editor.showModal();document.body.classList.add('equation-editor-open');filterCatalogue();editorInput.focus({preventScroll:true});loadCatalogue();
+    }
+    for (const input of [expression,...inputs]) input.addEventListener('focus',()=>editorTarget=input,{signal});
+    $('equation-edit').addEventListener('click',openEditor,{signal});
+    $('equation-editor-close').addEventListener('click',()=>editor.close(),{signal});
+    editor.addEventListener('close',()=>{document.body.classList.remove('equation-editor-open');if(!signal.aborted&&!submittingEditor)editorTarget.focus({preventScroll:true});},{signal});
+    editor.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();editor.close();}},{signal});
+    editorInput.addEventListener('input',syncEditor,{signal});
+    targets.addEventListener('change',()=>{editorTarget=inputs['abc'.indexOf(targets.value)];editorInput.value=editorTarget.value;$('equation-editor-title').textContent=catalogueWords.coefficient+targets.value;editorInput.setAttribute('aria-label',catalogueWords.coefficient+targets.value);editorInput.focus({preventScroll:true});},{signal});
+    function submitEditor() { syncEditor();submittingEditor=true;editor.close();form.requestSubmit(); }
+    $('equation-editor-solve').addEventListener('click',submitEditor,{signal});
+    $('equation-editor-clear').addEventListener('click',()=>{editorInput.value='';syncEditor();editorInput.focus({preventScroll:true});},{signal});
+    editorInput.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();submitEditor();}},{signal});
+    search.addEventListener('input',()=>{if(search.value.trim())category.value='';filterCatalogue();},{signal});category.addEventListener('change',()=>filterCatalogue(),{signal});
+    $('equation-editor-tabs').addEventListener('click',event=>{const button=event.target.closest('button[data-category]');if(button){category.value=button.dataset.category;search.value='';filterCatalogue();}},{signal});
+    $('equation-editor-functions').addEventListener('click',event=>{const button=event.target.closest('button[data-insert]');if(button){help.textContent=button.title||catalogueWords[isNumeric(mode.value)?'numeric':'exact'];insertEditor(button.dataset.insert,button.dataset.function);}},{signal});
+    $('equation-editor-functions').addEventListener('focusin',event=>{const button=event.target.closest('button[data-insert]');if(button)help.textContent=button.title||catalogueWords[isNumeric(mode.value)?'numeric':'exact'];},{signal});
+    $('equation-editor-previous').addEventListener('click',()=>{--cataloguePage;filterCatalogue(false);},{signal});
+    $('equation-editor-next').addEventListener('click',()=>{++cataloguePage;filterCatalogue(false);},{signal});
+    window.addEventListener('resize',()=>{if(editor.open)filterCatalogue(false);},{signal});
+    window.visualViewport?.addEventListener('resize',()=>{if(editor.open)filterCatalogue(false);},{signal});
+    signal.addEventListener('abort',()=>{editor.close();document.body.classList.remove('equation-editor-open');},{once:true});
     mode.addEventListener('change', () => { syncMode(); edit(); }, {signal});
     form.addEventListener('input', edit, {signal});
     document.querySelector('#equation-clear').addEventListener('click', () => { const active = mode.value !== 'coefficients' ? [expression] : inputs; active.forEach(input => input.value = ''); edit(); active[0].focus(); }, {signal});

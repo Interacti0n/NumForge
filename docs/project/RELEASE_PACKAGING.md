@@ -90,8 +90,10 @@ the numeric `X.Y.Z` part must match the CMake project version.
 3. Windows and Linux jobs check out the published tag, build Release tests and run CTest.
    They then create separate production builds with tests/benchmarks disabled.
 4. Each package is archived, extracted and checked from the extracted folder:
-   CLI decimal/integer/fraction results, HTTP fraction evaluation and embedded
-   calculator assets. The workflow saves the resulting archives/checksums as
+   CLI decimal/integer/fraction results, HTTP fraction evaluation, embedded
+   calculator/equation assets in both equation languages, the function registry,
+   exact equation radicals and a rational numerical contact (including its
+   residual and incomplete-discovery contract). The workflow saves the resulting archives/checksums as
    Actions artifacts for inspection.
 5. Both platforms must succeed before the upload job automatically attaches
    the verified files to that release. The upload job checks SHA-256 and uses

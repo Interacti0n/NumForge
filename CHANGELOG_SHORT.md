@@ -5,6 +5,9 @@ details and the [2.3.0 release record](docs/project/RELEASE_2_3.md) for validati
 
 ## Unreleased
 
+- Complete equation editing with the shared function catalogue, examples for each
+  mode and expandable checked-point details.
+
 - Find simple quadratic contacts and close root pairs; keep checked rational
   coordinates exact and retain explicit incomplete-discovery limits.
 

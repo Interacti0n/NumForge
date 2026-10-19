@@ -25,16 +25,18 @@ and [numerical API](../reference/NUMERIC_ROOT_HTTP_API.md).
    General symbolic solving, arbitrary-degree exact polynomials, systems,
    quantities, arbitrary unknown names and general non-polynomial tangent
    discovery are subsequent capabilities, not implied by this release.
-2. **Close the browser usability pass.** Existing input, mobile layout,
-   errors, copy, graph return and language restore are tested. To match the
-   calculator/graph editing experience, the next recommended UI change is the
-   shared function catalogue/editor for equations, with a few mode-appropriate
-   examples. This has not yet been implemented. Decide its inclusion before the
-   final full regression run; adding it after the release freeze reopens testing.
-3. **Run final full regression and CI on the frozen commit.** Local GCC/MSVC
-   numerical, failure-contract and targeted browser checks are available. The
-   complete browser suite and remote sanitizer/Linux32/ARM64/macOS/Windows jobs
-   still need to pass for the exact release commit. Local Windows results do
+2. **Browser usability implementation is complete for the initial scope.**
+   The equation editor now uses the calculator/graph catalogue metadata and C
+   availability registry, with mode-appropriate functions/constants, balanced
+   insertion, argument selection, a/b/c targeting, search, pagination and retry.
+   Examples fill each mode without auto-solving. Full checked numerical points
+   and residuals are expandable; copy failures expose the raw coordinate.
+   Escape/close, validation focus, clean SPA disposal and keyboard-friendly
+   mobile layouts are covered. Keep this scope frozen for the final regression.
+3. **Local regression passed; run remote CI on the frozen commit.** Local GCC/MSVC
+   numerical/failure checks and the complete Windows browser run are recorded
+   below. Remote sanitizer/Linux32/ARM64/macOS/Windows jobs
+   must pass for the exact release commit. Local Windows results do
    not stand in for these platforms. The scan smoke benchmark is now included
    in the existing three-OS benchmark job; remote results are pending a push.
 4. **Check a current deployed preview on physical phones.** Browser emulation
@@ -46,6 +48,10 @@ and [numerical API](../reference/NUMERIC_ROOT_HTTP_API.md).
    version, close both changelogs, create the tag/release, build application/SDK
    archives, verify checksums, smoke-test extracted applications and installed
    C/C++ consumers. No version/tag/release/push is performed by this audit.
+   The application packaging helper now also checks both embedded equation
+   languages/assets, function availability, exact radicals and a rational scan
+   contact from the extracted application. Running this smoke against a local
+   build does not replace checking the final versioned archives.
 
 ## Evidence and release blockers
 
@@ -57,20 +63,45 @@ and deadline failures, shared budgets and no partial successful publication.
 Browser checks include full-coordinate copy, recurring fractions, graph handoff,
 cache invalidation, both languages, mobile width and stale requests.
 
-Local checks for this stage: MSVC Release/WX **61/61 native CTest checks**, then
+Earlier numerical-stage checks: MSVC Release/WX **61/61 native CTest checks**, then
 the final candidate unit group after the last cap/domain assertions; GCC
 Release/WX numerical/failure tests and scan smoke; **56 targeted browser cases**,
 then **16 final scan/guide cases** after documentation updates; **135 benchmark
 rows / 450 independently checked coordinates**. The apps-disabled benchmark
 configuration and all three CI-selected smoke checks also passed locally.
-These are local results; the complete frozen browser run, remote platforms,
-physical devices and extracted release artifacts remain separate gates above.
+These earlier results establish the mathematical baseline. Final editor-stage
+regression is recorded separately below; remote platforms, physical devices
+and extracted release artifacts remain separate gates above.
 
 Block publication on a wrong root, residual referring to a different coordinate,
 domain hole accepted as a root, budget reset per candidate, partial success after
 resource failure, regression in other tools or a failed required CI/package job.
 A documented missing general tangent or incomplete finite discovery is a scope
 limit, provided messages do not claim no roots or a complete enumeration.
+
+## Final editor-stage local regression
+
+- MSVC v143 RelWithDebInfo with warnings as errors: complete build and
+  **61/61 CTest groups passed in 45.22 s**, including equation, numerical scan,
+  allocation/deadline, HTTP and embedded-server checks.
+- **446/446 browser cases passed in 18.7 min** with one Chromium worker,
+  covering calculator, complex values, equations, graphs, guide navigation,
+  converter, sessions and mobile layouts. No retries were used.
+- **19/19 final editor/scan cases passed in 28.6 s**. This includes one added
+  clipboard-denial case beyond the full run's discovery snapshot, plus catalogue
+  failure after resize/retry, Escape lifecycle, validation focus, balanced
+  insertion, rational contact details and 320/390/812/1280 px layouts.
+  Narrow-phone and landscape screenshots were visually reviewed.
+- The extended application-package smoke passed against the local built
+  applications on its own temporary port: CLI, HTTP calculator, both equation
+  languages/assets, function registry, exact radicals and rational scan contact.
+  This validates the helper; final versioned extracted archives are still pending.
+- JavaScript syntax, documentation links (**117 Markdown files / 549 local
+  links/anchors**) and whitespace checks passed.
+
+No local regression blocker remains for the supported initial scope. Remote CI,
+physical-device checks and versioned release/package verification remain open;
+these results do not publish a release or certify all numerical roots.
 
 ## Later improvements
 

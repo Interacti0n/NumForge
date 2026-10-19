@@ -67,6 +67,43 @@ def smoke(directory, windows):
             result = json.load(response)
         if not result.get("ok") or result.get("result") != "1/3":
             raise RuntimeError("Extracted HTTP calculator returned an unexpected result")
+        # Exercise the embedded equation editor and both solver paths from the
+        # extracted archive, without relying on a source-tree web directory.
+        equation_assets = set()
+        for language in ("en", "sk"):
+            with urllib.request.urlopen(base + "/solve?lang=" + language, timeout=5) as response:
+                equation_html = response.read().decode("utf-8")
+            if ('id="equation-editor"' not in equation_html
+                    or 'id="equation-expression"' not in equation_html
+                    or '/assets/function-library.js' not in equation_html):
+                raise RuntimeError("Equation editor missing from extracted package")
+            equation_assets.update(re.findall(r'(?:src|href)="(/assets/[^"?#]+)', equation_html))
+        for asset in equation_assets:
+            with urllib.request.urlopen(base + asset, timeout=5) as response:
+                if not response.read():
+                    raise RuntimeError(f"Empty equation asset: {asset}")
+        with urllib.request.urlopen(base + "/api/functions", timeout=5) as response:
+            registry = json.load(response)
+        if not registry.get("ok") or not any(
+                entry.get("name") == "sqrt" and entry.get("implemented")
+                for entry in registry.get("functions", [])):
+            raise RuntimeError("Equation function catalogue unavailable in extracted package")
+        for options, expression, expected in (
+                ("mode=expression&precision=16", b"x^2=2", ["-sqrt(2)", "sqrt(2)"]),
+                ("mode=numeric_scan&min=0&max=1&precision=34", b"(x-1/3)^2=0", ["1/3"])):
+            request = urllib.request.Request(base + "/api/equations/solve?" + options,
+                                             data=expression, method="POST",
+                                             headers={"Content-Type": "text/plain; charset=utf-8"})
+            with urllib.request.urlopen(request, timeout=10) as response:
+                equation = json.load(response)
+            key = "x" if "numeric_scan" in options else "exact"
+            if (not equation.get("ok") or equation.get("count") != len(expected)
+                    or [root.get(key) for root in equation.get("roots", [])] != expected):
+                raise RuntimeError("Extracted HTTP equation solver returned unexpected roots")
+            if key == "x" and (equation.get("complete") is not False
+                    or equation["roots"][0].get("coordinate_kind") != "rational"
+                    or equation["roots"][0].get("residual") != "0"):
+                raise RuntimeError("Extracted numerical equation coordinate contract changed")
     finally:
         process.terminate()
         try:

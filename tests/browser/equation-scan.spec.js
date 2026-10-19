@@ -33,6 +33,8 @@ test('scan keeps domain gaps and nonconvergence separate from no roots',async({p
 test('off-grid contacts and close roots retain the checked rational coordinate',async({page})=>{
  await page.goto('/solve?lang=en');let result=await scan(page,'(x-1/3)^2=0','0','1');
  expect(result.count).toBe(1);expect(result.roots[0].x).toBe('1/3');expect(result.roots[0].coordinate_kind).toBe('rational');expect(result.roots[0].residual).toBe('0');
+ await expect(page.locator('.equation-verification')).not.toHaveAttribute('open');await page.locator('.equation-verification summary').click();
+ await expect(page.locator('.equation-verification code')).toHaveText('x = 1/3');await expect(page.locator('.equation-verification small')).toContainText('Residual at the checked point: 0');
  await page.locator('.equation-root button').click();await expect.poll(()=>page.evaluate(()=>navigator.clipboard.readText())).toBe('1/3');
  await page.locator('.equation-graph-link').click();await expect(page.locator('#graph-expression')).toHaveValue('((x-1/3)^2)-(0)');
  await expect(page.locator('#graph-plot')).toHaveAttribute('data-xmin',String(Number(result.roots[0].approximation)-10));

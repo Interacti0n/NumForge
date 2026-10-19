@@ -307,6 +307,9 @@ complete enumeration of roots.
 [Polynomial equations](docs/guides/EQUATIONS.md) accept whole linear/quadratic
 equations in x or exact coefficient expressions, show exact real/complex roots
 and separate decimal previews through the same bounded C/HTTP solver.
+Their mode-aware function editor shares catalogue descriptions and aliases with
+the calculator/graphs; examples and copy/graph actions support both exact and
+numerical workflows.
 [Numerical interval mode](docs/reference/NUMERIC_ROOT_HTTP_API.md) additionally
 searches for one real root of general expressions with bounded high-precision
 bisection and residual checks. Its bounded multiple-root scan discovers

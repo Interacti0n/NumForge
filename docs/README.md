@@ -9,7 +9,7 @@ testing entry points remain directly under `docs/`.
 - [Remote hosting](guides/HOSTING.md): HTTPS tunnels, reverse proxies and capacity.
 - [Variables](guides/VARIABLES.md): assignments, deletion, snapshots and lifetime.
 - [Function graphs](guides/GRAPHS.md): function/color controls, typed gaps, smooth curves and axes.
-- [Polynomial equations](guides/EQUATIONS.md): whole equations, coefficient mode, exact roots, decimal previews and limits.
+- [Equations](guides/EQUATIONS.md): shared function editor, exact polynomial roots, numerical interval searches and limits.
 - [Unit converter](guides/UNIT_CONVERTER.md): categories, preview, swap and history.
 - [C library guide](guides/LIBRARY_GUIDE.md): build, install and consume the library.
 - [Developer SDK](guides/SDK.md): prebuilt C/C++ library, toolchains and quick start.
@@ -100,7 +100,7 @@ for specific source snapshots, not promises about every machine.
 ## Plan and maintain — `project/`
 
 - [Roadmap](project/ROADMAP.md): available features and future work.
-- [Equation release readiness](project/EQUATION_RELEASE_AUDIT_2026_10_19.md): supported scope, remaining editor/device work and CI/package publication gates.
+- [Equation release readiness](project/EQUATION_RELEASE_AUDIT_2026_10_19.md): supported scope, completed editor, regression/device checks and CI/package publication gates.
 - [Presentation](project/PROJECT_PRESENTATION.md): README assets and screenshots.
 - [Release packaging](project/RELEASE_PACKAGING.md): archives and automation.
 - [Release readiness, 12 October 2026](project/RELEASE_READINESS_2026_10_12.md): local regression and archive checks before the next release.

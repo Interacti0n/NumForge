@@ -42,7 +42,7 @@
       <main class="card equation-entry">
         <h1>Equations</h1><p class="equation-formula">ax² + bx + c = 0</p>
         <form id="equation-form">
-          <label class="equation-mode-label" for="equation-mode">Input<select id="equation-mode"><option value="expression">Whole equation</option><option value="coefficients">Coefficients a, b, c</option><option value="numeric">Numerical interval root</option><option value="numeric_scan">Multiple interval roots</option></select></label>
+          <label class="equation-mode-label" for="equation-mode">Mode<select id="equation-mode"><option value="expression">Whole equation</option><option value="coefficients">Coefficients a, b, c</option><option value="numeric">Numerical interval root</option><option value="numeric_scan">Multiple interval roots</option></select></label>
           <label for="equation-expression" id="equation-expression-field">Equation in x<input id="equation-expression" type="text" value="x^2 - 2 = 0" maxlength="4096" spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="equation-help" required></label>
           <div class="equation-range" id="equation-range" hidden>
             <label for="equation-min">From x<input id="equation-min" type="text" value="0" maxlength="47" required></label>
@@ -54,18 +54,26 @@
             <label for="equation-c">c<input id="equation-c" name="c" type="text" value="-2" maxlength="4096" spellcheck="false" autocapitalize="off" autocomplete="off" required></label>
           </div>
           <p class="equation-hint" id="equation-help">Linear or quadratic in x, e.g. 3x + 1 = 7 or (x - 2)*(x + 3) = 0. Exact real constants; no x in denominators.</p>
+          <div class="equation-tools"><button type="button" id="equation-edit" aria-haspopup="dialog" aria-controls="equation-editor">ƒ Functions &amp; constants</button><details class="equation-example-list"><summary>Examples</summary><div id="equation-examples" aria-label="Examples"></div></details></div>
           <div class="equation-actions"><button class="primary-button" type="submit" id="equation-submit">Solve</button><button type="button" id="equation-clear">Clear</button></div>
           <details class="equation-settings"><summary>Preview precision</summary><label for="equation-precision">Significant digits<input id="equation-precision" type="number" min="1" max="1000" value="16" required></label><p>Exact roots are preserved. Decimal previews are approximate.</p></details>
         </form>
+        <dialog id="equation-editor" class="equation-editor" aria-labelledby="equation-editor-title">
+          <div class="equation-editor-heading"><h2 id="equation-editor-title">Equation editor</h2><select id="equation-editor-target" aria-label="Edited coefficient" hidden><option value="a">a</option><option value="b">b</option><option value="c">c</option></select><button id="equation-editor-close" type="button" aria-label="Close equation editor">×</button></div>
+          <div class="equation-editor-entry"><input id="equation-editor-input" maxlength="4096" aria-label="Equation in x" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go"><button id="equation-editor-solve" class="primary-button" type="button">Solve</button><button id="equation-editor-clear" type="button" aria-label="Clear" title="Clear"><span class="editor-action-name">Clear</span><span class="editor-action-icon" aria-hidden="true">⌫</span></button></div>
+          <div class="equation-editor-filters"><input id="equation-editor-search" type="search" aria-label="Search functions" placeholder="Try square root, sin, pi…" autocomplete="off"><select id="equation-editor-category" aria-label="Category"><option value="">All categories</option></select></div>
+          <div class="equation-editor-catalogue"><div id="equation-editor-tabs" class="function-tabs" role="group" aria-label="Category"></div><div class="equation-editor-results"><p id="equation-editor-status" role="status" hidden></p><div id="equation-editor-functions"></div><nav class="equation-editor-pages" aria-label="Function pages"><button id="equation-editor-previous" type="button" aria-label="Previous page">←</button><span id="equation-editor-page" role="status"></span><button id="equation-editor-next" type="button" aria-label="Next page">→</button></nav><p id="equation-editor-help"></p></div></div>
+        </dialog>
       </main>
-      <section class="card equation-result" aria-labelledby="equation-result-title" aria-live="polite" aria-atomic="true">
+      <section class="card equation-result" aria-labelledby="equation-result-title">
         <h2 id="equation-result-title">Solutions</h2>
-        <p id="equation-status">Enter an equation and choose Solve.</p>
+        <p id="equation-status" role="status" aria-live="polite">Enter an equation and choose Solve.</p>
         <p id="equation-error" role="alert" hidden></p><ol id="equation-roots"></ol>
       </section>
     </div>
     <footer class="page-footer"><span>NumForge v@NUMFORGE_VERSION@ · © 2026 Interacti0n</span><nav class="footer-links" aria-label="Project information"><a href="/LICENSE" data-license>MIT License</a><a href="https://github.com/Interacti0n/NumForge" target="_blank" rel="noopener noreferrer">GitHub</a></nav></footer>
   </div>
+  <script src="/assets/function-library.js"></script>
   <script src="/assets/navigation.js"></script>
   <script src="/assets/equations.js"></script>
 </body>
