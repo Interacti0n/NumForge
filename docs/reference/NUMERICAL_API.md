@@ -1,7 +1,8 @@
 # Numerical API
 
-`<numforge/numerical.h>` exposes exact rational grids and bounded real-root searches in the numeric target
-`NumForge::numforge`. It needs neither an expression engine nor application state.
+`<numforge/numerical.h>` exposes exact rational grids, adaptive interval scheduling
+and bounded real-root searches in `NumForge::numforge`. It needs neither an
+expression engine nor application state.
 The header is authoritative for callbacks, precision, ownership and failures.
 
 ## Exact uniform grids
@@ -23,10 +24,42 @@ remain. Bounds are preserved. An inherited budget is checked before and after
 callbacks, which must cooperate with cancellation themselves.
 
 Private uniform graph sampling and the 33-point adaptive seed grid share this
-kernel. Typed expression evaluation, phase tracking, adaptive refinement and
+kernel. Typed expression evaluation, phase tracking, adaptive acceptance and
 screen projection remain private; the root scanner retains its own bounded
 candidate traversal. There is no new Python, CLI or REST grid operation.
 See the [benchmark guide](../../benchmarks/README.md#exact-grid-baseline).
+
+## Adaptive interval scheduling
+
+Initialize `NumForgeRefinementOptions` with `numforge_refinement_options_init`,
+then call `numforge_refine_intervals(&stats, initial_points, &options, probe, user)`.
+The caller owns an ordered point collection with capacity for `max_points`.
+On each successful callback, insert exactly one interior point at `left+1` and
+choose `SPLIT`, `ACCEPT` or `SKIP`. The scheduler visits initial intervals left to
+right, then processes children breadth-first while accounting for shifted indices.
+It does not evaluate functions or assume a numeric representation. The
+[C example](../../examples/sdk/numerical_refinement.c) supplies exact rational
+midpoints and quadratic values, with a caller-defined chord-error criterion.
+
+The scheduler bounds points and depth and inherits the caller's optional resource
+budget. Configurable reserves and twice the largest observed callback cost guide
+admission; they predict resource needs heuristically. Queue storage also consumes
+the budget. No limit is reset and no callback is preempted. Point/depth/reserve
+stops return `OK` with diagnostic flags and pending/depth-limited interval counts.
+Intervals explicitly skipped by callbacks are excluded from those counts.
+An exhausted runtime budget, allocation error, invalid decision or fatal callback
+status fails the call and preserves `stats`, while earlier callback effects remain.
+
+`ACCEPT` and a drained queue describe the callback's decisions, not mathematical
+certificates. `SKIP` may intentionally leave gaps. Exact coordinates do not make
+approximate ordinates exact or establish continuity between points. Callers retain
+their own error, domain, classification and connection metadata.
+
+The precision graph path shares this scheduler, retaining its 33 seeds, point/depth
+limits, projection reserves, phase/jump/pole checks and atomic outer result.
+Its typed sampling, acceptance rules and periodic-extremum probes remain private;
+the screen/double sampler is separate. This adds no Python, CLI or REST operation.
+See the [checked benchmark](../../benchmarks/README.md#adaptive-refinement-baseline).
 
 ## Use and result meaning
 

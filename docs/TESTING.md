@@ -67,6 +67,13 @@ inherited budgets and every allocation failure. Instrumented runs check zero
 live allocations at teardown. C/C++ consumers and the SDK grid example exercise
 the installed numeric-only interface. The opt-in grid benchmark verifies the
 closed-form sum independently of its timed traversal.
+`numerical_refinement_tests` checks breadth-first visit order and shifted indices,
+accept/skip decisions, point/depth/resource stops, callback failures, exhausted
+budgets and every queue/callback allocation failure. Exact quadratic refinement
+also covers a `1E-1000` span at a `1E1000` offset. Instrumented teardown checks
+zero live allocations. Installed C/C++ consumers and the standalone SDK example
+exercise callbacks without engine/application dependencies; the opt-in benchmark
+checks expected quadratic point counts and exact spacing outside timing.
 
 The optional [Python adapter](guides/PYTHON.md) has its own reproducible source-archive,
 wheel, isolated adapter-test and standalone-example check:

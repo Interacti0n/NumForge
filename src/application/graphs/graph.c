@@ -50,19 +50,25 @@ static NumForgeNumericalStatus coordinate_visit(const BigRational *x, size_t ind
     grid->status = graph_coordinate(&grid->coordinates[index], x, grid->context);
     return grid->status == CALCULATOR_OK ? NUMFORGE_NUMERICAL_OK : NUMFORGE_NUMERICAL_CALLBACK_FAILED;
 }
-static CalculatorStatus graph_coordinates(CalculatorValue *coordinates, size_t count,
-    const BigRational *minimum, const BigRational *maximum, const CalculatorContext *context)
+static CalculatorStatus graph_numerical_status(NumForgeNumericalStatus status, CalculatorStatus callback_status)
 {
-    CoordinateGrid grid = {coordinates, context, CALCULATOR_OK};
-    switch (numforge_grid_visit(minimum, maximum, count, coordinate_visit, &grid)) {
+    switch (status) {
         case NUMFORGE_NUMERICAL_OK: return CALCULATOR_OK;
         case NUMFORGE_NUMERICAL_NULL_ARGUMENT: return CALCULATOR_NULL_ARGUMENT;
         case NUMFORGE_NUMERICAL_OUT_OF_MEMORY: return CALCULATOR_OUT_OF_MEMORY;
         case NUMFORGE_NUMERICAL_VALUE_TOO_LARGE: return CALCULATOR_VALUE_TOO_LARGE;
         case NUMFORGE_NUMERICAL_SCALE_OVERFLOW: return CALCULATOR_SCALE_OVERFLOW;
-        case NUMFORGE_NUMERICAL_CALLBACK_FAILED: return grid.status;
+        case NUMFORGE_NUMERICAL_CALLBACK_FAILED: return callback_status;
         default: return CALCULATOR_INVALID_ARGUMENT;
     }
+}
+
+static CalculatorStatus graph_coordinates(CalculatorValue *coordinates, size_t count,
+    const BigRational *minimum, const BigRational *maximum, const CalculatorContext *context)
+{
+    CoordinateGrid grid = {coordinates, context, CALCULATOR_OK};
+    NumForgeNumericalStatus status = numforge_grid_visit(minimum, maximum, count, coordinate_visit, &grid);
+    return graph_numerical_status(status, grid.status);
 }
 
 CalculatorStatus application_graph_sample(ApplicationGraph **result,
@@ -136,6 +142,7 @@ typedef struct GraphRefinement {
     bool camera;
     bool smooth;
     size_t point_limit;
+    CalculatorStatus callback_status;
 } GraphRefinement;
 
 /* Deferral never accepts an edge. Three real, ordered probes outside one camera
@@ -376,45 +383,29 @@ cleanup:
     return status;
 }
 
+static NumForgeNumericalStatus adaptive_probe_callback(NumForgeRefinementDecision *decision,
+    size_t left, size_t depth, void *user)
+{
+    GraphRefinement *work = user;
+    bool accepted = false, empty = false;
+    (void)depth;
+    work->callback_status = adaptive_interval(work, left, &accepted, &empty);
+    if (work->callback_status != CALCULATOR_OK) return NUMFORGE_NUMERICAL_CALLBACK_FAILED;
+    *decision = accepted ? NUMFORGE_REFINEMENT_ACCEPT : empty ? NUMFORGE_REFINEMENT_SKIP : NUMFORGE_REFINEMENT_SPLIT;
+    return NUMFORGE_NUMERICAL_OK;
+}
 static CalculatorStatus adaptive_refine(GraphRefinement *work)
 {
-    typedef struct { size_t left;unsigned int depth; } Interval;
-    Interval queue[8192U];
-    size_t head = 0U, pending = 32U, max_bytes = 0U;
-    uint64_t max_ms = 0U;
-    for (size_t i = 0; i < pending; ++i) queue[i] = (Interval){i, 0U};
-    while (pending != 0U) {
-        ApplicationGraph *graph = work->graph;
-        size_t bytes = numforge_budget_available_bytes();
-        uint64_t ms = numforge_budget_available_ms();
-        /* Leave room for projection/JSON and stop before a known next probe
-         * would exhaust the shared budget. Never reset a caller's budget. */
-        if (graph->count >= work->point_limit ||
-            bytes <= 2U * 1024U * 1024U || max_bytes > (bytes - 2U * 1024U * 1024U) / 2U ||
-            ms <= 200U || max_ms > (ms - 200U) / 2U) {
-            graph->limited = true;break;
-        }
-        Interval current = queue[head];head = (head + 1U) % work->point_limit;--pending;
-        if (current.depth >= 12U) { graph->limited = true;continue; }
-        bool accepted, empty;
-        CalculatorStatus status = adaptive_interval(work, current.left, &accepted, &empty);
-        if (status != CALCULATOR_OK) return status;
-        size_t after_bytes = numforge_budget_available_bytes();
-        uint64_t after_ms = numforge_budget_available_ms();
-        if (bytes >= after_bytes && bytes - after_bytes > max_bytes) max_bytes = bytes - after_bytes;
-        if (ms >= after_ms && ms - after_ms > max_ms) max_ms = ms - after_ms;
-        for (size_t i = 0; i < pending; ++i) {
-            Interval *item = &queue[(head + i) % work->point_limit];
-            if (item->left > current.left) ++item->left;
-        }
-        if (!accepted && !empty) {
-            /* Active intervals are disjoint edges, so capacity follows the
-             * point cap; two children replace their single parent. */
-            queue[(head + pending++) % work->point_limit] = (Interval){current.left, current.depth + 1U};
-            queue[(head + pending++) % work->point_limit] = (Interval){current.left + 1U, current.depth + 1U};
-        }
-    }
-    return CALCULATOR_OK;
+    NumForgeRefinementOptions options;
+    numforge_refinement_options_init(&options);
+    options.max_points = work->point_limit;
+    /* Retain graph projection/JSON headroom under the existing shared budget. */
+    options.reserve_bytes = 2U * 1024U * 1024U; options.reserve_ms = 200;
+    NumForgeRefinementStats stats;
+    NumForgeNumericalStatus status = numforge_refine_intervals(&stats, work->graph->count,
+        &options, adaptive_probe_callback, work);
+    if (status == NUMFORGE_NUMERICAL_OK && stats.limits) work->graph->limited = true;
+    return graph_numerical_status(status, work->callback_status);
 }
 
 static CalculatorStatus adaptive_request(ApplicationGraph **result,

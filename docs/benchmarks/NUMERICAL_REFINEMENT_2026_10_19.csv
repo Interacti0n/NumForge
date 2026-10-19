@@ -1,0 +1,10 @@
+case,repeat,points,probes,milliseconds,allocation_calls,requested_bytes
+quadratic,1,129,127,3.765800,33475,581616
+quadratic,2,129,127,3.323600,33475,581616
+quadratic,3,129,127,3.235300,33475,581616
+large_offset,1,9,7,1.304000,1829,263960
+large_offset,2,9,7,0.818700,1829,263960
+large_offset,3,9,7,0.791600,1829,263960
+tiny_interval,1,17,15,1.870800,4262,963672
+tiny_interval,2,17,15,2.460400,4262,963672
+tiny_interval,3,17,15,1.970400,4262,963672

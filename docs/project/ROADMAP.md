@@ -13,7 +13,7 @@ index; dated reports preserve evidence for their recorded revisions.
 | Algebra | [Exact linear/quadratic coefficient solver](../reference/POLYNOMIAL_API.md), shared by application equation adapters. |
 | Linear algebra | [Dense rational matrices](../reference/MATRIX_API.md), products, determinants, square solves and [complete rectangular single-RHS systems](../reference/LINEAR_SYSTEM_API.md). |
 | Statistics | [Exact rational batch summaries](../reference/STATISTICS_API.md), including population/sample variance. |
-| Numerical | [Exact rational grids, callback-based bisection and bounded multiple-root scanning](../reference/NUMERICAL_API.md), shared with graph/equation applications. |
+| Numerical | [Exact grids, adaptive scheduling, bisection and bounded multiple-root scanning](../reference/NUMERICAL_API.md), shared with graph/equation applications. |
 | Scientific | [Unit conversion](../reference/UNITS.md), a sourced catalogue and private [quantity expressions](../reference/QUANTITIES.md). |
 | Applications | SK/EN CLI/browser calculator, sessions, converter, four-function graphs and bounded numerical equation searches. |
 | Integration | Installed C/C++ packages and an experimental source-built [Python adapter](../guides/PYTHON.md). |
@@ -30,7 +30,7 @@ owns its source manifest. There are no empty future-module placeholders.
    decompositions and multivariate/streaming statistics; each needs its own
    numerical and failure contract.
 2. Extend the public numerical-method contracts deliberately: acceleration and
-   adaptive graph sampling must preserve convergence, incomplete discovery and residual/error semantics.
+   adaptive graph acceptance must preserve convergence, incomplete discovery and residual/error semantics.
    Preserve graph/session semantics while gradually adopting public engine handles
    where their supported scope fits.
 3. Add session user-function definitions and their graph/solver integration when

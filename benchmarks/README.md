@@ -15,6 +15,24 @@ the median was 6.310 ms for 1024 points on `[-10,10]`, 0.368 ms for 33 points on
 allocation calls and cumulative requested bytes, not peak live memory. These are
 initial observations; this extraction does not establish a speed improvement.
 
+## Adaptive refinement baseline
+
+`numerical_refinement_benchmark` uses the public scheduler with caller-owned
+exact rational samples of `x*x` and a midpoint chord-error criterion. It checks
+closed-form point counts and exact spacing outside timing, with three repeats
+per case and a capacity of 257 points. Setup and validation are excluded;
+callback evaluation, point insertion and queue allocation are included. This
+does not measure expression parsing or the complete graph pipeline.
+
+On Windows x64, GCC 16.2 Release with allocation instrumentation (19 October 2026),
+medians were 3.324 ms for 129 points on `[0,1]`, 0.819 ms for nine points on
+`[1E1000,1E1000+1]`, and 1.970 ms for 17 points on `[0,1E-1000]`.
+The absolute midpoint tolerances were respectively `1/16384`, `1/64` and `1E-2002`.
+[Raw repetitions](../docs/benchmarks/NUMERICAL_REFINEMENT_2026_10_19.csv) include
+allocation calls and cumulative requested bytes, not peak live memory. This is
+an initial baseline; no before/after speedup is established. Scheduler index
+updates retain the original worst-case quadratic work in the point limit.
+
 ## Other tools
 
 `numerical_benchmark` checks standalone rational bisection at 12 and 100 places;

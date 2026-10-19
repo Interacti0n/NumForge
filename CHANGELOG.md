@@ -9,6 +9,11 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ### Numerical foundation
 
+- Expose bounded breadth-first interval refinement with caller-owned samples and
+  acceptance rules. Share scheduling, shifted-index tracking and adaptive resource
+  admission with precision graphs; retain private phase/domain/connection checks.
+  Replace their fixed stack queue with budgeted queue storage. Add exact 1000-digit
+  coverage, failure/limit tests, installed C/C++ checks, an SDK example and benchmark.
 - Expose an exact rational uniform-grid visitor without engine/session dependencies.
   Share it between uniform graphs and adaptive seeds; preserve typed evaluation,
   graph limits and projections. Add standalone and installed C/C++ coverage,

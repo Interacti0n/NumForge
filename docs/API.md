@@ -5,7 +5,7 @@ have different ownership and compatibility contracts.
 
 | Reference | What it covers |
 | --- | --- |
-| [Numerical methods](reference/NUMERICAL_API.md) | Exact rational grids, bisection and bounded multiple-root scans, continuity evidence, residuals and work limits. |
+| [Numerical methods](reference/NUMERICAL_API.md) | Exact rational grids, adaptive interval scheduling, bisection and bounded multiple-root scans, continuity evidence, residuals and work limits. |
 | [Public C API](reference/C_API.md) | BigInt, BigDecimal, BigRational, BigComplex, BigRationalComplex, units, runtime scopes and ownership. |
 | [Standalone engine C API](reference/ENGINE_API.md) | Public stateless scalar expressions, reusable handles, typed results, precision and budgets. |
 | [Exact polynomial C API](reference/POLYNOMIAL_API.md) | Standalone linear/quadratic coefficient solver with exact radical/complex descriptors; numeric target only. |

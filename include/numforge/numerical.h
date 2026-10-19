@@ -9,7 +9,7 @@ extern "C" {
 #endif
 
 /** @file numerical.h
- * Exact rational grids and bounded real-root search over caller-supplied functions. Link
+ * Rational grids, adaptive interval scheduling and bounded real-root search. Link
  * NumForge::numforge; no parser, engine, session or server is required.
  * Calls inherit an optional runtime.h budget and never begin/end one themselves.
  * Exhaustion returns OUT_OF_MEMORY; inspect numforge_budget_failure() for cause.
@@ -51,6 +51,70 @@ typedef NumForgeNumericalStatus (*NumForgeGridVisit)(const BigRational *x,
  */
 NumForgeNumericalStatus numforge_grid_visit(const BigRational *lower,
     const BigRational *upper, size_t count, NumForgeGridVisit visit, void *user);
+
+typedef enum NumForgeRefinementDecision {
+    NUMFORGE_REFINEMENT_SPLIT = 0, /**< Queue both child intervals for later probes. */
+    NUMFORGE_REFINEMENT_ACCEPT,    /**< Callback accepts both child edges. */
+    NUMFORGE_REFINEMENT_SKIP       /**< Leave both child edges unresolved; do not revisit. */
+} NumForgeRefinementDecision;
+/** Probe the current interval [left,left+1] in the caller's ordered point array.
+ * On OK, insert exactly one interior point at left+1, shifting the old right
+ * endpoint and all later points one place. The scheduler tracks these shifts.
+ * Do not insert/delete other points. depth is zero for initial intervals.
+ * The caller owns coordinates, values, classifications and edge connections;
+ * it must have capacity for options.max_points. The scheduler computes no values.
+ * decision starts as SPLIT. ACCEPT/SKIP stop work on both children, but neither
+ * certifies continuity, function-value accuracy or complete feature discovery.
+ * On failure the callback may have side effects; no rollback is attempted.
+ */
+typedef NumForgeNumericalStatus (*NumForgeRefinementProbe)(NumForgeRefinementDecision *decision,
+    size_t left, size_t depth, void *user);
+typedef struct NumForgeRefinementOptions {
+    size_t max_points;          /**< At least initial_points; default 2048. */
+    size_t max_depth;           /**< Probes require depth<max_depth; default 12. */
+    size_t reserve_bytes;       /**< Retained inherited allocation budget; default 0. */
+    uint64_t reserve_ms;        /**< Retained inherited time budget; default 0. */
+} NumForgeRefinementOptions;
+typedef enum NumForgeRefinementLimit {
+    NUMFORGE_REFINEMENT_POINT_LIMIT = 1,
+    NUMFORGE_REFINEMENT_DEPTH_LIMIT = 2,
+    NUMFORGE_REFINEMENT_RESOURCE_LIMIT = 4
+} NumForgeRefinementLimit;
+typedef struct NumForgeRefinementStats {
+    size_t points;              /**< initial_points + successful probes. */
+    size_t probes;              /**< Completed callback visits. */
+    size_t unresolved_intervals;/**< Pending/depth-limited intervals, excluding callback SKIP. */
+    unsigned limits;            /**< OR of NumForgeRefinementLimit; zero if no scheduler limit stopped work. */
+} NumForgeRefinementStats;
+/** Initialize defaults; NULL is accepted. */
+void numforge_refinement_options_init(NumForgeRefinementOptions *options);
+/** Refine an existing ordered grid breadth-first, initially left to right.
+ * initial_points>=2; options=NULL selects defaults. Options are copied at entry.
+ * No expression engine, application session or coordinate representation is
+ * required. Allocate the
+ * caller's point storage before calling; this function allocates its own queue
+ * with O(max_points) space and updates pending indices after every insertion.
+ *
+ * A point/depth/resource stop returns OK with limits and unresolved counts.
+ * Exhausting a depth skips that interval and continues other pending work.
+ * Resource admission leaves the configured reserves plus twice the largest
+ * observed callback cost (requested bytes/elapsed milliseconds). This predicts
+ * work heuristically; it cannot guarantee that the next callback will fit.
+ * Callbacks must cooperate with inherited budgets. Exhaustion is a fatal
+ * OUT_OF_MEMORY; inspect runtime.h for the cause. No budget is begun or ended.
+ *
+ * Successful calls overwrite *result. Fatal errors preserve *result, but cannot
+ * undo callback effects; discard caller-owned partial data if atomicity is needed.
+ * @return NULL_ARGUMENT for missing result/probe; INVALID_ARGUMENT for invalid
+ * counts, queue-size overflow or decision; OUT_OF_MEMORY for queue allocation or
+ * inherited budget failure. Non-OK callback statuses propagate unchanged unless
+ * inherited budget exhaustion takes precedence. No callback is made on initial
+ * validation/queue-allocation failure. user may be NULL.
+ */
+NumForgeNumericalStatus numforge_refine_intervals(NumForgeRefinementStats *result,
+    size_t initial_points, const NumForgeRefinementOptions *options,
+    NumForgeRefinementProbe probe, void *user);
+
 typedef enum NumForgeRootKind {
     NUMFORGE_ROOT_FOUND = 0,
     NUMFORGE_ROOT_NOT_BRACKETED,
