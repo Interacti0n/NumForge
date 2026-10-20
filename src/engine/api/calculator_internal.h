@@ -10,13 +10,11 @@
 #include <numforge/bigrationalcomplex.h>
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Shared status model for the calculator application pipeline. These types
-    belong to the private client layer over the public numeric library.
-
-    Implementation: src/engine/api/calculator.c and value.c
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Shared status model for the calculator application pipeline. These types
+ * belong to the private client layer over the public numeric library.
+ *
+ * Implementation: src/engine/api/calculator.c and value.c
+ */
 
 typedef enum CalculatorStatus
 {
@@ -57,11 +55,9 @@ typedef enum CalculatorNotation
 } CalculatorNotation;
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Evaluation policy. Division always receives explicit settings rather than
-    relying on mutable global state.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Evaluation policy. Division always receives explicit settings rather than
+ * relying on mutable global state.
+ */
 
 typedef struct CalculatorContext
 {
@@ -143,11 +139,7 @@ typedef struct CalculatorVariable
 #define CALCULATOR_ALLOCATION_BUDGET (64U * 1024U * 1024U)
 #define CALCULATOR_SINGLE_ALLOCATION (512U * 1024U)
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    offset is a zero-based byte position in the original UTF-8 input.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* offset is a zero-based byte position in the original UTF-8 input. */
 
 typedef struct CalculatorError
 {
@@ -186,11 +178,7 @@ bool calculator_value_matches(const CalculatorValue *value, const CalculatorCont
 CalculatorStatus calculator_format_value(
     const CalculatorValue *value, const CalculatorContext *context, char **result);
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Shared calculator utility functions.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Shared calculator utility functions. */
 
 const char *calculator_status_to_string( /*Human-readable description of a CalculatorStatus, for diagnostics*/
     CalculatorStatus status

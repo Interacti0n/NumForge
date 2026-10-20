@@ -4,17 +4,11 @@
 #include <string.h>
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Calculator constant adapter. This module recognizes the symbols and maps
-    them to the precision-aware public BigDecimal constant API.
-    The numeric values and their ownership remain in the library.
-------------------------------------------------------------------------------------------------------------------------------
-*/
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Internal helper functions for constant operations.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Calculator constant adapter. This module recognizes the symbols and maps
+ * them to the precision-aware public BigDecimal constant API.
+ * The numeric values and their ownership remain in the library.
+ */
+/* Internal helper functions for constant operations. */
 
 static bool calculator_text_equals(
     const char *text,
@@ -30,11 +24,7 @@ static bool calculator_text_equals(
     return memcmp(text, expected, length) == 0;
 }
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Constant operation functions.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Constant operation functions. */
 
 bool calculator_constant_from_text(
     const char *text,

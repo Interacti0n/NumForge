@@ -11,11 +11,9 @@
 #endif
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    High-resolution monotonic elapsed timer shared by diagnostic benchmarks.
-    No wall-clock time, CPU-time substitution, or changes to library timing.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * High-resolution monotonic elapsed timer shared by diagnostic benchmarks.
+ * No wall-clock time, CPU-time substitution, or changes to library timing.
+ */
 double benchmark_seconds(void)
 {
 #ifdef _WIN32

@@ -10,20 +10,14 @@
 #define BIGINT_MAX_LIMBS (SIZE_MAX / BIGINT_LIMB_BITS)
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Bitwise, shift, and sign utility functions for BigInt.
-
-    The public operations are kept in this translation unit so the core
-    lifecycle and arithmetic implementation remains easy to navigate.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Bitwise, shift, and sign utility functions for BigInt.
+ *
+ * The public operations are kept in this translation unit so the core
+ * lifecycle and arithmetic implementation remains easy to navigate.
+ */
 
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Bitwise operation functions for BigInt.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Bitwise operation functions for BigInt. */
 
 BigIntStatus bigint_and( /*Bitwise AND for BigInts (a&b). Operands must be non-negative.*/
     BigInt *result,

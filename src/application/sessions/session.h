@@ -5,22 +5,20 @@
 #include "src/application/conversions/conversion.h"
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Private client state shared by CLI and web. Zero-initialize and destroy at
-    the end of the session. Entries own values; ans borrows the newest entry
-    or owns detached_answer after clearing history. Confirmed conversions own
-    another independent bounded FIFO; its storage is not included below.
-    Each retained coefficient was allocated under the 512 KiB single-allocation
-    bound. Sixteen entries (value, <=64 KiB display, <=4096-byte input) retain
-    less than 64 MiB including four rational-complex coefficients and object
-    overhead. Preview has one separate value.
-    Up to 32 variable snapshots add their separately owned typed values; the
-    history estimate does not include them. The same per-allocation bound applies.
-    No persistence or thread safety. Revisions identify requests, not values.
-
-    Implementation: src/application/sessions/session.c
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Private client state shared by CLI and web. Zero-initialize and destroy at
+ * the end of the session. Entries own values; ans borrows the newest entry
+ * or owns detached_answer after clearing history. Confirmed conversions own
+ * another independent bounded FIFO; its storage is not included below.
+ * Each retained coefficient was allocated under the 512 KiB single-allocation
+ * bound. Sixteen entries (value, <=64 KiB display, <=4096-byte input) retain
+ * less than 64 MiB including four rational-complex coefficients and object
+ * overhead. Preview has one separate value.
+ * Up to 32 variable snapshots add their separately owned typed values; the
+ * history estimate does not include them. The same per-allocation bound applies.
+ * No persistence or thread safety. Revisions identify requests, not values.
+ *
+ * Implementation: src/application/sessions/session.c
+ */
 
 #define CALCULATOR_HISTORY_CAPACITY 16U
 

@@ -1,3 +1,4 @@
+#include "tests/support/numbers.h"
 #include <numforge/units.h>
 #include "src/runtime/numforge_alloc.h"
 #include <unity.h>
@@ -8,20 +9,6 @@
 void setUp(void) {}
 void tearDown(void) { numforge_test_allocator_end(); }
 
-static void assert_rational(const char *expected, const BigRational *value)
-{
-    char *text = NULL;
-    TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_to_string(value, &text));
-    TEST_ASSERT_EQUAL_STRING(expected, text);
-    free(text);
-}
-static void assert_decimal(const char *expected, const BigDecimal *value)
-{
-    char *text = NULL;
-    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_to_string(value, &text));
-    TEST_ASSERT_EQUAL_STRING(expected, text);
-    free(text);
-}
 static void test_known_conversions(void)
 {
     const char *cases[][4] = {
@@ -48,7 +35,7 @@ static void test_known_conversions(void)
         TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(value, cases[i][0]));
         TEST_ASSERT_EQUAL(NUMFORGE_UNIT_OK, numforge_unit_convert_decimal(
             value, value, cases[i][1], cases[i][2], 30, BIGDECIMAL_ROUND_HALF_EVEN));
-        assert_decimal(cases[i][3], value);
+        test_assert_decimal(cases[i][3], value);
     }
     bigdecimal_destroy(value);
 }
@@ -63,7 +50,7 @@ static void test_exact_and_rounding(void)
     TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(d, "3"));
     TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_set_fraction(value, n, d));
     TEST_ASSERT_EQUAL(NUMFORGE_UNIT_OK, numforge_unit_convert_rational(value, value, "km", "m"));
-    assert_rational("1000/3", value);
+    test_assert_fraction("1000/3", value);
     const char *positive[] = { "0.27", "0.28", "0.27", "0.28", "0.28", "0.28" };
     const char *negative[] = { "-0.27", "-0.28", "-0.28", "-0.27", "-0.28", "-0.28" };
     for (int mode = 0; mode < 6; ++mode)
@@ -71,11 +58,11 @@ static void test_exact_and_rounding(void)
         TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(decimal, "1"));
         TEST_ASSERT_EQUAL(NUMFORGE_UNIT_OK, numforge_unit_convert_decimal(result,
             decimal, "km/h", "m/s", 2, (BigDecimalRoundingMode)mode));
-        assert_decimal(positive[mode], result);
+        test_assert_decimal(positive[mode], result);
         TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(decimal, "-1"));
         TEST_ASSERT_EQUAL(NUMFORGE_UNIT_OK, numforge_unit_convert_decimal(result,
             decimal, "km/h", "m/s", 2, (BigDecimalRoundingMode)mode));
-        assert_decimal(negative[mode], result);
+        test_assert_decimal(negative[mode], result);
     }
     bigint_destroy(n); bigint_destroy(d); bigrational_destroy(value);
     bigdecimal_destroy(decimal); bigdecimal_destroy(result);
@@ -110,7 +97,7 @@ static void test_registry_and_errors(void)
         numforge_unit_convert_rational(rational, rational, "unknown", "m"));
     TEST_ASSERT_EQUAL(NUMFORGE_UNIT_INCOMPATIBLE_UNITS,
         numforge_unit_convert_rational(rational, rational, "degC", "deltaC"));
-    assert_decimal("99", value);
+    test_assert_decimal("99", value);
     for (size_t i = 0; i < numforge_unit_count(); ++i)
     {
         const NumForgeUnitInfo *a = numforge_unit_at(i);
@@ -132,7 +119,7 @@ static void test_registry_and_errors(void)
             if (status == NUMFORGE_UNIT_OK)
                 TEST_ASSERT_EQUAL(NUMFORGE_UNIT_OK,
                     numforge_unit_convert_rational(rational, rational, b->id, a->id));
-            assert_rational("99", rational);
+            test_assert_fraction("99", rational);
         }
     }
     bigdecimal_destroy(value); bigrational_destroy(rational);
@@ -168,8 +155,8 @@ static void test_allocation_failures_preserve_outputs(void)
             numforge_test_allocator_end();
             TEST_ASSERT_TRUE(injected);
             TEST_ASSERT_EQUAL(NUMFORGE_UNIT_OUT_OF_MEMORY, status);
-            assert_rational("32", rational);
-            assert_decimal("32", decimal);
+            test_assert_fraction("32", rational);
+            test_assert_decimal("32", decimal);
         }
     }
     bigdecimal_destroy(decimal); bigrational_destroy(rational);
@@ -217,13 +204,13 @@ static void test_extended_reference_conversions(void)
         TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(value, cases[i][0]));
         TEST_ASSERT_EQUAL(NUMFORGE_UNIT_OK, numforge_unit_convert_decimal(value,
             value, cases[i][1], cases[i][2], 30, BIGDECIMAL_ROUND_HALF_EVEN));
-        assert_decimal(cases[i][3], value);
+        test_assert_decimal(cases[i][3], value);
     }
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(value, "1"));
     TEST_ASSERT_EQUAL(NUMFORGE_UNIT_OK, numforge_unit_convert_decimal(value,
         value, "Qm3", "qm3", 30, BIGDECIMAL_ROUND_HALF_EVEN));
     char huge[182]; huge[0] = '1'; memset(huge + 1, '0', 180); huge[181] = '\0';
-    assert_decimal(huge, value);
+    test_assert_decimal(huge, value);
     TEST_ASSERT_EQUAL_STRING("mikrometer", numforge_unit_find("um")->name_sk);
     TEST_ASSERT_EQUAL_STRING("µm", numforge_unit_find("um")->symbol);
     TEST_ASSERT_NULL(numforge_unit_find("gal"));
@@ -236,7 +223,7 @@ static void test_extended_reference_conversions(void)
     TEST_ASSERT_FALSE(numforge_unit_conversion_is_exact("kg", "m"));
     TEST_ASSERT_EQUAL(NUMFORGE_UNIT_VALUE_TOO_LARGE, numforge_unit_convert_decimal(
         value, value, "deg", "rad", INT64_MAX, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_decimal(huge, value);
+    test_assert_decimal(huge, value);
     bigdecimal_destroy(value);
 }
 static void test_angle_references(void)
@@ -249,7 +236,7 @@ static void test_angle_references(void)
         TEST_ASSERT_EQUAL(NUMFORGE_UNIT_OK, numforge_unit_convert_decimal(value, value,
             unit_angle_references[i].from, unit_angle_references[i].to,
             unit_angle_references[i].digits, (BigDecimalRoundingMode)unit_angle_references[i].rounding));
-        assert_decimal(unit_angle_references[i].expected, value);
+        test_assert_decimal(unit_angle_references[i].expected, value);
     }
     bigdecimal_destroy(value);
 }

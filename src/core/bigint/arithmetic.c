@@ -6,11 +6,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Arithmetic and division functions for BigInt.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Arithmetic and division functions for BigInt. */
 
 BigIntStatus bigint_add( /*Add two BigInts (a+b)*/
     BigInt *result,

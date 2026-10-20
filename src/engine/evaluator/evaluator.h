@@ -5,14 +5,12 @@
 #include "src/engine/parser/parser.h"
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Evaluator operation functions.
+Evaluator operation functions.
 
     Evaluate a parsed expression to an owned BigDecimal destination. The result
     is not modified on failure.
 
     Implementation: src/engine/evaluator/evaluator.c and evaluator_* modules
-------------------------------------------------------------------------------------------------------------------------------
 */
 
 CalculatorStatus calculator_evaluate(

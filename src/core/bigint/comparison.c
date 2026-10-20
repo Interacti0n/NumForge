@@ -4,11 +4,7 @@
 
 #include <stdbool.h>
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Comparison and inspection functions for BigInt.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Comparison and inspection functions for BigInt. */
 
 int bigint_compare( /*Compare two BigInts*/
     const BigInt *a,

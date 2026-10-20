@@ -16,18 +16,12 @@
 
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Evaluator implementation. It recursively evaluates AST nodes into temporary
-    BigDecimal values, then copies a final successful value to the caller's
-    destination. The caller's result therefore remains unchanged on failure.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Evaluator implementation. It recursively evaluates AST nodes into temporary
+ * BigDecimal values, then copies a final successful value to the caller's
+ * destination. The caller's result therefore remains unchanged on failure.
+ */
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Internal helper functions for evaluator operations.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Internal helper functions for evaluator operations. */
 
 static CalculatorStatus calculator_evaluate_random_call(
     BigDecimal **result,
@@ -290,11 +284,7 @@ static CalculatorStatus calculator_bigdecimal_pow(
     return status;
 }
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Postfix operations: square, cube, and factorial.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Postfix operations: square, cube, and factorial. */
 
 static CalculatorStatus calculator_evaluate_postfix(
     BigDecimal **result,
@@ -431,11 +421,7 @@ static CalculatorStatus calculator_evaluate_postfix(
     return CALCULATOR_OK;
 }
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Recursive expression evaluation and function dispatch.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Recursive expression evaluation and function dispatch. */
 
 CalculatorStatus calculator_evaluate_expression(
     BigDecimal **result,
@@ -886,11 +872,7 @@ CalculatorStatus calculator_evaluate_expression(
     return CALCULATOR_INVALID_ARGUMENT;
 }
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Evaluator operation functions.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Evaluator operation functions. */
 
 static CalculatorStatus calculator_evaluate_impl(
     BigDecimal *result,

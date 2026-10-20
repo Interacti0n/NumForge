@@ -1,61 +1,22 @@
 # Web actions and HTTP API coverage
 
-Audited against the current implementation on 8 October 2026. This page records
-the implemented HTTP contract. A mathematical or session
-operation exposed by the web should also have a documented HTTP contract usable
-by another client. The web should consume that same contract.
-
-The implemented [application boundaries](../design/APPLICATION_DESIGN.md) separate
-expression evaluation, session/client ownership and HTTP adapters. No database
-is added; saved values remain bounded application-owned memory.
+Web mathematical operations use the shared C application layer and documented
+HTTP routes. Public C/Python availability is listed in the [API guide](../API.md);
+private application/session headers are not installed SDK interfaces.
 
 ## Available calls
 
-| Web operation | Current HTTP equivalent | Coverage |
-| --- | --- | --- |
-| Calculate, format, choose RAD/DEG or precision | `POST /api/evaluate`, expression body and output options | Available |
-| Construct complex values and choose Cartesian/trigonometric/exponential display | `complex(re;im)`, evaluation `form=cartesian|trig|exp` | Available; exact component snapshots use value schema 2 |
-| Natural complex input and component functions | `i`, `a+bi`, `re`, `im`, `conj`, `abs`, `arg`, `exp`, explicit `e^z` | Available in the C evaluator; argument/exponential angles are radians; approximate results retain numerical residuals |
-| Principal complex square root | `sqrt(z)`, `√(z)`; negative dimensionless real input promotes automatically | Available in C; rational roots stay exact; public real-valued `bigdecimal_sqrt` still requires nonnegative input |
-| Principal complex natural logarithm | `ln(z)` with automatic negative-real promotion | Available in C via `bigcomplex_ln`; radians and (-pi, pi] branch; zero remains invalid; negative real inputs promote automatically |
-| Principal complex powers | `z^w`, `pow(z;w)` with automatic fractional-power promotion | Public C `bigcomplex_pow`; radians, principal branch and approximate snapshots; integer powers stay exact |
-| Principal complex base logarithms | `log(z)`, `log(z;b)` with automatic negative-real promotion | Public C `bigcomplex_log`; base 10 default, principal radians, approximate snapshots; zero input and bases 0/1 invalid |
-| Complex trigonometry | `sin(z)`, `cos(z)`, `tan(z)` with complex input | Public C APIs; complex angles always radians, real inputs keep RAD/DEG; approximate snapshots and atomic failures |
-| Complex hyperbolic functions | `sinh(z)`, `cosh(z)`, `tanh(z)` | Public C APIs; radian angles, approximate snapshots, scaled tanh for large real components, atomic failures |
-| Complex inverse trigonometry | `asin(z)`, `acos(z)`, `atan(z)` and arc/arcus aliases | Public C APIs; principal branches in radians, explicit cut conventions, atan(±i) rejected atomically |
-| Complex inverse hyperbolic functions | `asinh(z)`, `acosh(z)`, `atanh(z)` and aliases | Public C APIs; principal branches, automatic real-domain promotion and atomic errors at atanh(±1) |
-| Read-only calculator preview | `action=preview` with session ID and revision | Available |
-| Confirm result, update ans/history | `action=commit` | Available |
-| Create or replace a variable | Commit `x=2/3` | Available |
-| Read one variable or ans | `GET /api/session/value?client=…&name=x` (or `ans`) | Available, typed snapshot |
-| Delete one variable, reclaim capacity | `action=delete-variable`, name body | Available |
-| Start a new empty session | `action=start` with a fresh client ID | Available; start on an existing ID preserves it |
-| Show all variables and their values | `GET /api/session/variables` | Available, paginated authoritative values |
-| Show/retrieve calculator history | `GET /api/session/history`, optional saved `id` | Available, original values/settings |
-| Reset/release/clear history | `POST /api/session`, `action=reset`, `release` or `clear-history` | Available; clearing history preserves ans |
-| Discover functions, aliases and arities | `GET /api/functions` | Available; web consumes the registry |
-| Sample an expression over a real interval | `POST /api/graph/sample` | Available; exact C grid, plotting projections and point errors; separate browser screen sampler |
-| Adaptive curves and automatic local parameter | `POST /api/graph/plot` | Available; schema 2 precision refinement or mode=fast schema 3 screen sampling with conservative connections |
-| Integer-domain graph samples | `POST /api/graph/plot?mode=fast&render=auto` | Available; conservative direct-parameter detection and bounded integer lattice |
-| Verify graph intercept/intersection candidates | `POST /api/graph/verify` | Available; bounded original-expression C evaluations and numerical residual checks |
-| Solve a linear/quadratic polynomial | `POST /api/equations/solve?mode=expression` or coefficient body | Available in browser/C/HTTP with whole equations in x, exact coefficient expressions, algebraic root text and approximate decimal previews |
-| Find one real root on an interval | `POST /api/equations/solve?mode=numeric&min=...&max=...` | Available in browser/C/HTTP; bisection, higher-precision residual reevaluation and conservative local domains; unstable/unverified candidates expose no root; no enumeration/certified error bound |
-| Discover multiple interval roots | `POST /api/equations/solve?mode=numeric_scan&min=...&max=...` | Available in browser/C/HTTP; bounded grid and local candidates, rational checked coordinates, shared work budget and at most 32 roots; always potentially incomplete |
-| List unit catalogue and sources | `GET /api/units` | Available |
-| Validate compatibility, preview a conversion | `POST /api/convert` | Available |
-| Confirm a conversion | `POST /api/conversions?action=commit` | Available, independent ordered history |
-| List/restore/clear conversion history | `GET /api/conversions`, optional saved `id`; `POST` with `action=clear` | Available, no reevaluation |
+| Web operation | HTTP contract |
+| --- | --- |
+| Expressions, precision, notation and complex display | [Evaluation](HTTP_API.md) |
+| Preview/commit, variables, answer, history and function registry | [Sessions](SESSION_HTTP_API.md) |
+| Uniform, adaptive and screen-space graphs; marker verification | [Sampling](GRAPH_HTTP_API.md), [adaptive curves](ADAPTIVE_GRAPH_HTTP_API.md), [screen sampling](SCREEN_GRAPH_HTTP_API.md), [verification](GRAPH_ANALYSIS_HTTP_API.md) |
+| Exact polynomial equations and bounded numerical root discovery | [Polynomial](EQUATION_HTTP_API.md), [numerical](NUMERIC_ROOT_HTTP_API.md) |
+| Unit catalogue, conversion and conversion history | [Units](UNIT_HTTP_API.md), [sessions](SESSION_HTTP_API.md) |
 
-See [API](../API.md), [Variables](../guides/VARIABLES.md) and [Unit HTTP API](UNIT_HTTP_API.md)
-for the implemented parameter grammar, limits and errors. The [graph page](../guides/GRAPHS.md)
-and [equation editor](../guides/EQUATIONS.md) are implemented. Accounts remain
-browser placeholders without an API implementation.
-
-Input editing, caret insertion, clipboard access, language, tab selection,
-expansion and scrolling are client presentation actions. HTTP clients receive
-the underlying values and choose their own presentation. Swapping units is a
-new conversion request with exchanged `from`/`to`; no independent mathematical
-swap endpoint is necessary.
+Accounts remain browser placeholders. There is no account API or database.
+Input editing, clipboard, language and scrolling are presentation actions.
+Swapping units sends a conversion with exchanged `from`/`to` values.
 
 ## Deletion example that works today
 
@@ -87,19 +48,9 @@ name is a successful no-op. Deletion preserves ans, history and random state.
 
 ## Contract for future tools
 
-Every new mathematical or state operation must ship with its application-layer
-operation, documented HTTP contract and web integration in the same feature.
-Use the versioned [session API](SESSION_HTTP_API.md) for saved values and contexts.
-Tests must cover independent clients, expiration, capacity, retry/stale mutations,
-failed operations, exact/approximate/Quantity values and read-only preservation.
-Graphs and solvers must share the C evaluator rather than implement mathematics
-again in JavaScript. Presentation remains a client responsibility.
-
-HTTP coverage is distinct from a public C calculator/session ABI. The installed
-SDK contains the numerical library; private application headers are not exported.
-
-Automatic dimensionless promotion also covers log arguments/bases, asin/acos
-outside [-1,1], acosh below 1, atanh outside [-1,1], negative even roots and
-noninteger powers. Public C inverse hyperbolic functions are
-`bigcomplex_asinh`, `bigcomplex_acosh`, `bigcomplex_atanh`. Singularities,
-integer-only functions, ordering and complex quantities retain their restrictions.
+A new web mathematical/state operation must include its application operation,
+documented HTTP contract and web integration. Graphs and solvers share the C
+evaluator. Follow the [feature checklist](../project/FEATURE_CHECKLIST.md) and
+[application boundaries](../design/APPLICATION_DESIGN.md).
+Session changes also need independent-client, expiry/capacity, retry/stale,
+failed-operation and read-only preservation coverage across supported value kinds.

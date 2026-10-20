@@ -12,11 +12,7 @@
 
 #define BIGDECIMAL_SCIENTIFIC_EXPONENT_THRESHOLD 10
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Internal helper functions for result formatting.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Internal helper functions for result formatting. */
 
 static BigDecimalStatus decimal_from_bigdecimal_status(BigDecimalStatus status)
 {
@@ -545,11 +541,7 @@ static BigDecimalStatus decimal_try_format_scientific(
         significand, digit_count, negative, exponent, output_scale, rounding, result);
 }
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Result formatting functions.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Result formatting functions. */
 
 static BigDecimalStatus decimal_format_result_impl(
     const BigDecimal *value,

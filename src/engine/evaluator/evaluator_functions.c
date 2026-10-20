@@ -10,6 +10,24 @@
 
 /* Named decimal functions other than trigonometric operations. */
 
+/* Transfer successful results; keep a failing child's original source offset. */
+CalculatorStatus calculator_finish_decimal_call(
+    BigDecimal **result, BigDecimal *value, CalculatorStatus status, bool child_error,
+    const CalculatorExpression *expression, CalculatorError *error)
+{
+    if (status != CALCULATOR_OK)
+    {
+        bigdecimal_destroy(value);
+        if (!child_error)
+        {
+            calculator_error_set(error, status, expression->offset);
+        }
+        return status;
+    }
+    *result = value;
+    return CALCULATOR_OK;
+}
+
 CalculatorStatus calculator_evaluate_integer_call(
     BigDecimal **result,
     const CalculatorExpression *expression,
@@ -108,28 +126,11 @@ CalculatorStatus calculator_evaluate_integer_call(
         status = CALCULATOR_TIME_LIMIT;
     }
 
-    if (status != CALCULATOR_OK)
-    {
-        bigdecimal_destroy(value);
-
-        if (!child_error)
-        {
-            calculator_error_set(error, status, expression->offset);
-        }
-
-        return status;
-    }
-
-    *result = value;
-
-    return CALCULATOR_OK;
+    return calculator_finish_decimal_call(
+        result, value, status, child_error, expression, error);
 }
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Real-root calls and application degree limits.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Real-root calls and application degree limits. */
 
 static bool calculator_decimal_zero(
     const BigDecimal *value
@@ -218,29 +219,14 @@ CalculatorStatus calculator_evaluate_root_call(
     bigdecimal_destroy(degree_value);
     bigdecimal_destroy(limit);
 
-    if (status != CALCULATOR_OK)
-    {
-        bigdecimal_destroy(value);
-
-        if (!child_error)
-        {
-            calculator_error_set(error, status, expression->offset);
-        }
-
-        return status;
-    }
-
-    *result = value;
-
-    return CALCULATOR_OK;
+    return calculator_finish_decimal_call(
+        result, value, status, child_error, expression, error);
 }
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Exponential and logarithmic calls. log(x) uses base ten; log(x; base)
-    accepts an explicit positive base other than one.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Exponential and logarithmic calls. log(x) uses base ten; log(x; base)
+ * accepts an explicit positive base other than one.
+ */
 
 CalculatorStatus calculator_evaluate_transcendental_call(
     BigDecimal **result,
@@ -292,28 +278,14 @@ CalculatorStatus calculator_evaluate_transcendental_call(
 
     bigdecimal_destroy(base);
 
-    if (status != CALCULATOR_OK)
-    {
-        bigdecimal_destroy(value);
-
-        if (!child_error)
-        {
-            calculator_error_set(error, status, expression->offset);
-        }
-
-        return status;
-    }
-
-    *result = value;
-    return CALCULATOR_OK;
+    return calculator_finish_decimal_call(
+        result, value, status, child_error, expression, error);
 }
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Hyperbolic calls use the active numeric precision but are independent of
-    the calculator's RAD/DEG angle mode.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Hyperbolic calls use the active numeric precision but are independent of
+ * the calculator's RAD/DEG angle mode.
+ */
 
 CalculatorStatus calculator_evaluate_hyperbolic_call(
     BigDecimal **result,
@@ -374,27 +346,11 @@ CalculatorStatus calculator_evaluate_hyperbolic_call(
         status = CALCULATOR_TIME_LIMIT;
     }
 
-    if (status != CALCULATOR_OK)
-    {
-        bigdecimal_destroy(value);
-
-        if (!child_error)
-        {
-            calculator_error_set(error, status, expression->offset);
-        }
-
-        return status;
-    }
-
-    *result = value;
-    return CALCULATOR_OK;
+    return calculator_finish_decimal_call(
+        result, value, status, child_error, expression, error);
 }
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Decimal selection calls: absolute value, sign, minimum, and maximum.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Decimal selection calls: absolute value, sign, minimum, and maximum. */
 
 /* Evaluate basic calls left to right, retaining at most the selected value
  * and the current argument. Even an unselected argument must be evaluated
@@ -482,12 +438,10 @@ CalculatorStatus calculator_evaluate_basic_call(
 }
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Variadic decimal aggregates and statistics. The public BigDecimal API owns
-    all numeric semantics; the calculator only evaluates arguments and supplies
-    context.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Variadic decimal aggregates and statistics. The public BigDecimal API owns
+ * all numeric semantics; the calculator only evaluates arguments and supplies
+ * context.
+ */
 
 CalculatorStatus calculator_evaluate_aggregate_call(
     BigDecimal **result,
@@ -612,20 +566,8 @@ CalculatorStatus calculator_evaluate_aggregate_call(
         status = CALCULATOR_TIME_LIMIT;
     }
 
-    if (status != CALCULATOR_OK)
-    {
-        bigdecimal_destroy(value);
-
-        if (!child_error)
-        {
-            calculator_error_set(error, status, expression->offset);
-        }
-
-        return status;
-    }
-
-    *result = value;
-    return CALCULATOR_OK;
+    return calculator_finish_decimal_call(
+        result, value, status, child_error, expression, error);
 }
 
 /* Decimal-place arguments are exact integers. Bounds are checked before text
@@ -707,11 +649,7 @@ cleanup:
     return status;
 }
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Integer and decimal-place rounding calls.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Integer and decimal-place rounding calls. */
 
 CalculatorStatus calculator_evaluate_rounding_call(
     BigDecimal **result,
@@ -770,18 +708,6 @@ CalculatorStatus calculator_evaluate_rounding_call(
         status = CALCULATOR_TIME_LIMIT;
     }
 
-    if (status != CALCULATOR_OK)
-    {
-        bigdecimal_destroy(value);
-
-        if (!child_error)
-        {
-            calculator_error_set(error, status, expression->offset);
-        }
-
-        return status;
-    }
-
-    *result = value;
-    return CALCULATOR_OK;
+    return calculator_finish_decimal_call(
+        result, value, status, child_error, expression, error);
 }

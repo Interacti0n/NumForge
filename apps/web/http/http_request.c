@@ -32,11 +32,9 @@ bool numforge_http_decode_query(const char *start, size_t length, char *out, siz
     out[used] = '\0'; return used != 0;
 }
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Socket-independent HTTP framing and header validation.
-    All scans operate on a bounded local copy of the incoming request.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Socket-independent HTTP framing and header validation.
+ * All scans operate on a bounded local copy of the incoming request.
+ */
 
 static char numforge_ascii_lower(
     char character
@@ -236,11 +234,7 @@ static bool numforge_parse_request_headers(
     return false;
 }
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Request-line validation and extraction of the method and target.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Request-line validation and extraction of the method and target. */
 
 bool numforge_request_target(
     const char *request,
@@ -304,11 +298,7 @@ bool numforge_request_target(
     return true;
 }
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Incremental framing: validate headers and determine the complete body size.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Incremental framing: validate headers and determine the complete body size. */
 
 NumForgeHttpStatus numforge_http_probe_with_origin(
     const char *data,

@@ -12,18 +12,12 @@
 #define CALCULATOR_INPUT_CAPACITY (CALCULATOR_MAX_INPUT_LENGTH + 3U)
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Interactive command-line calculator. Parsing and evaluation remain in the
-    calculator modules; this file only owns terminal input, output, and simple
-    user-facing diagnostics.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Interactive command-line calculator. Parsing and evaluation remain in the
+ * calculator modules; this file only owns terminal input, output, and simple
+ * user-facing diagnostics.
+ */
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Internal helper functions for command-line calculator operations.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Internal helper functions for command-line calculator operations. */
 static void calculator_discard_remaining_line(void)
 {
     int character;
@@ -159,11 +153,7 @@ static bool calculator_handle_notation_command(const char *input, CalculatorCont
     return true;
 }
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Main command-line calculator operation.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Main command-line calculator operation. */
 int main(void)
 {
     CalculatorContext context;

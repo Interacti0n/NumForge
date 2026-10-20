@@ -4,14 +4,12 @@
 #include "src/engine/api/calculator_internal.h"
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Token types produced from calculator source text.
+Token types produced from calculator source text.
 
     The tokenizer deliberately leaves unary plus/minus to the parser. This
     makes -2^2 and 2*-3 unambiguous.
 
     Implementation: src/engine/parser/tokenizer.c
-------------------------------------------------------------------------------------------------------------------------------
 */
 
 typedef enum CalculatorTokenType
@@ -34,11 +32,7 @@ typedef enum CalculatorTokenType
     CALCULATOR_TOKEN_END
 } CalculatorTokenType;
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    text points into the original input; it is never separately allocated.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* text points into the original input; it is never separately allocated. */
 
 typedef struct CalculatorToken
 {
@@ -56,16 +50,14 @@ typedef struct CalculatorTokenizer
 } CalculatorTokenizer;
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Tokenizer operation functions. next skips whitespace and produces NUMBER,
-    IDENTIFIER, operator, postfix operator, parenthesis, or END tokens. An uppercase E suffix
-    becomes a scientific exponent only when it has exponent digits; lowercase
-    e is a constant when standalone; whole letter sequences such as exp are
-    identifiers. Digits never belong to names, preserving 1e3 multiplication.
-    Invalid characters return CALCULATOR_INVALID_TOKEN
-    with a source offset.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Tokenizer operation functions. next skips whitespace and produces NUMBER,
+ * IDENTIFIER, operator, postfix operator, parenthesis, or END tokens. An uppercase E suffix
+ * becomes a scientific exponent only when it has exponent digits; lowercase
+ * e is a constant when standalone; whole letter sequences such as exp are
+ * identifiers. Digits never belong to names, preserving 1e3 multiplication.
+ * Invalid characters return CALCULATOR_INVALID_TOKEN
+ * with a source offset.
+ */
 
 CalculatorStatus calculator_tokenizer_init( /*Initialize a tokenizer over a NUL-terminated input string*/
     CalculatorTokenizer *tokenizer,

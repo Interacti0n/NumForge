@@ -5,11 +5,9 @@
 #include <stdio.h>
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Public decimal conversions and exact operations. Temporary destinations
-    preserve caller values on failure, including output/input aliasing.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Public decimal conversions and exact operations. Temporary destinations
+ * preserve caller values on failure, including output/input aliasing.
+ */
 
 static BigDecimalStatus from_integer_status(BigIntStatus status)
 {

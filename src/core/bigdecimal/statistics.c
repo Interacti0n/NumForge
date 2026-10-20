@@ -11,8 +11,7 @@
 #define BIGDECIMAL_STATISTICS_GUARD_DIGITS INT64_C(16)
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Decimal order statistics, specialized means, and exact sufficient
+Decimal order statistics, specialized means, and exact sufficient
     statistics. Median sorts references only. Geometric mean roots the exact
     product; harmonic mean keeps its reciprocal sum as an exact fraction.
 
@@ -24,7 +23,6 @@
     squares when the inputs share a large common offset.
     Standard deviations round the variance internally with guard digits and
     apply the caller's rounding mode only to the final square root.
-------------------------------------------------------------------------------------------------------------------------------
 */
 
 static BigDecimalStatus statistics_validate(

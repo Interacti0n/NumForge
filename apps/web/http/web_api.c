@@ -19,11 +19,9 @@ void numforge_web_result_timing(char **response, uint64_t started, uint64_t fini
 }
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Local web adapter operations. This module intentionally contains no HTTP or
-    platform code, so its exact C-core behaviour can be covered by unit tests.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Local web adapter operations. This module intentionally contains no HTTP or
+ * platform code, so its exact C-core behaviour can be covered by unit tests.
+ */
 
 char *numforge_web_fraction_approximation(const char *display)
 {

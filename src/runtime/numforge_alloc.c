@@ -24,12 +24,10 @@
 #endif
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Thread-local application resource scope. Ordinary numeric library calls
-    have no active scope; all returned allocations retain the standard free()
-    contract. Cancellation never terminates a thread or skips normal cleanup.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Thread-local application resource scope. Ordinary numeric library calls
+ * have no active scope; all returned allocations retain the standard free()
+ * contract. Cancellation never terminates a thread or skips normal cleanup.
+ */
 
 static NUMFORGE_THREAD_LOCAL bool budget_active;
 static NUMFORGE_THREAD_LOCAL uint64_t budget_started;
@@ -224,11 +222,7 @@ void numforge_test_budget_expire_after(
 }
 #endif
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Monotonic clock and optional thread-local resource budgets.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Monotonic clock and optional thread-local resource budgets. */
 
 uint64_t numforge_monotonic_ms(
     void
@@ -380,12 +374,10 @@ static bool numforge_budget_allocate(
 #ifdef NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Deterministic allocation failure injection used only by test-enabled
-    builds. Exactly one selected allocation call fails during each test run;
-    all cleanup continues to use the ordinary C free() contract.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Deterministic allocation failure injection used only by test-enabled
+ * builds. Exactly one selected allocation call fails during each test run;
+ * all cleanup continues to use the ordinary C free() contract.
+ */
 
 static bool numforge_allocator_active = false;
 static bool numforge_allocator_failed = false;
@@ -450,11 +442,7 @@ bool numforge_test_allocator_did_fail(
 
 #endif
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Budget-aware allocation wrappers. Returned memory is released with free().
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Budget-aware allocation wrappers. Returned memory is released with free(). */
 
 static bool numforge_allocation_allowed(
     size_t size

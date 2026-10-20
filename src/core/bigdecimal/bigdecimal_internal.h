@@ -10,8 +10,7 @@
 #include "src/core/bigint/bigint_internal.h"
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    A BigDecimal represents coefficient * 10^(-scale).
+A BigDecimal represents coefficient * 10^(-scale).
 
     Canonical representation invariants, enforced after every successful
     mutating public operation:
@@ -19,7 +18,6 @@
     - zero is always stored with scale == 0;
     - a non-zero coefficient is not divisible by 10;
     - scale may be negative, allowing compact values such as 1200 as 12e2.
-------------------------------------------------------------------------------------------------------------------------------
 */
 struct BigDecimal
 {
@@ -35,16 +33,14 @@ typedef struct BigDecimalExponent
 } BigDecimalExponent;
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Shared helpers used by the private BigDecimal implementation modules.
-
-    These declarations are intentionally kept outside the installed public
-    headers. They are implementation details and are not part of NumForge's
-    stable public API.
-
-    Implementation: src/core/bigdecimal/bigdecimal.c
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Shared helpers used by the private BigDecimal implementation modules.
+ *
+ * These declarations are intentionally kept outside the installed public
+ * headers. They are implementation details and are not part of NumForge's
+ * stable public API.
+ *
+ * Implementation: src/core/bigdecimal/bigdecimal.c
+ */
 BigDecimalStatus bigdecimal_from_bigint_status(BigIntStatus status);
 /* operations.c: shared half-even intermediates with transactional destinations.
  * Work-buffer-only helpers can intentionally use different allocation policies. */

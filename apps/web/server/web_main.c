@@ -18,11 +18,7 @@
 
 #define NUMFORGE_WEB_PORT 8765
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Platform networking and browser-launch helpers.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Platform networking and browser-launch helpers. */
 
 static bool numforge_networking_start(
     void
@@ -88,11 +84,7 @@ static bool numforge_configure_client_socket(
 #endif
 }
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Local web server entry point.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Local web server entry point. */
 
 static bool numforge_parse_port(
     const char *text,

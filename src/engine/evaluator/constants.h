@@ -6,15 +6,13 @@
 #include "src/engine/api/calculator_internal.h"
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Built-in mathematical constants. The calculator recognizes only the exact
-    UTF-8 symbols π, e, and φ. Values come from the precision-aware public
-    BigDecimal API and are prepared only during evaluation. Symbol recognition
-    remains client syntax.
-
-    Implementation: src/engine/evaluator/constants.c
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Built-in mathematical constants. The calculator recognizes only the exact
+ * UTF-8 symbols π, e, and φ. Values come from the precision-aware public
+ * BigDecimal API and are prepared only during evaluation. Symbol recognition
+ * remains client syntax.
+ *
+ * Implementation: src/engine/evaluator/constants.c
+ */
 
 typedef enum CalculatorConstant
 {
@@ -25,11 +23,7 @@ typedef enum CalculatorConstant
 
 #define CALCULATOR_CONSTANT_COUNT 3U
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Constant operation functions.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Constant operation functions. */
 
 bool calculator_constant_from_text(
     const char *text,

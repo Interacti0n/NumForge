@@ -19,11 +19,9 @@
     } while (0)
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Guarded helpers. Intermediate arithmetic uses half-even rounding; the
-    caller-selected mode is applied only once to the public result.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Guarded helpers. Intermediate arithmetic uses half-even rounding; the
+ * caller-selected mode is applied only once to the public result.
+ */
 
 static BigDecimalStatus hyperbolic_work_digits(
     int64_t digits,
@@ -72,11 +70,7 @@ static BigDecimalStatus hyperbolic_finish(
     return status;
 }
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Stable power series around zero.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Stable power series around zero. */
 
 static BigDecimalStatus hyperbolic_sinh_series(
     BigDecimal *result,
@@ -293,11 +287,7 @@ cleanup:
     return status;
 }
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Forward hyperbolic functions.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Forward hyperbolic functions. */
 
 /* Match the separate public calls, including the cancellation-safe sinh
  * series near zero. Publish both outputs only after every operation succeeds. */
@@ -613,11 +603,7 @@ cleanup:
     return status;
 }
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Inverse hyperbolic functions.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Inverse hyperbolic functions. */
 
 BigDecimalStatus bigdecimal_asinh(
     BigDecimal *result,

@@ -10,21 +10,15 @@
 #include <string.h>
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Storage note: BigDecimal stores value = coefficient * 10^(-scale).
+Storage note: BigDecimal stores value = coefficient * 10^(-scale).
 
     Canonical form: non-zero coefficients are not divisible by ten, and zero
     always has scale 0. Every mutating public operation computes into a
     temporary object and commits only after success, preserving the destination
     on every failure path.
-------------------------------------------------------------------------------------------------------------------------------
 */
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Internal helper functions for BigDecimal operations.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Internal helper functions for BigDecimal operations. */
 
 BigDecimalStatus bigdecimal_from_bigint_status(BigIntStatus status)
 {
@@ -473,11 +467,7 @@ BigDecimalStatus bigdecimal_round_quotient(BigInt *quotient, const BigInt *remai
     return bigdecimal_round_quotient_scratch(quotient, remainder, divisor, negative, rounding, NULL);
 }
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Lifecycle and conversion functions for BigDecimal.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Lifecycle and conversion functions for BigDecimal. */
 
 const char *bigdecimal_status_to_string(BigDecimalStatus status)
 {

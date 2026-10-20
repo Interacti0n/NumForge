@@ -7,11 +7,9 @@
 #include <string.h>
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Formatting adapter. The public BigDecimal API performs numeric formatting;
-    this module adds calculator output and resource limits.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Formatting adapter. The public BigDecimal API performs numeric formatting;
+ * this module adds calculator output and resource limits.
+ */
 
 CalculatorStatus calculator_format_result(
     const BigDecimal *value,

@@ -8,13 +8,11 @@
 #include <string.h>
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Parser implementation. The recursive-descent layers directly mirror the
-    expression grammar: postfix and power operators bind most tightly, unary
-    signs follow, multiplication and division bind next, and addition and
-    subtraction bind least tightly.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Parser implementation. The recursive-descent layers directly mirror the
+ * expression grammar: postfix and power operators bind most tightly, unary
+ * signs follow, multiplication and division bind next, and addition and
+ * subtraction bind least tightly.
+ */
 
 typedef struct CalculatorParser
 {
@@ -25,11 +23,7 @@ typedef struct CalculatorParser
     bool allow_variables;
 } CalculatorParser;
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Internal helper functions for parser operations.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Internal helper functions for parser operations. */
 
 static CalculatorStatus calculator_parser_advance(
     CalculatorParser *parser
@@ -38,11 +32,7 @@ static CalculatorStatus calculator_parser_advance(
     return calculator_tokenizer_next(&parser->tokenizer, &parser->current, parser->error);
 }
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    AST construction and ownership helpers.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* AST construction and ownership helpers. */
 
 static CalculatorExpression *calculator_expression_create(
     CalculatorExpressionType type,
@@ -205,11 +195,7 @@ static CalculatorStatus calculator_parse_expression(
 /* Each call owns an expandable argument array and every successfully parsed
  * child. Failure destroys the partial call, preserving the caller's output. */
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Named function calls and argument ownership.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Named function calls and argument ownership. */
 
 static CalculatorStatus calculator_parse_call(
     CalculatorParser *parser,
@@ -406,11 +392,7 @@ failure:
     return status;
 }
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Expression grammar: literals, constants, and parenthesized expressions.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Expression grammar: literals, constants, and parenthesized expressions. */
 
 static CalculatorStatus calculator_parse_primary(
     CalculatorParser *parser,
@@ -570,11 +552,7 @@ static CalculatorStatus calculator_parse_primary(
     return calculator_parser_syntax_error(parser);
 }
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Operator precedence: postfix, power, unary, multiplication, and addition.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Operator precedence: postfix, power, unary, multiplication, and addition. */
 
 static CalculatorStatus calculator_parse_postfix(
     CalculatorParser *parser,
@@ -938,11 +916,7 @@ static CalculatorStatus calculator_parse_expression(
     return CALCULATOR_OK;
 }
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Parser operation functions.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Parser operation functions. */
 
 static CalculatorStatus calculator_parse_profile_impl(
     const char *input,

@@ -83,12 +83,6 @@ from `tests/browser`; mobile emulation does not establish physical-device behavi
 
 ## Keep only useful tools
 
-The standalone multiplication sweep was replaced by the full-reference integer
-suite. The private materialization bypass, old fixed-workload audit recorder and
-its summarizer were retired. Separate smooth/dense/SVG graph audit scripts were
-superseded by the broader HTTP corpus and browser regressions. Their original
-sources remain in Git history at `e2ebbf5`; no compatibility wrappers are retained.
-
 Add a tool only for a distinct measurement or independent correctness check.
 Extend an existing selector/fixture set when timing scope and verification match.
 Retain failed/limited outcomes; never report an unvalidated fast row as a success.

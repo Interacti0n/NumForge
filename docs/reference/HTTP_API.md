@@ -6,63 +6,12 @@ For exact linear/quadratic equations, use the separate stateless
 [polynomial equation endpoint](EQUATION_HTTP_API.md). Its three coefficient
 expressions do not read or change calculator sessions.
 
-The typed evaluator automatically promotes dimensionless inputs outside supported
-real domains to principal complex results. This includes negative logarithms,
-asin/acos outside [-1,1], acosh below 1, atanh outside [-1,1], negative even
-roots and fractional powers. Singularities remain errors; valid real results
-and unit dimensional rules are preserved. See
-[automatic complex domains](CALCULATOR_EXPRESSIONS.md#automatic-complex-domains).
+Evaluation accepts the shared [calculator expression grammar](CALCULATOR_EXPRESSIONS.md),
+including exact fractions and automatic complex-domain promotion. Mathematical
+branches, singularities and precision belong to that reference and the
+[BigComplex contract](BIGCOMPLEX.md); this page defines HTTP transport and output.
+For example, `sqrt(-1)` returns exact `i` through the same endpoint as `2+2`.
 
-Complex expressions use the same evaluation/session endpoints, e.g.
-`complex(1/3;1/3)^2`, `2+3i`, `re(z)`, `im(z)`, `conj(z)`, `abs(z)`, `arg(z)`
-and `exp(z)`. Lowercase `i` is reserved; uppercase `I` remains a variable.
-`sqrt(z)` / `√(z)` accepts explicit complex values and returns the principal
-root, with proven rational roots staying exact. Negative dimensionless real
-arguments are promoted automatically: `sqrt(-1)` returns exact `i`, just like
-`sqrt(-1+0i)`. Nonnegative real inputs and quantity roots retain their real rules.
-`z^w` and `pow(z;w)` accept principal noninteger and complex powers, via public C `bigcomplex_pow`. Integer powers
-retain exact arithmetic. General powers use exp(w*ln(z)), radians and the
-principal logarithm branch; positive real bases/noninteger real exponents retain
-real results, negative bases promote automatically.
-Zero to zero is one; zero to a positive real exponent is zero; negative real
-and nonreal exponents of zero fail. Approximate snapshots retain complex
-components even for a displayed real result. Failed assignments preserve state.
-
-`sinh(z)`, `cosh(z)` and `tanh(z)` accept complex input through public C APIs.
-Complex angles are radians independent of RAD/DEG; snapshots remain approximate
-complex values. Sinh/cosh can grow exponentially. Tanh uses a scaled decaying
-exponential for large real parts, preserving tiny imaginary tails; scale and
-runtime limits still apply. Near imaginary-axis poles errors can amplify;
-computed zero denominators fail. Failed commits preserve session state.
-
-`sin(z)`, `cos(z)` and `tan(z)` use the public complex C APIs for
-complex-typed input, including zero imaginary components. Angles are radians,
-independent of `angle=deg`; real-only inputs keep RAD/DEG behavior. Results
-are approximate complex snapshots. Tangent uses guarded sin/cos division;
-near-pole errors and resource/scale limits apply. Complex inverse hyperbolic
-calls are supported through public `bigcomplex_asinh/acosh/atanh`. Failed commits preserve session state.
-
-`asin(z)`, `acos(z)` and `atan(z)` and their arc/arcus aliases use the public
-complex C APIs for complex-typed arguments, returning principal branches in
-radians even with `angle=deg`. Real-only inputs keep RAD/DEG and their domains.
-Snapshots remain complex decimal approximations. For example asin(i)≈0.881373587*i,
-asin(2+0i)≈pi/2-1.3169578969*i and acos(2+0i)≈1.3169578969*i.
-Atan(±i) is invalid; failed commits leave ans, variables and history unchanged.
-See [complex cut conventions and precision](BIGCOMPLEX.md#principal-inverse-trigonometry).
-
-`log(z)` uses base 10, and `log(z;b)` computes principal ln(z)/ln(b) when
-either argument is complex or negative real, through public C `bigcomplex_log`. Zero input
-and bases zero or one are invalid; negative and nonreal bases are supported.
-Positive real arguments/base retain real results; negative arguments/base
-promote automatically. Results are
-approximate complex snapshots even when displaying a real number. Near-unit
-bases amplify numerical error; failed commits preserve ans and variables.
-
-`ln(z)` accepts complex input and promotes negative real arguments and returns an approximate principal
-logarithm in radians, imaginary part in (-pi, pi]. Zero is invalid; real
-Both `ln(-1)` and `ln(-1+0i)` use the positive pi branch.
-Arguments and complex exponentials use radians regardless of `angle=deg`.
-Exponentials are approximate and can retain small numerical residuals.
 An optional final output option
 `&form=cartesian|trig|exp` follows precision, angle and notation, and precedes
 client/revision/action suffixes. Omission selects Cartesian. Example:
@@ -76,17 +25,10 @@ This copy is independent of display rounding/form and is not a typed snapshot
 of approximation provenance. Stateless responses still provide display text;
 use typed session snapshots for authoritative components and their kind.
 
-The calculator layout keeps all controls within the viewport while the result
-is collapsed to five lines. Compact spacing and proportional scaling adapt to
-short windows. Expanding a long result allows vertical page scrolling; collapsing
-it restores the fitted layout. This layout policy does not apply to the API guide.
-
-The web UI shows expression errors beside a short excerpt, marking the reported
-token with `⟦…⟧` and including its one-based Unicode character position. An error
-after the last character is described as being at the end of the expression.
-The marker identifies where the error was detected, not necessarily the only
-incorrect character. Resource and connection failures have no expression marker.
-The HTTP error fields remain unchanged.
+The [browser guide](../guides/CALCULATOR_WEB.md) describes layout, previews and
+error highlighting. HTTP `column` is a one-based Unicode character position;
+it identifies where evaluation detected an error. Resource/connection failures
+have no expression position.
 
 `numforge_web` serves the calculator. Its evaluation endpoint is:
 

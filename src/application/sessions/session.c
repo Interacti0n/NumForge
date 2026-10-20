@@ -8,12 +8,10 @@
 #include <string.h>
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Application session ownership and bounded history. A confirmation prepares every owned
-    object before replacing state, so allocation/formatting errors preserve ans
-    and history together. Clearing the preview never changes confirmed values.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Application session ownership and bounded history. A confirmation prepares every owned
+ * object before replacing state, so allocation/formatting errors preserve ans
+ * and history together. Clearing the preview never changes confirmed values.
+ */
 
 void calculator_session_clear_preview(CalculatorSession *session)
 {

@@ -4,15 +4,13 @@
 #include <stddef.h>
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Internal function registry. Names are lowercase ASCII letters only.
-    A zero maximum denotes variadic arity, bounded by input/allocation limits.
-    Arity counts literal units too; qty/convert AST children are numeric only.
-    Recognized calls need not have a numerical implementation yet.
-
-    Implementation: src/engine/evaluator/functions.c
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Internal function registry. Names are lowercase ASCII letters only.
+ * A zero maximum denotes variadic arity, bounded by input/allocation limits.
+ * Arity counts literal units too; qty/convert AST children are numeric only.
+ * Recognized calls need not have a numerical implementation yet.
+ *
+ * Implementation: src/engine/evaluator/functions.c
+ */
 
 typedef enum CalculatorFunctionImplementation
 {

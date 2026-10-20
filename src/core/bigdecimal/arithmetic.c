@@ -6,15 +6,12 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Exact arithmetic and sign operations for BigDecimal.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Exact arithmetic and sign operations for BigDecimal. */
 
-BigDecimalStatus bigdecimal_abs(
+static BigDecimalStatus bigdecimal_unary(
     BigDecimal *result,
-    const BigDecimal *value
+    const BigDecimal *value,
+    bool negate
 )
 {
     BigDecimal *temporary;
@@ -32,7 +29,9 @@ BigDecimalStatus bigdecimal_abs(
         return BIGDECIMAL_OUT_OF_MEMORY;
     }
 
-    status = bigdecimal_from_bigint_status(bigint_abs(temporary->coefficient, value->coefficient));
+    status = bigdecimal_from_bigint_status(negate
+        ? bigint_negate(temporary->coefficient, value->coefficient)
+        : bigint_abs(temporary->coefficient, value->coefficient));
 
     if (status == BIGDECIMAL_OK)
     {
@@ -47,39 +46,14 @@ BigDecimalStatus bigdecimal_abs(
     return status;
 }
 
-BigDecimalStatus bigdecimal_negate(
-    BigDecimal *result,
-    const BigDecimal *value
-)
+BigDecimalStatus bigdecimal_abs(BigDecimal *result, const BigDecimal *value)
 {
-    BigDecimal *temporary;
-    BigDecimalStatus status;
+    return bigdecimal_unary(result, value, false);
+}
 
-    if (result == NULL || value == NULL)
-    {
-        return BIGDECIMAL_NULL_ARGUMENT;
-    }
-
-    temporary = bigdecimal_create();
-
-    if (temporary == NULL)
-    {
-        return BIGDECIMAL_OUT_OF_MEMORY;
-    }
-
-    status = bigdecimal_from_bigint_status(bigint_negate(temporary->coefficient, value->coefficient));
-
-    if (status == BIGDECIMAL_OK)
-    {
-        temporary->scale = value->scale;
-        bigdecimal_commit(result, temporary);
-    }
-    else
-    {
-        bigdecimal_destroy(temporary);
-    }
-
-    return status;
+BigDecimalStatus bigdecimal_negate(BigDecimal *result, const BigDecimal *value)
+{
+    return bigdecimal_unary(result, value, true);
 }
 
 static BigDecimalStatus bigdecimal_add_or_subtract(

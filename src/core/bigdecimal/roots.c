@@ -9,13 +9,11 @@
 #include <string.h>
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Root helpers. Only integer arithmetic is used. Newton iterates down from
-    an upper bound; a non-decreasing next iterate identifies the floor root.
-    An optional caller-owned runtime budget can cover temporary operations;
-    ordinary public calls remain unrestricted.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Root helpers. Only integer arithmetic is used. Newton iterates down from
+ * an upper bound; a non-decreasing next iterate identifies the floor root.
+ * An optional caller-owned runtime budget can cover temporary operations;
+ * ordinary public calls remain unrestricted.
+ */
 static BigIntStatus integer_root(BigInt *root, const BigInt *number, uint32_t degree)
 {
     size_t bits;
@@ -164,13 +162,11 @@ static BigDecimalStatus set_root(
 }
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Real-root operation. Split the decimal exponent by the degree before
-    scaling, so compact inputs such as 1E100000 never expand into that many
-    digits. One guard digit plus a nonzero-tail marker suffices for all six
-    rounding modes; full output does not imply an infinite irrational result.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Real-root operation. Split the decimal exponent by the degree before
+ * scaling, so compact inputs such as 1E100000 never expand into that many
+ * digits. One guard digit plus a nonzero-tail marker suffices for all six
+ * rounding modes; full output does not imply an infinite irrational result.
+ */
 BigDecimalStatus bigdecimal_root(
     BigDecimal *result,
     const BigDecimal *value,

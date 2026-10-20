@@ -12,11 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Text parsing and plain-string conversion for BigDecimal.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Text parsing and plain-string conversion for BigDecimal. */
 
 BigDecimalStatus bigdecimal_set_string(
     BigDecimal *value,

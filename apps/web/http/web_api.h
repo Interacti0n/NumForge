@@ -34,14 +34,12 @@ CalculatorStatus numforge_web_evaluate_cached_form(ApplicationEvaluationCache *c
     char **result, CalculatorError *error, bool *reused);
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Internal adapter between the local HTTP server and the calculator pipeline.
-    It accepts plain expression text and returns the owned decimal text produced
-    by the same parser and BigDecimal evaluator used by the console program.
-
-    Implementation: apps/web/http/web_api.c
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Internal adapter between the local HTTP server and the calculator pipeline.
+ * It accepts plain expression text and returns the owned decimal text produced
+ * by the same parser and BigDecimal evaluator used by the console program.
+ *
+ * Implementation: apps/web/http/web_api.c
+ */
 
 #define NUMFORGE_WEB_MAX_EXPRESSION_LENGTH CALCULATOR_MAX_INPUT_BYTES
 
@@ -73,14 +71,12 @@ CalculatorStatus numforge_web_evaluate_cached_mode(
 );
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Evaluate one expression with NumForge's default calculator policy and the
-    default 10-decimal-place output format.
-
-    On success, result receives an owned string released with free(). On
-    failure, result receives NULL and error identifies the calculator failure.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Evaluate one expression with NumForge's default calculator policy and the
+ * default 10-decimal-place output format.
+ *
+ * On success, result receives an owned string released with free(). On
+ * failure, result receives NULL and error identifies the calculator failure.
+ */
 
 CalculatorStatus numforge_web_evaluate(
     const char *input,

@@ -7,12 +7,10 @@
 #include <string.h>
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Radian trigonometric functions. Forward functions reduce by pi/2 and
-    evaluate the requested sine/cosine series on [-pi/4, pi/4]. Inverse functions use
-    a guarded arctangent series after reciprocal and half-angle reduction.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Radian trigonometric functions. Forward functions reduce by pi/2 and
+ * evaluate the requested sine/cosine series on [-pi/4, pi/4]. Inverse functions use
+ * a guarded arctangent series after reciprocal and half-angle reduction.
+ */
 
 #define BIGDECIMAL_TRIG_GUARD_DIGITS 24
 #define BIGDECIMAL_TRIG_REDUCTION_GUARD_DIGITS 8

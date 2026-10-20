@@ -3,12 +3,10 @@
 #include <stdio.h>
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Exact sequence aggregation and a single rounded division for arithmetic
-    means. Accumulation uses public alias-safe operations so this module stays
-    independent of BigDecimal's private representation.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Exact sequence aggregation and a single rounded division for arithmetic
+ * means. Accumulation uses public alias-safe operations so this module stays
+ * independent of BigDecimal's private representation.
+ */
 
 static BigDecimalStatus bigdecimal_validate_sequence(
     BigDecimal *result,

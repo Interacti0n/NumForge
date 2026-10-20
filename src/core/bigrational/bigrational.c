@@ -7,11 +7,9 @@
 #include <string.h>
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    An exact, reduced fraction. Every public mutation builds a complete
-    temporary and exchanges ownership only after all operations succeed.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * An exact, reduced fraction. Every public mutation builds a complete
+ * temporary and exchanges ownership only after all operations succeed.
+ */
 struct BigRational
 {
     BigInt *numerator;

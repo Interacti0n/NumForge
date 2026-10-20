@@ -6,17 +6,15 @@
 #include "src/engine/evaluator/functions.h"
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Internal AST representation shared by parser and evaluator.
-
-    Every node owns its children and records its subtree depth. Number nodes
-    also own their NUL-terminated decimal text, copied from the tokenizer so an
-    AST remains valid after the caller releases or replaces the original input
-    string.
-
-    Implementation: src/engine/parser/parser.c and evaluator modules
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Internal AST representation shared by parser and evaluator.
+ *
+ * Every node owns its children and records its subtree depth. Number nodes
+ * also own their NUL-terminated decimal text, copied from the tokenizer so an
+ * AST remains valid after the caller releases or replaces the original input
+ * string.
+ *
+ * Implementation: src/engine/parser/parser.c and evaluator modules
+ */
 
 typedef enum CalculatorExpressionType
 {

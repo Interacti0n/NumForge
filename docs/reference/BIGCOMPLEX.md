@@ -283,32 +283,11 @@ successful output with `free()`; all failures preserve the output pointer.
 
 ## Proposed continuation
 
-Calculator `sum`, `product` and `mean` now support mixed real/complex arguments
-through the existing C evaluator and HTTP API. Entirely exact arguments use
-BigRationalComplex accumulation and an exact count division for mean. Approximate
-inputs select BigComplex arithmetic at working precision. These are calculator
-functions built from the existing public numeric operations; no new standalone
-aggregate C symbols are added.
-
-The independent complex oracle now checks 1284 unary/binary/stability cases at up to 250
-significant digits, with an operation timing mode. See
-[numeric testing](../testing/NUMERIC_TESTING.md) and
-[complex benchmarks](../performance/protocols/COMPLEX.md). Memory profiling now
-covers 584 isolated half-even cases; broader coverage remains future work.
-
-1. Extend the implemented exact scaling and bounded magnitude path with
-   certified adaptive error bounds and broader intermediate-growth controls.
-   Integer powers, exact finite modulus and bounded display formatting are available.
-2. Extend further complex statistical operations only with explicit domain definitions.
-   The calculator already supports i, complex(re;im), re/im/conj/abs/arg and exp.
-   Mixed approximate operations explicitly project exact components at working
-   precision. Typed sessions and snapshots are implemented.
-3. Improve argument/exponential/square-root/logarithm rounding guarantees and
-   transcendental error bounds, including the implemented inverse hyperbolic functions.
-   Define cuts, zero behavior and numerical
-   validation separately. Correct rounding needs more than fixed guard digits.
-
-The stages are a roadmap, not implemented features or release dates.
+Current [complex aggregate semantics](CALCULATOR_EXPRESSIONS.md#automatic-complex-domains)
+and [independent numerical checks](../testing/NUMERIC_TESTING.md) have their own
+references. Further work needs certified error bounds, broader intermediate-growth
+controls and explicit domains for additional complex statistics. Fixed guard
+digits alone do not establish correct rounding. See the [roadmap](../project/ROADMAP.md).
 
 ## Exact rational complex values
 

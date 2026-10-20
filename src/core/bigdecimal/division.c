@@ -11,11 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Division, significant-digit rounding, and rescaling for BigDecimal.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Division, significant-digit rounding, and rescaling for BigDecimal. */
 
 BigDecimalStatus bigdecimal_round_significant(
     BigDecimal *result,
@@ -398,11 +394,7 @@ BigDecimalStatus bigdecimal_div_significant(
     return status;
 }
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Rounded arithmetic operation functions for BigDecimal.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Rounded arithmetic operation functions for BigDecimal. */
 
 static BigDecimalStatus bigdecimal_rescale_profile_impl(
     BigDecimal *result,

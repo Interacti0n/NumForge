@@ -3,12 +3,10 @@
 #include <string.h>
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Function names and arities. Domains and rounding belong to numerical
-    implementations, not the parser. Pending calls fail before evaluating
-    arguments, rather than producing an approximate or placeholder result.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Function names and arities. Domains and rounding belong to numerical
+ * implementations, not the parser. Pending calls fail before evaluating
+ * arguments, rather than producing an approximate or placeholder result.
+ */
 
 static const CalculatorFunction calculator_functions[] =
 {

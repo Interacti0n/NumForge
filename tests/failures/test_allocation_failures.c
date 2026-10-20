@@ -55,26 +55,6 @@ static void assert_bigint_text(const char *expected, const BigInt *value)
     free(actual);
 }
 
-static BigRational *make_bigrational(const char *numerator, const char *denominator)
-{
-    BigInt *top = test_integer(numerator);
-    BigInt *bottom = test_integer(denominator);
-    BigRational *value = bigrational_create();
-    TEST_ASSERT_NOT_NULL(value);
-    TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_set_fraction(value, top, bottom));
-    bigint_destroy(top);
-    bigint_destroy(bottom);
-    return value;
-}
-
-static void assert_bigrational_text(const char *expected, const BigRational *value)
-{
-    char *actual = NULL;
-    TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_to_string(value, &actual));
-    TEST_ASSERT_EQUAL_STRING(expected, actual);
-    free(actual);
-}
-
 static BigIntStatus bigint_shift_left_129(BigInt *result, const BigInt *value)
 {
     return bigint_shift_left(result, value, 129U);
@@ -1868,8 +1848,8 @@ void test_bigrational_preserves_aliases_on_every_allocation_failure(void)
         bool completed = false;
         for (size_t index = 1U; index <= ALLOCATION_TEST_MAX_FAILURE_INDEX; index++)
         {
-            BigRational *a = make_bigrational("12345678901234567890", "99999999999999999999");
-            BigRational *b = make_bigrational("9876543210987654321", "88888888888888888889");
+            BigRational *a = test_fraction("12345678901234567890", "99999999999999999999");
+            BigRational *b = test_fraction("9876543210987654321", "88888888888888888889");
             BigRationalStatus status;
             bool failed;
 
@@ -1881,7 +1861,7 @@ void test_bigrational_preserves_aliases_on_every_allocation_failure(void)
             if (failed)
             {
                 TEST_ASSERT_EQUAL(BIGRATIONAL_OUT_OF_MEMORY, status);
-                assert_bigrational_text("137174210/1111111111", a);
+                test_assert_fraction("137174210/1111111111", a);
             }
             else
             {
@@ -1903,7 +1883,7 @@ void test_bigrational_conversion_preserves_outputs_on_allocation_failure(void)
         bool completed = false;
         for (size_t index = 1U; index <= ALLOCATION_TEST_MAX_FAILURE_INDEX; index++)
         {
-            BigRational *rational = make_bigrational("7", "8");
+            BigRational *rational = test_fraction("7", "8");
             BigDecimal *decimal = test_decimal(scenario == 0U ? "1.25" : "9");
             char *text = (char *)"unchanged";
             char *original_text = text;
@@ -1929,7 +1909,7 @@ void test_bigrational_conversion_preserves_outputs_on_allocation_failure(void)
             if (failed)
             {
                 TEST_ASSERT_EQUAL(BIGRATIONAL_OUT_OF_MEMORY, status);
-                assert_bigrational_text("7/8", rational);
+                test_assert_fraction("7/8", rational);
                 if (scenario == 1U) test_assert_decimal("9", decimal);
                 if (scenario == 2U) TEST_ASSERT_EQUAL_PTR(original_text, text);
             }

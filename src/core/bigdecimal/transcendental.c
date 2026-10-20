@@ -6,13 +6,11 @@
 #include <stdint.h>
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Exponential and logarithmic functions. Argument reduction keeps both
-    series close to their fastest-converging region. Every intermediate value
-    is rounded to a guarded significant precision; binary floating point is
-    never used.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Exponential and logarithmic functions. Argument reduction keeps both
+ * series close to their fastest-converging region. Every intermediate value
+ * is rounded to a guarded significant precision; binary floating point is
+ * never used.
+ */
 
 #define BIGDECIMAL_TRANSCENDENTAL_GUARD_DIGITS 24
 #define BIGDECIMAL_TRANSCENDENTAL_MAX_REDUCTIONS 256U

@@ -9,11 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Comparison and inspection functions for BigDecimal.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Comparison and inspection functions for BigDecimal. */
 
 BigDecimalStatus bigdecimal_compare(
     int *comparison,

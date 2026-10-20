@@ -9,20 +9,14 @@
 #include <string.h>
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Calculator phase benchmark.
+ * Calculator phase benchmark.
+ *
+ * Phase totals exclude object destruction and result creation. Allocation
+ * counts measure requests, including realloc's full size, not peak live
+ * bytes. These timings are diagnostic data and are not CI pass/fail limits.
+ */
 
-    Phase totals exclude object destruction and result creation. Allocation
-    counts measure requests, including realloc's full size, not peak live
-    bytes. These timings are diagnostic data and are not CI pass/fail limits.
-------------------------------------------------------------------------------------------------------------------------------
-*/
-
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Execute one benchmark scenario and print a CSV result row.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Execute one benchmark scenario and print a CSV result row. */
 static int run_case(
     const char *label,
     const char *input,
@@ -148,11 +142,7 @@ static int run_case(
     return EXIT_SUCCESS;
 }
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Benchmark entry point.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Benchmark entry point. */
 int main(int argc, char **argv)
 {
     bool factorial_only = argc == 2 && strcmp(argv[1], "--factorial-only") == 0;

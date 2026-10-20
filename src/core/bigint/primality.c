@@ -5,11 +5,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Number-theory predicates and utility checks for BigInt.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Number-theory predicates and utility checks for BigInt. */
 
 bool bigint_is_even( /*Check if a BigInt is even*/
     const BigInt *value

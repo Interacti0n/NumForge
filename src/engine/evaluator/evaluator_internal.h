@@ -30,6 +30,9 @@ bool calculator_time_limit_reached(const CalculatorEvaluation *evaluation);
 bool calculator_nonnegative_integer(const BigDecimal *value);
 CalculatorStatus calculator_bigdecimal_to_bigint(BigInt **result, const BigDecimal *value, bool signed_input);
 CalculatorStatus calculator_set_bigdecimal_from_bigint(BigDecimal *result, const BigInt *value);
+CalculatorStatus calculator_finish_decimal_call(
+    BigDecimal **result, BigDecimal *value, CalculatorStatus status, bool child_error,
+    const CalculatorExpression *expression, CalculatorError *error);
 CalculatorStatus calculator_evaluate_integer_call(
     BigDecimal **result, const CalculatorExpression *expression,
     const CalculatorEvaluation *evaluation, CalculatorError *error);

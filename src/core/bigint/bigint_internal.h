@@ -10,21 +10,19 @@
 #define BIGINT_MAX_LIMBS (SIZE_MAX / BIGINT_LIMB_BITS)
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    BigInt representation invariants:
-
-    - limbs store the absolute value only.
-    - limbs use base 2^64 in little-endian order.
-    - size is the number of significant limbs.
-    - if size > 0, limbs[size - 1] != 0.
-    - size == 0 represents zero.
-    - zero is never negative.
-    - is_negative applies only to non-zero values.
-
-    Internal magnitude helpers do not modify is_negative. Public arithmetic
-    operations are responsible for signed semantics.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * BigInt representation invariants:
+ *
+ * - limbs store the absolute value only.
+ * - limbs use base 2^64 in little-endian order.
+ * - size is the number of significant limbs.
+ * - if size > 0, limbs[size - 1] != 0.
+ * - size == 0 represents zero.
+ * - zero is never negative.
+ * - is_negative applies only to non-zero values.
+ *
+ * Internal magnitude helpers do not modify is_negative. Public arithmetic
+ * operations are responsible for signed semantics.
+ */
 
 struct BigInt
 {

@@ -1,24 +1,12 @@
 # Graph regression review — 16 October 2026
 
-Snapshot under test: `3c049c7`, Windows MSVC Release executable. This follow-up
-adds tests and documentation; it does not alter the evaluator, sampling, browser
-behavior, release version or deployed executable.
+Snapshot: `3c049c7`, Windows MSVC Release.
 
 ## Browser coverage
 
-The complete existing Chromium graph corpus ran 209 cases. Initially 203 passed
-and six failed due to stale test expectations/instrumentation:
-
-- One camera test still expected reload to discard the saved camera. The
-  corrected test checks both retained same-tab state and origin defaults in a
-  fresh browser context, without dropping either assertion.
-- Five reconciliation checks could not install their diagnostic hook because
-  their exact source anchor predated retained-session cleanup. The hook now
-  inserts before the existing save operation. Plateau continuity, cache bounds,
-  cancellation, failed repair and terminal-state assertions remain intact.
-
-The corrected six checks passed in the final selected run. Together with the
-unchanged passing checks, all 209 existing Chromium cases are accounted for.
+The existing Chromium graph corpus had 203/209 passing cases initially. Six
+stale camera/instrumentation expectations were corrected and passed in the final
+selected run; all 209 scenarios and their continuity/cache assertions remain.
 
 Eight new cases exercise four-function scenes at widths 390 and 1280:
 
@@ -84,8 +72,8 @@ Six cases have sampled visible coverage just below 100%: fractional power,
 coverage is 99.8837% for wide floor; discontinuities and unresolved boundaries
 retain gaps. These results do not justify connecting unchecked intervals.
 
-Full [52-row summary](../data/GRAPH_RELEASE_REGRESSION_HTTP_2026_10_16.csv); raw responses
-remain in ignored `build/graph-release-audit-2026-10-16.json`. This curve corpus
+Full [52-row summary](../data/GRAPH_RELEASE_REGRESSION_HTTP_2026_10_16.csv). Raw responses
+are disposable local output. This curve corpus
 does not benchmark C marker verification or discrete modes; their timings are
 in the later [refinement comparison](GRAPH_REFINEMENT.md).
 

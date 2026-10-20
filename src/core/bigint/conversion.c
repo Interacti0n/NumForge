@@ -60,11 +60,7 @@ BigIntStatus bigint_decimal_digits(const BigInt *value, size_t *digits)
     return BIGINT_OK;
 }
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Parsing, formatting, and comparison functions for BigInt.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Parsing, formatting, and comparison functions for BigInt. */
 
 BigIntStatus bigint_set_string( /*Transform string to BigInt*/
     BigInt *value,

@@ -17,15 +17,13 @@ bool numforge_budget_can_allocate_pair(size_t first, size_t second);
 bool numforge_budget_can_allocate_plan(size_t total, size_t largest);
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Internal allocation boundary.
-
-    Optional thread-local application budgets leave ordinary library callers
-    unrestricted. Test-enabled builds also support allocation fault injection.
-
-    Implementation: src/runtime/numforge_alloc.c
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Internal allocation boundary.
+ *
+ * Optional thread-local application budgets leave ordinary library callers
+ * unrestricted. Test-enabled builds also support allocation fault injection.
+ *
+ * Implementation: src/runtime/numforge_alloc.c
+ */
 
 #ifdef NUMFORGE_ENABLE_ALLOC_STATS
 /* Benchmark-only counters. Live tracking is opt-in, same-thread, and covers

@@ -5,14 +5,12 @@
 #include <stdint.h>
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Built-in mathematical constants.
-
-    Values are stored as 500-place decimal approximations. Precision-aware
-    requests reuse and round these values through 500 significant digits;
-    larger requests calculate the constant without binary floating point.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Built-in mathematical constants.
+ *
+ * Values are stored as 500-place decimal approximations. Precision-aware
+ * requests reuse and round these values through 500 significant digits;
+ * larger requests calculate the constant without binary floating point.
+ */
 
 #define BIGDECIMAL_STORED_CONSTANT_DIGITS 500
 #define BIGDECIMAL_CONSTANT_GUARD_DIGITS 24
@@ -257,11 +255,7 @@ cleanup:
     return status;
 }
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Public constant factory.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Public constant factory. */
 BigDecimalStatus bigdecimal_set_constant(
     BigDecimal *result,
     BigDecimalConstant constant

@@ -12,12 +12,10 @@
 #include <string.h>
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Direct decimal conversion and formatting benchmark. Fixture construction
-    and result validation are outside each timed call. Output allocation and
-    destruction remain included because they are part of the public API path.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Direct decimal conversion and formatting benchmark. Fixture construction
+ * and result validation are outside each timed call. Output allocation and
+ * destruction remain included because they are part of the public API path.
+ */
 
 #define FORMAT_BENCHMARK_MAX_SAMPLES 7U
 #define FORMAT_BENCHMARK_MAX_ITERATIONS 262144U

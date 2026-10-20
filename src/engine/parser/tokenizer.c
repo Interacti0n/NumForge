@@ -3,13 +3,11 @@
 #include <string.h>
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Tokenizer implementation. It owns no input memory: every produced token
-    refers to a contiguous slice of the caller-owned source string. A NUMBER
-    token validates the lexical decimal grammar, while BigDecimal later owns
-    numeric conversion and arbitrary-precision storage.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Tokenizer implementation. It owns no input memory: every produced token
+ * refers to a contiguous slice of the caller-owned source string. A NUMBER
+ * token validates the lexical decimal grammar, while BigDecimal later owns
+ * numeric conversion and arbitrary-precision storage.
+ */
 
 static bool calculator_is_whitespace(
     char character
@@ -184,11 +182,7 @@ static CalculatorStatus calculator_read_identifier(
     return CALCULATOR_OK;
 }
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Tokenizer operation functions.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Tokenizer operation functions. */
 
 CalculatorStatus calculator_tokenizer_init(
     CalculatorTokenizer *tokenizer,

@@ -6,14 +6,12 @@
 #include <stdlib.h>
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Number-theory functions for BigInt.
-
-    GCD, LCM, factorial, permutations, and combinations are kept together
-    because they compose the public arithmetic API while sharing the same
-    ownership and budget conventions.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Number-theory functions for BigInt.
+ *
+ * GCD, LCM, factorial, permutations, and combinations are kept together
+ * because they compose the public arithmetic API while sharing the same
+ * ownership and budget conventions.
+ */
 
 BigIntStatus bigint_gcd( /*Greatest common divisor for BigInts (gcd(a,b)) via the Euclidean algorithm*/
     BigInt *result,

@@ -6,14 +6,12 @@
 #include <stdint.h>
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Bounded HTTP framing. MORE means append bytes and try again.
-    Metadata is usable only after READY. Body bytes are validated by the caller.
-    One request is consumed; trailing bytes are ignored (no keep-alive).
-
-    Implementation: apps/web/http/http_request.c
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Bounded HTTP framing. MORE means append bytes and try again.
+ * Metadata is usable only after READY. Body bytes are validated by the caller.
+ * One request is consumed; trailing bytes are ignored (no keep-alive).
+ *
+ * Implementation: apps/web/http/http_request.c
+ */
 #define NUMFORGE_WEB_REQUEST_CAPACITY 8192U
 
 /* Decode one nonempty ASCII query component, including %HH and '+' as space.

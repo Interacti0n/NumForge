@@ -8,20 +8,14 @@
 #define BIGINT_LIMB_BITS 64U
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Integer square-root operations for BigInt.
+ * Integer square-root operations for BigInt.
+ *
+ * The implementation uses Newton iteration and returns the floor of the
+ * exact square root. Public results are committed only after the temporary
+ * computation has completed successfully.
+ */
 
-    The implementation uses Newton iteration and returns the floor of the
-    exact square root. Public results are committed only after the temporary
-    computation has completed successfully.
-------------------------------------------------------------------------------------------------------------------------------
-*/
-
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Internal Newton iteration helper.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Internal Newton iteration helper. */
 static BigIntStatus integer_sqrt_impl( /*Internal Newton iteration helper for integer square root*/
     BigInt *root,
     const BigInt *number
@@ -85,11 +79,7 @@ static BigIntStatus integer_sqrt_impl( /*Internal Newton iteration helper for in
     return status;
 }
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Public square-root function.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Public square-root function. */
 BigIntStatus bigint_isqrt( /*Compute the integer square root of a non-negative BigInt, storing the result in result*/
     BigInt *result,
     const BigInt *value

@@ -27,19 +27,13 @@
 #define NUMFORGE_WEB_SOCKET_TIMEOUT_MS 2000
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Minimal loopback HTTP backend for local or proxied NumForge demonstrations. It is
-    intentionally not an Internet-facing server: it accepts one request at a
-    time, serves build-embedded calculator/help assets, and sends expressions to the C
-    parser and typed evaluator through web_api.c.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Minimal loopback HTTP backend for local or proxied NumForge demonstrations. It is
+ * intentionally not an Internet-facing server: it accepts one request at a
+ * time, serves build-embedded calculator/help assets, and sends expressions to the C
+ * parser and typed evaluator through web_api.c.
+ */
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    HTTP response and request parsing helpers.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* HTTP response and request parsing helpers. */
 
 static bool numforge_socket_retryable(
     void
@@ -480,13 +474,11 @@ static bool numforge_parse_guide_page(const char *target, bool *english)
 }
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Application-owned session/cache pools. HTTP borrows values; creation and FIFO eviction live in src/application/.
-    Values were allocated under the calculator's single-allocation bound;
-    numeric limb storage per retained rational-complex value is at most 512 KiB. No cookies or
-    cross-tab storage: each page creates a fresh random identifier.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Application-owned session/cache pools. HTTP borrows values; creation and FIFO eviction live in src/application/.
+ * Values were allocated under the calculator's single-allocation bound;
+ * numeric limb storage per retained rational-complex value is at most 512 KiB. No cookies or
+ * cross-tab storage: each page creates a fresh random identifier.
+ */
 
 static ApplicationClientStore numforge_application_clients;
 

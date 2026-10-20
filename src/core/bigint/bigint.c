@@ -17,29 +17,23 @@
 #define BIGINT_MAX_LIMBS (SIZE_MAX / BIGINT_LIMB_BITS)
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Storage note: limbs are base-2^64, little-endian (limbs[0] is the least
-    significant 64 bits).
+ * Storage note: limbs are base-2^64, little-endian (limbs[0] is the least
+ * significant 64 bits).
+ *
+ * Canonical form: every BigInt this file hands back to a caller has no
+ * trailing (most significant) zero limbs, and is never "negative zero"
+ * (size == 0 implies is_negative == false). bigint_normalize() is the
+ * single place that enforces this.
+ *
+ * Aliasing: see the header for the guarantee. The general technique used
+ * to deliver it is "compute into a fresh buffer or a fresh local BigInt,
+ * then commit into `result` only once every read from the input
+ * operands is done" - this is what bigint_mul, the bitwise ops, the
+ * shifts, and bigint_div_mod all do. It's provably safe: nothing writes
+ * into memory that could still be read afterward.
+ */
 
-    Canonical form: every BigInt this file hands back to a caller has no
-    trailing (most significant) zero limbs, and is never "negative zero"
-    (size == 0 implies is_negative == false). bigint_normalize() is the
-    single place that enforces this.
-
-    Aliasing: see the header for the guarantee. The general technique used
-    to deliver it is "compute into a fresh buffer or a fresh local BigInt,
-    then commit into `result` only once every read from the input
-    operands is done" - this is what bigint_mul, the bitwise ops, the
-    shifts, and bigint_div_mod all do. It's provably safe: nothing writes
-    into memory that could still be read afterward.
-------------------------------------------------------------------------------------------------------------------------------
-*/
-
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Internal helper functions for BigInt operations.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Internal helper functions for BigInt operations. */
 
 static uint64_t bigint_divide_128_by_u64( /*Divide a 128-bit value by a uint64_t*/
     uint64_t high,
@@ -988,11 +982,7 @@ int bigint_compare_abs( /*Compare two absolute values of BigInts*/
     return 0;
 }
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Status and lifecycle functions for BigInt.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Status and lifecycle functions for BigInt. */
 
 const char *bigint_status_to_string( /*Human-readable description of a BigIntStatus*/
     BigIntStatus status

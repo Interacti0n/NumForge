@@ -6,12 +6,10 @@
 #include <string.h>
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Trigonometric calls. The numeric library is radian-only; calculator angle
-    mode performs guarded conversion at the client boundary. Explicit
-    radians/degrees calls are independent of the selected mode.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Trigonometric calls. The numeric library is radian-only; calculator angle
+ * mode performs guarded conversion at the client boundary. Explicit
+ * radians/degrees calls are independent of the selected mode.
+ */
 
 static CalculatorStatus calculator_convert_angle(
     BigDecimal *value,
@@ -428,18 +426,6 @@ CalculatorStatus calculator_evaluate_trigonometric_call(
         status = CALCULATOR_TIME_LIMIT;
     }
 
-    if (status != CALCULATOR_OK)
-    {
-        bigdecimal_destroy(value);
-
-        if (!child_error)
-        {
-            calculator_error_set(error, status, expression->offset);
-        }
-
-        return status;
-    }
-
-    *result = value;
-    return CALCULATOR_OK;
+    return calculator_finish_decimal_call(
+        result, value, status, child_error, expression, error);
 }

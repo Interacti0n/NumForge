@@ -17,18 +17,12 @@
 #include <string.h>
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Shared calculator utilities. The tokenizer, parser, and evaluator use this
-    module for a common status model, source-positioned errors, and explicit
-    BigDecimal evaluation defaults.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Shared calculator utilities. The tokenizer, parser, and evaluator use this
+ * module for a common status model, source-positioned errors, and explicit
+ * BigDecimal evaluation defaults.
+ */
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Shared utility functions for calculator operations.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Shared utility functions for calculator operations. */
 
 const char *calculator_status_to_string(
     CalculatorStatus status
@@ -183,12 +177,10 @@ CalculatorStatus calculator_budget_status(
 }
 
 /*
-------------------------------------------------------------------------------------------------------------------------------
-    Conservative proof of independence from working precision. Only explicitly
-    exact operations qualify, and every operand must qualify too. Unknown/new
-    operations default to context-dependent; no inference from numeric output.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+ * Conservative proof of independence from working precision. Only explicitly
+ * exact operations qualify, and every operand must qualify too. Unknown/new
+ * operations default to context-dependent; no inference from numeric output.
+ */
 
 static bool calculator_expression_independent(const CalculatorExpression *expression)
 {
