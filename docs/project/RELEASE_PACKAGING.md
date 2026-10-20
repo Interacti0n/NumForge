@@ -85,6 +85,15 @@ the numeric `X.Y.Z` part must match the CMake project version.
 
 ## Build, verify and publish
 
+Ordinary CI also verifies development archives on the release packaging platforms,
+after the native Windows/Linux checks. It reuses these packaging helpers with a
+`X.Y.Z-dev.COMMIT` version and the checked-out source SHA. Linux additionally runs
+the equation/editor/graph-handoff browser suites against the extracted executable.
+Verified archives are available as CI artifacts; these dry runs neither tag nor
+publish a release. The workflow remains
+[one CI run per push](https://github.com/Interacti0n/NumForge/blob/main/.github/workflows/ci.yml); its configured matrix is not
+evidence of a remote pass for unpushed changes.
+
 1. Commit/push the packaging workflow and helper before tagging a new release.
    Update the CMake project version to match the planned tag's numeric version.
 2. Publish a GitHub release for that tag. The `release: published` event starts

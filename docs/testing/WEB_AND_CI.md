@@ -39,7 +39,8 @@ emulation and Windows WebKit do not establish physical Android/iPhone behavior.
 The [CI workflow](https://github.com/Interacti0n/NumForge/blob/main/.github/workflows/ci.yml) owns exact platforms, shard sizes,
 timeouts and artifact retention; do not duplicate its changing job inventory here.
 It covers native tests, independent references, benchmark smoke checks, sanitizers,
-fuzzing, coverage, browser shards, installed C/C++ consumers, Python packages and
+fuzzing, coverage, browser shards, installed C/C++ consumers, extracted development
+archives, Python packages and
 documentation in one run per push. Independent jobs run in parallel; a newer
 revision cancels an unfinished run for the same branch or pull request.
 The separate [release workflow](https://github.com/Interacti0n/NumForge/blob/main/.github/workflows/release-binaries.yml)

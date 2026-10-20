@@ -42,7 +42,14 @@ have local correctness/failure, installed-consumer and validated benchmark check
 Integration additionally passed all 77 native and 78 Python tests, MSVC x64/x86,
 instrumented GCC, static analysis and executable documentation checks. Its error
 estimate remains heuristic. These source changes have not been pushed or published.
-Stage 4 is next; stages 4–6 remain planned.
+Stage 4 is in progress: the selected application workflow is equation input,
+exact roots/approximate previews and graph handoff, in both browser languages.
+Development Windows archives from `1529844` passed CLI/HTTP checks, 39 browser
+tests, 13 SDK examples and 12 C/C++ consumers after extraction. The same CI
+workflow now configures Windows/Linux archive checks and the selected browser
+workflow against the extracted Linux application. These local checks do not
+establish remote platform success. Stage 4 closes after the archive and C/Python matrices pass;
+stages 5–6 remain planned.
 Finish each bounded stage before opening the next; a defect in a completed stage can interrupt
 the sequence. Dates are not promised: progress is determined by the exit evidence.
 Do not keep adding mathematical functions while stages 1 and 2 remain open.
