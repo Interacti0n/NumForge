@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static CalculatorStatus rational_status(BigRationalStatus status)
+CalculatorStatus application_conversion_rational_status(BigRationalStatus status)
 {
     switch (status)
     {
@@ -206,10 +206,10 @@ CalculatorStatus application_conversion_compute(const CalculatorSession *session
     converted.number = bigdecimal_create();
     if (exact == NULL || converted.number == NULL) { status = CALCULATOR_OUT_OF_MEMORY; goto cleanup; }
     if (source.kind == CALCULATOR_VALUE_INTEGER)
-        status = rational_status(bigrational_from_bigint(exact, source.integer));
+        status = application_conversion_rational_status(bigrational_from_bigint(exact, source.integer));
     else if (source.kind == CALCULATOR_VALUE_RATIONAL)
-        status = rational_status(bigrational_copy(exact, source.rational));
-    else status = rational_status(bigrational_from_bigdecimal(exact, source.number));
+        status = application_conversion_rational_status(bigrational_copy(exact, source.rational));
+    else status = application_conversion_rational_status(bigrational_from_bigdecimal(exact, source.number));
     if (status != CALCULATOR_OK) goto cleanup;
     bool factor_approximate = !numforge_unit_conversion_is_exact(from_id, to_id);
     if (!factor_approximate)
@@ -220,7 +220,7 @@ CalculatorStatus application_conversion_compute(const CalculatorSession *session
         converted.kind = CALCULATOR_VALUE_RATIONAL;
         if (source.kind == CALCULATOR_VALUE_DECIMAL)
         {
-            status = rational_status(bigrational_to_bigdecimal(converted.number, converted.rational,
+            status = application_conversion_rational_status(bigrational_to_bigdecimal(converted.number, converted.rational,
                 context->division_scale, context->rounding));
             if (status != CALCULATOR_OK) goto cleanup;
             converted.kind = CALCULATOR_VALUE_DECIMAL;
@@ -230,7 +230,7 @@ CalculatorStatus application_conversion_compute(const CalculatorSession *session
     {
         /* Project at working precision only on the approximate angle branch.
          * Exact conversions never pass through source.number. */
-        status = rational_status(bigrational_to_bigdecimal(converted.number, exact,
+        status = application_conversion_rational_status(bigrational_to_bigdecimal(converted.number, exact,
             context->division_scale + CALCULATOR_ANGLE_GUARD_DIGITS, context->rounding));
         if (status == CALCULATOR_OK) status = unit_status(numforge_unit_convert_decimal(
             converted.number, converted.number, from_id, to_id,

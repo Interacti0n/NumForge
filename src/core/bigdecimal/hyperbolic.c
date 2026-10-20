@@ -3,10 +3,8 @@
 
 #include <numforge/bigdecimal.h>
 
-#include <inttypes.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
 
 #define BIGDECIMAL_HYPERBOLIC_GUARD_DIGITS INT64_C(24)
 
@@ -45,73 +43,6 @@ static BigDecimalStatus hyperbolic_work_digits(
     }
 
     return BIGDECIMAL_OK;
-}
-
-static BigDecimalStatus hyperbolic_set_u64(
-    BigDecimal *value,
-    uint64_t integer
-)
-{
-    char text[32];
-
-    (void)snprintf(text, sizeof(text), "%" PRIu64, integer);
-    return bigdecimal_set_string(value, text);
-}
-
-static BigDecimalStatus hyperbolic_binary_rounded(
-    BigDecimal *result,
-    const BigDecimal *a,
-    const BigDecimal *b,
-    int64_t digits,
-    bool subtract
-)
-{
-    BigDecimal *temporary = bigdecimal_create();
-    BigDecimalStatus status;
-
-    if (temporary == NULL)
-    {
-        return BIGDECIMAL_OUT_OF_MEMORY;
-    }
-
-    status = subtract ? bigdecimal_sub(temporary, a, b)
-                      : bigdecimal_add(temporary, a, b);
-
-    if (status == BIGDECIMAL_OK)
-    {
-        status = bigdecimal_round_significant(
-            result, temporary, digits, BIGDECIMAL_ROUND_HALF_EVEN);
-    }
-
-    bigdecimal_destroy(temporary);
-    return status;
-}
-
-static BigDecimalStatus hyperbolic_multiply_rounded(
-    BigDecimal *result,
-    const BigDecimal *a,
-    const BigDecimal *b,
-    int64_t digits
-)
-{
-    BigDecimal *temporary = bigdecimal_create();
-    BigDecimalStatus status;
-
-    if (temporary == NULL)
-    {
-        return BIGDECIMAL_OUT_OF_MEMORY;
-    }
-
-    status = bigdecimal_mul(temporary, a, b);
-
-    if (status == BIGDECIMAL_OK)
-    {
-        status = bigdecimal_round_significant(
-            result, temporary, digits, BIGDECIMAL_ROUND_HALF_EVEN);
-    }
-
-    bigdecimal_destroy(temporary);
-    return status;
 }
 
 static BigDecimalStatus hyperbolic_finish(
@@ -167,7 +98,7 @@ static BigDecimalStatus hyperbolic_sinh_series(
         goto cleanup;
     }
 
-    HYPERBOLIC_TRY(hyperbolic_multiply_rounded(
+    HYPERBOLIC_TRY(bigdecimal_multiply_rounded(
         square, value, value, digits));
     HYPERBOLIC_TRY(bigdecimal_copy(term, value));
     HYPERBOLIC_TRY(bigdecimal_copy(sum, value));
@@ -185,15 +116,15 @@ static BigDecimalStatus hyperbolic_sinh_series(
         }
 
         even = iteration * 2U;
-        HYPERBOLIC_TRY(hyperbolic_multiply_rounded(
+        HYPERBOLIC_TRY(bigdecimal_multiply_rounded(
             term, term, square, digits));
-        HYPERBOLIC_TRY(hyperbolic_set_u64(divisor, even));
+        HYPERBOLIC_TRY(bigdecimal_set_u64(divisor, even));
         HYPERBOLIC_TRY(bigdecimal_div_significant(
             term, term, divisor, digits, BIGDECIMAL_ROUND_HALF_EVEN));
-        HYPERBOLIC_TRY(hyperbolic_set_u64(divisor, even + 1U));
+        HYPERBOLIC_TRY(bigdecimal_set_u64(divisor, even + 1U));
         HYPERBOLIC_TRY(bigdecimal_div_significant(
             term, term, divisor, digits, BIGDECIMAL_ROUND_HALF_EVEN));
-        HYPERBOLIC_TRY(hyperbolic_binary_rounded(
+        HYPERBOLIC_TRY(bigdecimal_binary_rounded(
             next, sum, term, digits, false));
         HYPERBOLIC_TRY(bigdecimal_compare(&comparison, next, sum));
         HYPERBOLIC_TRY(bigdecimal_copy(sum, next));
@@ -236,7 +167,7 @@ static BigDecimalStatus hyperbolic_asinh_series(
         goto cleanup;
     }
 
-    HYPERBOLIC_TRY(hyperbolic_multiply_rounded(
+    HYPERBOLIC_TRY(bigdecimal_multiply_rounded(
         square, value, value, digits));
     HYPERBOLIC_TRY(bigdecimal_copy(term, value));
     HYPERBOLIC_TRY(bigdecimal_copy(sum, value));
@@ -256,21 +187,21 @@ static BigDecimalStatus hyperbolic_asinh_series(
 
         odd = iteration * 2U + 1U;
         even = (iteration + 1U) * 2U;
-        HYPERBOLIC_TRY(hyperbolic_multiply_rounded(
+        HYPERBOLIC_TRY(bigdecimal_multiply_rounded(
             term, term, square, digits));
-        HYPERBOLIC_TRY(hyperbolic_set_u64(factor, odd));
-        HYPERBOLIC_TRY(hyperbolic_multiply_rounded(
+        HYPERBOLIC_TRY(bigdecimal_set_u64(factor, odd));
+        HYPERBOLIC_TRY(bigdecimal_multiply_rounded(
             term, term, factor, digits));
-        HYPERBOLIC_TRY(hyperbolic_multiply_rounded(
+        HYPERBOLIC_TRY(bigdecimal_multiply_rounded(
             term, term, factor, digits));
-        HYPERBOLIC_TRY(hyperbolic_set_u64(factor, even));
+        HYPERBOLIC_TRY(bigdecimal_set_u64(factor, even));
         HYPERBOLIC_TRY(bigdecimal_div_significant(
             term, term, factor, digits, BIGDECIMAL_ROUND_HALF_EVEN));
-        HYPERBOLIC_TRY(hyperbolic_set_u64(factor, odd + 2U));
+        HYPERBOLIC_TRY(bigdecimal_set_u64(factor, odd + 2U));
         HYPERBOLIC_TRY(bigdecimal_div_significant(
             term, term, factor, digits, BIGDECIMAL_ROUND_HALF_EVEN));
         HYPERBOLIC_TRY(bigdecimal_negate(term, term));
-        HYPERBOLIC_TRY(hyperbolic_binary_rounded(
+        HYPERBOLIC_TRY(bigdecimal_binary_rounded(
             next, sum, term, digits, false));
         HYPERBOLIC_TRY(bigdecimal_compare(&comparison, next, sum));
         HYPERBOLIC_TRY(bigdecimal_copy(sum, next));
@@ -315,7 +246,7 @@ static BigDecimalStatus hyperbolic_atanh_series(
         goto cleanup;
     }
 
-    HYPERBOLIC_TRY(hyperbolic_multiply_rounded(
+    HYPERBOLIC_TRY(bigdecimal_multiply_rounded(
         square, value, value, digits));
     HYPERBOLIC_TRY(bigdecimal_copy(power, value));
     HYPERBOLIC_TRY(bigdecimal_copy(sum, value));
@@ -333,12 +264,12 @@ static BigDecimalStatus hyperbolic_atanh_series(
         }
 
         denominator = iteration * 2U + 1U;
-        HYPERBOLIC_TRY(hyperbolic_multiply_rounded(
+        HYPERBOLIC_TRY(bigdecimal_multiply_rounded(
             power, power, square, digits));
-        HYPERBOLIC_TRY(hyperbolic_set_u64(divisor, denominator));
+        HYPERBOLIC_TRY(bigdecimal_set_u64(divisor, denominator));
         HYPERBOLIC_TRY(bigdecimal_div_significant(
             term, power, divisor, digits, BIGDECIMAL_ROUND_HALF_EVEN));
-        HYPERBOLIC_TRY(hyperbolic_binary_rounded(
+        HYPERBOLIC_TRY(bigdecimal_binary_rounded(
             next, sum, term, digits, false));
         HYPERBOLIC_TRY(bigdecimal_compare(&comparison, next, sum));
         HYPERBOLIC_TRY(bigdecimal_copy(sum, next));
@@ -407,13 +338,13 @@ BigDecimalStatus bigdecimal_sinh_cosh_pair(
         HYPERBOLIC_TRY(bigdecimal_set_string(one, "1"));
         HYPERBOLIC_TRY(bigdecimal_set_string(two, "2"));
         HYPERBOLIC_TRY(bigdecimal_div_significant(reciprocal, one, exponential, work_digits, BIGDECIMAL_ROUND_HALF_EVEN));
-        HYPERBOLIC_TRY(hyperbolic_binary_rounded(c, exponential, reciprocal, work_digits, false));
+        HYPERBOLIC_TRY(bigdecimal_binary_rounded(c, exponential, reciprocal, work_digits, false));
         HYPERBOLIC_TRY(bigdecimal_div_significant(c, c, two, work_digits, BIGDECIMAL_ROUND_HALF_EVEN));
         if (comparison <= 0)
             HYPERBOLIC_TRY(hyperbolic_sinh_series(s, value, work_digits));
         else
         {
-            HYPERBOLIC_TRY(hyperbolic_binary_rounded(s, exponential, reciprocal, work_digits, true));
+            HYPERBOLIC_TRY(bigdecimal_binary_rounded(s, exponential, reciprocal, work_digits, true));
             HYPERBOLIC_TRY(bigdecimal_div_significant(s, s, two, work_digits, BIGDECIMAL_ROUND_HALF_EVEN));
             HYPERBOLIC_TRY(bigdecimal_sign(&sign, value));
             if (sign < 0) HYPERBOLIC_TRY(bigdecimal_negate(s, s));
@@ -500,7 +431,7 @@ static BigDecimalStatus hyperbolic_sinh_cosh(
     HYPERBOLIC_TRY(bigdecimal_set_string(two, "2"));
     HYPERBOLIC_TRY(bigdecimal_div_significant(
         reciprocal, one, exponential, work_digits, BIGDECIMAL_ROUND_HALF_EVEN));
-    HYPERBOLIC_TRY(hyperbolic_binary_rounded(
+    HYPERBOLIC_TRY(bigdecimal_binary_rounded(
         combined, exponential, reciprocal, work_digits, !cosine));
     HYPERBOLIC_TRY(bigdecimal_div_significant(
         combined, combined, two, work_digits, BIGDECIMAL_ROUND_HALF_EVEN));
@@ -620,9 +551,9 @@ BigDecimalStatus bigdecimal_tanh(
     {
         HYPERBOLIC_TRY(hyperbolic_sinh_series(
             sinh_value, absolute, work_digits));
-        HYPERBOLIC_TRY(hyperbolic_multiply_rounded(
+        HYPERBOLIC_TRY(bigdecimal_multiply_rounded(
             square, sinh_value, sinh_value, work_digits));
-        HYPERBOLIC_TRY(hyperbolic_binary_rounded(
+        HYPERBOLIC_TRY(bigdecimal_binary_rounded(
             square, one, square, work_digits, false));
         HYPERBOLIC_TRY(bigdecimal_sqrt(
             cosh_value, square, work_digits, BIGDECIMAL_ROUND_HALF_EVEN));
@@ -633,7 +564,7 @@ BigDecimalStatus bigdecimal_tanh(
     {
         if (work_digits <= INT64_MAX / 2)
         {
-            HYPERBOLIC_TRY(hyperbolic_set_u64(
+            HYPERBOLIC_TRY(bigdecimal_set_u64(
                 threshold, (uint64_t)work_digits * 2U));
             HYPERBOLIC_TRY(bigdecimal_compare(&comparison, absolute, threshold));
         }
@@ -644,14 +575,14 @@ BigDecimalStatus bigdecimal_tanh(
         }
         else
         {
-            HYPERBOLIC_TRY(hyperbolic_multiply_rounded(
+            HYPERBOLIC_TRY(bigdecimal_multiply_rounded(
                 exponent, absolute, two, work_digits));
             HYPERBOLIC_TRY(bigdecimal_negate(exponent, exponent));
             HYPERBOLIC_TRY(bigdecimal_exp(
                 exponential, exponent, work_digits, BIGDECIMAL_ROUND_HALF_EVEN));
-            HYPERBOLIC_TRY(hyperbolic_binary_rounded(
+            HYPERBOLIC_TRY(bigdecimal_binary_rounded(
                 numerator, one, exponential, work_digits, true));
-            HYPERBOLIC_TRY(hyperbolic_binary_rounded(
+            HYPERBOLIC_TRY(bigdecimal_binary_rounded(
                 denominator, one, exponential, work_digits, false));
             HYPERBOLIC_TRY(bigdecimal_div_significant(
                 temporary, numerator, denominator, work_digits, BIGDECIMAL_ROUND_HALF_EVEN));
@@ -765,7 +696,7 @@ BigDecimalStatus bigdecimal_asinh(
 
     if (work_digits <= INT64_MAX / 2)
     {
-        HYPERBOLIC_TRY(hyperbolic_set_u64(
+        HYPERBOLIC_TRY(bigdecimal_set_u64(
             threshold, (uint64_t)work_digits * 2U));
         HYPERBOLIC_TRY(bigdecimal_compare(&comparison, absolute, threshold));
     }
@@ -782,19 +713,19 @@ BigDecimalStatus bigdecimal_asinh(
     {
         HYPERBOLIC_TRY(bigdecimal_div_significant(
             reciprocal, one, absolute, work_digits, BIGDECIMAL_ROUND_HALF_EVEN));
-        HYPERBOLIC_TRY(hyperbolic_multiply_rounded(
+        HYPERBOLIC_TRY(bigdecimal_multiply_rounded(
             square, reciprocal, reciprocal, work_digits));
-        HYPERBOLIC_TRY(hyperbolic_binary_rounded(
+        HYPERBOLIC_TRY(bigdecimal_binary_rounded(
             square, one, square, work_digits, false));
         HYPERBOLIC_TRY(bigdecimal_sqrt(
             root, square, work_digits, BIGDECIMAL_ROUND_HALF_EVEN));
-        HYPERBOLIC_TRY(hyperbolic_binary_rounded(
+        HYPERBOLIC_TRY(bigdecimal_binary_rounded(
             factor, one, root, work_digits, false));
         HYPERBOLIC_TRY(bigdecimal_ln(
             factor, factor, work_digits, BIGDECIMAL_ROUND_HALF_EVEN));
     }
 
-    HYPERBOLIC_TRY(hyperbolic_binary_rounded(
+    HYPERBOLIC_TRY(bigdecimal_binary_rounded(
         temporary, logarithm, factor, work_digits, false));
 
     if (sign < 0)
@@ -876,7 +807,7 @@ BigDecimalStatus bigdecimal_acosh(
     }
 
     HYPERBOLIC_TRY(bigdecimal_set_string(two, "2"));
-    HYPERBOLIC_TRY(hyperbolic_binary_rounded(
+    HYPERBOLIC_TRY(bigdecimal_binary_rounded(
         reduced, value, one, work_digits, true));
     HYPERBOLIC_TRY(bigdecimal_div_significant(
         reduced, reduced, two, work_digits, BIGDECIMAL_ROUND_HALF_EVEN));
@@ -884,7 +815,7 @@ BigDecimalStatus bigdecimal_acosh(
         root, reduced, work_digits, BIGDECIMAL_ROUND_HALF_EVEN));
     HYPERBOLIC_TRY(bigdecimal_asinh(
         temporary, root, work_digits, BIGDECIMAL_ROUND_HALF_EVEN));
-    HYPERBOLIC_TRY(hyperbolic_multiply_rounded(
+    HYPERBOLIC_TRY(bigdecimal_multiply_rounded(
         temporary, temporary, two, work_digits));
     HYPERBOLIC_TRY(hyperbolic_finish(result, temporary, digits, rounding));
 
@@ -972,9 +903,9 @@ BigDecimalStatus bigdecimal_atanh(
     }
     else
     {
-        HYPERBOLIC_TRY(hyperbolic_binary_rounded(
+        HYPERBOLIC_TRY(bigdecimal_binary_rounded(
             numerator, one, absolute, work_digits, false));
-        HYPERBOLIC_TRY(hyperbolic_binary_rounded(
+        HYPERBOLIC_TRY(bigdecimal_binary_rounded(
             denominator, one, absolute, work_digits, true));
         HYPERBOLIC_TRY(bigdecimal_div_significant(
             ratio, numerator, denominator, work_digits, BIGDECIMAL_ROUND_HALF_EVEN));

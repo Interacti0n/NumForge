@@ -16,6 +16,11 @@
 */
 #define NUMFORGE_WEB_REQUEST_CAPACITY 8192U
 
+/* Decode one nonempty ASCII query component, including %HH and '+' as space.
+ * Reject controls, non-ASCII bytes and insufficient room for the terminator.
+ * Output is usable only on success; no allocation or retained state. */
+bool numforge_http_decode_query(const char *start, size_t length, char *out, size_t capacity);
+
 typedef enum NumForgeHttpStatus
 {
     NUMFORGE_HTTP_MORE,

@@ -1,3 +1,4 @@
+#include "apps/web/http/http_request.h"
 #include "apps/web/http/session_api.h"
 #include "apps/web/http/unit_web.h"
 #include "apps/web/http/web_api.h"
@@ -98,27 +99,6 @@ static const char *keys[] = {"client", "action", "revision", "offset", "limit", 
 typedef struct Query { char values[QUERY_COUNT][48]; unsigned int seen; } Query;
 #define BIT(field) (1U << (field))
 
-static int hex(char c)
-{
-    if (c >= '0' && c <= '9') return c - '0';
-    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
-    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
-    return -1;
-}
-static bool decode(const char *begin, const char *end, char *out)
-{
-    size_t count = 0;
-    while (begin < end) {
-        unsigned char c = (unsigned char)*begin++;
-        if (c == '%') {
-            if (end - begin < 2 || hex(begin[0]) < 0 || hex(begin[1]) < 0) return false;
-            c = (unsigned char)(hex(begin[0]) * 16 + hex(begin[1])); begin += 2;
-        } else if (c == '+') c = ' ';
-        if (c < 32U || c >= 127U || count + 1U >= 48U) return false;
-        out[count++] = (char)c;
-    }
-    out[count] = '\0'; return count != 0U;
-}
 static bool parse(const char *target, char path[64], Query *query)
 {
     memset(query, 0, sizeof(*query));
@@ -133,7 +113,9 @@ static bool parse(const char *target, char path[64], Query *query)
         const char *end = strchr(part, '&'); if (end == NULL) end = part + strlen(part);
         const char *equal = memchr(part, '=', (size_t)(end - part));
         char key[48], value[48];
-        if (equal == NULL || !decode(part, equal, key) || !decode(equal + 1, end, value)) return false;
+        if (equal == NULL ||
+            !numforge_http_decode_query(part, (size_t)(equal - part), key, sizeof(key)) ||
+            !numforge_http_decode_query(equal + 1, (size_t)(end - equal - 1), value, sizeof(value))) return false;
         size_t i; for (i = 0; i < QUERY_COUNT; i++) if (strcmp(key, keys[i]) == 0) break;
         if (i == QUERY_COUNT || (query->seen & BIT(i))) return false;
         query->seen |= BIT(i); memcpy(query->values[i], value, strlen(value) + 1U);

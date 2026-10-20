@@ -167,14 +167,9 @@ static void destroy_work(Work *work)
     for (size_t i = 0; i < 2; ++i) application_expression_destroy(work->sides[i]);
     free(work->source);
 }
-static CalculatorStatus solve(ApplicationNumericRoot **result, const char *input,
-    const BigRational *lower, const BigRational *upper, const CalculatorContext *context, CalculatorError *error,
-    ApplicationNumericRootMethod method, ApplicationNumericRootStats *statistics)
+static CalculatorStatus validate_input(const char *input, const CalculatorContext *context,
+    size_t *length_out, size_t *rhs_out, CalculatorError *error)
 {
-    calculator_error_clear(error);
-    if ((unsigned)method > APPLICATION_ROOT_DECIMAL_HYBRID) { calculator_error_set(error, CALCULATOR_INVALID_ARGUMENT, 0U); return CALCULATOR_INVALID_ARGUMENT; }
-    bool brent = method != APPLICATION_ROOT_BISECTION;
-    if (!result || !input || !lower || !upper || !context) { calculator_error_set(error, CALCULATOR_NULL_ARGUMENT, 0U); return CALCULATOR_NULL_ARGUMENT; }
     CalculatorStatus status = calculator_context_validate(context, error);
     if (status != CALCULATOR_OK) return status;
     if (context->division_scale < 16 || context->division_scale > 100 || context->angle_unit != CALCULATOR_ANGLE_RADIANS) {
@@ -187,9 +182,23 @@ static CalculatorStatus solve(ApplicationNumericRoot **result, const char *input
     if (!equal || strchr(equal+1, '=') || strchr(input, '\n') || strchr(input, '\r')) {
         calculator_error_set(error, CALCULATOR_SYNTAX_ERROR, equal ? (size_t)(equal-input) : length); return CALCULATOR_SYNTAX_ERROR;
     }
+    *length_out = length; *rhs_out = (size_t)(equal - input) + 1;
+    return CALCULATOR_OK;
+}
+static CalculatorStatus solve(ApplicationNumericRoot **result, const char *input,
+    const BigRational *lower, const BigRational *upper, const CalculatorContext *context, CalculatorError *error,
+    ApplicationNumericRootMethod method, ApplicationNumericRootStats *statistics)
+{
+    calculator_error_clear(error);
+    if ((unsigned)method > APPLICATION_ROOT_DECIMAL_HYBRID) { calculator_error_set(error, CALCULATOR_INVALID_ARGUMENT, 0U); return CALCULATOR_INVALID_ARGUMENT; }
+    bool brent = method != APPLICATION_ROOT_BISECTION;
+    if (!result || !input || !lower || !upper || !context) { calculator_error_set(error, CALCULATOR_NULL_ARGUMENT, 0U); return CALCULATOR_NULL_ARGUMENT; }
+    size_t length = 0, rhs = 0;
+    CalculatorStatus status = validate_input(input, context, &length, &rhs, error);
+    if (status != CALCULATOR_OK) return status;
     bool owner = numforge_budget_begin((uint64_t)context->time_limit_ms, CALCULATOR_ALLOCATION_BUDGET, CALCULATOR_SINGLE_ALLOCATION);
     Work work = {0};
-    status = prepare_work(&work, input, length, (size_t)(equal-input)+1, context, error);
+    status = prepare_work(&work, input, length, rhs, context, error);
     StrategyWork strategy_work = {0}; strategy_work.work = &work;
     strategy_work.hybrid = method == APPLICATION_ROOT_DECIMAL_HYBRID;
     NumForgeRootStrategy strategy = {strategy_reset, strategy_propose, strategy_accept, &strategy_work};
@@ -220,12 +229,6 @@ CalculatorStatus application_numeric_root_solve(ApplicationNumericRoot **result,
 {
     return solve(result, input, lower, upper, context, error, APPLICATION_ROOT_BISECTION, NULL);
 }
-CalculatorStatus application_numeric_root_experiment(ApplicationNumericRoot **result, const char *input,
-    const BigRational *lower, const BigRational *upper, const CalculatorContext *context, CalculatorError *error,
-    bool brent, ApplicationNumericRootStats *statistics)
-{
-    return solve(result, input, lower, upper, context, error, brent ? APPLICATION_ROOT_RATIONAL_BRENT : APPLICATION_ROOT_BISECTION, statistics);
-}
 CalculatorStatus application_numeric_root_method(ApplicationNumericRoot **result, const char *input,
     const BigRational *lower, const BigRational *upper, const CalculatorContext *context, CalculatorError *error,
     ApplicationNumericRootMethod method, ApplicationNumericRootStats *statistics)
@@ -251,21 +254,12 @@ CalculatorStatus application_numeric_roots_scan(ApplicationRootScan **result, co
     if (!result || !input || !lower || !upper || !context) {
         calculator_error_set(error, CALCULATOR_NULL_ARGUMENT, 0U); return CALCULATOR_NULL_ARGUMENT;
     }
-    CalculatorStatus status = calculator_context_validate(context, error);
+    size_t length = 0, rhs = 0;
+    CalculatorStatus status = validate_input(input, context, &length, &rhs, error);
     if (status != CALCULATOR_OK) return status;
-    if (context->division_scale < 16 || context->division_scale > 100 || context->angle_unit != CALCULATOR_ANGLE_RADIANS) {
-        calculator_error_set(error, CALCULATOR_INVALID_ARGUMENT, 0U); return CALCULATOR_INVALID_ARGUMENT;
-    }
-    size_t length = 0U;
-    while (length <= CALCULATOR_MAX_INPUT_BYTES && input[length]) ++length;
-    if (length > CALCULATOR_MAX_INPUT_BYTES) { calculator_error_set(error, CALCULATOR_VALUE_TOO_LARGE, 0U); return CALCULATOR_VALUE_TOO_LARGE; }
-    const char *equal = strchr(input, '=');
-    if (!equal || strchr(equal+1, '=') || strchr(input, '\n') || strchr(input, '\r')) {
-        calculator_error_set(error, CALCULATOR_SYNTAX_ERROR, equal ? (size_t)(equal-input) : length); return CALCULATOR_SYNTAX_ERROR;
-    }
     bool owner = numforge_budget_begin((uint64_t)context->time_limit_ms, CALCULATOR_ALLOCATION_BUDGET, CALCULATOR_SINGLE_ALLOCATION);
     Work work = {0};
-    status = prepare_work(&work, input, length, (size_t)(equal-input)+1, context, error);
+    status = prepare_work(&work, input, length, rhs, context, error);
     NumForgeRootScanOptions options; numforge_root_scan_options_init(&options);
     options.root_options.decimal_places = work.context.division_scale;
     options.segments = APPLICATION_ROOT_SCAN_SEGMENTS; options.max_roots = APPLICATION_ROOT_SCAN_MAX_ROOTS;

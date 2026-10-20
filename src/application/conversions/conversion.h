@@ -14,6 +14,9 @@ typedef struct ApplicationConversion {
 } ApplicationConversion;
 
 void application_conversion_destroy(ApplicationConversion *entry);
+/* Conversion input/serialization policy: NULL and division-by-zero numeric
+ * statuses have historically been INVALID_ARGUMENT, unlike scalar evaluation. */
+CalculatorStatus application_conversion_rational_status(BigRationalStatus status);
 CalculatorStatus application_conversion_compute(const CalculatorSession *session,
     const char *input, const char *from, const char *to, const CalculatorContext *context,
     ApplicationConversion *entry, CalculatorError *error, const char **code);

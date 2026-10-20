@@ -1,10 +1,36 @@
 #include "apps/web/http/http_request.h"
+
 #include "apps/web/http/web_api.h"
 
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
 
+static int hex_digit(char c)
+{
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+    return -1;
+}
+
+bool numforge_http_decode_query(const char *start, size_t length, char *out, size_t capacity)
+{
+    if (start == NULL || out == NULL || capacity == 0) return false;
+    size_t used = 0;
+    for (size_t i = 0; i < length; ++i) {
+        unsigned char c = (unsigned char)start[i];
+        if (c == '%') {
+            if (length - i < 3) return false;
+            int high = hex_digit(start[i + 1]), low = hex_digit(start[i + 2]);
+            if (high < 0 || low < 0) return false;
+            c = (unsigned char)(high * 16 + low); i += 2;
+        } else if (c == '+') c = ' ';
+        if (c < 32U || c >= 127U || used + 1 >= capacity) return false;
+        out[used++] = (char)c;
+    }
+    out[used] = '\0'; return used != 0;
+}
 /*
 ------------------------------------------------------------------------------------------------------------------------------
     Socket-independent HTTP framing and header validation.

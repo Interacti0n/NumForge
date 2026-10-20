@@ -25,8 +25,10 @@ owns its source manifest. There are no empty future-module placeholders.
 
 ## Execution order and completion gates
 
-Planning baseline: 20 October 2026, after exact C/Python covariance. The next
-work is stage 1. All stages below are planned, not completed. Finish each bounded
+Planning baseline: 20 October 2026, after exact C/Python covariance. Stage 1 is
+complete for the [bounded structural audit](STRUCTURAL_AUDIT_2026_10_20.md), with
+explicit retained/deferred findings. Stage 2 is next; stages 2–6 remain planned.
+Finish each bounded
 stage before opening the next; a defect found in a completed stage can interrupt
 the sequence. Dates are not promised: progress is determined by the exit evidence.
 Do not keep adding mathematical functions while stages 1 and 2 remain open.

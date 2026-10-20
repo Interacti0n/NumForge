@@ -54,6 +54,11 @@ and C++ package consumers compile and call the public rational API.
 
 The architecture check rejects module-private includes outside their owning
 module, with a narrow exception for the existing equation research callbacks.
+It also validates all implementation source manifests and rejects core-storage
+leaks. Run `node tests/test_architecture.cjs` to exercise the guard on isolated
+fixtures; CTest registers this as `architecture_guard_tests`. See the
+[bounded structural audit](project/STRUCTURAL_AUDIT_2026_10_20.md) for retained
+dependencies and cleanup verification.
 For result-boundary changes, compare complete equation HTTP responses against
 the preceding build, covering exact/radical/complex solutions, single roots,
 domain gaps, contact roots and scan limits alongside the equation browser tests.

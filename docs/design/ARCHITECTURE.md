@@ -64,8 +64,10 @@ separate shared library or a runtime plugin framework.
 Private includes use repository-qualified paths. CMake exposes the repository
 root privately, while installed consumers see only public headers.
 `scripts/check_architecture.cjs`, also registered in CTest when Node is available,
-checks upward source includes, private leaks in public headers and module source
-manifests. Module-private headers are restricted to their owning module; application
+checks upward source includes, private leaks in public headers and source
+manifests for all existing implementation layers. Bare private-header includes,
+unowned C files and missing registered files are rejected; comments cannot
+register sources. Module-private headers are restricted to their owning module; application
 formatting and HTTP serialization use public getters for opaque results. The
 equation research adapter may include the private strategy callback contract,
 which exposes no result storage. Opt-in decimal profiling has one explicit
@@ -75,6 +77,9 @@ metadata, without parser, evaluator-storage, value-internal or formatter headers
 Numeric status conversion is centralized in `src/engine/api/status.h`; it does
 not require evaluator storage or function dispatch declarations. Established
 decimal error policies remain distinct for compatibility.
+Core storage headers stay within the core, apart from the existing decimal
+profiler. The exact rational square-root helper has two named consumers: the
+polynomial solver and exact expression evaluator; it exposes no numeric storage.
 This source check complements compilation and consumer tests; it does not prove
 the absence of every indirect or link-time dependency.
 

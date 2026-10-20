@@ -1,3 +1,4 @@
+#include "apps/web/http/http_request.h"
 #include "apps/web/http/unit_web.h"
 #include "apps/web/http/web_api.h"
 #include "src/runtime/numforge_alloc.h"
@@ -51,34 +52,6 @@ static void json_string(JsonBuffer *buffer, const char *text)
     }
     json_append(buffer, "\"");
 }
-static int hex_digit(char c)
-{
-    if (c >= '0' && c <= '9') return c - '0';
-    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
-    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
-    return -1;
-}
-static bool decode(const char *start, size_t length, char *out, size_t capacity)
-{
-    size_t used = 0;
-    for (size_t i = 0; i < length; ++i)
-    {
-        unsigned char c = (unsigned char)start[i];
-        if (c == '%')
-        {
-            if (i + 2 >= length) return false;
-            int high = hex_digit(start[i+1]), low = hex_digit(start[i+2]);
-            if (high < 0 || low < 0) return false;
-            c = (unsigned char)(high * 16 + low);
-            i += 2;
-        }
-        else if (c == '+') c = ' ';
-        if (c < 32U || c >= 127U || used + 1 >= capacity) return false;
-        out[used++] = (char)c;
-    }
-    out[used] = '\0';
-    return used != 0;
-}
 static bool number(const char *text, int64_t minimum, int64_t *result)
 {
     int64_t value = 0;
@@ -111,8 +84,8 @@ bool numforge_web_parse_conversion_options(const char *target, NumForgeConversio
         if (end == NULL) end = part + strlen(part);
         const char *equals = memchr(part, '=', (size_t)(end-part));
         char key[32], value[48];
-        if (equals == NULL || !decode(part, (size_t)(equals-part), key, sizeof(key)) ||
-            !decode(equals+1, (size_t)(end-equals-1), value, sizeof(value))) return false;
+        if (equals == NULL || !numforge_http_decode_query(part, (size_t)(equals-part), key, sizeof(key)) ||
+            !numforge_http_decode_query(equals+1, (size_t)(end-equals-1), value, sizeof(value))) return false;
         size_t index;
         for (index = 0; index < sizeof(keys)/sizeof(keys[0]); ++index)
             if (strcmp(key, keys[index]) == 0) break;
@@ -168,17 +141,6 @@ bool numforge_web_parse_conversion_options(const char *target, NumForgeConversio
     options->context.division_scale = options->precision;
     return (seen & 3U) == 3U;
 }
-static CalculatorStatus rational_status(BigRationalStatus status)
-{
-    switch (status)
-    {
-        case BIGRATIONAL_OK: return CALCULATOR_OK;
-        case BIGRATIONAL_OUT_OF_MEMORY: return CALCULATOR_OUT_OF_MEMORY;
-        case BIGRATIONAL_VALUE_TOO_LARGE: return CALCULATOR_VALUE_TOO_LARGE;
-        case BIGRATIONAL_SCALE_OVERFLOW: return CALCULATOR_SCALE_OVERFLOW;
-        default: return CALCULATOR_INVALID_ARGUMENT;
-    }
-}
 CalculatorStatus numforge_web_conversion_response(const ApplicationConversion *entry,
     bool include_snapshot, char **response)
 {
@@ -191,10 +153,10 @@ CalculatorStatus numforge_web_conversion_response(const ApplicationConversion *e
         if (entry->value.kind == CALCULATOR_VALUE_DECIMAL) {
             exact = bigrational_create();
             if (exact == NULL) return CALCULATOR_OUT_OF_MEMORY;
-            status = rational_status(bigrational_from_bigdecimal(exact, entry->value.number));
+            status = application_conversion_rational_status(bigrational_from_bigdecimal(exact, entry->value.number));
         }
         if (status == CALCULATOR_OK)
-            status = rational_status(bigrational_to_string(exact != NULL ? exact : entry->value.rational, &snapshot));
+            status = application_conversion_rational_status(bigrational_to_string(exact != NULL ? exact : entry->value.rational, &snapshot));
         bigrational_destroy(exact);
         if (status != CALCULATOR_OK) return status;
         if (strlen(snapshot) > CALCULATOR_MAX_OUTPUT_BYTES) { free(snapshot); return CALCULATOR_VALUE_TOO_LARGE; }

@@ -1,4 +1,5 @@
 #include "src/engine/evaluator/constants.h"
+#include "src/engine/api/status.h"
 
 #include <string.h>
 
@@ -27,27 +28,6 @@ static bool calculator_text_equals(
     }
 
     return memcmp(text, expected, length) == 0;
-}
-
-static CalculatorStatus calculator_from_bigdecimal_status(
-    BigDecimalStatus status
-)
-{
-    switch (status)
-    {
-        case BIGDECIMAL_OK:
-            return CALCULATOR_OK;
-        case BIGDECIMAL_NULL_ARGUMENT:
-            return CALCULATOR_NULL_ARGUMENT;
-        case BIGDECIMAL_OUT_OF_MEMORY:
-            return CALCULATOR_OUT_OF_MEMORY;
-        case BIGDECIMAL_VALUE_TOO_LARGE:
-            return CALCULATOR_VALUE_TOO_LARGE;
-        case BIGDECIMAL_SCALE_OVERFLOW:
-            return CALCULATOR_SCALE_OVERFLOW;
-        default:
-            return CALCULATOR_INVALID_ARGUMENT;
-    }
 }
 
 /*
@@ -115,6 +95,6 @@ CalculatorStatus calculator_constant_set_value(
             return CALCULATOR_INVALID_ARGUMENT;
     }
 
-    return calculator_from_bigdecimal_status(
+    return calculator_from_decimal_status(
         bigdecimal_set_constant_significant(value, numeric_constant, digits, rounding));
 }

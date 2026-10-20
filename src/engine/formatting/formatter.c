@@ -1,4 +1,5 @@
 #include "src/engine/formatting/formatter.h"
+#include "src/engine/api/status.h"
 
 #include <numforge/runtime.h>
 
@@ -11,27 +12,6 @@
     this module adds calculator output and resource limits.
 ------------------------------------------------------------------------------------------------------------------------------
 */
-
-static CalculatorStatus calculator_from_bigdecimal_status(
-    BigDecimalStatus status
-)
-{
-    switch (status)
-    {
-        case BIGDECIMAL_OK:
-            return CALCULATOR_OK;
-        case BIGDECIMAL_NULL_ARGUMENT:
-            return CALCULATOR_NULL_ARGUMENT;
-        case BIGDECIMAL_OUT_OF_MEMORY:
-            return CALCULATOR_OUT_OF_MEMORY;
-        case BIGDECIMAL_VALUE_TOO_LARGE:
-            return CALCULATOR_VALUE_TOO_LARGE;
-        case BIGDECIMAL_SCALE_OVERFLOW:
-            return CALCULATOR_SCALE_OVERFLOW;
-        default:
-            return CALCULATOR_INVALID_ARGUMENT;
-    }
-}
 
 CalculatorStatus calculator_format_result(
     const BigDecimal *value,
@@ -86,7 +66,7 @@ CalculatorStatus calculator_format_result(
     }
     else
     {
-        status = calculator_from_bigdecimal_status(
+        status = calculator_from_decimal_status(
             bigdecimal_format_mode(value, context->output_scale, context->rounding,
                 decimal_notation, CALCULATOR_MAX_OUTPUT_BYTES, result));
     }

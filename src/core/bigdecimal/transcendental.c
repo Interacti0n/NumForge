@@ -2,10 +2,8 @@
 #include "src/core/bigdecimal/bigdecimal_internal.h"
 #include "src/runtime/numforge_alloc.h"
 
-#include <inttypes.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
@@ -28,14 +26,6 @@
             goto cleanup;                    \
         }                                    \
     } while (0)
-
-static BigDecimalStatus set_integer(BigDecimal *value, uint64_t integer)
-{
-    char text[32];
-
-    (void)snprintf(text, sizeof(text), "%" PRIu64, integer);
-    return bigdecimal_set_string(value, text);
-}
 
 static BigDecimalStatus set_exact_result(BigDecimal *result, const char *text)
 {
@@ -175,7 +165,7 @@ static BigDecimalStatus logarithm_series(
         index += 2U;
         TRANSCENDENTAL_TRY(bigdecimal_mul_significant_workspace(
             term, term, z_squared, work_digits, rounding, &workspace));
-        TRANSCENDENTAL_TRY(set_integer(order, index));
+        TRANSCENDENTAL_TRY(bigdecimal_set_u64(order, index));
         TRANSCENDENTAL_TRY(bigdecimal_div_significant_workspace(
             fraction, term, order, work_digits, rounding, &workspace));
         TRANSCENDENTAL_TRY(bigdecimal_add_significant_workspace(
@@ -293,7 +283,7 @@ static BigDecimalStatus exponential_series(
         index++;
         TRANSCENDENTAL_TRY(bigdecimal_mul_significant_workspace(
             term, term, reduced, work_digits, rounding, &workspace));
-        TRANSCENDENTAL_TRY(set_integer(order, index));
+        TRANSCENDENTAL_TRY(bigdecimal_set_u64(order, index));
         TRANSCENDENTAL_TRY(bigdecimal_div_significant_workspace(
             term, term, order, work_digits, rounding, &workspace));
         TRANSCENDENTAL_TRY(bigdecimal_add_significant_workspace(

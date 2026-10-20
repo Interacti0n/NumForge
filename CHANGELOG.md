@@ -7,6 +7,14 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+### Structural cleanup
+
+- Share identical decimal intermediates and adapter status/query/validation
+  helpers, preserving rounding, ownership, error and allocation policies.
+  Remove an unused private root-experiment wrapper. Extend dependency/source
+  manifest guards across existing layers, with isolated regression fixtures.
+  Record resolved and deliberately retained findings to close roadmap stage 1.
+
 ### Exact paired statistics
 
 - Add public C `numforge_statistics_covariance` and Python `covariance` over the

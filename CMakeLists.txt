@@ -681,6 +681,8 @@ if(BUILD_TESTING)
     if(NUMFORGE_NODE_EXECUTABLE)
         add_test(NAME architecture_check COMMAND "${NUMFORGE_NODE_EXECUTABLE}"
             "${PROJECT_SOURCE_DIR}/scripts/check_architecture.cjs")
+        add_test(NAME architecture_guard_tests COMMAND "${NUMFORGE_NODE_EXECUTABLE}"
+            "${PROJECT_SOURCE_DIR}/tests/test_architecture.cjs")
         add_test(NAME unit_catalog_check COMMAND "${NUMFORGE_NODE_EXECUTABLE}"
             "${PROJECT_SOURCE_DIR}/scripts/generate_unit_catalog.cjs" --check)
         if(NUMFORGE_BUILD_APPS)

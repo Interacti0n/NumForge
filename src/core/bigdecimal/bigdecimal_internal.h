@@ -46,6 +46,13 @@ typedef struct BigDecimalExponent
 ------------------------------------------------------------------------------------------------------------------------------
 */
 BigDecimalStatus bigdecimal_from_bigint_status(BigIntStatus status);
+/* operations.c: shared half-even intermediates with transactional destinations.
+ * Work-buffer-only helpers can intentionally use different allocation policies. */
+BigDecimalStatus bigdecimal_binary_rounded(BigDecimal *result,
+    const BigDecimal *a, const BigDecimal *b, int64_t digits, bool subtract);
+BigDecimalStatus bigdecimal_multiply_rounded(BigDecimal *result,
+    const BigDecimal *a, const BigDecimal *b, int64_t digits);
+BigDecimalStatus bigdecimal_set_u64(BigDecimal *value, uint64_t integer);
 uint64_t bigdecimal_abs_i64(int64_t value);
 bool bigdecimal_size_add(size_t a, size_t b, size_t *result);
 bool bigdecimal_i64_add(int64_t a, int64_t b, int64_t *result);

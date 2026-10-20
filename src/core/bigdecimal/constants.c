@@ -67,62 +67,6 @@ static const char *bigdecimal_constant_text(BigDecimalConstant constant)
     }
 }
 
-static BigDecimalStatus constant_binary_rounded(
-    BigDecimal *result,
-    const BigDecimal *a,
-    const BigDecimal *b,
-    int64_t digits,
-    bool subtract
-)
-{
-    BigDecimal *temporary = bigdecimal_create();
-    BigDecimalStatus status;
-
-    if (temporary == NULL)
-    {
-        return BIGDECIMAL_OUT_OF_MEMORY;
-    }
-
-    status = subtract ? bigdecimal_sub(temporary, a, b)
-                      : bigdecimal_add(temporary, a, b);
-
-    if (status == BIGDECIMAL_OK)
-    {
-        status = bigdecimal_round_significant(
-            result, temporary, digits, BIGDECIMAL_ROUND_HALF_EVEN);
-    }
-
-    bigdecimal_destroy(temporary);
-    return status;
-}
-
-static BigDecimalStatus constant_multiply_rounded(
-    BigDecimal *result,
-    const BigDecimal *a,
-    const BigDecimal *b,
-    int64_t digits
-)
-{
-    BigDecimal *temporary = bigdecimal_create();
-    BigDecimalStatus status;
-
-    if (temporary == NULL)
-    {
-        return BIGDECIMAL_OUT_OF_MEMORY;
-    }
-
-    status = bigdecimal_mul(temporary, a, b);
-
-    if (status == BIGDECIMAL_OK)
-    {
-        status = bigdecimal_round_significant(
-            result, temporary, digits, BIGDECIMAL_ROUND_HALF_EVEN);
-    }
-
-    bigdecimal_destroy(temporary);
-    return status;
-}
-
 /* Gauss-Legendre doubles the number of correct digits per iteration. */
 static BigDecimalStatus calculate_pi(
     BigDecimal *result,
@@ -182,21 +126,21 @@ static BigDecimalStatus calculate_pi(
             goto cleanup;
         }
 
-        CONSTANT_TRY(constant_binary_rounded(sum, a, b, work_digits, false));
+        CONSTANT_TRY(bigdecimal_binary_rounded(sum, a, b, work_digits, false));
         CONSTANT_TRY(bigdecimal_div_exact_or_significant(
             next_a, sum, two, work_digits, BIGDECIMAL_ROUND_HALF_EVEN));
-        CONSTANT_TRY(constant_multiply_rounded(product, a, b, work_digits));
+        CONSTANT_TRY(bigdecimal_multiply_rounded(product, a, b, work_digits));
         CONSTANT_TRY(bigdecimal_sqrt(
             next_b, product, work_digits, BIGDECIMAL_ROUND_HALF_EVEN));
-        CONSTANT_TRY(constant_binary_rounded(
+        CONSTANT_TRY(bigdecimal_binary_rounded(
             difference, a, next_a, work_digits, true));
-        CONSTANT_TRY(constant_multiply_rounded(
+        CONSTANT_TRY(bigdecimal_multiply_rounded(
             correction, difference, difference, work_digits));
-        CONSTANT_TRY(constant_multiply_rounded(
+        CONSTANT_TRY(bigdecimal_multiply_rounded(
             correction, p, correction, work_digits));
-        CONSTANT_TRY(constant_binary_rounded(
+        CONSTANT_TRY(bigdecimal_binary_rounded(
             next_t, t, correction, work_digits, true));
-        CONSTANT_TRY(constant_binary_rounded(p, p, p, work_digits, false));
+        CONSTANT_TRY(bigdecimal_binary_rounded(p, p, p, work_digits, false));
         CONSTANT_TRY(bigdecimal_compare(&comparison, next_a, a));
         CONSTANT_TRY(bigdecimal_copy(a, next_a));
         CONSTANT_TRY(bigdecimal_copy(b, next_b));
@@ -214,10 +158,10 @@ static BigDecimalStatus calculate_pi(
         goto cleanup;
     }
 
-    CONSTANT_TRY(constant_binary_rounded(sum, a, b, work_digits, false));
-    CONSTANT_TRY(constant_multiply_rounded(
+    CONSTANT_TRY(bigdecimal_binary_rounded(sum, a, b, work_digits, false));
+    CONSTANT_TRY(bigdecimal_multiply_rounded(
         numerator, sum, sum, work_digits));
-    CONSTANT_TRY(constant_multiply_rounded(
+    CONSTANT_TRY(bigdecimal_multiply_rounded(
         denominator, four, t, work_digits));
     CONSTANT_TRY(bigdecimal_div_significant(
         result, numerator, denominator, digits, rounding));
@@ -298,7 +242,7 @@ static BigDecimalStatus calculate_phi(
     CONSTANT_TRY(bigdecimal_set_string(five, "5"));
     CONSTANT_TRY(bigdecimal_sqrt(
         root, five, work_digits, BIGDECIMAL_ROUND_HALF_EVEN));
-    CONSTANT_TRY(constant_binary_rounded(
+    CONSTANT_TRY(bigdecimal_binary_rounded(
         sum, one, root, work_digits, false));
     CONSTANT_TRY(bigdecimal_div_significant(
         result, sum, two, digits, rounding));

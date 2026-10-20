@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdio.h>
 #include <unity.h>
 #include "apps/web/http/http_request.h"
 
@@ -73,6 +74,27 @@ static void test_public_origin_configuration(void)
     }
 }
 
+static void test_query_decoding_bytes_and_bounds(void)
+{
+    char output[8], encoded[4];
+    for (unsigned byte = 0; byte < 256; ++byte) {
+        (void)snprintf(encoded, sizeof(encoded), "%%%02X", byte);
+        bool accepted = numforge_http_decode_query(encoded, 3, output, sizeof(output));
+        TEST_ASSERT_EQUAL(byte >= 32 && byte < 127, accepted);
+        if (accepted) { TEST_ASSERT_EQUAL_UINT8(byte, (unsigned char)output[0]); TEST_ASSERT_EQUAL_CHAR('\0', output[1]); }
+    }
+    TEST_ASSERT_TRUE(numforge_http_decode_query("a+b%2bc", 7, output, sizeof(output)));
+    TEST_ASSERT_EQUAL_STRING("a b+c", output);
+    const char *bad[] = {"", "%", "%2", "%GG", "%0Z", "%Z0", "\r", "\x7f", "\x80"};
+    for (size_t i = 0; i < sizeof(bad) / sizeof(bad[0]); ++i)
+        TEST_ASSERT_FALSE(numforge_http_decode_query(bad[i], strlen(bad[i]), output, sizeof(output)));
+    TEST_ASSERT_TRUE(numforge_http_decode_query("abc", 3, output, 4));
+    TEST_ASSERT_EQUAL_STRING("abc", output);
+    TEST_ASSERT_FALSE(numforge_http_decode_query("abc", 3, output, 3));
+    TEST_ASSERT_FALSE(numforge_http_decode_query("a", 1, output, 0));
+    TEST_ASSERT_FALSE(numforge_http_decode_query(NULL, 1, output, sizeof(output)));
+    TEST_ASSERT_FALSE(numforge_http_decode_query("a", 1, NULL, sizeof(output)));
+}
 int main(void)
 {
     UNITY_BEGIN();
@@ -80,5 +102,6 @@ int main(void)
     RUN_TEST(test_bad_and_oversized_headers);
     RUN_TEST(test_public_origin_is_explicit_and_exact);
     RUN_TEST(test_public_origin_configuration);
+    RUN_TEST(test_query_decoding_bytes_and_bounds);
     return UNITY_END();
 }

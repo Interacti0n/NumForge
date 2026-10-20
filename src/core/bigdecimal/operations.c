@@ -1,6 +1,8 @@
 #include "src/core/bigdecimal/bigdecimal_internal.h"
 #include "src/runtime/numforge_alloc.h"
 #include <stdlib.h>
+#include <inttypes.h>
+#include <stdio.h>
 
 /*
 ------------------------------------------------------------------------------------------------------------------------------
@@ -319,4 +321,72 @@ cleanup:
     bigdecimal_destroy(power);
     bigdecimal_destroy(one);
     return status;
+}
+
+/* Shared guarded intermediates; preserve the destination through rounding failures. */
+BigDecimalStatus bigdecimal_binary_rounded(
+    BigDecimal *result,
+    const BigDecimal *a,
+    const BigDecimal *b,
+    int64_t digits,
+    bool subtract
+)
+{
+    BigDecimal *temporary = bigdecimal_create();
+    BigDecimalStatus status;
+
+    if (temporary == NULL)
+    {
+        return BIGDECIMAL_OUT_OF_MEMORY;
+    }
+
+    status = subtract ? bigdecimal_sub(temporary, a, b)
+                      : bigdecimal_add(temporary, a, b);
+
+    if (status == BIGDECIMAL_OK)
+    {
+        status = bigdecimal_round_significant(
+            result, temporary, digits, BIGDECIMAL_ROUND_HALF_EVEN);
+    }
+
+    bigdecimal_destroy(temporary);
+    return status;
+}
+
+BigDecimalStatus bigdecimal_multiply_rounded(
+    BigDecimal *result,
+    const BigDecimal *a,
+    const BigDecimal *b,
+    int64_t digits
+)
+{
+    BigDecimal *temporary = bigdecimal_create();
+    BigDecimalStatus status;
+
+    if (temporary == NULL)
+    {
+        return BIGDECIMAL_OUT_OF_MEMORY;
+    }
+
+    status = bigdecimal_mul(temporary, a, b);
+
+    if (status == BIGDECIMAL_OK)
+    {
+        status = bigdecimal_round_significant(
+            result, temporary, digits, BIGDECIMAL_ROUND_HALF_EVEN);
+    }
+
+    bigdecimal_destroy(temporary);
+    return status;
+}
+
+BigDecimalStatus bigdecimal_set_u64(
+    BigDecimal *value,
+    uint64_t integer
+)
+{
+    char text[32];
+
+    (void)snprintf(text, sizeof(text), "%" PRIu64, integer);
+    return bigdecimal_set_string(value, text);
 }

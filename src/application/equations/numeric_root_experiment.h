@@ -19,8 +19,4 @@ CalculatorStatus application_numeric_root_method(ApplicationNumericRoot **result
     const char *input, const BigRational *lower, const BigRational *upper,
     const CalculatorContext *context, CalculatorError *error, ApplicationNumericRootMethod method,
     ApplicationNumericRootStats *stats);
-CalculatorStatus application_numeric_root_experiment(ApplicationNumericRoot **result,
-    const char *input, const BigRational *lower, const BigRational *upper,
-    const CalculatorContext *context, CalculatorError *error, bool brent,
-    ApplicationNumericRootStats *stats);
 #endif

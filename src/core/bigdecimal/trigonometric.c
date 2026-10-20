@@ -2,9 +2,7 @@
 #include "src/core/bigdecimal/bigdecimal_internal.h"
 #include "src/runtime/numforge_alloc.h"
 
-#include <inttypes.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -29,17 +27,6 @@
             goto cleanup;                    \
         }                                    \
     } while (0)
-
-static BigDecimalStatus trig_set_u64(
-    BigDecimal *value,
-    uint64_t integer
-)
-{
-    char text[32];
-
-    (void)snprintf(text, sizeof(text), "%" PRIu64, integer);
-    return bigdecimal_set_string(value, text);
-}
 
 static BigDecimalStatus trig_binary_rounded(
     BigDecimal *result,
@@ -375,7 +362,7 @@ static BigDecimalStatus trig_series(
             TRIG_TRY(bigdecimal_mul_significant_workspace(sin_term, sin_term, square,
                 digits, BIGDECIMAL_ROUND_HALF_EVEN, &workspace));
             TRIG_TRY(bigdecimal_negate(sin_term, sin_term));
-            TRIG_TRY(trig_set_u64(denominator, sin_denominator));
+            TRIG_TRY(bigdecimal_set_u64(denominator, sin_denominator));
             TRIG_TRY(bigdecimal_div_significant_workspace(sin_term, sin_term, denominator,
                 digits, BIGDECIMAL_ROUND_HALF_EVEN, &workspace));
             TRIG_TRY(bigdecimal_add_significant_workspace(next_sine, sine, sin_term,
@@ -391,7 +378,7 @@ static BigDecimalStatus trig_series(
             TRIG_TRY(bigdecimal_mul_significant_workspace(cos_term, cos_term, square,
                 digits, BIGDECIMAL_ROUND_HALF_EVEN, &workspace));
             TRIG_TRY(bigdecimal_negate(cos_term, cos_term));
-            TRIG_TRY(trig_set_u64(denominator, cos_denominator));
+            TRIG_TRY(bigdecimal_set_u64(denominator, cos_denominator));
             TRIG_TRY(bigdecimal_div_significant_workspace(cos_term, cos_term, denominator,
                 digits, BIGDECIMAL_ROUND_HALF_EVEN, &workspace));
             TRIG_TRY(bigdecimal_add_significant_workspace(next_cosine, cosine, cos_term,
@@ -694,7 +681,7 @@ static BigDecimalStatus calculate_atan(
         divisor = iteration * 2U + 1U;
         TRIG_TRY(trig_multiply_rounded(term, term, square, digits));
         TRIG_TRY(bigdecimal_negate(term, term));
-        TRIG_TRY(trig_set_u64(denominator, divisor));
+        TRIG_TRY(bigdecimal_set_u64(denominator, divisor));
         TRIG_TRY(bigdecimal_div_significant(
             fraction, term, denominator, digits, BIGDECIMAL_ROUND_HALF_EVEN));
         TRIG_TRY(trig_binary_rounded(next, sum, fraction, digits, false));
@@ -714,7 +701,7 @@ static BigDecimalStatus calculate_atan(
         goto cleanup;
     }
 
-    TRIG_TRY(trig_set_u64(factor, 1U << BIGDECIMAL_ATAN_HALF_ANGLES));
+    TRIG_TRY(bigdecimal_set_u64(factor, 1U << BIGDECIMAL_ATAN_HALF_ANGLES));
     TRIG_TRY(trig_multiply_rounded(sum, sum, factor, digits));
 
     if (reciprocal)
