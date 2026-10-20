@@ -90,6 +90,11 @@ was processed. Discovery is never complete, so `complete` remains False. Exact
 coordinates are deduplicated without a tolerance merge; unseen contacts and
 several roots inside a grid cell can still be missed.
 
+`integrate(function, lower, upper)` delegates finite-interval Simpson quadrature
+to C. The frozen result carries approximate Fraction value/error, stop reason and
+work counts; zero estimated error never proves exactness. See the
+[integration contract](../../docs/reference/NUMERICAL_API.md#finite-interval-integration).
+
 `grid(lower, upper, count)` collects an immutable tuple of exact Fraction
 coordinates from the public C grid walker. `visit_grid(lower, upper, count, visit)`
 calls visit(x, index) synchronously without retaining an array in C. Both include

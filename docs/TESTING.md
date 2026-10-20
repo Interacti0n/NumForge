@@ -89,6 +89,7 @@ belong to the linked contracts/reports rather than this test index.
 | Summaries, covariance and regression | `statistics_tests`, `regression_tests`, Python statistics/regression tests | [Statistics contract](reference/STATISTICS_API.md) |
 | Grids, refinement, curve/phase policies | `numerical_grid_tests`, `numerical_refinement_tests`, `numerical_curve_tests`, `numerical_phase_tests` | [Numerical contracts](reference/NUMERICAL_API.md) |
 | Public root kernels | `numerical_tests`, `numerical_scan_tests` | [Root/scan meaning](reference/ROOT_API.md#use-and-result-meaning) |
+| Finite-interval integration | `integral_tests`, Python integration tests, sampling benchmark `integral` selector | [Approximate error contract](reference/NUMERICAL_API.md#finite-interval-integration) |
 | Equation application/HTTP | `equation_tests`, `numeric_root_tests`, `numeric_root_scan_tests`; affected browser equations | [Equation API](reference/EQUATION_HTTP_API.md), [numerical HTTP](reference/NUMERIC_ROOT_HTTP_API.md) |
 | Sessions, units, client ownership | Application, session, unit, cache and HTTP suites | [Regression guide](TESTING.md#choose-a-focused-check) |
 | Prepared application expressions/graphs | `application_expression_tests`, `graph_tests`; affected graph browser cases | [Application expressions](design/PARAMETRIC_EXPRESSIONS.md), [graph contracts](API.md) |

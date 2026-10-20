@@ -1180,5 +1180,100 @@ class LinearRegressionTests(unittest.TestCase):
         self.assertEqual(nf.linear_regression([0, 1], [1, 0]).slope, -1)
 
 
+class IntegralTests(unittest.TestCase):
+    def test_polynomial_antiderivatives_and_approximate_result(self):
+        rng = random.Random(8107)
+        for _ in range(12):
+            coefficients = [rng.randrange(-5, 6) for _ in range(4)]
+            lower, upper = rng.randrange(-4, 0), rng.randrange(1, 5)
+            expected = sum(Fraction(c * (upper**(i+1) - lower**(i+1)), i+1)
+                           for i, c in enumerate(coefficients))
+            result = nf.integrate(lambda x, places: sum(c*x**i for i, c in enumerate(coefficients)), lower, upper)
+            self.assertEqual((result.kind, result.value, result.error), ("estimated", expected, 0))
+            self.assertEqual((result.evaluations, result.refinements), (5, 2))
+            self.assertFalse(result.exact)
+        with self.assertRaises(FrozenInstanceError):
+            result.value = 1
+        # Alias blindness is a documented limitation, even for smooth polynomials.
+        alias = nf.integrate(lambda x, p: (x*(x-Fraction(1, 4))*(x-Fraction(1, 2))*(x-Fraction(3, 4))*(x-1))**2, 0, 1)
+        self.assertEqual((alias.kind, alias.value, alias.error), ("estimated", 0, 0))
+        self.assertFalse(alias.exact)
+
+    def test_quartic_error_and_nonpolynomial_reference(self):
+        result = nf.integrate(lambda x, p: x**4, 0, 1, absolute_tolerance="1E-6")
+        self.assertEqual((result.kind, result.evaluations), ("estimated", 33))
+        self.assertEqual(result.error, Fraction(1, 7864320))
+        self.assertEqual(result.value - Fraction(1, 5), result.error)
+        result = nf.integrate(lambda x, p: 1/(1+x), 0, 1, absolute_tolerance="1E-7")
+        with localcontext() as ctx:
+            ctx.prec = 60
+            actual_error = abs(Fraction(Decimal(2).ln()) - result.value)
+        self.assertEqual(result.kind, "estimated")
+        self.assertLess(actual_error, Fraction(1, 10**7))
+
+    def test_limits_domain_gaps_and_callback_exceptions(self):
+        for options, kind in (({"max_evaluations": 8}, "evaluation_limit"),
+                              ({"max_refinements": 2}, "refinement_limit")):
+            result = nf.integrate(lambda x, p: x**4, 0, 1, **options)
+            self.assertEqual((result.kind, result.evaluations, result.value, result.error),
+                             (kind, 5, Fraction(77, 384), Fraction(1, 1920)))
+        gap = nf.integrate(lambda x, p: None if x == Fraction(1, 4) else x, 0, 1)
+        self.assertEqual((gap.kind, gap.value, gap.error, gap.evaluations), ("domain_gap", None, None, 4))
+        for exception in (ValueError("sample failed"), KeyboardInterrupt()):
+            def fail(x, p):
+                raise exception
+            with self.assertRaises(type(exception)) as caught:
+                nf.integrate(fail, 0, 1)
+            self.assertIs(caught.exception, exception)
+
+    def test_high_precision_input_lifetime_and_callback_precision(self):
+        seen = []
+        def sample(x, places):
+            self.assertIsInstance(x, Fraction)
+            seen.append(places)
+            return Fraction(1, 10**1000)
+        result = nf.integrate(sample, 0, "1E-1000", decimal_places=1000)
+        gc.collect()
+        self.assertEqual(result.value, Fraction(1, 10**2000))
+        self.assertEqual(seen, [1000]*5)
+        n = 10**1000
+        result = nf.integrate(lambda x, p: x-n, n, n+1)
+        self.assertEqual((result.value, result.error), (Fraction(1, 2), 0))
+
+    def test_validation_budgets_and_recovery(self):
+        for options in ({"max_refinements": 1}, {"max_evaluations": 4}, {"decimal_places": 0}):
+            with self.assertRaises(ValueError):
+                nf.integrate(lambda x, p: x, 0, 1, **options)
+        for options in ({"max_refinements": True}, {"max_evaluations": 5.0}, {"decimal_places": False}):
+            with self.assertRaises(TypeError):
+                nf.integrate(lambda x, p: x, 0, 1, **options)
+        with self.assertRaises(TypeError):
+            nf.integrate(None, 0, 1)
+        for lower, upper, tolerance in ((1, 0, 1), (1, 1, 1), (0, 1, 0), (0, 1, -1)):
+            with self.assertRaises(nf.Error) as caught:
+                nf.integrate(lambda x, p: x, lower, upper, absolute_tolerance=tolerance)
+            self.assertEqual(caught.exception.status, "invalid_argument")
+        for value in (0.1, True, 1j):
+            with self.assertRaises(TypeError):
+                nf.integrate(lambda x, p: value, 0, 1)
+        for options, status in (({"time_limit_ms": 0}, "time_limit"),
+                                ({"allocation_bytes": 0}, "memory_limit"),
+                                ({"single_allocation": 0}, "memory_limit")):
+            with self.assertRaises(nf.Error) as caught:
+                nf.integrate(lambda x, p: x, 0, 1, **options)
+            self.assertEqual(caught.exception.status, status)
+        recovered = False
+        for size in range(2048, 262145, 2048):
+            try:
+                result = nf.integrate(lambda x, p: x*x, 0, 1, allocation_bytes=size)
+            except nf.Error as error:
+                self.assertEqual(error.status, "memory_limit")
+            else:
+                self.assertEqual(result.value, Fraction(1, 3))
+                recovered = True
+                break
+        self.assertTrue(recovered)
+
+
 if __name__ == "__main__":
     unittest.main()

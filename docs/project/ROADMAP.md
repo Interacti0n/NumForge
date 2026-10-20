@@ -13,10 +13,10 @@ index; selected baselines preserve evidence for their recorded revisions.
 | Algebra | [Exact linear/quadratic coefficient solver](../reference/POLYNOMIAL_API.md), shared by application equation adapters. |
 | Linear algebra | [Dense rational matrices](../reference/MATRIX_API.md), products, determinants, square solves and [complete rectangular single-RHS systems](../reference/LINEAR_SYSTEM_API.md). |
 | Statistics | [Exact rational batch summaries, paired covariance and simple linear regression](../reference/STATISTICS_API.md), with population/sample divisors in C/Python. |
-| Numerical | [Exact grids, adaptive sampling rules, phase anchors and bounded root searches](../reference/NUMERICAL_API.md), shared with graph/equation applications. |
+| Numerical | [Exact grids, adaptive sampling rules, phase anchors, bounded roots and finite-interval integration](../reference/NUMERICAL_API.md); graph/equation applications reuse sampling/root kernels. |
 | Scientific | [Unit conversion](../reference/UNITS.md), a sourced catalogue and private [quantity expressions](../reference/QUANTITIES.md). |
 | Applications | SK/EN CLI/browser calculator, sessions, converter, four-function graphs and bounded numerical equation searches. |
-| Integration | Installed C/C++ packages and an experimental source-built [Python adapter](../guides/PYTHON.md), including exact grids and callback-based single/multiple-root searches through the C kernels. |
+| Integration | Installed C/C++ packages and an experimental source-built [Python adapter](../guides/PYTHON.md), including grids, roots and finite-interval integration through the C kernels. |
 
 The [architecture](../design/ARCHITECTURE.md) defines ownership and extension
 rules. Numeric-only use does not require an engine, application session or web
@@ -35,10 +35,14 @@ desktop/mobile rendering/search checks and the
 [unified remote CI](https://github.com/Interacti0n/NumForge/actions/runs/39463681313) passed.
 Superseded reports/CSVs have been removed;
 the [documentation tree](../README.md#file-tree) separates protocols, baselines
-and their data. Stage 3 is in progress: exact C/Python
-[linear regression](../reference/STATISTICS_API.md#exact-simple-linear-regression) is
-complete with local correctness/failure, installed-consumer and validated benchmark
-checks. Bounded finite-interval integration is next; stages 4–6 remain planned.
+and their data. Stage 3 is complete in the current source: exact C/Python
+[linear regression](../reference/STATISTICS_API.md#exact-simple-linear-regression) and
+[bounded finite-interval integration](../reference/NUMERICAL_API.md#finite-interval-integration)
+have local correctness/failure, installed-consumer and validated benchmark checks.
+Integration additionally passed all 77 native and 78 Python tests, MSVC x64/x86,
+instrumented GCC, static analysis and executable documentation checks. Its error
+estimate remains heuristic. These source changes have not been pushed or published.
+Stage 4 is next; stages 4–6 remain planned.
 Finish each bounded stage before opening the next; a defect in a completed stage can interrupt
 the sequence. Dates are not promised: progress is determined by the exit evidence.
 Do not keep adding mathematical functions while stages 1 and 2 remain open.

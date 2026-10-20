@@ -13,7 +13,7 @@ Error = _native.Error
 __all__ = ["Error", "Result", "Expression", "PolynomialRoot", "PolynomialSolution",
            "number", "evaluate", "prepare", "sqrt", "solve_quadratic", "Matrix", "LinearSolution",
            "describe", "covariance", "StatisticsSummary", "linear_regression", "LinearRegression", "find_root", "RootResult", "find_roots", "RootScanResult",
-           "grid", "visit_grid", "core_version"]
+           "integrate", "IntegralResult", "grid", "visit_grid", "core_version"]
 
 _ROUNDING = {"toward_zero": 0, "away_from_zero": 1, "floor": 2,
              "ceiling": 3, "half_up": 4, "half_even": 5}
@@ -263,6 +263,54 @@ def _root_result(data):
     return RootResult(data["kind"], _fraction(data["x"]), _fraction(data["lower"]),
                       _fraction(data["upper"]), None if data["residual"] is None else Decimal(data["residual"]),
                       data["exact_zero"], data["iterations"], data["evaluations"])
+
+
+@dataclass(frozen=True, slots=True)
+class IntegralResult:
+    """Approximate Simpson value/error as Fractions; error is not a certified bound."""
+    kind: str
+    value: Fraction | None
+    error: Fraction | None
+    evaluations: int
+    refinements: int
+
+    @property
+    def exact(self):
+        return False
+
+
+def integrate(function, lower, upper, *, decimal_places=34, absolute_tolerance="1E-12",
+              max_refinements=12, max_evaluations=4097, time_limit_ms=5000,
+              allocation_bytes=64 * 1024 * 1024, single_allocation=512 * 1024):
+    """Finite lower<upper integration through the public C composite Simpson kernel.
+
+    function(Fraction, decimal_places) follows find_root's sample conversion and
+    exception contract. Return None for undefined samples (domain_gap, no value).
+    Supply accurate deterministic samples of a smooth function. Successive-grid
+    error excludes callback error and can miss oscillations/discontinuities;
+    kind='estimated' means only error<=absolute_tolerance, never proven accuracy.
+    Limits retain the latest estimate, with unused evaluation slots if a complete
+    next grid will not fit. All results are approximate, including zero error.
+    Budgets cover cooperative native work, not Python allocations/preemption.
+    """
+    if not callable(function):
+        raise TypeError("function must be callable as function(x, decimal_places)")
+    for name, value, minimum, maximum in (("decimal_places", decimal_places, 1, 10000),
+            ("max_refinements", max_refinements, 2, _native.MAX_ALLOCATION),
+            ("max_evaluations", max_evaluations, 5, _native.MAX_ALLOCATION)):
+        _integer_range(name, value, minimum, maximum)
+    options = _options(time_limit_ms=time_limit_ms, allocation_bytes=allocation_bytes,
+                       single_allocation=single_allocation)
+    values = tuple(number(value) for value in (lower, upper, absolute_tolerance))
+
+    def sample(pair, places):
+        value = function(_fraction(pair), places)
+        return None if value is None else number(value)._handle
+
+    data = _native.integrate(sample, tuple(value._handle for value in values),
+        (decimal_places, max_refinements, max_evaluations), options)
+    return IntegralResult(data["kind"], _fraction(data["value"]), _fraction(data["error"]),
+                          data["evaluations"], data["refinements"])
 
 
 def find_root(function, lower, upper, *, continuous=False, decimal_places=34,

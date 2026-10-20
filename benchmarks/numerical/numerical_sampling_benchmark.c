@@ -177,12 +177,66 @@ done:
     return 0;
 }
 
+typedef struct IntegralFunction { BigRational *lower, *width, *scratch; } IntegralFunction;
+static NumForgeNumericalStatus quartic(BigDecimal *value, NumForgeRootSample *sample,
+    const BigRational *x, int64_t places, void *user)
+{
+    IntegralFunction *f = user;
+    BigRationalStatus status = bigrational_sub(f->scratch, x, f->lower);
+    if (status == BIGRATIONAL_OK) status = bigrational_div(f->scratch, f->scratch, f->width);
+    if (status == BIGRATIONAL_OK) status = bigrational_mul(f->scratch, f->scratch, f->scratch);
+    if (status == BIGRATIONAL_OK) status = bigrational_mul(f->scratch, f->scratch, f->scratch);
+    if (status == BIGRATIONAL_OK) status = bigrational_to_bigdecimal(value, f->scratch, places, BIGDECIMAL_ROUND_HALF_EVEN);
+    sample->real = true;
+    return status == BIGRATIONAL_OK ? NUMFORGE_NUMERICAL_OK : NUMFORGE_NUMERICAL_CALLBACK_FAILED;
+}
+static int run_integral(const char *name, const char *offset, const char *width)
+{
+    IntegralFunction f = {bigrational_create(), bigrational_create(), bigrational_create()};
+    BigRational *upper = bigrational_create(), *expected = bigrational_create(), *tolerance = bigrational_create();
+    BigRational *factor = bigrational_create(), *difference = bigrational_create();
+    BigDecimal *number = bigdecimal_create(); NumForgeIntegral *integral = NULL;
+    int outcome = 1; bool owner = false;
+    if (!f.lower || !f.width || !f.scratch || !upper || !expected || !tolerance || !factor || !difference || !number) goto done;
+    if (!set(f.lower, number, offset) || !set(f.width, number, width) ||
+        bigrational_add(upper, f.lower, f.width) != BIGRATIONAL_OK || !set(factor, number, "5") ||
+        bigrational_div(expected, f.width, factor) != BIGRATIONAL_OK || !set(factor, number, "1E-6") ||
+        bigrational_mul(tolerance, f.width, factor) != BIGRATIONAL_OK) goto done;
+    for (unsigned repetition = 1; repetition <= 3; ++repetition) {
+        NumForgeIntegralOptions options; numforge_integral_options_init(&options); options.absolute_tolerance = tolerance;
+        owner = numforge_budget_begin(30000, 512U*1024U*1024U, 8U*1024U*1024U); if (!owner) goto done;
+        numforge_alloc_stats_reset(); double start = benchmark_seconds();
+        NumForgeNumericalStatus status = numforge_integrate(&integral, quartic, &f, f.lower, upper, &options);
+        double stop = benchmark_seconds(); size_t calls = numforge_alloc_stats_calls(), bytes = numforge_alloc_stats_bytes();
+        /* Independent antiderivative width/5 and exact quartic quadrature error.
+         * n=32 panels: error=width/7864320; both must match, not merely be small. */
+        int order = 1;
+        if (status != NUMFORGE_NUMERICAL_OK || numforge_integral_kind(integral) != NUMFORGE_INTEGRAL_ESTIMATED ||
+            numforge_integral_evaluations(integral) != 33 || numforge_integral_refinements(integral) != 5 ||
+            start < 0 || stop < start || !set(factor, number, "7864320") ||
+            bigrational_div(difference, f.width, factor) != BIGRATIONAL_OK ||
+            bigrational_compare(&order, difference, numforge_integral_error(integral)) != BIGRATIONAL_OK || order ||
+            bigrational_sub(difference, numforge_integral_value(integral), expected) != BIGRATIONAL_OK ||
+            bigrational_compare(&order, difference, numforge_integral_error(integral)) != BIGRATIONAL_OK || order) goto done;
+        numforge_budget_end(); owner = false;
+        record("integral", name, repetition, 1, 0, 33, stop-start, calls, bytes);
+        numforge_integral_destroy(integral); integral = NULL;
+    }
+    outcome = 0;
+done:
+    if (owner) numforge_budget_end();
+    numforge_integral_destroy(integral); bigdecimal_destroy(number);
+    bigrational_destroy(f.lower); bigrational_destroy(f.width); bigrational_destroy(f.scratch);
+    bigrational_destroy(upper); bigrational_destroy(expected); bigrational_destroy(tolerance);
+    bigrational_destroy(factor); bigrational_destroy(difference); return outcome;
+}
+
 int main(int argc, char **argv)
 {
     const char *kernel = argc == 2 ? argv[1] : "all";
     if (argc > 2 || (strcmp(kernel, "all") && strcmp(kernel, "grid") &&
-        strcmp(kernel, "refinement") && strcmp(kernel, "curve") && strcmp(kernel, "phase"))) {
-        fputs("Usage: numerical_sampling_benchmark [all|grid|refinement|curve|phase]\n", stderr);
+        strcmp(kernel, "refinement") && strcmp(kernel, "curve") && strcmp(kernel, "phase") && strcmp(kernel, "integral"))) {
+        fputs("Usage: numerical_sampling_benchmark [all|grid|refinement|curve|phase|integral]\n", stderr);
         return 2;
     }
     puts("kernel,case,repeat,operations,points,evaluations,milliseconds,allocation_calls,requested_bytes");
@@ -193,5 +247,7 @@ int main(int argc, char **argv)
         run_refinement("tiny_interval", "0", "1E-1000", "1E-2002", 17))) return 1;
     if ((!strcmp(kernel, "all") || !strcmp(kernel, "curve")) && (run_curve("linear", 0) || run_curve("phase_guard", 1) || run_curve("cancellation_1000", 2))) return 1;
     if ((!strcmp(kernel, "all") || !strcmp(kernel, "phase")) && (run_phase("linear", 0) || run_phase("quadratic", 1) || run_phase("offset_span_1000", 2))) return 1;
+    if ((!strcmp(kernel, "all") || !strcmp(kernel, "integral")) && (run_integral("quartic", "0", "1") ||
+        run_integral("large_offset", "1E1000", "1") || run_integral("tiny_interval", "0", "1E-1000"))) return 1;
     return 0;
 }

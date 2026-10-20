@@ -48,6 +48,7 @@ static int numerical_api_checks(void)
     if (curve_api_checks() || phase_api_checks()) return 1;
     BigRational *zero = bigrational_create(), *lower = bigrational_create(), *upper = bigrational_create();
     BigInt *integer = bigint_create(); NumForgeRoot *root = NULL; char *text = NULL; int outcome = 1;
+    NumForgeIntegral *integral = NULL;
     NumForgeRootScan *scan = NULL;
     size_t visited = 0;
     ConsumerRefinement refined = {{-2, 0, 2, 0, 0}, 3, 0};
@@ -74,9 +75,17 @@ static int numerical_api_checks(void)
         numforge_root_scan_stats(scan, &stats);
         if (stats.scanned_segments != 128 || stats.evaluations > 4096) goto done;
     }
+    if (numforge_integrate(&integral, consumer_identity, zero, lower, upper, NULL) != NUMFORGE_NUMERICAL_OK ||
+        numforge_integral_kind(integral) != NUMFORGE_INTEGRAL_ESTIMATED ||
+        numforge_integral_evaluations(integral) != 5 || numforge_integral_refinements(integral) != 2) goto done;
+    {
+        int order = 1;
+        if (bigrational_compare(&order, numforge_integral_value(integral), zero) != BIGRATIONAL_OK || order ||
+            bigrational_compare(&order, numforge_integral_error(integral), zero) != BIGRATIONAL_OK || order) goto done;
+    }
     outcome = 0;
 done:
-    numforge_root_scan_destroy(scan);
+    numforge_integral_destroy(integral); numforge_root_scan_destroy(scan);
     free(text); numforge_root_destroy(root); bigint_destroy(integer);
     bigrational_destroy(zero); bigrational_destroy(lower); bigrational_destroy(upper); return outcome;
 }

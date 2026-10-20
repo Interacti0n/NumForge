@@ -35,7 +35,7 @@ enabled with `BUILD_TESTING=ON`; they are useful correctness checks, not old log
 | `decimal_format_benchmark` | Full/prefix output conversion and rounding; `--quick` | [Formatting protocol](../docs/performance/protocols/APPLICATION.md) |
 | `logarithm_agm_benchmark` | Series/public dispatch, bounded interval implementation and private fixed-guard comparison | [Logarithm decision](../docs/performance/baselines/LOGARITHM.md) |
 | `polynomial_benchmark`, `matrix_benchmark`, `statistics_benchmark` | Exact module operations, including rectangular systems, covariance and regression | [Module baselines](../docs/performance/baselines/MODULES.md) |
-| `numerical_sampling_benchmark [all\|grid\|refinement\|curve\|phase]` | Four public sampling kernels with shared CSV columns | [Sampling baselines](../docs/performance/baselines/SAMPLING.md) |
+| `numerical_sampling_benchmark [all\|grid\|refinement\|curve\|phase\|integral]` | Public sampling/integration kernels with shared CSV columns | [Sampling baselines](../docs/performance/baselines/SAMPLING.md) |
 | `numerical_benchmark`, `numerical_scan_benchmark` | Public callback root searches; `--high-precision` on the single-root tool adds expensive 1000-place work | [Public roots](../docs/performance/baselines/ROOTS.md) |
 | `calculator_benchmark`, `calculator_limit_benchmark`, `cache_memory_benchmark` | Repeated expression phases, complete budgeted requests and cache/destination reuse | [Application protocol](../docs/performance/protocols/APPLICATION.md) |
 | `graph_benchmark`, `graph_fast_benchmark` | Uniform/adaptive requests and isolated fast-expression compilation/evaluation | [Graph corpus](../docs/performance/baselines/GRAPHS.md) |

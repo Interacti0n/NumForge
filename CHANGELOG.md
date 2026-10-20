@@ -7,6 +7,8 @@ Earlier detailed development notes remain in Git history.
 ## Unreleased
 
 - Exact simple linear regression with intercept, independently callable in C and Python.
+- Bounded finite-interval Simpson integration in C/Python, with approximate error
+  estimates, evaluation/refinement limits and domain diagnostics.
 
 - Shared CMake build/test presets and opt-in clang-tidy correctness checks.
 

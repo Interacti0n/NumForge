@@ -9,7 +9,7 @@ extern "C" {
 #endif
 
 /** @file numerical.h
- * Rational grids, adaptive interval scheduling and bounded real-root search. Link
+ * Rational grids, interval scheduling, bounded root search and integration. Link
  * NumForge::numforge; no parser, engine, session or server is required.
  * Calls inherit an optional runtime.h budget and never begin/end one themselves.
  * Exhaustion returns OUT_OF_MEMORY; inspect numforge_budget_failure() for cause.
@@ -198,6 +198,71 @@ const BigDecimal *numforge_root_residual(const NumForgeRoot *result);
 size_t numforge_root_evaluations(const NumForgeRoot *result);
 size_t numforge_root_iterations(const NumForgeRoot *result);
 bool numforge_root_exact_zero(const NumForgeRoot *result);
+
+/** @name Finite-interval numerical integration
+ * Composite Simpson quadrature on successively halved uniform grids. Coordinates
+ * and accumulation of the finite callback decimals are rational, without binary
+ * floating point or intermediate rounding. Smooth deterministic integrands are
+ * required for the error heuristic to be useful; no domain analysis is performed.
+ * @{ */
+typedef struct NumForgeIntegral NumForgeIntegral;
+typedef enum NumForgeIntegralKind {
+    NUMFORGE_INTEGRAL_ESTIMATED = 0, /**< Successive-rule error <= absolute tolerance. */
+    NUMFORGE_INTEGRAL_EVALUATION_LIMIT,
+    NUMFORGE_INTEGRAL_REFINEMENT_LIMIT,
+    NUMFORGE_INTEGRAL_DOMAIN_GAP
+} NumForgeIntegralKind;
+typedef struct NumForgeIntegralOptions {
+    int64_t decimal_places; /**< Callback working precision, positive; default 34. */
+    size_t max_refinements; /**< Grid halvings, at least 2; default 12. */
+    size_t max_evaluations; /**< At least 5; default 4097. */
+    const BigRational *absolute_tolerance; /**< Borrowed positive value; NULL=1E-12. */
+} NumForgeIntegralOptions;
+/** Initialize defaults; NULL is accepted. */
+void numforge_integral_options_init(NumForgeIntegralOptions *options);
+/** Integrate over finite exact bounds lower<upper, including endpoint samples.
+ * Uses NumForgeRootEvaluate's borrowed decimal output, real flag, cooperative
+ * budget and callback-error contract. exact_zero flags are validated but never
+ * establish an exact integral. Undefined samples stop with DOMAIN_GAP and no value.
+ * User state, options, bounds and tolerance remain borrowed and unmodified.
+ *
+ * With T_n the composite trapezoid rule, S_2n=(4*T_2n-T_n)/3. The returned value
+ * is the latest S_2n, with estimated error |S_2n-S_n|/15. ESTIMATED means only
+ * that this heuristic meets the absolute tolerance, never certified accuracy.
+ * It excludes callback error; missed oscillations/discontinuities or rounded
+ * samples can give zero estimated error for an incorrect answer. Values are
+ * approximate even when their rational representation or error is exactly zero.
+ * Increasing decimal_places does not guarantee that many correct digits.
+ *
+ * Each coordinate is sampled once. A complete next grid must fit the evaluation
+ * allowance; otherwise return EVALUATION_LIMIT with the previous value/error.
+ * REFINEMENT_LIMIT likewise retains the latest estimate. At least two halvings
+ * (five evaluations) precede any estimate. O(1) auxiliary numeric objects; integer
+ * storage depends on operand sizes. Callbacks must cooperate with inherited
+ * runtime budgets; this function neither opens nor closes a scope.
+ *
+ * OK creates an owned diagnostic result, including limit/domain outcomes.
+ * Fatal failures preserve *result; success never frees its previous value.
+ * NULL_ARGUMENT for missing mandatory pointers, INVALID_ARGUMENT for invalid
+ * bounds/options/tolerance or inconsistent sample flags; allocation/budget and
+ * representation errors follow numforge_root_solve(). Callback statuses propagate,
+ * with exhausted inherited budgets taking precedence. Side effects are not undone.
+ */
+NumForgeNumericalStatus numforge_integrate(NumForgeIntegral **result,
+    NumForgeRootEvaluate evaluate, void *user, const BigRational *lower,
+    const BigRational *upper, const NumForgeIntegralOptions *options);
+/** Destroy owned result; NULL is accepted. */
+void numforge_integral_destroy(NumForgeIntegral *result);
+/** Borrowed value/error, NULL for DOMAIN_GAP or a NULL handle; never destroy them.
+ * NULL handles report EVALUATION_LIMIT and zero counts. Refinements count completed
+ * grid halvings; evaluations include a final non-real sample when present.
+ */
+const BigRational *numforge_integral_value(const NumForgeIntegral *result);
+const BigRational *numforge_integral_error(const NumForgeIntegral *result);
+NumForgeIntegralKind numforge_integral_kind(const NumForgeIntegral *result);
+size_t numforge_integral_evaluations(const NumForgeIntegral *result);
+size_t numforge_integral_refinements(const NumForgeIntegral *result);
+/** @} */
 
 /** @name Bounded multiple-root scanning
  * A finite grid with midpoint/quadratic candidate samples, followed by the same

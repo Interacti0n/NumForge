@@ -12,6 +12,22 @@ timing windows, budgets and independent checks are retained. New CSV rows use
 callbacks. Unused fields are zero. Historical CSVs keep their original schemas
 and recorded timings; consolidation does not claim a speedup.
 
+## Integration measurement
+
+`numerical_sampling_benchmark integral` runs three repetitions of the public
+Simpson kernel with `f(x)=((x-lower)/width)^4`, on `[0,1]`,
+`[1E1000,1E1000+1]` and `[0,1E-1000]`. Tolerance is `width*1E-6`.
+Every call must reach 33 evaluations/five refinements and match the independent
+antiderivative `width/5` plus the quartic Simpson error `width/7864320` exactly.
+The reported heuristic error must equal that same independent error.
+Setup and validation are outside timing; callback conversion/arithmetic,
+quadrature and private cleanup are inside, returned-result destruction outside.
+The scope is 30 seconds/512 MiB cumulative allocations/8 MiB per allocation.
+Shared CSV columns are retained: `operations=1`, `points=0`, `evaluations=33`;
+allocation counters mean calls/requested bytes, not live/peak memory.
+This is a validated measurement tool, not a speedup claim or an accuracy guarantee
+for arbitrary functions. Historical extraction timings below remain unchanged.
+
 ## Exact grid baseline
 
 `numerical_sampling_benchmark grid` visits exact coordinates and accumulates their rational

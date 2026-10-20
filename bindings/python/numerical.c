@@ -43,7 +43,7 @@ static NumForgeNumericalStatus root_callback(BigDecimal *value, BigRational *pro
         if (proposal && work->status == NUMFORGE_OK)
             work->status = nf_python_rational_status(bigrational_from_bigdecimal(proposal, decimal));
     }
-    else PyErr_SetString(PyExc_TypeError, "root samples must be real values or None");
+    else PyErr_SetString(PyExc_TypeError, "numerical samples must be real values or None");
     sample->real = work->status == NUMFORGE_OK && !PyErr_Occurred();
     sample->exact_zero = sample->real && zero && numforge_result_is_exact(result);
     Py_DECREF(returned);
@@ -224,3 +224,58 @@ PyObject *nf_python_find_root(PyObject *module, PyObject *args)
 { return native_root_search(module, args, false); }
 PyObject *nf_python_find_roots(PyObject *module, PyObject *args)
 { return native_root_search(module, args, true); }
+
+PyObject *nf_python_integrate(PyObject *module, PyObject *args)
+{
+    PyObject *function, *items, *settings, *options;
+    if (!PyArg_ParseTuple(args, "OOOO:integrate", &function, &items, &settings, &options)) return NULL;
+    if (!PyCallable_Check(function) || !PyTuple_Check(settings) || PyTuple_Size(settings) != 3) {
+        PyErr_SetString(PyExc_TypeError, "invalid integration callback/settings"); return NULL;
+    }
+    NumForgeIntegralOptions policy; numforge_integral_options_init(&policy);
+    policy.decimal_places = PyLong_AsLongLong(PyTuple_GetItem(settings, 0));
+    policy.max_refinements = PyLong_AsSize_t(PyTuple_GetItem(settings, 1));
+    policy.max_evaluations = PyLong_AsSize_t(PyTuple_GetItem(settings, 2));
+    if (PyErr_Occurred()) return NULL;
+    PyObject *values = PySequence_Fast(items, "integration bounds/tolerance must be a sequence");
+    if (values == NULL) return NULL;
+    if (PySequence_Fast_GET_SIZE(values) != 3) {
+        Py_DECREF(values); PyErr_SetString(PyExc_ValueError, "expected two bounds and tolerance"); return NULL;
+    }
+    NFPythonPolicy budget;
+    if (!nf_python_policy_parse(module, options, &budget)) { Py_DECREF(values); return NULL; }
+    bool owner = numforge_budget_begin(budget.milliseconds, budget.allocation_bytes, budget.single_allocation);
+    BigRational **entries = NULL; const BigRational **borrowed = NULL;
+    NumForgeIntegral *integral = NULL; PyObject *output = NULL;
+    RootCallback work = {module, function, NULL, NUMFORGE_OK, false};
+    NumForgeStatus status = nf_python_exact_inputs(values, 3,
+        "integration bounds and tolerance must be exact real values", &entries, &borrowed);
+    if (status == NUMFORGE_OK && !PyErr_Occurred()) {
+        work.numerator = bigint_create();
+        if (!work.numerator) status = NUMFORGE_OUT_OF_MEMORY;
+    }
+    if (status == NUMFORGE_OK && !PyErr_Occurred()) {
+        policy.absolute_tolerance = entries[2];
+        NumForgeNumericalStatus integrated = numforge_integrate(&integral, root_sample, &work, entries[0], entries[1], &policy);
+        status = integrated == NUMFORGE_NUMERICAL_CALLBACK_FAILED && work.status != NUMFORGE_OK ?
+            work.status : numerical_status(integrated);
+    }
+    status = nf_python_budget_status(status);
+    if (!PyErr_Occurred() && status != NUMFORGE_OK) nf_python_raise_status(module, status, 0);
+    if (!PyErr_Occurred()) {
+        static const char *kinds[] = {"estimated", "evaluation_limit", "refinement_limit", "domain_gap"};
+        output = PyDict_New();
+        if (output && (!nf_python_dictionary_put(output, "kind", PyUnicode_FromString(kinds[numforge_integral_kind(integral)])) ||
+            !nf_python_dictionary_put(output, "value", nf_python_fraction_pair(module, numforge_integral_value(integral))) ||
+            !nf_python_dictionary_put(output, "error", nf_python_fraction_pair(module, numforge_integral_error(integral))) ||
+            !nf_python_dictionary_put(output, "evaluations", PyLong_FromSize_t(numforge_integral_evaluations(integral))) ||
+            !nf_python_dictionary_put(output, "refinements", PyLong_FromSize_t(numforge_integral_refinements(integral))))) Py_CLEAR(output);
+        status = nf_python_budget_status(NUMFORGE_OK);
+        if (status != NUMFORGE_OK && !PyErr_Occurred()) { Py_CLEAR(output); nf_python_raise_status(module, status, 0); }
+    }
+    numforge_integral_destroy(integral); bigint_destroy(work.numerator);
+    nf_python_exact_inputs_destroy(entries, borrowed, 3); Py_DECREF(values);
+    if (owner) numforge_budget_end();
+    numforge_context_destroy(budget.context);
+    return output;
+}

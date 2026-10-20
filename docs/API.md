@@ -17,6 +17,7 @@ version-matched installed headers and release record for a downloaded package.
 | [Exact matrix C API](reference/MATRIX_API.md) | Dense rational products, determinants and unique square-system solves; numeric target only. |
 | [General linear systems](reference/LINEAR_SYSTEM_API.md) | Exact rectangular rank, inconsistency/uniqueness, particular solutions and a complete nullspace basis in C/Python. |
 | [Exact statistics](reference/STATISTICS_API.md) | Rational dataset count, sum, extrema, mean, population/sample variance, paired covariance and simple linear regression in C/Python. |
+| [Finite-interval integration](reference/NUMERICAL_API.md#finite-interval-integration) | Bounded approximate Simpson quadrature, estimated error, work limits and domain diagnostics in C/Python. |
 | [Python adapter](guides/PYTHON.md) | Source-built CPython subset for typed values, expressions, exact equations/matrices/statistics/grids and bounded single/multiple-root searches. |
 | [BigComplex foundation](reference/BIGCOMPLEX.md) | Standalone complex arithmetic, principal functions, precision and calculator integration. |
 

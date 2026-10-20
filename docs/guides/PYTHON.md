@@ -53,6 +53,7 @@ configured CI coverage is not a claim that those remote jobs have already run.
 | `linear_regression(x, y, ...)` | Exact unweighted least-squares slope/intercept, returned as frozen LinearRegression |
 | `find_root(function, lower, upper, *, ...)` | Public C bracket search with exact callback coordinates and explicit convergence diagnostics |
 | `find_roots(function, lower, upper, *, ...)` | Bounded public C scan returning sampled roots, stop reason and work/domain diagnostics |
+| `integrate(function, lower, upper, *, ...)` | Approximate finite-interval Simpson value/error, stop reason and work counts |
 | `grid(lower, upper, count, *, ...)` | Immutable tuple of exact Fraction coordinates from the C uniform-grid walker |
 | `visit_grid(lower, upper, count, visit, *, ...)` | Visit the same exact C coordinates without collecting a Python point list |
 
@@ -228,6 +229,25 @@ Serialization inherits the result's copied C policy and the engine output limit.
 Native calls retain the GIL, serializing access to thread-confined C handles.
 There is no promise of parallel native evaluation, instant Ctrl-C interruption,
 PyPy or free-threaded CPython support. Work limits are cooperative.
+
+## Finite-interval integration
+
+```python
+area = numforge.integrate(lambda x, places: x*x, 0, 1)
+assert area.kind == "estimated" and area.value == Fraction(1, 3)
+assert area.error == 0 and not area.exact
+limited = numforge.integrate(lambda x, places: x**4, 0, 1, max_evaluations=8)
+assert limited.kind == "evaluation_limit" and limited.evaluations == 5
+```
+
+The callback receives an exact Fraction and requested working precision; return
+a supported real value or None for a domain gap. Exceptions propagate unchanged.
+Bounds/tolerance must be exact real inputs, with `lower<upper` and positive
+`absolute_tolerance` (default `1E-12`). Other defaults are `decimal_places=34`,
+`max_refinements=12`, `max_evaluations=4097`, and the usual runtime budgets.
+`IntegralResult` is immutable; its Fraction value/error represent an approximation,
+even with zero estimated error. Check `kind` before accepting a result and read
+the [error limitations](../reference/NUMERICAL_API.md#finite-interval-integration).
 
 ## Reproduce installation verification
 

@@ -14,7 +14,8 @@ a web interface, application session or database.
 
 **Current source:** opaque integer, decimal, rational and complex types; a public
 expression engine; exact polynomial and matrix operations; rational statistics
-and covariance; units; and bounded numerical grids/root searches. An experimental
+with covariance/regression; units; and bounded numerical grids, root searches and
+finite-interval integration. An experimental
 Python adapter calls the same C implementation. See the [supported API](docs/API.md).
 
 **Published 2.4.0 downloads** predate the public engine, newer modules and Python

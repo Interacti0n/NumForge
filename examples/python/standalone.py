@@ -28,6 +28,10 @@ assert tuple(root.x for root in scan.roots) == (-3, 0, 2)
 assert scan.kind == "finished" and not scan.complete
 print("Sampled roots:", *(root.x for root in scan.roots), "complete:", scan.complete)
 
+area = numforge.integrate(lambda x, places: x*x, 0, 1)
+assert area.kind == "estimated" and area.value == Fraction(1, 3) and not area.exact
+print("Approximate integral:", area.value, "estimated error:", area.error)
+
 a = numforge.Matrix([[0, 2], [3, 4]])
 b = numforge.Matrix([[7], [15]])
 print("Exact determinant:", a.determinant())

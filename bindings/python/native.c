@@ -175,6 +175,7 @@ static PyMethodDef methods[] = {
     {"fraction", native_fraction, METH_VARARGS, "Copy exact rational components."},
     {"solve", nf_python_solve, METH_VARARGS, "Solve exact polynomial coefficients in C."},
     {"find_root", nf_python_find_root, METH_VARARGS, "Run bounded C bisection with a Python sample callback."},
+    {"integrate", nf_python_integrate, METH_VARARGS, "Run bounded C Simpson quadrature with a Python sample callback."},
     {"find_roots", nf_python_find_roots, METH_VARARGS, "Run bounded C root scanning with a Python sample callback."},
     {"visit_grid", nf_python_visit_grid, METH_VARARGS, "Visit exact rational coordinates from the public C grid walker."},
     {"describe", nf_python_describe, METH_VARARGS, "Compute an exact C descriptive statistics summary."},

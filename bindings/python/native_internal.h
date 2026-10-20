@@ -32,6 +32,7 @@ void nf_python_exact_inputs_destroy(BigRational **entries, const BigRational **b
 PyObject *nf_python_result_wrap(NumForgeResult *result);
 
 PyObject *nf_python_find_root(PyObject *module, PyObject *args);
+PyObject *nf_python_integrate(PyObject *module, PyObject *args);
 PyObject *nf_python_find_roots(PyObject *module, PyObject *args);
 PyObject *nf_python_visit_grid(PyObject *module, PyObject *args);
 PyObject *nf_python_solve(PyObject *module, PyObject *args);
