@@ -28,8 +28,15 @@ int nf_python_dictionary_put(PyObject *dictionary, const char *name, PyObject *v
 NumForgeStatus nf_python_exact_inputs(PyObject *values, Py_ssize_t count, const char *error,
     BigRational ***entries, const BigRational ***borrowed);
 void nf_python_exact_inputs_destroy(BigRational **entries, const BigRational **borrowed, Py_ssize_t count);
+/* Consume an owned result even when capsule creation fails. */
+PyObject *nf_python_result_wrap(NumForgeResult *result);
 
 PyObject *nf_python_find_root(PyObject *module, PyObject *args);
 PyObject *nf_python_find_roots(PyObject *module, PyObject *args);
 PyObject *nf_python_visit_grid(PyObject *module, PyObject *args);
+PyObject *nf_python_solve(PyObject *module, PyObject *args);
+PyObject *nf_python_describe(PyObject *module, PyObject *args);
+PyObject *nf_python_matrix_create(PyObject *module, PyObject *args);
+PyObject *nf_python_matrix_shape(PyObject *module, PyObject *args);
+PyObject *nf_python_matrix_operation(PyObject *module, PyObject *args);
 #endif

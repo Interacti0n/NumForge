@@ -137,3 +137,15 @@ void nf_python_exact_inputs_destroy(BigRational **entries, const BigRational **b
     if (entries) for (Py_ssize_t i = 0; i < count; ++i) bigrational_destroy(entries[i]);
     free(entries); free(borrowed);
 }
+
+static void result_destroy(PyObject *capsule)
+{
+    NumForgeResult *result = PyCapsule_GetPointer(capsule, NF_PYTHON_RESULT_CAPSULE);
+    if (result != NULL) numforge_result_destroy(result); else PyErr_Clear();
+}
+PyObject *nf_python_result_wrap(NumForgeResult *result)
+{
+    PyObject *capsule = PyCapsule_New(result, NF_PYTHON_RESULT_CAPSULE, result_destroy);
+    if (capsule == NULL) numforge_result_destroy(result);
+    return capsule;
+}

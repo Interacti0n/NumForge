@@ -23,13 +23,15 @@ contracts; private symbols in a static archive are not supported APIs.
 | `include/numforge/` | Installed C API and authoritative ownership/error contracts. |
 | `tests/`, `benchmarks/`, `examples/` | Regressions, opt-in measurements and consumer examples. |
 
-The Python extension keeps module registration, capsules and existing scalar/
-algebra/matrix/statistics entry points in `native.c`. `native_support.c` owns
-shared policy, status and exact-value conversion; `numerical.c` owns grid/root
-callback adapters. Their `native_internal.h` is private to the binding. Add native
-sources explicitly in `bindings/python/CMakeLists.txt`; the source package includes
-that manifest and private header. The installed module and Python API remain one
-interface, with no dependency on private core/engine implementation headers.
+The Python extension keeps module registration and scalar/expression entry points
+in `native.c`. `polynomial.c`, `matrix.c` and `statistics.c` own their domain
+adapters; `numerical.c` owns grid/root callbacks. `native_support.c` shares policy,
+status, exact-value conversion and scalar-result capsule ownership. Domain-specific
+handles and borrowed matrix views stay with their owning adapter. Their
+`native_internal.h` is private to the binding. Add native sources explicitly in
+`bindings/python/CMakeLists.txt`; the source package includes that manifest and
+private header. The installed module and Python API remain one interface, with no
+dependency on private core/engine implementation headers.
 
 ## Dependencies
 

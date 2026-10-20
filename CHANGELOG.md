@@ -9,8 +9,9 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ### Numerical foundation
 
-- Split Python numerical adapters and shared native conversion/policy support
-  into separately compiled private sources with an explicit binding manifest.
+- Split Python polynomial, matrix, statistics and numerical adapters plus shared
+  native conversion/policy/result support into separately compiled private sources
+  with an explicit binding manifest.
   Include support headers/manifests in source distributions and extend architecture
   checks to every native adapter. Preserve Python APIs and capsule identities.
 - Add Python `grid` and `visit_grid` over the public exact C grid walker. Return
