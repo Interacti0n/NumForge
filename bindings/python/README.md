@@ -108,3 +108,6 @@ instant Ctrl-C cancellation, PyPy or free-threaded CPython support.
 
 See the full source guide `docs/guides/PYTHON.md` for contracts, installation
 verification and the scope of the initial adapter.
+
+`linear_regression(x, y)` returns exact Fraction slope/intercept in a frozen
+LinearRegression result. See the [regression contract](../../docs/reference/STATISTICS_API.md#exact-simple-linear-regression).

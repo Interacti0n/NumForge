@@ -1084,5 +1084,101 @@ class NumericalGridTests(unittest.TestCase):
         self.assertEqual(nf.grid(0, 1, 2), (0, 1))
 
 
+class LinearRegressionTests(unittest.TestCase):
+    @staticmethod
+    def reference(x, y):
+        # Pairwise differences provide an independent Fraction oracle.
+        cross = sum(((x[i]-x[j])*(y[i]-y[j]) for i in range(len(x)) for j in range(i)), Fraction(0))
+        square = sum(((x[i]-x[j])**2 for i in range(len(x)) for j in range(i)), Fraction(0))
+        slope = cross / square
+        return slope, (sum(y, Fraction(0)) - slope*sum(x, Fraction(0))) / len(x)
+
+    def test_known_lines_and_owned_frozen_results(self):
+        for x, y, expected in (([1, 2, 3], [1, 2, 2], (Fraction(1, 2), Fraction(2, 3))),
+                               ([1, 2, 3], [3, 1, -1], (Fraction(-2), Fraction(5))),
+                               ([1, 1, 2], [7, 7, 7], (Fraction(0), Fraction(7))),
+                               ([Fraction(1, 3), Fraction(2, 3)], [Fraction(3, 7), Fraction(1, 7)],
+                                (Fraction(-6, 7), Fraction(5, 7)))):
+            result = nf.linear_regression(iter(x), iter(y))
+            self.assertIsInstance(result, nf.LinearRegression)
+            self.assertEqual((result.count, result.slope, result.intercept, result.exact), (len(x), *expected, True))
+            self.assertIsInstance(result.slope, Fraction)
+            self.assertIsInstance(result.intercept, Fraction)
+            with self.assertRaises(FrozenInstanceError):
+                result.slope = Fraction(9)
+        x = [Decimal(".1"), "0.25", nf.number(7)]
+        result = nf.linear_regression(x, [1, 2, 3]); x.clear(); gc.collect()
+        self.assertEqual((result.slope, result.intercept), self.reference(
+            [Fraction(1, 10), Fraction(1, 4), Fraction(7)], [Fraction(1), Fraction(2), Fraction(3)]))
+
+    def test_random_fraction_references_and_residual_normal_equations(self):
+        rng = random.Random(20261020)
+        for n in (2, 3, 8, 16):
+            for fixture in range(5):
+                x = [Fraction(rng.randrange(-50, 51), rng.randrange(1, 16)) for _ in range(n)]
+                y = [Fraction(rng.randrange(-50, 51), rng.randrange(1, 16)) for _ in range(n)]
+                if len(set(x)) == 1:
+                    continue
+                with self.subTest(n=n, fixture=fixture):
+                    expected = self.reference(x, y)
+                    result = nf.linear_regression(x, y)
+                    self.assertEqual((result.slope, result.intercept), expected)
+                    residuals = [b-result.slope*a-result.intercept for a, b in zip(x, y)]
+                    self.assertEqual(sum(residuals), 0)
+                    self.assertEqual(sum(a*r for a, r in zip(x, residuals)), 0)
+                    reverse = nf.linear_regression(reversed(x), reversed(y))
+                    self.assertEqual((reverse.slope, reverse.intercept), expected)
+                    transformed = nf.linear_regression([3*a+17 for a in x], [-2*b-9 for b in y])
+                    self.assertEqual(transformed.slope, -2*expected[0]/3)
+                    self.assertEqual(transformed.intercept, -2*expected[1]-9-transformed.slope*17)
+
+    def test_thousand_digit_offsets_and_tiny_differences(self):
+        n = 10**1000
+        for x, y, expected in (([n, n+1, n+2], [Fraction(3, n), Fraction(2, n), Fraction(1, n)],
+                                (Fraction(-1, n), Fraction(n+3, n))),
+                               ([Fraction(3, n), Fraction(2, n), Fraction(1, n)], [n, n+1, n+2],
+                                (Fraction(-n), Fraction(n+3))),
+                               ([n, n+Fraction(1, n), n+Fraction(2, n)], [1, 2, 3],
+                                (Fraction(n), Fraction(1-n*n)))):
+            result = nf.linear_regression(x, y)
+            self.assertEqual((result.slope, result.intercept), expected)
+
+    def test_validation_and_constant_x(self):
+        for x, y in (([], []), ([1], [2]), ([1, 2], [1]), ([1], [1, 2])):
+            with self.assertRaises(ValueError):
+                nf.linear_regression(x, y)
+        for x, y in (([1, 1], [1, 2]), ([0, 0], [0, 0])):
+            with self.assertRaises(nf.Error) as caught:
+                nf.linear_regression(x, y)
+            self.assertEqual((caught.exception.status, caught.exception.offset), ("invalid_argument", 0))
+        for bad in ("12", b"12", [True, 1], [0.1, 1], [None, 1], [complex(1, 2), 1],
+                    [nf.sqrt(2), 1], [nf.sqrt(-1), 1]):
+            for x, y in ((bad, [1, 2]), ([1, 2], bad)):
+                with self.assertRaises(TypeError):
+                    nf.linear_regression(x, y)
+        with self.assertRaises(TypeError):
+            nf.linear_regression([1, 2], [1, 2], precision=100)
+
+    def test_budget_failure_through_serialization_and_recovery(self):
+        for options, expected in (({"time_limit_ms": 0}, "time_limit"),
+                                  ({"allocation_bytes": 0}, "memory_limit"),
+                                  ({"single_allocation": 0}, "memory_limit")):
+            with self.assertRaises(nf.Error) as caught:
+                nf.linear_regression([1, 2, 3], [1, 2, 2], **options)
+            self.assertEqual((caught.exception.status, caught.exception.offset), (expected, 0))
+        recovered = False
+        for allocation_bytes in range(2048, 262145, 2048):
+            try:
+                result = nf.linear_regression([1, 2, 3], [1, 2, 2], allocation_bytes=allocation_bytes)
+            except nf.Error as error:
+                self.assertEqual(error.status, "memory_limit")
+            else:
+                self.assertEqual((result.slope, result.intercept), (Fraction(1, 2), Fraction(2, 3)))
+                recovered = True
+                break
+        self.assertTrue(recovered)
+        self.assertEqual(nf.linear_regression([0, 1], [1, 0]).slope, -1)
+
+
 if __name__ == "__main__":
     unittest.main()

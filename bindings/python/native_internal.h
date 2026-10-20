@@ -37,6 +37,7 @@ PyObject *nf_python_visit_grid(PyObject *module, PyObject *args);
 PyObject *nf_python_solve(PyObject *module, PyObject *args);
 PyObject *nf_python_describe(PyObject *module, PyObject *args);
 PyObject *nf_python_covariance(PyObject *module, PyObject *args);
+PyObject *nf_python_linear_regression(PyObject *module, PyObject *args);
 PyObject *nf_python_matrix_create(PyObject *module, PyObject *args);
 PyObject *nf_python_matrix_shape(PyObject *module, PyObject *args);
 PyObject *nf_python_matrix_operation(PyObject *module, PyObject *args);

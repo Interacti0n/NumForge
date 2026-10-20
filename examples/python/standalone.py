@@ -13,6 +13,10 @@ covariance = numforge.covariance([1, 2, 3], [3, 1, -1], sample=True)
 assert covariance == Fraction(-2)
 print("Exact sample covariance:", covariance)
 
+fit = numforge.linear_regression([1, 2, 3], [1, 2, 2])
+assert (fit.slope, fit.intercept) == (Fraction(1, 2), Fraction(2, 3))
+print("Exact least-squares line:", fit.slope, "* x +", fit.intercept)
+
 # The caller supplies exact samples and explicitly asserts continuity of x*x-2.
 search = numforge.find_root(lambda x, places: x*x-2, 1, 2, continuous=True)
 assert search.kind == "found" and not search.exact_zero

@@ -10,7 +10,7 @@ extern "C" {
 #endif
 
 /** @file statistics.h
- * Exact descriptive statistics over finite rational datasets. Independent of
+ * Exact descriptive statistics and linear regression over rational datasets. Independent of
  * expressions, matrices and applications; link the public numeric target.
  * No rounding, precision option or implicit resource budget is used. Existing
  * runtime.h scopes are inherited unchanged; cooperative exhaustion returns
@@ -18,6 +18,40 @@ extern "C" {
  * Synchronize shared handles externally; independent handles are independent.
  */
 typedef struct NumForgeStatisticsSummary NumForgeStatisticsSummary;
+typedef struct NumForgeLinearRegression NumForgeLinearRegression;
+
+/** Fit the unique unweighted least-squares line y = slope*x + intercept.
+ * @param[out] result New owned immutable fit on success; failures preserve
+ * *result and all inputs. Success never frees a previous destination.
+ * @param[in] x Borrowed array of count initialized non-NULL real rational scalars.
+ * @param[in] y Paired observations, indexed with x. Duplicates, repeated pointers
+ * and aliasing between arrays/scalars are allowed. Nothing is modified/retained.
+ * @param[in] count At least two pairs, with at least two distinct x values.
+ * @return OK, NULL_ARGUMENT for required NULL pointers/entries, INVALID_ARGUMENT
+ * for insufficient pairs or constant x, VALUE_TOO_LARGE for storage/numeric limits
+ * (pointer-storage overflow is rejected before entries are read), OUT_OF_MEMORY
+ * or SCALE_OVERFLOW. Runtime budgets are inherited unchanged.
+ *
+ * Both coefficients are exact reduced fractions, including noisy data. Exact
+ * describes arithmetic on the supplied samples, not measurement accuracy or
+ * predictive validity. Constant y gives slope zero and intercept y. No weights,
+ * uncertainty estimates, hypothesis tests or rounding/precision option are used.
+ * Reuses the anchored exact summary/covariance kernels: linear rational work,
+ * input-dependent integer storage. Inputs may be released after success.
+ */
+BigRationalStatus numforge_statistics_linear_regression(NumForgeLinearRegression **result,
+    const BigRational *const *x, const BigRational *const *y, size_t count);
+/** Release the fit and both coefficients; NULL accepted. */
+void numforge_linear_regression_destroy(NumForgeLinearRegression *fit);
+/** Number of paired observations; zero for NULL. */
+size_t numforge_linear_regression_count(const NumForgeLinearRegression *fit);
+/** Borrow immutable coefficients until fit destruction; NULL for a NULL handle.
+ * Never mutate/destroy these scalars or use them as numeric outputs. Copy via
+ * bigrational_copy for independent ownership. Synchronize shared handles externally.
+ * @{ */
+const BigRational *numforge_linear_regression_slope(const NumForgeLinearRegression *fit);
+const BigRational *numforge_linear_regression_intercept(const NumForgeLinearRegression *fit);
+/** @} */
 
 /** Exact covariance of paired observations left[i], right[i].
  * @param[out] result Initialized owned scalar; may alias any input scalar.

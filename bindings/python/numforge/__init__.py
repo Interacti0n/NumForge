@@ -12,7 +12,7 @@ core_version = _native.core_version
 Error = _native.Error
 __all__ = ["Error", "Result", "Expression", "PolynomialRoot", "PolynomialSolution",
            "number", "evaluate", "prepare", "sqrt", "solve_quadratic", "Matrix", "LinearSolution",
-           "describe", "covariance", "StatisticsSummary", "find_root", "RootResult", "find_roots", "RootScanResult",
+           "describe", "covariance", "StatisticsSummary", "linear_regression", "LinearRegression", "find_root", "RootResult", "find_roots", "RootScanResult",
            "grid", "visit_grid", "core_version"]
 
 _ROUNDING = {"toward_zero": 0, "away_from_zero": 1, "floor": 2,
@@ -437,6 +437,46 @@ class StatisticsSummary:
         return True
 
 
+@dataclass(frozen=True, slots=True)
+class LinearRegression:
+    """Exact least-squares coefficients for y=slope*x+intercept, copied from C.
+
+    Exact arithmetic on samples does not establish predictive/measurement accuracy.
+    """
+    count: int
+    slope: Fraction
+    intercept: Fraction
+
+    @property
+    def exact(self):
+        return True
+
+
+def _paired_inputs(left, right, minimum):
+    if isinstance(left, (str, bytes)) or isinstance(right, (str, bytes)):
+        raise TypeError("paired samples must be iterables of numeric values")
+    x = tuple(number(value)._handle for value in left)
+    y = tuple(number(value)._handle for value in right)
+    if len(x) < minimum or len(x) != len(y):
+        raise ValueError(f"paired datasets must have equal sizes and at least {minimum} observations")
+    return x, y
+
+
+def linear_regression(x, y, *, time_limit_ms=5000,
+                      allocation_bytes=64 * 1024 * 1024, single_allocation=512 * 1024):
+    """Fit the unique unweighted least-squares line using exact C statistics.
+
+    Inputs follow describe(); require two equally sized paired iterables with
+    nonconstant x. Insufficient/mismatched samples raise ValueError; constant x
+    raises Error('invalid_argument'). Coefficients are Fraction, with no precision
+    option. Conversion precedes the C budget; native work/serialization share it.
+    """
+    options = _options(34, "half_even", time_limit_ms, allocation_bytes, single_allocation)
+    x, y = _paired_inputs(x, y, 2)
+    data = _native.linear_regression(x, y, options)
+    return LinearRegression(data["count"], _fraction(data["slope"]), _fraction(data["intercept"]))
+
+
 def covariance(left, right, *, sample=False, time_limit_ms=5000,
                allocation_bytes=64 * 1024 * 1024, single_allocation=512 * 1024):
     """Exact Fraction covariance of equally sized paired real inputs, through C.
@@ -448,13 +488,8 @@ def covariance(left, right, *, sample=False, time_limit_ms=5000,
     options = _options(34, "half_even", time_limit_ms, allocation_bytes, single_allocation)
     if type(sample) is not bool:
         raise TypeError("sample must be a bool")
-    if isinstance(left, (str, bytes)) or isinstance(right, (str, bytes)):
-        raise TypeError("covariance requires iterables of numeric values")
-    x, y = tuple(number(value) for value in left), tuple(number(value) for value in right)
-    if not x or len(x) != len(y) or (sample and len(x) < 2):
-        raise ValueError("covariance requires equal nonempty datasets, or two pairs for sample covariance")
-    return _fraction(_native.covariance(tuple(value._handle for value in x),
-                                      tuple(value._handle for value in y), sample, options))
+    x, y = _paired_inputs(left, right, 2 if sample else 1)
+    return _fraction(_native.covariance(x, y, sample, options))
 
 
 def describe(values, *, time_limit_ms=5000,

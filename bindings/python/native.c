@@ -179,6 +179,7 @@ static PyMethodDef methods[] = {
     {"visit_grid", nf_python_visit_grid, METH_VARARGS, "Visit exact rational coordinates from the public C grid walker."},
     {"describe", nf_python_describe, METH_VARARGS, "Compute an exact C descriptive statistics summary."},
     {"covariance", nf_python_covariance, METH_VARARGS, "Compute exact paired covariance in C."},
+    {"linear_regression", nf_python_linear_regression, METH_VARARGS, "Fit an exact least-squares line in C."},
     {"matrix_create", nf_python_matrix_create, METH_VARARGS, "Copy exact real entries into a C matrix."},
     {"matrix_shape", nf_python_matrix_shape, METH_VARARGS, "Read a C matrix shape."},
     {"matrix_operation", nf_python_matrix_operation, METH_VARARGS, "Run an exact C matrix operation."},

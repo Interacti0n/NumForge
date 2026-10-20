@@ -44,7 +44,7 @@ target_compile_definitions(engine_tests PRIVATE
 
 numforge_add_unit_test(engine_parameters_tests numforge_engine engine/test_engine_parameters.c)
 target_compile_definitions(engine_parameters_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
-foreach(suite IN ITEMS polynomial matrix linear_system statistics numerical numerical_scan numerical_grid numerical_refinement numerical_curve numerical_phase)
+foreach(suite IN ITEMS polynomial matrix linear_system statistics regression numerical numerical_scan numerical_grid numerical_refinement numerical_curve numerical_phase)
     numforge_add_unit_test(${suite}_tests numforge modules/test_${suite}.c)
     target_compile_definitions(${suite}_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
 endforeach()

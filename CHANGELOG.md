@@ -6,6 +6,8 @@ Earlier detailed development notes remain in Git history.
 
 ## Unreleased
 
+- Exact simple linear regression with intercept, independently callable in C and Python.
+
 - Shared CMake build/test presets and opt-in clang-tidy correctness checks.
 
 - Standalone C expression engine with prepared expressions, parameters, typed

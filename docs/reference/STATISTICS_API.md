@@ -1,4 +1,4 @@
-# Exact descriptive statistics
+# Exact statistics and linear regression
 
 Implemented in current post-2.4.0 source. Include `numforge/statistics.h` and link
 `NumForge::numforge`. The batch API works independently of the expression engine,
@@ -28,7 +28,7 @@ precision parameter. A singleton has population variance zero and **undefined**
 sample variance; the NULL sample field does not mean zero. Empty input is invalid.
 
 This is an unweighted batch summary, with no missing-value omission, streaming
-state, stored dataset object, median, regression or distribution fit.
+state, stored dataset object, median or distribution fit.
 The existing BigDecimal scalar sequence/statistics APIs and calculator functions
 retain their separate precision/rounding contracts.
 
@@ -97,6 +97,51 @@ They must be nonempty and equally sized; a sample singleton raises ValueError.
 C budget, after input number() conversion. Python object/Fraction allocation is
 outside that accounting. No calculator expression, REST route or WASM wrapper
 is provided for this operation.
+
+## Exact simple linear regression
+
+`numforge_statistics_linear_regression(&fit, x, y, count)` fits the unweighted
+least-squares line `y = slope*x + intercept`. Require at least two paired rational
+observations and nonconstant x. Duplicates and repeated/cross-aliased pointers
+count separately; constant y gives a horizontal line. The implementation reuses
+the anchored exact summaries and covariance:
+
+```text
+slope = population_covariance(x,y) / population_variance(x)
+intercept = mean(y) - slope*mean(x)
+```
+
+These are the [ordinary least-squares coefficients](https://www.itl.nist.gov/div898/handbook/pmd/section4/pmd431.htm).
+No rounding occurs, even for noisy data or tiny differences around large offsets.
+Exact arithmetic does not imply measurement accuracy or predictive validity.
+Weights, through-origin fitting, R-squared and inferential statistics are outside
+this API.
+
+Success returns an owned immutable `NumForgeLinearRegression`; failures preserve
+`*fit` and every input, and success does not free an earlier destination.
+`numforge_linear_regression_count` returns the count; `_slope` and `_intercept`
+return borrowed immutable fractions. Release with `numforge_linear_regression_destroy`.
+Input storage can be released immediately. NULL queries return zero/NULL and
+NULL destruction is accepted. Inherited budgets and ownership follow the public
+header; constant x or fewer than two pairs return INVALID_ARGUMENT. Required
+NULL pointers/entries return NULL_ARGUMENT; pointer-storage overflow is rejected
+before entries are read. No partial fit is returned.
+
+```python
+fit = nf.linear_regression([1, 2, 3], [1, 2, 2])
+assert (fit.count, fit.slope, fit.intercept, fit.exact) == (3, Fraction(1, 2), Fraction(2, 3), True)
+```
+
+Python returns frozen `LinearRegression(count, slope, intercept)` with independent
+Fraction coefficients. Inputs follow `describe`; `time_limit_ms`,
+`allocation_bytes` and `single_allocation` have the same defaults and scope as
+covariance. Insufficient/mismatched datasets raise ValueError, rejected types
+raise TypeError, and constant x raises Error with status `invalid_argument` and
+offset zero. There is no precision option. Native calls retain the GIL.
+
+The [SDK example](../../examples/sdk/statistics.c) fits (0,0), (1,0), (1,1),
+returning slope 1/2 and intercept 0. C and source-built Python are available;
+no expression function, HTTP dataset route or browser editor is added.
 
 ## Ownership, errors and runtime
 
@@ -190,3 +235,14 @@ independent pairwise identity over 40 population/sample rational fixtures,
 symmetry, translation/scaling, permutation and variance identities, input and
 budget recovery checks. Installed C/C++ consumers and the SDK example exercise
 the public numeric-only API. See the [covariance measurements and validation](../performance/baselines/MODULES.md#covariance).
+
+Regression checks cover noisy/fractional/horizontal/two-point fits, duplicated
+and borrowed prior-output inputs, independent ownership, 1000-digit offsets and
+spreads, constant-x/validation failures, every allocation failure and inherited
+budget cancellation/recovery. Python adds independent Fraction pairwise-difference
+references, residual normal equations and permutation/affine identities. Installed
+C/C++ consumers and the existing SDK/Python examples exercise the same C API.
+
+The [regression benchmark](../performance/baselines/MODULES.md#linear-regression)
+uses independently known reversed-progressions at two-point, ordinary, 1000-digit
+offset and tiny-spread scales; no speed threshold is a correctness assertion.

@@ -13,6 +13,7 @@ static int statistics_field(const BigRational *value, const char *expected)
 static int statistics_api_checks(void)
 {
     BigInt *integer = bigint_create(); BigRational *zero = bigrational_create(), *one = bigrational_create();
+    NumForgeLinearRegression *fit = NULL;
     const BigRational *values[3] = {zero, zero, one}; NumForgeStatisticsSummary *summary = NULL, *singleton = NULL; int outcome = 1;
     if (!integer || !zero || !one || bigint_set_string(integer, "1") != BIGINT_OK ||
         bigrational_from_bigint(one, integer) != BIGRATIONAL_OK || numforge_statistics_describe(&summary, values, 3) != BIGRATIONAL_OK ||
@@ -23,10 +24,15 @@ static int statistics_api_checks(void)
         !statistics_field(numforge_statistics_summary_variance_sample(summary), "1/3") ||
         numforge_statistics_describe(&singleton, values + 2, 1) != BIGRATIONAL_OK ||
         numforge_statistics_summary_variance_sample(singleton) != NULL) goto done;
+    if (numforge_statistics_linear_regression(&fit, values, values, 3) != BIGRATIONAL_OK ||
+        numforge_linear_regression_count(fit) != 3 ||
+        !statistics_field(numforge_linear_regression_slope(fit), "1") ||
+        !statistics_field(numforge_linear_regression_intercept(fit), "0")) goto done;
     if (numforge_statistics_covariance(one, values, values, 3, false) != BIGRATIONAL_OK ||
         !statistics_field(one, "2/9")) goto done;
     outcome = 0;
 done:
+    numforge_linear_regression_destroy(fit);
     bigint_destroy(integer); bigrational_destroy(zero); bigrational_destroy(one);
     numforge_statistics_summary_destroy(summary); numforge_statistics_summary_destroy(singleton); return outcome;
 }

@@ -86,7 +86,7 @@ belong to the linked contracts/reports rather than this test index.
 | Public expressions/parameters | `engine_tests`, `engine_parameters_tests` | [Engine contract](reference/ENGINE_API.md) |
 | Exact polynomial solving | `polynomial_tests`, equation adapter checks | [Polynomial contract](reference/POLYNOMIAL_API.md) |
 | Matrices and rectangular systems | `matrix_tests`, `linear_system_tests` | [Matrices](reference/MATRIX_API.md), [general systems](reference/LINEAR_SYSTEM_API.md) |
-| Summaries and covariance | `statistics_tests`, Python statistics/covariance tests | [Statistics contract](reference/STATISTICS_API.md) |
+| Summaries, covariance and regression | `statistics_tests`, `regression_tests`, Python statistics/regression tests | [Statistics contract](reference/STATISTICS_API.md) |
 | Grids, refinement, curve/phase policies | `numerical_grid_tests`, `numerical_refinement_tests`, `numerical_curve_tests`, `numerical_phase_tests` | [Numerical contracts](reference/NUMERICAL_API.md) |
 | Public root kernels | `numerical_tests`, `numerical_scan_tests` | [Root/scan meaning](reference/ROOT_API.md#use-and-result-meaning) |
 | Equation application/HTTP | `equation_tests`, `numeric_root_tests`, `numeric_root_scan_tests`; affected browser equations | [Equation API](reference/EQUATION_HTTP_API.md), [numerical HTTP](reference/NUMERIC_ROOT_HTTP_API.md) |

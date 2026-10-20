@@ -12,7 +12,7 @@ index; selected baselines preserve evidence for their recorded revisions.
 | Expression engine | [Stateless public C API](../reference/ENGINE_API.md), reusable prepared expressions, explicit parameters, typed results and operation budgets. |
 | Algebra | [Exact linear/quadratic coefficient solver](../reference/POLYNOMIAL_API.md), shared by application equation adapters. |
 | Linear algebra | [Dense rational matrices](../reference/MATRIX_API.md), products, determinants, square solves and [complete rectangular single-RHS systems](../reference/LINEAR_SYSTEM_API.md). |
-| Statistics | [Exact rational batch summaries and paired covariance](../reference/STATISTICS_API.md), with population/sample divisors in C/Python. |
+| Statistics | [Exact rational batch summaries, paired covariance and simple linear regression](../reference/STATISTICS_API.md), with population/sample divisors in C/Python. |
 | Numerical | [Exact grids, adaptive sampling rules, phase anchors and bounded root searches](../reference/NUMERICAL_API.md), shared with graph/equation applications. |
 | Scientific | [Unit conversion](../reference/UNITS.md), a sourced catalogue and private [quantity expressions](../reference/QUANTITIES.md). |
 | Applications | SK/EN CLI/browser calculator, sessions, converter, four-function graphs and bounded numerical equation searches. |
@@ -35,7 +35,10 @@ desktop/mobile rendering/search checks and the
 [unified remote CI](https://github.com/Interacti0n/NumForge/actions/runs/39463681313) passed.
 Superseded reports/CSVs have been removed;
 the [documentation tree](../README.md#file-tree) separates protocols, baselines
-and their data. Stage 3 is next; stages 3–6 remain planned.
+and their data. Stage 3 is in progress: exact C/Python
+[linear regression](../reference/STATISTICS_API.md#exact-simple-linear-regression) is
+complete with local correctness/failure, installed-consumer and validated benchmark
+checks. Bounded finite-interval integration is next; stages 4–6 remain planned.
 Finish each bounded stage before opening the next; a defect in a completed stage can interrupt
 the sequence. Dates are not promised: progress is determined by the exit evidence.
 Do not keep adding mathematical functions while stages 1 and 2 remain open.

@@ -217,3 +217,18 @@ passed exact checks. These are local shared-machine measurements, not a server
 capacity estimate, Python end-to-end benchmark, streaming throughput claim or
 coverage of arbitrary denominator growth. The benchmark smoke test checks results
 and its existing timeout, with no speed threshold.
+
+## Linear regression
+
+The existing `statistics_benchmark` adds five `reg_*` rows without changing CSV
+columns or the twelve summary/covariance fixtures. Inputs are x_j=offset+j/d,
+y_j=x_(n-1-j), for j=0..n-1. Independent closed-form references are slope=-1 and
+intercept=2*offset+(n-1)/d, constructed outside timing without a regression or
+covariance call. Both coefficients and the reported count are checked after every
+call. Each row runs three repetitions in the same fresh scopes as covariance.
+
+Timing includes validation, the reused exact summaries/covariance, coefficient
+construction and internal cleanup. Input/reference creation and returned-fit
+destruction are outside timing. Allocation counters are read before validation;
+requested bytes are cumulative traffic. This measures the current composed
+implementation, not a specialized new moments algorithm or a speedup.

@@ -39,6 +39,7 @@ static int run_case(const char *label, size_t n, size_t offset_exponent, size_t 
     BigRational *covariance = bigrational_create(), *covariance_expected = bigrational_create();
     BigRational *offset = bigrational_create(), *scale = bigrational_create(), *term = bigrational_create(), *denominator = bigrational_create();
     BigRational *expected[6] = {0}; BigInt *integer = bigint_create(); NumForgeStatisticsSummary *summary = NULL;
+    NumForgeLinearRegression *fit = NULL;
     int outcome = 1; size_t calls = 0, bytes = 0; double elapsed = 0;
     if (!values || !borrowed || !reversed || !covariance || !covariance_expected || !offset || !scale || !term || !denominator || !integer) goto done;
     if (offset_exponent && (!power(integer, offset_exponent) || bigrational_from_bigint(offset, integer) != BIGRATIONAL_OK)) goto done;
@@ -60,17 +61,25 @@ static int run_case(const char *label, size_t n, size_t offset_exponent, size_t 
         bigrational_div(expected[4], expected[4], denominator) != BIGRATIONAL_OK) goto done;
     if (n > 1 && (!set_size(expected[5], n*(n+1)) || bigrational_div(expected[5], expected[5], denominator) != BIGRATIONAL_OK)) goto done;
     /* Reversing this arithmetic progression makes covariance exactly -variance. */
-    if (mode && bigrational_sub(covariance_expected, covariance_expected, expected[mode == 2 ? 5 : 4]) != BIGRATIONAL_OK) goto done;
+    if ((mode == 1 || mode == 2) && bigrational_sub(covariance_expected, covariance_expected, expected[mode == 2 ? 5 : 4]) != BIGRATIONAL_OK) goto done;
+    /* The reversed progression fits y=-x+(2*offset+(n-1)/d), exactly. */
+    if (mode == 3 && (bigrational_add(covariance_expected, expected[1], expected[2]) != BIGRATIONAL_OK ||
+        !set_size(term, 1) || bigrational_negate(term, term) != BIGRATIONAL_OK)) goto done;
     for (size_t repeat = 0; repeat < 3; ++repeat) {
         if (!numforge_budget_begin(5000, 128U * 1024U * 1024U, 2U * 1024U * 1024U)) goto done;
         numforge_alloc_stats_reset(); double start = benchmark_seconds();
-        BigRationalStatus status = mode ? numforge_statistics_covariance(covariance, borrowed, reversed, n, mode == 2) :
+        BigRationalStatus status = mode == 3 ? numforge_statistics_linear_regression(&fit, borrowed, reversed, n) :
+            mode ? numforge_statistics_covariance(covariance, borrowed, reversed, n, mode == 2) :
             numforge_statistics_describe(&summary, borrowed, n);
         double stop = benchmark_seconds(); calls += numforge_alloc_stats_calls(); bytes += numforge_alloc_stats_bytes();
         NumForgeBudgetFailure failure = numforge_budget_failure(); numforge_budget_end();
         if (status != BIGRATIONAL_OK || failure != NUMFORGE_BUDGET_OK || start < 0 || stop < start) goto done;
         elapsed += stop - start;
-        if (mode) { if (!equal(covariance, covariance_expected)) goto done; }
+        if (mode == 3) {
+            if (numforge_linear_regression_count(fit) != n || !equal(numforge_linear_regression_slope(fit), term) ||
+                !equal(numforge_linear_regression_intercept(fit), covariance_expected)) goto done;
+        }
+        else if (mode) { if (!equal(covariance, covariance_expected)) goto done; }
         else {
             if (numforge_statistics_summary_count(summary) != n) goto done;
             for (size_t i = 0; i < 6; ++i) {
@@ -80,6 +89,7 @@ static int run_case(const char *label, size_t n, size_t offset_exponent, size_t 
             }
         }
         numforge_statistics_summary_destroy(summary); summary = NULL;
+        numforge_linear_regression_destroy(fit); fit = NULL;
     }
     printf("%s,%zu,%zu,%zu,3,%.6f,%zu,%zu,verified\n", label, n, offset_exponent, spread_exponent, elapsed * 1000.0 / 3, calls / 3, bytes / 3);
     outcome = 0;
@@ -89,7 +99,7 @@ done:
     free(values); free(borrowed); free(reversed); bigrational_destroy(covariance); bigrational_destroy(covariance_expected);
     bigrational_destroy(offset); bigrational_destroy(scale); bigrational_destroy(term); bigrational_destroy(denominator);
     for (size_t i = 0; i < 6; ++i) bigrational_destroy(expected[i]);
-    bigint_destroy(integer); numforge_statistics_summary_destroy(summary); return outcome;
+    bigint_destroy(integer); numforge_statistics_summary_destroy(summary); numforge_linear_regression_destroy(fit); return outcome;
 }
 int main(void)
 {
@@ -98,5 +108,8 @@ int main(void)
         run_case("large", 1024, 0, 0, 0) || run_case("offset1000", 128, 1000, 0, 0) || run_case("tiny1000", 128, 0, 1000, 0) ||
         run_case("cov_population_singleton", 1, 0, 0, 1) || run_case("cov_population_small", 16, 0, 0, 1) ||
         run_case("cov_sample_medium", 128, 0, 0, 2) || run_case("cov_population_large", 1024, 0, 0, 1) ||
-        run_case("cov_sample_offset1000", 128, 1000, 0, 2) || run_case("cov_population_tiny1000", 128, 0, 1000, 1);
+        run_case("cov_sample_offset1000", 128, 1000, 0, 2) || run_case("cov_population_tiny1000", 128, 0, 1000, 1) ||
+        run_case("reg_two_pairs", 2, 0, 0, 3) || run_case("reg_medium", 128, 0, 0, 3) ||
+        run_case("reg_large", 1024, 0, 0, 3) || run_case("reg_offset1000", 128, 1000, 0, 3) ||
+        run_case("reg_tiny1000", 128, 0, 1000, 3);
 }

@@ -50,6 +50,7 @@ configured CI coverage is not a claim that those remote jobs have already run.
 | `Matrix(rows, *, ...)` | Immutable rational matrices; exact products, determinants, rank and square/general system solves |
 | `describe(values, *, ...)` | Exact rational batch count/sum/extrema/mean and population/sample variance, copied into StatisticsSummary |
 | `covariance(left, right, *, sample=False, ...)` | Exact paired population/sample covariance, returned as Fraction |
+| `linear_regression(x, y, ...)` | Exact unweighted least-squares slope/intercept, returned as frozen LinearRegression |
 | `find_root(function, lower, upper, *, ...)` | Public C bracket search with exact callback coordinates and explicit convergence diagnostics |
 | `find_roots(function, lower, upper, *, ...)` | Bounded public C scan returning sampled roots, stop reason and work/domain diagnostics |
 | `grid(lower, upper, count, *, ...)` | Immutable tuple of exact Fraction coordinates from the C uniform-grid walker |
@@ -89,6 +90,9 @@ assert numforge.describe([5]).variance_sample is None
 for accepted inputs, all fields, singleton semantics, errors and budget boundaries.
 Paired datasets use `covariance(left, right, sample=False)`; see the
 [covariance contract and example](../reference/STATISTICS_API.md#paired-covariance).
+
+For an exact fitted line use `numforge.linear_regression(x, y)`; see the
+[regression contract and example](../reference/STATISTICS_API.md#exact-simple-linear-regression).
 
 ## Exact matrices
 
