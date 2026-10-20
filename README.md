@@ -72,7 +72,7 @@ Download a portable application from the
 matching SHA-256 and extract the whole archive. Platform/runtime details are in
 [release packaging](docs/project/RELEASE_PACKAGING.md).
 
-To build current source, use CMake 3.20+ and a C17 compiler:
+To use the shared build profiles, install CMake 3.21+ and a C17 compiler:
 
 ```sh
 git clone https://github.com/Interacti0n/NumForge.git

@@ -1,7 +1,7 @@
 # Contributing
 
 Build and run tests with `cmake -P cmake/LocalBuild.cmake` using a C17 compiler,
-CMake 3.20+ and Git. The first test build fetches pinned Unity. Node.js enables
+CMake 3.21+ and Git. The first test build fetches pinned Unity. Node.js enables
 independent numeric, architecture, CLI and web checks.
 
 ## Make a focused change

@@ -1,0 +1,71 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {"major": 3, "minor": 21, "patch": 0},
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "NUMFORGE_WARNINGS_AS_ERRORS": "ON"
+      }
+    },
+    {
+      "name": "dev",
+      "inherits": "base",
+      "displayName": "Applications and regression tests",
+      "cacheVariables": {"BUILD_TESTING": "ON"}
+    },
+    {
+      "name": "apps",
+      "inherits": "base",
+      "displayName": "Applications without test dependencies",
+      "cacheVariables": {"BUILD_TESTING": "OFF"}
+    },
+    {
+      "name": "sdk",
+      "inherits": "base",
+      "displayName": "Installable numeric library and expression engine",
+      "cacheVariables": {
+        "BUILD_TESTING": "OFF",
+        "NUMFORGE_BUILD_APPS": "OFF",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/build/sdk-installed"
+      }
+    },
+    {
+      "name": "benchmarks",
+      "inherits": "dev",
+      "displayName": "Instrumented benchmarks and their checks",
+      "cacheVariables": {
+        "NUMFORGE_BUILD_APPS": "OFF",
+        "NUMFORGE_BUILD_BENCHMARKS": "ON"
+      }
+    },
+    {
+      "name": "analysis",
+      "inherits": "apps",
+      "displayName": "Production sources with clang-tidy",
+      "generator": "Ninja",
+      "cacheVariables": {"CMAKE_C_CLANG_TIDY": "clang-tidy"}
+    }
+  ],
+  "buildPresets": [
+    {"name": "base", "hidden": true, "configuration": "Release", "jobs": 2},
+    {"name": "dev", "inherits": "base", "configurePreset": "dev"},
+    {"name": "apps", "inherits": "base", "configurePreset": "apps"},
+    {"name": "sdk", "inherits": "base", "configurePreset": "sdk"},
+    {"name": "benchmarks", "inherits": "base", "configurePreset": "benchmarks"},
+    {"name": "analysis", "inherits": "base", "configurePreset": "analysis"}
+  ],
+  "testPresets": [
+    {
+      "name": "dev",
+      "configurePreset": "dev",
+      "configuration": "Release",
+      "output": {"outputOnFailure": true},
+      "execution": {"noTestsAction": "error"}
+    },
+    {"name": "benchmarks", "inherits": "dev", "configurePreset": "benchmarks"}
+  ]
+}

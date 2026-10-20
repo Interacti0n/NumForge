@@ -31,8 +31,9 @@ explicit retained/deferred findings. Stage 2 is also complete: current guides,
 references, design and selected performance evidence have defined owners; the
 [documentation workflow](DOCUMENTATION.md) builds strict MkDocs/Doxygen output
 and verifies installed C/Python examples. Local staging/navigation tests and
-desktop/mobile rendering/search checks passed. Remote documentation CI is
-configured, not claimed as executed. Superseded reports/CSVs have been removed;
+desktop/mobile rendering/search checks and the
+[unified remote CI](https://github.com/Interacti0n/NumForge/actions/runs/39463681313) passed.
+Superseded reports/CSVs have been removed;
 the [documentation tree](../README.md#file-tree) separates protocols, baselines
 and their data. Stage 3 is next; stages 3–6 remain planned.
 Finish each bounded stage before opening the next; a defect in a completed stage can interrupt

@@ -6,11 +6,35 @@
 cmake -P cmake/LocalBuild.cmake
 ```
 
-The helper configures Release with warnings as errors, builds and runs CTest.
-Its ignored `build/local-tests-*` directory depends on the absolute checkout
-path. Moving the checkout creates a new build tree; it never deletes old ones.
-Use the printed path for direct CTest commands. A bare `ctest --test-dir build`
-can run stale generated tests from another checkout location.
+Requires a C17 compiler and CMake 3.21+ for shared presets (direct library
+configuration still supports CMake 3.20). The helper configures, builds and runs
+`dev` in `build/dev`. CMake rejects caches belonging to another checkout; keep
+build directories in their original location.
+
+## Shared build profiles
+
+Run presets from the repository root:
+
+```sh
+cmake --preset dev
+cmake --build --preset dev
+ctest --preset dev
+```
+
+| Profile | Output and scope |
+| --- | --- |
+| `dev` | `build/dev`: applications and regression tests |
+| `apps` | `build/apps`: applications without test dependencies |
+| `sdk` | `build/sdk`: numeric/engine libraries; default install prefix `build/sdk-installed` |
+| `benchmarks` | `build/benchmarks`: instrumented benchmarks and their correctness checks |
+| `analysis` | `build/analysis`: production libraries/applications with clang-tidy |
+
+All profiles select Release and project warnings as errors; `dev` and
+`benchmarks` also have matching CTest presets. CTest remains serial by default
+for server checks. Visual Studio uses `Release/` below the build directory;
+single-configuration generators place executables directly in it.
+Command-line `-D` options override configure settings. Keep machine-specific
+compiler/tool paths in ignored `CMakeUserPresets.json` or the environment.
 
 The first test configuration fetches pinned Unity using Git/network access.
 Node.js enables additional architecture, CLI, numeric-oracle and web-script
@@ -23,13 +47,31 @@ skip. Testing tools are not application runtime dependencies.
 cmake -DNUMFORGE_LOCAL_TESTS=OFF -P cmake/LocalBuild.cmake
 ```
 
-This uses a separate reusable `build/local-apps-*` tree. On Windows, add
+This uses the separate `apps` profile. On Windows, add
 `-DNUMFORGE_LOCAL_RUN=both` before `-P` to launch CLI and web after a successful
 build; `cli`/`web` select one. The helper opens a visible app console. Change the
 default port with `-DNUMFORGE_LOCAL_PORT=8767`; occupied ports are rejected.
 Build-only mode works on other hosts. No tunnel is started.
 
 Test sources are grouped by domain in the [test source map](../tests/README.md).
+
+## Static analysis
+
+The optional `analysis` profile needs Ninja, a C17 compiler and clang-tidy on PATH.
+On Windows use a compiler developer shell. For example:
+
+```sh
+cmake --preset analysis
+cmake --build --preset analysis --clean-first
+```
+
+`.clang-tidy` checks division by zero, misplaced widening casts and suspicious
+`sizeof`/`memset` usage; findings fail this profile. It covers production
+sources in the ordinary platform configuration, including application adapters,
+without fetching test dependencies. Add checks after reviewing their findings.
+Normal builds and installed consumers do not require the analysis tools.
+Static analysis complements runtime/failure tests; it does not prove numerical
+accuracy or exercise disabled platform/optional code paths.
 
 ## Choose a focused check
 

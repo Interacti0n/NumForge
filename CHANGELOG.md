@@ -6,6 +6,8 @@ Earlier detailed development notes remain in Git history.
 
 ## Unreleased
 
+- Shared CMake build/test presets and opt-in clang-tidy correctness checks.
+
 - Standalone C expression engine with prepared expressions, parameters, typed
   results and operation budgets; numeric-only use stays independent of the engine.
 - Public exact polynomial, rational matrix, complete rectangular linear-system,

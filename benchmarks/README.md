@@ -1,6 +1,7 @@
 # Benchmark tools
 
-Build with `NUMFORGE_BUILD_BENCHMARKS=ON`; ordinary builds omit instrumentation.
+Build with `cmake --preset benchmarks` then `cmake --build --preset benchmarks`
+(sets `NUMFORGE_BUILD_BENCHMARKS=ON`); ordinary builds omit instrumentation.
 Use a separate Release build without sanitizers/coverage. See the
 [measurement method](../docs/testing/PERFORMANCE.md) and selected
 [results](../docs/performance/README.md). Routine recordings belong in ignored

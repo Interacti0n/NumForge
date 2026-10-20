@@ -1,0 +1,10 @@
+# Start with concrete C correctness checks; broaden only after reviewing findings.
+# Broader pointer analysis needs models for status-returning allocation/budget helpers.
+Checks: >
+  -*,
+  bugprone-sizeof-expression,
+  bugprone-suspicious-memset-usage,
+  bugprone-misplaced-widening-cast,
+  clang-analyzer-core.DivideZero
+WarningsAsErrors: '*'
+HeaderFilterRegex: '(^|[/\\])(src|include|apps)[/\\]'
