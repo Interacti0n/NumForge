@@ -281,7 +281,7 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 - Split the guide into focused Calculator, Units, Graphs and API sections. Show
   server calculation timing only when it exceeds 0.5 seconds.
 
-See the [release preparation record](docs/project/RELEASE_2_3.md) and
+See the [release preparation record](docs/project/RELEASES.md) and
 [graph guide](docs/guides/GRAPHS.md) for validation and supported-scope limits.
 
 ## 2.2.1 — 12 October 2026

@@ -4,16 +4,16 @@
 
 The expanded formatting/cache/HTTP scenarios, live-memory tracker, phase
 definitions and three-run baseline recorder are documented in
-[Benchmark methodology](../benchmarks/BENCHMARKS.md). Use a separate opt-in build;
+[Benchmark methodology](../performance/protocols/APPLICATION.md). Use a separate opt-in build;
 production builds have no live tracker or HTTP timing trace.
 
 The exact-reference BigInt arithmetic suite, dense sizes, alias/copy cases,
 factorial/power experiments and isolated three-run recorder are described in
-[BigInt measurements](../benchmarks/BIGINT_BENCHMARKS.md). Build the additional
+[BigInt measurements](../performance/protocols/BIGINT.md). Build the additional
 `bigint_arithmetic_benchmark` target; use `run_baseline.js --bigint` to record it.
 
 Direct BigDecimal arithmetic, normalization, division, higher functions and
-constants are covered in [Decimal/math measurements](../benchmarks/DECIMAL_MATH_BENCHMARKS.md).
+constants are covered in [Decimal/math measurements](../performance/protocols/DECIMAL.md).
 Build `decimal_math_benchmark`; use `run_baseline.js --decimal` for three isolated
 runs, including explicit timeout and numerical-mismatch outcomes.
 
@@ -98,7 +98,7 @@ allocation statistics. Use it to decide whether the next work should be prefix
 scientific conversion, divide-and-conquer full conversion, rescaling, or buffer
 reuse. Short scientific output now uses bounded leading-limb conversion with
 an exact fallback at rounding boundaries. Compare its scaling against
-`scientific_full`; see the [formatting follow-up](../benchmarks/BENCHMARKS.md#bounded-prefix-formatting-follow-up)
+`scientific_full`; see the [formatting follow-up](../performance/protocols/APPLICATION.md#bounded-prefix-formatting-follow-up)
 for the measured optimization and its limits.
 
 ### Adaptive graphs
@@ -114,7 +114,7 @@ Live allocation tracking is off; stats counters remain enabled. C point
 references are checked outside timing and errors above 1e-9 return a failure.
 Resource statuses remain diagnostic rows rather than universal timing gates.
 No connected chords means zero chord error **and zero coverage**, not a perfect
-curve. See the [graph audit](../benchmarks/GRAPH_AUDIT_2026_10_12.md).
+curve. See the [graph audit](../performance/baselines/GRAPHS.md).
 
 ### Graph interaction diagnostics
 
@@ -136,6 +136,7 @@ adding production hooks. Warm toggles must issue no graph requests; leaked graph
 roots produce local heap snapshots. Timing excludes diagnostic probes and forced
 GC; PC mobile emulation does not establish physical-phone behavior.
 
-Recorded workloads, bounds and caveats: [multi-function comparison](../project/GRAPH_MULTI_BENCHMARK_2026_10_13.md),
-[sustained stability](../benchmarks/GRAPH_STABILITY_2026_10_14.md) and
-[domain-sensitive views](../benchmarks/GRAPH_DOMAIN_VIEWS_2026_10_15.md).
+Selected [graph corpus results](../performance/baselines/GRAPHS.md) and
+[marker refinement comparisons](../performance/baselines/GRAPH_REFINEMENT.md)
+record the retained workloads and limits. Earlier interaction/stability tuning
+diaries remain in Git history.

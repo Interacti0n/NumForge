@@ -195,7 +195,7 @@ entire point budget. Captured phase/domain checks still apply; hidden whole
 periods, poles, non-real and unresolved values are never joined by this rule.
 The horizontal floor is a display approximation and does not certify vertical
 interpolation error. Requests without camera bounds retain their old criterion.
-See the [connected-curve comparison](../benchmarks/GRAPH_CONNECTIONS_2026_10_13.md)
+See the [connected-curve comparison](../performance/baselines/GRAPHS.md)
 for before/after work bounds and local HTTP measurements.
 
 For other ASTs, a parent up to eight horizontal pixels wide may stop refining
@@ -265,7 +265,7 @@ accepted adjacent C samples when their projected horizontal spacing exceeds one
 pixel. Tangents are limited to keep interpolation inside the endpoint ordinates;
 missing/nonfinite slopes, equal ordinates and subpixel segments use straight
 lines. This avoids artificial overshoot while preserving sampler gaps; it is not
-a certified interpolation bound. See the [smooth-zoom audit](../benchmarks/GRAPH_SMOOTH_ZOOM_2026_10_13.md).
+a certified interpolation bound. See the [smooth-zoom audit](../performance/baselines/GRAPHS.md).
 
 Camera movement immediately reuses old cached segments. When accepted cached
 strokes cover the view without visible unresolved detail, only refinement is

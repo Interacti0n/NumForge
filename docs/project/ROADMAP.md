@@ -2,7 +2,7 @@
 
 This is a development direction, not a release schedule. Source development can
 be ahead of published archives. [API.md](../API.md) is the supported-operation
-index; dated reports preserve evidence for their recorded revisions.
+index; selected baselines preserve evidence for their recorded revisions.
 
 ## Available in the current source
 
@@ -26,13 +26,15 @@ owns its source manifest. There are no empty future-module placeholders.
 ## Execution order and completion gates
 
 Planning baseline: 20 October 2026, after exact C/Python covariance. Stage 1 is
-complete for the [bounded structural audit](STRUCTURAL_AUDIT_2026_10_20.md), with
+complete for the [bounded structural audit](AUDIT.md), with
 explicit retained/deferred findings. Stage 2 is also complete: current guides,
-references, design and historical records have defined owners; the
+references, design and selected performance evidence have defined owners; the
 [documentation workflow](DOCUMENTATION.md) builds strict MkDocs/Doxygen output
 and verifies installed C/Python examples. Local staging/navigation tests and
 desktop/mobile rendering/search checks passed. Remote documentation CI is
-configured, not claimed as executed. Stage 3 is next; stages 3–6 remain planned.
+configured, not claimed as executed. Superseded reports/CSVs have been removed;
+the [documentation tree](../README.md#file-tree) separates protocols, baselines
+and their data. Stage 3 is next; stages 3–6 remain planned.
 Finish each bounded stage before opening the next; a defect in a completed stage can interrupt
 the sequence. Dates are not promised: progress is determined by the exit evidence.
 Do not keep adding mathematical functions while stages 1 and 2 remain open.
@@ -40,7 +42,7 @@ Do not keep adding mathematical functions while stages 1 and 2 remain open.
 | Stage | Work | Gate for moving on |
 | --- | --- | --- |
 | 1. Close the structural cleanup | Make one focused audit of remaining application/engine/module dependencies, duplicate conversion/error/ownership helpers and obsolete code. Fix confirmed findings in small commits; record justified exceptions and deferred findings. Avoid another wholesale directory move. | Every audit finding is resolved or explicitly deferred with a reason. Numeric-only, engine and application builds still work; affected correctness, failure, consumer and performance checks pass. |
-| 2. Close documentation cleanup | Remove conflicting or duplicate instructions and stale API claims. Keep C contracts in public headers, usage in guides, detailed operation meaning in references and measured evidence in reports. Add a minimal Doxygen/MkDocs generation workflow using the existing sources. | One canonical home per contract/topic, valid links, executable examples and reproducible generated documentation. Historical reports stay labelled by revision/date. Library users do not need documentation tools to build the library. |
+| 2. Close documentation cleanup | Remove conflicting or duplicate instructions and stale API claims. Keep C contracts in public headers, usage in guides, detailed operation meaning in references and measured evidence in reports. Add a minimal Doxygen/MkDocs generation workflow using the existing sources. | One canonical home per contract/topic, valid links, executable examples and reproducible generated documentation. Selected baselines stay labelled by revision/date; superseded diaries remain in Git history. Library users do not need documentation tools to build the library. |
 | 3. Complete one useful mathematical workflow | First add exact simple linear regression with intercept, reusing the statistics foundation; define constant-x/insufficient-data behavior. Then add one bounded numerical integration API for a finite interval, with evaluation limits, domain-failure rules and an explicit approximate-error contract. Complete them separately. | Each capability meets the [feature checklist](FEATURE_CHECKLIST.md): independent C API, thin Python adapter, documented exactness/limits, examples, independent edge/high-precision and failure tests, installed consumers and validated benchmarks. Both are complete before stage 4. |
 | 4. Consolidate a usable platform increment | Choose one end-to-end application workflow over the public kernels and complete its user-facing behavior. Validate the supported source/package interfaces and extracted release artifacts on the intended platform matrix. Stabilize the current C/Python scope before adding more language bindings. | The selected workflow has application/HTTP/browser regression evidence where applicable; installed packages and examples work outside the repository. Public scope, experimental interfaces and unsupported features are explicit. Publishing or pushing remains a separate user-authorized action. |
 | 5. Prepare concurrent server use | Define an actual load scenario for tens of simultaneous users. Choose bounded execution/queueing, session capacity/isolation, request and calculation limits, and failure/restart behavior. Measure latency, errors, queueing and memory under that scenario before selecting deployment capacity. | The agreed concurrent-load scenario passes with isolated sessions, bounded resource use and working overload/recovery behavior. Document a reproducible deployment and rollback procedure. A local calculator smoke test alone does not pass this gate. |
@@ -60,7 +62,7 @@ General correctly rounded approximate functions remain an open goal. Working
 precision and guard digits are not universal error guarantees, particularly after
 cancellation or poorly conditioned composition. Preserve existing rounding
 exceptions until supported by stronger evidence. Independent decimal references
-and [measurements](../benchmarks/DECIMAL_MATH_BENCHMARKS.md) cover selected cases
+and [measurements](../performance/protocols/DECIMAL.md) cover selected cases
 through 2,000 significant digits, not every possible input.
 
 Further optimizations need repeated Release measurements with independently
@@ -74,7 +76,7 @@ Graph refinement remains heuristic rather than a continuity proof; numerical
 root discovery is bounded and does not guarantee completeness. General tangency
 discovery, configurable tolerances, broader physical-device validation and
 graph export/import remain future work. Release gates are tracked in the
-[equation readiness record](EQUATION_RELEASE_AUDIT_2026_10_19.md).
+[published release verification](RELEASES.md).
 
 ## Later, according to use cases
 

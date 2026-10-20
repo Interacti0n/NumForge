@@ -147,4 +147,4 @@ matrix rank, with 24 rational fixtures across six rectangular/square shapes.
 Canonical free rows, independent basis rank, A*N=0 and A*x=b are checked directly
 using Fraction arithmetic. Lifetime and limit-recovery tests cover native views.
 Installed C/C++ consumers and SDK examples exercise numeric-only builds. See the
-[verification and benchmark report](../benchmarks/MATRIX_SYSTEMS_2026_10_19.md).
+[verification and benchmark report](../performance/baselines/MODULES.md#general-linear-systems).

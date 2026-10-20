@@ -116,14 +116,12 @@ precondition and quotient/remainder semantics; public conversion is unchanged.
   counter representation bound. Runtime budgets govern practical work. From
   8192 a conservative allocation preflight selects a balanced product tree with
   reusable per-depth Karatsuba scratch. Smaller or constrained requests retain
-  grouped scalar multiplication. See the
-  [integration measurements](../benchmarks/FACTORIAL_TREE_INTEGRATION_2026_10_11.md).
+  grouped scalar multiplication.
   Admission sums integer factor bit lengths over power-of-two ranges and plans
-  scratch with the shared allocation capacity rule; see
-  [checked admission bounds](../benchmarks/FACTORIAL_ADMISSION_2026_10_12.md).
+  scratch with the shared allocation capacity rule.
   Factorial scratch at each depth uses separate equal sum/cross buffers to
   reduce the largest request while retaining combined capacity and growth;
-  see [split-workspace verification](../benchmarks/SPLIT_WORKSPACE_2026_10_12.md).
+  see [split-workspace verification](../performance/baselines/FACTORIAL.md).
   In both paths consecutive leaf factors are packed into a `uint64_t`
   product, checking `product > UINT64_MAX / factor` before multiplying. Each
   completed group multiplies a private BigInt accumulator once. The budget is
@@ -167,11 +165,11 @@ Optional result/scratch allocation sizes are checked against the remaining
 thread-local budget before allocation. If the workspace does not fit, the
 original classical path remains available. Allocation/deadline failures preserve
 the destination and all permitted aliases. The public API and resource limits
-are unchanged. See the [integration measurements](../benchmarks/KARATSUBA_INTEGRATION_2026_10_11.md).
+are unchanged. See the [integration measurements](../performance/baselines/ARITHMETIC.md).
 
 Future candidates, after profiling, include:
 
-- bounded/reusable scratch for product-tree factorials and repeated products;
+- further scratch reuse in repeated products, after the existing bounded factorial workspace;
 - divide-and-conquer conversion if measurements show that full decimal output
   remains a bottleneck after the native single-limb division fast path;
 - cached powers used repeatedly by higher-level decimal operations.

@@ -19,10 +19,6 @@ not_in_nav: |
   /CHANGELOG.md
   /apps/**
   /bindings/**
-  /docs/benchmarks/**
-  /docs/project/RELEASE_2*.md
-  /docs/project/*_2026_*.md
-  /docs/testing/GRAPH_BROWSER_*.md
 nav:
   - Overview: README.md
   - Start here: docs/README.md
@@ -85,10 +81,27 @@ nav:
       - Performance method: docs/testing/PERFORMANCE.md
       - Benchmark tools: benchmarks/README.md
       - Documentation workflow: docs/project/DOCUMENTATION.md
-      - Presentation maintenance: docs/project/PROJECT_PRESENTATION.md
       - Release packaging: docs/project/RELEASE_PACKAGING.md
+  - Performance:
+      - Evidence and retention: docs/performance/README.md
+      - Protocols:
+          - Application and formatting: docs/performance/protocols/APPLICATION.md
+          - BigInt: docs/performance/protocols/BIGINT.md
+          - Decimal: docs/performance/protocols/DECIMAL.md
+          - Complex: docs/performance/protocols/COMPLEX.md
+      - Recorded baselines:
+          - Arithmetic: docs/performance/baselines/ARITHMETIC.md
+          - Factorial: docs/performance/baselines/FACTORIAL.md
+          - Logarithm: docs/performance/baselines/LOGARITHM.md
+          - Exact modules: docs/performance/baselines/MODULES.md
+          - Sampling: docs/performance/baselines/SAMPLING.md
+          - Public roots: docs/performance/baselines/ROOTS.md
+          - Equation experiments: docs/performance/baselines/ROOT_EXPERIMENTS.md
+          - Graph corpus: docs/performance/baselines/GRAPHS.md
+          - Graph refinement: docs/performance/baselines/GRAPH_REFINEMENT.md
   - Project:
       - Roadmap: docs/project/ROADMAP.md
       - Release highlights: CHANGELOG_SHORT.md
-      - Historical records: docs/project/RECORDS.md
+      - Release verification: docs/project/RELEASES.md
+      - Structural audit: docs/project/AUDIT.md
       - Account proposal: docs/design/ACCOUNT_DESIGN.md

@@ -182,11 +182,11 @@ deterministic cooperative cancellation. Installed C/C++ consumers use only the
 numeric library. Seven Python tests add 25 independent Fraction pairwise-variance
 fixtures, translation/scaling/permutation identities, input/lifetime checks and
 budget failure/recovery through serialization. See the [benchmark and validation
-report](../benchmarks/STATISTICS_2026_10_19.md).
+report](../performance/baselines/MODULES.md#statistics).
 
 Covariance adds C pairing/sign/fraction, singleton/alias, thousand-digit scale,
 validation and exhaustive allocation/deadline failure checks. Python adds an
 independent pairwise identity over 40 population/sample rational fixtures,
 symmetry, translation/scaling, permutation and variance identities, input and
 budget recovery checks. Installed C/C++ consumers and the SDK example exercise
-the public numeric-only API. See the [covariance measurements and validation](../benchmarks/COVARIANCE_2026_10_20.md).
+the public numeric-only API. See the [covariance measurements and validation](../performance/baselines/MODULES.md#covariance).

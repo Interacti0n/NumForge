@@ -62,7 +62,7 @@ call. It reuses coefficient, alignment, rounding and normalized-division
 buffers, with a bounded power-of-ten cache. Cleanup runs on success and failure;
 only a successful result is published. Guard digits, rounding and application
 budgets are unchanged. A separate
-[bounded theta/AGM implementation](../benchmarks/LOGARITHM_AGM_INTEGRATION_2026_10_11.md)
+[bounded theta/AGM implementation](../performance/baselines/LOGARITHM.md)
 now serves suitable 2000–10000-digit logarithms through the existing public API.
 The earlier fixed-guard prototype remains isolated in its benchmark.
 
@@ -216,7 +216,7 @@ A binary divisibility check and modulo-five scan reject ordinary already
 normalized coefficients without allocation. Small values, scalar tails and
 constrained scopes retain blocks of up to 19 zeros. Deadline checkpoints cover
 limb scans; failure of a private temporary never publishes a partial public
-decimal. See [normalization measurements](../benchmarks/ZERO_NORMALIZATION_2026_10_11.md).
+decimal.
 
 ### Division
 

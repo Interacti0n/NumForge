@@ -135,7 +135,7 @@ Python tests compare a 70-place result with an independent Decimal square root,
 check doubled-scale verification, 1000-digit offsets/tiny spans, exact endpoints,
 diagnostic outcomes, frozen lifetime, callback exceptions, nested calls and budget
 failure/recovery. The [standalone example](../../examples/python/standalone.py)
-runs from an installed wheel. The C [root benchmark](../benchmarks/NUMERICAL_2026_10_19.md)
+runs from an installed wheel. The C [root benchmark](../performance/baselines/ROOTS.md#single-root)
 remains the algorithm baseline; Python callback overhead is additional and no
 cross-language speedup is claimed. Multiple-root scanning is available below;
 exact Python grids are described in the [sampling reference](SAMPLING_API.md#python-exact-grids). Adaptive/curve/phase wrappers
@@ -234,7 +234,7 @@ independent 35-place Decimal reference for both signs of sqrt(2), prepared-engin
 samples, 1000-digit offsets/tiny contacts, all stop reasons, missed contacts,
 domain gaps, exceptions after partial discovery and budget failure/recovery.
 The installed [standalone example](../../examples/python/standalone.py) exercises
-both search modes. The existing C [scan baseline](../benchmarks/NUMERICAL_SCAN_2026_10_19.md)
+both search modes. The existing C [scan baseline](../performance/baselines/ROOTS.md#multiple-roots)
 is reused; Python callback overhead is additional and no speedup is claimed.
 
 ## Cost and verification
@@ -245,12 +245,12 @@ expensive workloads. `numerical_tests` covers references, exact zeros, continuit
 precision instability, invalid options/callbacks, limits, allocation failures,
 inherited budgets and 1000-place accuracy. Existing application tests preserve
 domain-hole, discontinuity and scanning regressions. The
-[checked baseline](../benchmarks/NUMERICAL_2026_10_19.md) records costs, not a speedup.
+[checked baseline](../performance/baselines/ROOTS.md#single-root) records costs, not a speedup.
 
 `numerical_scan_tests` adds ordered exact/approximate roots, domain evidence,
 rounded zeros, rational contacts, positive minima, 1000-digit offsets/tiny scales,
 capacities beyond 32 roots, stop reasons, callback failure after partial discovery,
 allocation failures and inherited budgets. Installed C/C++ consumers verify the
 same API with the engine disabled. The
-[scan baseline](../benchmarks/NUMERICAL_SCAN_2026_10_19.md) records standalone
+[scan baseline](../performance/baselines/ROOTS.md#multiple-roots) records standalone
 measurements and application-result parity.

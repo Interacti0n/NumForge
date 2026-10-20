@@ -85,7 +85,7 @@ sum/product invariants are checked outside timing. It measures the extracted
 existing algorithm, including numeric allocations but excluding coefficient setup,
 descriptor verification and destruction; each solve has a 5-second / 64-MiB
 cumulative / 512-KiB single-allocation scope. No speedup is claimed.
-The [initial Windows/GCC baseline](../benchmarks/PLATFORM_SOLVER_2026_10_19.md)
+The [initial Windows/GCC baseline](../performance/baselines/MODULES.md#polynomials)
 records three runs, allocation traffic and validation scope.
 
 CLI/Web/local HTTP already expose equation tools through the application adapter;

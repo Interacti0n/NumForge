@@ -1,7 +1,0 @@
-profile,case,cycles,requests_after_cycles,aborted_after_cycles,received_MiB,cache_peak_ranges_per_function,cache_peak_records_per_function,cache_peak_estimated_MiB_per_function,retained_peak_records_per_function,heap_initial_MiB,heap_peak_MiB,heap_final_MiB,frame_p95_ms,frame_max_ms,long_tasks,max_long_task_ms,navigation_roundtrips,old_graph_roots_alive_max,units_dom_nodes_min,units_dom_nodes_max,units_listeners_min,units_listeners_max,units_heap_min_MiB,units_heap_max_MiB,server_working_set_initial_MiB,server_working_set_final_MiB
-desktop,mixed,16,106,4,10.87,9,11982,4.109,11984,5.836,7.135,6.984,16.8,33.4,0,0,6,0,878,878,73,73,2.942,3.064,8.848,9.328
-desktop,poles,16,136,4,26.078,9,11976,3.988,11976,6.104,8.454,7.89,16.8,33.4,0,0,6,0,878,878,73,73,2.948,3.075,9.527,9.797
-portrait,mixed,16,108,4,5.33,12,12255,4.231,12255,4.46,6.713,6.248,16.7,33.3,0,0,6,0,869,869,73,73,3.011,3.144,8.855,9.262
-portrait,poles,16,158,4,25.614,12,11845,4.153,11849,5.931,8.073,6.434,16.7,33.4,0,0,6,0,869,869,73,73,3.013,3.147,9.52,9.809
-landscape,mixed,16,149,4,14.277,12,12227,4.25,12227,5.851,7.415,6.94,16.8,33.4,0,0,6,0,869,869,73,73,3.013,3.14,8.848,9.211
-landscape,poles,16,178,4,31.506,12,12227,4.176,12227,6.127,8.451,6.713,16.8,33.4,0,0,6,0,869,869,73,73,3.021,3.149,9.523,9.738

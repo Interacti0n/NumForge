@@ -77,18 +77,18 @@ class DocumentationStagingTests(unittest.TestCase):
 
 
 class DocumentationNavigationTests(unittest.TestCase):
-    def test_current_pages_have_navigation_and_reports_have_records(self):
+    def test_each_document_has_one_navigation_entry(self):
         # Our explicit nav uses plain relative paths, without YAML aliases/macros.
-        navigation = set(re.findall(r':\s*(\S+\.md)\s*$', (ROOT / 'mkdocs.yml').read_text(), re.M))
-        records = ROOT / 'docs/project/RECORDS.md'
-        linked = {(records.parent / match[1].split('#', 1)[0]).resolve()
-                  for match in docs.LINK.finditer(records.read_text(encoding='utf-8'))
-                  if not match[1].startswith(('http:', 'https:'))}
+        entries = re.findall(r':\s*(\S+\.md)\s*$', (ROOT / 'mkdocs.yml').read_text(), re.M)
+        navigation = set(entries)
+        self.assertEqual(len(entries), len(navigation), 'duplicate canonical navigation entry')
+        for entry in navigation:
+            self.assertTrue((ROOT / entry).is_file(), f'{entry}: missing navigation target')
         supplementary = {'CHANGELOG.md', 'bindings/python/README.md', 'apps/web/assets/README.md'}
         for page in docs.source_pages(ROOT):
             relative = page.relative_to(ROOT).as_posix()
-            self.assertTrue(relative in navigation or page.resolve() in linked or relative in supplementary,
-                            f'{relative}: add canonical navigation or a historical-record entry')
+            self.assertTrue(relative in navigation or relative in supplementary,
+                            f'{relative}: add a canonical navigation entry')
 
 
 if __name__ == '__main__':

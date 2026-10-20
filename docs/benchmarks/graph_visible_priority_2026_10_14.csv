@@ -1,5 +1,0 @@
-profile,scenario,first_before_ms,first_after_ms,foreground_before_KiB,foreground_after_KiB,all_initial_before_KiB,all_initial_after_KiB,initial_requests_before,initial_requests_after,zoom_requests_before,zoom_requests_after,pan_frame_after_ms,zoom_frame_after_ms,unresolved_before,unresolved_after
-desktop,mixed,131.9,114.6,554.8,240.6,905.8,1146.3,8,12,20,15,18.2,30.1,0,0
-desktop,dense-and-poles,328.6,263,1419.9,1294.2,1419.9,1501.4,4,5,12,11,19.5,31.2,3,2
-mobile-layout,mixed,113.8,97.7,330.3,132.4,572.8,705.1,8,12,20,15,17.9,30,0,0
-mobile-layout,dense-and-poles,314.5,265.2,1411.7,1276.6,1411.7,1483.8,4,5,17,11,17.2,30.1,2,2

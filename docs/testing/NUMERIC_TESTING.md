@@ -196,7 +196,7 @@ validation, not a certified correct-rounding test or a whole-expression error
 guarantee. Exhaustive cuts, memory scaling and domain-error preservation remain
 covered by other tests or require further oracle coverage.
 
-See [complex performance diagnostics](../benchmarks/COMPLEX_BENCHMARKS.md).
+See [complex performance diagnostics](../performance/protocols/COMPLEX.md).
 
 Benchmark-enabled builds additionally run `complex_memory_smoke`: 146 independently
 validated half-even cases at 34 digits, with tracked allocation counters and zero

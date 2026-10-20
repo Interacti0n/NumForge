@@ -13,7 +13,8 @@ Choose an entry point; detailed contracts and procedures live in their own guide
 | Plan or publish a release | [Roadmap](project/ROADMAP.md), [release packaging](project/RELEASE_PACKAGING.md), [changelog](../CHANGELOG.md) |
 | Deploy remotely | [Hosting](guides/HOSTING.md) |
 | Build or maintain documentation | [Documentation workflow](project/DOCUMENTATION.md) |
-| Inspect past releases and experiments | [Historical records](project/RECORDS.md) |
+| Inspect measured results | [Performance evidence](performance/README.md) |
+| Check published release verification | [Release history](project/RELEASES.md) |
 
 `design/` explains implementation decisions. `reference/` describes supported
 interfaces and mathematical semantics. Public C headers contain the authoritative
@@ -23,8 +24,9 @@ The Python guide owns installation, shared input/result policy and short workflo
 module references own their C/Python operation details. The Python package README
 is a self-contained introduction for package metadata, not another full reference.
 
-Dated files under `benchmarks/`, `testing/` and `project/` preserve measurements
-and release evidence. They describe the recorded revision, not current guarantees.
+Selected baselines under `performance/` and release verification under `project/`
+describe their recorded revision, not current guarantees. Superseded working
+reports and intermediate result files remain available in Git history.
 Future proposals, such as [accounts](design/ACCOUNT_DESIGN.md), are explicitly
 labelled and do not establish implemented functionality.
 
@@ -39,3 +41,26 @@ failure rules. Start with a guide; follow only the operation contract you need.
 Generated C declarations come from the public headers, not another maintained
 copy. The [documentation workflow](project/DOCUMENTATION.md) explains generation,
 example checks and where new material belongs.
+
+## File tree
+
+```text
+docs/
+  README.md, API.md, TESTING.md   entry points
+  guides/                       user and integration workflows
+  reference/                    mathematical and interface contracts
+  design/                       implementation decisions and proposals
+  testing/                      verification procedures
+  performance/
+    README.md                   evidence index and retention rules
+    protocols/                  how each benchmark measures work
+    baselines/                  selected results, decisions and limits
+    data/                       CSV evidence used by those baselines
+  project/                      roadmap, contribution/release/docs rules,
+                                structural audit and release verification
+  images/                       real product screenshots
+```
+
+Executable benchmark tools and reusable input/reference fixtures live in the
+repository's `benchmarks/`; routine output, generated documentation and local
+reports go under ignored `build/`.

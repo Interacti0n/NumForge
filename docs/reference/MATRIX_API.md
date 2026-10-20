@@ -139,8 +139,8 @@ determinants by permutation expansion, products and recovered known solutions
 using Python Fraction arithmetic. The source archive/wheel check verifies the
 installed adapter and example.
 
-The opt-in [benchmark](../benchmarks/MATRIX_2026_10_19.md) records an initial
+The opt-in [benchmark](../performance/baselines/MODULES.md#matrices) records an initial
 Release baseline, validates exact closed-form results outside timing and reports
 allocation counts/volume. No speedup relative to another library is claimed.
-The [general-system follow-up](../benchmarks/MATRIX_SYSTEMS_2026_10_19.md) adds
+The [general-system follow-up](../performance/baselines/MODULES.md#general-linear-systems) adds
 rank and complete-family measurements under the same exact arithmetic contracts.

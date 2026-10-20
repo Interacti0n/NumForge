@@ -86,10 +86,10 @@ roots without a sign change can be missed. Extremely scaled/ill-conditioned
 functions and very wide intervals may fail to converge. Exact-zero acceptance
 establishes only the typed sampled equation value, not uniqueness/completeness.
 
-The [numerical audit](../benchmarks/NUMERIC_ROOT_AUDIT_2026_10_18.md) records the
+The [numerical audit](../performance/baselines/ROOT_EXPERIMENTS.md) records the
 original false acceptance of a vanishing jump. The subsequent domain check now
 rejects that case as domain_unverified. Width, residual and endpoint improvement
-alone remain insufficient. See the [domain follow-up](../benchmarks/NUMERIC_ROOT_DOMAINS_2026_10_18.md).
+alone remain insufficient. See the [domain follow-up](../performance/baselines/ROOT_EXPERIMENTS.md).
 
 ## Response and errors
 
@@ -191,7 +191,6 @@ array never proves “no solutions”. Narrow/shift the interval when appropriat
 The browser offers **Multiple interval roots / Viac koreňov na intervale**,
 retains the same copy/graph actions and session behavior, and distinguishes
 finished discovery from work/result limits. See the
-[scan benchmarks](../benchmarks/NUMERIC_ROOT_SCAN_2026_10_19.md) and
-[candidate follow-up](../benchmarks/NUMERIC_ROOT_CANDIDATES_2026_10_19.md).
+[candidate discovery comparison](../performance/baselines/ROOT_EXPERIMENTS.md#local-candidate-discovery).
 General tangent discovery and configurable tolerances remain future work.
 See the [equation guide](../guides/EQUATIONS.md) for graph navigation.

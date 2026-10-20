@@ -69,7 +69,7 @@ and examples, while the library and its headers always come from the exact tag.
 
 Always build the exact release tag. `NumForge-2.1.0-*` must be produced from
 `v2.1.0`, and a 2.0.0 backfill must still use `v2.0.0`. Binary downloads must
-match GitHub's source archives. See the [2.1 release record](RELEASE_2_1.md).
+match GitHub's source archives. See the [2.1 release record](RELEASES.md).
 
 Packaging automation is checked out separately from release source. This permits
 backfilling binary assets for an older tag without changing that tag. The helper
@@ -145,7 +145,7 @@ code signing can follow later. Portable archives are the first distribution path
 
 ## Local packaging
 
-For 2.1 verification, see [Release 2.1 record](RELEASE_2_1.md).
+For 2.1 verification, see [Release 2.1 record](RELEASES.md).
 The following 2.0 validation is historical, not evidence for a new release.
 
 Local validation on 2026-10-07 built the exact `v2.0.0` source with MSVC

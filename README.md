@@ -145,7 +145,7 @@ its independent reference.
 
 Use the [documentation guide](docs/README.md) to choose a workflow, API reference
 or implementation topic. [Release highlights](CHANGELOG_SHORT.md),
-[full changelog](CHANGELOG.md) and [historical records](docs/project/RECORDS.md)
+[full changelog](CHANGELOG.md) and [release verification](docs/project/RELEASES.md)
 are separate from current usage instructions.
 
 ## License

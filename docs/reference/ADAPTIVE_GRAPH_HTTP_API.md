@@ -130,7 +130,7 @@ the sampled heuristic only. It must never be advertised as a continuity proof.
 An interval containing too many oscillations may have no accepted connections:
 choose narrower x bounds rather than interpreting an empty curve as a zero function.
 
-See the [graph performance audit](../benchmarks/GRAPH_AUDIT_2026_10_12.md)
+See the [graph performance audit](../performance/baselines/GRAPHS.md)
 for allocation/time measurements and independent point/chord comparisons.
 
 ## Browser range cache

@@ -195,7 +195,7 @@ typed input copies, exact/approximate provenance, repeated/aliased arguments,
 1000-digit parameterized evaluation, allocation failure and cancellation recovery.
 
 No mathematical algorithm is duplicated or optimized by this wrapper. Existing
-[decimal/math benchmarks](../benchmarks/DECIMAL_MATH_BENCHMARKS.md) remain the
+[decimal/math benchmarks](../performance/protocols/DECIMAL.md) remain the
 algorithm performance evidence; this change claims no speedup.
 
 | Interface | Availability |

@@ -12,10 +12,13 @@
 | Verification commands and methodology | `docs/TESTING.md`, `docs/testing/` | Dated evidence links |
 | Benchmark executable/options | `benchmarks/README.md` | Links to methods and measured reports |
 | Plans and release procedure | `docs/project/` | Roadmap status and links |
-| Past releases, experiments and measurements | [Historical records](RECORDS.md) | Date/revision-qualified evidence |
+| Selected measurements and algorithm decisions | [Performance evidence](../performance/README.md) | Date/revision-qualified baselines and supporting data |
+| Published release outcomes | [Release verification](RELEASES.md) | Feature chronology in the changelog |
 
 Current source and published packages can differ. Mark proposals explicitly;
-preserve historical outcomes even when later work fixes them. Generated catalogue
+preserve relevant historical failures in selected comparisons even after fixes.
+Superseded diaries remain in Git history, rather than accumulating as active pages.
+Generated catalogue
 tables and distinct API domains can be long; avoid shortening away failure,
 precision or ownership rules. A short introduction may repeat context, not the
 full contract.
@@ -43,8 +46,9 @@ repository. The helper stages existing pages and linked supporting files, keepin
 their relative paths. It replaces only its dedicated `build/docs/content`, `c`
 and `site` outputs. Do not store hand-written material in those generated folders.
 
-MkDocs navigation is maintained in the root `mkdocs.yml`; historical reports
-remain searchable through the records index rather than filling the main menu.
+MkDocs navigation is maintained in the root `mkdocs.yml`; every maintained page
+has one canonical entry. Performance protocols, selected baselines and release
+verification have separate menu groups.
 Doxygen reads installed headers only, never private implementation sources.
 `EXTRACT_ALL` includes older declarations whose prose predates Doxygen tags;
 their source views retain those comments. Successful generation does not certify
@@ -59,7 +63,7 @@ or hosted service is required.
 
 1. Run `node scripts/check_docs.cjs` for repository links/anchors.
    `python tests/test_docs.py` checks source staging, bounded cleanup and complete
-   navigation/record coverage in isolated fixtures under `build/`.
+   navigation coverage in isolated fixtures under `build/`.
 2. Run `python scripts/build_docs.py` for strict rendered links and C doc warnings.
 3. Run affected examples against installed packages:
 
@@ -77,7 +81,9 @@ or hosted service is required.
 4. Inspect navigation, tables, code and images in the generated pages. Keep the
    generated site/tools and scratch measurements out of commits.
 
-For a new page, add its canonical navigation entry or historical-record link.
+For a new page, add its canonical navigation entry. Prefer extending an existing
+topic over adding another progress report. Apply the
+[performance retention policy](../performance/README.md#retention-policy) to measurements.
 Preserve existing section anchors when possible. If a topic moves, update links
 or retain a small section pointing to its new owner. Update the roadmap only when
 the documented completion gate is actually met.
@@ -86,3 +92,19 @@ The documentation CI workflow checks staging/navigation, builds both outputs and
 compiles the C examples. Python package CI executes its examples against the
 isolated installed wheel. CI configuration is not a claim of a completed remote
 run; all build output remains unpublished until a separate release action.
+
+## Product screenshots
+
+Use real product captures and captions stating their version. Current README
+images show the 2.1.0 preparation build, captured on 8 October 2026 in English
+with Full precision and Fraction notation. Refresh them after relevant UI changes:
+
+```sh
+node tests/browser/capture_showcase.js build/Release/numforge_web.exe
+```
+
+Pass the actual executable path; single-configuration builds omit `Release/`.
+The script starts its own loopback server on port 18773, checks the calculator
+results, captures desktop/mobile layouts and closes its browser/server. Inspect
+both images for clipping and legibility. Keep demonstration claims consistent
+with the current API and distinguish published archives from development source.

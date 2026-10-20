@@ -60,7 +60,7 @@ agreement or identities alone.
 
 For result-boundary changes, compare complete HTTP results with the preceding
 build, including exact/radical/complex values, domain gaps, contact roots and
-partial-limit diagnostics. See the [structural audit](project/STRUCTURAL_AUDIT_2026_10_20.md)
+partial-limit diagnostics. See the [structural audit](project/AUDIT.md)
 for a recorded example of bounded cross-layer verification.
 
 ## Installed packages and Python

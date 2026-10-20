@@ -293,7 +293,7 @@ aggregate C symbols are added.
 The independent complex oracle now checks 1284 unary/binary/stability cases at up to 250
 significant digits, with an operation timing mode. See
 [numeric testing](../testing/NUMERIC_TESTING.md) and
-[complex benchmarks](../benchmarks/COMPLEX_BENCHMARKS.md). Memory profiling now
+[complex benchmarks](../performance/protocols/COMPLEX.md). Memory profiling now
 covers 584 isolated half-even cases; broader coverage remains future work.
 
 1. Extend the implemented exact scaling and bounded magnitude path with

@@ -228,7 +228,7 @@ These limits do not change unrestricted public BigInt/BigDecimal calls.
 Real logarithms select the bounded theta/AGM path at suitable high working
 precision, including when used by complex functions; other cases retain the
 series. Adaptive precision retries share the same time and allocation budgets.
-See [algorithm selection and bounds](../benchmarks/LOGARITHM_AGM_INTEGRATION_2026_10_11.md).
+See [algorithm selection and bounds](../performance/baselines/LOGARITHM.md).
 An allowed factorial input may still exceed the time or memory budget.
 Cancellation is checked for every factor and within long limb multiplications;
 representable input is not a completion guarantee.
