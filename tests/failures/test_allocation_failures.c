@@ -1,3 +1,4 @@
+#include "tests/support/numbers.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -43,29 +44,7 @@ void tearDown(void)
     numforge_test_allocator_end();
 }
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Test value and assertion helpers.
-------------------------------------------------------------------------------------------------------------------------------
-*/
-
-static BigInt *make_bigint(const char *text)
-{
-    BigInt *value = bigint_create();
-
-    TEST_ASSERT_NOT_NULL(value);
-    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(value, text));
-    return value;
-}
-
-static BigDecimal *make_bigdecimal(const char *text)
-{
-    BigDecimal *value = bigdecimal_create();
-
-    TEST_ASSERT_NOT_NULL(value);
-    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(value, text));
-    return value;
-}
+/* Test value and assertion helpers. */
 
 static void assert_bigint_text(const char *expected, const BigInt *value)
 {
@@ -76,20 +55,10 @@ static void assert_bigint_text(const char *expected, const BigInt *value)
     free(actual);
 }
 
-static void assert_bigdecimal_text(const char *expected, const BigDecimal *value)
-{
-    char *actual = NULL;
-
-    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_to_string(value, &actual));
-    TEST_ASSERT_NOT_NULL(actual);
-    TEST_ASSERT_EQUAL_STRING(expected, actual);
-    free(actual);
-}
-
 static BigRational *make_bigrational(const char *numerator, const char *denominator)
 {
-    BigInt *top = make_bigint(numerator);
-    BigInt *bottom = make_bigint(denominator);
+    BigInt *top = test_integer(numerator);
+    BigInt *bottom = test_integer(denominator);
     BigRational *value = bigrational_create();
     TEST_ASSERT_NOT_NULL(value);
     TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_set_fraction(value, top, bottom));
@@ -336,12 +305,7 @@ static BigDecimalStatus bigdecimal_stdev_two(
         result, values, 2U, 25, BIGDECIMAL_ROUND_HALF_EVEN);
 }
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Exhaust one operation's allocation sites. Every injected failure must
-    report out-of-memory and preserve the caller-owned destination.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Exhaust one operation's allocation sites. Every injected failure must report out-of-memory and preserve the caller-owned destination. */
 
 static void assert_bigint_unary_failure_safety(
     BigIntUnaryOperation operation,
@@ -354,8 +318,8 @@ static void assert_bigint_unary_failure_safety(
          failure_index <= ALLOCATION_TEST_MAX_FAILURE_INDEX;
          failure_index++)
     {
-        BigInt *result = make_bigint("777");
-        BigInt *input = make_bigint(input_text);
+        BigInt *result = test_integer("777");
+        BigInt *input = test_integer(input_text);
         BigIntStatus status;
         bool injected;
         size_t call_count;
@@ -398,9 +362,9 @@ static void assert_bigint_binary_failure_safety(
          failure_index <= ALLOCATION_TEST_MAX_FAILURE_INDEX;
          failure_index++)
     {
-        BigInt *result = make_bigint("777");
-        BigInt *a = make_bigint(a_text);
-        BigInt *b = make_bigint(b_text);
+        BigInt *result = test_integer("777");
+        BigInt *a = test_integer(a_text);
+        BigInt *b = test_integer(b_text);
         BigIntStatus status;
         bool injected;
 
@@ -443,8 +407,8 @@ static void assert_bigint_binary_alias_failure_safety(
          failure_index <= ALLOCATION_TEST_MAX_FAILURE_INDEX;
          failure_index++)
     {
-        BigInt *a = make_bigint(a_text);
-        BigInt *b = make_bigint(b_text);
+        BigInt *a = test_integer(a_text);
+        BigInt *b = test_integer(b_text);
         BigIntStatus status;
         bool injected;
 
@@ -483,8 +447,8 @@ static void assert_bigdecimal_unary_failure_safety(
          failure_index <= ALLOCATION_TEST_MAX_FAILURE_INDEX;
          failure_index++)
     {
-        BigDecimal *result = make_bigdecimal("7.77");
-        BigDecimal *input = make_bigdecimal(input_text);
+        BigDecimal *result = test_decimal("7.77");
+        BigDecimal *input = test_decimal(input_text);
         BigDecimalStatus status;
         bool injected;
 
@@ -496,7 +460,7 @@ static void assert_bigdecimal_unary_failure_safety(
         if (injected)
         {
             TEST_ASSERT_EQUAL(BIGDECIMAL_OUT_OF_MEMORY, status);
-            assert_bigdecimal_text("7.77", result);
+            test_assert_decimal("7.77", result);
         }
         else
         {
@@ -524,9 +488,9 @@ static void assert_bigdecimal_binary_failure_safety(
          failure_index <= ALLOCATION_TEST_MAX_FAILURE_INDEX;
          failure_index++)
     {
-        BigDecimal *result = make_bigdecimal("7.77");
-        BigDecimal *a = make_bigdecimal(a_text);
-        BigDecimal *b = make_bigdecimal(b_text);
+        BigDecimal *result = test_decimal("7.77");
+        BigDecimal *a = test_decimal(a_text);
+        BigDecimal *b = test_decimal(b_text);
         BigDecimalStatus status;
         bool injected;
 
@@ -538,7 +502,7 @@ static void assert_bigdecimal_binary_failure_safety(
         if (injected)
         {
             TEST_ASSERT_EQUAL(BIGDECIMAL_OUT_OF_MEMORY, status);
-            assert_bigdecimal_text("7.77", result);
+            test_assert_decimal("7.77", result);
         }
         else
         {
@@ -567,8 +531,8 @@ static void assert_bigdecimal_binary_alias_failure_safety(
          failure_index <= ALLOCATION_TEST_MAX_FAILURE_INDEX;
          failure_index++)
     {
-        BigDecimal *a = make_bigdecimal(a_text);
-        BigDecimal *b = make_bigdecimal(b_text);
+        BigDecimal *a = test_decimal(a_text);
+        BigDecimal *b = test_decimal(b_text);
         BigDecimalStatus status;
         bool injected;
 
@@ -580,7 +544,7 @@ static void assert_bigdecimal_binary_alias_failure_safety(
         if (injected)
         {
             TEST_ASSERT_EQUAL(BIGDECIMAL_OUT_OF_MEMORY, status);
-            assert_bigdecimal_text(a_text, a);
+            test_assert_decimal(a_text, a);
         }
         else
         {
@@ -596,11 +560,7 @@ static void assert_bigdecimal_binary_alias_failure_safety(
     TEST_ASSERT_TRUE(completed);
 }
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Allocation controller and lifetime tests.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Allocation controller and lifetime tests. */
 
 void test_allocator_injects_malloc_calloc_and_realloc_failures(void)
 {
@@ -676,11 +636,7 @@ void test_numeric_creation_cleans_up_every_failed_allocation(void)
     TEST_ASSERT_TRUE(bigdecimal_created);
 }
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    BigInt failure guarantees.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* BigInt failure guarantees. */
 
 void test_bigint_conversion_failure_paths(void)
 {
@@ -693,7 +649,7 @@ void test_bigint_conversion_failure_paths(void)
          failure_index <= ALLOCATION_TEST_MAX_FAILURE_INDEX;
          failure_index++)
     {
-        BigInt *value = make_bigint("777");
+        BigInt *value = test_integer("777");
         BigIntStatus status;
         bool injected;
 
@@ -720,7 +676,7 @@ void test_bigint_conversion_failure_paths(void)
          failure_index <= ALLOCATION_TEST_MAX_FAILURE_INDEX;
          failure_index++)
     {
-        BigInt *value = make_bigint(large_value);
+        BigInt *value = test_integer(large_value);
         char *text;
         bool injected;
 
@@ -782,8 +738,8 @@ void test_limb_division_every_failure_and_alias(void)
         bool completed = false;
         for (size_t index = 1; index <= ALLOCATION_TEST_MAX_FAILURE_INDEX; index++)
         {
-            BigInt *a = make_bigint(cases[c].a), *b = make_bigint(cases[c].b);
-            BigInt *original_q = make_bigint("111"), *original_r = make_bigint("222");
+            BigInt *a = test_integer(cases[c].a), *b = test_integer(cases[c].b);
+            BigInt *original_q = test_integer("111"), *original_r = test_integer("222");
             BigInt *q = alias == 1 || alias == 5 ? a : alias == 2 || alias == 6 ? b : original_q;
             BigInt *r = alias == 3 || alias == 6 ? a : alias == 4 || alias == 5 ? b : original_r;
             if (deadline)
@@ -839,8 +795,8 @@ void test_gcd_workspace_every_failure_and_alias(void)
         bool completed = false;
         for (size_t index = 1; index <= ALLOCATION_TEST_MAX_FAILURE_INDEX; index++)
         {
-            BigInt *a = make_bigint(cases[c].a), *b = make_bigint(cases[c].b);
-            BigInt *original = make_bigint("111");
+            BigInt *a = test_integer(cases[c].a), *b = test_integer(cases[c].b);
+            BigInt *original = test_integer("111");
             BigInt *result = alias == 1 || alias == 3 ? a : alias == 2 ? b : original;
             const BigInt *right = alias == 3 ? a : b;
             if (deadline)
@@ -880,8 +836,8 @@ void test_gcd_workspace_every_failure_and_alias(void)
 
 void test_gcd_large_pair_fits_production_allocation_budget(void)
 {
-    BigInt *a = make_bigint("2"), *b = make_bigint("3"), *one = make_bigint("1");
-    BigInt *power = make_bigint("100000"), *result = make_bigint("111");
+    BigInt *a = test_integer("2"), *b = test_integer("3"), *one = test_integer("1");
+    BigInt *power = test_integer("100000"), *result = test_integer("111");
     TEST_ASSERT_EQUAL(BIGINT_OK, bigint_pow(a, a, power));
     TEST_ASSERT_EQUAL(BIGINT_OK, bigint_sub(a, a, one));
     TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(power, "63000"));
@@ -909,10 +865,10 @@ void test_bigint_divmod_and_number_theory_failure_paths(void)
          failure_index <= ALLOCATION_TEST_MAX_FAILURE_INDEX;
          failure_index++)
     {
-        BigInt *quotient = make_bigint("111");
-        BigInt *remainder = make_bigint("222");
-        BigInt *a = make_bigint(a_text);
-        BigInt *b = make_bigint(b_text);
+        BigInt *quotient = test_integer("111");
+        BigInt *remainder = test_integer("222");
+        BigInt *a = test_integer(a_text);
+        BigInt *b = test_integer(b_text);
         BigIntStatus status;
         bool injected;
 
@@ -976,8 +932,8 @@ void test_bigint_aliasing_preserves_destination_on_allocation_failure(void)
 
 void test_bigint_boolean_number_theory_handles_every_allocation_failure(void)
 {
-    BigInt *prime = make_bigint("97");
-    BigInt *square = make_bigint("15241578750190521");
+    BigInt *prime = test_integer("97");
+    BigInt *square = test_integer("15241578750190521");
     size_t prime_allocations;
     size_t square_allocations;
     bool result = false;
@@ -1030,11 +986,7 @@ void test_bigint_boolean_number_theory_handles_every_allocation_failure(void)
     bigint_destroy(square);
 }
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    BigDecimal failure guarantees.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* BigDecimal failure guarantees. */
 
 #if SIZE_MAX == UINT32_MAX
 void test_bigdecimal_format_size_overflow_preserves_output(void)
@@ -1046,8 +998,8 @@ void test_bigdecimal_format_size_overflow_preserves_output(void)
 
     for (size_t index = 0U; index < sizeof(inputs) / sizeof(inputs[0]); index++)
     {
-        BigDecimal *reference = make_bigdecimal(inputs[index][0] == '-' ? "-1" : "1");
-        BigDecimal *value = make_bigdecimal(inputs[index]);
+        BigDecimal *reference = test_decimal(inputs[index][0] == '-' ? "-1" : "1");
+        BigDecimal *value = test_decimal(inputs[index]);
         char sentinel = 'x';
         char *text = NULL;
         BigDecimalStatus status;
@@ -1089,11 +1041,11 @@ void test_bigdecimal_format_size_overflow_preserves_output(void)
 void test_bigdecimal_from_bigint_every_allocation_failure(void)
 {
     static const char input[] = "-123456789012345678901234567890000000000000000000000";
-    BigInt *source = make_bigint(input);
+    BigInt *source = test_integer(input);
     bool completed = false;
     for (size_t index = 1; index <= ALLOCATION_TEST_MAX_FAILURE_INDEX; index++)
     {
-        BigDecimal *result = make_bigdecimal("7.77");
+        BigDecimal *result = test_decimal("7.77");
         numforge_test_allocator_begin(index);
         BigDecimalStatus status = bigdecimal_from_bigint(result, source);
         bool failed = numforge_test_allocator_did_fail();
@@ -1102,12 +1054,12 @@ void test_bigdecimal_from_bigint_every_allocation_failure(void)
         if (failed)
         {
             TEST_ASSERT_EQUAL(BIGDECIMAL_OUT_OF_MEMORY, status);
-            assert_bigdecimal_text("7.77", result);
+            test_assert_decimal("7.77", result);
         }
         else
         {
             TEST_ASSERT_EQUAL(BIGDECIMAL_OK, status);
-            assert_bigdecimal_text(input, result);
+            test_assert_decimal(input, result);
             completed = true;
         }
         bigdecimal_destroy(result);
@@ -1121,16 +1073,16 @@ static void test_large_zero_normalization_failures_alias_and_scale(void)
 {
     char input[4103];
     memcpy(input, "-12345", 6U); memset(input + 6U, '0', 4096U); input[4102] = '\0';
-    BigInt *source = make_bigint(input);
-    BigDecimal *expected = make_bigdecimal("-12345e4096");
-    BigInt *original = make_bigint(input);
+    BigInt *source = test_integer(input);
+    BigDecimal *expected = test_decimal("-12345e4096");
+    BigInt *original = test_integer(input);
     for (unsigned alias = 0U; alias < 2U; ++alias)
     for (unsigned deadline = 0U; deadline < 2U; ++deadline)
     {
         bool completed = false;
         for (size_t index = 1U; index < 4096U; ++index)
         {
-            BigDecimal *result = make_bigdecimal("42");
+            BigDecimal *result = test_decimal("42");
             if (alias) { TEST_ASSERT_EQUAL(BIGINT_OK, bigint_copy(result->coefficient, source)); result->scale = 0; }
             if (deadline)
             { (void)numforge_budget_begin(5000U, SIZE_MAX, SIZE_MAX); numforge_test_budget_expire_after(index); }
@@ -1150,7 +1102,7 @@ static void test_large_zero_normalization_failures_alias_and_scale(void)
             {
                 TEST_ASSERT_TRUE(interrupted); TEST_ASSERT_EQUAL(BIGDECIMAL_OUT_OF_MEMORY, status);
                 if (alias) { TEST_ASSERT_EQUAL_INT(0, bigint_compare(source, result->coefficient)); TEST_ASSERT_EQUAL_INT64(0, result->scale); }
-                else assert_bigdecimal_text("42", result);
+                else test_assert_decimal("42", result);
             }
             bigdecimal_destroy(result);
             if (completed) break;
@@ -1168,9 +1120,9 @@ static void test_large_zero_normalization_failures_alias_and_scale(void)
     memcpy(overflow, input, sizeof(input) - 1U);
     memcpy(overflow + sizeof(input) - 1U, "e9223372036854775807",
            sizeof("e9223372036854775807"));
-    BigDecimal *result = make_bigdecimal("42");
+    BigDecimal *result = test_decimal("42");
     TEST_ASSERT_EQUAL(BIGDECIMAL_SCALE_OVERFLOW, bigdecimal_set_string(result, overflow));
-    assert_bigdecimal_text("42", result);
+    test_assert_decimal("42", result);
     bigdecimal_destroy(result); bigdecimal_destroy(expected); bigint_destroy(source); bigint_destroy(original);
 }
 
@@ -1186,7 +1138,7 @@ void test_bigdecimal_conversion_and_comparison_failure_paths(void)
          failure_index <= ALLOCATION_TEST_MAX_FAILURE_INDEX;
          failure_index++)
     {
-        BigDecimal *value = make_bigdecimal("7.77");
+        BigDecimal *value = test_decimal("7.77");
         BigDecimalStatus status;
         bool injected;
 
@@ -1198,7 +1150,7 @@ void test_bigdecimal_conversion_and_comparison_failure_paths(void)
         if (injected)
         {
             TEST_ASSERT_EQUAL(BIGDECIMAL_OUT_OF_MEMORY, status);
-            assert_bigdecimal_text("7.77", value);
+            test_assert_decimal("7.77", value);
         }
         else
         {
@@ -1213,7 +1165,7 @@ void test_bigdecimal_conversion_and_comparison_failure_paths(void)
          failure_index <= ALLOCATION_TEST_MAX_FAILURE_INDEX;
          failure_index++)
     {
-        BigDecimal *value = make_bigdecimal(large_value);
+        BigDecimal *value = test_decimal(large_value);
         char sentinel = 'x';
         char *text = &sentinel;
         BigDecimalStatus status;
@@ -1244,8 +1196,8 @@ void test_bigdecimal_conversion_and_comparison_failure_paths(void)
          failure_index <= ALLOCATION_TEST_MAX_FAILURE_INDEX;
          failure_index++)
     {
-        BigDecimal *a = make_bigdecimal(large_value);
-        BigDecimal *b = make_bigdecimal("123456789012345678901234567890.5");
+        BigDecimal *a = test_decimal(large_value);
+        BigDecimal *b = test_decimal("123456789012345678901234567890.5");
         int comparison = 73;
         BigDecimalStatus status;
         bool injected;
@@ -1311,8 +1263,8 @@ void test_dynamic_constant_sampled_allocation_failures(void)
 {
     size_t allocation_count;
     size_t failure_indices[7];
-    BigDecimal *result = make_bigdecimal("7.77");
-    BigDecimal *input = make_bigdecimal("0");
+    BigDecimal *result = test_decimal("7.77");
+    BigDecimal *input = test_decimal("0");
 
     numforge_test_allocator_begin(0U);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_pi_to_520(result, input));
@@ -1336,8 +1288,8 @@ void test_dynamic_constant_sampled_allocation_failures(void)
         BigDecimalStatus status;
         bool injected;
 
-        result = make_bigdecimal("7.77");
-        input = make_bigdecimal("0");
+        result = test_decimal("7.77");
+        input = test_decimal("0");
         numforge_test_allocator_begin(failure_index);
         status = bigdecimal_pi_to_520(result, input);
         injected = numforge_test_allocator_did_fail();
@@ -1345,7 +1297,7 @@ void test_dynamic_constant_sampled_allocation_failures(void)
 
         TEST_ASSERT_TRUE(injected);
         TEST_ASSERT_EQUAL(BIGDECIMAL_OUT_OF_MEMORY, status);
-        assert_bigdecimal_text("7.77", result);
+        test_assert_decimal("7.77", result);
         bigdecimal_destroy(result);
         bigdecimal_destroy(input);
     }
@@ -1358,8 +1310,8 @@ static void assert_sampled_unary_allocation_failures(
 {
     size_t allocation_count;
     size_t failure_indices[7];
-    BigDecimal *result = make_bigdecimal("7.77");
-    BigDecimal *input = make_bigdecimal(input_text);
+    BigDecimal *result = test_decimal("7.77");
+    BigDecimal *input = test_decimal(input_text);
 
     numforge_test_allocator_begin(0U);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, operation(result, input));
@@ -1383,8 +1335,8 @@ static void assert_sampled_unary_allocation_failures(
         BigDecimalStatus status;
         bool injected;
 
-        result = make_bigdecimal("7.77");
-        input = make_bigdecimal(input_text);
+        result = test_decimal("7.77");
+        input = test_decimal(input_text);
         numforge_test_allocator_begin(failure_index);
         status = operation(result, input);
         injected = numforge_test_allocator_did_fail();
@@ -1392,7 +1344,7 @@ static void assert_sampled_unary_allocation_failures(
 
         TEST_ASSERT_TRUE(injected);
         TEST_ASSERT_EQUAL(BIGDECIMAL_OUT_OF_MEMORY, status);
-        assert_bigdecimal_text("7.77", result);
+        test_assert_decimal("7.77", result);
         bigdecimal_destroy(result);
         bigdecimal_destroy(input);
     }
@@ -1438,9 +1390,9 @@ void test_logarithm_sampled_allocation_failures_and_aliasing(void)
 {
     for (size_t failure_index = 1U; failure_index <= 128U; failure_index++)
     {
-        BigDecimal *result = make_bigdecimal("7.77");
-        BigDecimal *value = make_bigdecimal("8");
-        BigDecimal *base = make_bigdecimal("2");
+        BigDecimal *result = test_decimal("7.77");
+        BigDecimal *value = test_decimal("8");
+        BigDecimal *base = test_decimal("2");
 
         numforge_test_allocator_begin(failure_index);
         BigDecimalStatus status = bigdecimal_log_to_25(result, value, base);
@@ -1449,30 +1401,24 @@ void test_logarithm_sampled_allocation_failures_and_aliasing(void)
 
         TEST_ASSERT_TRUE(injected);
         TEST_ASSERT_EQUAL(BIGDECIMAL_OUT_OF_MEMORY, status);
-        assert_bigdecimal_text("7.77", result);
+        test_assert_decimal("7.77", result);
         bigdecimal_destroy(result);
         bigdecimal_destroy(value);
         bigdecimal_destroy(base);
     }
 
-    BigDecimal *value = make_bigdecimal("8");
-    BigDecimal *base = make_bigdecimal("2");
+    BigDecimal *value = test_decimal("8");
+    BigDecimal *base = test_decimal("2");
 
     numforge_test_allocator_begin(0U);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_log_to_25(value, value, base));
     numforge_test_allocator_end();
-    assert_bigdecimal_text("3", value);
+    test_assert_decimal("3", value);
     bigdecimal_destroy(value);
     bigdecimal_destroy(base);
 }
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Calculator component contracts are checked directly as well as through the
-    end-to-end adapter, so ownership and each layer's documented failure state
-    remain explicit.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Calculator component contracts are checked directly as well as through the end-to-end adapter, so ownership and each layer's documented failure state remain explicit. */
 
 void test_parser_preserves_output_on_every_allocation_failure(void)
 {
@@ -1535,7 +1481,7 @@ void test_evaluator_preserves_destination_on_every_allocation_failure(void)
                 "round(1.2345;2) + floor(-1.2) + ceil(1.2) + trunc(-1.2)",
                 &expression,
                 &error));
-        result = make_bigdecimal("7.77");
+        result = test_decimal("7.77");
         calculator_context_init(&context);
 
         numforge_test_allocator_begin(failure_index);
@@ -1546,7 +1492,7 @@ void test_evaluator_preserves_destination_on_every_allocation_failure(void)
         if (injected)
         {
             TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY, status);
-            assert_bigdecimal_text("7.77", result);
+            test_assert_decimal("7.77", result);
         }
         else
         {
@@ -1573,7 +1519,7 @@ void test_roots_preserve_aliases_on_every_allocation_failure(void)
         bool completed = false;
         for (size_t index = 1; index <= ALLOCATION_TEST_MAX_FAILURE_INDEX; index++)
         {
-            BigDecimal *value = make_bigdecimal(cases[c].input);
+            BigDecimal *value = test_decimal(cases[c].input);
             numforge_test_allocator_begin(index);
             BigDecimalStatus status = bigdecimal_root(value, value, cases[c].degree, 34, BIGDECIMAL_ROUND_HALF_EVEN);
             bool injected = numforge_test_allocator_did_fail();
@@ -1581,7 +1527,7 @@ void test_roots_preserve_aliases_on_every_allocation_failure(void)
             if (injected)
             {
                 TEST_ASSERT_EQUAL(BIGDECIMAL_OUT_OF_MEMORY, status);
-                assert_bigdecimal_text(cases[c].input, value);
+                test_assert_decimal(cases[c].input, value);
             }
             else { TEST_ASSERT_EQUAL(BIGDECIMAL_OK, status); completed = true; }
             bigdecimal_destroy(value);
@@ -1601,7 +1547,7 @@ void test_root_call_allocation_and_deadline_failures(void)
     bool completed = false;
     for (size_t i = 1; i <= ALLOCATION_TEST_MAX_FAILURE_INDEX; i++)
     {
-        BigDecimal *result = make_bigdecimal("7.77");
+        BigDecimal *result = test_decimal("7.77");
         numforge_test_allocator_begin(i);
         CalculatorStatus status = calculator_evaluate(result, expression, &context, &error);
         bool injected = numforge_test_allocator_did_fail();
@@ -1609,7 +1555,7 @@ void test_root_call_allocation_and_deadline_failures(void)
         if (injected)
         {
             TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY, status);
-            assert_bigdecimal_text("7.77", result);
+            test_assert_decimal("7.77", result);
         }
         else { TEST_ASSERT_EQUAL(CALCULATOR_OK, status); completed = true; }
         bigdecimal_destroy(result);
@@ -1638,7 +1584,7 @@ void test_root_call_allocation_and_deadline_failures(void)
 
 void test_formatter_clears_output_on_every_allocation_failure(void)
 {
-    BigDecimal *value = make_bigdecimal("123456789012345678901234567890.123456789");
+    BigDecimal *value = test_decimal("123456789012345678901234567890.123456789");
     CalculatorContext context;
     bool completed = false;
 
@@ -1676,12 +1622,7 @@ void test_formatter_clears_output_on_every_allocation_failure(void)
     TEST_ASSERT_TRUE(completed);
 }
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    End-to-end calculator allocation failures cover parser, evaluator, decimal
-    arithmetic, and formatter allocations through the same adapter as the web.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* End-to-end calculator allocation failures cover parser, evaluator, decimal arithmetic, and formatter allocations through the same adapter as the web. */
 
 void test_calculator_pipeline_reports_every_injected_allocation_failure(void)
 {
@@ -1775,7 +1716,7 @@ void test_grouped_factorial_preserves_alias_on_every_failure(void)
         bool completed = false;
         for (size_t index = 1; index <= ALLOCATION_TEST_MAX_FAILURE_INDEX; index++)
         {
-            BigInt *value = make_bigint("50");
+            BigInt *value = test_integer("50");
             if (deadline)
             {
                 (void)numforge_budget_begin(5000U, SIZE_MAX, SIZE_MAX);
@@ -1817,9 +1758,9 @@ void test_numeric_loops_cancel_without_changing_destinations(void)
     char *text;
     memset(digits, '9', sizeof(digits) - 1U);
     digits[sizeof(digits) - 1U] = '\0';
-    a = make_bigint(digits);
-    b = make_bigint(digits);
-    result = make_bigint("42");
+    a = test_integer(digits);
+    b = test_integer(digits);
+    result = test_integer("42");
     (void)numforge_budget_begin(5000U, SIZE_MAX, SIZE_MAX);
     numforge_test_budget_expire_after(3U);
     status = bigint_mul(result, a, b);
@@ -1963,7 +1904,7 @@ void test_bigrational_conversion_preserves_outputs_on_allocation_failure(void)
         for (size_t index = 1U; index <= ALLOCATION_TEST_MAX_FAILURE_INDEX; index++)
         {
             BigRational *rational = make_bigrational("7", "8");
-            BigDecimal *decimal = make_bigdecimal(scenario == 0U ? "1.25" : "9");
+            BigDecimal *decimal = test_decimal(scenario == 0U ? "1.25" : "9");
             char *text = (char *)"unchanged";
             char *original_text = text;
             BigRationalStatus status;
@@ -1989,7 +1930,7 @@ void test_bigrational_conversion_preserves_outputs_on_allocation_failure(void)
             {
                 TEST_ASSERT_EQUAL(BIGRATIONAL_OUT_OF_MEMORY, status);
                 assert_bigrational_text("7/8", rational);
-                if (scenario == 1U) assert_bigdecimal_text("9", decimal);
+                if (scenario == 1U) test_assert_decimal("9", decimal);
                 if (scenario == 2U) TEST_ASSERT_EQUAL_PTR(original_text, text);
             }
             else
@@ -2006,14 +1947,13 @@ void test_bigrational_conversion_preserves_outputs_on_allocation_failure(void)
     }
 }
 
-
 static void test_base_conversion_and_prefix_failure_safety(void)
 {
     char hexadecimal[1001], decimal[4097];
     memset(hexadecimal,'f',1000);hexadecimal[1000]='\0';
     memset(decimal,'7',4096);decimal[4096]='\0';
-    BigInt *value=make_bigint("777");
-    BigDecimal *large=make_bigdecimal(decimal);
+    BigInt *value=test_integer("777");
+    BigDecimal *large=test_decimal(decimal);
     char marker_text[]="unchanged";
     char *text=marker_text;
     size_t parse_calls, format_calls;
@@ -2065,7 +2005,7 @@ static void test_series_sum_owners_preserve_alias_on_every_failure(void)
         bool completed = false;
         for (size_t index = 1U; index <= ALLOCATION_TEST_MAX_FAILURE_INDEX; index++)
         {
-            BigDecimal *value = make_bigdecimal(cases[c].input);
+            BigDecimal *value = test_decimal(cases[c].input);
             BigDecimalStatus status;
             bool interrupted;
             if (deadline)
@@ -2082,14 +2022,14 @@ static void test_series_sum_owners_preserve_alias_on_every_failure(void)
             if (status == BIGDECIMAL_OK)
             {
                 TEST_ASSERT_FALSE(interrupted);
-                assert_bigdecimal_text(cases[c].expected, value);
+                test_assert_decimal(cases[c].expected, value);
                 completed = true;
             }
             else
             {
                 TEST_ASSERT_TRUE(interrupted);
                 TEST_ASSERT_EQUAL(BIGDECIMAL_OUT_OF_MEMORY, status);
-                assert_bigdecimal_text(cases[c].input, value);
+                test_assert_decimal(cases[c].input, value);
             }
             bigdecimal_destroy(value);
             if (completed) break;
@@ -2107,8 +2047,8 @@ static void test_equal_scale_comparison_without_allocations(void)
     };
     for (size_t c = 0U; c < sizeof(cases) / sizeof(cases[0]); c++)
     {
-        BigDecimal *a = make_bigdecimal(cases[c].a);
-        BigDecimal *b = make_bigdecimal(cases[c].b);
+        BigDecimal *a = test_decimal(cases[c].a);
+        BigDecimal *b = test_decimal(cases[c].b);
         int comparison = 42;
         numforge_test_allocator_begin(1U);
         BigDecimalStatus status = bigdecimal_compare(&comparison, a, b);
@@ -2124,8 +2064,8 @@ static void test_equal_scale_comparison_without_allocations(void)
         numforge_budget_end();
         TEST_ASSERT_EQUAL(BIGDECIMAL_OUT_OF_MEMORY, status);
         TEST_ASSERT_EQUAL_INT(42, comparison);
-        assert_bigdecimal_text(cases[c].a, a);
-        assert_bigdecimal_text(cases[c].b, b);
+        test_assert_decimal(cases[c].a, a);
+        test_assert_decimal(cases[c].b, b);
         bigdecimal_destroy(a);
         bigdecimal_destroy(b);
     }
@@ -2164,12 +2104,12 @@ static void test_decimal_workspace_every_failure_alias_and_retry(void)
         for (size_t index = 1; index <= ALLOCATION_TEST_MAX_FAILURE_INDEX; index++)
         {
             BigDecimalWorkspace workspace = {0};
-            BigDecimal *a = make_bigdecimal(cases[c].a), *b = make_bigdecimal(cases[c].b);
-            BigDecimal *original = make_bigdecimal("7.77"), *warm_result = make_bigdecimal("0");
+            BigDecimal *a = test_decimal(cases[c].a), *b = test_decimal(cases[c].b);
+            BigDecimal *original = test_decimal("7.77"), *warm_result = test_decimal("0");
             BigDecimal *result = alias == 1 ? a : alias == 2 ? b : original;
             if (warm == 1)
             {
-                BigDecimal *seed = make_bigdecimal("1234567890123456789012345678901234567890.5");
+                BigDecimal *seed = test_decimal("1234567890123456789012345678901234567890.5");
                 TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_round_significant_workspace(
                     warm_result, seed, 5, BIGDECIMAL_ROUND_HALF_EVEN, &workspace));
                 bigdecimal_destroy(seed);
@@ -2188,21 +2128,21 @@ static void test_decimal_workspace_every_failure_alias_and_retry(void)
             if (status == BIGDECIMAL_OK)
             {
                 TEST_ASSERT_FALSE(interrupted);
-                assert_bigdecimal_text(cases[c].expected, result);
-                if (result != a) assert_bigdecimal_text(cases[c].a, a);
-                if (result != b) assert_bigdecimal_text(cases[c].b, b);
+                test_assert_decimal(cases[c].expected, result);
+                if (result != a) test_assert_decimal(cases[c].a, a);
+                if (result != b) test_assert_decimal(cases[c].b, b);
                 completed = true;
             }
             else
             {
                 TEST_ASSERT_TRUE(interrupted);
                 TEST_ASSERT_EQUAL(BIGDECIMAL_OUT_OF_MEMORY, status);
-                assert_bigdecimal_text(cases[c].a, a); assert_bigdecimal_text(cases[c].b, b);
-                assert_bigdecimal_text("7.77", original);
+                test_assert_decimal(cases[c].a, a); test_assert_decimal(cases[c].b, b);
+                test_assert_decimal("7.77", original);
                 /* Partial scratch must remain reusable, including invalidated caches. */
                 TEST_ASSERT_EQUAL(BIGDECIMAL_OK, workspace_operation(
                     cases[c].operation, result, a, b, cases[c].digits, &workspace));
-                assert_bigdecimal_text(cases[c].expected, result);
+                test_assert_decimal(cases[c].expected, result);
             }
             bigdecimal_workspace_clear(&workspace);
             bigdecimal_workspace_clear(&workspace);
@@ -2216,7 +2156,7 @@ static void test_decimal_workspace_every_failure_alias_and_retry(void)
 static void test_decimal_workspace_scale_boundaries_and_invalid_arguments(void)
 {
     BigDecimalWorkspace workspace = {0};
-    BigDecimal *a = make_bigdecimal("2"), *b = make_bigdecimal("5"), *result = make_bigdecimal("7.77");
+    BigDecimal *a = test_decimal("2"), *b = test_decimal("5"), *result = test_decimal("7.77");
     a->scale = INT64_MAX; b->scale = 1;
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_mul_significant_workspace(result, a, b, 10,
         BIGDECIMAL_ROUND_HALF_EVEN, &workspace));
@@ -2225,14 +2165,14 @@ static void test_decimal_workspace_scale_boundaries_and_invalid_arguments(void)
     a->scale = INT64_MIN; b->scale = INT64_MIN;
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_div_significant_workspace(result, a, b, 10,
         BIGDECIMAL_ROUND_HALF_EVEN, &workspace));
-    assert_bigdecimal_text("0.4", result);
+    test_assert_decimal("0.4", result);
     TEST_ASSERT_EQUAL(BIGDECIMAL_SCALE_OVERFLOW, bigdecimal_mul_significant_workspace(result, a, b, 10,
         BIGDECIMAL_ROUND_HALF_EVEN, &workspace));
-    assert_bigdecimal_text("0.4", result);
+    test_assert_decimal("0.4", result);
     for (unsigned op = 0; op < 4U; op++)
     {
         TEST_ASSERT_EQUAL(BIGDECIMAL_INVALID_ARGUMENT, workspace_operation(op, result, a, b, 0, &workspace));
-        assert_bigdecimal_text("0.4", result);
+        test_assert_decimal("0.4", result);
     }
     TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_round_significant_workspace(result, a, 10,
         BIGDECIMAL_ROUND_HALF_EVEN, NULL));
@@ -2242,13 +2182,13 @@ static void test_decimal_workspace_scale_boundaries_and_invalid_arguments(void)
         BIGDECIMAL_ROUND_HALF_EVEN, &workspace));
     TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_MEMORY, numforge_budget_failure());
     numforge_budget_end();
-    assert_bigdecimal_text("0.4", result);
+    test_assert_decimal("0.4", result);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(b, "0"));
     TEST_ASSERT_EQUAL(BIGDECIMAL_DIVISION_BY_ZERO, bigdecimal_div_significant_workspace(result, a, b, 10,
         BIGDECIMAL_ROUND_HALF_EVEN, &workspace));
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_mul_significant_workspace(result, a, b, 10,
         BIGDECIMAL_ROUND_HALF_EVEN, &workspace));
-    assert_bigdecimal_text("0", result);
+    test_assert_decimal("0", result);
     bigdecimal_workspace_clear(&workspace);
     bigdecimal_destroy(a); bigdecimal_destroy(b); bigdecimal_destroy(result);
 }
@@ -2286,9 +2226,9 @@ static void test_decimal_borrowed_coefficients_every_failure(void)
         bool completed = false;
         for (size_t index = 1U; index <= ALLOCATION_TEST_MAX_FAILURE_INDEX; index++)
         {
-            BigDecimal *a = make_bigdecimal(cases[c].a);
-            BigDecimal *b = make_bigdecimal(cases[c].b);
-            BigDecimal *original = make_bigdecimal("7.77");
+            BigDecimal *a = test_decimal(cases[c].a);
+            BigDecimal *b = test_decimal(cases[c].b);
+            BigDecimal *original = test_decimal("7.77");
             BigDecimal *result = alias == 1U ? a : alias == 2U ? b : original;
             BigDecimalStatus status;
             bool interrupted;
@@ -2309,18 +2249,18 @@ static void test_decimal_borrowed_coefficients_every_failure(void)
             if (status == BIGDECIMAL_OK)
             {
                 TEST_ASSERT_FALSE(interrupted);
-                assert_bigdecimal_text(cases[c].expected, result);
-                if (result != a) assert_bigdecimal_text(cases[c].a, a);
-                if (result != b) assert_bigdecimal_text(cases[c].b, b);
+                test_assert_decimal(cases[c].expected, result);
+                if (result != a) test_assert_decimal(cases[c].a, a);
+                if (result != b) test_assert_decimal(cases[c].b, b);
                 completed = true;
             }
             else
             {
                 TEST_ASSERT_TRUE(interrupted);
                 TEST_ASSERT_EQUAL(BIGDECIMAL_OUT_OF_MEMORY, status);
-                assert_bigdecimal_text(cases[c].a, a);
-                assert_bigdecimal_text(cases[c].b, b);
-                assert_bigdecimal_text("7.77", original);
+                test_assert_decimal(cases[c].a, a);
+                test_assert_decimal(cases[c].b, b);
+                test_assert_decimal("7.77", original);
             }
             bigdecimal_destroy(a);
             bigdecimal_destroy(b);
@@ -2342,7 +2282,7 @@ static void test_decimal_digit_count_preserves_output_on_every_failure(void)
     for (unsigned deadline = 0U; deadline < 2U; deadline++)
     {
         bool completed = false;
-        BigInt *value = make_bigint(inputs[c]);
+        BigInt *value = test_integer(inputs[c]);
         for (size_t index = 1U; index <= ALLOCATION_TEST_MAX_FAILURE_INDEX; index++)
         {
             size_t count = 42U;
@@ -2397,7 +2337,7 @@ static void check_forward_pair_failures(bool hyperbolic)
     for (unsigned deadline = 0U; deadline < 2U; deadline++)
     {
         BigDecimal *expected_s = bigdecimal_create(), *expected_c = bigdecimal_create();
-        BigDecimal *input = make_bigdecimal(inputs[n]);
+        BigDecimal *input = test_decimal(inputs[n]);
         bool completed = false;
         TEST_ASSERT_NOT_NULL(expected_s); TEST_ASSERT_NOT_NULL(expected_c);
         TEST_ASSERT_EQUAL(BIGDECIMAL_OK, sine(expected_s, input, digits, BIGDECIMAL_ROUND_HALF_EVEN));
@@ -2407,8 +2347,8 @@ static void check_forward_pair_failures(bool hyperbolic)
          * the generic 4096-position bound. Require eventual success as well. */
         for (size_t index = 1U; index <= 16384U; index++)
         {
-            BigDecimal *value = make_bigdecimal(inputs[n]);
-            BigDecimal *original_s = make_bigdecimal("7.77"), *original_c = make_bigdecimal("-8.88");
+            BigDecimal *value = test_decimal(inputs[n]);
+            BigDecimal *original_s = test_decimal("7.77"), *original_c = test_decimal("-8.88");
             BigDecimal *s = alias == 1U ? value : original_s;
             BigDecimal *c = alias == 2U ? value : original_c;
             BigDecimalStatus status;
@@ -2431,16 +2371,16 @@ static void check_forward_pair_failures(bool hyperbolic)
                 TEST_ASSERT_EQUAL_INT(0, comparison);
                 TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_compare(&comparison, c, expected_c));
                 TEST_ASSERT_EQUAL_INT(0, comparison);
-                if (alias == 0U) assert_bigdecimal_text(inputs[n], value);
+                if (alias == 0U) test_assert_decimal(inputs[n], value);
                 completed = true;
             }
             else
             {
                 TEST_ASSERT_TRUE(interrupted);
                 TEST_ASSERT_EQUAL(BIGDECIMAL_OUT_OF_MEMORY, status);
-                assert_bigdecimal_text(inputs[n], value);
-                assert_bigdecimal_text("7.77", original_s);
-                assert_bigdecimal_text("-8.88", original_c);
+                test_assert_decimal(inputs[n], value);
+                test_assert_decimal("7.77", original_s);
+                test_assert_decimal("-8.88", original_c);
             }
             bigdecimal_destroy(value); bigdecimal_destroy(original_s); bigdecimal_destroy(original_c);
             if (completed) break;
@@ -2448,7 +2388,7 @@ static void check_forward_pair_failures(bool hyperbolic)
         bigdecimal_destroy(expected_s); bigdecimal_destroy(expected_c);
         TEST_ASSERT_TRUE(completed);
     }
-    BigDecimal *a = make_bigdecimal("1"), *b = make_bigdecimal("2");
+    BigDecimal *a = test_decimal("1"), *b = test_decimal("2");
     TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, pair(NULL, b, a, digits, BIGDECIMAL_ROUND_HALF_EVEN));
     TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, pair(a, NULL, b, digits, BIGDECIMAL_ROUND_HALF_EVEN));
     TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, pair(a, b, NULL, digits, BIGDECIMAL_ROUND_HALF_EVEN));
@@ -2456,7 +2396,7 @@ static void check_forward_pair_failures(bool hyperbolic)
     TEST_ASSERT_EQUAL(BIGDECIMAL_INVALID_ARGUMENT, pair(a, b, a, 0, BIGDECIMAL_ROUND_HALF_EVEN));
     TEST_ASSERT_EQUAL(BIGDECIMAL_VALUE_TOO_LARGE, pair(a, b, a, INT64_MAX, BIGDECIMAL_ROUND_HALF_EVEN));
     TEST_ASSERT_EQUAL(BIGDECIMAL_INVALID_ARGUMENT, pair(a, b, a, digits, (BigDecimalRoundingMode)99));
-    assert_bigdecimal_text("1", a); assert_bigdecimal_text("2", b);
+    test_assert_decimal("1", a); test_assert_decimal("2", b);
     bigdecimal_destroy(a); bigdecimal_destroy(b);
 }
 
@@ -2476,7 +2416,7 @@ void test_large_factorial_cancellation_preserves_destination(void)
     for (size_t i = 0U; i < sizeof(inputs) / sizeof(inputs[0]); i++)
     for (unsigned alias = 0U; alias < 2U; alias++)
     {
-        BigInt *n = make_bigint(inputs[i]), *out = make_bigint("77");
+        BigInt *n = test_integer(inputs[i]), *out = test_integer("77");
         numforge_test_budget_expire_after(1000U);
         TEST_ASSERT_TRUE(numforge_budget_begin(UINT64_MAX, SIZE_MAX, SIZE_MAX));
         BigIntStatus status = bigint_factorial(alias ? n : out, n);
@@ -2515,7 +2455,7 @@ void test_large_factorial_cancellation_preserves_destination(void)
 
 static void test_factorial_tree_failure_cleanup_and_budget_fallback(void)
 {
-    BigInt *input = make_bigint("8192"), *expected = bigint_create();
+    BigInt *input = test_integer("8192"), *expected = bigint_create();
     TEST_ASSERT_NOT_NULL(expected);
     /* Scalar path supplies an additional independent algorithm;
      * complete external factorial references are checked by the harness. */
@@ -2525,7 +2465,7 @@ static void test_factorial_tree_failure_cleanup_and_budget_fallback(void)
         bool completed = false;
         for (size_t fail = 1U; fail < ALLOCATION_TEST_MAX_FAILURE_INDEX; ++fail)
         {
-            BigInt *out = make_bigint(alias ? "8192" : "77");
+            BigInt *out = test_integer(alias ? "8192" : "77");
             numforge_test_allocator_begin(fail);
             BigIntStatus status = bigint_factorial_tree(out, 8192U);
             bool failed = numforge_test_allocator_did_fail();
@@ -2552,7 +2492,7 @@ static void test_factorial_tree_failure_cleanup_and_budget_fallback(void)
     bool completed = false;
     for (size_t fail = 1U; fail < 50000U; ++fail)
     {
-        BigInt *out = make_bigint("2000");
+        BigInt *out = test_integer("2000");
         TEST_ASSERT_TRUE(numforge_budget_begin(UINT64_MAX, SIZE_MAX, SIZE_MAX));
         numforge_test_budget_expire_after(fail);
         BigIntStatus status = bigint_factorial_tree(out, 2000U);
@@ -2630,14 +2570,14 @@ static void test_factorial_admission_bounds_and_scope(void)
 static void test_production_agm_cancellation_preserves_destination(void)
 {
     for (unsigned alias = 0; alias < 2; alias++) {
-        BigDecimal *input = make_bigdecimal("2"), *out = make_bigdecimal("77");
+        BigDecimal *input = test_decimal("2"), *out = test_decimal("77");
         numforge_test_budget_expire_after(1000U);
         TEST_ASSERT_TRUE(numforge_budget_begin(UINT64_MAX, SIZE_MAX, SIZE_MAX));
         TEST_ASSERT_EQUAL(BIGDECIMAL_OUT_OF_MEMORY,
             bigdecimal_ln(alias ? input : out, input, 2000, BIGDECIMAL_ROUND_HALF_EVEN));
         TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_TIME, numforge_budget_failure());
         numforge_budget_end();
-        assert_bigdecimal_text("2", input); assert_bigdecimal_text("77", out);
+        test_assert_decimal("2", input); test_assert_decimal("77", out);
         bigdecimal_destroy(input); bigdecimal_destroy(out);
     }
 }

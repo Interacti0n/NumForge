@@ -1,3 +1,4 @@
+#include "tests/support/numbers.h"
 #include <inttypes.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -6,9 +7,7 @@
 #include <unity.h>
 #include <numforge/bigint.h>
 
-/* ============================================================
-   Test helpers
-   ============================================================ */
+/* Test helpers */
 
 /* A fixed seed makes every generated case reproducible in CI and locally. */
 static uint64_t random_state = UINT64_C(0xC0DEC0FFEE123456);
@@ -25,23 +24,13 @@ static uint64_t next_random_u64(void)
     return value * UINT64_C(2685821657736338717);
 }
 
-static BigInt *make_bigint(const char *string)
-{
-    BigInt *value = bigint_create();
-
-    TEST_ASSERT_NOT_NULL(value);
-    TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(value, string));
-
-    return value;
-}
-
 static BigInt *make_random_unsigned(size_t limbs)
 {
     char text[32];
     uint64_t most_significant_limb = next_random_u64() | UINT64_C(1);
     (void)snprintf(text, sizeof(text), "%" PRIu64, most_significant_limb);
 
-    BigInt *value = make_bigint(text);
+    BigInt *value = test_integer(text);
 
     for (size_t i = 1; i < limbs; i++)
     {
@@ -52,7 +41,7 @@ static BigInt *make_random_unsigned(size_t limbs)
 
         limb = next_random_u64();
         (void)snprintf(text, sizeof(text), "%" PRIu64, limb);
-        part = make_bigint(text);
+        part = test_integer(text);
         TEST_ASSERT_EQUAL(BIGINT_OK, bigint_add(value, value, part));
         bigint_destroy(part);
     }
@@ -77,15 +66,6 @@ static void assert_equal(const BigInt *actual, const BigInt *expected)
     TEST_ASSERT_EQUAL_INT(0, bigint_compare(actual, expected));
 }
 
-static void assert_string(const BigInt *value, const char *expected)
-{
-    char *actual = bigint_to_string(value);
-
-    TEST_ASSERT_NOT_NULL(actual);
-    TEST_ASSERT_EQUAL_STRING(expected, actual);
-    free(actual);
-}
-
 void setUp(void)
 {
     random_state = UINT64_C(0xC0DEC0FFEE123456);
@@ -95,28 +75,26 @@ void tearDown(void)
 {
 }
 
-/* ============================================================
-   Multi-limb and aliasing regressions
-   ============================================================ */
+/* Multi-limb and aliasing regressions */
 
 void test_multi_limb_boundaries(void)
 {
-    BigInt *max_128 = make_bigint("340282366920938463463374607431768211455");
-    BigInt *two_64 = make_bigint("18446744073709551616");
-    BigInt *one = make_bigint("1");
+    BigInt *max_128 = test_integer("340282366920938463463374607431768211455");
+    BigInt *two_64 = test_integer("18446744073709551616");
+    BigInt *one = test_integer("1");
     BigInt *result = bigint_create();
     BigInt *quotient = bigint_create();
     BigInt *remainder = bigint_create();
 
     TEST_ASSERT_EQUAL(BIGINT_OK, bigint_add(result, max_128, one));
-    assert_string(result, "340282366920938463463374607431768211456");
+    test_assert_integer(result, "340282366920938463463374607431768211456");
 
     TEST_ASSERT_EQUAL(BIGINT_OK, bigint_div_mod(quotient, remainder, max_128, two_64));
-    assert_string(quotient, "18446744073709551615");
-    assert_string(remainder, "18446744073709551615");
+    test_assert_integer(quotient, "18446744073709551615");
+    test_assert_integer(remainder, "18446744073709551615");
 
     TEST_ASSERT_EQUAL(BIGINT_OK, bigint_or(result, two_64, one));
-    assert_string(result, "18446744073709551617");
+    test_assert_integer(result, "18446744073709551617");
 
     bigint_destroy(max_128);
     bigint_destroy(two_64);
@@ -128,12 +106,12 @@ void test_multi_limb_boundaries(void)
 
 void test_div_mod_output_input_aliasing(void)
 {
-    BigInt *a = make_bigint("340282366920938463463374607431768211455");
-    BigInt *b = make_bigint("18446744073709551616");
+    BigInt *a = test_integer("340282366920938463463374607431768211455");
+    BigInt *b = test_integer("18446744073709551616");
 
     TEST_ASSERT_EQUAL(BIGINT_OK, bigint_div_mod(a, b, a, b));
-    assert_string(a, "18446744073709551615");
-    assert_string(b, "18446744073709551615");
+    test_assert_integer(a, "18446744073709551615");
+    test_assert_integer(b, "18446744073709551615");
 
     bigint_destroy(a);
     bigint_destroy(b);
@@ -141,51 +119,49 @@ void test_div_mod_output_input_aliasing(void)
 
 void test_number_theory_and_bitwise_output_aliasing(void)
 {
-    BigInt *a = make_bigint("48");
-    BigInt *b = make_bigint("18");
+    BigInt *a = test_integer("48");
+    BigInt *b = test_integer("18");
 
     TEST_ASSERT_EQUAL(BIGINT_OK, bigint_gcd(a, a, b));
-    assert_string(a, "6");
+    test_assert_integer(a, "6");
 
     TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(a, "48"));
     TEST_ASSERT_EQUAL(BIGINT_OK, bigint_gcd(b, a, b));
-    assert_string(b, "6");
+    test_assert_integer(b, "6");
 
     TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(a, "12"));
     TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(b, "18"));
     TEST_ASSERT_EQUAL(BIGINT_OK, bigint_lcm(a, a, b));
-    assert_string(a, "36");
+    test_assert_integer(a, "36");
 
     TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(a, "12"));
     TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(b, "18"));
     TEST_ASSERT_EQUAL(BIGINT_OK, bigint_lcm(b, a, b));
-    assert_string(b, "36");
+    test_assert_integer(b, "36");
 
     TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(a, "18446744073709551617"));
     TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(b, "18446744073709551619"));
     TEST_ASSERT_EQUAL(BIGINT_OK, bigint_and(a, a, b));
-    assert_string(a, "18446744073709551617");
+    test_assert_integer(a, "18446744073709551617");
 
     TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(a, "18446744073709551617"));
     TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(b, "18446744073709551619"));
     TEST_ASSERT_EQUAL(BIGINT_OK, bigint_or(b, a, b));
-    assert_string(b, "18446744073709551619");
+    test_assert_integer(b, "18446744073709551619");
 
     TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(a, "18446744073709551617"));
     TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(b, "18446744073709551619"));
     TEST_ASSERT_EQUAL(BIGINT_OK, bigint_xor(a, a, b));
-    assert_string(a, "2");
+    test_assert_integer(a, "2");
 
     TEST_ASSERT_EQUAL(BIGINT_OK, bigint_not(a, a));
-    assert_string(a, "-3");
+    test_assert_integer(a, "-3");
 
     bigint_destroy(a);
     bigint_destroy(b);
 }
 
-/* ============================================================
-   Generated algebraic properties
-   ============================================================ */
+/* Generated algebraic properties */
 
 void test_property_string_round_trip_and_add_sub_inverse(void)
 {
@@ -307,9 +283,7 @@ void test_property_gcd_lcm_identity(void)
     }
 }
 
-/* ============================================================
-   Main
-   ============================================================ */
+/* Main */
 
 int main(void)
 {

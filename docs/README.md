@@ -16,31 +16,11 @@ Choose an entry point; detailed contracts and procedures live in their own guide
 | Inspect measured results | [Performance evidence](performance/README.md) |
 | Check published release verification | [Release history](project/RELEASES.md) |
 
-`design/` explains implementation decisions. `reference/` describes supported
-interfaces and mathematical semantics. Public C headers contain the authoritative
-parameter, ownership and failure contracts; guides link to them instead of copying
-declarations. [Web assets](../apps/web/assets/README.md) describes browser sources.
-The Python guide owns installation, shared input/result policy and short workflows;
-module references own their C/Python operation details. The Python package README
-is a self-contained introduction for package metadata, not another full reference.
-
-Selected baselines under `performance/` and release verification under `project/`
-describe their recorded revision, not current guarantees. Superseded working
-reports and intermediate result files remain available in Git history.
-Future proposals, such as [accounts](design/ACCOUNT_DESIGN.md), are explicitly
-labelled and do not establish implemented functionality.
-
-Keep one canonical home for each contract or procedure. Link from other pages;
-remove obsolete proposals when their decisions have been absorbed into current
-documentation. Keep reproducible benchmark evidence. Generated files and local
-measurements belong under ignored `build/` directories. Check links with
-`node scripts/check_docs.cjs` from any working directory.
-
-Long references are intentional when they contain distinct domains, precision or
-failure rules. Start with a guide; follow only the operation contract you need.
-Generated C declarations come from the public headers, not another maintained
-copy. The [documentation workflow](project/DOCUMENTATION.md) explains generation,
-example checks and where new material belongs.
+Public C headers own parameters, ownership and error contracts. Guides explain
+workflows; references explain operation meaning; design pages explain decisions.
+Keep one owner and link from elsewhere. Selected measurements describe their
+recorded revision, while superseded diaries remain in Git history. New pages
+follow the [documentation workflow](project/DOCUMENTATION.md).
 
 ## File tree
 

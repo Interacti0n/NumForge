@@ -1,3 +1,4 @@
+#include "tests/support/numbers.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -18,9 +19,7 @@ void tearDown(void)
 {
 }
 
-/* ============================================================
-   Test helpers
-   ============================================================ */
+/* Test helpers */
 
 static void assert_next_token(
     CalculatorTokenizer *tokenizer,
@@ -53,16 +52,6 @@ static CalculatorExpression *parse_expression(const char *input)
     TEST_ASSERT_EQUAL(CALCULATOR_OK, error.status);
     TEST_ASSERT_NOT_NULL(expression);
     return expression;
-}
-
-static void assert_decimal_equals(const char *expected, const BigDecimal *value)
-{
-    char *actual = NULL;
-
-    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_to_string(value, &actual));
-    TEST_ASSERT_NOT_NULL(actual);
-    TEST_ASSERT_EQUAL_STRING(expected, actual);
-    free(actual);
 }
 
 static BigDecimal *evaluate_expression(const char *input, const CalculatorContext *context)
@@ -104,9 +93,7 @@ static void assert_expression_too_deep(const char *input)
     TEST_ASSERT_NULL(expression);
 }
 
-/* ============================================================
-   Shared calculator utilities
-   ============================================================ */
+/* Shared calculator utilities */
 
 void test_context_defaults_and_status_strings(void)
 {
@@ -179,9 +166,7 @@ void test_error_helpers(void)
     TEST_ASSERT_EQUAL_UINT(1, calculator_error_column("1 +\n)", 4));
 }
 
-/* ============================================================
-   Tokenizer
-   ============================================================ */
+/* Tokenizer */
 
 void test_tokenizer_produces_numbers_operators_and_offsets(void)
 {
@@ -301,9 +286,7 @@ void test_tokenizer_rejects_invalid_tokens(void)
     TEST_ASSERT_EQUAL(CALCULATOR_NULL_ARGUMENT, calculator_tokenizer_init(NULL, "1"));
 }
 
-/* ============================================================
-   Parser and AST
-   ============================================================ */
+/* Parser and AST */
 
 void test_parser_accepts_expression_grammar(void)
 {
@@ -447,9 +430,7 @@ void test_parser_rejects_excessive_recursion_and_ast_depth(void)
     assert_expression_too_deep(addition);
 }
 
-/* ============================================================
-   Evaluator
-   ============================================================ */
+/* Evaluator */
 
 void test_evaluator_respects_precedence_and_parentheses(void)
 {
@@ -459,55 +440,55 @@ void test_evaluator_respects_precedence_and_parentheses(void)
     calculator_context_init(&context);
 
     result = evaluate_expression("1 + 2 * (3 - .5)", &context);
-    assert_decimal_equals("6", result);
+    test_assert_decimal("6", result);
     bigdecimal_destroy(result);
 
     result = evaluate_expression("(1 + 2) * 3", &context);
-    assert_decimal_equals("9", result);
+    test_assert_decimal("9", result);
     bigdecimal_destroy(result);
 
     result = evaluate_expression("-1.5 + +2", &context);
-    assert_decimal_equals("0.5", result);
+    test_assert_decimal("0.5", result);
     bigdecimal_destroy(result);
 
     result = evaluate_expression("0,1 + 0,2", &context);
-    assert_decimal_equals("0.3", result);
+    test_assert_decimal("0.3", result);
     bigdecimal_destroy(result);
 
     result = evaluate_expression("\xCF\x80 - \xCF\x80 + e - e + \xCF\x86 - \xCF\x86", &context);
-    assert_decimal_equals("0", result);
+    test_assert_decimal("0", result);
     bigdecimal_destroy(result);
 
     result = evaluate_expression("2(2 + 2)", &context);
-    assert_decimal_equals("8", result);
+    test_assert_decimal("8", result);
     bigdecimal_destroy(result);
 
     result = evaluate_expression("\xCF\x80" "e - \xCF\x80 * e + 10\xCF\x80 - 10 * \xCF\x80 + 5e - 5 * e", &context);
-    assert_decimal_equals("0", result);
+    test_assert_decimal("0", result);
     bigdecimal_destroy(result);
 
     result = evaluate_expression("1e-2 - (e - 2)", &context);
-    assert_decimal_equals("0", result);
+    test_assert_decimal("0", result);
     bigdecimal_destroy(result);
 
     result = evaluate_expression("1e3 - 3 * e + 1E3 - 1000", &context);
-    assert_decimal_equals("0", result);
+    test_assert_decimal("0", result);
     bigdecimal_destroy(result);
 
     result = evaluate_expression("1.5\xC2\xB2 + 2.5\xC2\xB3", &context);
-    assert_decimal_equals("17.875", result);
+    test_assert_decimal("17.875", result);
     bigdecimal_destroy(result);
 
     result = evaluate_expression("-2\xC2\xB2 + (2 + 3)!", &context);
-    assert_decimal_equals("116", result);
+    test_assert_decimal("116", result);
     bigdecimal_destroy(result);
 
     result = evaluate_expression("1.5^3 + 2^10", &context);
-    assert_decimal_equals("1027.375", result);
+    test_assert_decimal("1027.375", result);
     bigdecimal_destroy(result);
 
     result = evaluate_expression("2^3^2 - 512 - 2^2 + (-2)^2 + 0^0 - 1", &context);
-    assert_decimal_equals("0", result);
+    test_assert_decimal("0", result);
     bigdecimal_destroy(result);
 }
 
@@ -584,18 +565,18 @@ void test_evaluator_division_uses_context(void)
     context.division_scale = 4;
     context.significant_division = false;
     result = evaluate_expression("1 / 3", &context);
-    assert_decimal_equals("0.3333", result);
+    test_assert_decimal("0.3333", result);
     bigdecimal_destroy(result);
 
     context.division_scale = 0;
     context.rounding = BIGDECIMAL_ROUND_HALF_EVEN;
     result = evaluate_expression("1 / 2", &context);
-    assert_decimal_equals("0", result);
+    test_assert_decimal("0", result);
     bigdecimal_destroy(result);
 
     context.rounding = BIGDECIMAL_ROUND_HALF_UP;
     result = evaluate_expression("1 / 2", &context);
-    assert_decimal_equals("1", result);
+    test_assert_decimal("1", result);
     bigdecimal_destroy(result);
 }
 
@@ -613,7 +594,7 @@ void test_evaluator_reports_arithmetic_errors_without_changing_result(void)
                       calculator_evaluate(result, expression, &context, &error));
     TEST_ASSERT_EQUAL(CALCULATOR_DIVISION_BY_ZERO, error.status);
     TEST_ASSERT_EQUAL_UINT(2, error.offset);
-    assert_decimal_equals("42", result);
+    test_assert_decimal("42", result);
 
     calculator_expression_destroy(expression);
     bigdecimal_destroy(result);
@@ -633,7 +614,7 @@ void test_evaluator_rejects_invalid_factorial_input(void)
                       calculator_evaluate(result, expression, &context, &error));
     TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, error.status);
     TEST_ASSERT_EQUAL_UINT(3, error.offset);
-    assert_decimal_equals("42", result);
+    test_assert_decimal("42", result);
 
     calculator_expression_destroy(expression);
     bigdecimal_destroy(result);
@@ -657,7 +638,7 @@ void test_evaluator_rejects_invalid_power_exponent(void)
                           calculator_evaluate(result, expression, &context, &error));
         TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, error.status);
         TEST_ASSERT_EQUAL_UINT(1, error.offset);
-        assert_decimal_equals("42", result);
+        test_assert_decimal("42", result);
 
         calculator_expression_destroy(expression);
         bigdecimal_destroy(result);
@@ -678,7 +659,7 @@ void test_evaluator_enforces_time_and_factorial_limits(void)
     expression = parse_expression("1 + 1");
     TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT, calculator_evaluate(result, expression, &context, &error));
     TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT, error.status);
-    assert_decimal_equals("42", result);
+    test_assert_decimal("42", result);
     calculator_expression_destroy(expression);
 
     calculator_context_init(&context);
@@ -686,7 +667,7 @@ void test_evaluator_enforces_time_and_factorial_limits(void)
     TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE, calculator_evaluate(result, expression, &context, &error));
     TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE, error.status);
     TEST_ASSERT_EQUAL_UINT(20, error.offset);
-    assert_decimal_equals("42", result);
+    test_assert_decimal("42", result);
     calculator_expression_destroy(expression);
     bigdecimal_destroy(result);
 }
@@ -720,7 +701,7 @@ void test_evaluator_rejects_compact_invalid_integer_operands(void)
         TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(result, "42"));
         status = calculator_evaluate(result, expression, &context, &error);
         calculator_expression_destroy(expression);
-        assert_decimal_equals("42", result);
+        test_assert_decimal("42", result);
         bigdecimal_destroy(result);
         TEST_ASSERT_EQUAL(cases[index].expected, status);
         TEST_ASSERT_EQUAL(status, error.status);
@@ -759,9 +740,7 @@ void test_large_factorial_evaluation_and_formatting(void)
     assert_formatted_expression("1.8192063202E+77337", "20000!", &context);
 }
 
-/* ============================================================
-   Main
-   ============================================================ */
+/* Main */
 
 void test_significant_division_preserves_tiny_and_huge_values(void)
 {

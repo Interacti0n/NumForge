@@ -2,8 +2,7 @@
 
 These are historical private application comparisons. Public/HTTP equation
 solving selects bisection; graph marker refinement uses a separate Brent path.
-The tested method-selecting diagnostic API remains available. Its superseded
-boolean wrapper was removed in the [structural audit](../../project/AUDIT.md).
+Private method selection remains available for comparisons and failure tests.
 
 ## Domain safeguards
 

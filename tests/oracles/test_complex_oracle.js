@@ -4,13 +4,13 @@ const path = require('node:path');
 const os = require('node:os');
 const {spawnSync} = require('node:child_process');
 const assert = require('node:assert/strict');
-const unary = fs.readFileSync(path.join(__dirname, 'complex_references.tsv'), 'utf8')
+const unary = fs.readFileSync(path.join(__dirname, '../fixtures/complex_references.tsv'), 'utf8')
   .trim().split(/\r?\n/).filter(x => !x.startsWith('#')).map(x => x.split('\t'));
-const binary = fs.readFileSync(path.join(__dirname, 'complex_binary_references.tsv'), 'utf8')
+const binary = fs.readFileSync(path.join(__dirname, '../fixtures/complex_binary_references.tsv'), 'utf8')
   .trim().split(/\r?\n/).filter(x => !x.startsWith('#')).map(x => x.split('\t'));
 assert.equal(unary.length,744,'Incomplete unary reference corpus');
 assert.equal(binary.length,156,'Incomplete binary reference corpus');
-const stability = fs.readFileSync(path.join(__dirname, 'complex_stability_references.tsv'), 'utf8')
+const stability = fs.readFileSync(path.join(__dirname, '../fixtures/complex_stability_references.tsv'), 'utf8')
   .trim().split(/\r?\n/).filter(x=>!x.startsWith('#')).map(x=>x.split('\t'));
 assert.equal(stability.length,384,'Incomplete stability reference corpus');
 for (const row of unary) assert.equal(row.length,7);

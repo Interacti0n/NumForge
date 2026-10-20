@@ -84,7 +84,7 @@ class DocumentationNavigationTests(unittest.TestCase):
         self.assertEqual(len(entries), len(navigation), 'duplicate canonical navigation entry')
         for entry in navigation:
             self.assertTrue((ROOT / entry).is_file(), f'{entry}: missing navigation target')
-        supplementary = {'CHANGELOG.md', 'bindings/python/README.md', 'apps/web/assets/README.md'}
+        supplementary = {'bindings/python/README.md', 'apps/web/assets/README.md'}
         for page in docs.source_pages(ROOT):
             relative = page.relative_to(ROOT).as_posix()
             self.assertTrue(relative in navigation or relative in supplementary,

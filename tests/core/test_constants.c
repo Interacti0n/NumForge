@@ -1,3 +1,4 @@
+#include "tests/support/numbers.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -5,12 +6,7 @@
 
 #include <numforge/bigdecimal.h>
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Stored and dynamically calculated mathematical constants, precision,
-    rounding, aliasing, domains, and compatibility of the legacy factory.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Stored and dynamically calculated mathematical constants, precision, rounding, aliasing, domains, and compatibility of the legacy factory. */
 
 void setUp(void)
 {
@@ -18,15 +14,6 @@ void setUp(void)
 
 void tearDown(void)
 {
-}
-
-static BigDecimal *make_decimal(const char *text)
-{
-    BigDecimal *value = bigdecimal_create();
-
-    TEST_ASSERT_NOT_NULL(value);
-    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(value, text));
-    return value;
 }
 
 static char *decimal_text(const BigDecimal *value)
@@ -108,7 +95,7 @@ static void test_dynamic_values_extend_stored_prefixes(void)
 
 static void test_aliasing_and_failure_safety(void)
 {
-    BigDecimal *value = make_decimal("42");
+    BigDecimal *value = test_decimal("42");
 
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK,
                       bigdecimal_set_constant_significant(

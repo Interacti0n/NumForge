@@ -1,4 +1,4 @@
-# Testing and performance baselines
+# Testing
 
 ## Run the complete local suite
 
@@ -29,6 +29,8 @@ build; `cli`/`web` select one. The helper opens a visible app console. Change th
 default port with `-DNUMFORGE_LOCAL_PORT=8767`; occupied ports are rejected.
 Build-only mode works on other hosts. No tunnel is started.
 
+Test sources are grouped by domain in the [test source map](../tests/README.md).
+
 ## Choose a focused check
 
 Use the suite matching the changed behavior, then broader checks when the change
@@ -46,7 +48,7 @@ belong to the linked contracts/reports rather than this test index.
 | Grids, refinement, curve/phase policies | `numerical_grid_tests`, `numerical_refinement_tests`, `numerical_curve_tests`, `numerical_phase_tests` | [Numerical contracts](reference/NUMERICAL_API.md) |
 | Public root kernels | `numerical_tests`, `numerical_scan_tests` | [Root/scan meaning](reference/ROOT_API.md#use-and-result-meaning) |
 | Equation application/HTTP | `equation_tests`, `numeric_root_tests`, `numeric_root_scan_tests`; affected browser equations | [Equation API](reference/EQUATION_HTTP_API.md), [numerical HTTP](reference/NUMERIC_ROOT_HTTP_API.md) |
-| Sessions, units, client ownership | Application, session, unit, cache and HTTP suites | [Regression guide](testing/REGRESSIONS.md) |
+| Sessions, units, client ownership | Application, session, unit, cache and HTTP suites | [Regression guide](TESTING.md#choose-a-focused-check) |
 | Prepared application expressions/graphs | `application_expression_tests`, `graph_tests`; affected graph browser cases | [Application expressions](design/PARAMETRIC_EXPRESSIONS.md), [graph contracts](API.md) |
 | HTTP decoding/framing | `http_request_tests`, affected unit/session routes and browser API tests | [HTTP contract](reference/HTTP_API.md) |
 | Source boundaries/manifests | `architecture_check`, `architecture_guard_tests` | [Architecture](design/ARCHITECTURE.md) |
@@ -60,16 +62,23 @@ agreement or identities alone.
 
 For result-boundary changes, compare complete HTTP results with the preceding
 build, including exact/radical/complex values, domain gaps, contact roots and
-partial-limit diagnostics. See the [structural audit](project/AUDIT.md)
-for a recorded example of bounded cross-layer verification.
+partial-limit diagnostics. The [architecture](design/ARCHITECTURE.md#dependencies)
+defines the boundaries those regressions must preserve.
 
 ## Installed packages and Python
 
 Standalone consumers must compile against installed headers/targets outside the
 source tree. Validate numeric-only and engine-enabled installations separately;
 `NUMFORGE_TEST_ENGINE=OFF` is for an intentionally numeric-only installation.
-The [browser/CI guide](testing/WEB_AND_CI.md) owns the C/C++ package commands.
-SDK examples in `examples/sdk/` exercise supported operations through those targets.
+Install the chosen build with `cmake --install BUILD_DIR --config Release --prefix /absolute/sdk`, then:
+
+```sh
+cmake -S tests/package_consumer -B build/consumer -DCMAKE_PREFIX_PATH=/absolute/sdk -DNUMFORGE_TEST_CPP=ON
+cmake --build build/consumer --config Release
+ctest --test-dir build/consumer -C Release --output-on-failure
+```
+
+SDK examples in `examples/sdk/` exercise the same installed targets.
 
 ```sh
 python scripts/check_python_package.py --output build/python-package-check
@@ -95,3 +104,12 @@ Direct source checks are `node scripts/check_architecture.cjs`,
 The guard uses isolated fixtures without modifying working sources. Historical
 test counts are preserved with their recorded revisions, not advertised as the
 current total.
+
+## Local output retention
+
+`build/` is ignored by Git: it can be recreated, but its old binaries and raw
+measurements are not stored in repository history. Keep one current ordinary
+test build and one benchmark build while they are useful; remove superseded
+build trees, reports, downloads and scratch scripts after validation. Preserve
+any running executable and uncommitted source before cleaning. Reusable scripts,
+independent fixtures and selected benchmark evidence belong in the repository.

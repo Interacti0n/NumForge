@@ -1,17 +1,13 @@
+#include "tests/support/numbers.h"
 #include <stdlib.h>
 
 #include <unity.h>
 
 #include <numforge/bigdecimal.h>
-#include "tests/tangent_references.h"
+#include "tests/fixtures/tangent_references.h"
 #include "src/core/bigdecimal/bigdecimal_internal.h"
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Public radian trigonometric values, argument reduction, inverse domains,
-    rounding, aliasing, and destination preservation.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Public radian trigonometric values, argument reduction, inverse domains, rounding, aliasing, and destination preservation. */
 
 void setUp(void)
 {
@@ -19,24 +15,6 @@ void setUp(void)
 
 void tearDown(void)
 {
-}
-
-static BigDecimal *make_decimal(const char *text)
-{
-    BigDecimal *value = bigdecimal_create();
-
-    TEST_ASSERT_NOT_NULL(value);
-    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(value, text));
-    return value;
-}
-
-static void assert_text(const char *expected, const BigDecimal *value)
-{
-    char *text = NULL;
-
-    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_to_string(value, &text));
-    TEST_ASSERT_EQUAL_STRING(expected, text);
-    free(text);
 }
 
 static void assert_unary(
@@ -47,14 +25,14 @@ static void assert_unary(
     const char *expected
 )
 {
-    BigDecimal *value = make_decimal(input);
+    BigDecimal *value = test_decimal(input);
     BigDecimal *result = bigdecimal_create();
 
     TEST_ASSERT_NOT_NULL(result);
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_OK,
         operation(result, value, digits, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_text(expected, result);
+    test_assert_decimal(expected, result);
     bigdecimal_destroy(value);
     bigdecimal_destroy(result);
 }
@@ -72,7 +50,7 @@ static void test_forward_known_values(void)
 static void test_pi_argument_reduction_and_aliasing(void)
 {
     BigDecimal *pi = bigdecimal_create();
-    BigDecimal *six = make_decimal("6");
+    BigDecimal *six = test_decimal("6");
     BigDecimal *angle = bigdecimal_create();
 
     TEST_ASSERT_NOT_NULL(pi);
@@ -88,13 +66,13 @@ static void test_pi_argument_reduction_and_aliasing(void)
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_OK,
         bigdecimal_sin(angle, angle, 30, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_text("0.5", angle);
+    test_assert_decimal("0.5", angle);
 
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_copy(angle, pi));
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_OK,
         bigdecimal_cos(angle, angle, 30, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_text("-1", angle);
+    test_assert_decimal("-1", angle);
 
     bigdecimal_destroy(pi);
     bigdecimal_destroy(six);
@@ -104,8 +82,8 @@ static void test_pi_argument_reduction_and_aliasing(void)
 static void test_large_argument_uses_extended_pi_reduction(void)
 {
     BigDecimal *pi = bigdecimal_create();
-    BigDecimal *six = make_decimal("6");
-    BigDecimal *multiple = make_decimal("1E50");
+    BigDecimal *six = test_decimal("6");
+    BigDecimal *multiple = test_decimal("1E50");
     BigDecimal *sixth = bigdecimal_create();
     BigDecimal *angle = bigdecimal_create();
 
@@ -125,7 +103,7 @@ static void test_large_argument_uses_extended_pi_reduction(void)
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_OK,
         bigdecimal_sin(angle, angle, 25, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_text("0.5", angle);
+    test_assert_decimal("0.5", angle);
 
     bigdecimal_destroy(pi);
     bigdecimal_destroy(six);
@@ -145,42 +123,42 @@ static void test_inverse_known_values_and_domains(void)
         "0.9999999999999999999999999999999999999999999999999999999999999999",
         10, "0.00000000000000000000000000000001414213562");
 
-    BigDecimal *value = make_decimal("7.77");
-    BigDecimal *outside = make_decimal("1.0001");
+    BigDecimal *value = test_decimal("7.77");
+    BigDecimal *outside = test_decimal("1.0001");
 
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_INVALID_ARGUMENT,
         bigdecimal_asin(value, outside, 20, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_text("7.77", value);
+    test_assert_decimal("7.77", value);
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_INVALID_ARGUMENT,
         bigdecimal_acos(value, outside, 20, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_text("7.77", value);
+    test_assert_decimal("7.77", value);
     bigdecimal_destroy(value);
     bigdecimal_destroy(outside);
 }
 
 static void test_rounding_and_invalid_arguments(void)
 {
-    BigDecimal *input = make_decimal("0.5");
-    BigDecimal *result = make_decimal("7.77");
+    BigDecimal *input = test_decimal("0.5");
+    BigDecimal *result = test_decimal("7.77");
 
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_OK,
         bigdecimal_sin(result, input, 5, BIGDECIMAL_ROUND_FLOOR));
-    assert_text("0.47942", result);
+    test_assert_decimal("0.47942", result);
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_OK,
         bigdecimal_sin(result, input, 5, BIGDECIMAL_ROUND_CEILING));
-    assert_text("0.47943", result);
+    test_assert_decimal("0.47943", result);
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_INVALID_ARGUMENT,
         bigdecimal_sin(result, input, 0, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_text("0.47943", result);
+    test_assert_decimal("0.47943", result);
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_INVALID_ARGUMENT,
         bigdecimal_cos(result, input, 20, (BigDecimalRoundingMode)99));
-    assert_text("0.47943", result);
+    test_assert_decimal("0.47943", result);
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_NULL_ARGUMENT,
         bigdecimal_atan(NULL, input, 20, BIGDECIMAL_ROUND_HALF_EVEN));
@@ -196,11 +174,11 @@ static void test_tangent_poles_independent_rounding_and_aliasing(void)
 {
     for (size_t index = 0; index < sizeof(tangent_references) / sizeof(tangent_references[0]); index++)
     {
-        BigDecimal *value = make_decimal(tangent_references[index].input);
+        BigDecimal *value = test_decimal(tangent_references[index].input);
         TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_tan(value, value,
             tangent_references[index].digits,
             (BigDecimalRoundingMode)tangent_references[index].rounding));
-        assert_text(tangent_references[index].expected, value);
+        test_assert_decimal(tangent_references[index].expected, value);
         bigdecimal_destroy(value);
     }
 }
@@ -213,7 +191,7 @@ static void test_private_sin_cos_pair_matches_public_rounding(void)
     for (unsigned mode = 0U; mode < 6U; mode++)
     for (unsigned alias = 0U; alias < 3U; alias++)
     {
-        BigDecimal *value = make_decimal(inputs[n]);
+        BigDecimal *value = test_decimal(inputs[n]);
         BigDecimal *s = bigdecimal_create(), *c = bigdecimal_create();
         BigDecimal *expected_s = bigdecimal_create(), *expected_c = bigdecimal_create();
         BigDecimal *out_s = alias == 1U ? value : s;

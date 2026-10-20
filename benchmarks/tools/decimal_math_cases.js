@@ -96,7 +96,7 @@ function makeCases(quick = false) {
     }
     // Import the existing directed-rounding allowance explicitly; never apply
     // it to new cases or nearest modes. Count accepted differences separately.
-    for (const line of fs.readFileSync(path.join(__dirname, '../..', 'tests', 'transcendental_references.tsv'), 'utf8').split(/\r?\n/)) {
+    for (const line of fs.readFileSync(path.join(__dirname, '../..', 'tests/fixtures', 'transcendental_references.tsv'), 'utf8').split(/\r?\n/)) {
         if (!line || line.startsWith('#')) continue;
         const [op, a, b, digits, mode, expected] = line.split('\t');
         if (+mode >= 4 || expected.startsWith('ERROR')) continue;

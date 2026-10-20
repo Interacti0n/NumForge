@@ -3,7 +3,7 @@
 #include <unity.h>
 #include <stdlib.h>
 #include <string.h>
-#include "tests/unit_angle_references.h"
+#include "tests/fixtures/unit_angle_references.h"
 
 void setUp(void) {}
 void tearDown(void) { numforge_test_allocator_end(); }

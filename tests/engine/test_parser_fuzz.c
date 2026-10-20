@@ -3,9 +3,7 @@
 
 #include "src/engine/parser/parser.h"
 
-/* ============================================================
-   Reproducible bounded parser fuzz smoke (no evaluation)
-   ============================================================ */
+/* Reproducible bounded parser fuzz smoke (no evaluation) */
 
 void setUp(void) {}
 void tearDown(void) {}

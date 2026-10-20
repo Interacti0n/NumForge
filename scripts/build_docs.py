@@ -9,7 +9,7 @@ import sys
 from urllib.parse import unquote
 
 ROOT = Path(__file__).resolve().parents[1]
-EXTRA_PAGES = ('README.md', 'CONTRIBUTING.md', 'CHANGELOG.md', 'CHANGELOG_SHORT.md',
+EXTRA_PAGES = ('README.md', 'CONTRIBUTING.md', 'CHANGELOG.md', 'tests/README.md',
                'benchmarks/README.md', 'bindings/python/README.md', 'apps/web/assets/README.md')
 LINK = re.compile(r'!?\[[^\]\n]*\]\(([^\s)]+)\)')
 IMAGE = re.compile(r'<img\b[^>]*\bsrc=["\']([^"\']+)["\']', re.I)

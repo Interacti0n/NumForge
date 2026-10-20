@@ -26,7 +26,7 @@ owns its source manifest. There are no empty future-module placeholders.
 ## Execution order and completion gates
 
 Planning baseline: 20 October 2026, after exact C/Python covariance. Stage 1 is
-complete for the [bounded structural audit](AUDIT.md), with
+complete with [reviewed dependency boundaries](../design/ARCHITECTURE.md#dependencies), with
 explicit retained/deferred findings. Stage 2 is also complete: current guides,
 references, design and selected performance evidence have defined owners; the
 [documentation workflow](DOCUMENTATION.md) builds strict MkDocs/Doxygen output
@@ -83,5 +83,5 @@ graph export/import remain future work. Release gates are tracked in the
 Symbolic mathematics requires an explicit expression/assumption model; the current
 calculator AST is not a public CAS. Scientific simulations, approximate/complex
 matrix domains and broader distributions need individual contracts.
-[Accounts and persistence](../design/ACCOUNT_DESIGN.md) remain proposals behind
+Accounts and persistence remain proposals behind
 the application layer, independent of mathematical algorithms.

@@ -1,3 +1,4 @@
+#include "tests/support/numbers.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -14,28 +15,7 @@ void tearDown(void)
 {
 }
 
-/* ============================================================
-   Test helpers
-   ============================================================ */
-
-static BigDecimal *make_decimal(const char *text)
-{
-    BigDecimal *value = bigdecimal_create();
-
-    TEST_ASSERT_NOT_NULL(value);
-    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(value, text));
-    return value;
-}
-
-static void assert_decimal_equals(const char *expected, const BigDecimal *value)
-{
-    char *actual = NULL;
-
-    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_to_string(value, &actual));
-    TEST_ASSERT_NOT_NULL(actual);
-    TEST_ASSERT_EQUAL_STRING(expected, actual);
-    free(actual);
-}
+/* Test helpers */
 
 static void assert_decimal_format(
     const char *expected,
@@ -44,7 +24,7 @@ static void assert_decimal_format(
     BigDecimalRoundingMode rounding
 )
 {
-    BigDecimal *value = make_decimal(input);
+    BigDecimal *value = test_decimal(input);
     char *actual = NULL;
 
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK,
@@ -62,7 +42,7 @@ void test_integer_conversion_preserves_exact_value_and_source(void)
         "18446744073709551616",
         "-123456789012345678901234567890000000000000000000000"
     };
-    BigDecimal *result = make_decimal("7.77");
+    BigDecimal *result = test_decimal("7.77");
     BigInt *source = bigint_create();
     BigInt *restored = bigint_create();
     TEST_ASSERT_NOT_NULL(source);
@@ -72,7 +52,7 @@ void test_integer_conversion_preserves_exact_value_and_source(void)
         char *text;
         TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(source, inputs[index]));
         TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_from_bigint(result, source));
-        assert_decimal_equals(inputs[index], result);
+        test_assert_decimal(inputs[index], result);
         TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_to_bigint(restored, result));
         TEST_ASSERT_EQUAL_INT(0, bigint_compare(source, restored));
         text = bigint_to_string(source);
@@ -82,7 +62,7 @@ void test_integer_conversion_preserves_exact_value_and_source(void)
     }
     TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_from_bigint(NULL, source));
     TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT, bigdecimal_from_bigint(result, NULL));
-    assert_decimal_equals(inputs[sizeof(inputs) / sizeof(inputs[0]) - 1], result);
+    test_assert_decimal(inputs[sizeof(inputs) / sizeof(inputs[0]) - 1], result);
     bigint_destroy(source);
     bigint_destroy(restored);
     bigdecimal_destroy(result);
@@ -95,15 +75,13 @@ void test_lifetime_and_status_strings(void)
     TEST_ASSERT_NOT_NULL(value);
     TEST_ASSERT_EQUAL_STRING("success", bigdecimal_status_to_string(BIGDECIMAL_OK));
     TEST_ASSERT_EQUAL_STRING("unknown status", bigdecimal_status_to_string((BigDecimalStatus)999));
-    assert_decimal_equals("0", value);
+    test_assert_decimal("0", value);
 
     bigdecimal_destroy(value);
     bigdecimal_destroy(NULL);
 }
 
-/* ============================================================
-   Conversion and canonical form
-   ============================================================ */
+/* Conversion and canonical form */
 
 void test_parse_format_and_canonical_form(void)
 {
@@ -112,8 +90,8 @@ void test_parse_format_and_canonical_form(void)
 
     for (size_t index = 0; index < sizeof(input) / sizeof(input[0]); index++)
     {
-        BigDecimal *value = make_decimal(input[index]);
-        assert_decimal_equals(expected[index], value);
+        BigDecimal *value = test_decimal(input[index]);
+        test_assert_decimal(expected[index], value);
         bigdecimal_destroy(value);
     }
 }
@@ -128,7 +106,7 @@ void test_readable_format_thresholds_and_rounding_carry(void)
 
 void test_format_modes_share_rounded_value_and_respect_limits(void)
 {
-    BigDecimal *value = make_decimal("9999999999.5");
+    BigDecimal *value = test_decimal("9999999999.5");
     char *output = NULL;
     char marker[] = "unchanged";
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_format_mode(value, 0,
@@ -151,7 +129,7 @@ void test_format_modes_share_rounded_value_and_respect_limits(void)
     TEST_ASSERT_EQUAL_PTR(marker, output);
     bigdecimal_destroy(value);
 
-    value = make_decimal("1E-10");
+    value = test_decimal("1E-10");
     output = NULL;
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_format_mode(value, -1,
         BIGDECIMAL_ROUND_HALF_EVEN, BIGDECIMAL_FORMAT_PLAIN, 80U, &output));
@@ -164,7 +142,7 @@ void test_format_modes_share_rounded_value_and_respect_limits(void)
     free(output);
     bigdecimal_destroy(value);
 
-    value = make_decimal("0");
+    value = test_decimal("0");
     output = NULL;
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_format_mode(value, -1,
         BIGDECIMAL_ROUND_HALF_EVEN, BIGDECIMAL_FORMAT_SCIENTIFIC, 80U, &output));
@@ -178,7 +156,7 @@ void test_format_modes_share_rounded_value_and_respect_limits(void)
         digits[1] = '.';
         memset(digits + 2U, '1', 78U);
         digits[80] = '\0';
-        value = make_decimal(digits);
+        value = test_decimal(digits);
         output = NULL;
         TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_format_mode(value, -1,
             BIGDECIMAL_ROUND_HALF_EVEN, BIGDECIMAL_FORMAT_AUTO, 128U, &output));
@@ -187,7 +165,7 @@ void test_format_modes_share_rounded_value_and_respect_limits(void)
         bigdecimal_destroy(value);
         digits[80] = '1';
         digits[81] = '\0';
-        value = make_decimal(digits);
+        value = test_decimal(digits);
         output = NULL;
         TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_format_mode(value, -1,
             BIGDECIMAL_ROUND_HALF_EVEN, BIGDECIMAL_FORMAT_AUTO, 128U, &output));
@@ -200,12 +178,12 @@ void test_format_modes_share_rounded_value_and_respect_limits(void)
 void test_invalid_parse_does_not_modify_destination(void)
 {
     const char *invalid[] = { "", "+", ".", "1e", "1.2.3", " 1", "1x" };
-    BigDecimal *value = make_decimal("7.5");
+    BigDecimal *value = test_decimal("7.5");
 
     for (size_t index = 0; index < sizeof(invalid) / sizeof(invalid[0]); index++)
     {
         TEST_ASSERT_EQUAL(BIGDECIMAL_INVALID_ARGUMENT, bigdecimal_set_string(value, invalid[index]));
-        assert_decimal_equals("7.5", value);
+        test_assert_decimal("7.5", value);
     }
 
     bigdecimal_destroy(value);
@@ -213,26 +191,26 @@ void test_invalid_parse_does_not_modify_destination(void)
 
 void test_scale_overflow_does_not_modify_destination(void)
 {
-    BigDecimal *value = make_decimal("7.5");
+    BigDecimal *value = test_decimal("7.5");
 
     TEST_ASSERT_EQUAL(BIGDECIMAL_SCALE_OVERFLOW,
                       bigdecimal_set_string(value, "1e-9223372036854775808"));
-    assert_decimal_equals("7.5", value);
+    test_assert_decimal("7.5", value);
 
     bigdecimal_destroy(value);
 }
 
 void test_copy_comparison_and_inspection(void)
 {
-    BigDecimal *a = make_decimal("-1.2");
-    BigDecimal *b = make_decimal("-1.20");
+    BigDecimal *a = test_decimal("-1.2");
+    BigDecimal *b = test_decimal("-1.20");
     BigDecimal *copy = bigdecimal_create();
     bool result = false;
     int comparison = 0;
 
     TEST_ASSERT_NOT_NULL(copy);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_copy(copy, a));
-    assert_decimal_equals("-1.2", copy);
+    test_assert_decimal("-1.2", copy);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_compare(&comparison, a, b));
     TEST_ASSERT_EQUAL_INT(0, comparison);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_is_negative(&result, copy));
@@ -245,31 +223,29 @@ void test_copy_comparison_and_inspection(void)
     bigdecimal_destroy(copy);
 }
 
-/* ============================================================
-   Exact arithmetic
-   ============================================================ */
+/* Exact arithmetic */
 
 void test_exact_arithmetic_and_aliasing(void)
 {
-    BigDecimal *a = make_decimal("1.2");
-    BigDecimal *b = make_decimal("0.03");
-    BigDecimal *negative = make_decimal("-1.5");
-    BigDecimal *factor = make_decimal("2.4");
+    BigDecimal *a = test_decimal("1.2");
+    BigDecimal *b = test_decimal("0.03");
+    BigDecimal *negative = test_decimal("-1.5");
+    BigDecimal *factor = test_decimal("2.4");
     BigDecimal *result = bigdecimal_create();
 
     TEST_ASSERT_NOT_NULL(result);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_add(result, a, b));
-    assert_decimal_equals("1.23", result);
+    test_assert_decimal("1.23", result);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_sub(result, a, b));
-    assert_decimal_equals("1.17", result);
+    test_assert_decimal("1.17", result);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_mul(result, negative, factor));
-    assert_decimal_equals("-3.6", result);
+    test_assert_decimal("-3.6", result);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_add(a, a, b));
-    assert_decimal_equals("1.23", a);
+    test_assert_decimal("1.23", a);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_abs(result, negative));
-    assert_decimal_equals("1.5", result);
+    test_assert_decimal("1.5", result);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_negate(result, result));
-    assert_decimal_equals("-1.5", result);
+    test_assert_decimal("-1.5", result);
 
     bigdecimal_destroy(a);
     bigdecimal_destroy(b);
@@ -280,31 +256,31 @@ void test_exact_arithmetic_and_aliasing(void)
 
 void test_sequence_aggregates_and_aliasing(void)
 {
-    BigDecimal *a = make_decimal("1.25");
-    BigDecimal *b = make_decimal("-0.25");
-    BigDecimal *c = make_decimal("3");
-    BigDecimal *result = make_decimal("42");
+    BigDecimal *a = test_decimal("1.25");
+    BigDecimal *b = test_decimal("-0.25");
+    BigDecimal *c = test_decimal("3");
+    BigDecimal *result = test_decimal("42");
     const BigDecimal *values[] = {a, b, c};
 
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_sum(result, values, 3U));
-    assert_decimal_equals("4", result);
+    test_assert_decimal("4", result);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_product(result, values, 3U));
-    assert_decimal_equals("-0.9375", result);
+    test_assert_decimal("-0.9375", result);
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_OK,
         bigdecimal_mean(result, values, 3U, 10, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_decimal_equals("1.333333333", result);
+    test_assert_decimal("1.333333333", result);
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_OK,
         bigdecimal_mean(result, values, 3U, 2, BIGDECIMAL_ROUND_CEILING));
-    assert_decimal_equals("1.4", result);
+    test_assert_decimal("1.4", result);
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_OK,
         bigdecimal_mean(result, values, 1U, 1, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_decimal_equals("1.25", result);
+    test_assert_decimal("1.25", result);
 
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_sum(a, values, 3U));
-    assert_decimal_equals("4", a);
+    test_assert_decimal("4", a);
 
     bigdecimal_destroy(a);
     bigdecimal_destroy(b);
@@ -314,8 +290,8 @@ void test_sequence_aggregates_and_aliasing(void)
 
 void test_sequence_aggregate_arguments_preserve_result(void)
 {
-    BigDecimal *value = make_decimal("2");
-    BigDecimal *result = make_decimal("42");
+    BigDecimal *value = test_decimal("2");
+    BigDecimal *result = test_decimal("42");
     const BigDecimal *values[] = {value};
     const BigDecimal *invalid[] = {value, NULL};
 
@@ -336,7 +312,7 @@ void test_sequence_aggregate_arguments_preserve_result(void)
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_INVALID_ARGUMENT,
         bigdecimal_mean(result, values, 1U, 10, (BigDecimalRoundingMode)99));
-    assert_decimal_equals("42", result);
+    test_assert_decimal("42", result);
 
     bigdecimal_destroy(value);
     bigdecimal_destroy(result);
@@ -344,10 +320,10 @@ void test_sequence_aggregate_arguments_preserve_result(void)
 
 void test_population_and_sample_statistics(void)
 {
-    BigDecimal *a = make_decimal("1");
-    BigDecimal *b = make_decimal("2");
-    BigDecimal *c = make_decimal("3");
-    BigDecimal *result = make_decimal("42");
+    BigDecimal *a = test_decimal("1");
+    BigDecimal *b = test_decimal("2");
+    BigDecimal *c = test_decimal("3");
+    BigDecimal *result = test_decimal("42");
     const BigDecimal *values[] = {a, b, c};
     const BigDecimal *single[] = {b};
 
@@ -355,38 +331,38 @@ void test_population_and_sample_statistics(void)
         BIGDECIMAL_OK,
         bigdecimal_variance_population(
             result, values, 3U, 10, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_decimal_equals("0.6666666667", result);
+    test_assert_decimal("0.6666666667", result);
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_OK,
         bigdecimal_variance_population(
             result, values, 3U, 2, BIGDECIMAL_ROUND_CEILING));
-    assert_decimal_equals("0.67", result);
+    test_assert_decimal("0.67", result);
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_OK,
         bigdecimal_standard_deviation_population(
             result, values, 3U, 10, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_decimal_equals("0.8164965809", result);
+    test_assert_decimal("0.8164965809", result);
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_OK,
         bigdecimal_standard_deviation_sample(
             result, values, 3U, 10, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_decimal_equals("1", result);
+    test_assert_decimal("1", result);
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_OK,
         bigdecimal_variance_population(
             result, single, 1U, 10, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_decimal_equals("0", result);
+    test_assert_decimal("0", result);
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_OK,
         bigdecimal_standard_deviation_population(
             result, single, 1U, 10, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_decimal_equals("0", result);
+    test_assert_decimal("0", result);
 
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_OK,
         bigdecimal_variance_population(
             a, values, 3U, 10, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_decimal_equals("0.6666666667", a);
+    test_assert_decimal("0.6666666667", a);
 
     bigdecimal_destroy(a);
     bigdecimal_destroy(b);
@@ -396,13 +372,13 @@ void test_population_and_sample_statistics(void)
 
 void test_statistics_domains_and_large_close_values(void)
 {
-    BigDecimal *base = make_decimal("1E50");
-    BigDecimal *one = make_decimal("1");
-    BigDecimal *two = make_decimal("2");
+    BigDecimal *base = test_decimal("1E50");
+    BigDecimal *one = test_decimal("1");
+    BigDecimal *two = test_decimal("2");
     BigDecimal *next = bigdecimal_create();
     BigDecimal *last = bigdecimal_create();
-    BigDecimal *extreme = make_decimal("1E9223372036854775807");
-    BigDecimal *result = make_decimal("42");
+    BigDecimal *extreme = test_decimal("1E9223372036854775807");
+    BigDecimal *result = test_decimal("42");
     const BigDecimal *values[] = {base, next, last};
     const BigDecimal *single[] = {base};
     const BigDecimal *invalid[] = {base, NULL};
@@ -416,17 +392,17 @@ void test_statistics_domains_and_large_close_values(void)
         BIGDECIMAL_OK,
         bigdecimal_variance_population(
             result, values, 3U, 10, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_decimal_equals("0.6666666667", result);
+    test_assert_decimal("0.6666666667", result);
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_OK,
         bigdecimal_variance_population(
             result, equal_extremes, 2U, 10, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_decimal_equals("0", result);
+    test_assert_decimal("0", result);
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_OK,
         bigdecimal_standard_deviation_sample(
             result, equal_extremes, 2U, 10, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_decimal_equals("0", result);
+    test_assert_decimal("0", result);
 
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_INVALID_ARGUMENT,
@@ -440,7 +416,7 @@ void test_statistics_domains_and_large_close_values(void)
         BIGDECIMAL_INVALID_ARGUMENT,
         bigdecimal_variance_population(
             result, values, 3U, 0, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_decimal_equals("0", result);
+    test_assert_decimal("0", result);
 
     bigdecimal_destroy(base);
     bigdecimal_destroy(one);
@@ -453,13 +429,13 @@ void test_statistics_domains_and_large_close_values(void)
 
 void test_median_geometric_and_harmonic_means(void)
 {
-    BigDecimal *minus_one = make_decimal("-1");
-    BigDecimal *one = make_decimal("1");
-    BigDecimal *two = make_decimal("2");
-    BigDecimal *four = make_decimal("4");
-    BigDecimal *nine = make_decimal("9");
-    BigDecimal *zero = make_decimal("0");
-    BigDecimal *result = make_decimal("42");
+    BigDecimal *minus_one = test_decimal("-1");
+    BigDecimal *one = test_decimal("1");
+    BigDecimal *two = test_decimal("2");
+    BigDecimal *four = test_decimal("4");
+    BigDecimal *nine = test_decimal("9");
+    BigDecimal *zero = test_decimal("0");
+    BigDecimal *result = test_decimal("42");
     const BigDecimal *odd[] = {nine, minus_one, two};
     const BigDecimal *even[] = {nine, minus_one, two, four};
     const BigDecimal *middle_pair[] = {one, two};
@@ -480,48 +456,48 @@ void test_median_geometric_and_harmonic_means(void)
         BIGDECIMAL_INVALID_ARGUMENT,
         bigdecimal_geometric_mean(
             result, geometric, 2U, 0, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_decimal_equals("42", result);
+    test_assert_decimal("42", result);
 
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_median(result, odd, 3U));
-    assert_decimal_equals("2", result);
+    test_assert_decimal("2", result);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_median(result, even, 4U));
-    assert_decimal_equals("3", result);
+    test_assert_decimal("3", result);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_median(result, middle_pair, 2U));
-    assert_decimal_equals("1.5", result);
+    test_assert_decimal("1.5", result);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_median(nine, even, 4U));
-    assert_decimal_equals("3", nine);
+    test_assert_decimal("3", nine);
 
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_OK,
         bigdecimal_geometric_mean(
             result, geometric_exact, 2U, 10, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_decimal_equals("2", result);
+    test_assert_decimal("2", result);
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_OK,
         bigdecimal_geometric_mean(
             result, geometric, 2U, 10, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_decimal_equals("1.414213562", result);
+    test_assert_decimal("1.414213562", result);
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_OK,
         bigdecimal_geometric_mean(
             result, geometric_zero, 2U, 10, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_decimal_equals("0", result);
+    test_assert_decimal("0", result);
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_OK,
         bigdecimal_geometric_mean(
             result, single, 1U, 10, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_decimal_equals("4", result);
+    test_assert_decimal("4", result);
 
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_OK,
         bigdecimal_harmonic_mean(
             result, harmonic, 3U, 10, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_decimal_equals("1.714285714", result);
+    test_assert_decimal("1.714285714", result);
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_OK,
         bigdecimal_harmonic_mean(
             result, single, 1U, 10, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_decimal_equals("4", result);
+    test_assert_decimal("4", result);
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_INVALID_ARGUMENT,
         bigdecimal_geometric_mean(
@@ -530,7 +506,7 @@ void test_median_geometric_and_harmonic_means(void)
         BIGDECIMAL_INVALID_ARGUMENT,
         bigdecimal_harmonic_mean(
             result, invalid_zero, 2U, 10, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_decimal_equals("4", result);
+    test_assert_decimal("4", result);
 
     bigdecimal_destroy(minus_one);
     bigdecimal_destroy(one);
@@ -543,21 +519,21 @@ void test_median_geometric_and_harmonic_means(void)
 
 void test_rescale_rounding(void)
 {
-    BigDecimal *value = make_decimal("1.250");
-    BigDecimal *negative = make_decimal("-1.21");
+    BigDecimal *value = test_decimal("1.250");
+    BigDecimal *negative = test_decimal("-1.21");
     BigDecimal *result = bigdecimal_create();
 
     TEST_ASSERT_NOT_NULL(result);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_rescale(result, value, 1, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_decimal_equals("1.2", result);
+    test_assert_decimal("1.2", result);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_rescale(result, value, 1, BIGDECIMAL_ROUND_HALF_UP));
-    assert_decimal_equals("1.3", result);
+    test_assert_decimal("1.3", result);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_rescale(result, negative, 1, BIGDECIMAL_ROUND_FLOOR));
-    assert_decimal_equals("-1.3", result);
+    test_assert_decimal("-1.3", result);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_rescale(result, negative, 1, BIGDECIMAL_ROUND_CEILING));
-    assert_decimal_equals("-1.2", result);
+    test_assert_decimal("-1.2", result);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_rescale(result, value, 8, BIGDECIMAL_ROUND_TOWARD_ZERO));
-    assert_decimal_equals("1.25", result);
+    test_assert_decimal("1.25", result);
 
     bigdecimal_destroy(value);
     bigdecimal_destroy(negative);
@@ -585,29 +561,29 @@ void test_named_rounding_operations(void)
          index < sizeof(integer_cases) / sizeof(integer_cases[0]);
          index++)
     {
-        BigDecimal *value = make_decimal(integer_cases[index].input);
+        BigDecimal *value = test_decimal(integer_cases[index].input);
 
         TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_floor(result, value));
-        assert_decimal_equals(integer_cases[index].expected_floor, result);
+        test_assert_decimal(integer_cases[index].expected_floor, result);
         TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_ceil(result, value));
-        assert_decimal_equals(integer_cases[index].expected_ceil, result);
+        test_assert_decimal(integer_cases[index].expected_ceil, result);
         TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_trunc(result, value));
-        assert_decimal_equals(integer_cases[index].expected_trunc, result);
+        test_assert_decimal(integer_cases[index].expected_trunc, result);
         bigdecimal_destroy(value);
     }
 
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(result, "2.5"));
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_round(result, result, 0));
-    assert_decimal_equals("2", result);
+    test_assert_decimal("2", result);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(result, "3.5"));
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_round(result, result, 0));
-    assert_decimal_equals("4", result);
+    test_assert_decimal("4", result);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(result, "12.345"));
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_round(result, result, 2));
-    assert_decimal_equals("12.34", result);
+    test_assert_decimal("12.34", result);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(result, "155"));
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_round(result, result, -1));
-    assert_decimal_equals("160", result);
+    test_assert_decimal("160", result);
 
     bigdecimal_destroy(result);
 }
@@ -615,9 +591,9 @@ void test_named_rounding_operations(void)
 void test_zero_identities_avoid_extreme_scale_work(void)
 {
     BigDecimal *zero = bigdecimal_create();
-    BigDecimal *tiny = make_decimal("1e-9223372036854775807");
-    BigDecimal *negative_tiny = make_decimal("-1e-9223372036854775807");
-    BigDecimal *result = make_decimal("42");
+    BigDecimal *tiny = test_decimal("1e-9223372036854775807");
+    BigDecimal *negative_tiny = test_decimal("-1e-9223372036854775807");
+    BigDecimal *result = test_decimal("42");
     int comparison = 1;
 
     TEST_ASSERT_NOT_NULL(zero);
@@ -636,12 +612,12 @@ void test_zero_identities_avoid_extreme_scale_work(void)
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK,
                       bigdecimal_rescale(result, zero, INT64_MIN,
                                          BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_decimal_equals("0", result);
+    test_assert_decimal("0", result);
 
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK,
                       bigdecimal_div(result, zero, tiny, INT64_MAX,
                                      BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_decimal_equals("0", result);
+    test_assert_decimal("0", result);
 
     bigdecimal_destroy(zero);
     bigdecimal_destroy(tiny);
@@ -668,7 +644,7 @@ void test_signed_integer_powers(void)
 
     for (size_t index = 0; index < sizeof(cases) / sizeof(cases[0]); index++)
     {
-        BigDecimal *base = make_decimal(cases[index].base);
+        BigDecimal *base = test_decimal(cases[index].base);
         BigInt *exponent = bigint_create();
 
         TEST_ASSERT_NOT_NULL(exponent);
@@ -677,7 +653,7 @@ void test_signed_integer_powers(void)
             BIGDECIMAL_OK,
             bigdecimal_pow_signed(
                 base, base, exponent, cases[index].digits, BIGDECIMAL_ROUND_HALF_EVEN));
-        assert_decimal_equals(cases[index].expected, base);
+        test_assert_decimal(cases[index].expected, base);
         bigdecimal_destroy(base);
         bigint_destroy(exponent);
     }
@@ -685,9 +661,9 @@ void test_signed_integer_powers(void)
 
 void test_signed_power_errors_preserve_destination(void)
 {
-    BigDecimal *result = make_decimal("42");
-    BigDecimal *zero = make_decimal("0");
-    BigDecimal *two = make_decimal("2");
+    BigDecimal *result = test_decimal("42");
+    BigDecimal *zero = test_decimal("0");
+    BigDecimal *two = test_decimal("2");
     BigInt *negative = bigint_create();
 
     TEST_ASSERT_NOT_NULL(negative);
@@ -696,9 +672,9 @@ void test_signed_power_errors_preserve_destination(void)
         BIGDECIMAL_DIVISION_BY_ZERO,
         bigdecimal_pow_signed(
             result, zero, negative, 20, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_decimal_equals("42", result);
+    test_assert_decimal("42", result);
     TEST_ASSERT_EQUAL(BIGDECIMAL_INVALID_ARGUMENT, bigdecimal_pow(result, two, negative));
-    assert_decimal_equals("42", result);
+    test_assert_decimal("42", result);
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_INVALID_ARGUMENT,
         bigdecimal_pow_signed(
@@ -715,7 +691,7 @@ void test_signed_power_errors_preserve_destination(void)
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_NULL_ARGUMENT,
         bigdecimal_pow_signed(result, two, NULL, 20, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_decimal_equals("42", result);
+    test_assert_decimal("42", result);
 
     bigdecimal_destroy(result);
     bigdecimal_destroy(zero);
@@ -723,36 +699,34 @@ void test_signed_power_errors_preserve_destination(void)
     bigint_destroy(negative);
 }
 
-/* ============================================================
-   Rounded arithmetic
-   ============================================================ */
+/* Rounded arithmetic */
 
 void test_division_and_rounding(void)
 {
-    BigDecimal *one = make_decimal("1");
-    BigDecimal *two = make_decimal("2");
-    BigDecimal *three = make_decimal("3");
-    BigDecimal *eight = make_decimal("8");
-    BigDecimal *negative_one = make_decimal("-1");
+    BigDecimal *one = test_decimal("1");
+    BigDecimal *two = test_decimal("2");
+    BigDecimal *three = test_decimal("3");
+    BigDecimal *eight = test_decimal("8");
+    BigDecimal *negative_one = test_decimal("-1");
     BigDecimal *zero = bigdecimal_create();
     BigDecimal *result = bigdecimal_create();
 
     TEST_ASSERT_NOT_NULL(zero);
     TEST_ASSERT_NOT_NULL(result);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_div(result, one, three, 4, BIGDECIMAL_ROUND_TOWARD_ZERO));
-    assert_decimal_equals("0.3333", result);
+    test_assert_decimal("0.3333", result);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_div(result, one, two, 0, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_decimal_equals("0", result);
+    test_assert_decimal("0", result);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_div(result, three, two, 0, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_decimal_equals("2", result);
+    test_assert_decimal("2", result);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_div(result, one, eight, 2, BIGDECIMAL_ROUND_HALF_UP));
-    assert_decimal_equals("0.13", result);
+    test_assert_decimal("0.13", result);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_div(result, one, eight, 2, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_decimal_equals("0.12", result);
+    test_assert_decimal("0.12", result);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_div(result, negative_one, two, 0, BIGDECIMAL_ROUND_FLOOR));
-    assert_decimal_equals("-1", result);
+    test_assert_decimal("-1", result);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_div(three, three, two, 1, BIGDECIMAL_ROUND_TOWARD_ZERO));
-    assert_decimal_equals("1.5", three);
+    test_assert_decimal("1.5", three);
     TEST_ASSERT_EQUAL(BIGDECIMAL_DIVISION_BY_ZERO, bigdecimal_div(result, one, zero, 0, BIGDECIMAL_ROUND_TOWARD_ZERO));
 
     bigdecimal_destroy(one);
@@ -774,7 +748,7 @@ void test_division_cancels_extreme_scales_before_reporting_overflow(void)
 
     for (size_t index = 0U; index < sizeof(inputs) / sizeof(inputs[0]); index++)
     {
-        BigDecimal *value = make_decimal(inputs[index]);
+        BigDecimal *value = test_decimal(inputs[index]);
         BigDecimalStatus status = bigdecimal_div(
             value, value, value, scales[index], BIGDECIMAL_ROUND_TOWARD_ZERO);
 
@@ -784,7 +758,7 @@ void test_division_cancels_extreme_scales_before_reporting_overflow(void)
             bigdecimal_destroy(value);
             TEST_ASSERT_EQUAL(BIGDECIMAL_OK, status);
         }
-        assert_decimal_equals(expected[index], value);
+        test_assert_decimal(expected[index], value);
         bigdecimal_destroy(value);
     }
 }
@@ -796,15 +770,15 @@ void test_division_rejects_true_scale_overflow_without_modifying_result(void)
 
     for (size_t index = 0U; index < sizeof(divisors) / sizeof(divisors[0]); index++)
     {
-        BigDecimal *value = make_decimal("1");
-        BigDecimal *divisor = make_decimal(divisors[index]);
-        BigDecimal *result = make_decimal("42");
+        BigDecimal *value = test_decimal("1");
+        BigDecimal *divisor = test_decimal(divisors[index]);
+        BigDecimal *result = test_decimal("42");
         BigDecimalStatus status = bigdecimal_div(
             result, value, divisor, scales[index], BIGDECIMAL_ROUND_TOWARD_ZERO);
 
-        assert_decimal_equals("42", result);
-        assert_decimal_equals("1", value);
-        assert_decimal_equals(divisors[index], divisor);
+        test_assert_decimal("42", result);
+        test_assert_decimal("1", value);
+        test_assert_decimal(divisors[index], divisor);
         bigdecimal_destroy(result);
         bigdecimal_destroy(divisor);
         bigdecimal_destroy(value);
@@ -824,10 +798,10 @@ void test_multiplication_normalizes_before_extreme_scale_checks(void)
     {
         for (size_t alias = 0U; alias < 3U; alias++)
         {
-            BigDecimal *a = make_decimal(cases[i].a);
-            BigDecimal *b = make_decimal(cases[i].b);
-            BigDecimal *separate = make_decimal("42");
-            BigDecimal *expected = make_decimal(cases[i].expected);
+            BigDecimal *a = test_decimal(cases[i].a);
+            BigDecimal *b = test_decimal(cases[i].b);
+            BigDecimal *separate = test_decimal("42");
+            BigDecimal *expected = test_decimal(cases[i].expected);
             BigDecimal *result = alias == 1U ? a : (alias == 2U ? b : separate);
             int comparison = 1;
             BigDecimalStatus status = bigdecimal_mul(result, a, b);
@@ -849,11 +823,11 @@ void test_multiplication_rejects_true_extreme_scale_overflow(void)
     static const char *const factors[] = { "0.1", "10" };
     for (size_t i = 0U; i < 2U; i++)
     {
-        BigDecimal *a = make_decimal(values[i]);
-        BigDecimal *b = make_decimal(factors[i]);
-        BigDecimal *result = make_decimal("42");
+        BigDecimal *a = test_decimal(values[i]);
+        BigDecimal *b = test_decimal(factors[i]);
+        BigDecimal *result = test_decimal("42");
         BigDecimalStatus status = bigdecimal_mul(result, a, b);
-        assert_decimal_equals("42", result);
+        test_assert_decimal("42", result);
         bigdecimal_destroy(a);
         bigdecimal_destroy(b);
         bigdecimal_destroy(result);
@@ -876,8 +850,8 @@ void test_normalization_strips_decimal_zero_blocks(void)
         memset(input + 6U, '0', zeros);
         input[6U + zeros] = '\0';
         (void)snprintf(expected_text, sizeof(expected_text), "-12345e%zu", zeros);
-        value = make_decimal(input);
-        expected = make_decimal(expected_text);
+        value = test_decimal(input);
+        expected = test_decimal(expected_text);
         BigDecimalStatus status = bigdecimal_compare(&comparison, value, expected);
         bigdecimal_destroy(value);
         bigdecimal_destroy(expected);
@@ -888,10 +862,10 @@ void test_normalization_strips_decimal_zero_blocks(void)
 
 void test_null_and_invalid_arguments(void)
 {
-    BigDecimal *value = make_decimal("1");
-    BigDecimal *other = make_decimal("2");
+    BigDecimal *value = test_decimal("1");
+    BigDecimal *other = test_decimal("2");
     BigDecimal *zero = bigdecimal_create();
-    BigDecimal *result = make_decimal("42");
+    BigDecimal *result = test_decimal("42");
     char *string = NULL;
     bool predicate = false;
     int comparison = 0;
@@ -943,13 +917,13 @@ void test_null_and_invalid_arguments(void)
 
     TEST_ASSERT_EQUAL(BIGDECIMAL_INVALID_ARGUMENT,
                       bigdecimal_rescale(result, value, 0, (BigDecimalRoundingMode)99));
-    assert_decimal_equals("42", result);
+    test_assert_decimal("42", result);
     TEST_ASSERT_EQUAL(BIGDECIMAL_INVALID_ARGUMENT,
                       bigdecimal_div(result, value, other, 0, (BigDecimalRoundingMode)99));
-    assert_decimal_equals("42", result);
+    test_assert_decimal("42", result);
     TEST_ASSERT_EQUAL(BIGDECIMAL_DIVISION_BY_ZERO,
                       bigdecimal_div(result, value, zero, 0, BIGDECIMAL_ROUND_TOWARD_ZERO));
-    assert_decimal_equals("42", result);
+    test_assert_decimal("42", result);
 
     bigdecimal_destroy(value);
     bigdecimal_destroy(other);
@@ -957,9 +931,7 @@ void test_null_and_invalid_arguments(void)
     bigdecimal_destroy(result);
 }
 
-/* ============================================================
-   Main
-   ============================================================ */
+/* Main */
 
 int main(void)
 {

@@ -212,7 +212,7 @@ for (const [a,b,sa,sb] of [[123456789555n,37n,3,0],[-123456789555n,37n,3,0],
 }
 
 // Frozen high-precision references are generated independently by mpmath.
-const referenceFile = path.join(__dirname, 'transcendental_references.tsv');
+const referenceFile = path.join(__dirname, '../fixtures/transcendental_references.tsv');
 let referenceCases = 0;
 for (const line of fs.readFileSync(referenceFile, 'utf8').split(/\r?\n/)) {
   if (!line || line.startsWith('#')) continue;

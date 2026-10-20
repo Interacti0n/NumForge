@@ -16,7 +16,6 @@ validation:
     anchors: warn
     unrecognized_links: warn
 not_in_nav: |
-  /CHANGELOG.md
   /apps/**
   /bindings/**
 nav:
@@ -73,10 +72,10 @@ nav:
       - Browser and results: docs/design/WEB_DESIGN.md
   - Development:
       - Contributing: CONTRIBUTING.md
+      - Test source map: tests/README.md
       - Feature checklist: docs/project/FEATURE_CHECKLIST.md
       - Testing index: docs/TESTING.md
       - Numerical testing: docs/testing/NUMERIC_TESTING.md
-      - Session and unit regressions: docs/testing/REGRESSIONS.md
       - Browser and CI: docs/testing/WEB_AND_CI.md
       - Performance method: docs/testing/PERFORMANCE.md
       - Benchmark tools: benchmarks/README.md
@@ -101,7 +100,5 @@ nav:
           - Graph refinement: docs/performance/baselines/GRAPH_REFINEMENT.md
   - Project:
       - Roadmap: docs/project/ROADMAP.md
-      - Release highlights: CHANGELOG_SHORT.md
+      - Changelog: CHANGELOG.md
       - Release verification: docs/project/RELEASES.md
-      - Structural audit: docs/project/AUDIT.md
-      - Account proposal: docs/design/ACCOUNT_DESIGN.md

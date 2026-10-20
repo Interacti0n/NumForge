@@ -4,12 +4,7 @@
 
 #include "apps/web/http/web_api.h"
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Cache correctness: compare every formatted answer with fresh evaluation.
-    Hits are asserted explicitly rather than inferred from wall-clock timings.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Cache correctness: compare every formatted answer with fresh evaluation. Hits are asserted explicitly rather than inferred from wall-clock timings. */
 
 static NumForgeWebCache cache;
 

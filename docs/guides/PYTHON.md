@@ -243,5 +243,5 @@ no runtime access to the source package. Nothing is uploaded or globally install
 The installed [adapter tests](../../tests/python/test_numforge.py) cover lossless
 conversion, high precision, rounding, diagnostics, ownership and failure recovery.
 Module references describe their independent mathematical oracles and C coverage.
-The [initial verification record](../project/AUDIT.md#verification) preserves
+The [initial verification record](../design/ARCHITECTURE.md#dependencies) preserves
 the platform/build evidence for that revision; it is not a current test count.

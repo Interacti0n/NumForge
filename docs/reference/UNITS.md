@@ -156,7 +156,7 @@ Tests cover independent known conversions, extreme prefixes, large values,
 all registry pairs and exact round trips. In-place rational, decimal and both
 pi-direction paths undergo allocation-failure injection. Frozen angle references
 use mpmath 1.3.0 at requested +240/+400 digits, with Decimal rounding; see
-[the generator](../../tests/generate_unit_angle_references.py). These finite cases
+[the generator](../../tests/fixtures/generate_unit_angle_references.py). These finite cases
 support regression testing, not a proof of rounding for arbitrary inputs.
 
 SI powers and prefix rules follow

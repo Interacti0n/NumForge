@@ -1,3 +1,4 @@
+#include "tests/support/numbers.h"
 #include <stdlib.h>
 
 #include <unity.h>
@@ -5,12 +6,7 @@
 #include <numforge/bigdecimal.h>
 #include <numforge/bigcomplex.h>
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Public exponential and logarithmic values, domains, rounding, aliasing,
-    compact magnitudes, and strong failure guarantees.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Public exponential and logarithmic values, domains, rounding, aliasing, compact magnitudes, and strong failure guarantees. */
 
 void setUp(void)
 {
@@ -20,34 +16,15 @@ void tearDown(void)
 {
 }
 
-static BigDecimal *make_decimal(const char *text)
-{
-    BigDecimal *value = bigdecimal_create();
-
-    TEST_ASSERT_NOT_NULL(value);
-    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(value, text));
-    return value;
-}
-
-static void assert_decimal_equals(const char *expected, const BigDecimal *value)
-{
-    char *actual = NULL;
-
-    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_to_string(value, &actual));
-    TEST_ASSERT_NOT_NULL(actual);
-    TEST_ASSERT_EQUAL_STRING(expected, actual);
-    free(actual);
-}
-
 static void assert_decimal_close(
     const char *expected_text,
     const char *tolerance_text,
     const BigDecimal *actual
 )
 {
-    BigDecimal *expected = make_decimal(expected_text);
+    BigDecimal *expected = test_decimal(expected_text);
     BigDecimal *difference = bigdecimal_create();
-    BigDecimal *tolerance = make_decimal(tolerance_text);
+    BigDecimal *tolerance = test_decimal(tolerance_text);
     int comparison = 1;
 
     TEST_ASSERT_NOT_NULL(difference);
@@ -63,13 +40,13 @@ static void assert_decimal_close(
 
 static void test_exponential_and_logarithmic_values(void)
 {
-    BigDecimal *value = make_decimal("0");
-    BigDecimal *base = make_decimal("2");
-    BigDecimal *result = make_decimal("42");
+    BigDecimal *value = test_decimal("0");
+    BigDecimal *base = test_decimal("2");
+    BigDecimal *result = test_decimal("42");
 
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK,
                       bigdecimal_exp(result, value, 24, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_decimal_equals("1", result);
+    test_assert_decimal("1", result);
 
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(value, "1"));
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK,
@@ -77,7 +54,7 @@ static void test_exponential_and_logarithmic_values(void)
     assert_decimal_close("2.718281828459045235360287", "1E-23", result);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK,
                       bigdecimal_ln(result, value, 24, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_decimal_equals("0", result);
+    test_assert_decimal("0", result);
 
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(value, "2"));
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK,
@@ -104,7 +81,7 @@ static void test_exponential_and_logarithmic_values(void)
 
 static void test_compact_magnitudes_and_rounding(void)
 {
-    BigDecimal *value = make_decimal("-100");
+    BigDecimal *value = test_decimal("-100");
     BigDecimal *result = bigdecimal_create();
 
     TEST_ASSERT_NOT_NULL(result);
@@ -120,10 +97,10 @@ static void test_compact_magnitudes_and_rounding(void)
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(value, "1"));
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK,
                       bigdecimal_exp(result, value, 5, BIGDECIMAL_ROUND_FLOOR));
-    assert_decimal_equals("2.7182", result);
+    test_assert_decimal("2.7182", result);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK,
                       bigdecimal_exp(result, value, 5, BIGDECIMAL_ROUND_CEILING));
-    assert_decimal_equals("2.7183", result);
+    test_assert_decimal("2.7183", result);
 
     bigdecimal_destroy(value);
     bigdecimal_destroy(result);
@@ -169,17 +146,17 @@ static void test_inverse_identities(void)
 
 static void test_domains_and_failure_safety(void)
 {
-    BigDecimal *value = make_decimal("0");
-    BigDecimal *base = make_decimal("10");
-    BigDecimal *result = make_decimal("42");
+    BigDecimal *value = test_decimal("0");
+    BigDecimal *base = test_decimal("10");
+    BigDecimal *result = test_decimal("42");
 
     TEST_ASSERT_EQUAL(BIGDECIMAL_INVALID_ARGUMENT,
                       bigdecimal_ln(result, value, 20, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_decimal_equals("42", result);
+    test_assert_decimal("42", result);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(value, "-1"));
     TEST_ASSERT_EQUAL(BIGDECIMAL_INVALID_ARGUMENT,
                       bigdecimal_log10(result, value, 20, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_decimal_equals("42", result);
+    test_assert_decimal("42", result);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(value, "8"));
 
     const char *invalid_bases[] = { "1", "-2", "0" };
@@ -189,7 +166,7 @@ static void test_domains_and_failure_safety(void)
         TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(base, invalid_bases[index]));
         TEST_ASSERT_EQUAL(BIGDECIMAL_INVALID_ARGUMENT,
                           bigdecimal_log(result, value, base, 20, BIGDECIMAL_ROUND_HALF_EVEN));
-        assert_decimal_equals("42", result);
+        test_assert_decimal("42", result);
     }
 
     TEST_ASSERT_EQUAL(BIGDECIMAL_INVALID_ARGUMENT,
@@ -204,7 +181,7 @@ static void test_domains_and_failure_safety(void)
                       bigdecimal_ln(result, NULL, 20, BIGDECIMAL_ROUND_HALF_EVEN));
     TEST_ASSERT_EQUAL(BIGDECIMAL_NULL_ARGUMENT,
                       bigdecimal_log(result, value, NULL, 20, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_decimal_equals("42", result);
+    test_assert_decimal("42", result);
 
     bigdecimal_destroy(value);
     bigdecimal_destroy(base);
@@ -213,16 +190,16 @@ static void test_domains_and_failure_safety(void)
 
 static void test_high_precision_logarithm_compositions(void)
 {
-    BigDecimal *two = make_decimal("2"), *result = make_decimal("42");
-    BigDecimal *hundred = make_decimal("100"), *ten = make_decimal("10");
-    BigDecimal *part = make_decimal("0"), *reference = make_decimal("0");
+    BigDecimal *two = test_decimal("2"), *result = test_decimal("42");
+    BigDecimal *hundred = test_decimal("100"), *ten = test_decimal("10");
+    BigDecimal *part = test_decimal("0"), *reference = test_decimal("0");
     BigComplex *z = bigcomplex_create();
     int comparison;
     TEST_ASSERT_NOT_NULL(z);
     for (int mode = BIGDECIMAL_ROUND_TOWARD_ZERO; mode <= BIGDECIMAL_ROUND_HALF_EVEN; mode++) {
         TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_ln(result, two, 2000, (BigDecimalRoundingMode)mode));
         TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_rescale(result, result, 34, BIGDECIMAL_ROUND_HALF_EVEN));
-        assert_decimal_equals("0.6931471805599453094172321214581766", result);
+        test_assert_decimal("0.6931471805599453094172321214581766", result);
     }
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_copy(result, two));
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_ln(result, result, 2000, BIGDECIMAL_ROUND_HALF_EVEN));
@@ -233,12 +210,12 @@ static void test_high_precision_logarithm_compositions(void)
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_compare(&comparison, reference, part));
     TEST_ASSERT_EQUAL(0, comparison);
     TEST_ASSERT_EQUAL(BIGCOMPLEX_OK, bigcomplex_get_imaginary(part, z));
-    assert_decimal_equals("0", part);
+    test_assert_decimal("0", part);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_log(result, hundred, ten, 2000, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_decimal_equals("2", result);
+    test_assert_decimal("2", result);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(result, "42"));
     TEST_ASSERT_EQUAL(BIGDECIMAL_INVALID_ARGUMENT, bigdecimal_ln(result, two, 2000, (BigDecimalRoundingMode)99));
-    assert_decimal_equals("42", result);
+    test_assert_decimal("42", result);
     bigcomplex_destroy(z);
     bigdecimal_destroy(two); bigdecimal_destroy(result); bigdecimal_destroy(hundred);
     bigdecimal_destroy(ten); bigdecimal_destroy(part); bigdecimal_destroy(reference);

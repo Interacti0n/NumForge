@@ -4,9 +4,7 @@
 #include "src/engine/api/calculator_internal.h"
 #include "src/core/bigdecimal/bigdecimal_internal.h"
 
-/* ============================================================
-   Calculator grammar and intermediate-rounding contract
-   ============================================================ */
+/* Calculator grammar and intermediate-rounding contract */
 
 void setUp(void) {}
 void tearDown(void) {}

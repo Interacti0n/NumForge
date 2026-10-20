@@ -9,7 +9,7 @@ Build `complex_oracle_driver` in an ordinary Release testing build, without
 sanitizers, coverage or allocation instrumentation, then run on a quiet machine:
 
 ```powershell
-node tests/test_complex_oracle.js build/remote-tests/Release/complex_oracle_driver.exe --benchmark
+node tests/oracles/test_complex_oracle.js build/remote-tests/Release/complex_oracle_driver.exe --benchmark
 ```
 
 The command repeats the 1284-case corpus in five fresh processes, emitting
@@ -36,7 +36,7 @@ driver rejects memory mode when this instrumentation is absent.
 
 ```powershell
 .\build\factorial-bench\Release\allocation_stats_check.exe
-node tests/test_complex_oracle.js build/factorial-bench/Release/complex_oracle_driver.exe --memory
+node tests/oracles/test_complex_oracle.js build/factorial-bench/Release/complex_oracle_driver.exe --memory
 ctest --test-dir build/factorial-bench -C Release -R complex_memory_smoke --output-on-failure
 ```
 

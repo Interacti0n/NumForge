@@ -8,15 +8,7 @@
 
 #include <numforge/bigdecimal.h>
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Deterministic generated tests for the public BigDecimal contract.
-
-    The reference model deliberately uses only bounded int64_t coefficients and
-    scales. It is independent from BigDecimal's BigInt implementation while
-    remaining portable to every C17 compiler supported by NumForge.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Deterministic generated tests for the public BigDecimal contract. The reference model deliberately uses only bounded int64_t coefficients and scales. It is independent from BigDecimal's BigInt implementation while remaining portable to every C17 compiler supported by NumForge. */
 
 #define BIGDECIMAL_PROPERTY_ITERATIONS 384U
 
@@ -297,11 +289,7 @@ void tearDown(void)
 {
 }
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Generated conversion, comparison, and exact-arithmetic properties.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Generated conversion, comparison, and exact-arithmetic properties. */
 void test_property_parse_format_round_trip_and_canonical_form(void)
 {
     for (size_t index = 0U; index < BIGDECIMAL_PROPERTY_ITERATIONS; index++)
@@ -445,11 +433,7 @@ void test_property_comparison_negation_and_absolute_value(void)
     }
 }
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Generated rounding and division properties.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Generated rounding and division properties. */
 void test_property_rescale_matches_bounded_reference_model(void)
 {
     const BigDecimalRoundingMode modes[] = {

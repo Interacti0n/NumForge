@@ -317,7 +317,6 @@ static void test_plain_output_limit_preserves_session(void)
     check_result(4U, false, "ans", "7E+0");
 }
 
-
 static void test_variables_preview_precision_replay_and_isolation(void)
 {
     CalculatorSession other={0};

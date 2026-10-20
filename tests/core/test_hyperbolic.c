@@ -1,3 +1,4 @@
+#include "tests/support/numbers.h"
 #include "src/core/bigdecimal/bigdecimal_internal.h"
 #include <stdlib.h>
 
@@ -5,12 +6,7 @@
 
 #include <numforge/bigdecimal.h>
 
-/*
-------------------------------------------------------------------------------------------------------------------------------
-    Public hyperbolic values, stable small and large arguments, inverse
-    domains, rounding, aliasing, and destination preservation.
-------------------------------------------------------------------------------------------------------------------------------
-*/
+/* Public hyperbolic values, stable small and large arguments, inverse domains, rounding, aliasing, and destination preservation. */
 
 void setUp(void)
 {
@@ -18,24 +14,6 @@ void setUp(void)
 
 void tearDown(void)
 {
-}
-
-static BigDecimal *make_decimal(const char *text)
-{
-    BigDecimal *value = bigdecimal_create();
-
-    TEST_ASSERT_NOT_NULL(value);
-    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(value, text));
-    return value;
-}
-
-static void assert_text(const char *expected, const BigDecimal *value)
-{
-    char *text = NULL;
-
-    TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_to_string(value, &text));
-    TEST_ASSERT_EQUAL_STRING(expected, text);
-    free(text);
 }
 
 static void assert_unary(
@@ -46,14 +24,14 @@ static void assert_unary(
     const char *expected
 )
 {
-    BigDecimal *value = make_decimal(input);
+    BigDecimal *value = test_decimal(input);
     BigDecimal *result = bigdecimal_create();
 
     TEST_ASSERT_NOT_NULL(result);
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_OK,
         operation(result, value, digits, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_text(expected, result);
+    test_assert_decimal(expected, result);
     bigdecimal_destroy(value);
     bigdecimal_destroy(result);
 }
@@ -76,30 +54,30 @@ static void test_known_values_and_identities(void)
 
 static void test_parity_aliasing_and_extreme_arguments(void)
 {
-    BigDecimal *value = make_decimal("-1");
+    BigDecimal *value = test_decimal("-1");
 
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_OK,
         bigdecimal_sinh(value, value, 20, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_text("-1.1752011936438014569", value);
+    test_assert_decimal("-1.1752011936438014569", value);
 
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(value, "-1"));
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_OK,
         bigdecimal_cosh(value, value, 20, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_text("1.5430806348152437785", value);
+    test_assert_decimal("1.5430806348152437785", value);
 
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(value, "1E100"));
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_OK,
         bigdecimal_tanh(value, value, 20, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_text("1", value);
+    test_assert_decimal("1", value);
 
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(value, "-1E100"));
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_OK,
         bigdecimal_tanh(value, value, 20, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_text("-1", value);
+    test_assert_decimal("-1", value);
 
     bigdecimal_destroy(value);
 }
@@ -115,7 +93,7 @@ static void test_small_arguments_preserve_information(void)
         bigdecimal_asinh,
         bigdecimal_atanh
     };
-    BigDecimal *input = make_decimal("1E-100");
+    BigDecimal *input = test_decimal("1E-100");
     BigDecimal *result = bigdecimal_create();
 
     TEST_ASSERT_NOT_NULL(result);
@@ -156,33 +134,33 @@ static void test_inverse_functions_near_domains_and_at_large_magnitude(void)
 
 static void test_domains_rounding_and_invalid_arguments(void)
 {
-    BigDecimal *input = make_decimal("0.5");
-    BigDecimal *result = make_decimal("7.77");
-    BigDecimal *outside = make_decimal("0.999");
+    BigDecimal *input = test_decimal("0.5");
+    BigDecimal *result = test_decimal("7.77");
+    BigDecimal *outside = test_decimal("0.999");
 
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_OK,
         bigdecimal_sinh(result, input, 5, BIGDECIMAL_ROUND_FLOOR));
-    assert_text("0.52109", result);
+    test_assert_decimal("0.52109", result);
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_OK,
         bigdecimal_sinh(result, input, 5, BIGDECIMAL_ROUND_CEILING));
-    assert_text("0.5211", result);
+    test_assert_decimal("0.5211", result);
 
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_INVALID_ARGUMENT,
         bigdecimal_acosh(result, outside, 20, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_text("0.5211", result);
+    test_assert_decimal("0.5211", result);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(outside, "1"));
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_INVALID_ARGUMENT,
         bigdecimal_atanh(result, outside, 20, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_text("0.5211", result);
+    test_assert_decimal("0.5211", result);
     TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_set_string(outside, "-1.01"));
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_INVALID_ARGUMENT,
         bigdecimal_atanh(result, outside, 20, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_text("0.5211", result);
+    test_assert_decimal("0.5211", result);
 
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_INVALID_ARGUMENT,
@@ -196,7 +174,7 @@ static void test_domains_rounding_and_invalid_arguments(void)
     TEST_ASSERT_EQUAL(
         BIGDECIMAL_NULL_ARGUMENT,
         bigdecimal_tanh(result, NULL, 20, BIGDECIMAL_ROUND_HALF_EVEN));
-    assert_text("0.5211", result);
+    test_assert_decimal("0.5211", result);
 
     bigdecimal_destroy(input);
     bigdecimal_destroy(result);
@@ -212,7 +190,7 @@ static void test_private_sinh_cosh_pair_matches_public_rounding(void)
     for (unsigned mode = 0U; mode < 6U; mode++)
     for (unsigned alias = 0U; alias < 3U; alias++)
     {
-        BigDecimal *value = make_decimal(inputs[n]);
+        BigDecimal *value = test_decimal(inputs[n]);
         BigDecimal *s = bigdecimal_create(), *c = bigdecimal_create();
         BigDecimal *expected_s = bigdecimal_create(), *expected_c = bigdecimal_create();
         BigDecimal *out_s = alias == 1U ? value : s;
