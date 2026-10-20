@@ -12,6 +12,8 @@ Choose an entry point; detailed contracts and procedures live in their own guide
 | Measure performance | [Benchmark tools](../benchmarks/README.md), [measurement methodology](testing/PERFORMANCE.md) |
 | Plan or publish a release | [Roadmap](project/ROADMAP.md), [release packaging](project/RELEASE_PACKAGING.md), [changelog](../CHANGELOG.md) |
 | Deploy remotely | [Hosting](guides/HOSTING.md) |
+| Build or maintain documentation | [Documentation workflow](project/DOCUMENTATION.md) |
+| Inspect past releases and experiments | [Historical records](project/RECORDS.md) |
 
 `design/` explains implementation decisions. `reference/` describes supported
 interfaces and mathematical semantics. Public C headers contain the authoritative
@@ -31,3 +33,9 @@ remove obsolete proposals when their decisions have been absorbed into current
 documentation. Keep reproducible benchmark evidence. Generated files and local
 measurements belong under ignored `build/` directories. Check links with
 `node scripts/check_docs.cjs` from any working directory.
+
+Long references are intentional when they contain distinct domains, precision or
+failure rules. Start with a guide; follow only the operation contract you need.
+Generated C declarations come from the public headers, not another maintained
+copy. The [documentation workflow](project/DOCUMENTATION.md) explains generation,
+example checks and where new material belongs.

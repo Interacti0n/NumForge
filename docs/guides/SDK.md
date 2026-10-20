@@ -4,8 +4,8 @@ Use the `sdk-win-x64.zip` or `sdk-linux-x64.tar.gz` release asset to link the
 public numeric C API from C or C++. Download its matching `.sha256` file and
 verify the checksum before extracting the whole archive. This SDK contains
 BigInt, BigDecimal, BigRational, complex, units and runtime APIs. SDKs built from
-the current post-2.4.0 source also contain exact polynomial solving and the optional public expression engine,
-not sessions or the HTTP server. Older published archives retain their original
+current post-2.4.0 source also contain the newer mathematical modules and optional
+public expression engine, not sessions or the HTTP server. Published archives retain their original
 numeric-only scope. For HTTP clients, use the separate application download and
 its documented HTTP API.
 
@@ -42,22 +42,16 @@ add `-A x64 -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL` to the configure
 command when using the Visual Studio generator. Build with `--config Release`.
 The example prints `0.1 + 0.2 = 0.3` using exact decimal arithmetic.
 
-When `NumForge::engine` is available, the example project also builds and tests
-`numforge_engine_example`, evaluating sqrt(2) at 1000 working significant digits.
-See `engine.h` and the standalone engine contract in the full source documentation.
-The project also builds a typed-parameter example and, when `polynomial.h` is
-present, a standalone exact polynomial example linked only to the numeric library.
-When `matrix.h` is present, `numforge_matrix_example` checks an exact determinant
-and rational linear-system solution using only the numeric target.
-`numforge_linear_system_example` demonstrates exact rank, free coordinates and a
-complete rectangular solution family from the same public matrix header.
-When `statistics.h` is present, `numforge_statistics_example` checks an exact
-recurring mean and population/sample variances from the numeric library.
+Current source SDKs add examples for prepared expressions, exact polynomial and
+matrix operations, statistics/covariance and callback-based numerical methods.
+Their CMake project enables examples according to the installed headers/targets.
+Numeric/module examples link only the numeric library; engine examples additionally
+use `NumForge::engine`. The bundled headers define the available package scope.
 
 ## Use in your project
 
 ```cmake
-find_package(NumForge 2.2 CONFIG REQUIRED)
+find_package(NumForge CONFIG REQUIRED)
 target_link_libraries(my_target PRIVATE NumForge::numforge)
 ```
 

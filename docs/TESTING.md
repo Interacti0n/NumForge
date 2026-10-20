@@ -6,21 +6,16 @@
 cmake -P cmake/LocalBuild.cmake
 ```
 
-The command configures a Release build, builds it and runs CTest. Its ignored
-directory under `build/local-tests-*` depends on the absolute project path.
-After moving or renaming the project it creates a new build tree instead of
-using CMake files that point at the old location. It also checks both source
-and build paths saved in an existing cache before reusing it. It does not
-delete old build trees. Use the printed build path for any direct `ctest`
-command. A standalone `ctest --test-dir build` can run stale generated tests
-from a previous project location and is not a reliable validation step.
+The helper configures Release with warnings as errors, builds and runs CTest.
+Its ignored `build/local-tests-*` directory depends on the absolute checkout
+path. Moving the checkout creates a new build tree; it never deletes old ones.
+Use the printed path for direct CTest commands. A bare `ctest --test-dir build`
+can run stale generated tests from another checkout location.
 
-Node.js enables the UI and numerical
-oracle suites with no npm install. Add `-DNUMFORGE_REQUIRE_NODE_TESTS=ON` to
-your own CMake configure to require them instead of allowing a local skip;
-CI CTest jobs do this.
-Unity is a pinned, test-only dependency. Testing tools are not installed with
-the production library.
+The first test configuration fetches pinned Unity using Git/network access.
+Node.js enables additional architecture, CLI, numeric-oracle and web-script
+checks. CI sets `NUMFORGE_REQUIRE_NODE_TESTS=ON` so those checks cannot silently
+skip. Testing tools are not application runtime dependencies.
 
 ## Build without tests and open the apps
 
@@ -28,180 +23,75 @@ the production library.
 cmake -DNUMFORGE_LOCAL_TESTS=OFF -P cmake/LocalBuild.cmake
 ```
 
-This uses a separate `build/local-apps-*` Release tree, without Unity or test
-executables. Subsequent runs reuse it and rebuild only changed dependencies.
-On Windows, build and open the CLI and web calculator together:
-
-```sh
-cmake -DNUMFORGE_LOCAL_TESTS=OFF -DNUMFORGE_LOCAL_RUN=both -P cmake/LocalBuild.cmake
-```
-
-Use `cli` or `web` instead of `both` to open only one app. Web mode starts a
-local server in a visible console and opens the default browser after it is
-ready. Close that console or press Ctrl+C to stop the server. An occupied port
-is rejected without stopping the existing server; add
-`-DNUMFORGE_LOCAL_PORT=8767` to choose another port (default 8765).
-No tunnel is started. Automatic launching is currently Windows-only; the
-build-only command also supports other hosts. Apps open only after a successful
-build and, when enabled, successful tests.
-
-`bigrational_tests` covers canonical fractions, aliasing, conversions and a
-small independent signed-integer reference grid. Allocation-failure tests check
-that rational arithmetic leaves aliased destinations unchanged. Installed C
-and C++ package consumers compile and call the public rational API.
+This uses a separate reusable `build/local-apps-*` tree. On Windows, add
+`-DNUMFORGE_LOCAL_RUN=both` before `-P` to launch CLI and web after a successful
+build; `cli`/`web` select one. The helper opens a visible app console. Change the
+default port with `-DNUMFORGE_LOCAL_PORT=8767`; occupied ports are rejected.
+Build-only mode works on other hosts. No tunnel is started.
 
 ## Choose a focused check
 
-The architecture check rejects module-private includes outside their owning
-module, with a narrow exception for the existing equation research callbacks.
-It also validates all implementation source manifests and rejects core-storage
-leaks. Run `node tests/test_architecture.cjs` to exercise the guard on isolated
-fixtures; CTest registers this as `architecture_guard_tests`. See the
-[bounded structural audit](project/STRUCTURAL_AUDIT_2026_10_20.md) for retained
-dependencies and cleanup verification.
-For result-boundary changes, compare complete equation HTTP responses against
-the preceding build, covering exact/radical/complex solutions, single roots,
-domain gaps, contact roots and scan limits alongside the equation browser tests.
+Use the suite matching the changed behavior, then broader checks when the change
+crosses boundaries. Detailed edge cases, numerical oracles and measured evidence
+belong to the linked contracts/reports rather than this test index.
 
-`numerical_tests` checks the [public root API](reference/NUMERICAL_API.md),
-including exact zeros, continuity, callback/resource failures, preserved outputs
-and an independent 1000-place reference. `numeric_root_tests` and
-`numeric_root_scan_tests` retain equation/domain/scan regressions. Installed C/C++
-consumers and SDK examples check the new API with the engine disabled.
-Python `NumericalRootTests` exercises the same kernel through callable samples:
-an independent 70-place Decimal reference, 1000-digit offsets/tiny spans, explicit
-continuity, all diagnostic outcomes, callback exception identity, nested native
-calls, frozen result lifetime and budget failure/recovery. Run it through the
-isolated package check below; no Python search algorithm is used.
-`NumericalScanTests` adds sorted shared endpoints, exact off-grid contacts,
-non-merging close samples, independent high-precision pairs, original ordinates
-at 1000-digit offsets/scales, partial limits, incomplete discovery, domain gaps
-and fatal callback/budget errors after discovery. Single-root regressions also
-run after sharing callback conversion and result serialization.
-`NumericalGridTests` checks exact recurring coordinates, independent spacing/sum
-identities, 1000-digit offsets with tiny spans, retained values, nested native
-calls, count/type validation, callback exception identity and partial-visit budget
-recovery. Both collected and visitor APIs use the public C grid walker.
-`numerical_scan_tests` checks public multiple-root scanning separately, including
-exact rational contacts, 1000-digit offsets/scales, partial-limit diagnostics,
-callback/allocation failure and borrowed result lifetimes. The equation scan
-tests retain the fixed HTTP policies and original-expression domain checks.
-`numerical_grid_tests` verifies exact inclusive coordinates through an independent
-algebraic identity, 1000-digit offsets/scales, callback stops, large counts,
-inherited budgets and every allocation failure. Instrumented runs check zero
-live allocations at teardown. C/C++ consumers and the SDK grid example exercise
-the installed numeric-only interface. The opt-in grid benchmark verifies the
-closed-form sum independently of its timed traversal.
-`numerical_refinement_tests` checks breadth-first visit order and shifted indices,
-accept/skip decisions, point/depth/resource stops, callback failures, exhausted
-budgets and every queue/callback allocation failure. Exact quadratic refinement
-also covers a `1E-1000` span at a `1E1000` offset. Instrumented teardown checks
-zero live allocations. Installed C/C++ consumers and the standalone SDK example
-exercise callbacks without engine/application dependencies; the opt-in benchmark
-checks expected quadratic point counts and exact spacing outside timing.
-`numerical_curve_tests` checks shared chord, periodic-phase, step and camera rules,
-including missing metadata, strict boundary comparisons, offscreen gaps, owned
-policy copies and 1000-digit cancellation. Every constructor/assessment allocation
-failure preserves outputs, permits reuse and leaves no tracked allocations at
-teardown. C/C++ installed consumers and the SDK phase-guard example require no
-engine. Full before/after graph responses and selected browser graph scenarios
-check the application adapter; the [benchmark guide](../benchmarks/README.md#curve-acceptance-baseline)
-records the scope of that comparison.
-`numerical_phase_tests` checks periodic target selection for both phase directions,
-negative phases, endpoint suppression, nonlinear refinement against an independent
-square-root reference and a `1E-1000` span at a `1E1000` offset. It covers non-interior
-rounded proposals, bounded/unusable outcomes, borrowed-view invalidation, reserve
-versus fatal budget stops, every constructor/search allocation failure and handle
-reuse. Instrumented teardown checks zero live allocations. Installed C/C++ checks
-and the SDK example run without engine dependencies; the
-[phase benchmark](../benchmarks/README.md#phase-anchor-baseline) checks accepted
-coordinates independently and records graph-response parity.
+| Change | Main checks | Contract or method |
+| --- | --- | --- |
+| Numeric types, rounding, conversions | `bigint_tests`, `bigrational_tests`, `bigdecimal_tests`, property/oracle and allocation suites | [Numeric methodology](testing/NUMERIC_TESTING.md), [C API](reference/C_API.md) |
+| Complex functions and branches | `bigcomplex_tests`, complex oracle/allocation groups | [Complex reference](reference/BIGCOMPLEX.md) |
+| Public expressions/parameters | `engine_tests`, `engine_parameters_tests` | [Engine contract](reference/ENGINE_API.md) |
+| Exact polynomial solving | `polynomial_tests`, equation adapter checks | [Polynomial contract](reference/POLYNOMIAL_API.md) |
+| Matrices and rectangular systems | `matrix_tests`, `linear_system_tests` | [Matrices](reference/MATRIX_API.md), [general systems](reference/LINEAR_SYSTEM_API.md) |
+| Summaries and covariance | `statistics_tests`, Python statistics/covariance tests | [Statistics contract](reference/STATISTICS_API.md) |
+| Grids, refinement, curve/phase policies | `numerical_grid_tests`, `numerical_refinement_tests`, `numerical_curve_tests`, `numerical_phase_tests` | [Numerical contracts](reference/NUMERICAL_API.md) |
+| Public root kernels | `numerical_tests`, `numerical_scan_tests` | [Root/scan meaning](reference/ROOT_API.md#use-and-result-meaning) |
+| Equation application/HTTP | `equation_tests`, `numeric_root_tests`, `numeric_root_scan_tests`; affected browser equations | [Equation API](reference/EQUATION_HTTP_API.md), [numerical HTTP](reference/NUMERIC_ROOT_HTTP_API.md) |
+| Sessions, units, client ownership | Application, session, unit, cache and HTTP suites | [Regression guide](testing/REGRESSIONS.md) |
+| Prepared application expressions/graphs | `application_expression_tests`, `graph_tests`; affected graph browser cases | [Application expressions](design/PARAMETRIC_EXPRESSIONS.md), [graph contracts](API.md) |
+| HTTP decoding/framing | `http_request_tests`, affected unit/session routes and browser API tests | [HTTP contract](reference/HTTP_API.md) |
+| Source boundaries/manifests | `architecture_check`, `architecture_guard_tests` | [Architecture](design/ARCHITECTURE.md) |
 
-The optional [Python adapter](guides/PYTHON.md) has its own reproducible source-archive,
-wheel, isolated adapter-test and standalone-example check:
-`python scripts/check_python_package.py --output build/python-package-check`.
-It uses installed build tools with network lookup disabled and never installs
-globally. The separate Python workflow covers Linux 3.10/3.12, Windows 3.12 and
-macOS 3.12. Ordinary C tests/builds do not depend on Python.
-For native adapter reorganization, this package check also verifies that the
-source archive contains every registered C source, private header and CMake manifest
-needed to rebuild the extension. The architecture gate checks each top-level native
-adapter/header, rejects private implementation imports and requires explicit sources.
+For example, use `ctest --test-dir YOUR_BUILD -C Release -R statistics_tests
+--output-on-failure` after building that target. Relevant allocation/deadline
+tests must preserve destinations, release owned values and recover after failure.
+Instrumented numerical/application runs additionally check zero tracked live
+allocations. High-precision tests require independent references, not formatted
+agreement or identities alone.
 
-`engine_tests` verifies the [public standalone engine](reference/ENGINE_API.md):
-typed exact/approximate results, reusable expression ownership, a frozen independent
-1000-digit sqrt(2) reference, six-rounding-mode parity with the existing evaluator,
-atomic failures, allocation/deadline injection and inherited budgets. Installed
-C/C++ consumers also link `NumForge::engine` without source-tree includes; use
-`-DNUMFORGE_TEST_ENGINE=OFF` only for an intentionally numeric-only installation.
+For result-boundary changes, compare complete HTTP results with the preceding
+build, including exact/radical/complex values, domain gaps, contact roots and
+partial-limit diagnostics. See the [structural audit](project/STRUCTURAL_AUDIT_2026_10_20.md)
+for a recorded example of bounded cross-layer verification.
 
-`engine_parameters_tests` checks explicit declarations, borrowed/aliased typed
-arguments, input copies, high precision, ownership and failure recovery.
-`polynomial_tests` links only the numeric library and verifies the public exact
-coefficient solver, degeneracies, complex/radical descriptors, 1000-digit inputs
-and allocation/deadline failures. `polynomial_benchmark` is opt-in and validates
-exact sum/product invariants outside its timing interval.
+## Installed packages and Python
 
-`matrix_tests` links only the numeric library and checks exact rectangular
-products, row pivoting, multiple RHS columns, singularity, 1000-digit cancellation,
-overflow, ownership and atomic allocation/deadline failures. Python adds independent
-Fraction permutation-determinant/product/known-solution references. Installed
-C/C++ consumers and SDK examples verify numeric-only use. The opt-in
-`matrix_benchmark` checks closed-form exact references outside timing;
-see [the baseline](benchmarks/MATRIX_2026_10_19.md).
+Standalone consumers must compile against installed headers/targets outside the
+source tree. Validate numeric-only and engine-enabled installations separately;
+`NUMFORGE_TEST_ENGINE=OFF` is for an intentionally numeric-only installation.
+The [browser/CI guide](testing/WEB_AND_CI.md) owns the C/C++ package commands.
+SDK examples in `examples/sdk/` exercise supported operations through those targets.
 
-`linear_system_tests` verifies exact rectangular rank, skipped pivots, unique/
-infinite/inconsistent outcomes, canonical particular/nullspace matrices, 1000-digit
-inputs, queries/lifetime and atomic allocation/deadline failure. Python checks
-minor-based ranks, augmented-matrix consistency and kernel/particular identities
-independently with Fraction; installed C/C++ and SDK examples cover the new API.
-The [follow-up benchmark](benchmarks/MATRIX_SYSTEMS_2026_10_19.md) extends the
-existing matrix harness with rank and general solves, including rank deficiency.
+```sh
+python scripts/check_python_package.py --output build/python-package-check
+```
 
-`statistics_tests` checks [exact dataset summaries](reference/STATISTICS_API.md):
-recurring fractions, population/sample divisors, singleton undefined sample
-variance, duplicates/aliases/ownership, 1000-digit offset/tiny-spread cases,
-validation and atomic allocation/deadline failure. Python adds an independent
-pairwise-difference Fraction variance oracle and transformation identities.
-Installed C/C++ consumers and SDK examples use the numeric-only target. The opt-in
-`statistics_benchmark` validates closed-form summaries outside timing; see
-[the baseline](benchmarks/STATISTICS_2026_10_19.md). Paired covariance additionally
-checks signed pairing, symmetry, sample/population divisors, output/input aliases,
-mixed thousand-digit offsets/spreads and exhaustive allocation failure through
-the final scalar copy. Python checks the independent pairwise-product identity.
-See [covariance validation and measurements](benchmarks/COVARIANCE_2026_10_20.md).
+Use a fresh output directory and installed Python build tools. This constructs
+an sdist, builds its wheel with network lookup disabled, installs into an isolated
+target and runs adapter tests plus the standalone example. It never installs
+globally. Native adapter changes must remain registered in the binding manifest
+and survive this source-archive build. Ordinary C builds do not need Python.
 
-`application_expression_tests` covers the
-[parametric C application foundation](design/PARAMETRIC_EXPRESSIONS.md), including
-snapshot lifetime, typed samples, per-point errors and shared resource budgets.
-Opt-in allocation-instrumented builds also check zero live allocations and
-cumulative allocation limits across points.
+## Other validation guides
 
-`graph_tests` checks exact inclusive grids, point classifications, session
-isolation, inherited budgets and allocation failures through HTTP serialization.
-Playwright `graph.spec.js` verifies the [graph HTTP contract](reference/GRAPH_HTTP_API.md)
-against the real server, including query schemas, Unicode columns and Origin
-protection; the guide suite checks its localized navigation entry.
-`graph-ui.spec.js` verifies responsive axes, adaptive lines and inferred parameters, typed sample
-data, finite browser projection/underflow, read-only session snapshots, navigation
-state and cancellation of stale requests.
-
-| Guide | Checks |
+| Task | Guide |
 | --- | --- |
-| [Numerical references and parser limits](testing/NUMERIC_TESTING.md) | Independent oracle, transcendental references, fuzzing and precision contracts. |
-| [Session and unit regressions](testing/REGRESSIONS.md) | Application ownership, variables, Quantity, catalogue, converter and failure atomicity. |
-| [Browser tests and CI](testing/WEB_AND_CI.md) | Playwright setup, browsers, sanitizers, coverage and installed C/C++ consumers. |
-| [Performance checks](testing/PERFORMANCE.md) | Opt-in benchmark builds, profiling and narrow timing probes. |
+| Independent references, parser limits and fuzzing | [Numeric testing](testing/NUMERIC_TESTING.md) |
+| Browser setup, CI, sanitizers and C/C++ consumers | [Browser tests and CI](testing/WEB_AND_CI.md) |
+| Benchmark setup and measurement rules | [Performance](testing/PERFORMANCE.md), [tool index](../benchmarks/README.md) |
+| Documentation links, examples and generated output | [Documentation maintenance](project/DOCUMENTATION.md) |
 
-For extracted binary verification, use [release packaging](project/RELEASE_PACKAGING.md).
-Graph correctness spans the C grid/sampler/budget checks, HTTP schema tests and
-browser geometry/lifecycle tests. The suites check independent analytic values,
-domain gaps and poles, high-frequency and discrete cases, cache reuse, stale
-request cancellation, navigation, desktop/mobile layouts and inherited resource
-failures. Screen-space refinement remains heuristic rather than a continuity proof.
-
-Graph timing and memory diagnostics are documented once in the
-[performance guide](testing/PERFORMANCE.md#graph-interaction-diagnostics).
-Dated reports retain their measurements and limitations; they are not current
-performance guarantees. Browser setup and diagnostic output locations belong in
-[the browser guide](testing/WEB_AND_CI.md).
+Direct source checks are `node scripts/check_architecture.cjs`,
+`node tests/test_architecture.cjs` and `node scripts/check_docs.cjs`.
+The guard uses isolated fixtures without modifying working sources. Historical
+test counts are preserved with their recorded revisions, not advertised as the
+current total.

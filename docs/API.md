@@ -3,6 +3,11 @@
 Choose the interface you use. Arithmetic, application state and HTTP transport
 have different ownership and compatibility contracts.
 
+Current source can contain additions absent from published archives. Use the
+version-matched installed headers and release record for a downloaded package.
+
+## C library and Python
+
 | Reference | What it covers |
 | --- | --- |
 | [Numerical methods](reference/NUMERICAL_API.md) | Exact grids, adaptive scheduling/curve acceptance, phase anchors and bounded root searches with explicit work/accuracy semantics. |
@@ -14,6 +19,15 @@ have different ownership and compatibility contracts.
 | [Exact descriptive statistics](reference/STATISTICS_API.md) | Rational dataset count, sum, extrema, mean, population/sample variance and paired covariance in C/Python. |
 | [Python adapter](guides/PYTHON.md) | Source-built CPython subset for typed values, expressions, exact equations/matrices/statistics/grids and bounded single/multiple-root searches. |
 | [BigComplex foundation](reference/BIGCOMPLEX.md) | Standalone complex arithmetic, principal functions, precision and calculator integration. |
+
+Use typed numeric/module calls without expression parsing. Link
+`NumForge::engine` only when expressions are needed; Python's supported subset
+delegates to these same C implementations.
+
+## Applications and HTTP
+
+| Reference | What it covers |
+| --- | --- |
 | [Calculator expressions](reference/CALCULATOR_EXPRESSIONS.md) | Operators, named calls, precision, syntax and limits. |
 | [Polynomial equation application](design/POLYNOMIAL_EQUATIONS.md) | Private parsing/preview/context adapters over the public exact coefficient solver. |
 | [Polynomial equation HTTP API](reference/EQUATION_HTTP_API.md) | Whole polynomial equations or exact coefficient expressions, algebraic root text and approximate decimal previews. |

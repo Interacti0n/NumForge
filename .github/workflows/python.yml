@@ -35,3 +35,5 @@ jobs:
         run: python -m pip install "setuptools>=61" wheel
       - name: Build source archive, install wheel and test in isolation
         run: python scripts/check_python_package.py --output build/python-package-check
+      - name: Execute documented Python examples against the installed wheel
+        run: python scripts/check_doc_examples.py --python-site build/python-package-check/site-packages

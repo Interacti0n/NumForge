@@ -100,8 +100,9 @@ not symbolic poles; near-pole errors may amplify. There is no blanket
 correct-rounding guarantee, exact symbolic simplification or all-branches
 interpretation. Complex inputs always use radians, independently of RAD/DEG,
 and stay approximate complex values even when a result displays as real.
-Exact calculator inputs are projected at guarded precision. Complex inverse
-hyperbolic functions remain future work.
+Exact calculator inputs are projected at guarded precision. See the implemented
+[principal inverse hyperbolic functions](#principal-inverse-hyperbolic-functions)
+for their separate branch and domain rules.
 
 ## Principal inverse trigonometry
 
@@ -165,8 +166,8 @@ Tiny nonzero residuals are preserved. For example sin(i) is approximately
 The calculator uses this path for complex-typed inputs, including inputs
 whose imaginary part is zero. Exact fractions project at guarded working
 precision. Results remain complex decimal approximations. Real-only inputs
-keep RAD/DEG behavior; complex inputs use radians even in DEG. Complex inverse
-hyperbolic functions remain future work.
+keep RAD/DEG behavior; complex inputs use radians even in DEG. Inverse hyperbolic
+operations have their [own contract](#principal-inverse-hyperbolic-functions).
 
 ## Principal base logarithms
 

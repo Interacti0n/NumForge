@@ -153,10 +153,10 @@ term        := unary (('*' | '/' | IMPLICIT_MULTIPLY) unary)*
 unary       := ('+' | '-') unary | power
 power       := postfix ('^' unary)?
 postfix     := primary ('²' | '³' | '!')*
-primary     := NUMBER | CONSTANT | '(' expression ')' | call
+primary     := NUMBER | CONSTANT | 'ans' | VARIABLE | '(' expression ')' | call
 call        := FUNCTION '(' arguments ')' | '√' '(' expression ')'
 arguments   := expression (';' expression)*
-CONSTANT    := π | e | φ
+CONSTANT    := π | e | φ | i
 ```
 
 Examples: `0.1 + 0.2`, `π / 2`, `πe`, `10π`, `2(3 + 4)`,
@@ -172,7 +172,8 @@ when the exponent is a whole number. The typed calculator keeps rational bases
 and integer exponents exact, including negative exponents; an approximate base
 uses a reciprocal at working precision. `2^3^2` means
 `2^(3^2)`; `0^0` is `1`, and zero to a negative exponent is a division-by-zero
-error. Decimal exponents are not implemented. Session variables are described in
+error. Noninteger or complex exponents use approximate principal powers as
+described above. Session variables are described in
 [Variables](../guides/VARIABLES.md). Integer functions
 use the public BigInt core. Exact rational powers and proven roots use BigInt
 and BigRational operations; approximate roots use the public BigDecimal core.
@@ -250,7 +251,7 @@ the current registry; recognition is separate from numerical implementation:
 | `pow(x;y)`, `factorial(n)` | Active aliases of `x^y` and `n!`, with identical domains and limits. |
 | `abs(x)`, `sign(x)`, `min(a;b;…)`, `max(a;b;…)` | Active: absolute value, sign −1/0/1 and minimum/maximum of at least two arguments. |
 | `rand()`, `rand(x)`, `rand(x;y)` | Random decimal in `[0,1)`, `[0,x)` for `x > 0`, or `[x,y)` for `x < y`. Each occurrence draws independently. |
-| `sum(a;b;…)`, `product(a;b;…)`, `mean(a;b;…)` | One to 256 decimal arguments. Sum and product are exact. Mean divides the exact sum by the count, preserving a terminating decimal or rounding a recurring result to working precision. |
+| `sum(a;b;…)`, `product(a;b;…)`, `mean(a;b;…)` | One to 256 dimensionless real/complex arguments. Entirely exact inputs retain rational/rational-complex arithmetic; approximate inputs use the working-precision path described above. |
 | `median(a;b;…)`, `geomean(a;b;…)`, `harmean(a;b;…)` | Exact median; geometric mean of non-negative values; harmonic mean of positive nonzero values. One to 256 arguments. |
 | `variance(a;b;…)`, `stdevp(a;b;…)`, `stdev(a;b;…)` | Population variance and standard deviation use denominator `n` and accept at least one value. Sample `stdev` uses `n−1` and requires at least two values. |
 | `floor(x)`, `ceil(x)`, `trunc(x)`, `round(x)`, `round(x;n)` | Active decimal rounding. `round` uses half-even, defaults to zero places, and accepts a signed integer n; negative n selects tens, hundreds, and larger powers. |

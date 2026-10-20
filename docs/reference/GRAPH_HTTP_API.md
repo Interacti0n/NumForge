@@ -5,7 +5,8 @@ The local server supports a bounded uniform sampler through
 operation. The [browser graph page](../guides/GRAPHS.md) uses the separate
 [screen sampler](SCREEN_GRAPH_HTTP_API.md), with the
 [adaptive precision sampler](ADAPTIVE_GRAPH_HTTP_API.md) as fallback.
-An installed public SDK expression evaluator remains future work.
+The separate [public engine API](ENGINE_API.md) provides installed expression
+evaluation; this session-aware HTTP operation remains an application interface.
 
 ```sh
 curl -H 'Content-Type: text/plain' \

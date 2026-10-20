@@ -7,6 +7,18 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+### Documentation
+
+- Shorten entry points, build/testing guides and implementation overviews; keep
+  operation contracts in references and public headers. Separate numerical
+  sampling/root references while preserving existing section links.
+- Correct stale engine, complex-function, expression and release-scope claims.
+  Index historical records separately and move measured component baselines out
+  of the current benchmark tool index without changing their results.
+- Add an optional strict MkDocs/Doxygen build, explicit navigation, staging checks
+  and installed C/Python documentation-example checks, with dedicated CI coverage.
+  Document maintenance/build ownership and close roadmap stage 2.
+
 ### Structural cleanup
 
 - Share identical decimal intermediates and adapter status/query/validation

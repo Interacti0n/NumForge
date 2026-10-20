@@ -1,0 +1,94 @@
+site_name: NumForge
+site_description: Mathematical APIs, usage and implementation
+repo_url: https://github.com/Interacti0n/NumForge
+edit_uri: ''
+docs_dir: build/docs/content
+site_dir: build/docs/site
+use_directory_urls: false
+theme: readthedocs
+markdown_extensions:
+  - tables
+  - fenced_code
+  - toc:
+      permalink: true
+validation:
+  links:
+    anchors: warn
+    unrecognized_links: warn
+not_in_nav: |
+  /CHANGELOG.md
+  /apps/**
+  /bindings/**
+  /docs/benchmarks/**
+  /docs/project/RELEASE_2*.md
+  /docs/project/*_2026_*.md
+  /docs/testing/GRAPH_BROWSER_*.md
+nav:
+  - Overview: README.md
+  - Start here: docs/README.md
+  - Guides:
+      - Calculator: docs/guides/CALCULATOR_WEB.md
+      - Variables: docs/guides/VARIABLES.md
+      - Units: docs/guides/UNIT_CONVERTER.md
+      - Graphs: docs/guides/GRAPHS.md
+      - Equations: docs/guides/EQUATIONS.md
+      - C library: docs/guides/LIBRARY_GUIDE.md
+      - Prebuilt SDK: docs/guides/SDK.md
+      - Python: docs/guides/PYTHON.md
+      - Hosting: docs/guides/HOSTING.md
+  - API:
+      - Interface index: docs/API.md
+      - C declarations: c-api/files.html
+      - Numeric core: docs/reference/C_API.md
+      - Complex: docs/reference/BIGCOMPLEX.md
+      - Engine: docs/reference/ENGINE_API.md
+      - Modules:
+          - Polynomials: docs/reference/POLYNOMIAL_API.md
+          - Matrices: docs/reference/MATRIX_API.md
+          - Linear systems: docs/reference/LINEAR_SYSTEM_API.md
+          - Statistics: docs/reference/STATISTICS_API.md
+          - Numerical overview: docs/reference/NUMERICAL_API.md
+          - Grids and sampling: docs/reference/SAMPLING_API.md
+          - Root search: docs/reference/ROOT_API.md
+          - Units: docs/reference/UNITS.md
+          - Unit catalogue: docs/reference/UNIT_CATALOG.md
+          - Quantities: docs/reference/QUANTITIES.md
+      - Applications and HTTP:
+          - Expressions: docs/reference/CALCULATOR_EXPRESSIONS.md
+          - Evaluation: docs/reference/HTTP_API.md
+          - Sessions: docs/reference/SESSION_HTTP_API.md
+          - Unit conversion: docs/reference/UNIT_HTTP_API.md
+          - Equations: docs/reference/EQUATION_HTTP_API.md
+          - Numerical roots: docs/reference/NUMERIC_ROOT_HTTP_API.md
+          - Uniform graphs: docs/reference/GRAPH_HTTP_API.md
+          - Adaptive graphs: docs/reference/ADAPTIVE_GRAPH_HTTP_API.md
+          - Screen graphs: docs/reference/SCREEN_GRAPH_HTTP_API.md
+          - Graph verification: docs/reference/GRAPH_ANALYSIS_HTTP_API.md
+          - Interface coverage: docs/reference/WEB_API_PARITY.md
+  - Implementation:
+      - Architecture: docs/design/ARCHITECTURE.md
+      - Integer representation: docs/design/BIGINT_DESIGN.md
+      - Decimal representation: docs/design/BIGDECIMAL_DESIGN.md
+      - Parser: docs/design/EXPRESSION_PARSER.md
+      - Calculator pipeline: docs/design/CALCULATOR_DESIGN.md
+      - Application ownership: docs/design/APPLICATION_DESIGN.md
+      - Prepared application expressions: docs/design/PARAMETRIC_EXPRESSIONS.md
+      - Equation adapters: docs/design/POLYNOMIAL_EQUATIONS.md
+      - Browser and results: docs/design/WEB_DESIGN.md
+  - Development:
+      - Contributing: CONTRIBUTING.md
+      - Feature checklist: docs/project/FEATURE_CHECKLIST.md
+      - Testing index: docs/TESTING.md
+      - Numerical testing: docs/testing/NUMERIC_TESTING.md
+      - Session and unit regressions: docs/testing/REGRESSIONS.md
+      - Browser and CI: docs/testing/WEB_AND_CI.md
+      - Performance method: docs/testing/PERFORMANCE.md
+      - Benchmark tools: benchmarks/README.md
+      - Documentation workflow: docs/project/DOCUMENTATION.md
+      - Presentation maintenance: docs/project/PROJECT_PRESENTATION.md
+      - Release packaging: docs/project/RELEASE_PACKAGING.md
+  - Project:
+      - Roadmap: docs/project/ROADMAP.md
+      - Release highlights: CHANGELOG_SHORT.md
+      - Historical records: docs/project/RECORDS.md
+      - Account proposal: docs/design/ACCOUNT_DESIGN.md

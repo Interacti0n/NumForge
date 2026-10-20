@@ -130,7 +130,7 @@ assert visited == list(enumerate(coordinates))
 ```
 
 Use `visit_grid` to process points without retaining the whole collection. Both
-functions delegate coordinate generation to C. The [Python grid contract](../reference/NUMERICAL_API.md#python-exact-grids)
+functions delegate coordinate generation to C. The [Python grid contract](../reference/SAMPLING_API.md#python-exact-grids)
 describes inputs, ownership, count ranges, callback failures and memory accounting.
 
 ## Bounded numerical roots
@@ -143,7 +143,7 @@ assert abs(root.x*root.x-2) <= Fraction(1, 10**12)
 
 The callback receives an exact Fraction coordinate and requested fractional scale;
 the C numerical kernel performs the search. Here `continuous=True` asserts the
-known continuity of this polynomial. See the [Python root contract](../reference/NUMERICAL_API.md#python-single-root-search)
+known continuity of this polynomial. See the [Python root contract](../reference/ROOT_API.md#python-single-root-search)
 for sample accuracy, tolerances, outcomes, budgets and caller responsibilities.
 
 ```python
@@ -153,7 +153,7 @@ assert scan.kind == "finished" and not scan.complete
 ```
 
 `finished` describes grid processing, not complete root discovery. See the
-[Python scan contract](../reference/NUMERICAL_API.md#python-multiple-root-scanning)
+[Python scan contract](../reference/ROOT_API.md#python-multiple-root-scanning)
 for partial-limit results, exact contacts and separate scan/per-bracket limits.
 
 ## Input, precision and results

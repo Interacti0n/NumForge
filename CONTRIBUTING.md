@@ -51,6 +51,9 @@ For a new mathematical capability:
 5. Document workflows in the relevant guide and link the API index to the contract.
    Avoid duplicating public declarations and historical implementation narratives.
 
+Documentation ownership, local MkDocs/Doxygen builds and executable-example
+checks are described in the [documentation workflow](docs/project/DOCUMENTATION.md).
+
 Use repository-qualified paths for private headers and `<numforge/...>` for public
 headers. Keep module-private headers inside their owning module and read opaque
 results through public getters. The existing equation research hook is limited

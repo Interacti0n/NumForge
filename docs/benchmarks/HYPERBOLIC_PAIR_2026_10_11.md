@@ -1,4 +1,4 @@
-# Shared sinh/cosh evaluation — 11 October 2026
+# Shared sinh/cosh evaluation â€” 11 October 2026
 
 This follows [shared sine/cosine evaluation](COMPLEX_PAIR_2026_10_11.md).
 The next duplicated work in ordinary complex forward functions was the
@@ -44,7 +44,7 @@ existing 64 MiB cumulative requested-allocation budget. Every sample succeeds.
 | `tanh(1+i)` | 0.559 s | 0.566 s | 42,368,604 | 42,368,604 |
 
 For the four ordinary functions, cumulative requested bytes fall by about
-26.9%, and the local median time by about 24–25%. Remaining allocation-budget
+26.9%, and the local median time by about 24â€“25%. Remaining allocation-budget
 headroom increases from about 7.8 MiB to 22.9 MiB for these specific expressions.
 Requested bytes accumulate all allocations; they are not simultaneous memory
 usage, process RSS, or a promise that every expression at this precision fits.

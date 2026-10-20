@@ -13,8 +13,8 @@ that roadmap items already work.
 | Quick demo | README's verified exact decimal, integer, fraction/root and high-precision examples. |
 | Status badges | Live GitHub CI and latest-release badges; MIT/C17/CMake requirements verified from the repo. |
 | Screenshots | `docs/images/calculator-desktop.png` and `calculator-mobile.png`, captured from the real local Release server. |
-| Architecture | README Mermaid diagram and `docs/design/ARCHITECTURE.md` with ownership and client/library boundaries. |
-| Benchmarks | README excerpt of recorded results; detailed methodology and experiments remain in the benchmark docs. |
+| Architecture | Compact README source map; `docs/design/ARCHITECTURE.md` owns dependency and extension rules. |
+| Benchmarks | README links to the measurement guide; machine-specific results remain in the dated reports. |
 | Getting started | Source release/clone links, CMake build and platform-specific application launch commands. |
 | Contribution path | Root `CONTRIBUTING.md`, testing guide and GitHub issue link. |
 | Capability/roadmap distinction | `ROADMAP.md` names implemented functionality and informational UI routes. |
@@ -65,19 +65,17 @@ development version shown.
 
 ## Remaining presentation work
 
-- Prebuilt binary downloads: source release exists; Windows/Linux portable
-  packaging runs on release publication once the workflow is committed/pushed;
-  see [RELEASE_PACKAGING.md](RELEASE_PACKAGING.md). The
-  downloads are not published yet.
+- Published application/SDK downloads and their recorded checks are described in
+  [release packaging](RELEASE_PACKAGING.md) and the [2.4 release record](RELEASE_2_4.md).
+  Keep current-source capabilities distinct from the scope of those archives.
 - Hosted demo: local build-and-run path exists; deployment and isolation design
   are still needed before offering a public calculator.
 - More benchmark highlights: direct BigDecimal/higher-function measurements are
   implemented in [DECIMAL_MATH_BENCHMARKS.md](../benchmarks/DECIMAL_MATH_BENCHMARKS.md). Add only
   verified results with their recorded machine/range context; retain the stress
-  matrix's explicit timeouts and tangent-pole accuracy limitation.
+  matrix's recorded timeouts and accuracy limitations as historical evidence.
 - Portfolio connection: deliberately deferred at the owner's request. No
   portfolio links, deployment or integration were added.
 
-Commit and push presentation changes to update the public README. After
-publishing them, check GitHub's Markdown, Mermaid and image rendering as well as
-the live badge destinations.
+After authorized publication, check GitHub's Markdown, diagrams, images and badge
+destinations. Local editing and verification do not publish anything.

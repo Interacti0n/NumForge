@@ -1,150 +1,91 @@
 # Using the NumForge library
 
-NumForge installs a standalone C library. The calculator and local web server
-are optional clients; applications that only need arbitrary-precision numbers
-link `NumForge::numforge` and include the public headers.
-
-For stateless expression evaluation, the optional `NumForge::engine` target and
-`<numforge/engine.h>` are also installed by current source builds; see the
-[engine API](../reference/ENGINE_API.md). It shares the CLI/web parser/evaluator
-without requiring sessions or a server. Numeric-only builds can additionally set
-`-DNUMFORGE_BUILD_ENGINE=OFF` with applications/tests/fuzzers/benchmarks disabled.
-
-To use a prebuilt library, see the [developer SDK quick start](SDK.md).
-The [exact coefficient solver](../reference/POLYNOMIAL_API.md) is available through
-`<numforge/polynomial.h>` on the numeric target, independently of the engine.
-The release SDK supplies headers, the static library and CMake exports for
-MSVC x64 Release `/MD` or Linux GCC x64/glibc. Build from source below when
-your compiler, runtime, architecture or configuration differs.
+Use this guide to build and consume the current source. For a prebuilt archive,
+start with the [SDK quick start](SDK.md). Published 2.4.0 archives have a smaller
+API than current source; installed headers are authoritative for that package.
 
 ## Build and install
+
+Requires CMake 3.20+ and a C17 compiler. This builds the numeric library and
+optional expression engine, without applications or test dependencies:
 
 ```sh
 cmake -S . -B build-library -DCMAKE_BUILD_TYPE=Release \
   -DBUILD_TESTING=OFF -DNUMFORGE_BUILD_APPS=OFF \
   -DCMAKE_INSTALL_PREFIX=/your/prefix
-cmake --build build-library --parallel
-cmake --install build-library
+cmake --build build-library --config Release --parallel
+cmake --install build-library --config Release
 ```
 
-The installed package exports `NumForge::numforge`. It contains BigInt,
-BigDecimal, BigRational and optional runtime-budget support; parser,
-evaluator and HTTP code are not part of the installed numeric target.
-
-Session ownership is a separate private target and is also absent from the
-installed package. Standalone consumers need no client state, browser assets
-or database. See [Application design](../design/APPLICATION_DESIGN.md).
+For the numeric library alone, add `-DNUMFORGE_BUILD_ENGINE=OFF`. Testing,
+applications, Python, fuzzers and benchmarks must also be disabled for that
+configuration; they are clients of the engine. Ordinary numeric consumers need
+no application sessions, browser assets, Node.js, Python or database.
 
 ## CMake consumer
 
 ```cmake
-find_package(NumForge 2.0 CONFIG REQUIRED)
+find_package(NumForge CONFIG REQUIRED)
 add_executable(example example.c)
 target_link_libraries(example PRIVATE NumForge::numforge)
 ```
 
-Include `<numforge/bigint.h>` for arbitrary-precision signed integers,
-`<numforge/bigdecimal.h>` for exact base-10 values, and
-`<numforge/bigrational.h>` for exact reduced fractions. The unreleased
-`<numforge/bigcomplex.h>` adds finite-decimal complex arithmetic and
-`<numforge/bigrationalcomplex.h>` exact rational complex values, with
-[precision, ownership and display contracts](../reference/BIGCOMPLEX.md).
-Use `bigcomplex_exp` for approximate complex exponentials in radians,
-`bigcomplex_sqrt` for principal square roots and `bigcomplex_ln` for principal
-natural logarithms (zero is invalid, arguments are radians in (-pi, pi]).
-Use `bigcomplex_sinh`, `bigcomplex_cosh` and `bigcomplex_tanh` for complex
-hyperbolic functions; tanh avoids growing intermediates for large real parts.
-Use `bigcomplex_asin`, `bigcomplex_acos` and `bigcomplex_atan` for principal
-inverse trigonometry in radians; atan rejects ±i. See the complex reference
-for branch cuts, precision limits and values directly on the cuts.
-Use `bigcomplex_sin`, `bigcomplex_cos` and `bigcomplex_tan` for complex
-trigonometry in radians, and `bigcomplex_log` for principal logarithms with a custom complex base,
-`bigcomplex_pow` for approximate principal general powers, and
-`bigcomplex_pow_int` for exact integer powers;
-component accessors, conjugation and squared modulus are available for decimal
-and rational complex values. The calculator adds `i`, `re/im/conj/abs/arg`
-through the C application layer; see [expression rules](../reference/CALCULATOR_EXPRESSIONS.md).
-`<numforge/runtime.h>` is
-optional and provides an explicitly scoped, thread-local allocation/deadline
-budget. Ordinary numeric calls start no budget.
+Configure with `-DCMAKE_PREFIX_PATH=/your/prefix`. The target supplies include
+paths and the static library. For expressions, link `NumForge::engine` instead;
+it transitively links the numeric library. Both targets support C++ via the
+public headers' C linkage. Match compiler, architecture and C runtime when
+consuming a prebuilt static library.
+
+## Choose an interface
+
+| Task | Contract |
+| --- | --- |
+| Integer, decimal or rational operations | [Numeric C API](../reference/C_API.md) |
+| Complex values and principal functions | [Complex API](../reference/BIGCOMPLEX.md) |
+| Expressions and prepared parameters | [Engine API](../reference/ENGINE_API.md) |
+| Polynomial, matrix, statistics, units or numerical methods | [API index](../API.md) |
+| Python | [Python guide](PYTHON.md) |
+
+Use typed numeric/module APIs when inputs are already values. Expression parsing
+is optional. Precision units, domains, aliasing, ownership and failure rules
+belong to each installed header and its linked reference, not this build guide.
 
 ## Ownership and failures
 
-Create values with `*_create()` and release them with `*_destroy()`; destroying
-`NULL` is safe. Text returned by `bigint_to_string()`,
-`bigdecimal_to_string()`, `bigdecimal_format()` or
-`bigrational_to_string()` belongs to the caller and is
-released with `free()`.
-
-Mutating operations return a status and preserve their destination on failure.
-Arithmetic supports output/input aliasing unless a header comment documents an
-exception. `bigint_div_mod()` requires distinct quotient and remainder objects.
-The types are opaque; do not depend on their storage layout.
+Create owned values with `*_create()` and destroy them with their matching
+`*_destroy()` function. Free successful allocated strings with `free()`.
+Check every returned status. The API reference documents exceptions to general
+aliasing/failure rules and the optional cooperative runtime budgets.
 
 ## Example
 
+This complete program computes sqrt(2) at 40 working significant digits and
+formats ten decimal places. Stored approximation and display precision differ:
+
 ```c
 #include <numforge/bigdecimal.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 int main(void)
 {
     BigDecimal *value = bigdecimal_create();
     char *text = NULL;
-    if (value == NULL) return 1;
+    int outcome = 1;
+    if (value == NULL) return outcome;
     if (bigdecimal_set_string(value, "2") != BIGDECIMAL_OK ||
         bigdecimal_sqrt(value, value, 40, BIGDECIMAL_ROUND_HALF_EVEN) != BIGDECIMAL_OK ||
         bigdecimal_format(value, 10, BIGDECIMAL_ROUND_HALF_EVEN, &text) != BIGDECIMAL_OK)
-    {
-        bigdecimal_destroy(value);
-        return 1;
-    }
-    /* use text ... */
+        goto cleanup;
+    puts(text); /* 1.4142135624 */
+    outcome = 0;
+cleanup:
     free(text);
     bigdecimal_destroy(value);
-    return 0;
+    return outcome;
 }
 ```
 
-For complete signatures, domains, rounding, runtime budgets and threading
-guidance see [API.md](../API.md). The installed package is exercised by the
-repository's C and C++ package-consumer tests.
-
-Real roots and the `bigdecimal_exp`, `bigdecimal_ln`, `bigdecimal_log10` and
-`bigdecimal_log` functions accept an explicit significant-digit count and
-rounding mode. Logarithm arguments must be positive; an explicit logarithm
-base must also be positive and different from one.
-
-`bigdecimal_sin`, `bigdecimal_cos`, `bigdecimal_tan`, `bigdecimal_asin`,
-`bigdecimal_acos`, and `bigdecimal_atan` use radians, explicit significant
-digits, and an explicit rounding mode. Degree conversion belongs to clients,
-not the numeric library.
-
-`bigdecimal_sinh`, `bigdecimal_cosh`, `bigdecimal_tanh`, `bigdecimal_asinh`,
-`bigdecimal_acosh`, and `bigdecimal_atanh` use explicit significant digits and
-rounding. They are not angle functions. `acosh` requires x ≥ 1 and `atanh`
-requires -1 < x < 1.
-
-Use exact `bigdecimal_pow` for non-negative integer exponents. Use
-`bigdecimal_pow_signed` when negative integer exponents are accepted; it keeps
-terminating reciprocals exact and rounds only recurring reciprocals.
-
-`bigdecimal_sum` and `bigdecimal_product` accept a non-empty array of values
-and aggregate it exactly. `bigdecimal_mean` first forms the exact sum, then
-preserves a terminating quotient or rounds a recurring quotient using the
-caller's significant-digit count and rounding mode.
-
-`bigdecimal_median` returns the exact middle value or exact average of the two
-middle values. `bigdecimal_geometric_mean` accepts non-negative inputs;
-`bigdecimal_harmonic_mean` requires positive nonzero inputs. Approximate roots
-and recurring final quotients use the requested digits and rounding mode.
-
-`bigdecimal_variance_population` and
-`bigdecimal_standard_deviation_population` divide by the population size `n`.
-`bigdecimal_standard_deviation_sample` divides by `n−1` and requires at least
-two values. Their sufficient statistics are exact before final division/root.
-
-`bigdecimal_set_constant` returns the complete stored 500-decimal-place π, e,
-or φ approximation. Use `bigdecimal_set_constant_significant` when the caller
-controls significant digits and rounding; requests above 500 digits are
-calculated dynamically without binary floating point.
+More complete examples live in `examples/sdk/`. The installed C/C++ consumer and
+SDK checks described in [testing](../TESTING.md) exercise these interfaces
+outside the repository.

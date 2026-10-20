@@ -1,18 +1,19 @@
 # Parametric expression foundation
 
-The internal C application layer now provides a reusable expression handle for
-future graph sampling and numerical solvers. It shares the calculator's typed
+The internal C application layer provides reusable expressions for graph sampling
+and numerical equation solving. It shares the calculator's typed
 evaluation stage: exact integers/fractions, complex numbers, quantities, angle
 units and approximation metadata follow the existing calculator contracts.
 
 The [bounded HTTP graph sampler](../reference/GRAPH_HTTP_API.md) now calls this
 foundation through the C application operation in `src/application/graphs/graph.h`.
 The [browser graph page](../guides/GRAPHS.md) now draws [adaptive curves](../reference/ADAPTIVE_GRAPH_HTTP_API.md).
-General expression solvers and an installed public SDK evaluator remain future
-work. The separate [coefficient-based linear/quadratic foundation](POLYNOMIAL_EQUATIONS.md)
-is implemented in the private C application layer.
-The installed SDK remains the numeric C API. Graph sampling does not implement
-mathematics in JavaScript or reparse the expression for every point.
+The separate [public engine](../reference/ENGINE_API.md) offers opaque prepared
+expressions to installed consumers. Application handles retain additional
+snapshot/domain/graph behavior and are private. The
+[coefficient-based linear/quadratic adapter](POLYNOMIAL_EQUATIONS.md) delegates
+to the public numeric solver. Graph sampling does not implement mathematics in
+JavaScript or reparse the expression for every point.
 
 ## C application operation
 
@@ -72,8 +73,9 @@ also remain inside that adapter's outer operation budget.
    Automatic AST parameters and conservative adaptive connections are available.
    Pan/zoom, screen-space derivatives/refinement, supported integer points and
    bounded candidate verification are implemented; sampling is not a proof.
-3. Reuse the prepared evaluator for a bounded real root solver with residuals,
-   convergence/error reporting and one budget for the complete solve.
+3. The [bounded real-root adapter](../reference/NUMERIC_ROOT_HTTP_API.md) reuses
+   prepared expressions, residual verification and one complete-operation budget.
+   Public callback-based kernels remain independent of expression parsing.
 
 ## Verification
 
