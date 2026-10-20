@@ -159,8 +159,8 @@ mode; the public API does not expose this diagnostic state.
 
 ```sh
 ctest --test-dir build/factorial-bench -C Release -R logarithm_agm --output-on-failure
-python benchmarks/generate_logarithm_agm_cases.py --max-digits 5000 --output build/logarithm-interval/cases.tsv
-node benchmarks/check_logarithm_agm_benchmark.cjs build/factorial-bench/Release/logarithm_agm_benchmark.exe build/logarithm-interval/cases.tsv public
+python benchmarks/tools/generate_logarithm_agm_cases.py --max-digits 5000 --output build/logarithm-interval/cases.tsv
+node benchmarks/tools/check_logarithm_agm_benchmark.cjs build/factorial-bench/Release/logarithm_agm_benchmark.exe build/logarithm-interval/cases.tsv public
 ```
 
 Generated references and measurement recordings belong under ignored `build/`.

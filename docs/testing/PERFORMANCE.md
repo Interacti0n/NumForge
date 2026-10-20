@@ -1,142 +1,60 @@
 # Performance checks
 
-## Optional performance benchmarks
+Use the [benchmark index](../../benchmarks/README.md) to select a tool and the
+[performance evidence](../performance/README.md) for dated comparisons. Protocols
+own fixture, calibration and memory details; this page owns the common procedure.
 
-The expanded formatting/cache/HTTP scenarios, live-memory tracker, phase
-definitions and three-run baseline recorder are documented in
-[Benchmark methodology](../performance/protocols/APPLICATION.md). Use a separate opt-in build;
-production builds have no live tracker or HTTP timing trace.
+## Build and run
 
-The exact-reference BigInt arithmetic suite, dense sizes, alias/copy cases,
-factorial/power experiments and isolated three-run recorder are described in
-[BigInt measurements](../performance/protocols/BIGINT.md). Build the additional
-`bigint_arithmetic_benchmark` target; use `run_baseline.js --bigint` to record it.
-
-Direct BigDecimal arithmetic, normalization, division, higher functions and
-constants are covered in [Decimal/math measurements](../performance/protocols/DECIMAL.md).
-Build `decimal_math_benchmark`; use `run_baseline.js --decimal` for three isolated
-runs, including explicit timeout and numerical-mismatch outcomes.
+Use a separate Release build, with sanitizers and coverage disabled:
 
 ```sh
-cmake -S . -B build-bench -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DNUMFORGE_BUILD_APPS=OFF -DNUMFORGE_ENABLE_SANITIZERS=OFF -DNUMFORGE_ENABLE_COVERAGE=OFF -DNUMFORGE_BUILD_BENCHMARKS=ON
-cmake --build build-bench --config Release --target bigint_multiply_benchmark decimal_format_benchmark calculator_benchmark --parallel 2
+cmake -S . -B build/bench -DCMAKE_BUILD_TYPE=Release -DNUMFORGE_BUILD_BENCHMARKS=ON -DBUILD_TESTING=ON -DNUMFORGE_WARNINGS_AS_ERRORS=ON
+cmake --build build/bench --config Release --parallel 2
+ctest --test-dir build/bench -C Release --output-on-failure
+node benchmarks/tools/run_baseline.js build/bench build/baseline --quick --bigint
 ```
 
-Run `build-bench/calculator_benchmark` (single-config) or
-`build-bench/Release/calculator_benchmark.exe` (Visual Studio).
-Add `--factorial-only` for one iteration each of 10000!, 20000!, 50000!
-and 100000!, including scientific output verification and separate formatting
-timings. Repeat this diagnostic for timing ranges; see the BigInt benchmark
-reference for phase-budget and allocation-traffic caveats.
-The executable prints CSV totals, separating parse, evaluate and format, with
-allocation request counts and requested bytes for each phase. Tiny division,
-power, factorial and constants run 1000 iterations each; multiplication uses
-16, 64, 256 and 1024-digit operands with 100 iterations per size.
-AST cleanup and initial result creation are outside the measured phases;
-each iteration starts with a fresh AST and result. Allocation volume includes
-the full size of realloc requests, not live/peak memory or RSS. Counters are
-thread-local, saturate at `SIZE_MAX`, and are compiled only when benchmarks
-are enabled. The expanded harnesses additionally offer explicit live/peak
-payload tracking in separate memory samples; see BENCHMARKS.md for its
-coverage and ownership boundaries. Use a separate benchmark build, not an
-instrumented release package.
+Visual Studio binaries are in `build/bench/Release`; pass that directory to
+recorders. Single-configuration builds use `build/bench`. Do not record speed
+while builds, test suites or another benchmark are running. Three complete serial
+runs are preferable to a single favorable row; quick mode checks the harness.
 
-Both executables use monotonic elapsed time: QueryPerformanceCounter on Windows
-and CLOCK_MONOTONIC on POSIX. Phase totals remain diagnostic, not isolated
-arithmetic timings. The direct multiplication benchmark below avoids that issue.
+## Interpret the result
 
-### Direct BigInt multiplication
+- Record source revision/patch, exact fixtures, compiler/flags, OS/CPU and power
+  conditions. Compare matching inputs, precision, output settings and instrumentation.
+- Validate complete results independently outside timing. Keep numerical mismatches,
+  resource stops and timeouts visible; none is a successful operation timing.
+- Batch averages, fresh-request latency, parse/evaluate/format phases, loopback HTTP
+  and browser settling measure different work. Do not combine their numbers.
+- Requested bytes count cumulative allocation traffic. Live/peak payload probes
+  exclude allocator overhead and are separate from process RSS/working set.
+- Instrumentation changes cost. Keep live-memory/profile passes separate from
+  speed timings; ordinary builds omit optional hooks.
+- Check statistical spread and repeat noisy runs before selecting an algorithm.
+  One host does not establish a portable crossover, concurrent capacity or an FPS guarantee.
 
-Run `build-bench/bigint_multiply_benchmark` (single-config), or on Windows/MSVC:
+Timers use monotonic platform clocks. Default benchmark smoke checks enforce
+independent results, bounded work and completion timeouts; they do not enforce
+speed thresholds. Expensive stress modes require an explicitly suitable budget.
 
-```powershell
-.\build-bench\Release\bigint_multiply_benchmark.exe --quick
-.\build-bench\Release\bigint_multiply_benchmark.exe > .\build-bench\multiply-baseline.csv
-```
+## Graph and interaction diagnostics
 
-The default run sweeps 1, 2, 4, ... 1024 64-bit limbs (up to 65536 bits per
-operand), with deterministic random, all-one, sparse and alternating patterns.
-It covers balanced multiplication, `x*x` using identical input objects and a
-separate destination, a full-width one-limb factor in both operand orders,
-8:1/1:8 size ratios, and a small factor 10000 relevant to sequential factorials.
-Fixtures are built directly using the private BigInt representation; no parser,
-decimal conversion or fixture generation is included in the timed region.
-The arithmetic itself is the real public `bigint_mul` path, without a calculator
-deadline or cache. The destination object is reused; allocations/frees inside
-the multiplication still count. Signs, zero/one shortcuts, output/input aliasing
-and complete factorial algorithms are not covered by this performance sweep.
-
-Each case warms up three calls, doubles batch size until at least 10 ms (or
-262144 calls), then measures seven batches. CSV gives minimum/median/maximum
-nanoseconds per operation and batch/sample counts. These are batch averages,
-not individual-call latency percentiles. `--quick` uses 1/8/64 limbs, three
-samples and a 2 ms target; it checks the harness, not algorithm crossover points.
-Two modular product checks and representation checks run outside each timing
-window, also consuming the output; they are not a proof of correctness.
-One extra untimed call supplies allocation counts and requested bytes per call.
-Allocation instrumentation is enabled in these builds, including timed calls;
-compare identical instrumentation settings. It is not a peak-memory measurement.
-
-Compiler/pointer-width metadata goes to stderr, CSV to stdout. Save the commit,
-compiler flags, Release configuration, CPU/OS, power mode and command with each
-baseline. Run on an idle machine, repeat whole runs, and compare matching rows;
-large min/max spreads warrant another run. Before choosing a Karatsuba threshold,
-add denser size sampling around the candidate crossover and validate full
-application workloads. One run on one CPU cannot establish a universal threshold.
-Benchmarks are opt-in, not installed and impose no timing threshold in CI.
-
-### Decimal conversion and formatting
-
-Run `decimal_format_benchmark` with the same optional `--quick` argument. The
-default sweep uses deterministic inputs from 16 through 16384 decimal digits
-and separately measures full `BigInt` conversion, scientific output with 10 or
-100 places, full scientific output, and fixed output rounded to 10 places.
-Fixture parsing is outside timing; allocation and result destruction inside the
-conversion call remain included. As with multiplication, the CSV reports
-calibrated batch averages and seven-sample min/median/max values plus one-call
-allocation statistics. Use it to decide whether the next work should be prefix
-scientific conversion, divide-and-conquer full conversion, rescaling, or buffer
-reuse. Short scientific output now uses bounded leading-limb conversion with
-an exact fallback at rounding boundaries. Compare its scaling against
-`scientific_full`; see the [formatting follow-up](../performance/protocols/APPLICATION.md#bounded-prefix-formatting-follow-up)
-for the measured optimization and its limits.
-
-### Adaptive graphs
-
-The same opt-in build provides `graph_benchmark [repeats]` (default 3, range 1–10).
-It separately measures a uniform 129-point C batch, the adaptive C operation and
-the full HTTP adapter with serialization. Seventeen expressions/ranges cover
-smooth polynomials, trigonometric combinations, exponential damping, logarithms,
-poles, hidden oscillations, trillion-wide intervals and 100-digit precision.
-CSV includes cumulative allocation calls/bytes, points, `limited`, independent
-libm point/chord errors, screen-normalized chord error and accepted x coverage.
-Live allocation tracking is off; stats counters remain enabled. C point
-references are checked outside timing and errors above 1e-9 return a failure.
-Resource statuses remain diagnostic rows rather than universal timing gates.
-No connected chords means zero chord error **and zero coverage**, not a perfect
-curve. See the [graph audit](../performance/baselines/GRAPHS.md).
-
-### Graph interaction diagnostics
-
-After installing the [browser dependencies](WEB_AND_CI.md), run from the repository
-root with the executables produced by your own Release builds:
+Install [browser dependencies](WEB_AND_CI.md), then use built server paths:
 
 ```sh
-node scripts/benchmark_graph_multi.cjs --before build/before/numforge_web --after build/after/numforge_web --repeats 3 --output build/graph-multi.json
-node scripts/benchmark_graph_stress.cjs --server build/after/numforge_web --cycles 16 --output build/graph-stress.json
+node benchmarks/application/benchmark_graph_audit.cjs --server build/bench/numforge_web --repeats 3 --output build/graph-audit.json --csv build/graph-audit.csv
+node benchmarks/application/benchmark_graph_multi.cjs --before build/before/numforge_web --after build/bench/numforge_web --repeats 3 --output build/graph-multi.json
+node benchmarks/application/benchmark_graph_stress.cjs --server build/bench/numforge_web --cycles 16 --output build/graph-stress.json
 ```
 
-Use the configuration subdirectory and `.exe` suffix on Windows where applicable.
-The tools start and stop their own servers. The comparison records HTTP work,
-rendering, drag/zoom, warm visibility toggles and heap observations. Stress runs
-exercise cache replacement, expansion, cancellation and SPA lifecycle; optional
-`--profile` selects `desktop`, `portrait` or `landscape`, and `--case` selects
-`mixed` or `poles`. Test-only routed JavaScript exposes cache diagnostics without
-adding production hooks. Warm toggles must issue no graph requests; leaked graph
-roots produce local heap snapshots. Timing excludes diagnostic probes and forced
-GC; PC mobile emulation does not establish physical-phone behavior.
+Use `Release/` and `.exe` on Windows as applicable. These tools own their temporary
+servers. HTTP graph checks use independent reference coordinates/anchors; finite
+grids do not prove that every narrow feature is present. Zero chord error with no
+connected chords also means zero coverage. Browser timings include scheduling and
+debounce; physical-phone touch behavior requires separate review.
 
 Selected [graph corpus results](../performance/baselines/GRAPHS.md) and
-[marker refinement comparisons](../performance/baselines/GRAPH_REFINEMENT.md)
-record the retained workloads and limits. Earlier interaction/stability tuning
-diaries remain in Git history.
+[marker comparisons](../performance/baselines/GRAPH_REFINEMENT.md) retain the useful
+results and limits. Save new routine recordings under ignored `build/`.

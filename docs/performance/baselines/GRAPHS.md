@@ -121,7 +121,7 @@ node node_modules/@playwright/test/cli.js test graph-release-regression.spec.js 
 From the repository root, the independent corpus can be rerun with:
 
 ```powershell
-node scripts/benchmark_graph_audit.cjs --server build/server-3c049c7/numforge_web.exe --repeats 3 --output build/graph-release-audit-2026-10-16.json --csv build/graph-release-audit-2026-10-16.csv
+node benchmarks/application/benchmark_graph_audit.cjs --server build/server-3c049c7/numforge_web.exe --repeats 3 --output build/graph-release-audit-2026-10-16.json --csv build/graph-release-audit-2026-10-16.csv
 ```
 
 Raw outputs and screenshots stay under ignored `build/graph-release-*2026-10-16`.

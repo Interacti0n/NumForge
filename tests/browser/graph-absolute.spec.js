@@ -1,6 +1,6 @@
 const { artifactPath } = require('./artifacts');
 const {test,expect}=require('@playwright/test');
-const {assess}=require('../../scripts/benchmark_graph_audit.cjs');
+const {assess}=require('../../benchmarks/application/benchmark_graph_audit.cjs');
 async function plot(request,expression,extra={}){
  const q={mode:'fast',dense:'band',interpolation:'hermite-subpixel',min:-100,max:100,ymin:-40,ymax:110,width:930,height:530,...extra};
  const r=await request.post('/api/graph/plot?'+new URLSearchParams(q),{data:expression});expect(r.ok()).toBe(true);return r.json();

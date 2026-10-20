@@ -1,6 +1,6 @@
 const { artifactPath } = require('./artifacts');
 const {test,expect}=require('@playwright/test');
-const {assess}=require('../../scripts/benchmark_graph_audit.cjs');
+const {assess}=require('../../benchmarks/application/benchmark_graph_audit.cjs');
 const expression='sin(x*x)+cos(1000x)',f=x=>Math.sin(x*x)+Math.cos(1000*x);
 async function sample(request,body=expression,extra={}){const q={mode:'fast',dense:'band',interpolation:'hermite-subpixel',min:-2,max:2,ymin:-2,ymax:2,width:800,height:440,...extra};const response=await request.post('/api/graph/plot?'+new URLSearchParams(q),{data:body});expect(response.ok()).toBe(true);return response.json();}
 test('all intermediate two-axis scales retain independent geometry without exhausting points',async({request})=>{

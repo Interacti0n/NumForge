@@ -27,7 +27,7 @@ kernel. Typed expression evaluation, phase capture and
 screen projection remain private; the root scanner retains its own bounded
 candidate traversal. Python uses the same walker below; no new CLI command or
 REST grid route is added.
-See the [benchmark guide](../../benchmarks/README.md#exact-grid-baseline).
+See the [grid baseline](../performance/baselines/SAMPLING.md#exact-grid-baseline).
 
 ## Python exact grids
 
@@ -74,7 +74,7 @@ Python tests cover order, exact recurring coordinates, independent spacing/sum
 identities, 1000-digit offsets with 1000-digit tiny spans, retained values, nested
 calls, signed/unsigned count boundaries, exception identity, partial visits and
 budget failure/recovery. The installed [standalone example](../../examples/python/standalone.py)
-uses grid. The existing [C grid baseline](../../benchmarks/README.md#exact-grid-baseline)
+uses grid. The existing [C grid baseline](../performance/baselines/SAMPLING.md#exact-grid-baseline)
 is reused; Python conversion/callback costs are additional and no speedup is claimed.
 
 ## Adaptive interval scheduling
@@ -107,7 +107,7 @@ The precision graph path shares this scheduler, retaining its 33 seeds, point/de
 limits, projection reserves, phase/jump/pole checks and atomic outer result.
 Its typed sampling and expression metadata extraction remain private;
 the screen/double sampler is separate. This adds no Python, CLI or REST operation.
-See the [checked benchmark](../../benchmarks/README.md#adaptive-refinement-baseline).
+See the [checked benchmark](../performance/baselines/SAMPLING.md#adaptive-refinement-baseline).
 
 ## Sampled curve acceptance
 
@@ -146,7 +146,7 @@ Precision graphs now use this policy; expression metadata extraction and conserv
 domain analysis remain private. Phase-anchor location uses the public API below.
 This adds no new
 Python function, CLI command or HTTP route. See the
-[benchmark and graph parity record](../../benchmarks/README.md#curve-acceptance-baseline).
+[benchmark and graph parity record](../performance/baselines/SAMPLING.md#curve-acceptance-baseline).
 
 ## Periodic-phase anchors
 
@@ -188,5 +188,5 @@ and x-error bounds are not proved. In particular, a sin/cos phase anchor need no
 be an extremum of a larger composed expression. Precision graphs use this kernel
 and retain only actual original-expression samples. Their phase extraction, point
 capacity, angular-unit selection and graph insertion remain in the adapter.
-See the [measurement and parity record](../../benchmarks/README.md#phase-anchor-baseline).
+See the [measurement and parity record](../performance/baselines/SAMPLING.md#phase-anchor-baseline).
 No new Python, CLI or REST phase operation is added.

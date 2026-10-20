@@ -6,7 +6,7 @@
 #include <unity.h>
 #include <stdlib.h>
 #include <string.h>
-#include "benchmarks/numeric_root_cases.h"
+#include "benchmarks/application/numeric_root_cases.h"
 
 static CalculatorContext context;
 static CalculatorError error;

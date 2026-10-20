@@ -1,6 +1,6 @@
 const { artifactPath } = require('./artifacts');
 const {test,expect}=require('@playwright/test');
-const {assess}=require('../../scripts/benchmark_graph_audit.cjs');
+const {assess}=require('../../benchmarks/application/benchmark_graph_audit.cjs');
 const defaults={mode:'fast',width:800,height:440,min:-10.001,max:9.999,ymin:-10,ymax:10,interpolation:'hermite',dense:'band'};
 async function sample(request,expression,extra={}){const response=await request.post('/api/graph/plot?'+new URLSearchParams({...defaults,...extra}),{data:expression});expect(response.ok(),expression).toBe(true);return response.json();}
 test('mixed ranges enclose independent values through phase and amplitude turns and resolve on zoom',async({request})=>{

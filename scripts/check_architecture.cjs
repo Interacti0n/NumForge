@@ -98,11 +98,16 @@ function checkArchitecture(root) {
         checkManifest(directory, sources.filter(n => n.startsWith(directory + '/') && n.endsWith('.c') &&
             !n.startsWith('src/runtime/instrumentation/')), 'implementation');
     }
-    // Instrumentation is deliberately added only by the opt-in root benchmark block.
+    // Instrumentation is owned by the explicitly registered opt-in benchmark manifest.
     const rootManifest = new Set(manifestTokens('CMakeLists.txt'));
+    const instrumentationManifest = new Set(rootManifest);
+    if (rootManifest.has('benchmarks') && fs.existsSync(path.join(root, 'benchmarks/CMakeLists.txt'))) {
+        for (const token of manifestTokens('benchmarks/CMakeLists.txt'))
+            instrumentationManifest.add(token.replace(/^\$\{PROJECT_SOURCE_DIR\}\//, ''));
+    }
     for (const name of sources.filter(n => n.startsWith('src/runtime/instrumentation/') && n.endsWith('.c'))) {
         registeredSources.add(name);
-        if (!rootManifest.has(name)) errors.push(`${name}: absent from benchmark instrumentation manifest`);
+        if (!instrumentationManifest.has(name)) errors.push(`${name}: absent from benchmark instrumentation manifest`);
     }
     // Every mathematical module owns an explicit manifest. No implicit source glob.
     const moduleIndex = fs.readFileSync(path.join(root, 'src/modules/CMakeLists.txt'), 'utf8').replace(/#[^\r\n]*/g, '');

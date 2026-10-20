@@ -30,9 +30,9 @@ jobs:
           -DNUMFORGE_REQUIRE_NODE_TESTS=ON
           -DNUMFORGE_WARNINGS_AS_ERRORS=ON
       - name: Build numeric harnesses
-        run: cmake --build build-bigint-bench --config Release --target bigint_arithmetic_benchmark decimal_math_benchmark numeric_root_scan_benchmark matrix_benchmark statistics_benchmark --parallel 2
+        run: cmake --build build-bigint-bench --config Release --target bigint_arithmetic_benchmark decimal_math_benchmark numeric_root_scan_benchmark matrix_benchmark statistics_benchmark numerical_sampling_benchmark graph_verify_benchmark --parallel 2
       - name: Check exact references and failure contracts
-        run: ctest --test-dir build-bigint-bench -C Release -R "^(bigint_arithmetic|decimal_math|numeric_root_scan|matrix|statistics)_benchmark_smoke$" --output-on-failure --no-tests=error
+        run: ctest --test-dir build-bigint-bench -C Release -R "^((bigint_arithmetic|decimal_math|numeric_root_scan|matrix|statistics|graph_cache|graph_refinement)_benchmark_smoke|numerical_sampling_(grid|refinement|curve|phase)_smoke)$" --output-on-failure --no-tests=error
 
   linux:
     runs-on: ubuntu-latest

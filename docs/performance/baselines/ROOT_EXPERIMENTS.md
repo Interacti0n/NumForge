@@ -117,7 +117,7 @@ folders from older diaries:
 
 ```sh
 numeric_root_benchmark --hybrid > build/root-comparison.csv
-python benchmarks/check_numeric_root_benchmark.py build/root-comparison.csv
+python benchmarks/tools/check_numeric_root_benchmark.py build/root-comparison.csv
 numeric_root_benchmark --hybrid --adversarial
 numeric_root_scan_benchmark > build/root-candidates.csv
 python scripts/check_numeric_root_scan.py build/root-candidates.csv

@@ -64,6 +64,15 @@ try {
             {[directory + '/CMakeLists.txt']: `target_sources(example PRIVATE ${file} missing.c)\n`}, /missing registered source/);
     }
     mutation('comment cannot register a module', {'src/modules/CMakeLists.txt': '# add_subdirectory(numerical)\n'}, /absent from module index/);
+    mutation('registered benchmark manifest', {
+        'src/runtime/instrumentation/probe.c': '',
+        'CMakeLists.txt': 'add_subdirectory(benchmarks)',
+        'benchmarks/CMakeLists.txt': 'target_sources(example PRIVATE "${PROJECT_SOURCE_DIR}/src/runtime/instrumentation/probe.c")'
+    }, null);
+    mutation('unregistered benchmark manifest cannot own instrumentation', {
+        'src/runtime/instrumentation/probe.c': '',
+        'benchmarks/CMakeLists.txt': 'target_sources(example PRIVATE "${PROJECT_SOURCE_DIR}/src/runtime/instrumentation/probe.c")'
+    }, /absent from benchmark instrumentation/);
     mutation('unregistered instrumentation', {'src/runtime/instrumentation/probe.c': ''}, /absent from benchmark instrumentation/);
     mutation('unowned application source', {'apps/orphan.c': ''}, /no owning source manifest/);
     mutation('unowned module source', {'src/modules/orphan.c': ''}, /no owning source manifest/);

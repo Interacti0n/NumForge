@@ -4,9 +4,17 @@ Selected extraction measurements and HTTP parity evidence. Input shapes,
 timings and revisions below are preserved; they do not describe every later revision. See [benchmark tools](../../../benchmarks/README.md)
 for current entry points.
 
+The four original executables are now selectors of one tool. Their fixtures,
+timing windows, budgets and independent checks are retained. New CSV rows use
+`kernel,case,repeat,operations,points,evaluations,milliseconds,allocation_calls,requested_bytes`.
+`operations` is visits, complete refinement calls, assessments or phase searches;
+`points` applies to grids/refinement and `evaluations` to refinement probes/phase
+callbacks. Unused fields are zero. Historical CSVs keep their original schemas
+and recorded timings; consolidation does not claim a speedup.
+
 ## Exact grid baseline
 
-`numerical_grid_benchmark` visits exact coordinates and accumulates their rational
+`numerical_sampling_benchmark grid` visits exact coordinates and accumulates their rational
 sum in the callback. It checks `sum = count*(lower+upper)/2` outside timing and
 runs three repetitions per case. Build with `NUMFORGE_BUILD_BENCHMARKS=ON`, then
 run the executable; no engine or server is involved. The measurement includes
@@ -21,7 +29,7 @@ initial observations; this extraction does not establish a speed improvement.
 
 ## Adaptive refinement baseline
 
-`numerical_refinement_benchmark` uses the public scheduler with caller-owned
+`numerical_sampling_benchmark refinement` uses the public scheduler with caller-owned
 exact rational samples of `x*x` and a midpoint chord-error criterion. It checks
 closed-form point counts and exact spacing outside timing, with three repeats
 per case and a capacity of 257 points. Setup and validation are excluded;
@@ -39,7 +47,7 @@ updates retain the original worst-case quadratic work in the point limit.
 
 ## Curve acceptance baseline
 
-`numerical_curve_benchmark` measures 1000 calls to the reusable public curve
+`numerical_sampling_benchmark curve` measures 1000 calls to the reusable public curve
 classifier, with three repetitions per case. It checks the expected decision
 outside timing. Setup, classifier creation and validation are excluded; decimal
 arithmetic and phase checks are included. The cases accept a linear triple,
@@ -73,7 +81,7 @@ for all expressions or resource-limited executions.
 
 ## Phase anchor baseline
 
-`numerical_phase_benchmark` measures public callback phase location with exact
+`numerical_sampling_benchmark phase` measures public callback phase location with exact
 rational intermediates and three repetitions per case. Setup, locator creation
 and validation are excluded. Timed work includes target selection, interpolation,
 callback evaluation and phase-residual verification. The linear and large-offset

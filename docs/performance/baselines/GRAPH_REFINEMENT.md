@@ -119,7 +119,8 @@ passed. The existing allocation-failure suite and the new refinement-failure
 checks passed in both compilers. No version bump or release publication is part
 of this change.
 
-The opt-in CMake target is `graph_brent_benchmark`; run it with repeat count 1–10.
+Use `graph_verify_benchmark refinement 3` for the retained comparison (repeat
+count 1–10). The former standalone target is consolidated into this selector.
 `application_graph_verify_experiment` is private diagnostic infrastructure for
 controlled comparisons. Production uses Brent with caching enabled.
 The browser reproduction is `graph-analysis-performance.spec.js --repeat-each=3`;
@@ -162,7 +163,7 @@ Every baseline confirmation must remain confirmed with matching coordinates.
 Additional confirmations are allowed when reuse saves evaluation budget.
 
 Build with `NUMFORGE_BUILD_BENCHMARKS=ON`, then build and run
-`graph_verify_benchmark 3`. This is a private application benchmark, not the
+`graph_verify_benchmark cache 3`. This is a private application benchmark, not the
 installed public C API. The diagnostic cache-off path shares counter/hash setup
 with the cache-on path, so it is a controlled algorithm comparison, not a
 byte-identical performance measurement of the old executable.

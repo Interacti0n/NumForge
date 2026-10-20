@@ -32,9 +32,9 @@ application continues to work without Node.js.
 .\build\bench\Release\allocation_stats_check.exe
 .\build\bench\Release\decimal_format_benchmark.exe --quick
 .\build\bench\Release\cache_memory_benchmark.exe --quick
-node benchmarks/http_benchmark.js build/bench/Release/numforge_web.exe --quick
-node benchmarks/run_baseline.js build/bench/Release build/baseline-smoke --quick
-node benchmarks/run_baseline.js build/bench/Release build/baseline-full
+node benchmarks/application/http_benchmark.js build/bench/Release/numforge_web.exe --quick
+node benchmarks/tools/run_baseline.js build/bench/Release build/baseline-smoke --quick
+node benchmarks/tools/run_baseline.js build/bench/Release build/baseline-full
 ```
 
 The recorder requires an empty output directory. It records three complete
@@ -127,7 +127,7 @@ emits diagnostic CSV to stderr, never to its HTTP response. Tests and normal
 clients see the same response protocol.
 
 ```sh
-node benchmarks/http_benchmark.js build/bench/Release/numforge_web.exe --case eviction
+node benchmarks/application/http_benchmark.js build/bench/Release/numforge_web.exe --case eviction
 ```
 
 The default port is 18771, configurable with `NUMFORGE_BENCH_PORT`. Do not

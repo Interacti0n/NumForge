@@ -2,8 +2,7 @@
 
 The opt-in `bigint_arithmetic_benchmark` measures public arithmetic and two
 private comparison paths. Run them with independently generated full references.
-The older `bigint_multiply_benchmark` remains available for continuity with earlier
-measurements; its modular sanity checks do not replace this suite's exact oracle.
+This full-reference suite replaces the older modular-check multiplication sweep.
 
 ## Build and run
 
@@ -12,12 +11,12 @@ Node.js generates deterministic exact input/result fixtures using its native
 BigInt implementation, independently of NumForge:
 
 ```powershell
-node benchmarks/bigint_cases.js build/bigint-cases.tsv
+node benchmarks/tools/bigint_cases.js build/bigint-cases.tsv
 .\build\bench\Release\bigint_arithmetic_benchmark.exe build/bigint-cases.tsv
 .\build\bench\Release\bigint_arithmetic_benchmark.exe build/bigint-cases.tsv --case mul-balanced-64-reuse
-node benchmarks/check_bigint_benchmark.js build/bench/Release/bigint_arithmetic_benchmark.exe
-node benchmarks/run_baseline.js build/bench/Release build/baseline-bigint --bigint
-node benchmarks/run_baseline.js build/bench/Release build/baseline-factorial --bigint --factorial-only --case-timeout-ms 120000
+node benchmarks/tools/check_bigint_benchmark.js build/bench/Release/bigint_arithmetic_benchmark.exe
+node benchmarks/tools/run_baseline.js build/bench/Release build/baseline-bigint --bigint
+node benchmarks/tools/run_baseline.js build/bench/Release build/baseline-factorial --bigint --factorial-only --case-timeout-ms 120000
 .\build\bench\Release\calculator_benchmark.exe --factorial-only
 ```
 

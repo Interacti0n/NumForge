@@ -1,83 +1,94 @@
 # Benchmark tools
 
-Use this index to choose an executable. [Performance methodology](../docs/testing/PERFORMANCE.md)
-owns build/profiling rules; linked reports preserve input shapes, exact checks,
-recorded revisions and results. A dated baseline is not a current speed guarantee.
-
 Build with `NUMFORGE_BUILD_BENCHMARKS=ON`; ordinary builds omit instrumentation.
-Save raw local measurements under ignored `build/` directories. Verify results
-outside timing and keep timing, allocation and phase probes separate.
+Use a separate Release build without sanitizers/coverage. See the
+[measurement method](../docs/testing/PERFORMANCE.md) and selected
+[results](../docs/performance/README.md). Routine recordings belong in ignored
+`build/`; no timing threshold is a correctness assertion.
 
-## Exact grid baseline
+## Source tree
 
-`numerical_grid_benchmark` measures exact traversal and callback accumulation.
-See the [grid measurements](../docs/performance/baselines/SAMPLING.md#exact-grid-baseline).
+```text
+benchmarks/
+  CMakeLists.txt   targets and opt-in correctness checks
+  common/         shared clock and allocation instrumentation check
+  core/           integer, decimal, formatting and logarithm measurements
+  modules/        polynomial, matrix and statistics measurements
+  numerical/      public root/scan and combined sampling measurements
+  application/    expression, cache, graph, equation and HTTP measurements
+  tools/          independent fixture generators, checkers and recorders
+  references/     frozen oracle inputs required by benchmarks/tests
+```
 
-## Adaptive refinement baseline
+Binary names stay independent of source folders. Executables are in the build
+root (Visual Studio: its `Release/` subdirectory), so recorders take one binary
+directory. Tests for allocation/deadline failures and corrupt references remain
+enabled with `BUILD_TESTING=ON`; they are useful correctness checks, not old logs.
 
-`numerical_refinement_benchmark` measures the public interval scheduler with
-exact quadratic samples. See the [refinement measurements](../docs/performance/baselines/SAMPLING.md#adaptive-refinement-baseline).
+## Choose a measurement
 
-## Curve acceptance baseline
-
-`numerical_curve_benchmark` measures the reusable curve classifier. See the
-[curve measurements and HTTP parity table](../docs/performance/baselines/SAMPLING.md#curve-acceptance-baseline).
-
-## Phase anchor baseline
-
-`numerical_phase_benchmark` measures periodic target selection/refinement. See
-the [phase measurements](../docs/performance/baselines/SAMPLING.md#phase-anchor-baseline).
-
-## Other tools
-
-| Executable | Purpose / useful options | Reference |
+| Executable | What it measures | Details |
 | --- | --- | --- |
-| `bigint_arithmetic_benchmark` | Exact arithmetic, limb/input shapes and independent fixtures | [BigInt baseline](../docs/performance/protocols/BIGINT.md) |
-| `decimal_math_benchmark` | Direct decimal/functions; fixture file, `--case NAME`, `--quick`, `--validate`, `--timing-only` | [Decimal/math protocol](../docs/performance/protocols/DECIMAL.md) |
-| `complex_oracle_driver` | Complex unary/binary/stability paths, timing and isolated memory probes; built with tests enabled | [Complex baseline](../docs/performance/protocols/COMPLEX.md) |
-| `logarithm_agm_benchmark` | Series, fixed-guard experiment, bounded intervals and public dispatch | [Interval algorithm and timings](../docs/performance/baselines/LOGARITHM.md) |
-| `polynomial_benchmark` | Exact rational/radical/complex coefficient solutions | [Solver baseline](../docs/performance/baselines/MODULES.md#polynomials) |
-| `matrix_benchmark` | Products, determinants, square solves, rank and rectangular families | [Matrix/system baselines](../docs/performance/baselines/MODULES.md#matrices) |
-| `statistics_benchmark` | Exact summaries; `cov_*` rows cover paired covariance | [Statistics/covariance baselines](../docs/performance/baselines/MODULES.md#statistics) |
-| `numerical_benchmark` | Public callback bisection; `--high-precision` adds the costly 1000-place case | [Public roots](../docs/performance/baselines/ROOTS.md#single-root) |
-| `numerical_scan_benchmark` | Public multiple-root scan, exact contacts and high-magnitude coordinates | [Public scan](../docs/performance/baselines/ROOTS.md#multiple-roots) |
-| `numeric_root_benchmark` | Equation adapter and private method comparisons; options below | [Private method comparison](../docs/performance/baselines/ROOT_EXPERIMENTS.md#private-interpolation-decision) |
-| `numeric_root_scan_benchmark` | Equation scan at 16/34/100 digits; `--quick` uses 34 once | [Candidate discovery](../docs/performance/baselines/ROOT_EXPERIMENTS.md#local-candidate-discovery) |
-| `calculator_benchmark`, `calculator_limit_benchmark` | Whole expression requests, limits, phases and optional expected results | [Timing/cache protocol](../docs/performance/protocols/APPLICATION.md) |
-| `graph_benchmark` | Application graph sampling and candidate verification | [Graph corpus](../docs/performance/baselines/GRAPHS.md) |
-| `decimal_format_benchmark`, `cache_memory_benchmark` | Presentation/cache costs; `--quick` for smoke checks | [Formatting/cache protocol](../docs/performance/protocols/APPLICATION.md) |
+| `bigint_arithmetic_benchmark` | Exact arithmetic, dense operand sizes, aliases, factorials and threshold comparisons | [BigInt protocol](../docs/performance/protocols/BIGINT.md) |
+| `decimal_math_benchmark` | Decimal arithmetic/functions; `--quick`, `--case NAME`, `--validate`, `--timing-only` | [Decimal protocol](../docs/performance/protocols/DECIMAL.md) |
+| `decimal_format_benchmark` | Full/prefix output conversion and rounding; `--quick` | [Formatting protocol](../docs/performance/protocols/APPLICATION.md) |
+| `logarithm_agm_benchmark` | Series/public dispatch, bounded interval implementation and private fixed-guard comparison | [Logarithm decision](../docs/performance/baselines/LOGARITHM.md) |
+| `polynomial_benchmark`, `matrix_benchmark`, `statistics_benchmark` | Exact module operations, including rectangular systems and covariance | [Module baselines](../docs/performance/baselines/MODULES.md) |
+| `numerical_sampling_benchmark [all\|grid\|refinement\|curve\|phase]` | Four public sampling kernels with shared CSV columns | [Sampling baselines](../docs/performance/baselines/SAMPLING.md) |
+| `numerical_benchmark`, `numerical_scan_benchmark` | Public callback root searches; `--high-precision` on the single-root tool adds expensive 1000-place work | [Public roots](../docs/performance/baselines/ROOTS.md) |
+| `calculator_benchmark`, `calculator_limit_benchmark`, `cache_memory_benchmark` | Repeated expression phases, complete budgeted requests and cache/destination reuse | [Application protocol](../docs/performance/protocols/APPLICATION.md) |
+| `graph_benchmark`, `graph_fast_benchmark` | Uniform/adaptive requests and isolated fast-expression compilation/evaluation | [Graph corpus](../docs/performance/baselines/GRAPHS.md) |
+| `graph_verify_benchmark [cache\|refinement] [1..10]` | Controlled cache-off/on or legacy/Brent comparisons; separate CSV schema per mode | [Refinement comparisons](../docs/performance/baselines/GRAPH_REFINEMENT.md) |
+| `numeric_root_benchmark`, `numeric_root_scan_benchmark` | Equation adapters, domain checks, private methods and local discovery | [Equation comparisons](../docs/performance/baselines/ROOT_EXPERIMENTS.md) |
 
-Selected results and algorithm decisions live in the
-[performance evidence tree](../docs/performance/README.md). Routine recordings
-belong under ignored `build/`; superseded tuning diaries remain in Git history.
+`complex_oracle_driver --benchmark` is built with tests, outside this directory;
+it validates every timed result. See the [complex protocol](../docs/performance/protocols/COMPLEX.md).
 
-## Root comparison and validation
+## Record and verify
 
-`numeric_root_benchmark --compare` records paired bisection/private Brent runs
-at 16/34/100 digits, three repeats. `--quick` selects precision 34 once;
-`--adversarial` selects the vanishing-jump domain regression. `--hybrid` adds
-bounded-decimal interpolation with progress-based permanent bisection fallback.
-Flags can be combined. Production C/HTTP solving still selects bisection.
+`tools/run_baseline.js BINARY_DIR EMPTY_OUTPUT_DIR --bigint|--decimal` records
+three isolated runs with fixtures, revision/patch, compiler and host metadata.
+Omit the suite flag for formatting/cache/HTTP. `--quick` checks the harness;
+`--case-timeout-ms N` bounds the complete child process, not one arithmetic call.
+Use `tools/summarize_decimal_baseline.js` for decimal outcomes, including failures.
 
-Run `python scripts/check_numeric_root_scan.py scan.csv` on full scan output.
-`python benchmarks/check_numeric_root_benchmark.py roots.csv` independently
-reevaluates root-benchmark coordinates at 180 digits;
-use it on default/comparison CSVs, not just smoke rows. Outcome limits and
-reference mismatches remain failures/diagnostics, not successful timing claims.
+`tools/run_karatsuba.cjs` records controlled threshold/factorial comparisons;
+`tools/run_factorial_stress.cjs` additionally checks complete budgeted calculator
+projection. Their different timing scopes are intentional. Keep the independent
+`tools/check_*` validators and frozen `references/` inputs; do not replace them
+with comparisons against the implementation's own output.
 
-## Specialized probes
+`numeric_root_benchmark --hybrid` compares all three private methods;
+`--compare` compares bisection/Brent, `--quick` uses precision 34 once and
+`--adversarial` exercises the vanishing-jump rejection. Verify complete CSV with
+`tools/check_numeric_root_benchmark.py`. Application scan CSV is independently
+checked by `scripts/check_numeric_root_scan.py`. Production solving uses bisection.
 
-- Factorial stress: generate `--workspace --stress` fixtures and use
-  `run_factorial_stress.cjs` for serial whole-request/phase/tree diagnostics.
-  `calculator_limit_benchmark --phases-profile` measures exclusive normalization.
-  See [stress diagnostics](../docs/performance/baselines/FACTORIAL.md#stress-diagnostics).
-- The 100,000-bit GCD case uses `--validate`: one verified API timing and a
-  separate memory probe, rather than the normal seven-sample protocol.
-- Optional decimal profiling attributes add/sub/mul/div/mod/pow/GCD/divmod work;
-  those clocks are separate from normal timing. A dedicated server can record
-  queue waiting without using the user's running server.
-- Calculator-limit CSV `budget_reason` distinguishes time/allocation from none;
-  none does not mean an unsuccessful request passed all domain/output limits.
-- Set `NUMFORGE_BENCH_EXPECTED` or `NUMFORGE_BENCH_EXPECTED_FILE` for an exact
-  whole-result check after timing. File contents are UTF-8 with no trailing
-  newline. These checks do not change production limits.
+For full calculator checks set `NUMFORGE_BENCH_EXPECTED` or
+`NUMFORGE_BENCH_EXPECTED_FILE`; expected UTF-8 file content has no trailing newline.
+`budget_reason:none` alone does not establish success. Requested allocation bytes
+are cumulative traffic, not peak/live memory or process RSS. Keep phase/live-memory
+probes separate from speed recordings.
+
+## HTTP and browser work
+
+`application/http_benchmark.js` measures calculator HTTP phases;
+`http_queue_benchmark.js` observes independent-session queue waiting.
+`application/benchmark_graph_audit.cjs` owns independent HTTP curve/domain/dense
+checks and supports matching `--before` comparisons. `benchmark_graph_multi.cjs`
+measures browser interaction, `benchmark_graph_stress.cjs` measures sustained cache
+lifetime, and `benchmark_graph_budget.cjs` checks heavy graph queue/abort recovery.
+They launch and close their own loopback servers. Browser tools use dependencies
+from `tests/browser`; mobile emulation does not establish physical-device behavior.
+
+## Keep only useful tools
+
+The standalone multiplication sweep was replaced by the full-reference integer
+suite. The private materialization bypass, old fixed-workload audit recorder and
+its summarizer were retired. Separate smooth/dense/SVG graph audit scripts were
+superseded by the broader HTTP corpus and browser regressions. Their original
+sources remain in Git history at `e2ebbf5`; no compatibility wrappers are retained.
+
+Add a tool only for a distinct measurement or independent correctness check.
+Extend an existing selector/fixture set when timing scope and verification match.
+Retain failed/limited outcomes; never report an unvalidated fast row as a success.

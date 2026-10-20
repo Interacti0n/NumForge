@@ -33,7 +33,7 @@ as a strict diagnostic, and retained at every precision in the full matrix.
 
 ## Independent references and numerical findings
 
-`benchmarks/decimal_math_cases.js` derives arithmetic/division references with
+`benchmarks/tools/decimal_math_cases.js` derives arithmetic/division references with
 Node BigInt rational arithmetic, without calling NumForge. The 177 frozen math
 rows in `benchmarks/references/decimal_math_references.tsv` come from mpmath 1.3.0, evaluated at both
 requested precision +240 and +400 decimal digits. The generator requires
@@ -115,8 +115,8 @@ cmake -S . -B build-bench -DCMAKE_BUILD_TYPE=Release \
   -DNUMFORGE_REQUIRE_NODE_TESTS=ON
 cmake --build build-bench --config Release --parallel 2
 ctest --test-dir build-bench -C Release -R decimal_math_benchmark_smoke --output-on-failure
-node benchmarks/run_baseline.js build-bench build/baseline-decimal --decimal --case-timeout-ms 5000
-node benchmarks/summarize_decimal_baseline.js build/baseline-decimal
+node benchmarks/tools/run_baseline.js build-bench build/baseline-decimal --decimal --case-timeout-ms 5000
+node benchmarks/tools/summarize_decimal_baseline.js build/baseline-decimal
 ```
 
 For Visual Studio, give the recorder `build-bench/Release` as the binary directory.

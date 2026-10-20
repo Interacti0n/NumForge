@@ -101,11 +101,11 @@ Local ignored `build/split-workspace` retains complete fixtures, per-process
 CSV/JSON samples, executable/fixture hashes and baseline outcomes. For reproduction:
 
 ```powershell
-python benchmarks/generate_karatsuba_factorials.py build/split-full.tsv --workspace --split
+python benchmarks/tools/generate_karatsuba_factorials.py build/split-full.tsv --workspace --split
 build/factorial-bench/Release/bigint_arithmetic_benchmark.exe build/split-full.tsv --validate --check
-python benchmarks/generate_karatsuba_factorials.py build/split-timing.tsv --workspace --split --timing
-node benchmarks/run_karatsuba.cjs build/factorial-bench/Release/bigint_arithmetic_benchmark.exe build/split-recording --factorials build/split-timing.tsv
-node benchmarks/check_karatsuba.cjs build/factorial-bench/Release/bigint_arithmetic_benchmark.exe --full
+python benchmarks/tools/generate_karatsuba_factorials.py build/split-timing.tsv --workspace --split --timing
+node benchmarks/tools/run_karatsuba.cjs build/factorial-bench/Release/bigint_arithmetic_benchmark.exe build/split-recording --factorials build/split-timing.tsv
+node benchmarks/tools/check_karatsuba.cjs build/factorial-bench/Release/bigint_arithmetic_benchmark.exe --full
 ```
 
 Build opt-in benchmarks/tests first; recording directory must be empty.
