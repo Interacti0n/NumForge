@@ -18,8 +18,11 @@ function walk(directory) {
 const layerOf = name => layers.findIndex(prefix => name.startsWith(prefix + '/'));
 const sources = [...layers.slice(0, 5).flatMap(walk), ...walk('apps')]
     .filter(name => /\.[ch]$/.test(name));
-// The Python tree can contain local build output: inspect its adapter only.
-sources.push('bindings/python/native.c');
+// Native adapters live at this level; nested Python caches/builds are not sources.
+const pythonSources = fs.readdirSync(path.join(root, 'bindings/python'), {withFileTypes: true})
+    .filter(entry => entry.isFile() && /\.[ch]$/.test(entry.name))
+    .map(entry => 'bindings/python/' + entry.name);
+sources.push(...pythonSources);
 for (const name of [...sources, ...walk('include/numforge').filter(n => n.endsWith('.h'))]) {
     const text = fs.readFileSync(path.join(root, name), 'utf8');
     for (const match of text.matchAll(/^\s*#\s*include\s*["<]([^">]+)[">]/gm)) {
@@ -37,6 +40,9 @@ for (const name of [...sources, ...walk('include/numforge').filter(n => n.endsWi
             continue;
         }
         if (!fs.existsSync(path.join(root, target))) errors.push(`${name}: missing ${target}`);
+        if (name.startsWith('bindings/python/') && target.startsWith('src/')) {
+            errors.push(`${name}: Python adapters must use public numeric/engine headers, not ${target}`);
+        }
         if (target === 'src/engine/evaluator/evaluator_internal.h' && !name.startsWith('src/engine/')) {
             errors.push(`${name}: evaluator storage is engine-private; use an engine API header`);
         }
@@ -58,6 +64,12 @@ for (const name of [...sources, ...walk('include/numforge').filter(n => n.endsWi
             errors.push(`${name}: forbidden upward dependency on ${target}`);
         }
     }
+}
+// Every Python adapter source is registered explicitly; headers remain private.
+const pythonManifest = fs.readFileSync(path.join(root, 'bindings/python/CMakeLists.txt'), 'utf8');
+for (const name of pythonSources.filter(n => n.endsWith('.c'))) {
+    if (!pythonManifest.split(/\s+/).includes(path.posix.basename(name)))
+        errors.push(`${name}: absent from Python adapter manifest`);
 }
 // Every mathematical module owns an explicit manifest. No implicit source glob.
 const moduleIndex = fs.readFileSync(path.join(root, 'src/modules/CMakeLists.txt'), 'utf8');

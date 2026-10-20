@@ -31,6 +31,9 @@ capabilities in `src/modules/`, parsing/evaluation in `src/engine/`, and session
 and workflow state in `src/application/`. CLI and web transport/assets live in
 `apps/`; language adapters live in `bindings/`. Create directories when they gain
 an implementation, not for speculative modules or bindings.
+For native Python adapters, register sources in `bindings/python/CMakeLists.txt`
+and reuse `native_internal.h` support. Include public C APIs; the architecture
+check rejects private `src/` headers and unregistered adapter sources.
 
 For a new mathematical capability:
 

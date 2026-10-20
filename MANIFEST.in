@@ -3,7 +3,7 @@ include scripts/check_python_package.py
 recursive-include cmake *.cmake *.in
 recursive-include include *.h
 recursive-include src CMakeLists.txt *.c *.h *.inc
-recursive-include bindings/python *.c *.py *.md
+recursive-include bindings/python CMakeLists.txt *.c *.h *.py *.md
 recursive-include tests/python *.py
 recursive-include examples/python *.py
 recursive-include docs *.md

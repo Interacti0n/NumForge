@@ -118,6 +118,10 @@ wheel, isolated adapter-test and standalone-example check:
 It uses installed build tools with network lookup disabled and never installs
 globally. The separate Python workflow covers Linux 3.10/3.12, Windows 3.12 and
 macOS 3.12. Ordinary C tests/builds do not depend on Python.
+For native adapter reorganization, this package check also verifies that the
+source archive contains every registered C source, private header and CMake manifest
+needed to rebuild the extension. The architecture gate checks each top-level native
+adapter/header, rejects private implementation imports and requires explicit sources.
 
 `engine_tests` verifies the [public standalone engine](reference/ENGINE_API.md):
 typed exact/approximate results, reusable expression ownership, a frozen independent

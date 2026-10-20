@@ -19,9 +19,17 @@ contracts; private symbols in a static archive are not supported APIs.
 | `src/application/` | Sessions, clients, conversions, prepared graph expressions and equation adapters. |
 | `apps/cli/` | Interactive command line. |
 | `apps/web/http/`, `server/`, `assets/` | Local transport, embedded server and SK/EN browser interface. |
-| `bindings/python/` | Experimental source-built CPython adapter over public C APIs. |
+| `bindings/python/` | Experimental CPython facade, native module/support and numerical adapters over public C APIs; explicit CMake manifest. |
 | `include/numforge/` | Installed C API and authoritative ownership/error contracts. |
 | `tests/`, `benchmarks/`, `examples/` | Regressions, opt-in measurements and consumer examples. |
+
+The Python extension keeps module registration, capsules and existing scalar/
+algebra/matrix/statistics entry points in `native.c`. `native_support.c` owns
+shared policy, status and exact-value conversion; `numerical.c` owns grid/root
+callback adapters. Their `native_internal.h` is private to the binding. Add native
+sources explicitly in `bindings/python/CMakeLists.txt`; the source package includes
+that manifest and private header. The installed module and Python API remain one
+interface, with no dependency on private core/engine implementation headers.
 
 ## Dependencies
 

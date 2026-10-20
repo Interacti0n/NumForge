@@ -1,119 +1,23 @@
-#define PY_SSIZE_T_CLEAN
-#include <Python.h>
-#include <numforge/engine.h>
+#include "bindings/python/native_internal.h"
 #include <numforge/polynomial.h>
 #include <numforge/matrix.h>
 #include <numforge/statistics.h>
-#include <numforge/numerical.h>
 #include <numforge/runtime.h>
 #include <stdlib.h>
 #include <string.h>
 
-#define RESULT_CAPSULE "numforge.Result.v1"
 #define EXPRESSION_CAPSULE "numforge.Expression.v1"
 #define MATRIX_CAPSULE "numforge.Matrix.v1"
 #define LINEAR_CAPSULE "numforge.LinearSolution.v1"
 
-typedef struct ModuleState { PyObject *error; } ModuleState;
-typedef struct Policy {
-    NumForgeContext *context;
-    uint64_t milliseconds;
-    size_t allocation_bytes, single_allocation;
-} Policy;
-
-static PyObject *raise_named(PyObject *module, const char *message, const char *name, size_t offset)
-{
-    ModuleState *state = PyModule_GetState(module);
-    PyObject *error = PyObject_CallFunction(state->error, "s", message);
-    if (error == NULL) return NULL;
-    PyObject *label = PyUnicode_FromString(name), *position = PyLong_FromSize_t(offset);
-    if (label == NULL || position == NULL || PyObject_SetAttrString(error, "status", label) < 0 ||
-        PyObject_SetAttrString(error, "offset", position) < 0) {
-        Py_XDECREF(label); Py_XDECREF(position); Py_DECREF(error); return NULL;
-    }
-    Py_DECREF(label); Py_DECREF(position); PyErr_SetObject(state->error, error); Py_DECREF(error);
-    return NULL;
-}
-static PyObject *raise_status(PyObject *module, NumForgeStatus status, size_t offset)
-{
-    static const char *names[] = {"ok", "null_argument", "invalid_argument", "invalid_token",
-        "syntax_error", "division_by_zero", "value_too_large", "scale_overflow", "out_of_memory",
-        "time_limit", "memory_limit", "unsupported", "argument_count", "undefined_variable"};
-    const char *name = (unsigned)status < sizeof(names)/sizeof(names[0]) ? names[status] : "unknown";
-    return raise_named(module, numforge_status_to_string(status), name, offset);
-}
-
-static NumForgeStatus rational_status(BigRationalStatus status)
-{
-    switch (status) {
-        case BIGRATIONAL_OK: return NUMFORGE_OK;
-        case BIGRATIONAL_OUT_OF_MEMORY: return NUMFORGE_OUT_OF_MEMORY;
-        case BIGRATIONAL_DIVISION_BY_ZERO: return NUMFORGE_DIVISION_BY_ZERO;
-        case BIGRATIONAL_VALUE_TOO_LARGE: return NUMFORGE_VALUE_TOO_LARGE;
-        case BIGRATIONAL_SCALE_OVERFLOW: return NUMFORGE_SCALE_OVERFLOW;
-        default: return NUMFORGE_INVALID_ARGUMENT;
-    }
-}
-static NumForgeStatus integer_status(BigIntStatus status)
-{
-    switch (status) {
-        case BIGINT_OK: return NUMFORGE_OK;
-        case BIGINT_OUT_OF_MEMORY: return NUMFORGE_OUT_OF_MEMORY;
-        case BIGINT_DIVISION_BY_ZERO: return NUMFORGE_DIVISION_BY_ZERO;
-        case BIGINT_VALUE_TOO_LARGE: return NUMFORGE_VALUE_TOO_LARGE;
-        default: return NUMFORGE_INVALID_ARGUMENT;
-    }
-}
-static NumForgeStatus decimal_status(BigDecimalStatus status)
-{
-    switch (status) {
-        case BIGDECIMAL_OK: return NUMFORGE_OK;
-        case BIGDECIMAL_OUT_OF_MEMORY: return NUMFORGE_OUT_OF_MEMORY;
-        case BIGDECIMAL_VALUE_TOO_LARGE: return NUMFORGE_VALUE_TOO_LARGE;
-        case BIGDECIMAL_SCALE_OVERFLOW: return NUMFORGE_SCALE_OVERFLOW;
-        default: return NUMFORGE_INVALID_ARGUMENT;
-    }
-}
-static NumForgeStatus budget_status(NumForgeStatus status)
-{
-    (void)numforge_budget_check();
-    if (numforge_budget_failure() == NUMFORGE_BUDGET_TIME) return NUMFORGE_TIME_LIMIT;
-    if (numforge_budget_failure() == NUMFORGE_BUDGET_MEMORY) return NUMFORGE_MEMORY_LIMIT;
-    return status;
-}
-static int policy_parse(PyObject *module, PyObject *object, Policy *policy)
-{
-    memset(policy, 0, sizeof(*policy));
-    if (!PyTuple_Check(object) || PyTuple_Size(object) != 5) {
-        PyErr_SetString(PyExc_TypeError, "policy must be a five-item tuple"); return 0;
-    }
-    long long digits = PyLong_AsLongLong(PyTuple_GetItem(object, 0));
-    long rounding = PyLong_AsLong(PyTuple_GetItem(object, 1));
-    unsigned long long milliseconds = PyLong_AsUnsignedLongLong(PyTuple_GetItem(object, 2));
-    size_t bytes = PyLong_AsSize_t(PyTuple_GetItem(object, 3));
-    size_t single = PyLong_AsSize_t(PyTuple_GetItem(object, 4));
-    if (PyErr_Occurred()) return 0;
-    policy->context = numforge_context_create();
-    if (policy->context == NULL) { raise_status(module, NUMFORGE_OUT_OF_MEMORY, 0U); return 0; }
-    NumForgeStatus status = numforge_context_set_precision(policy->context, (int64_t)digits);
-    if (status == NUMFORGE_OK && (rounding < 0 || rounding > 5)) status = NUMFORGE_INVALID_ARGUMENT;
-    if (status == NUMFORGE_OK) status = numforge_context_set_rounding(policy->context, (BigDecimalRoundingMode)rounding);
-    if (status == NUMFORGE_OK) status = numforge_context_set_limits(policy->context, (uint64_t)milliseconds, bytes, single);
-    if (status != NUMFORGE_OK) {
-        numforge_context_destroy(policy->context); policy->context = NULL;
-        raise_status(module, status, 0U); return 0;
-    }
-    policy->milliseconds = (uint64_t)milliseconds; policy->allocation_bytes = bytes; policy->single_allocation = single;
-    return 1;
-}
 static void result_destroy(PyObject *capsule)
 {
-    NumForgeResult *result = PyCapsule_GetPointer(capsule, RESULT_CAPSULE);
+    NumForgeResult *result = PyCapsule_GetPointer(capsule, NF_PYTHON_RESULT_CAPSULE);
     if (result != NULL) numforge_result_destroy(result); else PyErr_Clear();
 }
 static PyObject *result_wrap(NumForgeResult *result)
 {
-    PyObject *capsule = PyCapsule_New(result, RESULT_CAPSULE, result_destroy);
+    PyObject *capsule = PyCapsule_New(result, NF_PYTHON_RESULT_CAPSULE, result_destroy);
     if (capsule == NULL) numforge_result_destroy(result);
     return capsule;
 }
@@ -137,24 +41,24 @@ static PyObject *native_number(PyObject *module, PyObject *args)
     NumForgeStatus status = top && bottom && rational && decimal ? NUMFORGE_OK : NUMFORGE_OUT_OF_MEMORY;
     if (status == NUMFORGE_OK && strcmp(kind, "decimal") == 0) {
         bool integral = false;
-        status = decimal_status(bigdecimal_set_string(decimal, text));
-        if (status == NUMFORGE_OK) status = decimal_status(bigdecimal_is_integer(&integral, decimal));
-        if (status == NUMFORGE_OK) status = integral ? decimal_status(bigdecimal_to_bigint(top, decimal)) :
-            rational_status(bigrational_from_bigdecimal(rational, decimal));
+        status = nf_python_decimal_status(bigdecimal_set_string(decimal, text));
+        if (status == NUMFORGE_OK) status = nf_python_decimal_status(bigdecimal_is_integer(&integral, decimal));
+        if (status == NUMFORGE_OK) status = integral ? nf_python_decimal_status(bigdecimal_to_bigint(top, decimal)) :
+            nf_python_rational_status(bigrational_from_bigdecimal(rational, decimal));
         if (status == NUMFORGE_OK) status = integral ? numforge_result_from_integer(&result, top, NULL, NULL) :
             numforge_result_from_rational(&result, rational, NULL, NULL);
     } else if (status == NUMFORGE_OK) {
-        status = integer_status(bigint_set_string(top, text));
+        status = nf_python_integer_status(bigint_set_string(top, text));
         if (status == NUMFORGE_OK && strcmp(kind, "rational") == 0) {
-            status = integer_status(bigint_set_string(bottom, denominator));
-            if (status == NUMFORGE_OK) status = rational_status(bigrational_set_fraction(rational, top, bottom));
+            status = nf_python_integer_status(bigint_set_string(bottom, denominator));
+            if (status == NUMFORGE_OK) status = nf_python_rational_status(bigrational_set_fraction(rational, top, bottom));
             if (status == NUMFORGE_OK) status = numforge_result_from_rational(&result, rational, NULL, NULL);
         } else if (status == NUMFORGE_OK) status = numforge_result_from_integer(&result, top, NULL, NULL);
     }
-    status = budget_status(status);
+    status = nf_python_budget_status(status);
     bigint_destroy(top); bigint_destroy(bottom); bigrational_destroy(rational); bigdecimal_destroy(decimal);
     if (owner) numforge_budget_end();
-    if (status != NUMFORGE_OK) { numforge_result_destroy(result); return raise_status(module, status, 0U); }
+    if (status != NUMFORGE_OK) { numforge_result_destroy(result); return nf_python_raise_status(module, status, 0U); }
     return result_wrap(result);
 }
 
@@ -162,12 +66,12 @@ static PyObject *native_evaluate(PyObject *module, PyObject *args)
 {
     const char *text; PyObject *options;
     if (!PyArg_ParseTuple(args, "sO:evaluate", &text, &options)) return NULL;
-    Policy policy;
-    if (!policy_parse(module, options, &policy)) return NULL;
+    NFPythonPolicy policy;
+    if (!nf_python_policy_parse(module, options, &policy)) return NULL;
     NumForgeResult *result = NULL; NumForgeError error = {NUMFORGE_OK, 0U};
     NumForgeStatus status = numforge_evaluate(&result, text, policy.context, &error);
     numforge_context_destroy(policy.context);
-    if (status != NUMFORGE_OK) return raise_status(module, status, error.offset);
+    if (status != NUMFORGE_OK) return nf_python_raise_status(module, status, error.offset);
     return result_wrap(result);
 }
 static PyObject *native_prepare(PyObject *module, PyObject *args)
@@ -177,7 +81,7 @@ static PyObject *native_prepare(PyObject *module, PyObject *args)
     PyObject *names = PySequence_Fast(sequence, "parameters must be a sequence");
     if (names == NULL) return NULL;
     Py_ssize_t count = PySequence_Fast_GET_SIZE(names);
-    if (count > 32) { Py_DECREF(names); return raise_status(module, NUMFORGE_INVALID_ARGUMENT, 0U); }
+    if (count > 32) { Py_DECREF(names); return nf_python_raise_status(module, NUMFORGE_INVALID_ARGUMENT, 0U); }
     const char *parameters[32];
     for (Py_ssize_t i = 0; i < count; ++i) {
         Py_ssize_t length;
@@ -190,7 +94,7 @@ static PyObject *native_prepare(PyObject *module, PyObject *args)
     NumForgeExpression *expression = NULL; NumForgeError error = {NUMFORGE_OK, 0U};
     NumForgeStatus status = numforge_expression_prepare_parameters(&expression, text, parameters, (size_t)count, NULL, &error);
     Py_DECREF(names);
-    if (status != NUMFORGE_OK) return raise_status(module, status, error.offset);
+    if (status != NUMFORGE_OK) return nf_python_raise_status(module, status, error.offset);
     PyObject *capsule = PyCapsule_New(expression, EXPRESSION_CAPSULE, expression_destroy);
     if (capsule == NULL) numforge_expression_destroy(expression);
     return capsule;
@@ -220,25 +124,25 @@ static PyObject *native_evaluate_prepared(PyObject *module, PyObject *args)
     PyObject *values = PySequence_Fast(sequence, "arguments must be a sequence");
     if (values == NULL) return NULL;
     Py_ssize_t count = PySequence_Fast_GET_SIZE(values);
-    if (count > 32) { Py_DECREF(values); return raise_status(module, NUMFORGE_ARGUMENT_COUNT, 0U); }
+    if (count > 32) { Py_DECREF(values); return nf_python_raise_status(module, NUMFORGE_ARGUMENT_COUNT, 0U); }
     const NumForgeResult *arguments[32];
     for (Py_ssize_t i = 0; i < count; ++i) {
-        arguments[i] = PyCapsule_GetPointer(PySequence_Fast_GET_ITEM(values, i), RESULT_CAPSULE);
+        arguments[i] = PyCapsule_GetPointer(PySequence_Fast_GET_ITEM(values, i), NF_PYTHON_RESULT_CAPSULE);
         if (arguments[i] == NULL) { Py_DECREF(values); return NULL; }
     }
-    Policy policy;
-    if (!policy_parse(module, options, &policy)) { Py_DECREF(values); return NULL; }
+    NFPythonPolicy policy;
+    if (!nf_python_policy_parse(module, options, &policy)) { Py_DECREF(values); return NULL; }
     NumForgeResult *result = NULL; NumForgeError error = {NUMFORGE_OK, 0U};
     NumForgeStatus status = numforge_expression_evaluate_arguments(&result, expression, arguments, (size_t)count, policy.context, &error);
     numforge_context_destroy(policy.context); Py_DECREF(values);
-    if (status != NUMFORGE_OK) return raise_status(module, status, error.offset);
+    if (status != NUMFORGE_OK) return nf_python_raise_status(module, status, error.offset);
     return result_wrap(result);
 }
 static PyObject *native_info(PyObject *module, PyObject *args)
 {
     (void)module; PyObject *capsule;
     if (!PyArg_ParseTuple(args, "O:info", &capsule)) return NULL;
-    NumForgeResult *result = PyCapsule_GetPointer(capsule, RESULT_CAPSULE);
+    NumForgeResult *result = PyCapsule_GetPointer(capsule, NF_PYTHON_RESULT_CAPSULE);
     if (result == NULL) return NULL;
     static const char *names[] = {"invalid", "integer", "rational", "decimal", "complex_rational", "complex_decimal"};
     return Py_BuildValue("sO", names[numforge_result_kind(result)], numforge_result_is_exact(result) ? Py_True : Py_False);
@@ -247,55 +151,34 @@ static PyObject *native_text(PyObject *module, PyObject *args)
 {
     PyObject *capsule;
     if (!PyArg_ParseTuple(args, "O:text", &capsule)) return NULL;
-    NumForgeResult *result = PyCapsule_GetPointer(capsule, RESULT_CAPSULE);
+    NumForgeResult *result = PyCapsule_GetPointer(capsule, NF_PYTHON_RESULT_CAPSULE);
     if (result == NULL) return NULL;
     char *text = NULL;
     NumForgeStatus status = numforge_result_to_string(result, &text);
-    if (status != NUMFORGE_OK) return raise_status(module, status, 0U);
+    if (status != NUMFORGE_OK) return nf_python_raise_status(module, status, 0U);
     PyObject *output = PyUnicode_FromString(text); free(text); return output;
 }
 
-static PyObject *fraction_pair(PyObject *module, const BigRational *value)
-{
-    if (value == NULL) return Py_NewRef(Py_None);
-    BigInt *top = bigint_create(), *bottom = bigint_create(); char *a = NULL, *b = NULL;
-    NumForgeStatus status = top && bottom ? NUMFORGE_OK : NUMFORGE_OUT_OF_MEMORY;
-    if (status == NUMFORGE_OK) status = rational_status(bigrational_get_numerator(top, value));
-    if (status == NUMFORGE_OK) status = rational_status(bigrational_get_denominator(bottom, value));
-    if (status == NUMFORGE_OK) {
-        a = bigint_to_string(top); b = bigint_to_string(bottom);
-        if (a == NULL || b == NULL) status = NUMFORGE_OUT_OF_MEMORY;
-    }
-    PyObject *pair = status == NUMFORGE_OK ? Py_BuildValue("ss", a, b) : NULL;
-    free(a); free(b); bigint_destroy(top); bigint_destroy(bottom);
-    if (status != NUMFORGE_OK) return raise_status(module, budget_status(status), 0U);
-    return pair;
-}
 static PyObject *native_fraction(PyObject *module, PyObject *args)
 {
     PyObject *capsule;
     if (!PyArg_ParseTuple(args, "O:fraction", &capsule)) return NULL;
-    NumForgeResult *result = PyCapsule_GetPointer(capsule, RESULT_CAPSULE);
+    NumForgeResult *result = PyCapsule_GetPointer(capsule, NF_PYTHON_RESULT_CAPSULE);
     if (result == NULL) return NULL;
     bool owner = numforge_budget_begin(5000U, 64U*1024U*1024U, 512U*1024U);
     PyObject *output = NULL;
     const BigRational *rational = numforge_result_rational(result);
     const BigInt *integer = numforge_result_integer(result);
-    if (rational != NULL) output = fraction_pair(module, rational);
+    if (rational != NULL) output = nf_python_fraction_pair(module, rational);
     else if (integer != NULL) {
         char *text = bigint_to_string(integer);
-        if (text == NULL) raise_status(module, budget_status(NUMFORGE_OUT_OF_MEMORY), 0U);
+        if (text == NULL) nf_python_raise_status(module, nf_python_budget_status(NUMFORGE_OUT_OF_MEMORY), 0U);
         else { output = Py_BuildValue("ss", text, "1"); free(text); }
     } else PyErr_SetString(PyExc_TypeError, "result is not an exact real integer or fraction");
-    NumForgeStatus status = budget_status(NUMFORGE_OK);
+    NumForgeStatus status = nf_python_budget_status(NUMFORGE_OK);
     if (owner) numforge_budget_end();
-    if (status != NUMFORGE_OK) { Py_XDECREF(output); return raise_status(module, status, 0U); }
+    if (status != NUMFORGE_OK) { Py_XDECREF(output); return nf_python_raise_status(module, status, 0U); }
     return output;
-}
-static int dictionary_put(PyObject *dictionary, const char *name, PyObject *value)
-{
-    if (value == NULL) return 0;
-    int status = PyDict_SetItemString(dictionary, name, value); Py_DECREF(value); return status == 0;
 }
 static PyObject *native_solve(PyObject *module, PyObject *args)
 {
@@ -303,28 +186,28 @@ static PyObject *native_solve(PyObject *module, PyObject *args)
     if (!PyArg_ParseTuple(args, "OOOO:solve", &capsules[0], &capsules[1], &capsules[2], &options)) return NULL;
     const NumForgeResult *inputs[3];
     for (size_t i = 0U; i < 3U; ++i) {
-        inputs[i] = PyCapsule_GetPointer(capsules[i], RESULT_CAPSULE);
+        inputs[i] = PyCapsule_GetPointer(capsules[i], NF_PYTHON_RESULT_CAPSULE);
         if (inputs[i] == NULL) return NULL;
         if (numforge_result_integer(inputs[i]) == NULL && numforge_result_rational(inputs[i]) == NULL) {
             PyErr_SetString(PyExc_TypeError, "solver coefficients must be exact real values"); return NULL;
         }
     }
-    Policy policy;
-    if (!policy_parse(module, options, &policy)) return NULL;
+    NFPythonPolicy policy;
+    if (!nf_python_policy_parse(module, options, &policy)) return NULL;
     bool owner = numforge_budget_begin(policy.milliseconds, policy.allocation_bytes, policy.single_allocation);
     BigRational *coefficients[3] = {0}; NumForgePolynomialSolution *solution = NULL;
     NumForgeStatus status = NUMFORGE_OK;
     for (size_t i = 0U; i < 3U && status == NUMFORGE_OK; ++i) {
         coefficients[i] = bigrational_create();
         if (coefficients[i] == NULL) status = NUMFORGE_OUT_OF_MEMORY;
-        else status = rational_status(numforge_result_integer(inputs[i]) != NULL ?
+        else status = nf_python_rational_status(numforge_result_integer(inputs[i]) != NULL ?
             bigrational_from_bigint(coefficients[i], numforge_result_integer(inputs[i])) :
             bigrational_copy(coefficients[i], numforge_result_rational(inputs[i])));
     }
-    if (status == NUMFORGE_OK) status = rational_status(numforge_polynomial_solve(&solution, coefficients[0], coefficients[1], coefficients[2]));
-    status = budget_status(status);
+    if (status == NUMFORGE_OK) status = nf_python_rational_status(numforge_polynomial_solve(&solution, coefficients[0], coefficients[1], coefficients[2]));
+    status = nf_python_budget_status(status);
     PyObject *output = NULL, *values = NULL, *multiplicities = NULL;
-    if (status != NUMFORGE_OK) { raise_status(module, status, 0U); goto done; }
+    if (status != NUMFORGE_OK) { nf_python_raise_status(module, status, 0U); goto done; }
     size_t count = numforge_polynomial_root_count(solution);
     values = PyTuple_New((Py_ssize_t)count); multiplicities = PyTuple_New((Py_ssize_t)count); output = PyDict_New();
     if (values == NULL || multiplicities == NULL || output == NULL) goto failed;
@@ -333,7 +216,7 @@ static PyObject *native_solve(PyObject *module, PyObject *args)
         if (numforge_polynomial_rational_offset(solution) == NULL) value = Py_NewRef(Py_None);
         else {
             BigRationalComplex *exact = NULL; NumForgeResult *converted = NULL;
-            status = rational_status(numforge_polynomial_root_exact(&exact, solution, i));
+            status = nf_python_rational_status(numforge_polynomial_root_exact(&exact, solution, i));
             if (status == NUMFORGE_OK && !numforge_polynomial_is_imaginary(solution)) {
                 BigRational *real = bigrational_create();
                 if (real == NULL) status = NUMFORGE_OUT_OF_MEMORY;
@@ -342,7 +225,7 @@ static PyObject *native_solve(PyObject *module, PyObject *args)
                 bigrational_destroy(real);
             } else if (status == NUMFORGE_OK) status = numforge_result_from_complex_rational(&converted, exact, policy.context, NULL);
             bigrationalcomplex_destroy(exact);
-            if (status != NUMFORGE_OK) { numforge_result_destroy(converted); raise_status(module, budget_status(status), 0U); goto failed; }
+            if (status != NUMFORGE_OK) { numforge_result_destroy(converted); nf_python_raise_status(module, nf_python_budget_status(status), 0U); goto failed; }
             value = result_wrap(converted);
         }
         PyObject *multiplicity = PyLong_FromUnsignedLong(numforge_polynomial_root_multiplicity(solution, i));
@@ -351,16 +234,16 @@ static PyObject *native_solve(PyObject *module, PyObject *args)
     }
     const char *kind = numforge_polynomial_kind(solution) == NUMFORGE_POLYNOMIAL_FINITE ? "finite" :
         numforge_polynomial_kind(solution) == NUMFORGE_POLYNOMIAL_ALL ? "all" : "none";
-    if (!dictionary_put(output, "kind", PyUnicode_FromString(kind)) ||
-        !dictionary_put(output, "degree", PyLong_FromUnsignedLong(numforge_polynomial_degree(solution))) ||
-        !dictionary_put(output, "center", fraction_pair(module, numforge_polynomial_center(solution))) ||
-        !dictionary_put(output, "radicand", fraction_pair(module, numforge_polynomial_radicand(solution))) ||
-        !dictionary_put(output, "offset", fraction_pair(module, numforge_polynomial_rational_offset(solution))) ||
-        !dictionary_put(output, "discriminant", fraction_pair(module, numforge_polynomial_discriminant(solution))) ||
-        !dictionary_put(output, "imaginary", PyBool_FromLong(numforge_polynomial_is_imaginary(solution)))) goto failed;
+    if (!nf_python_dictionary_put(output, "kind", PyUnicode_FromString(kind)) ||
+        !nf_python_dictionary_put(output, "degree", PyLong_FromUnsignedLong(numforge_polynomial_degree(solution))) ||
+        !nf_python_dictionary_put(output, "center", nf_python_fraction_pair(module, numforge_polynomial_center(solution))) ||
+        !nf_python_dictionary_put(output, "radicand", nf_python_fraction_pair(module, numforge_polynomial_radicand(solution))) ||
+        !nf_python_dictionary_put(output, "offset", nf_python_fraction_pair(module, numforge_polynomial_rational_offset(solution))) ||
+        !nf_python_dictionary_put(output, "discriminant", nf_python_fraction_pair(module, numforge_polynomial_discriminant(solution))) ||
+        !nf_python_dictionary_put(output, "imaginary", PyBool_FromLong(numforge_polynomial_is_imaginary(solution)))) goto failed;
     if (PyDict_SetItemString(output, "values", values) < 0 || PyDict_SetItemString(output, "multiplicities", multiplicities) < 0) goto failed;
-    status = budget_status(NUMFORGE_OK);
-    if (status != NUMFORGE_OK) { raise_status(module, status, 0U); goto failed; }
+    status = nf_python_budget_status(NUMFORGE_OK);
+    if (status != NUMFORGE_OK) { nf_python_raise_status(module, status, 0U); goto failed; }
     goto done;
 failed:
     Py_CLEAR(output);
@@ -372,35 +255,6 @@ done:
     return output;
 }
 
-/* Own both arrays even after partial conversion so callers share one cleanup. */
-static NumForgeStatus exact_inputs(PyObject *values, Py_ssize_t count, const char *error,
-    BigRational ***entries, const BigRational ***borrowed)
-{
-    if ((size_t)count > SIZE_MAX / sizeof(**entries)) return NUMFORGE_VALUE_TOO_LARGE;
-    *entries = numforge_calloc((size_t)count, sizeof(**entries));
-    *borrowed = numforge_calloc((size_t)count, sizeof(**borrowed));
-    if (*entries == NULL || *borrowed == NULL) return NUMFORGE_OUT_OF_MEMORY;
-    for (Py_ssize_t i = 0; i < count; ++i) {
-        const NumForgeResult *input = PyCapsule_GetPointer(PySequence_Fast_GET_ITEM(values, i), RESULT_CAPSULE);
-        if (input == NULL) return NUMFORGE_OK; /* Preserve the Python exception. */
-        if (numforge_result_integer(input) == NULL && numforge_result_rational(input) == NULL) {
-            PyErr_SetString(PyExc_TypeError, error); return NUMFORGE_OK;
-        }
-        (*entries)[i] = bigrational_create(); (*borrowed)[i] = (*entries)[i];
-        if ((*entries)[i] == NULL) return NUMFORGE_OUT_OF_MEMORY;
-        NumForgeStatus status = rational_status(numforge_result_integer(input) != NULL ?
-            bigrational_from_bigint((*entries)[i], numforge_result_integer(input)) :
-            bigrational_copy((*entries)[i], numforge_result_rational(input)));
-        if (status != NUMFORGE_OK) return status;
-    }
-    return NUMFORGE_OK;
-}
-static void exact_inputs_destroy(BigRational **entries, const BigRational **borrowed, Py_ssize_t count)
-{
-    if (entries) for (Py_ssize_t i = 0; i < count; ++i) bigrational_destroy(entries[i]);
-    free(entries); free(borrowed);
-}
-
 static PyObject *native_describe(PyObject *module, PyObject *args)
 {
     PyObject *items, *options;
@@ -408,32 +262,32 @@ static PyObject *native_describe(PyObject *module, PyObject *args)
     PyObject *values = PySequence_Fast(items, "samples must be a sequence");
     if (values == NULL) return NULL;
     Py_ssize_t count = PySequence_Fast_GET_SIZE(values);
-    if (count == 0) { Py_DECREF(values); return raise_status(module, NUMFORGE_INVALID_ARGUMENT, 0); }
-    Policy policy;
-    if (!policy_parse(module, options, &policy)) { Py_DECREF(values); return NULL; }
+    if (count == 0) { Py_DECREF(values); return nf_python_raise_status(module, NUMFORGE_INVALID_ARGUMENT, 0); }
+    NFPythonPolicy policy;
+    if (!nf_python_policy_parse(module, options, &policy)) { Py_DECREF(values); return NULL; }
     bool owner = numforge_budget_begin(policy.milliseconds, policy.allocation_bytes, policy.single_allocation);
     BigRational **entries = NULL; const BigRational **borrowed = NULL;
     NumForgeStatisticsSummary *summary = NULL; PyObject *output = NULL; NumForgeStatus status = NUMFORGE_OK;
-    status = exact_inputs(values, count, "statistics samples must be exact real values", &entries, &borrowed);
+    status = nf_python_exact_inputs(values, count, "statistics samples must be exact real values", &entries, &borrowed);
     if (status != NUMFORGE_OK || PyErr_Occurred()) goto done;
-    if (status == NUMFORGE_OK) status = rational_status(numforge_statistics_describe(&summary, borrowed, (size_t)count));
+    if (status == NUMFORGE_OK) status = nf_python_rational_status(numforge_statistics_describe(&summary, borrowed, (size_t)count));
     if (status != NUMFORGE_OK) goto done;
     output = PyDict_New();
     if (output == NULL) goto done;
-    if (!dictionary_put(output, "count", PyLong_FromSize_t(numforge_statistics_summary_count(summary))) ||
-        !dictionary_put(output, "sum", fraction_pair(module, numforge_statistics_summary_sum(summary))) ||
-        !dictionary_put(output, "minimum", fraction_pair(module, numforge_statistics_summary_minimum(summary))) ||
-        !dictionary_put(output, "maximum", fraction_pair(module, numforge_statistics_summary_maximum(summary))) ||
-        !dictionary_put(output, "mean", fraction_pair(module, numforge_statistics_summary_mean(summary))) ||
-        !dictionary_put(output, "variance_population", fraction_pair(module, numforge_statistics_summary_variance_population(summary))) ||
-        !dictionary_put(output, "variance_sample", fraction_pair(module, numforge_statistics_summary_variance_sample(summary)))) Py_CLEAR(output);
+    if (!nf_python_dictionary_put(output, "count", PyLong_FromSize_t(numforge_statistics_summary_count(summary))) ||
+        !nf_python_dictionary_put(output, "sum", nf_python_fraction_pair(module, numforge_statistics_summary_sum(summary))) ||
+        !nf_python_dictionary_put(output, "minimum", nf_python_fraction_pair(module, numforge_statistics_summary_minimum(summary))) ||
+        !nf_python_dictionary_put(output, "maximum", nf_python_fraction_pair(module, numforge_statistics_summary_maximum(summary))) ||
+        !nf_python_dictionary_put(output, "mean", nf_python_fraction_pair(module, numforge_statistics_summary_mean(summary))) ||
+        !nf_python_dictionary_put(output, "variance_population", nf_python_fraction_pair(module, numforge_statistics_summary_variance_population(summary))) ||
+        !nf_python_dictionary_put(output, "variance_sample", nf_python_fraction_pair(module, numforge_statistics_summary_variance_sample(summary)))) Py_CLEAR(output);
 done:
-    status = budget_status(status);
+    status = nf_python_budget_status(status);
     if (status != NUMFORGE_OK) {
         Py_CLEAR(output);
-        if (!PyErr_Occurred()) raise_status(module, status, 0);
+        if (!PyErr_Occurred()) nf_python_raise_status(module, status, 0);
     }
-    exact_inputs_destroy(entries, borrowed, count); numforge_statistics_summary_destroy(summary);
+    nf_python_exact_inputs_destroy(entries, borrowed, count); numforge_statistics_summary_destroy(summary);
     if (owner) numforge_budget_end();
     numforge_context_destroy(policy.context); Py_DECREF(values); return output;
 }
@@ -487,11 +341,11 @@ static PyObject *linear_wrap(NumForgeLinearSolution *solution)
     }
     const char *kind = numforge_linear_solution_kind(solution) == NUMFORGE_LINEAR_NONE ? "none" :
         numforge_linear_solution_kind(solution) == NUMFORGE_LINEAR_UNIQUE ? "unique" : "infinite";
-    if (!dictionary_put(output, "kind", PyUnicode_FromString(kind)) ||
-        !dictionary_put(output, "rank", PyLong_FromSize_t(rank)) ||
-        !dictionary_put(output, "nullity", PyLong_FromSize_t(nullity)) ||
-        !dictionary_put(output, "particular", matrix_view(numforge_linear_solution_particular(solution), owner)) ||
-        !dictionary_put(output, "nullspace", matrix_view(numforge_linear_solution_nullspace(solution), owner)) ||
+    if (!nf_python_dictionary_put(output, "kind", PyUnicode_FromString(kind)) ||
+        !nf_python_dictionary_put(output, "rank", PyLong_FromSize_t(rank)) ||
+        !nf_python_dictionary_put(output, "nullity", PyLong_FromSize_t(nullity)) ||
+        !nf_python_dictionary_put(output, "particular", matrix_view(numforge_linear_solution_particular(solution), owner)) ||
+        !nf_python_dictionary_put(output, "nullspace", matrix_view(numforge_linear_solution_nullspace(solution), owner)) ||
         PyDict_SetItemString(output, "pivot_columns", pivots) < 0 ||
         PyDict_SetItemString(output, "free_columns", free_columns) < 0) goto failed;
     goto done;
@@ -502,12 +356,12 @@ done:
 }
 static PyObject *matrix_error(PyObject *module, NumForgeMatrixStatus status)
 {
-    NumForgeStatus budget = budget_status(NUMFORGE_OK);
-    if (budget != NUMFORGE_OK) return raise_status(module, budget, 0);
+    NumForgeStatus budget = nf_python_budget_status(NUMFORGE_OK);
+    if (budget != NUMFORGE_OK) return nf_python_raise_status(module, budget, 0);
     static const char *names[] = {"ok", "null_argument", "invalid_argument", "dimension_mismatch",
         "singular", "out_of_memory", "value_too_large", "scale_overflow"};
     const char *name = (unsigned)status < sizeof(names)/sizeof(names[0]) ? names[status] : "unknown";
-    return raise_named(module, numforge_matrix_status_to_string(status), name, 0);
+    return nf_python_raise_named(module, numforge_matrix_status_to_string(status), name, 0);
 }
 static PyObject *native_matrix_create(PyObject *module, PyObject *args)
 {
@@ -522,12 +376,12 @@ static PyObject *native_matrix_create(PyObject *module, PyObject *args)
     if (PySequence_Fast_GET_SIZE(values) != count) {
         Py_DECREF(values); PyErr_SetString(PyExc_ValueError, "matrix entry count does not match shape"); return NULL;
     }
-    Policy policy;
-    if (!policy_parse(module, options, &policy)) { Py_DECREF(values); return NULL; }
+    NFPythonPolicy policy;
+    if (!nf_python_policy_parse(module, options, &policy)) { Py_DECREF(values); return NULL; }
     bool owner = numforge_budget_begin(policy.milliseconds, policy.allocation_bytes, policy.single_allocation);
     BigRational **entries = NULL; const BigRational **borrowed = NULL; NumForgeMatrix *matrix = NULL;
     PyObject *output = NULL; NumForgeStatus status = NUMFORGE_OK;
-    status = exact_inputs(values, count, "matrix entries must be exact real values", &entries, &borrowed);
+    status = nf_python_exact_inputs(values, count, "matrix entries must be exact real values", &entries, &borrowed);
     if (status != NUMFORGE_OK || PyErr_Occurred()) goto done;
     if (status == NUMFORGE_OK) {
         NumForgeMatrixStatus created = numforge_matrix_create(&matrix, (size_t)rows, (size_t)columns, borrowed);
@@ -535,8 +389,8 @@ static PyObject *native_matrix_create(PyObject *module, PyObject *args)
         output = matrix_wrap(matrix); matrix = NULL;
     }
 done:
-    if (status != NUMFORGE_OK) raise_status(module, budget_status(status), 0);
-    exact_inputs_destroy(entries, borrowed, count); numforge_matrix_destroy(matrix);
+    if (status != NUMFORGE_OK) nf_python_raise_status(module, nf_python_budget_status(status), 0);
+    nf_python_exact_inputs_destroy(entries, borrowed, count); numforge_matrix_destroy(matrix);
     if (owner) numforge_budget_end();
     numforge_context_destroy(policy.context); Py_DECREF(values);
     return output;
@@ -564,8 +418,8 @@ static PyObject *native_matrix_operation(PyObject *module, PyObject *args)
     if (multiply || solve || general) {
         b = PyCapsule_GetPointer(other, MATRIX_CAPSULE); if (b == NULL) return NULL;
     }
-    Policy policy;
-    if (!policy_parse(module, options, &policy)) return NULL;
+    NFPythonPolicy policy;
+    if (!nf_python_policy_parse(module, options, &policy)) return NULL;
     bool owner = numforge_budget_begin(policy.milliseconds, policy.allocation_bytes, policy.single_allocation);
     NumForgeMatrixStatus status = NUMFORGE_MATRIX_OK;
     NumForgeMatrix *matrix = NULL; BigRational *value = NULL; PyObject *output = NULL;
@@ -583,7 +437,7 @@ static PyObject *native_matrix_operation(PyObject *module, PyObject *args)
     } else if (determinant) {
         value = bigrational_create();
         status = value ? numforge_matrix_determinant(value, a) : NUMFORGE_MATRIX_OUT_OF_MEMORY;
-        if (status == NUMFORGE_MATRIX_OK) output = fraction_pair(module, value);
+        if (status == NUMFORGE_MATRIX_OK) output = nf_python_fraction_pair(module, value);
     } else {
         output = PyTuple_New((Py_ssize_t)numforge_matrix_rows(a));
         for (size_t i = 0; output && i < numforge_matrix_rows(a); ++i) {
@@ -591,13 +445,13 @@ static PyObject *native_matrix_operation(PyObject *module, PyObject *args)
             if (row == NULL) { Py_CLEAR(output); break; }
             PyTuple_SET_ITEM(output, (Py_ssize_t)i, row);
             for (size_t j = 0; j < numforge_matrix_columns(a); ++j) {
-                PyObject *pair = fraction_pair(module, numforge_matrix_entry(a, i, j));
+                PyObject *pair = nf_python_fraction_pair(module, numforge_matrix_entry(a, i, j));
                 if (pair == NULL) { Py_CLEAR(output); break; }
                 PyTuple_SET_ITEM(row, (Py_ssize_t)j, pair);
             }
         }
     }
-    if (status != NUMFORGE_MATRIX_OK || budget_status(NUMFORGE_OK) != NUMFORGE_OK) {
+    if (status != NUMFORGE_MATRIX_OK || nf_python_budget_status(NUMFORGE_OK) != NUMFORGE_OK) {
         Py_CLEAR(output);
         if (!PyErr_Occurred()) matrix_error(module, status);
     }
@@ -606,228 +460,6 @@ static PyObject *native_matrix_operation(PyObject *module, PyObject *args)
     numforge_context_destroy(policy.context);
     return output;
 }
-
-typedef struct RootCallback {
-    PyObject *module, *function;
-    BigInt *numerator;
-    NumForgeStatus status;
-    bool continuous;
-} RootCallback;
-
-static NumForgeNumericalStatus root_callback(BigDecimal *value, BigRational *proposal, NumForgeRootSample *sample,
-    const BigRational *x, int64_t places, void *user)
-{
-    RootCallback *work = user;
-    PyObject *coordinate = fraction_pair(work->module, x);
-    if (coordinate == NULL) return NUMFORGE_NUMERICAL_CALLBACK_FAILED;
-    PyObject *returned = PyObject_CallFunction(work->function, "OL", coordinate, (long long)places);
-    Py_DECREF(coordinate);
-    if (returned == NULL) return NUMFORGE_NUMERICAL_CALLBACK_FAILED;
-    if (returned == Py_None) { Py_DECREF(returned); return NUMFORGE_NUMERICAL_OK; }
-    const NumForgeResult *result = PyCapsule_GetPointer(returned, RESULT_CAPSULE);
-    if (result == NULL) { Py_DECREF(returned); return NUMFORGE_NUMERICAL_CALLBACK_FAILED; }
-    const BigInt *integer = numforge_result_integer(result);
-    const BigRational *rational = numforge_result_rational(result);
-    const BigDecimal *decimal = numforge_result_decimal(result);
-    bool zero = false;
-    if (integer) {
-        zero = bigint_is_zero(integer);
-        work->status = decimal_status(bigdecimal_from_bigint(value, integer));
-        if (proposal && work->status == NUMFORGE_OK)
-            work->status = rational_status(bigrational_from_bigint(proposal, integer));
-    } else if (rational) {
-        work->status = rational_status(bigrational_get_numerator(work->numerator, rational));
-        if (work->status == NUMFORGE_OK) zero = bigint_is_zero(work->numerator);
-        if (work->status == NUMFORGE_OK) work->status = rational_status(
-            bigrational_to_bigdecimal(value, rational, places, BIGDECIMAL_ROUND_HALF_EVEN));
-        if (proposal && work->status == NUMFORGE_OK)
-            work->status = rational_status(bigrational_copy(proposal, rational));
-    } else if (decimal) {
-        work->status = decimal_status(bigdecimal_copy(value, decimal));
-        if (proposal && work->status == NUMFORGE_OK)
-            work->status = rational_status(bigrational_from_bigdecimal(proposal, decimal));
-    }
-    else PyErr_SetString(PyExc_TypeError, "root samples must be real values or None");
-    sample->real = work->status == NUMFORGE_OK && !PyErr_Occurred();
-    sample->exact_zero = sample->real && zero && numforge_result_is_exact(result);
-    Py_DECREF(returned);
-    return sample->real ? NUMFORGE_NUMERICAL_OK : NUMFORGE_NUMERICAL_CALLBACK_FAILED;
-}
-static NumForgeNumericalStatus root_sample(BigDecimal *value, NumForgeRootSample *sample,
-    const BigRational *x, int64_t places, void *user)
-{ return root_callback(value, NULL, sample, x, places, user); }
-static NumForgeNumericalStatus root_domain(bool *verified, const BigRational *lower,
-    const BigRational *upper, void *user)
-{
-    (void)lower; (void)upper;
-    *verified = ((RootCallback *)user)->continuous;
-    return NUMFORGE_NUMERICAL_OK;
-}
-static NumForgeStatus numerical_status(NumForgeNumericalStatus status)
-{
-    switch (status) {
-        case NUMFORGE_NUMERICAL_OK: return NUMFORGE_OK;
-        case NUMFORGE_NUMERICAL_NULL_ARGUMENT: return NUMFORGE_NULL_ARGUMENT;
-        case NUMFORGE_NUMERICAL_OUT_OF_MEMORY: return NUMFORGE_OUT_OF_MEMORY;
-        case NUMFORGE_NUMERICAL_VALUE_TOO_LARGE: return NUMFORGE_VALUE_TOO_LARGE;
-        case NUMFORGE_NUMERICAL_SCALE_OVERFLOW: return NUMFORGE_SCALE_OVERFLOW;
-        default: return NUMFORGE_INVALID_ARGUMENT;
-    }
-}
-typedef struct GridCallback { PyObject *module, *function; } GridCallback;
-static NumForgeNumericalStatus grid_visit(const BigRational *x, size_t index, void *user)
-{
-    GridCallback *work = user;
-    PyObject *coordinate = fraction_pair(work->module, x), *position = NULL, *returned = NULL;
-    if (coordinate) position = PyLong_FromSize_t(index);
-    if (position) returned = PyObject_CallFunctionObjArgs(work->function, coordinate, position, NULL);
-    Py_XDECREF(coordinate); Py_XDECREF(position);
-    if (returned == NULL) return NUMFORGE_NUMERICAL_CALLBACK_FAILED;
-    Py_DECREF(returned); /* Visit return values do not decide traversal. */
-    return NUMFORGE_NUMERICAL_OK;
-}
-static PyObject *native_visit_grid(PyObject *module, PyObject *args)
-{
-    PyObject *items, *count_object, *function, *options;
-    if (!PyArg_ParseTuple(args, "OOOO:visit_grid", &items, &count_object, &function, &options)) return NULL;
-    size_t count = PyLong_AsSize_t(count_object);
-    if (PyErr_Occurred()) return NULL;
-    if (!PyCallable_Check(function)) { PyErr_SetString(PyExc_TypeError, "visit must be callable"); return NULL; }
-    PyObject *values = PySequence_Fast(items, "grid bounds must be a sequence");
-    if (values == NULL) return NULL;
-    if (PySequence_Fast_GET_SIZE(values) != 2) {
-        Py_DECREF(values); PyErr_SetString(PyExc_ValueError, "expected two grid bounds"); return NULL;
-    }
-    Policy policy;
-    if (!policy_parse(module, options, &policy)) { Py_DECREF(values); return NULL; }
-    bool owner = numforge_budget_begin(policy.milliseconds, policy.allocation_bytes, policy.single_allocation);
-    BigRational **entries = NULL; const BigRational **borrowed = NULL;
-    NumForgeStatus status = exact_inputs(values, 2, "grid bounds must be exact real values", &entries, &borrowed);
-    GridCallback work = {module, function}; PyObject *output = NULL;
-    if (status == NUMFORGE_OK && !PyErr_Occurred())
-        status = numerical_status(numforge_grid_visit(entries[0], entries[1], count, grid_visit, &work));
-    status = budget_status(status);
-    if (!PyErr_Occurred()) {
-        if (status == NUMFORGE_OK) output = Py_NewRef(Py_None);
-        else raise_status(module, status, 0);
-    }
-    exact_inputs_destroy(entries, borrowed, 2); Py_DECREF(values);
-    if (owner) numforge_budget_end();
-    numforge_context_destroy(policy.context);
-    return output;
-}
-
-static PyObject *root_dictionary(PyObject *module, const NumForgeRoot *root)
-{
-    char *residual = NULL;
-    NumForgeStatus status = numforge_root_residual(root) ?
-        decimal_status(bigdecimal_to_string(numforge_root_residual(root), &residual)) : NUMFORGE_OK;
-    if (status != NUMFORGE_OK) { free(residual); return raise_status(module, budget_status(status), 0); }
-    static const char *kinds[] = {"found", "not_bracketed", "domain_gap", "domain_unverified", "iteration_limit", "precision_limit"};
-    PyObject *output = PyDict_New();
-    if (output && (!dictionary_put(output, "kind", PyUnicode_FromString(kinds[numforge_root_kind(root)])) ||
-        !dictionary_put(output, "x", fraction_pair(module, numforge_root_x(root))) ||
-        !dictionary_put(output, "lower", fraction_pair(module, numforge_root_lower(root))) ||
-        !dictionary_put(output, "upper", fraction_pair(module, numforge_root_upper(root))) ||
-        !dictionary_put(output, "residual", residual ? PyUnicode_FromString(residual) : Py_NewRef(Py_None)) ||
-        !dictionary_put(output, "exact_zero", PyBool_FromLong(numforge_root_exact_zero(root))) ||
-        !dictionary_put(output, "iterations", PyLong_FromSize_t(numforge_root_iterations(root))) ||
-        !dictionary_put(output, "evaluations", PyLong_FromSize_t(numforge_root_evaluations(root))))) Py_CLEAR(output);
-    free(residual);
-    return output;
-}
-static PyObject *scan_dictionary(PyObject *module, const NumForgeRootScan *scan)
-{
-    size_t count = numforge_root_scan_count(scan);
-    if (count > PY_SSIZE_T_MAX) return raise_status(module, NUMFORGE_VALUE_TOO_LARGE, 0);
-    PyObject *roots = PyTuple_New((Py_ssize_t)count), *output = NULL;
-    if (roots == NULL) return NULL;
-    for (size_t i = 0; i < count; ++i) {
-        PyObject *root = root_dictionary(module, numforge_root_scan_root(scan, i));
-        if (root == NULL) goto done;
-        PyTuple_SET_ITEM(roots, (Py_ssize_t)i, root);
-    }
-    NumForgeRootScanStats stats; numforge_root_scan_stats(scan, &stats);
-    static const char *kinds[] = {"finished", "root_limit", "evaluation_limit"};
-    static const char *names[] = {"evaluations", "iterations", "scanned_segments", "domain_gaps",
-        "rejected_brackets", "candidate_samples", "candidate_roots", "candidate_gaps"};
-    const size_t values[] = {stats.evaluations, stats.iterations, stats.scanned_segments, stats.domain_gaps,
-        stats.rejected_brackets, stats.candidate_samples, stats.candidate_roots, stats.candidate_gaps};
-    output = PyDict_New();
-    if (output && (!dictionary_put(output, "kind", PyUnicode_FromString(kinds[numforge_root_scan_stop(scan)])) ||
-        PyDict_SetItemString(output, "roots", roots) < 0)) Py_CLEAR(output);
-    for (size_t i = 0; output && i < sizeof(values)/sizeof(values[0]); ++i)
-        if (!dictionary_put(output, names[i], PyLong_FromSize_t(values[i]))) Py_CLEAR(output);
-done:
-    Py_DECREF(roots);
-    return output;
-}
-static PyObject *native_root_search(PyObject *module, PyObject *args, bool scanning)
-{
-    PyObject *function, *items, *settings, *options; const char *residual_text;
-    if (!PyArg_ParseTuple(args, "OOsOO:root_search", &function, &items, &residual_text, &settings, &options)) return NULL;
-    if (!PyCallable_Check(function) || !PyTuple_Check(settings) || PyTuple_Size(settings) != (scanning ? 7 : 4)) {
-        PyErr_SetString(PyExc_TypeError, "invalid root callback/settings"); return NULL;
-    }
-    NumForgeRootOptions root_options; numforge_root_options_init(&root_options);
-    root_options.decimal_places = PyLong_AsLongLong(PyTuple_GetItem(settings, 0));
-    root_options.max_iterations = PyLong_AsSize_t(PyTuple_GetItem(settings, 1));
-    root_options.max_evaluations = PyLong_AsSize_t(PyTuple_GetItem(settings, 2));
-    int continuous = PyObject_IsTrue(PyTuple_GetItem(settings, 3));
-    NumForgeRootScanOptions scan_options; numforge_root_scan_options_init(&scan_options);
-    if (scanning) {
-        scan_options.segments = PyLong_AsSize_t(PyTuple_GetItem(settings, 4));
-        scan_options.max_roots = PyLong_AsSize_t(PyTuple_GetItem(settings, 5));
-        scan_options.max_evaluations = PyLong_AsSize_t(PyTuple_GetItem(settings, 6));
-    }
-    if (PyErr_Occurred()) return NULL;
-    PyObject *values = PySequence_Fast(items, "root bounds/tolerance must be a sequence");
-    if (values == NULL) return NULL;
-    if (PySequence_Fast_GET_SIZE(values) != 3) {
-        Py_DECREF(values); PyErr_SetString(PyExc_ValueError, "expected two bounds and x tolerance"); return NULL;
-    }
-    Policy policy;
-    if (!policy_parse(module, options, &policy)) { Py_DECREF(values); return NULL; }
-    bool owner = numforge_budget_begin(policy.milliseconds, policy.allocation_bytes, policy.single_allocation);
-    BigRational **entries = NULL; const BigRational **borrowed = NULL;
-    BigDecimal *tolerance = NULL; NumForgeRoot *root = NULL; NumForgeRootScan *scan = NULL;
-    RootCallback work = {module, function, NULL, NUMFORGE_OK, continuous != 0};
-    NumForgeStatus status = exact_inputs(values, 3, "root bounds and x tolerance must be exact real values", &entries, &borrowed);
-    PyObject *output = NULL;
-    if (PyErr_Occurred()) goto done;
-    if (status == NUMFORGE_OK) {
-        tolerance = bigdecimal_create(); work.numerator = bigint_create();
-        if (!tolerance || !work.numerator) status = NUMFORGE_OUT_OF_MEMORY;
-    }
-    if (status == NUMFORGE_OK) status = decimal_status(bigdecimal_set_string(tolerance, residual_text));
-    root_options.x_tolerance = entries ? entries[2] : NULL;
-    root_options.residual_tolerance = tolerance;
-    scan_options.root_options = root_options;
-    if (status == NUMFORGE_OK) {
-        NumForgeNumericalStatus solved = scanning ?
-            numforge_roots_scan(&scan, root_callback, root_domain, &work, entries[0], entries[1], &scan_options) :
-            numforge_root_solve(&root, root_sample, root_domain, &work, entries[0], entries[1], &root_options);
-        status = solved == NUMFORGE_NUMERICAL_CALLBACK_FAILED && work.status != NUMFORGE_OK ?
-            work.status : numerical_status(solved);
-    }
-    status = budget_status(status);
-    if (PyErr_Occurred()) goto done; /* Preserve callback exceptions, including KeyboardInterrupt. */
-    if (status != NUMFORGE_OK) { raise_status(module, status, 0); goto done; }
-    output = scanning ? scan_dictionary(module, scan) : root_dictionary(module, root);
-    status = budget_status(NUMFORGE_OK);
-    if (status != NUMFORGE_OK && !PyErr_Occurred()) { Py_CLEAR(output); raise_status(module, status, 0); }
-done:
-    numforge_root_destroy(root); numforge_root_scan_destroy(scan);
-    bigint_destroy(work.numerator); bigdecimal_destroy(tolerance);
-    exact_inputs_destroy(entries, borrowed, 3); Py_DECREF(values);
-    if (owner) numforge_budget_end();
-    numforge_context_destroy(policy.context);
-    return output;
-}
-static PyObject *native_find_root(PyObject *module, PyObject *args)
-{ return native_root_search(module, args, false); }
-static PyObject *native_find_roots(PyObject *module, PyObject *args)
-{ return native_root_search(module, args, true); }
 
 static PyMethodDef methods[] = {
     {"number", native_number, METH_VARARGS, "Copy a lossless numeric input through C."},
@@ -839,9 +471,9 @@ static PyMethodDef methods[] = {
     {"text", native_text, METH_VARARGS, "Serialize a stored C result."},
     {"fraction", native_fraction, METH_VARARGS, "Copy exact rational components."},
     {"solve", native_solve, METH_VARARGS, "Solve exact polynomial coefficients in C."},
-    {"find_root", native_find_root, METH_VARARGS, "Run bounded C bisection with a Python sample callback."},
-    {"find_roots", native_find_roots, METH_VARARGS, "Run bounded C root scanning with a Python sample callback."},
-    {"visit_grid", native_visit_grid, METH_VARARGS, "Visit exact rational coordinates from the public C grid walker."},
+    {"find_root", nf_python_find_root, METH_VARARGS, "Run bounded C bisection with a Python sample callback."},
+    {"find_roots", nf_python_find_roots, METH_VARARGS, "Run bounded C root scanning with a Python sample callback."},
+    {"visit_grid", nf_python_visit_grid, METH_VARARGS, "Visit exact rational coordinates from the public C grid walker."},
     {"describe", native_describe, METH_VARARGS, "Compute an exact C descriptive statistics summary."},
     {"matrix_create", native_matrix_create, METH_VARARGS, "Copy exact real entries into a C matrix."},
     {"matrix_shape", native_matrix_shape, METH_VARARGS, "Read a C matrix shape."},
@@ -849,19 +481,19 @@ static PyMethodDef methods[] = {
     {NULL, NULL, 0, NULL}
 };
 static int module_traverse(PyObject *module, visitproc visit, void *arg)
-{ ModuleState *state = PyModule_GetState(module); Py_VISIT(state->error); return 0; }
+{ NFPythonModuleState *state = PyModule_GetState(module); Py_VISIT(state->error); return 0; }
 static int module_clear(PyObject *module)
-{ ModuleState *state = PyModule_GetState(module); Py_CLEAR(state->error); return 0; }
+{ NFPythonModuleState *state = PyModule_GetState(module); Py_CLEAR(state->error); return 0; }
 static void module_free(void *module) { (void)module_clear(module); }
 static struct PyModuleDef definition = {
-    PyModuleDef_HEAD_INIT, "_native", "NumForge public C API adapter.", sizeof(ModuleState),
+    PyModuleDef_HEAD_INIT, "_native", "NumForge public C API adapter.", sizeof(NFPythonModuleState),
     methods, NULL, module_traverse, module_clear, module_free
 };
 PyMODINIT_FUNC PyInit__native(void)
 {
     PyObject *module = PyModule_Create(&definition);
     if (module == NULL) return NULL;
-    ModuleState *state = PyModule_GetState(module);
+    NFPythonModuleState *state = PyModule_GetState(module);
     state->error = PyErr_NewException("numforge.Error", PyExc_RuntimeError, NULL);
     if (state->error == NULL || PyModule_AddObjectRef(module, "Error", state->error) < 0 ||
         PyModule_AddStringConstant(module, "core_version", NUMFORGE_CORE_VERSION) < 0) { Py_DECREF(module); return NULL; }
