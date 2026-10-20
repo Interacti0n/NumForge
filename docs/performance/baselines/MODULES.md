@@ -232,3 +232,22 @@ construction and internal cleanup. Input/reference creation and returned-fit
 destruction are outside timing. Allocation counters are read before validation;
 requested bytes are cumulative traffic. This measures the current composed
 implementation, not a specialized new moments algorithm or a speedup.
+
+### Local baseline — 20 October 2026
+
+Source `b6a02e4`, Windows x64, GCC 16.2.0, C17 Release/Ninja with opt-in allocation
+instrumentation. Three isolated executable invocations give nine checked calls
+per fixture, with no concurrent build/test job. Each call uses the covariance
+scope: 5000 ms, 128 MiB cumulative bytes and 2 MiB single allocation.
+
+| Fixture | Pairs | Mean ms range | Allocations | Requested bytes |
+| --- | ---: | ---: | ---: | ---: |
+| two pairs | 2 | 0.131–0.201 | 1,479 | 27,200 |
+| ordinary | 128 | 5.138–5.708 | 55,529 | 1,022,064 |
+| ordinary large | 1024 | 40.471–43.737 | 439,917 | 8,096,912 |
+| offset 10^1000 | 128 | 5.798–6.800 | 56,173 | 2,513,360 |
+| spread 10^-1000 | 128 | 23.458–26.384 | 66,308 | 13,833,568 |
+
+All 153 calls passed exact checks, including 45 regression fits. Allocation
+counts/bytes agreed across invocations. These are short shared-machine baselines,
+not Python/HTTP timings, arbitrary denominator-growth coverage or speed claims.
