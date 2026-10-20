@@ -88,7 +88,7 @@ the absence of every indirect or link-time dependency.
 | Linear Algebra | Vectors, matrices, decompositions and linear systems | Public immutable dense rational matrices, products/determinants, rank and complete rectangular single-RHS families; approximate/complex domains and broader decompositions remain future |
 | Calculus / Analysis | Mathematical concepts and user-facing organization | Symbolic and numerical algorithms have separate owners below |
 | Numerical | Sampling, root finding, interpolation, quadrature, ODEs and optimization | Public exact grids, adaptive scheduling/curve acceptance, phase anchors, bisection and bounded root scanning; expression/domain adapters and Brent/hybrid research remain private |
-| Statistics | Datasets, aggregates, distributions, regression and tests | Public exact rational batch summaries plus existing decimal scalar aggregates; streaming/multivariate/distribution contracts remain future |
+| Statistics | Datasets, aggregates, distributions, regression and tests | Public exact rational batch summaries and paired covariance plus existing decimal scalar aggregates; regression, streaming and distribution contracts remain future |
 | Symbolic | Symbolic expression representation, assumptions and rewrites | Future; calculator AST is not automatically a public CAS representation |
 | Scientific | Units, quantities, sourced constants and domain models | Public units and private quantity expressions; broader models remain future |
 
