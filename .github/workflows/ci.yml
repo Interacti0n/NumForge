@@ -3,9 +3,15 @@ name: CI
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
+
+# A new revision supersedes only the older run for the same branch/PR.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   bigint-benchmark-smoke:
@@ -285,3 +291,62 @@ jobs:
             tests/browser/playwright-report/
             tests/browser/test-results/
           retention-days: 14
+
+  documentation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Install documentation tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends doxygen
+          python -m pip install -r docs/requirements.txt
+      - name: Check source links, staging and navigation
+        run: |
+          node scripts/check_docs.cjs
+          python tests/test_docs.py
+      - name: Build strict MkDocs and public Doxygen documentation
+        run: python scripts/build_docs.py
+      - name: Install library for complete C documentation examples
+        run: |
+          cmake -S . -B build/docs-sdk -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DNUMFORGE_BUILD_APPS=OFF -DNUMFORGE_WARNINGS_AS_ERRORS=ON -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/build/docs-sdk-installed
+          cmake --build build/docs-sdk --parallel 2
+          cmake --install build/docs-sdk
+      - name: Compile and run C documentation examples
+        run: python scripts/check_doc_examples.py --prefix build/docs-sdk-installed --output build/docs-c-examples
+
+  python-package:
+    name: CPython ${{ matrix.python }} (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            python: '3.10'
+          - os: ubuntu-24.04
+            python: '3.12'
+          - os: windows-2022
+            python: '3.12'
+          - os: macos-15
+            python: '3.12'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install Python build tools
+        run: python -m pip install "setuptools>=61" wheel
+      - name: Build source archive, install wheel and test in isolation
+        run: python scripts/check_python_package.py --output build/python-package-check
+      - name: Execute documented Python examples against the installed wheel
+        run: python scripts/check_doc_examples.py --python-site build/python-package-check/site-packages

@@ -17,7 +17,7 @@ struct NumForgeContext {
 struct NumForgeExpression {
     CalculatorExpression *tree;
     size_t parameter_count;
-    char parameters[][CALCULATOR_VARIABLE_NAME_BYTES + 1U];
+    char (*parameters)[CALCULATOR_VARIABLE_NAME_BYTES + 1U];
 };
 struct NumForgeResult {
     CalculatorValue value;
@@ -206,6 +206,8 @@ NumForgeStatus numforge_expression_prepare_parameters(NumForgeExpression **resul
         prepared = numforge_malloc(sizeof(*prepared) + count * sizeof(prepared->parameters[0]));
         if (prepared == NULL) status = CALCULATOR_OUT_OF_MEMORY;
         else {
+            /* Keep names in the same allocation without an MSVC flexible-array extension. */
+            prepared->parameters = (void *)(prepared + 1);
             prepared->parameter_count = count;
             for (size_t i = 0U; i < count; ++i)
                 memcpy(prepared->parameters[i], names[i], strlen(names[i]) + 1U);

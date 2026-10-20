@@ -114,7 +114,8 @@ static void test_depth_limit_and_zero_depth(void)
 }
 static void test_reserve_and_observed_cost_stop_without_failure(void)
 {
-    options.max_points = 16; options.reserve_bytes = 1000; state.allocate = 256;
+    /* Leave room for one probe, then reject the observed cost on both 32/64-bit queues. */
+    options.max_points = 16; options.reserve_bytes = 1000; state.allocate = 512;
     TEST_ASSERT_TRUE(numforge_budget_begin(UINT64_MAX, 2000, SIZE_MAX));
     TEST_ASSERT_EQUAL(NUMFORGE_NUMERICAL_OK, run()); TEST_ASSERT_EQUAL_UINT64(1, state.calls);
     TEST_ASSERT_EQUAL_UINT64(4, stats.points); TEST_ASSERT_EQUAL_UINT64(3, stats.unresolved_intervals);
@@ -123,10 +124,10 @@ static void test_reserve_and_observed_cost_stop_without_failure(void)
     TEST_ASSERT_TRUE(numforge_budget_available_bytes() >= options.reserve_bytes);
     TEST_ASSERT_FALSE(numforge_budget_begin(UINT64_MAX, SIZE_MAX, SIZE_MAX)); numforge_budget_end();
     state.calls = 0;
-    TEST_ASSERT_TRUE(numforge_budget_begin(UINT64_MAX, 1200, SIZE_MAX));
+    TEST_ASSERT_TRUE(numforge_budget_begin(UINT64_MAX, options.reserve_bytes + 1, SIZE_MAX));
     TEST_ASSERT_EQUAL(NUMFORGE_NUMERICAL_OK, run()); TEST_ASSERT_EQUAL_UINT64(0, state.calls);
     TEST_ASSERT_EQUAL_UINT(NUMFORGE_REFINEMENT_RESOURCE_LIMIT, stats.limits);
-    TEST_ASSERT_EQUAL_UINT64(1200, numforge_budget_available_bytes()); numforge_budget_end();
+    TEST_ASSERT_EQUAL_UINT64(options.reserve_bytes + 1, numforge_budget_available_bytes()); numforge_budget_end();
     state.calls = 0; options.reserve_ms = UINT64_MAX;
     TEST_ASSERT_EQUAL(NUMFORGE_NUMERICAL_OK, run()); TEST_ASSERT_EQUAL_UINT64(0, state.calls);
     TEST_ASSERT_EQUAL_UINT(NUMFORGE_REFINEMENT_RESOURCE_LIMIT, stats.limits);
