@@ -32,13 +32,15 @@ static const Accessor accessors[] = {numforge_statistics_summary_sum, numforge_s
 /* x_j = offset + j/d, j=0..n-1. Independent closed forms outside timing:
  * mean=offset+(n-1)/(2*d), population variance=(n*n-1)/(12*d*d),
  * sample variance=n*(n+1)/(12*d*d). This corpus has bounded n<=1024. */
-static int run_case(const char *label, size_t n, size_t offset_exponent, size_t spread_exponent)
+static int run_case(const char *label, size_t n, size_t offset_exponent, size_t spread_exponent, unsigned mode)
 {
     BigRational **values = calloc(n, sizeof(*values)); const BigRational **borrowed = malloc(n * sizeof(*borrowed));
+    const BigRational **reversed = malloc(n * sizeof(*reversed));
+    BigRational *covariance = bigrational_create(), *covariance_expected = bigrational_create();
     BigRational *offset = bigrational_create(), *scale = bigrational_create(), *term = bigrational_create(), *denominator = bigrational_create();
     BigRational *expected[6] = {0}; BigInt *integer = bigint_create(); NumForgeStatisticsSummary *summary = NULL;
     int outcome = 1; size_t calls = 0, bytes = 0; double elapsed = 0;
-    if (!values || !borrowed || !offset || !scale || !term || !denominator || !integer) goto done;
+    if (!values || !borrowed || !reversed || !covariance || !covariance_expected || !offset || !scale || !term || !denominator || !integer) goto done;
     if (offset_exponent && (!power(integer, offset_exponent) || bigrational_from_bigint(offset, integer) != BIGRATIONAL_OK)) goto done;
     if (!power(integer, spread_exponent) || bigrational_from_bigint(scale, integer) != BIGRATIONAL_OK) goto done;
     for (size_t i = 0; i < n; ++i) {
@@ -46,6 +48,7 @@ static int run_case(const char *label, size_t n, size_t offset_exponent, size_t 
         if (!values[i] || !set_size(values[i], i) || bigrational_div(values[i], values[i], scale) != BIGRATIONAL_OK ||
             bigrational_add(values[i], values[i], offset) != BIGRATIONAL_OK) goto done;
     }
+    for (size_t i = 0; i < n; ++i) reversed[i] = values[n - 1 - i];
     for (size_t i = 0; i < (n == 1 ? 5U : 6U); ++i) { expected[i] = bigrational_create(); if (!expected[i]) goto done; }
     if (bigrational_copy(expected[1], offset) != BIGRATIONAL_OK || !set_size(term, n - 1) ||
         bigrational_div(term, term, scale) != BIGRATIONAL_OK || bigrational_add(expected[2], offset, term) != BIGRATIONAL_OK ||
@@ -56,19 +59,25 @@ static int run_case(const char *label, size_t n, size_t offset_exponent, size_t 
         bigrational_mul(denominator, denominator, term) != BIGRATIONAL_OK || !set_size(expected[4], n*n - 1) ||
         bigrational_div(expected[4], expected[4], denominator) != BIGRATIONAL_OK) goto done;
     if (n > 1 && (!set_size(expected[5], n*(n+1)) || bigrational_div(expected[5], expected[5], denominator) != BIGRATIONAL_OK)) goto done;
+    /* Reversing this arithmetic progression makes covariance exactly -variance. */
+    if (mode && bigrational_sub(covariance_expected, covariance_expected, expected[mode == 2 ? 5 : 4]) != BIGRATIONAL_OK) goto done;
     for (size_t repeat = 0; repeat < 3; ++repeat) {
         if (!numforge_budget_begin(5000, 128U * 1024U * 1024U, 2U * 1024U * 1024U)) goto done;
         numforge_alloc_stats_reset(); double start = benchmark_seconds();
-        BigRationalStatus status = numforge_statistics_describe(&summary, borrowed, n);
+        BigRationalStatus status = mode ? numforge_statistics_covariance(covariance, borrowed, reversed, n, mode == 2) :
+            numforge_statistics_describe(&summary, borrowed, n);
         double stop = benchmark_seconds(); calls += numforge_alloc_stats_calls(); bytes += numforge_alloc_stats_bytes();
         NumForgeBudgetFailure failure = numforge_budget_failure(); numforge_budget_end();
         if (status != BIGRATIONAL_OK || failure != NUMFORGE_BUDGET_OK || start < 0 || stop < start) goto done;
         elapsed += stop - start;
-        if (numforge_statistics_summary_count(summary) != n) goto done;
-        for (size_t i = 0; i < 6; ++i) {
-            const BigRational *actual = accessors[i](summary);
-            if (expected[i] == NULL) { if (actual != NULL) goto done; }
-            else if (!actual || !equal(actual, expected[i])) goto done;
+        if (mode) { if (!equal(covariance, covariance_expected)) goto done; }
+        else {
+            if (numforge_statistics_summary_count(summary) != n) goto done;
+            for (size_t i = 0; i < 6; ++i) {
+                const BigRational *actual = accessors[i](summary);
+                if (expected[i] == NULL) { if (actual != NULL) goto done; }
+                else if (!actual || !equal(actual, expected[i])) goto done;
+            }
         }
         numforge_statistics_summary_destroy(summary); summary = NULL;
     }
@@ -77,13 +86,17 @@ static int run_case(const char *label, size_t n, size_t offset_exponent, size_t 
 done:
     if (outcome) fprintf(stderr, "statistics benchmark failed: %s\n", label);
     if (values) for (size_t i = 0; i < n; ++i) bigrational_destroy(values[i]);
-    free(values); free(borrowed); bigrational_destroy(offset); bigrational_destroy(scale); bigrational_destroy(term); bigrational_destroy(denominator);
+    free(values); free(borrowed); free(reversed); bigrational_destroy(covariance); bigrational_destroy(covariance_expected);
+    bigrational_destroy(offset); bigrational_destroy(scale); bigrational_destroy(term); bigrational_destroy(denominator);
     for (size_t i = 0; i < 6; ++i) bigrational_destroy(expected[i]);
     bigint_destroy(integer); numforge_statistics_summary_destroy(summary); return outcome;
 }
 int main(void)
 {
     puts("case,count,offset_exponent,spread_exponent,repetitions,mean_ms,mean_allocations,mean_requested_bytes,verification");
-    return run_case("singleton", 1, 0, 0) || run_case("small", 16, 0, 0) || run_case("medium", 128, 0, 0) ||
-        run_case("large", 1024, 0, 0) || run_case("offset1000", 128, 1000, 0) || run_case("tiny1000", 128, 0, 1000);
+    return run_case("singleton", 1, 0, 0, 0) || run_case("small", 16, 0, 0, 0) || run_case("medium", 128, 0, 0, 0) ||
+        run_case("large", 1024, 0, 0, 0) || run_case("offset1000", 128, 1000, 0, 0) || run_case("tiny1000", 128, 0, 1000, 0) ||
+        run_case("cov_population_singleton", 1, 0, 0, 1) || run_case("cov_population_small", 16, 0, 0, 1) ||
+        run_case("cov_sample_medium", 128, 0, 0, 2) || run_case("cov_population_large", 1024, 0, 0, 1) ||
+        run_case("cov_sample_offset1000", 128, 1000, 0, 2) || run_case("cov_population_tiny1000", 128, 0, 1000, 1);
 }

@@ -12,7 +12,7 @@ core_version = _native.core_version
 Error = _native.Error
 __all__ = ["Error", "Result", "Expression", "PolynomialRoot", "PolynomialSolution",
            "number", "evaluate", "prepare", "sqrt", "solve_quadratic", "Matrix", "LinearSolution",
-           "describe", "StatisticsSummary", "find_root", "RootResult", "find_roots", "RootScanResult",
+           "describe", "covariance", "StatisticsSummary", "find_root", "RootResult", "find_roots", "RootScanResult",
            "grid", "visit_grid", "core_version"]
 
 _ROUNDING = {"toward_zero": 0, "away_from_zero": 1, "floor": 2,
@@ -435,6 +435,26 @@ class StatisticsSummary:
     @property
     def exact(self):
         return True
+
+
+def covariance(left, right, *, sample=False, time_limit_ms=5000,
+               allocation_bytes=64 * 1024 * 1024, single_allocation=512 * 1024):
+    """Exact Fraction covariance of equally sized paired real inputs, through C.
+
+    Inputs follow describe(). Population covariance divides by n; sample=True
+    divides by n-1 and requires two pairs. Conversion precedes the C budget;
+    native copies, arithmetic and serialization share it. No rounding is used.
+    """
+    options = _options(34, "half_even", time_limit_ms, allocation_bytes, single_allocation)
+    if type(sample) is not bool:
+        raise TypeError("sample must be a bool")
+    if isinstance(left, (str, bytes)) or isinstance(right, (str, bytes)):
+        raise TypeError("covariance requires iterables of numeric values")
+    x, y = tuple(number(value) for value in left), tuple(number(value) for value in right)
+    if not x or len(x) != len(y) or (sample and len(x) < 2):
+        raise ValueError("covariance requires equal nonempty datasets, or two pairs for sample covariance")
+    return _fraction(_native.covariance(tuple(value._handle for value in x),
+                                      tuple(value._handle for value in y), sample, options))
 
 
 def describe(values, *, time_limit_ms=5000,

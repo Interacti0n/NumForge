@@ -12,7 +12,7 @@ index; dated reports preserve evidence for their recorded revisions.
 | Expression engine | [Stateless public C API](../reference/ENGINE_API.md), reusable prepared expressions, explicit parameters, typed results and operation budgets. |
 | Algebra | [Exact linear/quadratic coefficient solver](../reference/POLYNOMIAL_API.md), shared by application equation adapters. |
 | Linear algebra | [Dense rational matrices](../reference/MATRIX_API.md), products, determinants, square solves and [complete rectangular single-RHS systems](../reference/LINEAR_SYSTEM_API.md). |
-| Statistics | [Exact rational batch summaries](../reference/STATISTICS_API.md), including population/sample variance. |
+| Statistics | [Exact rational batch summaries and paired covariance](../reference/STATISTICS_API.md), with population/sample divisors in C/Python. |
 | Numerical | [Exact grids, adaptive sampling rules, phase anchors and bounded root searches](../reference/NUMERICAL_API.md), shared with graph/equation applications. |
 | Scientific | [Unit conversion](../reference/UNITS.md), a sourced catalogue and private [quantity expressions](../reference/QUANTITIES.md). |
 | Applications | SK/EN CLI/browser calculator, sessions, converter, four-function graphs and bounded numerical equation searches. |

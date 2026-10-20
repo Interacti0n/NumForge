@@ -7,6 +7,14 @@ For a quick overview, read the [short changelog](CHANGELOG_SHORT.md).
 
 ## Unreleased
 
+### Exact paired statistics
+
+- Add public C `numforge_statistics_covariance` and Python `covariance` over the
+  same exact rational kernel, with population/sample divisors, signed results,
+  output aliasing and atomic failures. Add independent rational/high-magnitude
+  checks, installed C/C++ and Python examples, fault injection and validated
+  Release timing/allocation measurements.
+
 ### Numerical foundation
 
 - Split Python polynomial, matrix, statistics and numerical adapters plus shared

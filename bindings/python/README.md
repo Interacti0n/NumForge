@@ -71,6 +71,8 @@ frozen StatisticsSummary with count, sum, minimum, maximum, mean and both varian
 Population variance divides by n; sample variance divides by n-1 and is None for
 a singleton. Inputs must be nonempty and exact real values. There is no precision
 option; no dataset is retained by the copied Fraction result fields.
+`covariance(left, right, sample=False)` returns the exact paired covariance as a
+Fraction; see the [statistics reference](../../docs/reference/STATISTICS_API.md#paired-covariance).
 
 `find_root(function, lower, upper)` delegates bounded bisection to the public C
 numerical kernel. The callback receives an exact Fraction and requested fractional

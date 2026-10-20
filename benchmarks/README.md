@@ -116,6 +116,9 @@ See [the benchmark guide](../docs/benchmarks/BENCHMARKS.md) for setup and record
 The opt-in `statistics_benchmark` measures exact rational dataset summaries,
 including 1024-sample and 1000-digit offset/spread cases, with closed-form checks
 and allocation counters; see [the baseline](../docs/benchmarks/STATISTICS_2026_10_19.md).
+Its `cov_*` rows measure exact paired covariance against a reversed arithmetic
+progression, with independent closed-form references; see the
+[covariance follow-up](../docs/benchmarks/COVARIANCE_2026_10_20.md).
 The opt-in `polynomial_benchmark` measures the [standalone exact solver](../docs/reference/POLYNOMIAL_API.md)
 on rational, irrational, complex and 1000-digit-coefficient cases, checking exact
 root-sum/product invariants outside timing and claiming no algorithmic speedup.

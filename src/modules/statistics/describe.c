@@ -26,6 +26,44 @@ static BigRationalStatus set_count(BigRational *value, size_t count)
         parsed == BIGINT_OUT_OF_MEMORY ? BIGRATIONAL_OUT_OF_MEMORY : BIGRATIONAL_INVALID_ARGUMENT;
     bigint_destroy(integer); return status;
 }
+BigRationalStatus numforge_statistics_covariance(BigRational *result,
+    const BigRational *const *left, const BigRational *const *right, size_t count, bool sample)
+{
+    if (result == NULL || left == NULL || right == NULL) return BIGRATIONAL_NULL_ARGUMENT;
+    if (count == 0 || (sample && count < 2)) return BIGRATIONAL_INVALID_ARGUMENT;
+    if (count > SIZE_MAX / sizeof(*left)) return BIGRATIONAL_VALUE_TOO_LARGE;
+    for (size_t i = 0; i < count; ++i) {
+        if (left[i] == NULL || right[i] == NULL) return BIGRATIONAL_NULL_ARGUMENT;
+        if (!numforge_budget_check()) return BIGRATIONAL_OUT_OF_MEMORY;
+    }
+    enum { DX, DY, SX, SY, PRODUCTS, TERM, N, DENOMINATOR, ANSWER, WORK_COUNT };
+    BigRational *work[WORK_COUNT] = {0}; BigRationalStatus status = BIGRATIONAL_OK;
+    for (size_t i = 0; status == BIGRATIONAL_OK && i < WORK_COUNT; ++i) {
+        work[i] = bigrational_create();
+        if (work[i] == NULL) status = BIGRATIONAL_OUT_OF_MEMORY;
+    }
+    for (size_t i = 1; status == BIGRATIONAL_OK && i < count; ++i) {
+        status = bigrational_sub(work[DX], left[i], left[0]);
+        if (status == BIGRATIONAL_OK) status = bigrational_sub(work[DY], right[i], right[0]);
+        if (status == BIGRATIONAL_OK) status = bigrational_add(work[SX], work[SX], work[DX]);
+        if (status == BIGRATIONAL_OK) status = bigrational_add(work[SY], work[SY], work[DY]);
+        if (status == BIGRATIONAL_OK) status = bigrational_mul(work[TERM], work[DX], work[DY]);
+        if (status == BIGRATIONAL_OK) status = bigrational_add(work[PRODUCTS], work[PRODUCTS], work[TERM]);
+        if (!numforge_budget_check()) status = BIGRATIONAL_OUT_OF_MEMORY;
+    }
+    if (status == BIGRATIONAL_OK) status = set_count(work[N], count);
+    /* n*sum(dx*dy)-sum(dx)*sum(dy), with no rounded means. */
+    if (status == BIGRATIONAL_OK) status = bigrational_mul(work[ANSWER], work[N], work[PRODUCTS]);
+    if (status == BIGRATIONAL_OK) status = bigrational_mul(work[TERM], work[SX], work[SY]);
+    if (status == BIGRATIONAL_OK) status = bigrational_sub(work[ANSWER], work[ANSWER], work[TERM]);
+    if (status == BIGRATIONAL_OK) status = set_count(work[DENOMINATOR], sample ? count - 1 : count);
+    if (status == BIGRATIONAL_OK) status = bigrational_mul(work[DENOMINATOR], work[N], work[DENOMINATOR]);
+    if (status == BIGRATIONAL_OK) status = bigrational_div(work[ANSWER], work[ANSWER], work[DENOMINATOR]);
+    if (!numforge_budget_check()) status = BIGRATIONAL_OUT_OF_MEMORY;
+    if (status == BIGRATIONAL_OK) status = bigrational_copy(result, work[ANSWER]);
+    for (size_t i = 0; i < WORK_COUNT; ++i) bigrational_destroy(work[i]);
+    return status;
+}
 BigRationalStatus numforge_statistics_describe(NumForgeStatisticsSummary **result,
     const BigRational *const *values, size_t count)
 {

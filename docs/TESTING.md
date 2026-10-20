@@ -160,7 +160,11 @@ validation and atomic allocation/deadline failure. Python adds an independent
 pairwise-difference Fraction variance oracle and transformation identities.
 Installed C/C++ consumers and SDK examples use the numeric-only target. The opt-in
 `statistics_benchmark` validates closed-form summaries outside timing; see
-[the baseline](benchmarks/STATISTICS_2026_10_19.md).
+[the baseline](benchmarks/STATISTICS_2026_10_19.md). Paired covariance additionally
+checks signed pairing, symmetry, sample/population divisors, output/input aliases,
+mixed thousand-digit offsets/spreads and exhaustive allocation failure through
+the final scalar copy. Python checks the independent pairwise-product identity.
+See [covariance validation and measurements](benchmarks/COVARIANCE_2026_10_20.md).
 
 `application_expression_tests` covers the
 [parametric C application foundation](design/PARAMETRIC_EXPRESSIONS.md), including

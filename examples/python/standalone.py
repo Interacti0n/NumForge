@@ -9,6 +9,10 @@ print("Exact grid:", coordinates)
 statistics = numforge.describe([0, 0, 1])
 print("Exact statistics:", statistics.count, statistics.mean, statistics.variance_population, statistics.variance_sample)
 
+covariance = numforge.covariance([1, 2, 3], [3, 1, -1], sample=True)
+assert covariance == Fraction(-2)
+print("Exact sample covariance:", covariance)
+
 # The caller supplies exact samples and explicitly asserts continuity of x*x-2.
 search = numforge.find_root(lambda x, places: x*x-2, 1, 2, continuous=True)
 assert search.kind == "found" and not search.exact_zero

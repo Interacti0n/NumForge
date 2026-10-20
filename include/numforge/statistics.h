@@ -3,6 +3,7 @@
 
 #include <numforge/bigrational.h>
 #include <stddef.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -17,6 +18,26 @@ extern "C" {
  * Synchronize shared handles externally; independent handles are independent.
  */
 typedef struct NumForgeStatisticsSummary NumForgeStatisticsSummary;
+
+/** Exact covariance of paired observations left[i], right[i].
+ * @param[out] result Initialized owned scalar; may alias any input scalar.
+ * Success replaces its value; every failure preserves it and all inputs.
+ * @param[in] left Borrowed array of count initialized non-NULL scalars.
+ * @param[in] right Borrowed array of count initialized non-NULL scalars.
+ * Arrays/scalars may alias and duplicates count separately. Nothing is retained.
+ * @param[in] count Positive number of pairs, at least two if sample is true.
+ * @param[in] sample Divide sum((x-mean(x))*(y-mean(y))) by count-1 when true,
+ * otherwise by count. Population covariance of a singleton is exact zero.
+ * @return OK, NULL_ARGUMENT, INVALID_ARGUMENT, OUT_OF_MEMORY, VALUE_TOO_LARGE or
+ * SCALE_OVERFLOW. NULL required pointers/entries return NULL_ARGUMENT; invalid
+ * count returns INVALID_ARGUMENT. Pointer-storage overflow returns VALUE_TOO_LARGE
+ * before entries are read. Inherited cooperative budget failure returns
+ * OUT_OF_MEMORY. No precision, rounding or implicit resource scope is used.
+ * Differences from each first observation avoid large common-offset products;
+ * a fixed number of work scalars does not imply bounded integer storage.
+ */
+BigRationalStatus numforge_statistics_covariance(BigRational *result,
+    const BigRational *const *left, const BigRational *const *right, size_t count, bool sample);
 
 /** Summarize count borrowed rational samples, including duplicates.
  * @param[out] result New owned immutable summary only on success. Every failure

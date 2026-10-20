@@ -23,6 +23,8 @@ static int statistics_api_checks(void)
         !statistics_field(numforge_statistics_summary_variance_sample(summary), "1/3") ||
         numforge_statistics_describe(&singleton, values + 2, 1) != BIGRATIONAL_OK ||
         numforge_statistics_summary_variance_sample(singleton) != NULL) goto done;
+    if (numforge_statistics_covariance(one, values, values, 3, false) != BIGRATIONAL_OK ||
+        !statistics_field(one, "2/9")) goto done;
     outcome = 0;
 done:
     bigint_destroy(integer); bigrational_destroy(zero); bigrational_destroy(one);

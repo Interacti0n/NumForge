@@ -28,7 +28,7 @@ precision parameter. A singleton has population variance zero and **undefined**
 sample variance; the NULL sample field does not mean zero. Empty input is invalid.
 
 This is an unweighted batch summary, with no missing-value omission, streaming
-state, stored dataset object, median, covariance, regression or distribution fit.
+state, stored dataset object, median, regression or distribution fit.
 The existing BigDecimal scalar sequence/statistics APIs and calculator functions
 retain their separate precision/rounding contracts.
 
@@ -50,6 +50,53 @@ spreads around 1000-digit offsets. The algorithm uses a linear number of rationa
 operations and a fixed number of scalar work objects, plus result storage.
 Integer/denominator growth and reduced-fraction arithmetic can dominate the cost;
 constant object count is not a constant-byte memory guarantee.
+
+## Paired covariance
+
+`numforge_statistics_covariance(result, left, right, count, sample)` writes an
+exact reduced fraction to an initialized owned scalar. The arrays contain paired
+observations by index; repeated pointers and duplicate observations are allowed.
+Both arrays have `count` entries. Nothing is retained. The destination may alias
+any input scalar; every failure preserves the destination and all inputs.
+
+Population covariance (`sample=false`) divides the sum of products of deviations
+from the respective means by n. Sample covariance (`sample=true`) divides by n-1
+and requires at least two pairs. Population covariance of one pair is zero;
+sample covariance of one pair is invalid. Signs are retained, and covariance
+with the same dataset equals its corresponding variance.
+
+For anchors x_0, y_0, let dx_i=x_i-x_0, dy_i=y_i-y_0,
+Sx=sum(dx_i), Sy=sum(dy_i), P=sum(dx_i*dy_i). C computes
+`(n*P-Sx*Sy)/(n*n)` or `(n*P-Sx*Sy)/(n*(n-1))` using exact rational operations.
+This avoids unnecessarily large common-offset products, uses a linear number of
+rational operations and a fixed number of work scalars. Integer storage and
+denominator growth remain input-dependent.
+
+Required NULL pointers/entries return NULL_ARGUMENT, zero count or a sample
+singleton returns INVALID_ARGUMENT, and pointer-storage overflow returns
+VALUE_TOO_LARGE before reading entries. Numeric errors and inherited resource
+limits follow the same scalar/runtime contract as the summary. No implicit
+budget, precision setting or rounding is introduced.
+
+The [SDK example](../../examples/sdk/statistics.c) also computes sample
+covariance of [0,0,1] with itself, returning 1/3. Python exposes the same kernel:
+
+```python
+from fractions import Fraction
+import numforge as nf
+
+assert nf.covariance([1, 2, 3], [3, 1, -1]) == Fraction(-4, 3)
+assert nf.covariance([1, 2, 3], [3, 1, -1], sample=True) == Fraction(-2)
+```
+
+`covariance(left, right, *, sample=False, time_limit_ms=5000,
+allocation_bytes=64*1024*1024, single_allocation=512*1024)` returns an independent
+Fraction. Both iterables follow the exact-real input rules of `describe` below.
+They must be nonempty and equally sized; a sample singleton raises ValueError.
+`sample` must be a bool. Native copies, computation and serialization share the
+C budget, after input number() conversion. Python object/Fraction allocation is
+outside that accounting. No calculator expression, REST route or WASM wrapper
+is provided for this operation.
 
 ## Ownership, errors and runtime
 
@@ -136,3 +183,10 @@ numeric library. Seven Python tests add 25 independent Fraction pairwise-varianc
 fixtures, translation/scaling/permutation identities, input/lifetime checks and
 budget failure/recovery through serialization. See the [benchmark and validation
 report](../benchmarks/STATISTICS_2026_10_19.md).
+
+Covariance adds C pairing/sign/fraction, singleton/alias, thousand-digit scale,
+validation and exhaustive allocation/deadline failure checks. Python adds an
+independent pairwise identity over 40 population/sample rational fixtures,
+symmetry, translation/scaling, permutation and variance identities, input and
+budget recovery checks. Installed C/C++ consumers and the SDK example exercise
+the public numeric-only API. See the [covariance measurements and validation](../benchmarks/COVARIANCE_2026_10_20.md).

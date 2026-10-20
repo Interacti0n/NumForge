@@ -11,7 +11,7 @@ have different ownership and compatibility contracts.
 | [Exact polynomial C API](reference/POLYNOMIAL_API.md) | Standalone linear/quadratic coefficient solver with exact radical/complex descriptors; numeric target only. |
 | [Exact matrix C API](reference/MATRIX_API.md) | Dense rational products, determinants and unique square-system solves; numeric target only. |
 | [General linear systems](reference/LINEAR_SYSTEM_API.md) | Exact rectangular rank, inconsistency/uniqueness, particular solutions and a complete nullspace basis in C/Python. |
-| [Exact descriptive statistics](reference/STATISTICS_API.md) | Rational dataset count, sum, extrema, mean and population/sample variances in C/Python. |
+| [Exact descriptive statistics](reference/STATISTICS_API.md) | Rational dataset count, sum, extrema, mean, population/sample variance and paired covariance in C/Python. |
 | [Python adapter](guides/PYTHON.md) | Source-built CPython subset for typed values, expressions, exact equations/matrices/statistics/grids and bounded single/multiple-root searches. |
 | [BigComplex foundation](reference/BIGCOMPLEX.md) | Standalone complex arithmetic, principal functions, precision and calculator integration. |
 | [Calculator expressions](reference/CALCULATOR_EXPRESSIONS.md) | Operators, named calls, precision, syntax and limits. |

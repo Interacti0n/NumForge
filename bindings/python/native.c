@@ -178,6 +178,7 @@ static PyMethodDef methods[] = {
     {"find_roots", nf_python_find_roots, METH_VARARGS, "Run bounded C root scanning with a Python sample callback."},
     {"visit_grid", nf_python_visit_grid, METH_VARARGS, "Visit exact rational coordinates from the public C grid walker."},
     {"describe", nf_python_describe, METH_VARARGS, "Compute an exact C descriptive statistics summary."},
+    {"covariance", nf_python_covariance, METH_VARARGS, "Compute exact paired covariance in C."},
     {"matrix_create", nf_python_matrix_create, METH_VARARGS, "Copy exact real entries into a C matrix."},
     {"matrix_shape", nf_python_matrix_shape, METH_VARARGS, "Read a C matrix shape."},
     {"matrix_operation", nf_python_matrix_operation, METH_VARARGS, "Run an exact C matrix operation."},

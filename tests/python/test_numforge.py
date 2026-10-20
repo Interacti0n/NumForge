@@ -613,6 +613,81 @@ class StatisticsTests(unittest.TestCase):
                             [Fraction(-1, 3), Fraction(1, 6), Fraction(2, 3)])
 
 
+class CovarianceTests(unittest.TestCase):
+    @staticmethod
+    def reference(x, y, sample=False):
+        # Independent pairwise identity, without centered moment accumulation.
+        n = len(x)
+        return sum(((x[i] - x[j]) * (y[i] - y[j])
+                    for i in range(n) for j in range(i)), Fraction(0)) / (n * (n - 1 if sample else n))
+
+    def test_known_pairing_sign_and_singletons(self):
+        self.assertEqual(nf.covariance([1, 2, 3], [3, 1, -1]), Fraction(-4, 3))
+        self.assertEqual(nf.covariance([1, 2, 3], [3, 1, -1], sample=True), -2)
+        self.assertEqual(nf.covariance([7], [-9]), 0)
+        self.assertEqual(nf.covariance([7, 7, 7], [1, -2, 8], sample=True), 0)
+        self.assertEqual(nf.covariance([1, 2, 3], [1, -2, 1]), 0)
+        self.assertIsInstance(nf.covariance([1], [1]), Fraction)
+
+    def test_fraction_reference_and_identities(self):
+        rng = random.Random(201026)
+        for n in (2, 3, 8, 16):
+            for fixture in range(5):
+                x = [Fraction(rng.randrange(-50, 51), rng.randrange(1, 16)) for _ in range(n)]
+                y = [Fraction(rng.randrange(-50, 51), rng.randrange(1, 16)) for _ in range(n)]
+                for sample in (False, True):
+                    with self.subTest(n=n, fixture=fixture, sample=sample):
+                        expected = self.reference(x, y, sample)
+                        self.assertEqual(nf.covariance(x, y, sample=sample), expected)
+                        self.assertEqual(nf.covariance(y, x, sample=sample), expected)
+                        self.assertEqual(nf.covariance(reversed(x), reversed(y), sample=sample), expected)
+                        self.assertEqual(nf.covariance([3*v+17 for v in x], [-2*v-9 for v in y], sample=sample), -6*expected)
+                        report = nf.describe(x)
+                        self.assertEqual(nf.covariance(x, x, sample=sample),
+                                         report.variance_sample if sample else report.variance_population)
+
+    def test_thousand_digit_offsets_spreads_and_lossless_iterables(self):
+        n = 10**1000
+        x, y = [n, n+1, n+2], [Fraction(3, n), Fraction(2, n), Fraction(1, n)]
+        self.assertEqual(nf.covariance(x, y, sample=True), Fraction(-1, n))
+        self.assertEqual(nf.covariance(y, y), Fraction(2, 3*n*n))
+        x = [Decimal("0.1"), "0.25", nf.number(7)]
+        result = nf.covariance((v for v in x), [1, Fraction(2, 3), "-2"])
+        x.clear(); gc.collect()
+        self.assertEqual(result, self.reference([Fraction(1, 10), Fraction(1, 4), Fraction(7)],
+                                               [Fraction(1), Fraction(2, 3), Fraction(-2)]))
+
+    def test_validation_limits_serialization_and_recovery(self):
+        for x, y, options in (([], [], {}), ([1], [1, 2], {}), ([1], [1], {"sample": True})):
+            with self.assertRaises(ValueError):
+                nf.covariance(x, y, **options)
+        for bad in ("123", b"123", [True], [0.1], [complex(1, 2)], [None], [nf.sqrt(2)], [nf.sqrt(-1)]):
+            for x, y in ((bad, [1]), ([1], bad)):
+                with self.assertRaises(TypeError):
+                    nf.covariance(x, y)
+        for sample in (0, 1, None, "sample"):
+            with self.assertRaises(TypeError):
+                nf.covariance([1, 2], [1, 2], sample=sample)
+        with self.assertRaises(TypeError):
+            nf.covariance([1], [1], precision=100)
+        for options, expected in (({"time_limit_ms": 0}, "time_limit"),
+                                  ({"allocation_bytes": 0}, "memory_limit"),
+                                  ({"single_allocation": 0}, "memory_limit")):
+            with self.assertRaises(nf.Error) as caught:
+                nf.covariance([1, 2, 3], [3, 1, -1], **options)
+            self.assertEqual((caught.exception.status, caught.exception.offset), (expected, 0))
+        complete = False
+        for allocation_bytes in range(1024, 131073, 1024):
+            try:
+                value = nf.covariance([1, 2, 3], [3, 1, -1], allocation_bytes=allocation_bytes)
+            except nf.Error as error:
+                self.assertEqual(error.status, "memory_limit")
+            else:
+                self.assertEqual(value, Fraction(-4, 3)); complete = True; break
+        self.assertTrue(complete)
+        self.assertEqual(nf.covariance([1, 2, 3], [3, 1, -1]), Fraction(-4, 3))
+
+
 class NumericalRootTests(unittest.TestCase):
     @staticmethod
     def square(x, places):
