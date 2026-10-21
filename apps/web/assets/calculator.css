@@ -159,7 +159,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 #copy-result:disabled, #copy-result-dialog:disabled { opacity: .45; cursor: default; }
 #copy-result:not(:disabled):hover, #copy-result-dialog:not(:disabled):hover, #expand-result:hover { border-color: var(--mint); }
-.result-body { position: relative; display: flex; align-items: flex-start; min-height: 7.5em; }
+.result-body { position: relative; display: flex; align-items: flex-start; min-height: 64px; }
 #result-more-marker { position: absolute; right: 0; bottom: 0; padding-left: 25px; background: linear-gradient(90deg, transparent, #1c162b 35%); color: var(--mint); font: 800 1rem var(--font-math); pointer-events: none; }
 #result
 {
@@ -380,7 +380,7 @@ html[lang="en"] .function-group:not(.search-results)::before { content: "Functio
     .angle-switch button { font-size: .72rem; }
     .angle-switch button.active { background: #4a3264; color: #f1d9ff; }
     .result-panel { display: flex; flex-direction: column; min-height: 0; padding-bottom: 9px; }
-    .result-body { flex: 1; min-height: 64px; }
+    .result-body { flex: 1; }
     #result { max-height: 100%; font-size: 1.22rem; line-height: 1.24; }
     #copy-result, #copy-result-dialog, #expand-result { padding: 5px 8px; font-size: .7rem; }
     #expand-result { margin-top: 4px; }
@@ -417,8 +417,7 @@ html[lang="en"] .function-group:not(.search-results)::before { content: "Functio
 {
     .function-shortcut { display: inline-block; }
     .workspace { grid-template-columns: minmax(0, 1fr); gap: 22px; padding-top: 32px; }
-    .sidebar { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
-    .function-library { grid-column: 1 / -1; }
+    .sidebar { grid-template-columns: minmax(0, 1fr); align-items: start; }
     .keypad.functions { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); }
     #history-list { max-height: 65dvh; }
 }
@@ -427,7 +426,6 @@ html[lang="en"] .function-group:not(.search-results)::before { content: "Functio
     .app-shell { width: min(100% - 24px, 520px); }
     .workspace { gap: 16px; padding: 26px 0 38px; }
     .calculator-column, .sidebar { gap: 14px; }
-    .sidebar { grid-template-columns: 1fr; }
     .intro h1 { font-size: 2rem; }
     .intro > p:last-child { font-size: .87rem; }
     .card { padding: 16px; border-radius: 15px; }
@@ -437,13 +435,7 @@ html[lang="en"] .function-group:not(.search-results)::before { content: "Functio
     #expression { padding: 8px 10px; font-size: 1.04rem; line-height: 1.35; }
     .primary-button { min-height: 64px; padding: 0 12px; font-size: .79rem; }
     .primary-button span { display: none; }
-    .precision { padding: 12px; background: #1c162b; box-shadow: none; }
-    .precision .settings-title { width: 100%; min-height: 28px; margin: 0; gap: 9px; }
-    .precision #settings-title { font-size: .85rem; }
     .precision .settings-title .section-icon { width: 26px; height: 26px; font-size: .9rem; }
-    #settings-overview { display: inline; margin-left: auto; color: var(--quiet); font-size: .75rem; }
-    .precision-controls:not([hidden]) { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border-soft); }
-    .precision-controls { gap: 12px; }
     .field select, .field input { padding: 0 8px; font-size: .83rem; }
     #result { font-size: 1.12rem; }
     .keypad { gap: 6px; }
@@ -453,8 +445,6 @@ html[lang="en"] .function-group:not(.search-results)::before { content: "Functio
     .recent-row { align-items: flex-start; flex-direction: column; gap: 8px; }
     .recent-buttons { width: 100%; }
     .recent-buttons button { min-height: 43px; font-size: 1.05rem; }
-    .function-groups { grid-template-columns: minmax(0, 1fr); }
-    .function-groups .function-tabs, .function-groups .function-group { grid-column: 1; grid-row: auto; }
 }
 @media (max-width: 360px)
 {
@@ -494,8 +484,6 @@ html[lang="en"] .function-group:not(.search-results)::before { content: "Functio
 }
 @media (max-width: 960px) and (max-height: 500px) and (orientation: landscape)
 {
-    .sidebar { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
-    .sidebar > .session-panel { grid-column: 1; }
     .precision-controls { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
 }
 
@@ -515,6 +503,5 @@ html[lang="en"] .function-group:not(.search-results)::before { content: "Functio
     .precision-controls { gap: 10px; }
     .precision-controls:not([hidden]) { margin-top: 10px; padding-top: 10px; }
     .calculator-column .precision { grid-column: auto; }
-    .result-body { min-height: 64px; }
     .result-examples button { min-height: 44px; }
 }

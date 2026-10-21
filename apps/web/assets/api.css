@@ -145,7 +145,7 @@ ul { margin: 10px 0 20px; padding-left: 24px; }
     html { scroll-behavior: auto; }
 }
 
-/* One guide, four focused parts. Without JS all reference content remains readable. */
+/* One guide, focused parts. Without JS all reference content remains readable. */
 [hidden] { display: none !important; }
 .guide-layout { grid-template-rows: auto minmax(0, 1fr); row-gap: 18px; }
 .guide-parts { grid-column: 1 / -1; min-width: 0; }

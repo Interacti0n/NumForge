@@ -45,6 +45,8 @@ for(const lang of ['sk','en']) {
    const [settings,input]=await page.evaluate(()=>['.precision','.expression-card'].map(s=>document.querySelector(s).getBoundingClientRect().toJSON()));
    expect(settings.bottom).toBeLessThan(input.top);
    await expect(page.locator('#settings-controls')).toBeVisible();
+   const widths=await page.evaluate(()=>['.sidebar','.session-panel'].map(s=>document.querySelector(s).getBoundingClientRect().width));
+   expect(Math.abs(widths[0]-widths[1])).toBeLessThan(1);
    expect(await page.locator('.function-tabs').evaluate(n=>n.clientHeight)).toBeLessThan(90);
    await page.locator('#function-tab-0').focus();await page.keyboard.press('End');
    await expect(page.locator('#function-tab-7')).toBeFocused();

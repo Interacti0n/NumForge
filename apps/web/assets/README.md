@@ -1,115 +1,65 @@
 # Local web source
 
-The calculator, unit converter, function graphs, equation editor, API guide and upcoming-tools
-page have separate Slovak and English HTML files.
-`calculator.css` and `api.css` style their respective pages, while `chrome.css`
-styles shared navigation and visual hierarchy. `calculator.js` implements calculator behavior; `function-library.js` shares
-localized descriptions and search aliases with graph rows, while `/api/functions`
-remains authoritative for availability. `graph.js` owns up to four independent
-curve caches, a shared camera/priority transport queue, the searchable library
-and expanded-view dialog. `navigation.js` loads shared metadata before either
-tool initializes during an internal transition. `navigation.js` also handles
-transitions between the calculator, guide, future-tool pages and language versions.
-`equations.js` submits coefficients to the C/HTTP solver, renders C-formatted
-exact/approximate roots and retains same-tab state; its disposer aborts stale work.
-Navigation also fills the shared upcoming page with
-sign-in or registration text based on the route. Change these source
-files directly; do not edit the generated `web_page.h` under the build tree.
+Edit these assets, not the generated `web_page.h`. Keep Slovak and English
+HTML structure, labels, guide part keys and section IDs aligned.
 
-CMake embeds the web assets and the root `LICENSE` when building
-`numforge_web`. The C server serves the HTML routes (`/`, `/api`, `/graph`,
-`/solve`, `/units`, `/login`, and `/register`), the registered
-`/assets/` routes and the license text at `/LICENSE` from the executable.
-The same `logo.png` is displayed in all page headers and linked as their
-PNG favicon. The wordmark asset remains available at `/assets/wordmark.png`. The
-server sends both images with their exact binary lengths.
-The installed executable needs no asset directory, Node.js, or working-directory
-setup. Adding a new asset requires a CMake dependency and a symbol/route in
-`cmake/EmbedWeb.cmake` and `apps/web/server/web_server.c`.
+## Ownership
 
-Run `cmake --build <build-directory> --target numforge_web` after an edit.
-`web_server_smoke_tests`, `web_ui_tests`, and the SK/EN Playwright suite check
-the HTTP assets and calculator behavior.
+| Source | Responsibility |
+| --- | --- |
+| `calculator.*.html`, `calculator.js` | Expression input, previews, confirmation, function categories, keypad and session UI. |
+| `calculator.css` | Shared workbench controls and responsive calculator layout; tool styles import it. |
+| `chrome.css`, `navigation.js` | Shared header/footer, internal navigation, language changes and guide selection. |
+| `api.*.html`, `api.css` | Guide content and its reading layout. |
+| `function-library.js` | Localized descriptions/search aliases; `/api/functions` owns availability. |
+| `graph.js`, `graph.css` | Up to four curve caches, camera, request queue, editor and expanded plot. |
+| `equations.js`, `units.js` and their styles | C/HTTP adapters, result presentation and same-tab state for each tool. |
 
-The calculator HTML supplies the accessible structure and translated labels;
-`calculator.css` controls the responsive layout, and `calculator.js` owns live
-previews, session state, function categories/search, recent shortcuts and keypad insertion. The guide
-pages use `api.css` and their own section links. Keep both language pages in
-sync when changing controls or navigation.
-Internal navigation fetches the target HTML and replaces only the main content.
-The header and footer stay mounted; the target page stylesheet loads before the
-content is swapped, and the calculator initializes again when returning from
-another page. Browser Back and Forward use the same path. A failed fetch falls
-back to normal navigation. Section links keep native scrolling, external links
-are unaffected, and reduced-motion preferences disable the content animation.
-The shared header uses a spacious single-row horizontal menu with equally sized,
-subtle control surfaces. Their positions and widths remain stable when switching
-between Slovak and English. Narrow screens use an accessible
-drop-down menu. Unimplemented account links remain in the footer. Escape or clicking outside closes it.
-The HTML keeps the content hidden until its stylesheet loads, so navigation does
-not briefly reveal unstyled text. A failed stylesheet request reveals the plain
-page instead of leaving it blank.
-Language changes and navigation among these pages in the same tab preserve the calculator
-session ID, input, settings and recent tools in session storage. Variables and
-both histories are read from authoritative application-owned server values.
-Reload retains the ID; New session explicitly resets all saved values. Server restart or session eviction
-still loses the in-memory numeric state.
+Mathematics and typed values belong to C. JavaScript validates/projects coordinates
+and presents results; add application and HTTP contracts alongside new tools.
+The purple palette originated from Melanie Brown's Deep Purple VS Code theme.
 
-The [session HTTP API](../../../docs/reference/SESSION_HTTP_API.md) exposes paginated
-variables/history, typed values, clear/reset/release, function discovery and
-independent converter confirmation/history. Clear calculator history preserves
-ans and variables. Future mathematical tools must add their application and HTTP
-contract alongside the web feature; JavaScript handles presentation.
+## Embedding and checks
 
-On desktop, the calculator shell uses the viewport height and keeps the main
-controls in view. The result fills the available space above the keypad before
-offering full-result expansion. The function list and visible history can
-scroll inside their cards; very short windows may also scroll the calculator
-column. Long results open in a native modal dialog with its own scroll area,
-while narrow screens retain inline expansion. Clicking outside the result dialog
-closes it, and its copy button uses the same result text as the main panel. The guide header
-and section menu stay in place; only the guide text scrolls. On narrow screens,
-the menu is a horizontally scrollable row.
-Results start at the top with a subtle left accent; errors use the error accent.
-The C numeric kind supplies exact/approximate provenance independently of display
-rounding. Preview/confirmed status and clickable empty-state examples are UI-only.
+CMake embeds the registered assets and root `LICENSE` in `numforge_web`.
+The executable serves `/`, `/api`, `/graph`, `/solve`, `/units`, `/login`,
+`/register`, `/assets/` and `/LICENSE`; no asset directory, Node.js or Python is
+needed at runtime. Account routes remain informational placeholders.
 
-The expression starts as a one-line textarea, grows to five lines and then scrolls.
-Enter confirms; Shift+Enter inserts a line break. Clipped results show a visible
-`...` marker and a `Show all...` control.
+Adding an asset requires a CMake dependency, an embedding symbol in
+`cmake/EmbedWeb.cmake` and a route in `apps/web/server/web_server.c`.
+Rebuild with `cmake --build <build-directory> --target numforge_web`.
+`web_server_smoke_tests`, `web_ui_tests` and the SK/EN Playwright suite cover
+transport and UI behavior; see [Testing](../../../docs/TESTING.md).
 
-The full-width settings bar sits above the expression and stays compact in
-height. The calculator and guide use colors based on Melanie Brown's Deep Purple
-VS Code theme. Each calculator card has a title and icon. On desktop, the
-function library and session take natural heights inside one scrollable right
-column, keeping session/history reachable in short windows. The left calculator
-column scrolls when needed. Function categories and function buttons have
-separate labelled panels, divided from the search field. Categories form a
-vertical list beside their controls on wide screens and a horizontal strip on
-phones. Settings remain above the input at every size. Search matches Slovak
-descriptions with or without diacritics. The recent row remembers up to twelve
-distinct constants, operations or functions and shows as many as fit in one row;
-visible buttons share the available width without extending past the card. The function
-help appears after the active function group within the same scrollable column.
-Inverse trigonometric and hyperbolic functions can also be found by their
-`arc` and `arcus` names, including prefix-only searches.
+`logo.png` supplies the header mark/favicon; `wordmark.png` remains available.
+CMake substitutes `@NUMFORGE_VERSION@` from `PROJECT_VERSION`. The shared footer
+opens the root MIT license in a local dialog and GitHub in a new tab.
 
-The calculator and guide share a bilingual footer with the MIT license and
-GitHub links. CMake replaces `@NUMFORGE_VERSION@` from `PROJECT_VERSION` when
-embedding the pages, so the displayed version follows the build configuration.
-The footer shows the exact English MIT text from the root license in a local
-dialog; GitHub opens in a new tab. Header and footer dimensions match between
-the calculator and guide.
+## State and navigation
 
-The SK/EN `/graph` page uses `graph.css` and `graph.js` to draw adaptive curves from
-`POST /api/graph/plot`. C owns expression evaluation; JavaScript projects and
-validates finite browser coordinates. Form settings survive in-place navigation,
-requests are canceled on edits/disposal, and sample values are accessible in a
-table. See the [graph guide](../../../docs/guides/GRAPHS.md).
+Internal transitions replace main content after its stylesheet loads, preserving
+the header/footer. Each tool disposes listeners and aborts stale work before
+replacement. Back/Forward and language changes retain same-tab input/settings;
+a failed fetch falls back to normal navigation. Stylesheet failure reveals plain
+content, and reduced-motion preferences suppress animations.
 
-Guide content is organized into five `data-guide-panel` articles in the SK/EN
-`api.*.html` files. `navigation.js` selects the part and builds its active section
-menu, handles legacy hash links, language links and history, and hides inactive
-parts. Keep part keys and section IDs aligned between languages. The C guide
-route accepts `section=calculator|units|graphs|equations|api` and `lang=sk|en` in either
-order; other page routes retain their existing query contracts.
+Session storage retains the client ID and UI state. C owns variables, `ans` and
+confirmed histories; browser lists mirror the [session HTTP API](../../../docs/reference/SESSION_HTTP_API.md).
+Clearing calculator history preserves variables and `ans`. New session resets
+saved values; server restart or eviction still loses in-memory numeric state.
+
+Desktop calculator columns scroll independently in short windows, preserving a
+readable result. Long results use a modal on desktop and inline expansion on
+narrow screens. Settings stay above the expression; mobile categories scroll
+horizontally and history uses the sidebar's full width. Input grows to five
+lines, then scrolls; Enter confirms and Shift+Enter inserts a line break.
+Preview/confirmed labels are UI state; exact/approximate provenance comes from
+the C numeric kind independently of display rounding. User instructions live in
+the [calculator guide](../../../docs/guides/CALCULATOR_WEB.md).
+
+The guide has five `data-guide-panel` articles. Its route accepts
+`section=calculator|units|graphs|equations|api` and `lang=sk|en` in either order.
+`navigation.js` handles active sections, legacy hashes and browser history;
+without JavaScript, all guide content remains readable. Other routes retain
+their existing query contracts.
