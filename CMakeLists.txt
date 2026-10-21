@@ -219,23 +219,29 @@ add_custom_command(
     VERBATIM
 )
 
-add_executable(numforge_web "${NUMFORGE_WEB_GENERATED_HEADER}")
+add_library(numforge_web_backend STATIC "${NUMFORGE_WEB_GENERATED_HEADER}")
+add_executable(numforge_web)
 add_subdirectory(apps/web/server)
 
-target_include_directories(numforge_web
+target_include_directories(numforge_web_backend
     PRIVATE
         ${NUMFORGE_WEB_GENERATED_DIR}
 )
 
-target_link_libraries(numforge_web
-    PRIVATE
+target_link_libraries(numforge_web_backend
+    PUBLIC
         numforge_client
 )
+target_link_libraries(numforge_web PRIVATE numforge_web_backend)
 
 if(WIN32)
-    target_link_libraries(numforge_web PRIVATE ws2_32 shell32)
+    target_link_libraries(numforge_web_backend PUBLIC ws2_32)
+    target_link_libraries(numforge_web PRIVATE shell32)
+else()
+    target_link_libraries(numforge_web_backend PRIVATE Threads::Threads)
 endif()
 
+numforge_enable_diagnostics(numforge_web_backend)
 numforge_enable_diagnostics(numforge_web)
 endif()
 

@@ -93,7 +93,7 @@ belong to the linked contracts/reports rather than this test index.
 | Equation application/HTTP | `equation_tests`, `numeric_root_tests`, `numeric_root_scan_tests`; affected browser equations | [Equation API](reference/EQUATION_HTTP_API.md), [numerical HTTP](reference/NUMERIC_ROOT_HTTP_API.md) |
 | Sessions, units, client ownership | Application/session/unit/cache/HTTP suites; `client_scheduling_tests` for contention, fairness and queue limits | [Session behavior](reference/SESSION_HTTP_API.md), [ownership](design/ARCHITECTURE.md#concurrent-server-prerequisites) |
 | Prepared application expressions/graphs | `application_expression_tests`, `graph_tests`; affected graph browser cases | [Application expressions](design/PARAMETRIC_EXPRESSIONS.md), [graph contracts](API.md) |
-| HTTP decoding/framing | `http_request_tests`, affected unit/session routes and browser API tests | [HTTP contract](reference/HTTP_API.md) |
+| HTTP framing, workers and overload | `http_request_tests`, `web_workers_tests`, `web_server_smoke_tests`, `web_remote_tests`; affected browser cases | [HTTP contract](reference/HTTP_API.md), [operating limits](guides/HOSTING.md#capacity-and-state) |
 | Source boundaries/manifests | `architecture_check`, `architecture_guard_tests` | [Architecture](design/ARCHITECTURE.md) |
 
 For example, use `ctest --test-dir YOUR_BUILD -C Release -R statistics_tests

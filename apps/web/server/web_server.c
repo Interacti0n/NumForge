@@ -27,9 +27,8 @@
 #define NUMFORGE_WEB_SOCKET_TIMEOUT_MS 2000
 
 /*
- * Minimal loopback HTTP backend for local or proxied NumForge demonstrations. It is
- * intentionally not an Internet-facing server: it accepts one request at a
- * time, serves build-embedded calculator/help assets, and sends expressions to the C
+ * Minimal loopback HTTP backend for local or proxied NumForge demonstrations. It
+ * serves build-embedded calculator/help assets and sends expressions to the C
  * parser and typed evaluator through web_api.c.
  */
 
@@ -229,11 +228,11 @@ static bool numforge_read_request(
     bool *origin_allowed,
     uint16_t port,
     const char *public_origin,
-    int *http_error
+    int *http_error,
+    uint64_t deadline
 )
 {
     size_t used = 0U;
-    uint64_t deadline = numforge_monotonic_ms() + NUMFORGE_WEB_SOCKET_TIMEOUT_MS;
     *http_error = 400;
 
     for (;;)
@@ -885,10 +884,11 @@ static void numforge_handle_conversion(NumForgeSocket socket, const char *target
     free(response);
 }
 
-void numforge_handle_connection_with_origin(
+void numforge_handle_connection_before(
     NumForgeSocket socket,
     uint16_t port,
-    const char *public_origin
+    const char *public_origin,
+    uint64_t read_deadline
 )
 {
     char request[NUMFORGE_WEB_REQUEST_CAPACITY];
@@ -917,7 +917,8 @@ void numforge_handle_connection_with_origin(
                                &origin_allowed,
                                port,
                                public_origin,
-                               &http_error) ||
+                               &http_error,
+                               read_deadline) ||
         !numforge_request_target(request, method, sizeof(method), target, sizeof(target)))
     {
         const char *reason =
@@ -1142,7 +1143,22 @@ void numforge_handle_connection_with_origin(
     }
 }
 
-void numforge_handle_connection(NumForgeSocket socket, uint16_t port)
+void numforge_reject_connection(NumForgeSocket socket)
 {
-    numforge_handle_connection_with_origin(socket, port, NULL);
+    static const char body[] = "{\"ok\":false,\"code\":\"server_busy\",\"error\":\"server busy; retry later\"}";
+    char response[384];
+    int length = snprintf(response, sizeof(response),
+        "HTTP/1.1 503 Service Unavailable\r\nContent-Type: application/json; charset=utf-8\r\n"
+        "Content-Length: %zu\r\nConnection: close\r\nCache-Control: no-store\r\nRetry-After: 1\r\n\r\n%s",
+        sizeof(body) - 1U, body);
+    /* The acceptor must never wait for a rejected peer. Drain only data already
+     * available, so ordinary small requests can receive the reply before close. */
+    char discarded[NUMFORGE_WEB_REQUEST_CAPACITY];
+    (void)recv(socket, discarded, sizeof(discarded), 0);
+    if (length > 0 && (size_t)length < sizeof(response)) (void)send(socket, response, length, 0);
+}
+
+bool numforge_web_server_shutdown(void)
+{
+    return application_client_store_destroy(&numforge_application_clients);
 }

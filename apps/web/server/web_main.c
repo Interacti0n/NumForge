@@ -1,5 +1,10 @@
+#if !defined(_WIN32) && !defined(_POSIX_C_SOURCE)
+#define _POSIX_C_SOURCE 200809L
+#endif
 #include "apps/web/server/web_server.h"
+#include "apps/web/server/web_workers.h"
 #include "apps/web/http/http_request.h"
+#include <numforge/runtime.h>
 
 #include <errno.h>
 #include <stdbool.h>
@@ -12,11 +17,42 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <stdatomic.h>
 #include <sys/select.h>
 #include <unistd.h>
 #endif
 
 #define NUMFORGE_WEB_PORT 8765
+
+/* Signal handlers only publish a stop flag. The acceptor owns orderly cleanup. */
+#ifdef _WIN32
+static volatile LONG stop_requested;
+static BOOL WINAPI numforge_stop_signal(DWORD event)
+{
+    if (event != CTRL_C_EVENT && event != CTRL_BREAK_EVENT) return FALSE;
+    (void)InterlockedExchange(&stop_requested, 1);
+    return TRUE;
+}
+static bool numforge_stopping(void) { return InterlockedCompareExchange(&stop_requested, 0, 0) != 0; }
+static bool numforge_install_signals(void) { return SetConsoleCtrlHandler(numforge_stop_signal, TRUE) != 0; }
+#else
+static _Atomic bool stop_requested;
+static void numforge_stop_signal(int number)
+{
+    (void)number; atomic_store_explicit(&stop_requested, true, memory_order_relaxed);
+}
+static bool numforge_stopping(void) { return atomic_load_explicit(&stop_requested, memory_order_relaxed); }
+static bool numforge_install_signals(void)
+{
+    /* A process signal may arrive on a worker. Only a lock-free atomic is safe
+     * both across threads and inside the signal handler. */
+    if (!atomic_is_lock_free(&stop_requested)) return false;
+    struct sigaction action;
+    memset(&action, 0, sizeof(action));
+    action.sa_handler = numforge_stop_signal;
+    return sigemptyset(&action.sa_mask) == 0 && sigaction(SIGINT, &action, NULL) == 0 && sigaction(SIGTERM, &action, NULL) == 0;
+}
+#endif
 
 /* Platform networking and browser-launch helpers. */
 
@@ -118,7 +154,9 @@ static bool numforge_parse_options(
     char **argv,
     uint16_t *port,
     bool *open_browser,
-    const char **public_origin
+    const char **public_origin,
+    unsigned int *workers,
+    unsigned int *queue
 )
 {
     int index;
@@ -131,6 +169,8 @@ static bool numforge_parse_options(
     *port = NUMFORGE_WEB_PORT;
     *open_browser = true;
     *public_origin = NULL;
+    *workers = NUMFORGE_WEB_DEFAULT_WORKERS;
+    *queue = NUMFORGE_WEB_DEFAULT_QUEUE;
 
     for (index = 1; index < argc; index++)
     {
@@ -155,6 +195,15 @@ static bool numforge_parse_options(
                 return false;
             }
         }
+        else if ((strcmp(argv[index], "--workers") == 0 || strcmp(argv[index], "--queue-capacity") == 0) && index + 1 < argc)
+        {
+            bool worker_count = strcmp(argv[index], "--workers") == 0;
+            uint16_t count;
+            if (!numforge_parse_port(argv[++index], &count) ||
+                count > (worker_count ? NUMFORGE_WEB_MAX_WORKERS : NUMFORGE_WEB_MAX_QUEUE)) return false;
+            if (worker_count) *workers = count;
+            else *queue = count;
+        }
         else
         {
             return false;
@@ -175,10 +224,11 @@ int main(
     uint16_t port;
     bool open_browser;
     const char *public_origin;
+    unsigned int worker_count, queue_capacity;
 
-    if (!numforge_parse_options(argc, argv, &port, &open_browser, &public_origin))
+    if (!numforge_parse_options(argc, argv, &port, &open_browser, &public_origin, &worker_count, &queue_capacity))
     {
-        fputs("Usage: numforge_web [--port 1-65535] [--no-browser] [--origin https://host[:port]]\n", stderr);
+        fputs("Usage: numforge_web [--port 1-65535] [--no-browser] [--origin https://host[:port]] [--workers 1-16] [--queue-capacity 1-64]\n", stderr);
 
         return 2;
     }
@@ -221,7 +271,8 @@ int main(
     address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     address.sin_port = htons(port);
 
-    if (bind(listener, (const struct sockaddr *)&address, sizeof(address)) != 0 || listen(listener, 8) != 0)
+    if (bind(listener, (const struct sockaddr *)&address, sizeof(address)) != 0 ||
+        listen(listener, NUMFORGE_WEB_MAX_QUEUE) != 0)
     {
         fprintf(stderr, "NumForge web: port %u is unavailable\n", (unsigned int)port);
         numforge_close_socket(listener);
@@ -230,26 +281,63 @@ int main(
         return 1;
     }
 
+    if (!numforge_configure_client_socket(listener) || !numforge_install_signals()) {
+        fputs("NumForge web: failed to initialize listener control\n", stderr);
+        numforge_close_socket(listener); numforge_networking_stop(); return 1;
+    }
+    NumForgeWebWorkers *workers = numforge_web_workers_start(worker_count, queue_capacity, port, public_origin);
+    if (!workers) {
+        fputs("NumForge web: failed to start workers\n", stderr);
+        numforge_close_socket(listener); numforge_networking_stop(); return 1;
+    }
+
     printf("NumForge web is running at http://127.0.0.1:%u\n", (unsigned int)port);
     if (public_origin != NULL)
     {
         printf("Trusted public browser origin: %s (requires a reverse proxy or tunnel)\n", public_origin);
     }
     puts("Press Ctrl+C to stop the local server.");
+    printf("Workers: %u; queued connections: %u\n", worker_count, queue_capacity);
     numforge_open_browser(port, open_browser);
 
-    for (;;)
+    int result = 0;
+    while (!numforge_stopping())
     {
+        numforge_web_workers_expire(workers, numforge_monotonic_ms());
+        fd_set ready;
+        struct timeval timeout = {0, 100000L};
+        FD_ZERO(&ready); FD_SET(listener, &ready);
+#ifdef _WIN32
+        int selected = select(0, &ready, NULL, NULL, &timeout);
+        if (selected < 0 && WSAGetLastError() == WSAEINTR) continue;
+#else
+        int selected = select(listener + 1, &ready, NULL, NULL, &timeout);
+        if (selected < 0 && errno == EINTR) continue;
+#endif
+        if (selected < 0) { result = 1; break; }
+        if (!selected || numforge_stopping()) continue;
         NumForgeSocket client = accept(listener, NULL, NULL);
-
-        if (client != NUMFORGE_INVALID_SOCKET)
-        {
-            if (numforge_configure_client_socket(client))
-            {
-                numforge_handle_connection_with_origin(client, port, public_origin);
-            }
-
-            numforge_close_socket(client);
+        if (client == NUMFORGE_INVALID_SOCKET) {
+#ifdef _WIN32
+            int error = WSAGetLastError();
+            if (error == WSAEWOULDBLOCK || error == WSAEINTR || error == WSAECONNRESET) continue;
+#else
+            if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR || errno == ECONNABORTED) continue;
+#endif
+            fputs("NumForge web: failed to accept connection\n", stderr);
+            result = 1; break;
         }
+
+        if (numforge_configure_client_socket(client))
+        {
+            if (numforge_web_workers_submit(workers, client, numforge_monotonic_ms())) continue;
+            numforge_reject_connection(client);
+        }
+        numforge_close_socket(client);
     }
+    numforge_close_socket(listener);
+    numforge_web_workers_stop(workers);
+    if (!numforge_web_server_shutdown()) result = 1;
+    numforge_networking_stop();
+    return result;
 }

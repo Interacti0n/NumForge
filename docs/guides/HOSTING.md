@@ -95,12 +95,29 @@ WantedBy=multi-user.target
 
 ## Capacity and state
 
-This is suitable for a small shared demonstration. The C server handles one
-connection at a time and has eight client sessions with FIFO eviction. Sessions
-are memory-only and disappear on restart; client IDs are not authenticated users.
-Numerical precision/size limits and socket deadlines still apply.
+The loopback server uses four fixed workers and a FIFO queue of 32 connections.
+`--workers 1-16` and `--queue-capacity 1-64` override those defaults. Each connection
+carries one request; queued entries retain sockets/timestamps, not parsed bodies.
+The OS listen backlog is separately requested as 64 and is subject to OS limits.
+
+Queued connections expire after one second, checked by the acceptor every 100 ms
+even when workers are occupied. Full/expired queues get a best-effort HTTP 503
+with `code:server_busy` and `Retry-After: 1`, then close. A peer still sending data
+can observe a reset instead; clients must handle transport failures too. Request
+reading has a two-second deadline from acceptance, including queue time. Sending
+has a separate two-second deadline; mathematical work keeps its cooperative limits.
+These are scheduling policies, not hard real-time guarantees.
+
+Ctrl+C/Ctrl+Break on Windows or SIGINT/SIGTERM on POSIX stops admission, rejects
+queued sockets, joins active requests under their existing limits and then frees
+sessions. Forced process termination bypasses this cleanup.
+
+Eight client sessions and eight legacy cache entries still use FIFO eviction.
+Sessions are memory-only, have no idle TTL and disappear on restart; IDs are not
+authenticated users. Bounded workers alone do not establish capacity for dozens
+of retained sessions or a sustained public workload.
 
 Before running a busy public service, add ingress rate limits, monitoring and
-resource limits, and design concurrent workers and larger session storage.
+resource limits, and finish session capacity/expiry/memory policy and load validation.
 Multiple instances need sticky routing for the existing in-memory sessions.
 HTTPS exposure alone does not make this a scalable multiuser service.

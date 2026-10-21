@@ -36,14 +36,15 @@ The [server audit](../design/ARCHITECTURE.md#concurrent-server-prerequisites),
 [load driver](../performance/protocols/APPLICATION.md#multi-client-load) and
 [initial Windows baseline](../performance/baselines/SERVER.md) are available.
 Request reservations, synchronized metadata, thread-local seed fallback,
-shared graph/session reads and bounded FIFO conflict scheduling are implemented.
+shared graph/session reads, bounded FIFO conflict scheduling and a fixed worker
+pool with bounded connection waiting are implemented.
 Contention tests cover writer fairness, timeouts, limits, snapshots and replay.
-The HTTP server is still serial, with eight session slots and eight legacy cache
-slots, and no TTL. These prerequisites do not pass the stage 5 gate.
+Worker/HTTP tests cover overload, queue expiry, shutdown and recovery. There are
+still eight session slots and eight legacy cache slots, with no TTL. Session
+policy and sustained-load validation remain before the stage 5 gate.
 
 | Next, in order | Completion gate |
 | --- | --- |
-| Add bounded workers and a connection/request queue | Slow work does not block every client; active work, queued resources, wait/deadline behavior, overload replies and shutdown are bounded and tested. Keep runtime scopes in their executing thread; resolve cross-thread diagnostic accounting first. |
 | Set session capacity, expiry and memory policy | Held state stays valid; count, idle lifetime and per-client/global retained memory have explicit bounds and expiry behavior. |
 | Validate the intended concurrent load | Repeat 10/30/60-client scenarios, sustained load, isolation, overload and recovery; record verified results, latency, errors, queueing and memory against the original protocol. Choose capacity from evidence. |
 | Complete deployment and rollback | Reproducible target-platform packages, startup/restart, operating limits and rollback are exercised. A local calculator smoke test alone is insufficient. |

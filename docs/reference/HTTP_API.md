@@ -148,8 +148,10 @@ under cancellation; no rounded/inexact guarantee is inferred from the output.
 Out-of-memory calculation failures return HTTP 500 with the same JSON fields.
 Malformed HTTP requests return JSON HTTP 400. Oversized bodies return JSON
 HTTP 413; a request that does not finish arriving within two seconds returns
-JSON HTTP 408. The receive deadline covers the complete headers and body and
-is not restarted by each byte. Responses also have a bounded send deadline.
+JSON HTTP 408. The receive deadline starts at acceptance, includes queue time
+and is not restarted by each byte. Responses also have a bounded send deadline.
+Connection overload uses best-effort HTTP 503 with `code:server_busy`, then closes;
+see [worker/queue limits](../guides/HOSTING.md#capacity-and-state).
 Unknown routes return plain-text HTTP 404; the UI tolerates non-JSON/network
 failures and ignores responses superseded by a new calculation or input edit.
 The UI distinguishes connection failures from unexpected server responses and

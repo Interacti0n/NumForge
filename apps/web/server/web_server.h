@@ -4,8 +4,13 @@
 #include "apps/web/server/web_socket.h"
 
 #include <stdint.h>
+#include <stdbool.h>
 
-void numforge_handle_connection(NumForgeSocket socket, uint16_t port);
-void numforge_handle_connection_with_origin(NumForgeSocket socket, uint16_t port, const char *public_origin);
+/* Socket is nonblocking; receive deadline includes time spent in the queue. */
+void numforge_handle_connection_before(NumForgeSocket socket, uint16_t port, const char *public_origin, uint64_t deadline);
+/* Best-effort nonblocking 503; caller still owns and must close the socket. */
+void numforge_reject_connection(NumForgeSocket socket);
+/* Only after stopping/joining all connection handlers. */
+bool numforge_web_server_shutdown(void);
 
 #endif

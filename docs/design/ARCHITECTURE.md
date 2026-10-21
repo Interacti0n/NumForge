@@ -136,16 +136,17 @@ require implementing every future language binding in the same change.
 
 ## Concurrent server prerequisites
 
-The current server is serial. This source audit identifies work before enabling
-workers; it is not a thread-safety proof or a measured concurrency guarantee.
+The loopback server has a fixed worker pool and a bounded FIFO connection queue.
+This ownership audit is not a measured capacity guarantee; operating limits live
+in [Hosting](../guides/HOSTING.md#capacity-and-state).
 
-| State | Current ownership | Required before workers |
+| State | Current ownership | Rule / remaining work |
 | --- | --- | --- |
 | HTTP client store | One static `ApplicationClientStore`; eight slots per pool, synchronized read/exclusive reservations | Bound session bytes/count/lifetime. |
-| Session values/revisions/RNG | Shared immutable reads, exclusive mutations/cache access and bounded FIFO conflict queues | Preserve revision/retry semantics when introducing workers. |
+| Session values/revisions/RNG | Shared immutable reads, exclusive mutations/cache access and bounded FIFO conflict queues | Preserve revision/retry semantics when extending handlers. |
 | Random seed fallback | Thread-local sequence in `random.c`, updated when OS entropy fails | Keep each session's mutable generator state under its exclusive reservation; fallback is not cryptographic entropy. |
-| Runtime budgets | Thread-local, owner begins/ends on the same thread | Open computation scopes in the executing worker; do not transfer an active scope between threads. |
-| Instrumentation | Thread-local ledgers/profilers; allocation-failure injection is test-only global state | Preserve same-thread accounting or redesign diagnostics before measuring cross-worker frees; isolate failure injection in concurrent tests. |
+| Runtime budgets | Scopes begin/end in the executing worker | Never transfer an active scope between threads. |
+| Instrumentation | Live-allocation tracking stays disabled in web workers; failure injection is inactive in the server | Use OS process memory for load diagnostics; current thread-local ledgers cannot measure cross-worker frees. Run fault injection in isolated fixtures. |
 
 `ApplicationClientLease` is a private, zero-initialized, non-copyable reservation.
 Nonblocking acquisition returns SESSION_BUSY on conflict; HTTP adapters use the
@@ -167,17 +168,22 @@ separately from the calculation budget; full queues/timeouts return SESSION_BUSY
 without changing data or revisions. An original monotonic deadline survives
 unrelated notifications. Waiting nodes use caller stacks, pin their entries and
 are removed on timeout or deferred POSIX cancellation. Shutdown must cooperate
-with active owners. These guards do not make HTTP serving parallel or provide
-hard real-time deadlines. Contention, limits, replay and snapshot behavior are
+with active owners. These guards do not provide hard real-time deadlines.
+Contention, limits, replay and snapshot behavior are
 covered by `client_scheduling_tests`, with optional live-allocation tracking
 disabled because its thread-local ledgers cannot follow ownership transfers.
 
-`web_main.c` currently accepts and handles one entire connection before the next,
-with listen backlog 8. A bounded worker/queue design must also bound socket wait,
-queued bytes and overload responses; simply increasing backlog/session capacity
-does not add parallel computation. Public opaque handles remain externally
-synchronized when shared. See the [load protocol](../performance/protocols/APPLICATION.md#multi-client-load)
-and [hosting limits](../guides/HOSTING.md#capacity-and-state).
+`web_main.c` owns admission and signal flags; `web_workers.c` owns fixed threads,
+socket slots and queue expiry. The acceptor sweeps expired sockets even with all
+workers occupied; rejection never waits on peer I/O. A worker owns a dequeued
+socket through calculation, serialization and close, outside the queue lock.
+Queue time consumes the original receive deadline. Shutdown stops admission,
+discards queued sockets, joins active owners and destroys session state last.
+The private backend target is shared with real-socket worker tests; mathematical
+libraries do not depend on it. Live allocation tracking remains off because
+retained session values can change worker owners. Public opaque handles still
+require caller synchronization when shared. See the
+[load protocol](../performance/protocols/APPLICATION.md#multi-client-load).
 
 ## Application behavior
 

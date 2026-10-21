@@ -26,7 +26,8 @@ These routes supplement [expression evaluation](HTTP_API.md) and the read-only
 [unit converter](UNIT_HTTP_API.md). State belongs to the application layer,
 never the numeric library or browser storage. There is no database, account,
 authentication or public C session ABI. Client IDs isolate local browser tabs;
-they are not credentials. The loopback server processes requests serially.
+they are not credentials. The loopback server uses a
+[bounded worker pool](../guides/HOSTING.md#capacity-and-state).
 
 ## Routes
 
@@ -145,9 +146,9 @@ writer. The queues hold at most eight waiters per entry and 32 per store. A full
 queue, timeout or pool with every replacement entry held/queued returns 503 with
 `session busy; retry later`; session/graph routes also provide `code:session_busy`.
 This failure leaves data and revisions unchanged; retry the original request.
-Waiting is separate from the calculation budget. The server remains serial;
-these reservations prepare for future workers. Session capacity and FIFO eviction
-limits are unchanged.
+Waiting is separate from the calculation budget and from the connection queue,
+whose overload uses `code:server_busy`. Session capacity and FIFO eviction limits
+are unchanged.
 Errors include `ok:false`, `schema_version:1`, `status`, `error`, `code` and
 one-based Unicode `column`. Conversion expression errors preserve their original
 positions. Transport limits still use 403/408/411/413 as described in the HTTP guide.

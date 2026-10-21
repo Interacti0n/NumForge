@@ -110,7 +110,7 @@ ApplicationEvaluationCache *application_client_cache(ApplicationClientStore *sto
 void application_evaluation_cache_clear(ApplicationEvaluationCache *cache);
 /* Refuse destruction while any lease is held or a caller is queued; false leaves
  * the entire store unchanged. Otherwise clear/reset; NULL is accepted as success.
- * The caller must stop/join future workers before destroying their store. */
+ * The caller must stop/join workers before destroying their store. */
 bool application_client_store_destroy(ApplicationClientStore *store);
 
 #endif

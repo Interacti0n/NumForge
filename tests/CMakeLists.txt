@@ -100,6 +100,8 @@ target_compile_definitions(unit_web_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_
 numforge_add_unit_test(web_api_tests numforge_client http/test_web_api.c)
 
 if(NUMFORGE_BUILD_APPS)
+numforge_add_unit_test(web_workers_tests numforge_web_backend http/test_web_workers.c)
+set_tests_properties(web_workers_tests PROPERTIES TIMEOUT 60)
 add_executable(web_server_smoke_tests
     http/test_web_server.c
 )

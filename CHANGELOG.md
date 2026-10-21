@@ -6,6 +6,9 @@ Earlier detailed development notes remain in Git history.
 
 ## Unreleased
 
+- Bounded HTTP workers and connection queue with overload replies, queue expiry
+  and cooperative shutdown; session capacity remains eight.
+
 - Refined purple web UI with readable short-window results, nearby mobile settings,
   compact function categories, result confirmation/provenance labels and clickable examples.
 

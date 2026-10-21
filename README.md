@@ -90,8 +90,9 @@ cmake --build --preset apps
 Run `numforge_web` or `calculator` from `build/apps/`, or `build/apps/Release/`
 with Visual Studio. Open `http://127.0.0.1:8765` for the browser app.
 Use `--port N` for another port and `--no-browser` to suppress browser launching.
-Remote access is covered by [Hosting](docs/guides/HOSTING.md). The HTTP server
-currently processes connections serially; concurrent serving is in development.
+Remote access, bounded workers and queue settings are covered by
+[Hosting](docs/guides/HOSTING.md). Session capacity and sustained-load validation
+remain in development.
 
 Prefer a portable download? Get an application or SDK from
 [Releases](https://github.com/Interacti0n/NumForge/releases/latest), verify its
