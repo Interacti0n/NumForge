@@ -1,4 +1,4 @@
-// Capture the real local calculator for project documentation. No UI mocks.
+// Capture the real local application for project documentation. No UI mocks.
 const { chromium, expect } = require('@playwright/test');
 const { spawn } = require('node:child_process');
 const net = require('node:net');
@@ -72,11 +72,38 @@ async function confirm(page, expression, expected) {
             await expect(page.locator('#history-list li')).toHaveCount(4);
             await expect(page.locator('#result-approx')).toHaveText('≈ 0.5');
             await page.locator('#expression').blur();
-            await page.evaluate(() => document.fonts.ready);
-            await page.screenshot({ path: path.join(directory, name + '.png'), fullPage: true });
+            await page.evaluate(async () => {
+                await document.fonts.ready;
+                window.scrollTo(0, 0);
+                await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+            });
+            await expect(page.locator('#expression')).toBeInViewport();
+            await page.screenshot({ path: path.join(directory, name + '.png'), fullPage: !name.endsWith('mobile') });
             await context.close();
         }
-        console.log('Captured verified desktop and mobile calculator screenshots.');
+        const context = await browser.newContext({ viewport: { width: 1440, height: 1000 },
+            deviceScaleFactor: 1, reducedMotion: 'reduce' });
+        const page = await context.newPage();
+        await page.goto(url + '/graph?lang=en');
+        const expressions = ['sin(x)', 'cos(x)', 'x/5'];
+        for (let i = 0; i < expressions.length; ++i) {
+            if (i) await page.locator('#graph-add').click();
+            await page.locator('.graph-curve').nth(i).locator('input:not([type=color])').fill(expressions[i]);
+        }
+        await page.locator('#graph-submit').click();
+        await expect(page.locator('path.graph-line')).toHaveCount(3);
+        await expect(page.locator('.graph-workspace')).not.toHaveAttribute('aria-busy', 'true');
+        await page.evaluate(() => document.fonts.ready);
+        await page.screenshot({ path: path.join(directory, 'graphs-desktop.png'), fullPage: true });
+        await page.goto(url + '/solve?lang=en');
+        await page.locator('#equation-submit').click();
+        await expect(page.locator('.equation-root')).toHaveCount(2);
+        await expect(page.locator('#equation-roots')).toContainText('-sqrt(2)');
+        await expect(page.locator('#equation-roots')).toContainText('≈ 1.414213562373095');
+        await page.evaluate(() => document.fonts.ready);
+        await page.screenshot({ path: path.join(directory, 'equations-desktop.png'), fullPage: true });
+        await context.close();
+        console.log('Captured verified calculator, graph and equation screenshots.');
     } finally {
         if (browser) await browser.close();
         if (server && server.pid && server.exitCode === null) {

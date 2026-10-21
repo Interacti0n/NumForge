@@ -8,22 +8,27 @@
 [![Latest release](https://img.shields.io/github/v/release/Interacti0n/NumForge)](https://github.com/Interacti0n/NumForge/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-NumForge is a modular mathematics library with optional CLI and Slovak/English
-browser applications. Mathematical operations run in C and can be used without
-a web interface, application session or database.
+NumForge is a modular mathematics platform: a standalone C library, an expression
+engine, an experimental Python adapter, and CLI/browser applications.
+The interfaces reuse C implementations; mathematical operations work without a
+browser, application session or database.
 
-**Current source:** opaque integer, decimal, rational and complex types; a public
-expression engine; exact polynomial and matrix operations; rational statistics
-with covariance/regression; units; and bounded numerical grids, root searches and
-finite-interval integration. An experimental
-Python adapter calls the same C implementation. See the [supported API](docs/API.md).
+[Get started](#get-started) · [Browser](#in-the-browser) · [C/C++](#cc-sdk) ·
+[Python](#python) · [Documentation](docs/README.md) · [Roadmap](docs/project/ROADMAP.md)
 
-**Published 2.4.0 downloads** predate the public engine, newer modules and Python
-adapter. Use the matching release documentation for those archives. Python is
-currently source-built and has not been published to PyPI.
+## What can it do?
 
-[Get started](#get-started) · [Browser](#in-the-browser) · [C/C++ SDK](#cc-sdk) ·
-[Python](docs/guides/PYTHON.md) · [Documentation](docs/README.md)
+| Capability in current source | Explore |
+| --- | --- |
+| Arbitrary-precision integers, decimals, fractions and complex numbers | [Numeric APIs](docs/reference/C_API.md) |
+| Typed expressions, explicit precision and reusable parameterized expressions | [Expression engine](docs/reference/ENGINE_API.md) |
+| Exact linear/quadratic equations, rational matrices and general linear systems | [Supported APIs](docs/API.md) |
+| Exact statistics, covariance and linear regression | [Statistics](docs/reference/STATISTICS_API.md) |
+| Exact grids, bounded root searches and approximate finite-interval integration | [Numerical methods](docs/reference/NUMERICAL_API.md) |
+| Unit conversions and dimensional quantities | [Units](docs/reference/UNITS.md) |
+
+C/Python expose mathematical APIs beyond the browser tools. See
+[interface coverage](docs/reference/WEB_API_PARITY.md) for availability.
 
 ## NumForge in 15 seconds
 
@@ -36,117 +41,147 @@ currently source-built and has not been published to PyPI.
 | `convert(90; "km/h"; "m/s")` | `25` |
 | `qty(5; "m") * qty(5; "m")` | `25 m²` |
 
-Select Full precision with Plain or Fraction notation for exact results.
-For an irrational result, select Plain and 40 output places:
+Use Full precision and Plain or Fraction notation as appropriate for these
+exact results. For `sqrt(2)`, choose Plain and 40 output places:
 
 ```text
-sqrt(2) ≈ 1.4142135623730950488016887242096980785697
+1.4142135623730950488016887242096980785697
 ```
 
-Exact arithmetic stays exact within resource limits. Approximate functions use
-explicit working precision; this is not a universal error guarantee for composed
-expressions. Graph sampling and numerical root discovery are bounded and can
-miss features or roots.
+Exact arithmetic stays exact within resource limits. Approximate calculations
+use explicit working precision; output places do not certify whole-expression
+accuracy. Numerical root discovery and graph sampling can miss roots or features.
 
 ## In the browser
 
-The local application provides a calculator, converter, four-function graphs,
-equation solving and session variables/history. Arithmetic runs in C; JavaScript
-handles presentation and requests. No Node.js, Python or database is needed at runtime.
+The Slovak/English application combines a scientific calculator, unit converter,
+up to four function graphs, exact/numerical equation solving, variables and
+confirmed history. Arithmetic runs in C; JavaScript handles presentation and
+requests. No Node.js, Python or database is needed at runtime.
 
-![Calculator with an exact fraction and confirmed history](docs/images/calculator-desktop.png)
+![Current calculator with exact fractions and confirmed history](docs/images/calculator-desktop.png)
 
 <details>
-<summary>Mobile view</summary>
+<summary>Graphs, equations and mobile view</summary>
 
-<img src="docs/images/calculator-mobile.png" alt="Mobile calculator" width="320">
+<p><img src="docs/images/graphs-desktop.png" alt="Three functions plotted in the graph workspace"></p>
+
+<p><img src="docs/images/equations-desktop.png" alt="Exact quadratic roots with decimal previews"></p>
+
+<img src="docs/images/calculator-mobile.png" alt="Calculator on a phone" width="320">
 
 </details>
 
-These development screenshots were captured during 2.1 preparation; they show
-the calculator workflow, not every control in the current source.
+Real application captures, refreshed on 21 October 2026 from development source.
+Start with the [calculator guide](docs/guides/CALCULATOR_WEB.md),
+[graphs](docs/guides/GRAPHS.md) or [equations](docs/guides/EQUATIONS.md).
 
 ## Get started
 
-Download a portable application from the
-[release page](https://github.com/Interacti0n/NumForge/releases/latest), verify its
-matching SHA-256 and extract the whole archive. Platform/runtime details are in
-[release packaging](docs/project/RELEASE_PACKAGING.md).
-
-To use the shared build profiles, install CMake 3.21+ and a C17 compiler:
+For the newest features, build current source with **CMake 3.21+** and a **C17 compiler**:
 
 ```sh
 git clone https://github.com/Interacti0n/NumForge.git
 cd NumForge
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
-cmake --build build --config Release
+cmake --preset apps
+cmake --build --preset apps
 ```
 
-Run `numforge_web` and `calculator` from `build/`, or `build/Release/` with
-Visual Studio. The web app listens on loopback port 8765. Use `--port N` for
-another port and `--no-browser` to suppress browser launching. For remote access,
-read the [hosting guide](docs/guides/HOSTING.md); concurrent server readiness is
-a separate [roadmap milestone](docs/project/ROADMAP.md).
+Run `numforge_web` or `calculator` from `build/apps/`, or `build/apps/Release/`
+with Visual Studio. Open `http://127.0.0.1:8765` for the browser app.
+Use `--port N` for another port and `--no-browser` to suppress browser launching.
+Remote access is covered by [Hosting](docs/guides/HOSTING.md). The HTTP server
+currently processes connections serially; concurrent serving is in development.
+
+Prefer a portable download? Get an application or SDK from
+[Releases](https://github.com/Interacti0n/NumForge/releases/latest), verify its
+SHA-256 and extract the whole archive. **Published 2.4.0 packages have an older
+API than current source** and do not include Python. Check
+[SDK compatibility](docs/guides/SDK.md) before choosing a binary.
 
 ## C/C++ SDK
 
-Link the standalone numeric target from an installed library or compatible SDK:
+The numeric library and optional expression engine can be installed independently
+of the applications. Link the target your project needs:
 
 ```cmake
 find_package(NumForge CONFIG REQUIRED)
 target_link_libraries(my_target PRIVATE NumForge::numforge)
+# Use NumForge::engine when you also need expression parsing and evaluation.
 ```
 
-Set `CMAKE_PREFIX_PATH` to the installation/SDK prefix. The
-[SDK quick start](docs/guides/SDK.md) covers prebuilt archives and toolchain
-compatibility; the [library guide](docs/guides/LIBRARY_GUIDE.md) covers source
-installation and a complete C example. Current source optionally exports
-`NumForge::engine` for expressions. Installed public headers define the contracts.
+Follow [C/C++ from source](docs/guides/LIBRARY_GUIDE.md) for installation and a
+complete C example, or the [prebuilt SDK guide](docs/guides/SDK.md) for archives.
+Installed headers define that package's API and ownership rules.
+
+## Python
+
+The experimental adapter is source-built with CPython 3.10+, its development
+headers, CMake and a C17 toolchain. In a virtual environment, from this checkout:
+
+```sh
+python -m pip install .
+```
+
+```python
+from fractions import Fraction
+import numforge as nf
+
+assert nf.evaluate("1/3+1/6").as_fraction() == Fraction(1, 2)
+assert nf.Matrix([[1, 2], [3, 4]]).determinant() == -2
+
+fit = nf.linear_regression([1, 2, 3], [1, 2, 2])
+assert (fit.slope, fit.intercept) == (Fraction(1, 2), Fraction(2, 3))
+
+root = nf.sqrt(2, precision=1000)   # 1000 working digits; approximate
+assert not root.exact
+
+area = nf.integrate(lambda x, places: x*x, 0, 1)
+assert area.kind == "estimated" and area.value == Fraction(1, 3)
+assert not area.exact              # Numerical integration remains approximate.
+```
+
+These operations call the C implementation. See [Python](docs/guides/PYTHON.md)
+for prepared expressions, root searches, budgets and supported input types.
+The adapter is **not published to PyPI**; `pip install numforge` is not the
+installation command for this project.
 
 ## Architecture
 
-| Location | Responsibility |
-| --- | --- |
-| `include/numforge/` | Installed C APIs |
-| `src/core/`, `src/runtime/` | Numeric representations, arithmetic and resource scopes |
-| `src/modules/` | Independently callable mathematical algorithms |
-| `src/engine/` | Parsing, typed expression evaluation and formatting |
-| `src/application/` | Sessions and application workflows |
-| `bindings/`, `apps/` | Language adapters, CLI and web |
-| `tests/`, `benchmarks/`, `docs/` | Verification, measurements and documentation |
-
-Algorithms have one owner; interfaces reuse them. See the
-[architecture rules](docs/design/ARCHITECTURE.md) and
-[ordered roadmap](docs/project/ROADMAP.md) for boundaries and next work.
+The numeric core and modules own mathematical algorithms; the engine adds parsing
+and typed expression evaluation. Application state, HTTP and language adapters
+live in separate layers. See [Architecture](docs/design/ARCHITECTURE.md) for the
+source map and [Roadmap](docs/project/ROADMAP.md) for the ordered next steps.
 
 ## Measured performance
 
-Reproducible measurements, exact references and machine/compiler details live in
-the [benchmark tools guide](benchmarks/README.md) and its linked reports.
-Historical timings and private experiments are not current performance guarantees.
+[Benchmark tools](benchmarks/README.md) and [selected measurements](docs/performance/README.md)
+include environments, verification and limits. Recorded timings describe their
+revision and machine; they are not current performance or server-capacity guarantees.
 
 ## Test
 
 ```sh
-cmake -P cmake/LocalBuild.cmake
+cmake --preset dev
+cmake --build --preset dev
+ctest --preset dev
 ```
 
-This builds Release and runs CTest. The first test configuration fetches Unity;
-Node.js enables additional checks. Browser testing uses Playwright separately.
-See [testing](docs/TESTING.md) for focused checks and package verification.
+The first test configuration fetches Unity. Node.js enables additional checks;
+Playwright tests run separately. See [Testing](docs/TESTING.md) for focused checks,
+Python packages and installed C/C++ consumers.
 
 ## Contributing
 
-Start with [CONTRIBUTING.md](CONTRIBUTING.md) and the
-[mathematical feature checklist](docs/project/FEATURE_CHECKLIST.md).
-For a numerical issue, include input, precision, rounding, expected result and
-its independent reference.
+Start with [Contributing](CONTRIBUTING.md) and the
+[feature checklist](docs/project/FEATURE_CHECKLIST.md). For a numerical issue,
+include input, precision, rounding, expected result and its independent reference.
 
 ## Documentation
 
-Use the [documentation guide](docs/README.md) to choose a workflow, API reference
-or implementation topic. [Changelog](CHANGELOG.md) and [release verification](docs/project/RELEASES.md)
-are separate from current usage instructions.
+[Start here](docs/README.md) for user guides and integration paths.
+[Changelog](CHANGELOG.md) records user-visible changes;
+[release verification](docs/project/RELEASES.md) records published artifact checks.
 
 ## License
 

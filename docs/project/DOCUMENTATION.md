@@ -99,15 +99,17 @@ run; all build output remains unpublished until a separate release action.
 ## Product screenshots
 
 Use real product captures and captions stating their version. Current README
-images show the 2.1.0 preparation build, captured on 8 October 2026 in English
-with Full precision and Fraction notation. Refresh them after relevant UI changes:
+images show development source captured on 21 October 2026 in English: the
+calculator in Full/Fraction mode, three plotted functions and exact quadratic
+roots with decimal previews. Refresh them after relevant UI changes:
 
 ```sh
-node tests/browser/capture_showcase.js build/Release/numforge_web.exe
+node tests/browser/capture_showcase.js build/dev/Release/numforge_web.exe
 ```
 
 Pass the actual executable path; single-configuration builds omit `Release/`.
-The script starts its own loopback server on port 18773, checks the calculator
-results, captures desktop/mobile layouts and closes its browser/server. Inspect
-both images for clipping and legibility. Keep demonstration claims consistent
+The script starts its own loopback server on port 18773, checks calculator
+results, graph completion and equation roots, captures the desktop/mobile
+calculator and desktop graph/equation views, then closes its browser/server.
+Inspect all images for clipping and legibility. Keep demonstration claims consistent
 with the current API and distinguish published archives from development source.

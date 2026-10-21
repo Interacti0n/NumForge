@@ -8,7 +8,7 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-PYTHON_PAGES = ('docs/guides/PYTHON.md', 'docs/reference/MATRIX_API.md',
+PYTHON_PAGES = ('README.md', 'docs/guides/PYTHON.md', 'docs/reference/MATRIX_API.md',
                 'docs/reference/LINEAR_SYSTEM_API.md', 'docs/reference/STATISTICS_API.md',
                 'bindings/python/README.md')
 C_PAGES = (('docs/guides/LIBRARY_GUIDE.md', 'NumForge::numforge', '1[.]4142135624'),
