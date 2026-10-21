@@ -46,8 +46,10 @@ typedef enum ApplicationClientAccess {
  * same entry returns SESSION_BUSY. If every replacement slot is held, creation
  * returns SESSION_BUSY without modifying the store or lease.
  *
- * Bookkeeping is not internally synchronized yet: calls require external serial
- * access. This lifetime foundation alone does not make the server multithreaded.
+ * Acquire/release/destroy synchronize metadata internally. A lease and its
+ * payload belong to one thread until release; never share the lease itself.
+ * Different reserved entries can be used concurrently. This does not make the
+ * HTTP server multithreaded or synchronize other application state.
  */
 typedef struct ApplicationClientLease {
     ApplicationClientStore *store;
@@ -59,7 +61,8 @@ CalculatorStatus application_client_acquire(ApplicationClientStore *store,
     const char *id, ApplicationClientAccess access, ApplicationClientLease *lease);
 void application_client_release(ApplicationClientLease *lease);
 
-/* Serial setup helpers; request handlers must use leases instead.
+/* Serial setup helpers: exclude all concurrent store access while using these
+ * functions or their borrowed pointers. Request handlers must use leases instead.
  * Borrowed pointers remain valid until eviction or store destruction.
  * Lookup with create=false is read-only and never revives an expired session. */
 CalculatorSession *application_client_session(ApplicationClientStore *store,

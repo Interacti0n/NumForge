@@ -3,6 +3,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <pthread.h>
+#endif
 
 static ApplicationClientStore store;
 static ApplicationClientStore other;
@@ -209,9 +214,84 @@ static void test_lease_validation_and_release_tombstone(void)
     TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_session_mutate(leases[0].session, 1, CALCULATOR_SESSION_RELEASE));
     application_client_release(NULL); TEST_ASSERT_TRUE(application_client_store_destroy(NULL));
 }
+typedef struct ClientWorker {
+    bool ok;
+    bool cache;
+} ClientWorker;
+
+#ifdef _WIN32
+static DWORD WINAPI update_client(void *argument)
+#else
+static void *update_client(void *argument)
+#endif
+{
+    ClientWorker *worker = argument;
+    worker->ok = true;
+    for (size_t completed = 0; completed < 2000;) {
+        ApplicationClientLease lease = {0};
+        CalculatorStatus status = application_client_acquire(&store, client,
+            worker->cache ? APPLICATION_CLIENT_CACHE : APPLICATION_CLIENT_LIVE, &lease);
+        if (status == CALCULATOR_SESSION_BUSY) continue;
+        if (status != CALCULATOR_OK) { worker->ok = false; break; }
+        if (worker->cache) ++lease.cache->revision;
+        else ++lease.session->revision;
+        /* A separate, permanently pinned entry also blocks whole-store teardown. */
+        if (application_client_store_destroy(&store)) worker->ok = false;
+        application_client_release(&lease);
+        if (!worker->ok) break;
+        ++completed;
+    }
+    return 0;
+}
+
+static void test_concurrent_leases_preserve_updates_and_reject_destruction(void)
+{
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_client_acquire(&store, client,
+        APPLICATION_CLIENT_START, &leases[0]));
+    application_client_release(&leases[0]);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_client_acquire(&store,
+        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", APPLICATION_CLIENT_START, &leases[0]));
+    ClientWorker workers[8] = {{0}};
+    size_t started = 0;
+#ifdef _WIN32
+    HANDLE threads[8];
+#else
+    pthread_t threads[8];
+#endif
+    for (size_t i = 0; i < 8; ++i) {
+        workers[i].cache = i % 2 != 0;
+#ifdef _WIN32
+        threads[i] = CreateThread(NULL, 0, update_client, &workers[i], 0, NULL);
+        if (!threads[i]) break;
+#else
+        if (pthread_create(&threads[i], NULL, update_client, &workers[i]) != 0) break;
+#endif
+        ++started;
+    }
+    bool joined = true;
+    for (size_t i = 0; i < started; ++i) {
+#ifdef _WIN32
+        if (WaitForSingleObject(threads[i], INFINITE) != WAIT_OBJECT_0) abort();
+        joined &= CloseHandle(threads[i]) != 0;
+#else
+        if (pthread_join(threads[i], NULL) != 0) abort();
+#endif
+    }
+    TEST_ASSERT_TRUE(joined);
+    TEST_ASSERT_EQUAL_UINT(8, started);
+    for (size_t i = 0; i < started; ++i) TEST_ASSERT_TRUE(workers[i].ok);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_client_acquire(&store, client,
+        APPLICATION_CLIENT_LIVE, &leases[1]));
+    TEST_ASSERT_EQUAL_UINT64(8000, leases[1].session->revision);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_client_acquire(&store, client,
+        APPLICATION_CLIENT_CACHE, &cache_leases[0]));
+    TEST_ASSERT_EQUAL_UINT64(8000, cache_leases[0].cache->revision);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_concurrent_leases_preserve_updates_and_reject_destruction);
     RUN_TEST(test_lease_pins_session_and_excludes_a_second_operation);
     RUN_TEST(test_all_held_pools_refuse_replacement_without_mutation);
     RUN_TEST(test_lease_validation_and_release_tombstone);

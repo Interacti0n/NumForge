@@ -1,5 +1,20 @@
 #include "src/application/clients/client_store.h"
 #include <string.h>
+#ifdef _WIN32
+#include <windows.h>
+static SRWLOCK clients_lock = SRWLOCK_INIT;
+static void lock_clients(void) { AcquireSRWLockExclusive(&clients_lock); }
+static void unlock_clients(void) { ReleaseSRWLockExclusive(&clients_lock); }
+#else
+#include <pthread.h>
+#include <stdlib.h>
+static pthread_mutex_t clients_lock = PTHREAD_MUTEX_INITIALIZER;
+static void lock_clients(void) { if (pthread_mutex_lock(&clients_lock) != 0) abort(); }
+static void unlock_clients(void) { if (pthread_mutex_unlock(&clients_lock) != 0) abort(); }
+#endif
+
+/* One process-wide metadata lock preserves zero-initialized stores without a
+ * fallible mutex lifecycle. It never covers use of a reserved session/cache. */
 
 static bool valid_client_id(const char *id)
 {
@@ -61,23 +76,27 @@ CalculatorStatus application_client_acquire(ApplicationClientStore *store,
         access != APPLICATION_CLIENT_RETAINED && access != APPLICATION_CLIENT_CACHE))
         return CALCULATOR_INVALID_ARGUMENT;
     size_t slot = 0;
+    lock_clients();
     CalculatorStatus status = access == APPLICATION_CLIENT_CACHE ? cache_slot(store, id, &slot) :
         session_slot(store, id, access == APPLICATION_CLIENT_START, access == APPLICATION_CLIENT_RETAINED, &slot);
-    if (status != CALCULATOR_OK) return status;
+    if (status != CALCULATOR_OK) { unlock_clients(); return status; }
     *lease = (ApplicationClientLease){store, slot, NULL, NULL};
     if (access == APPLICATION_CLIENT_CACHE) {
         store->caches[slot].busy = true; lease->cache = &store->caches[slot].cache;
     } else {
         store->sessions[slot].busy = true; lease->session = &store->sessions[slot].session;
     }
+    unlock_clients();
     return CALCULATOR_OK;
 }
 void application_client_release(ApplicationClientLease *lease)
 {
     if (!lease || !lease->store) return;
+    lock_clients();
     if (lease->cache) lease->store->caches[lease->slot].busy = false;
     else lease->store->sessions[lease->slot].busy = false;
     memset(lease, 0, sizeof(*lease));
+    unlock_clients();
 }
 CalculatorSession *application_client_session(ApplicationClientStore *store, const char *id, bool create)
 {
@@ -99,12 +118,14 @@ ApplicationEvaluationCache *application_client_cache(ApplicationClientStore *sto
 bool application_client_store_destroy(ApplicationClientStore *store)
 {
     if (!store) return true;
+    lock_clients();
     for (size_t i = 0U; i < NUMFORGE_APPLICATION_CLIENT_CAPACITY; i++)
-        if (store->sessions[i].busy || store->caches[i].busy) return false;
+        if (store->sessions[i].busy || store->caches[i].busy) { unlock_clients(); return false; }
     for (size_t i = 0U; i < NUMFORGE_APPLICATION_CLIENT_CAPACITY; i++) {
         calculator_session_destroy(&store->sessions[i].session);
         application_evaluation_cache_clear(&store->caches[i].cache);
     }
     memset(store, 0, sizeof(*store));
+    unlock_clients();
     return true;
 }

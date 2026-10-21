@@ -5,6 +5,11 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <time.h>
+#ifdef _MSC_VER
+#define RANDOM_LOCAL __declspec(thread)
+#else
+#define RANDOM_LOCAL _Thread_local
+#endif
 #ifdef _WIN32
 #include <windows.h>
 #include <bcrypt.h>
@@ -22,7 +27,7 @@ static uint64_t calculator_random_next(uint64_t *state)
 
 uint64_t calculator_random_seed(void)
 {
-    static uint64_t sequence = UINT64_C(0x9e3779b97f4a7c15);
+    static RANDOM_LOCAL uint64_t sequence = UINT64_C(0x9e3779b97f4a7c15);
     uint64_t value;
 #ifdef _WIN32
     if (BCryptGenRandom(NULL, (PUCHAR)&value, (ULONG)sizeof(value),
@@ -42,7 +47,8 @@ uint64_t calculator_random_seed(void)
         }
     }
 #endif
-    /* Portable fallback only when the platform entropy source is unavailable. */
+    /* Thread-owned fallback only when OS entropy is unavailable. The TLS
+     * address also distinguishes simultaneously live threads; not cryptographic. */
     value = (uint64_t)time(NULL) ^ ((uint64_t)clock() << 32) ^
         (uint64_t)(uintptr_t)&sequence;
     sequence += UINT64_C(0x9e3779b97f4a7c15);

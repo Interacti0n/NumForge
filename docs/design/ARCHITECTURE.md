@@ -141,9 +141,9 @@ workers; it is not a thread-safety proof or a measured concurrency guarantee.
 
 | State | Current ownership | Required before workers |
 | --- | --- | --- |
-| HTTP client store | One static `ApplicationClientStore`; eight slots per pool, request-scoped exclusive reservations | Synchronize reservation bookkeeping before threads; bound session bytes/count/lifetime. |
-| Session values/revisions/RNG | A request holds its session through calculation and serialization; held entries cannot be replaced or destroyed | Synchronize acquisition/release; preserve retry/stale semantics and multi-curve reads through owned snapshots or per-client scheduling. |
-| Random seed fallback | Function-static sequence in `random.c`, updated when OS entropy fails | Synchronize the fallback too; the normal OS entropy path alone is insufficient. |
+| HTTP client store | One static `ApplicationClientStore`; eight slots per pool, synchronized exclusive reservations | Bound session bytes/count/lifetime. |
+| Session values/revisions/RNG | A request owns its reserved entry through calculation and serialization; acquisition/release are synchronized | Preserve retry/stale semantics and multi-curve reads through owned snapshots or per-client scheduling. |
+| Random seed fallback | Thread-local sequence in `random.c`, updated when OS entropy fails | Keep each session's mutable generator state under its exclusive reservation; fallback is not cryptographic entropy. |
 | Runtime budgets | Thread-local, owner begins/ends on the same thread | Open computation scopes in the executing worker; do not transfer an active scope between threads. |
 | Instrumentation | Thread-local ledgers/profilers; allocation-failure injection is test-only global state | Preserve same-thread accounting or redesign diagnostics before measuring cross-worker frees; isolate failure injection in concurrent tests. |
 
@@ -151,8 +151,12 @@ workers; it is not a thread-safety proof or a measured concurrency guarantee.
 Acquisition rejects an already held entry with SESSION_BUSY; creation skips held
 slots and fails unchanged if no replacement is available. Release clears the
 reservation; store destruction refuses outstanding leases. Serial setup helpers
-remain for internal fixtures, but HTTP paths use leases. Bookkeeping still requires
-external serial access: these guards alone do not make the server thread-safe.
+remain for internal fixtures and require excluding concurrent access, but HTTP
+paths use leases. One process-wide OS mutex (Windows SRW lock/POSIX mutex)
+protects acquisition, release and destruction across zero-initialized stores.
+Calculation and serialization run outside that lock; an entry and its lease
+belong to one thread until release. Replacement/destruction cleanup still runs
+under the metadata lock. This prerequisite does not make HTTP serving parallel.
 
 `web_main.c` currently accepts and handles one entire connection before the next,
 with listen backlog 8. A bounded worker/queue design must also bound socket wait,
