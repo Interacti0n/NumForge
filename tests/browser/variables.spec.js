@@ -24,9 +24,24 @@ for (const language of ['sk', 'en']) {
         await input.press('Enter');
         await expect(page.locator('#result')).toHaveClass('error');
         await expect(entries.first().locator('button').first()).toHaveText('x= 5 m');
-        for (let index = 0; index < 31; index++)
-            await assign('v' + String.fromCharCode(65 + Math.floor(index / 26)) +
-                String.fromCharCode(65 + index % 26) + '=' + index, String(index));
+        // Prepare capacity through the authoritative API; repeated UI assignment
+        // is already checked above. The final slot still goes through the UI.
+        await input.fill('');
+        const client = await page.evaluate(() => sessionStorage.getItem('numforge-client-id'));
+        const state = await (await page.request.get('/api/session?client=' + client)).json();
+        expect(state.ok).toBe(true);
+        let revision = BigInt(state.revision);
+        const name = index => 'v' + String.fromCharCode(65 + Math.floor(index / 26)) + String.fromCharCode(65 + index % 26);
+        for (let index = 0; index < 30; index++) {
+            const response = await page.request.post('/api/evaluate?' + new URLSearchParams({precision: 'full', angle: 'rad', client,
+                revision: String(++revision), action: 'commit'}), {data: name(index) + '=' + index});
+            expect(response.ok()).toBe(true);
+            expect((await response.json()).result).toBe(String(index));
+        }
+        await page.reload();
+        await page.locator('#session-variables-tab').click();
+        await expect(entries).toHaveCount(31);
+        await assign(name(30) + '=30', '30');
         await expect(entries).toHaveCount(32);
         await expect(page.locator('#variable-count')).toHaveText('32 / 32');
         await expect(page.locator('#history-list li')).toHaveCount(16);

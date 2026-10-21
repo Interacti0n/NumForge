@@ -4,6 +4,8 @@
 #include <unity.h>
 
 #include "apps/web/http/web_api.h"
+#include "apps/web/http/session_api.h"
+#include <numforge/runtime.h>
 
 void setUp(void)
 {
@@ -307,9 +309,56 @@ static void test_optional_result_timing(void)
     free(json);
 }
 
+static void test_session_routes_release_reservations_on_success_and_failure(void)
+{
+    ApplicationClientStore *store = calloc(1, sizeof(*store)); TEST_ASSERT_NOT_NULL(store);
+    const char *id = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    ApplicationClientLease held = {0};
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_client_acquire(store, id, APPLICATION_CLIENT_START, &held));
+    char *response = NULL;
+    const char *targets[] = {
+        "/api/session?client=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "/api/graph/sample?client=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&min=0&max=1&points=3",
+        "/api/graph/plot?client=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&min=0&max=1"
+    };
+    for (size_t i = 0; i < sizeof(targets) / sizeof(targets[0]); ++i) {
+        TEST_ASSERT_EQUAL(CALCULATOR_SESSION_BUSY, numforge_web_session_request(store, i ? "POST" : "GET", targets[i], i ? "x*x" : "", &response));
+        TEST_ASSERT_NOT_NULL(strstr(response, "\"code\":\"session_busy\"")); free(response); response = NULL;
+        TEST_ASSERT_FALSE(application_client_store_destroy(store));
+    }
+    application_client_release(&held);
+    for (unsigned mode = 0; mode < 2; ++mode) {
+        TEST_ASSERT_TRUE(numforge_budget_begin(mode ? UINT64_MAX : 0, mode ? 0 : SIZE_MAX, SIZE_MAX));
+        CalculatorStatus failed = numforge_web_session_request(store, "GET", targets[0], "", &response);
+        numforge_budget_end();
+        TEST_ASSERT_EQUAL(mode ? CALCULATOR_VALUE_TOO_LARGE : CALCULATOR_TIME_LIMIT, failed);
+        free(response); response = NULL;
+        TEST_ASSERT_EQUAL(CALCULATOR_OK, application_client_acquire(store, id, APPLICATION_CLIENT_LIVE, &held));
+        application_client_release(&held);
+    }
+    const struct {const char *method, *target, *body; CalculatorStatus status;} cases[] = {
+        {"GET", targets[0], "", CALCULATOR_OK},
+        {"GET", "/api/session?client=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&at=1", "", CALCULATOR_INVALID_ARGUMENT},
+        {"GET", "/api/session/value?client=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&name=x", "", CALCULATOR_UNDEFINED_VARIABLE},
+        {"GET", "/api/session/history?client=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&at=1", "", CALCULATOR_STALE_REQUEST},
+        {"POST", targets[1], "x*x", CALCULATOR_OK},
+        {"POST", targets[1], "(", CALCULATOR_SYNTAX_ERROR},
+        {"POST", "/api/session?client=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&revision=1&action=release", "", CALCULATOR_OK},
+        {"POST", "/api/session?client=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&revision=1&action=release", "", CALCULATOR_OK},
+        {"GET", targets[0], "", CALCULATOR_SESSION_EXPIRED}
+    };
+    for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); ++i) {
+        TEST_ASSERT_EQUAL(cases[i].status, numforge_web_session_request(store, cases[i].method, cases[i].target, cases[i].body, &response));
+        free(response); response = NULL;
+        TEST_ASSERT_EQUAL(CALCULATOR_OK, application_client_acquire(store, id, APPLICATION_CLIENT_RETAINED, &held));
+        application_client_release(&held);
+    }
+    TEST_ASSERT_TRUE(application_client_store_destroy(store)); free(store);
+}
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_session_routes_release_reservations_on_success_and_failure);
     RUN_TEST(test_optional_result_timing);
 
     RUN_TEST(test_web_api_evaluates_with_exact_c_bigdecimal);

@@ -2,16 +2,21 @@
 #include <unity.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 static ApplicationClientStore store;
 static ApplicationClientStore other;
 static const char client[] = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+static ApplicationClientLease leases[NUMFORGE_APPLICATION_CLIENT_CAPACITY + 1];
+static ApplicationClientLease cache_leases[NUMFORGE_APPLICATION_CLIENT_CAPACITY];
 
 void setUp(void) {}
 void tearDown(void)
 {
-    application_client_store_destroy(&store);
-    application_client_store_destroy(&other);
+    for (size_t i = 0; i < NUMFORGE_APPLICATION_CLIENT_CAPACITY + 1; ++i) application_client_release(&leases[i]);
+    for (size_t i = 0; i < NUMFORGE_APPLICATION_CLIENT_CAPACITY; ++i) application_client_release(&cache_leases[i]);
+    TEST_ASSERT_TRUE(application_client_store_destroy(&store));
+    TEST_ASSERT_TRUE(application_client_store_destroy(&other));
 }
 
 static void compute(CalculatorSession *session, uint64_t revision, bool commit,
@@ -139,9 +144,77 @@ static void test_conversion_history_is_independent_and_replay_uses_saved_value(v
     TEST_ASSERT_EQUAL(CALCULATOR_STALE_REQUEST, application_conversion_confirm(session, 1U, "x", "km", "m", &context, &entry, &error, &code));
 }
 
+static void test_lease_pins_session_and_excludes_a_second_operation(void)
+{
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_client_acquire(&store, client, APPLICATION_CLIENT_START, &leases[0]));
+    CalculatorSession *saved = leases[0].session;
+    compute(saved, 1, true, "x=5", "5");
+    for (size_t i = 0; i < 3 * NUMFORGE_APPLICATION_CLIENT_CAPACITY; ++i) {
+        char id[33]; (void)snprintf(id, sizeof(id), "%032u", (unsigned)i);
+        TEST_ASSERT_NOT_NULL(application_client_session(&store, id, true));
+    }
+    compute(saved, 2, false, "x", "5");
+    for (int mode = APPLICATION_CLIENT_LIVE; mode <= APPLICATION_CLIENT_RETAINED; ++mode)
+        TEST_ASSERT_EQUAL(CALCULATOR_SESSION_BUSY, application_client_acquire(&store, client, (ApplicationClientAccess)mode, &leases[1]));
+    TEST_ASSERT_NULL(leases[1].store);
+    TEST_ASSERT_NULL(application_client_session(&store, client, false));
+    TEST_ASSERT_NULL(application_client_retained_session(&store, client));
+    TEST_ASSERT_FALSE(application_client_store_destroy(&store));
+    compute(saved, 3, false, "x", "5");
+    application_client_release(&leases[0]); application_client_release(&leases[0]);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_client_acquire(&store, client, APPLICATION_CLIENT_LIVE, &leases[1]));
+    TEST_ASSERT_EQUAL_PTR(saved, leases[1].session); compute(leases[1].session, 4, false, "x", "5");
+}
+static void test_all_held_pools_refuse_replacement_without_mutation(void)
+{
+    for (size_t i = 0; i < NUMFORGE_APPLICATION_CLIENT_CAPACITY; ++i) {
+        char id[33]; (void)snprintf(id, sizeof(id), "%032u", (unsigned)i);
+        TEST_ASSERT_EQUAL(CALCULATOR_OK, application_client_acquire(&store, id, APPLICATION_CLIENT_START, &leases[i]));
+        TEST_ASSERT_EQUAL(CALCULATOR_OK, application_client_acquire(&store, id, APPLICATION_CLIENT_CACHE, &cache_leases[i]));
+    }
+    ApplicationClientStore *before = malloc(sizeof(*before)); TEST_ASSERT_NOT_NULL(before);
+    memcpy(before, &store, sizeof(store));
+    ApplicationClientLease blocked = {0};
+    TEST_ASSERT_EQUAL(CALCULATOR_SESSION_BUSY, application_client_acquire(&store, client, APPLICATION_CLIENT_START, &blocked));
+    TEST_ASSERT_EQUAL(CALCULATOR_SESSION_BUSY, application_client_acquire(&store, client, APPLICATION_CLIENT_CACHE, &blocked));
+    TEST_ASSERT_FALSE(application_client_store_destroy(&store));
+    TEST_ASSERT_EQUAL_MEMORY(before, &store, sizeof(store)); free(before);
+    TEST_ASSERT_NULL(blocked.store); TEST_ASSERT_NULL(blocked.session); TEST_ASSERT_NULL(blocked.cache);
+    application_client_release(&leases[3]);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_client_acquire(&store, client, APPLICATION_CLIENT_START, &leases[3]));
+    TEST_ASSERT_EQUAL_UINT(3, leases[3].slot);
+    /* Cache reservations remain independent of the session pool. */
+    TEST_ASSERT_EQUAL(CALCULATOR_SESSION_BUSY, application_client_acquire(&store, client, APPLICATION_CLIENT_CACHE, &blocked));
+    application_client_release(&cache_leases[4]);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_client_acquire(&store, client, APPLICATION_CLIENT_CACHE, &cache_leases[4]));
+    TEST_ASSERT_EQUAL_UINT(4, cache_leases[4].slot);
+}
+static void test_lease_validation_and_release_tombstone(void)
+{
+    TEST_ASSERT_EQUAL(CALCULATOR_NULL_ARGUMENT, application_client_acquire(NULL, client, APPLICATION_CLIENT_START, &leases[0]));
+    TEST_ASSERT_EQUAL(CALCULATOR_NULL_ARGUMENT, application_client_acquire(&store, NULL, APPLICATION_CLIENT_START, &leases[0]));
+    TEST_ASSERT_EQUAL(CALCULATOR_NULL_ARGUMENT, application_client_acquire(&store, client, APPLICATION_CLIENT_START, NULL));
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, application_client_acquire(&store, "bad", APPLICATION_CLIENT_START, &leases[0]));
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, application_client_acquire(&store, client, (ApplicationClientAccess)99, &leases[0]));
+    TEST_ASSERT_EQUAL(CALCULATOR_SESSION_EXPIRED, application_client_acquire(&store, client, APPLICATION_CLIENT_LIVE, &leases[0]));
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_client_acquire(&store, client, APPLICATION_CLIENT_START, &leases[0]));
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, application_client_acquire(&other, client, APPLICATION_CLIENT_START, &leases[0]));
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_session_mutate(leases[0].session, 1, CALCULATOR_SESSION_RELEASE));
+    TEST_ASSERT_EQUAL(CALCULATOR_SESSION_BUSY, application_client_acquire(&store, client, APPLICATION_CLIENT_RETAINED, &leases[1]));
+    application_client_release(&leases[0]);
+    TEST_ASSERT_EQUAL(CALCULATOR_SESSION_EXPIRED, application_client_acquire(&store, client, APPLICATION_CLIENT_START, &leases[0]));
+    TEST_ASSERT_EQUAL(CALCULATOR_SESSION_EXPIRED, application_client_acquire(&store, client, APPLICATION_CLIENT_LIVE, &leases[0]));
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_client_acquire(&store, client, APPLICATION_CLIENT_RETAINED, &leases[0]));
+    TEST_ASSERT_TRUE(leases[0].session->released);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_session_mutate(leases[0].session, 1, CALCULATOR_SESSION_RELEASE));
+    application_client_release(NULL); TEST_ASSERT_TRUE(application_client_store_destroy(NULL));
+}
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_lease_pins_session_and_excludes_a_second_operation);
+    RUN_TEST(test_all_held_pools_refuse_replacement_without_mutation);
+    RUN_TEST(test_lease_validation_and_release_tombstone);
     RUN_TEST(test_stores_own_isolated_sessions_without_transport);
     RUN_TEST(test_session_eviction_is_fifo_and_independent_of_legacy_cache);
     RUN_TEST(test_invalid_ids_do_not_allocate_or_replace_sessions);

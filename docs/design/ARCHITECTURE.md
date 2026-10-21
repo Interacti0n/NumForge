@@ -141,11 +141,18 @@ workers; it is not a thread-safety proof or a measured concurrency guarantee.
 
 | State | Current ownership | Required before workers |
 | --- | --- | --- |
-| HTTP client store | One static `ApplicationClientStore`; eight FIFO sessions/caches, borrowed lookup pointers | Synchronize lookup/mutation and pin entries until requests finish; eviction must not invalidate active values. Bound session bytes/count/lifetime. |
-| Session values/revisions/RNG | Mutable per-session history, variables, previews, conversions and random state | Serialize mutations of one client; take owned snapshots for read-only work. Preserve retry/stale semantics. |
+| HTTP client store | One static `ApplicationClientStore`; eight slots per pool, request-scoped exclusive reservations | Synchronize reservation bookkeeping before threads; bound session bytes/count/lifetime. |
+| Session values/revisions/RNG | A request holds its session through calculation and serialization; held entries cannot be replaced or destroyed | Synchronize acquisition/release; preserve retry/stale semantics and multi-curve reads through owned snapshots or per-client scheduling. |
 | Random seed fallback | Function-static sequence in `random.c`, updated when OS entropy fails | Synchronize the fallback too; the normal OS entropy path alone is insufficient. |
 | Runtime budgets | Thread-local, owner begins/ends on the same thread | Open computation scopes in the executing worker; do not transfer an active scope between threads. |
 | Instrumentation | Thread-local ledgers/profilers; allocation-failure injection is test-only global state | Preserve same-thread accounting or redesign diagnostics before measuring cross-worker frees; isolate failure injection in concurrent tests. |
+
+`ApplicationClientLease` is a private, zero-initialized, non-copyable reservation.
+Acquisition rejects an already held entry with SESSION_BUSY; creation skips held
+slots and fails unchanged if no replacement is available. Release clears the
+reservation; store destruction refuses outstanding leases. Serial setup helpers
+remain for internal fixtures, but HTTP paths use leases. Bookkeeping still requires
+external serial access: these guards alone do not make the server thread-safe.
 
 `web_main.c` currently accepts and handles one entire connection before the next,
 with listen backlog 8. A bounded worker/queue design must also bound socket wait,

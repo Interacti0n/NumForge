@@ -68,6 +68,8 @@ const char *calculator_status_to_string(
             return "stale session request";
         case CALCULATOR_SESSION_EXPIRED:
             return "session expired; reload the page";
+        case CALCULATOR_SESSION_BUSY:
+            return "session busy; retry later";
         default:
             return "unknown status";
     }

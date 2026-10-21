@@ -138,6 +138,11 @@ the user. There is no disk persistence or automatic TTL.
 
 Malformed, unknown or duplicate query fields return 400. Missing sessions return
 400 with `session expired; reload the page`; stale revisions return 409.
+An occupied session/cache entry, or a pool with every replacement entry held,
+returns 503 with `session busy; retry later`; session/graph routes also provide
+`code:session_busy`. This reservation failure leaves data and revisions unchanged.
+The server remains serial; this is a lifetime prerequisite for future workers,
+not a claim of concurrent serving. Capacity and FIFO eviction limits are unchanged.
 Errors include `ok:false`, `schema_version:1`, `status`, `error`, `code` and
 one-based Unicode `column`. Conversion expression errors preserve their original
 positions. Transport limits still use 403/408/411/413 as described in the HTTP guide.

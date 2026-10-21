@@ -218,7 +218,8 @@ static bool camera_bound(const char *text, double *value)
     return errno!=ERANGE&&isfinite(*value)&&end!=text&&*end=='\0';
 }
 static CalculatorStatus graph_request(ApplicationClientStore *store, const char *method,
-    const Query *query, const char *body, char **response, CalculatorError *error, const char **code, bool adaptive)
+    const Query *query, const char *body, char **response, CalculatorError *error, const char **code, bool adaptive,
+    ApplicationClientLease *lease)
 {
     const unsigned int allowed = BIT(CLIENT) | BIT(AT) | BIT(MINIMUM) | BIT(MAXIMUM) |
         (adaptive ? BIT(MODE)|BIT(WIDTH)|BIT(HEIGHT)|BIT(QUALITY)|BIT(YMINIMUM)|BIT(YMAXIMUM)|BIT(INTERPOLATION)|BIT(DENSE)|BIT(RENDER) : BIT(POINTS)) | BIT(PARAMETER) | BIT(PRECISION) | BIT(ANGLE);
@@ -264,8 +265,9 @@ static CalculatorStatus graph_request(ApplicationClientStore *store, const char 
     {
         if (strlen(query->values[CLIENT]) != 32U || strspn(query->values[CLIENT], "0123456789abcdef") != 32U)
             return CALCULATOR_INVALID_ARGUMENT;
-        session = application_client_retained_session(store, query->values[CLIENT]);
-        if (session == NULL || session->released) return CALCULATOR_SESSION_EXPIRED;
+        CalculatorStatus acquired = application_client_acquire(store, query->values[CLIENT], APPLICATION_CLIENT_LIVE, lease);
+        if (acquired != CALCULATOR_OK) { if (acquired == CALCULATOR_SESSION_BUSY) *code = "session_busy"; return acquired; }
+        session = lease->session;
         if ((query->seen & BIT(AT)) && at != session->revision) return CALCULATOR_STALE_REQUEST;
     }
     *code = "graph_error";
@@ -616,7 +618,7 @@ static CalculatorStatus equation_request(const char *method, const Query *query,
 
 static CalculatorStatus session_request(ApplicationClientStore *store,
     const char *method, const char *target, const char *body, char **response,
-    CalculatorError *error, const char **code)
+    CalculatorError *error, const char **code, ApplicationClientLease *lease)
 {
     if (store == NULL || method == NULL || target == NULL || body == NULL || response == NULL) return CALCULATOR_NULL_ARGUMENT;
     *response = NULL;
@@ -628,7 +630,7 @@ static CalculatorStatus session_request(ApplicationClientStore *store,
         return equation_request(method, &query, body, response, error, code);
     if(strcmp(path,"/api/graph/verify")==0)return graph_verify_request(method,&query,body,response,error,code);
     if (strcmp(path, "/api/graph/sample") == 0 || strcmp(path, "/api/graph/plot") == 0)
-        return graph_request(store, method, &query, body, response, error, code, strcmp(path, "/api/graph/plot") == 0);
+        return graph_request(store, method, &query, body, response, error, code, strcmp(path, "/api/graph/plot") == 0, lease);
     bool get = strcmp(method, "GET") == 0, post = strcmp(method, "POST") == 0;
     if (!get && !post) return CALCULATOR_INVALID_ARGUMENT;
     bool registry = strcmp(path, "/api/functions") == 0;
@@ -656,10 +658,14 @@ static CalculatorStatus session_request(ApplicationClientStore *store,
         !number(&query, AT, 0, &at) || !number(&query, ID, 0, &id) ||
         !number(&query, REVISION, 0, &revision) || !number(&query, FULL, value ? 1U : 0U, &full) ||
         offset > 32U || limit == 0U || limit > 32U || full > 1U) return CALCULATOR_INVALID_ARGUMENT;
-    CalculatorSession *session = registry ? NULL : application_client_retained_session(store, query.values[CLIENT]);
+    CalculatorSession *session = NULL;
     if (!registry && !(query.seen & BIT(CLIENT))) return CALCULATOR_INVALID_ARGUMENT;
     if (!registry && (strlen(query.values[CLIENT]) != 32U || strspn(query.values[CLIENT], "0123456789abcdef") != 32U)) return CALCULATOR_INVALID_ARGUMENT;
-    if (!registry && session == NULL) return CALCULATOR_SESSION_EXPIRED;
+    if (!registry) {
+        CalculatorStatus acquired = application_client_acquire(store, query.values[CLIENT], APPLICATION_CLIENT_RETAINED, lease);
+        if (acquired != CALCULATOR_OK) { if (acquired == CALCULATOR_SESSION_BUSY) *code = "session_busy"; return acquired; }
+        session = lease->session;
+    }
     if (session != NULL && session->released && !(post && summary && strcmp(query.values[ACTION], "release") == 0)) return CALCULATOR_SESSION_EXPIRED;
     if (get && session != NULL && (query.seen & BIT(AT)) && at != (conversions ? session->conversion_revision : session->revision)) return CALCULATOR_STALE_REQUEST;
     bool owner = numforge_budget_begin(CALCULATOR_DEFAULT_TIME_LIMIT_MS, CALCULATOR_ALLOCATION_BUDGET, CALCULATOR_SINGLE_ALLOCATION);
@@ -765,7 +771,8 @@ CalculatorStatus numforge_web_session_request(ApplicationClientStore *store,
     CalculatorError error; calculator_error_clear(&error);
     if (response != NULL) *response = NULL;
     const char *code = "request_error";
-    CalculatorStatus status = session_request(store, method, target, body, response, &error, &code);
+    ApplicationClientLease lease = {0};
+    CalculatorStatus status = session_request(store, method, target, body, response, &error, &code, &lease);
     if (status != CALCULATOR_OK && response != NULL) {
         Json json = {numforge_malloc(RESPONSE_CAPACITY), 0, CALCULATOR_OK, RESPONSE_CAPACITY};
         if (json.data != NULL) {
@@ -776,5 +783,6 @@ CalculatorStatus numforge_web_session_request(ApplicationClientStore *store,
             *response = json.data;
         }
     }
+    application_client_release(&lease);
     return status;
 }

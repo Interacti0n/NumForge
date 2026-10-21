@@ -609,7 +609,8 @@ static void numforge_handle_evaluation_impl(
     BigComplexForm form,
     const char *client,
     uint64_t revision,
-    const char *action
+    const char *action,
+    ApplicationClientLease *lease
 )
 {
     CalculatorError error;
@@ -625,7 +626,15 @@ static void numforge_handle_evaluation_impl(
 
     if (action != NULL)
     {
-        CalculatorSession *session = application_client_session(&numforge_application_clients, client, strcmp(action, "start") == 0);
+        status = application_client_acquire(&numforge_application_clients, client,
+            strcmp(action, "start") == 0 ? APPLICATION_CLIENT_START : APPLICATION_CLIENT_LIVE, lease);
+        CalculatorSession *session = lease->session;
+
+        if (status == CALCULATOR_SESSION_BUSY) {
+            numforge_send_response(socket, 503, "Service Unavailable", "application/json; charset=utf-8",
+                "{\"ok\":false,\"code\":\"session_busy\",\"status\":\"session busy; retry later\",\"error\":\"session busy; retry later\"}");
+            return;
+        }
 
         if (strcmp(action, "start") == 0)
         {
@@ -662,10 +671,11 @@ static void numforge_handle_evaluation_impl(
     }
     else
     {
-        ApplicationEvaluationCache *cache=application_client_cache(&numforge_application_clients, client);
-        status = numforge_web_evaluate_cached_form(
-            cache, revision, body, output_scale, angle_unit,
-            notation, form, &result, &error, &reused);
+        status = *client ? application_client_acquire(&numforge_application_clients, client, APPLICATION_CLIENT_CACHE, lease) : CALCULATOR_OK;
+        ApplicationEvaluationCache *cache = lease->cache;
+        if (status == CALCULATOR_OK) status = numforge_web_evaluate_cached_form(
+            cache, revision, body, output_scale, angle_unit, notation, form, &result, &error, &reused);
+        else calculator_error_set(&error, status, 0U);
         if (status == CALCULATOR_OK && cache != NULL && strcmp(cache->expression,body)==0) output_value = &cache->value;
     }
 
@@ -758,8 +768,8 @@ static void numforge_handle_evaluation_impl(
 
         if (response_length > 0 && (size_t)response_length < sizeof(error_response))
         {
-            int http_status = status == CALCULATOR_OUT_OF_MEMORY ? 500 : 400;
-            const char *http_status_text = http_status == 500 ? "Internal Server Error" : "Bad Request";
+            int http_status = status == CALCULATOR_SESSION_BUSY ? 503 : status == CALCULATOR_OUT_OF_MEMORY ? 500 : 400;
+            const char *http_status_text = http_status == 503 ? "Service Unavailable" : http_status == 500 ? "Internal Server Error" : "Bad Request";
 
             numforge_send_response(
                 socket, http_status, http_status_text, "application/json; charset=utf-8", error_response);
@@ -801,8 +811,10 @@ static void numforge_handle_evaluation(
         numforge_profile_reset();
     }
 #endif
+    ApplicationClientLease lease = {0};
     numforge_handle_evaluation_impl(socket, body, output_scale, angle_unit,
-        notation, form, client, revision, action);
+        notation, form, client, revision, action, &lease);
+    application_client_release(&lease);
 #ifdef NUMFORGE_ENABLE_ALLOC_STATS
     if (measure)
     {
@@ -840,17 +852,15 @@ static void numforge_handle_conversion(NumForgeSocket socket, const char *target
     const char *code = "invalid_options";
     CalculatorStatus status = CALCULATOR_INVALID_ARGUMENT;
     char *response = NULL;
+    ApplicationClientLease lease = {0};
     if (memchr(body, '\0', body_length) != NULL) code = "invalid_body";
     else if (numforge_web_parse_conversion_options(target, &options))
     {
-        CalculatorSession *session = options.client[0] ? application_client_session(&numforge_application_clients, options.client, false) : NULL;
-        if (options.client[0] && session == NULL)
-        {
-            status = CALCULATOR_SESSION_EXPIRED;
-            code = "session_expired";
-        }
-        else status = numforge_web_convert(session, body, &options, &response, &error, &code);
+        status = options.client[0] ? application_client_acquire(&numforge_application_clients, options.client, APPLICATION_CLIENT_LIVE, &lease) : CALCULATOR_OK;
+        if (status != CALCULATOR_OK) code = status == CALCULATOR_SESSION_BUSY ? "session_busy" : "session_expired";
+        else status = numforge_web_convert(lease.session, body, &options, &response, &error, &code);
     }
+    application_client_release(&lease);
     if (status == CALCULATOR_OK)
         numforge_send_response(socket, 200, "OK", "application/json; charset=utf-8", response);
     else
@@ -860,8 +870,8 @@ static void numforge_handle_conversion(NumForgeSocket socket, const char *target
         snprintf(failure, sizeof(failure),
             "{\"ok\":false,\"code\":\"%s\",\"error\":\"%s\",\"status\":\"%s\",\"column\":%zu}",
             code, message, calculator_status_to_string(status), calculator_error_column(body, error.offset));
-        int http_status = status == CALCULATOR_OUT_OF_MEMORY ? 500 : 400;
-        numforge_send_response(socket, http_status, http_status == 500 ? "Internal Server Error" : "Bad Request",
+        int http_status = status == CALCULATOR_SESSION_BUSY ? 503 : status == CALCULATOR_OUT_OF_MEMORY ? 500 : 400;
+        numforge_send_response(socket, http_status, http_status == 503 ? "Service Unavailable" : http_status == 500 ? "Internal Server Error" : "Bad Request",
             "application/json; charset=utf-8", failure);
     }
     free(response);
@@ -955,8 +965,9 @@ void numforge_handle_connection_with_origin(
             char failure[512];
             snprintf(failure, sizeof(failure), "{\"ok\":false,\"status\":\"%s\",\"error\":\"%s\",\"column\":1}",
                 calculator_status_to_string(status), calculator_status_to_string(status));
-            numforge_send_response(socket, status == CALCULATOR_STALE_REQUEST ? 409 : 400,
-                status == CALCULATOR_STALE_REQUEST ? "Conflict" : "Bad Request", "application/json; charset=utf-8", response != NULL ? response : failure);
+            numforge_send_response(socket, status == CALCULATOR_SESSION_BUSY ? 503 : status == CALCULATOR_STALE_REQUEST ? 409 : 400,
+                status == CALCULATOR_SESSION_BUSY ? "Service Unavailable" : status == CALCULATOR_STALE_REQUEST ? "Conflict" : "Bad Request",
+                "application/json; charset=utf-8", response != NULL ? response : failure);
         }
         free(response);
     }
@@ -1078,8 +1089,9 @@ void numforge_handle_connection_with_origin(
             char failure[512];
             snprintf(failure, sizeof(failure), "{\"ok\":false,\"status\":\"%s\",\"error\":\"%s\",\"column\":1}",
                 calculator_status_to_string(status), calculator_status_to_string(status));
-            numforge_send_response(socket, status == CALCULATOR_STALE_REQUEST ? 409 : 400,
-                status == CALCULATOR_STALE_REQUEST ? "Conflict" : "Bad Request", "application/json; charset=utf-8", response != NULL ? response : failure);
+            numforge_send_response(socket, status == CALCULATOR_SESSION_BUSY ? 503 : status == CALCULATOR_STALE_REQUEST ? 409 : 400,
+                status == CALCULATOR_SESSION_BUSY ? "Service Unavailable" : status == CALCULATOR_STALE_REQUEST ? "Conflict" : "Bad Request",
+                "application/json; charset=utf-8", response != NULL ? response : failure);
         }
         free(response);
     }
