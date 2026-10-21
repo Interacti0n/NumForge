@@ -265,9 +265,9 @@ static CalculatorStatus graph_request(ApplicationClientStore *store, const char 
     {
         if (strlen(query->values[CLIENT]) != 32U || strspn(query->values[CLIENT], "0123456789abcdef") != 32U)
             return CALCULATOR_INVALID_ARGUMENT;
-        CalculatorStatus acquired = application_client_acquire(store, query->values[CLIENT], APPLICATION_CLIENT_LIVE, lease);
+        CalculatorStatus acquired = application_client_acquire(store, query->values[CLIENT], APPLICATION_CLIENT_READ, lease);
         if (acquired != CALCULATOR_OK) { if (acquired == CALCULATOR_SESSION_BUSY) *code = "session_busy"; return acquired; }
-        session = lease->session;
+        session = lease->read_session;
         if ((query->seen & BIT(AT)) && at != session->revision) return CALCULATOR_STALE_REQUEST;
     }
     *code = "graph_error";
@@ -658,13 +658,14 @@ static CalculatorStatus session_request(ApplicationClientStore *store,
         !number(&query, AT, 0, &at) || !number(&query, ID, 0, &id) ||
         !number(&query, REVISION, 0, &revision) || !number(&query, FULL, value ? 1U : 0U, &full) ||
         offset > 32U || limit == 0U || limit > 32U || full > 1U) return CALCULATOR_INVALID_ARGUMENT;
-    CalculatorSession *session = NULL;
+    const CalculatorSession *session = NULL;
     if (!registry && !(query.seen & BIT(CLIENT))) return CALCULATOR_INVALID_ARGUMENT;
     if (!registry && (strlen(query.values[CLIENT]) != 32U || strspn(query.values[CLIENT], "0123456789abcdef") != 32U)) return CALCULATOR_INVALID_ARGUMENT;
     if (!registry) {
-        CalculatorStatus acquired = application_client_acquire(store, query.values[CLIENT], APPLICATION_CLIENT_RETAINED, lease);
+        CalculatorStatus acquired = application_client_acquire(store, query.values[CLIENT],
+            get ? APPLICATION_CLIENT_READ : APPLICATION_CLIENT_RETAINED, lease);
         if (acquired != CALCULATOR_OK) { if (acquired == CALCULATOR_SESSION_BUSY) *code = "session_busy"; return acquired; }
-        session = lease->session;
+        session = get ? lease->read_session : lease->session;
     }
     if (session != NULL && session->released && !(post && summary && strcmp(query.values[ACTION], "release") == 0)) return CALCULATOR_SESSION_EXPIRED;
     if (get && session != NULL && (query.seen & BIT(AT)) && at != (conversions ? session->conversion_revision : session->revision)) return CALCULATOR_STALE_REQUEST;
@@ -683,10 +684,10 @@ static CalculatorStatus session_request(ApplicationClientStore *store,
             else if (strcmp(query.values[ACTION], "clear-history") == 0) action = CALCULATOR_SESSION_CLEAR_HISTORY;
             else if (strcmp(query.values[ACTION], "release") == 0) action = CALCULATOR_SESSION_RELEASE;
             else { status = CALCULATOR_INVALID_ARGUMENT; goto done; }
-            status = calculator_session_mutate(session, revision, action);
+            status = calculator_session_mutate(lease->session, revision, action);
         } else if (strcmp(query.values[ACTION], "clear") == 0) {
             if (*body != '\0' || query.seen != (BIT(CLIENT) | BIT(ACTION) | BIT(REVISION))) { status = CALCULATOR_INVALID_ARGUMENT; goto done; }
-            status = application_conversion_clear(session, revision);
+            status = application_conversion_clear(lease->session, revision);
         } else if (strcmp(query.values[ACTION], "commit") == 0) {
             char convert_target[512] = "/api/convert?";
             size_t used = strlen(convert_target);
@@ -698,7 +699,7 @@ static CalculatorStatus session_request(ApplicationClientStore *store,
             NumForgeConversionOptions options;
             if (!numforge_web_parse_conversion_options(convert_target, &options)) { status = CALCULATOR_INVALID_ARGUMENT; goto done; }
             conversion_started = numforge_monotonic_ms();
-            status = application_conversion_confirm(session, revision, body, options.from, options.to, &options.context, &confirmed, error, code);
+            status = application_conversion_confirm(lease->session, revision, body, options.from, options.to, &options.context, &confirmed, error, code);
             conversion_finished = numforge_monotonic_ms();
         } else status = CALCULATOR_INVALID_ARGUMENT;
         if (status != CALCULATOR_OK) goto done;

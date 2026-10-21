@@ -7,6 +7,7 @@
 #include <windows.h>
 #else
 #include <pthread.h>
+#include <sched.h>
 #endif
 
 static ApplicationClientStore store;
@@ -175,6 +176,10 @@ static void test_all_held_pools_refuse_replacement_without_mutation(void)
     for (size_t i = 0; i < NUMFORGE_APPLICATION_CLIENT_CAPACITY; ++i) {
         char id[33]; (void)snprintf(id, sizeof(id), "%032u", (unsigned)i);
         TEST_ASSERT_EQUAL(CALCULATOR_OK, application_client_acquire(&store, id, APPLICATION_CLIENT_START, &leases[i]));
+        if (i % 2 != 0) {
+            application_client_release(&leases[i]);
+            TEST_ASSERT_EQUAL(CALCULATOR_OK, application_client_acquire(&store, id, APPLICATION_CLIENT_READ, &leases[i]));
+        }
         TEST_ASSERT_EQUAL(CALCULATOR_OK, application_client_acquire(&store, id, APPLICATION_CLIENT_CACHE, &cache_leases[i]));
     }
     ApplicationClientStore *before = malloc(sizeof(*before)); TEST_ASSERT_NOT_NULL(before);
@@ -184,7 +189,7 @@ static void test_all_held_pools_refuse_replacement_without_mutation(void)
     TEST_ASSERT_EQUAL(CALCULATOR_SESSION_BUSY, application_client_acquire(&store, client, APPLICATION_CLIENT_CACHE, &blocked));
     TEST_ASSERT_FALSE(application_client_store_destroy(&store));
     TEST_ASSERT_EQUAL_MEMORY(before, &store, sizeof(store)); free(before);
-    TEST_ASSERT_NULL(blocked.store); TEST_ASSERT_NULL(blocked.session); TEST_ASSERT_NULL(blocked.cache);
+    TEST_ASSERT_NULL(blocked.store); TEST_ASSERT_NULL(blocked.session); TEST_ASSERT_NULL(blocked.cache); TEST_ASSERT_NULL(blocked.read_session);
     application_client_release(&leases[3]);
     TEST_ASSERT_EQUAL(CALCULATOR_OK, application_client_acquire(&store, client, APPLICATION_CLIENT_START, &leases[3]));
     TEST_ASSERT_EQUAL_UINT(3, leases[3].slot);
@@ -202,6 +207,7 @@ static void test_lease_validation_and_release_tombstone(void)
     TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, application_client_acquire(&store, "bad", APPLICATION_CLIENT_START, &leases[0]));
     TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, application_client_acquire(&store, client, (ApplicationClientAccess)99, &leases[0]));
     TEST_ASSERT_EQUAL(CALCULATOR_SESSION_EXPIRED, application_client_acquire(&store, client, APPLICATION_CLIENT_LIVE, &leases[0]));
+    TEST_ASSERT_EQUAL(CALCULATOR_SESSION_EXPIRED, application_client_acquire(&store, client, APPLICATION_CLIENT_READ, &leases[0]));
     TEST_ASSERT_EQUAL(CALCULATOR_OK, application_client_acquire(&store, client, APPLICATION_CLIENT_START, &leases[0]));
     TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT, application_client_acquire(&other, client, APPLICATION_CLIENT_START, &leases[0]));
     TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_session_mutate(leases[0].session, 1, CALCULATOR_SESSION_RELEASE));
@@ -209,14 +215,47 @@ static void test_lease_validation_and_release_tombstone(void)
     application_client_release(&leases[0]);
     TEST_ASSERT_EQUAL(CALCULATOR_SESSION_EXPIRED, application_client_acquire(&store, client, APPLICATION_CLIENT_START, &leases[0]));
     TEST_ASSERT_EQUAL(CALCULATOR_SESSION_EXPIRED, application_client_acquire(&store, client, APPLICATION_CLIENT_LIVE, &leases[0]));
+    TEST_ASSERT_EQUAL(CALCULATOR_SESSION_EXPIRED, application_client_acquire(&store, client, APPLICATION_CLIENT_READ, &leases[0]));
     TEST_ASSERT_EQUAL(CALCULATOR_OK, application_client_acquire(&store, client, APPLICATION_CLIENT_RETAINED, &leases[0]));
     TEST_ASSERT_TRUE(leases[0].session->released);
     TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_session_mutate(leases[0].session, 1, CALCULATOR_SESSION_RELEASE));
     application_client_release(NULL); TEST_ASSERT_TRUE(application_client_store_destroy(NULL));
 }
+static void test_shared_readers_keep_the_session_immutable_and_pinned(void)
+{
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_client_acquire(&store, client,
+        APPLICATION_CLIENT_START, &leases[0]));
+    compute(leases[0].session, 1, true, "x=5", "5");
+    application_client_release(&leases[0]);
+    for (size_t i = 0; i < 4; ++i) {
+        TEST_ASSERT_EQUAL(CALCULATOR_OK, application_client_acquire(&store, client,
+            APPLICATION_CLIENT_READ, &leases[i]));
+        TEST_ASSERT_NOT_NULL(leases[i].read_session);
+        TEST_ASSERT_NULL(leases[i].session); TEST_ASSERT_NULL(leases[i].cache);
+        TEST_ASSERT_EQUAL_PTR(leases[0].read_session, leases[i].read_session);
+        TEST_ASSERT_EQUAL_UINT64(1, leases[i].read_session->revision);
+    }
+    for (size_t i = 0; i < 4; ++i) {
+        TEST_ASSERT_EQUAL(CALCULATOR_SESSION_BUSY, application_client_acquire(&store, client,
+            APPLICATION_CLIENT_LIVE, &leases[4]));
+        TEST_ASSERT_FALSE(application_client_store_destroy(&store));
+        application_client_release(&leases[i]);
+    }
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_client_acquire(&store, client,
+        APPLICATION_CLIENT_LIVE, &leases[4]));
+    compute(leases[4].session, 2, true, "x=7", "7");
+    TEST_ASSERT_EQUAL(CALCULATOR_SESSION_BUSY, application_client_acquire(&store, client,
+        APPLICATION_CLIENT_READ, &leases[0]));
+    application_client_release(&leases[4]);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_client_acquire(&store, client,
+        APPLICATION_CLIENT_READ, &leases[0]));
+    TEST_ASSERT_EQUAL_UINT64(2, leases[0].read_session->revision);
+}
+
 typedef struct ClientWorker {
     bool ok;
     bool cache;
+    bool reader;
 } ClientWorker;
 
 #ifdef _WIN32
@@ -230,10 +269,29 @@ static void *update_client(void *argument)
     for (size_t completed = 0; completed < 2000;) {
         ApplicationClientLease lease = {0};
         CalculatorStatus status = application_client_acquire(&store, client,
+            worker->reader ? APPLICATION_CLIENT_READ :
             worker->cache ? APPLICATION_CLIENT_CACHE : APPLICATION_CLIENT_LIVE, &lease);
         if (status == CALCULATOR_SESSION_BUSY) continue;
         if (status != CALCULATOR_OK) { worker->ok = false; break; }
-        if (worker->cache) ++lease.cache->revision;
+        if (worker->reader) {
+            uint64_t revision = lease.read_session->revision;
+#ifdef _WIN32
+            (void)SwitchToThread();
+#else
+            (void)sched_yield();
+#endif
+            if (completed % 100 == 0) {
+                CalculatorContext context; calculator_context_init(&context);
+                CalculatorValue value = {0}; CalculatorError error; char *text = NULL;
+                CalculatorStatus calculated = calculator_compute_value_with_variables("a+ans", &context,
+                    calculator_session_answer(lease.read_session), NULL, lease.read_session->variables,
+                    lease.read_session->variable_count, &value, &error);
+                if (calculated == CALCULATOR_OK) calculated = calculator_value_snapshot_text(&value, &text);
+                if (calculated != CALCULATOR_OK || text == NULL || strcmp(text, "10") != 0) worker->ok = false;
+                free(text); calculator_value_destroy(&value);
+            }
+            if (lease.read_session->revision != revision) worker->ok = false;
+        } else if (worker->cache) ++lease.cache->revision;
         else ++lease.session->revision;
         /* A separate, permanently pinned entry also blocks whole-store teardown. */
         if (application_client_store_destroy(&store)) worker->ok = false;
@@ -248,18 +306,19 @@ static void test_concurrent_leases_preserve_updates_and_reject_destruction(void)
 {
     TEST_ASSERT_EQUAL(CALCULATOR_OK, application_client_acquire(&store, client,
         APPLICATION_CLIENT_START, &leases[0]));
-    application_client_release(&leases[0]);
+    compute(leases[0].session, 1, true, "a=5", "5");
     TEST_ASSERT_EQUAL(CALCULATOR_OK, application_client_acquire(&store,
-        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", APPLICATION_CLIENT_START, &leases[0]));
-    ClientWorker workers[8] = {{0}};
+        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", APPLICATION_CLIENT_START, &leases[NUMFORGE_APPLICATION_CLIENT_CAPACITY]));
+    ClientWorker workers[12] = {{0}};
     size_t started = 0;
 #ifdef _WIN32
-    HANDLE threads[8];
+    HANDLE threads[12];
 #else
-    pthread_t threads[8];
+    pthread_t threads[12];
 #endif
-    for (size_t i = 0; i < 8; ++i) {
+    for (size_t i = 0; i < 12; ++i) {
         workers[i].cache = i % 2 != 0;
+        workers[i].reader = i >= 8;
 #ifdef _WIN32
         threads[i] = CreateThread(NULL, 0, update_client, &workers[i], 0, NULL);
         if (!threads[i]) break;
@@ -268,6 +327,8 @@ static void test_concurrent_leases_preserve_updates_and_reject_destruction(void)
 #endif
         ++started;
     }
+    /* Keep session readers/writers blocked until all workers have been created. */
+    application_client_release(&leases[0]);
     bool joined = true;
     for (size_t i = 0; i < started; ++i) {
 #ifdef _WIN32
@@ -278,11 +339,11 @@ static void test_concurrent_leases_preserve_updates_and_reject_destruction(void)
 #endif
     }
     TEST_ASSERT_TRUE(joined);
-    TEST_ASSERT_EQUAL_UINT(8, started);
+    TEST_ASSERT_EQUAL_UINT(12, started);
     for (size_t i = 0; i < started; ++i) TEST_ASSERT_TRUE(workers[i].ok);
     TEST_ASSERT_EQUAL(CALCULATOR_OK, application_client_acquire(&store, client,
         APPLICATION_CLIENT_LIVE, &leases[1]));
-    TEST_ASSERT_EQUAL_UINT64(8000, leases[1].session->revision);
+    TEST_ASSERT_EQUAL_UINT64(8001, leases[1].session->revision);
     TEST_ASSERT_EQUAL(CALCULATOR_OK, application_client_acquire(&store, client,
         APPLICATION_CLIENT_CACHE, &cache_leases[0]));
     TEST_ASSERT_EQUAL_UINT64(8000, cache_leases[0].cache->revision);
@@ -291,6 +352,7 @@ static void test_concurrent_leases_preserve_updates_and_reject_destruction(void)
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_shared_readers_keep_the_session_immutable_and_pinned);
     RUN_TEST(test_concurrent_leases_preserve_updates_and_reject_destruction);
     RUN_TEST(test_lease_pins_session_and_excludes_a_second_operation);
     RUN_TEST(test_all_held_pools_refuse_replacement_without_mutation);

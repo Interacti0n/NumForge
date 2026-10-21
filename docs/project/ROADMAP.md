@@ -56,9 +56,11 @@ The [initial Windows baseline](../performance/baselines/SERVER.md) records conne
 refusals and eight-session retention at 10/30/60 clients, with recovery checks.
 HTTP requests now reserve their session/cache through use; eviction and destruction
 skip/refuse held entries, with explicit busy outcomes. Reservation bookkeeping is
-synchronized and seed fallback state is thread-local; an eight-thread test checks
-session/cache updates and refusal of teardown while reserved. Workers, expiry
-and revised capacity remain unimplemented; stage 6 is planned.
+synchronized and seed fallback state is thread-local. Graphs and session GETs
+share read reservations; mutations stay exclusive. A twelve-thread test checks
+read isolation, session/cache updates and refusal of teardown while reserved.
+Conflict scheduling, workers, expiry and revised capacity remain unimplemented;
+stage 6 is planned.
 Finish each bounded stage before opening the next; a defect in a completed stage can interrupt
 the sequence. Dates are not promised: progress is determined by the exit evidence.
 Do not keep adding mathematical functions while stages 1 and 2 remain open.

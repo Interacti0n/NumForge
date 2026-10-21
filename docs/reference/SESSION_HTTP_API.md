@@ -138,7 +138,8 @@ the user. There is no disk persistence or automatic TTL.
 
 Malformed, unknown or duplicate query fields return 400. Missing sessions return
 400 with `session expired; reload the page`; stale revisions return 409.
-An occupied session/cache entry, or a pool with every replacement entry held,
+Graphs and session GETs may share immutable read reservations. Mutations and
+cache access are exclusive. An incompatible reservation, or a pool with every replacement entry held,
 returns 503 with `session busy; retry later`; session/graph routes also provide
 `code:session_busy`. This reservation failure leaves data and revisions unchanged.
 The server remains serial; this is a lifetime prerequisite for future workers,

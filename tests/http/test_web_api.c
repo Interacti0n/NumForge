@@ -355,9 +355,50 @@ static void test_session_routes_release_reservations_on_success_and_failure(void
     }
     TEST_ASSERT_TRUE(application_client_store_destroy(store)); free(store);
 }
+static void test_read_routes_share_a_session_and_exclude_mutations(void)
+{
+    ApplicationClientStore *store = calloc(1, sizeof(*store)); TEST_ASSERT_NOT_NULL(store);
+    const char *id = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    ApplicationClientLease held = {0};
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_client_acquire(store, id, APPLICATION_CLIENT_START, &held));
+    CalculatorContext context; calculator_context_init(&context);
+    CalculatorError error; char *response = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, calculator_session_compute(held.session, 1, true,
+        "x=2", &context, &response, &error, NULL));
+    free(response); response = NULL; application_client_release(&held);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, application_client_acquire(store, id, APPLICATION_CLIENT_READ, &held));
+    const struct { const char *method, *target, *body; } reads[] = {
+        {"GET", "/api/session?client=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", ""},
+        {"GET", "/api/session/variables?client=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&at=1", ""},
+        {"GET", "/api/session/history?client=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&at=1", ""},
+        {"GET", "/api/session/value?client=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&name=ans", ""},
+        {"GET", "/api/conversions?client=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", ""},
+        {"POST", "/api/graph/sample?client=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&at=1&min=0&max=1&points=3&parameter=t", "t+x+ans"},
+        {"POST", "/api/graph/plot?client=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&at=1&min=0&max=1&parameter=t", "t+x+ans"}
+    };
+    for (size_t i = 0; i < sizeof(reads) / sizeof(reads[0]); ++i) {
+        TEST_ASSERT_EQUAL(CALCULATOR_OK, numforge_web_session_request(store, reads[i].method,
+            reads[i].target, reads[i].body, &response));
+        TEST_ASSERT_NOT_NULL(strstr(response, "\"ok\":true")); free(response); response = NULL;
+        TEST_ASSERT_EQUAL_UINT64(1, held.read_session->revision);
+        TEST_ASSERT_EQUAL_UINT(1, held.read_session->variable_count);
+    }
+    const char *mutation = "/api/session?client=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&revision=2&action=clear-history";
+    TEST_ASSERT_EQUAL(CALCULATOR_SESSION_BUSY, numforge_web_session_request(store, "POST", mutation, "", &response));
+    TEST_ASSERT_NOT_NULL(strstr(response, "\"code\":\"session_busy\"")); free(response); response = NULL;
+    TEST_ASSERT_EQUAL_UINT64(1, held.read_session->revision);
+    application_client_release(&held);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, numforge_web_session_request(store, "POST", mutation, "", &response));
+    TEST_ASSERT_NOT_NULL(strstr(response, "\"revision\":\"2\"")); free(response); response = NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_STALE_REQUEST, numforge_web_session_request(store, "GET",
+        reads[1].target, "", &response)); free(response);
+    TEST_ASSERT_TRUE(application_client_store_destroy(store)); free(store);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_read_routes_share_a_session_and_exclude_mutations);
     RUN_TEST(test_session_routes_release_reservations_on_success_and_failure);
     RUN_TEST(test_optional_result_timing);
 

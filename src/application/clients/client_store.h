@@ -23,6 +23,7 @@ typedef struct ApplicationClientStore
         char id[NUMFORGE_APPLICATION_CLIENT_ID_BYTES + 1U];
         CalculatorSession session;
         bool busy;
+        size_t readers;
     } sessions[NUMFORGE_APPLICATION_CLIENT_CAPACITY];
     struct {
         char id[NUMFORGE_APPLICATION_CLIENT_ID_BYTES + 1U];
@@ -37,17 +38,20 @@ typedef enum ApplicationClientAccess {
     APPLICATION_CLIENT_LIVE,
     APPLICATION_CLIENT_START,
     APPLICATION_CLIENT_RETAINED,
-    APPLICATION_CLIENT_CACHE
+    APPLICATION_CLIENT_CACHE,
+    APPLICATION_CLIENT_READ
 } ApplicationClientAccess;
 
-/* Request-scoped exclusive reservation. Zero-initialize, do not copy, and release
+/* Request-scoped reservation. READ shares a live, immutable session with other
+ * readers; all other modes are exclusive. Zero-initialize, do not copy, and release
  * exactly once after the last use of session/cache (release of an empty lease is
- * safe). A held slot cannot be evicted or destroyed; another acquisition of the
- * same entry returns SESSION_BUSY. If every replacement slot is held, creation
+ * safe). A held slot cannot be evicted or destroyed; an incompatible acquisition
+ * of the same entry returns SESSION_BUSY. If every replacement slot is held, creation
  * returns SESSION_BUSY without modifying the store or lease.
  *
  * Acquire/release/destroy synchronize metadata internally. A lease and its
- * payload belong to one thread until release; never share the lease itself.
+ * payload belong to one thread until release, except immutable shared reads;
+ * never share the lease itself. READ exposes only read_session, never session.
  * Different reserved entries can be used concurrently. This does not make the
  * HTTP server multithreaded or synchronize other application state.
  */
@@ -56,6 +60,7 @@ typedef struct ApplicationClientLease {
     size_t slot;
     CalculatorSession *session;
     ApplicationEvaluationCache *cache;
+    const CalculatorSession *read_session;
 } ApplicationClientLease;
 CalculatorStatus application_client_acquire(ApplicationClientStore *store,
     const char *id, ApplicationClientAccess access, ApplicationClientLease *lease);
