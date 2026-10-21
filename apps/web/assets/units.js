@@ -58,7 +58,6 @@ function initUnits() {
     const status = $('unit-status'), result = $('unit-result'), meta = $('unit-result-meta');
     const fields = ['unit-precision','unit-places-mode','unit-places','unit-notation','unit-rounding','unit-angle'];
     let restored = null;
-    const compact = window.matchMedia('(max-width: 620px)');
     const mobileLayout = window.matchMedia('(max-width: 620px), (max-width: 980px) and (max-height: 500px) and (orientation: landscape)');
     function updateInputOverflow() {
         const style = getComputedStyle(input);
@@ -257,11 +256,11 @@ function initUnits() {
     }
     updatePlaces();
     function setCategoryMenu(open) {
-        $('unit-categories').hidden=compact.matches && !open;
+        $('unit-categories').hidden=mobileLayout.matches && !open;
         $('unit-category-toggle').setAttribute('aria-expanded',String(!$('unit-categories').hidden));
     }
     setCategoryMenu(false);
-    compact.addEventListener('change',()=>setCategoryMenu(false),{signal:lifecycle.signal});
+    mobileLayout.addEventListener('change',()=>setCategoryMenu(false),{signal:lifecycle.signal});
     $('unit-category-toggle').addEventListener('click',()=>setCategoryMenu($('unit-categories').hidden),{signal:lifecycle.signal});
     function info() {
         const node=$('unit-source-links'); node.replaceChildren(document.createTextNode(text.source+' '));
@@ -411,7 +410,7 @@ function initUnits() {
                 button.textContent=c[english?2:1]; const symbol=document.createElement('span');symbol.textContent=c[3];symbol.setAttribute('aria-hidden','true');button.append(symbol);
                 button.addEventListener('click',()=>{
                     chooseCategory(c[0]);
-                    if(compact.matches){setCategoryMenu(false);$('unit-category-toggle').focus();}
+                    if(mobileLayout.matches){setCategoryMenu(false);$('unit-category-toggle').focus();}
                 },{signal:lifecycle.signal}); $('unit-categories').append(button);
             }
             for(const id of ['unit-from','unit-to','unit-swap','unit-submit']) $(id).disabled=false;

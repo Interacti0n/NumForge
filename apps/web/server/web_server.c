@@ -692,7 +692,7 @@ static void numforge_handle_evaluation_impl(
             copy_text = numforge_math_copy_text(result);
         }
         response_capacity = strlen(result) + (copy_text == NULL ? 0U : strlen(copy_text)) +
-            (approximation == NULL ? 0U : strlen(approximation)) + 128U;
+            (approximation == NULL ? 0U : strlen(approximation)) + 160U;
         response = malloc(response_capacity);
 
         if (response != NULL)
@@ -723,6 +723,14 @@ static void numforge_handle_evaluation_impl(
             {
                 (void)snprintf(response, response_capacity, "{\"ok\":true,\"result\":\"%s\",\"cached\":%s}",
                                result, reused ? "true" : "false");
+            }
+            if (output_value != NULL)
+            {
+                size_t used = strlen(response);
+                (void)snprintf(response + used - 1U, response_capacity - used + 1U,
+                    ",\"approximate\":%s}",
+                    output_value->kind == CALCULATOR_VALUE_DECIMAL ||
+                    output_value->kind == CALCULATOR_VALUE_COMPLEX_DECIMAL ? "true" : "false");
             }
             if (approximation != NULL)
             {

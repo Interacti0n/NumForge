@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#17002f">
-  <style>html { background: #17002f; } html:not(.styles-ready) body { visibility: hidden; } html.css-error body { visibility: visible; }</style>
+  <meta name="theme-color" content="#110c20">
+  <style>html { background: #110c20; } html:not(.styles-ready) body { visibility: hidden; } html.css-error body { visibility: visible; }</style>
   <title>NumForge · Usage and API</title>
   <link rel="icon" type="image/png" href="/assets/logo.png">
   <link rel="stylesheet" href="/assets/api.css" onerror="document.documentElement.classList.add('css-error')">
@@ -32,8 +32,6 @@
             <a href="/api?lang=sk" lang="sk" title="Slovenčina">SK</a>
             <a href="/api?lang=en" lang="en" aria-current="true" title="English">EN</a>
           </span>
-          <a class="login-link" href="/login?lang=en">Sign in</a>
-          <a class="register-link" href="/register?lang=en">Create account</a>
         </div>
       </div>
     </header>
@@ -43,6 +41,7 @@
 <main class="guide-content">
 <article data-guide-panel="calculator">
 <h1 class="guide-title" id="intro">Calculator guide</h1><p>Enter an expression such as <code>(2+3)*4</code>, then press Enter or <strong>Calculate</strong>. A preview appears after two seconds without edits; only confirmed results enter history.</p><p>Use the library to find functions and constants by their familiar names. Select an entry and fill in its arguments. Invalid expressions show an error with its position.</p>
+<p>Settings remain above the expression on phones too. Click an example in an empty result panel to try it. The result identifies a preview or confirmation and whether the C value is approximate; an exact value may still have a rounded display.</p>
 <h2 id="syntax">Expressions</h2>
   <table><tr><th>Element</th><th>Examples</th></tr>
   <tr><td>Integers and decimals</td><td><code>42</code>, <code>-1.5</code>, <code>1,5</code>, <code>.25</code>, <code>1.</code></td></tr>
@@ -249,7 +248,7 @@ HTTP/1.1 200 OK
 </ul>
 </article>
 </main></div>
-    <footer class="page-footer"><span>NumForge v@NUMFORGE_VERSION@ · © 2026 Interacti0n</span><nav class="footer-links" aria-label="Project information"><a href="/LICENSE" data-license>MIT License</a><a href="https://github.com/Interacti0n/NumForge" target="_blank" rel="noopener noreferrer">GitHub</a></nav></footer>
+    <footer class="page-footer"><span>NumForge v@NUMFORGE_VERSION@ · © 2026 Interacti0n</span><nav class="footer-links" aria-label="Project information"><a class="login-link" href="/login?lang=en">Accounts · planned</a><a class="register-link" href="/register?lang=en">Registration · planned</a><a href="/LICENSE" data-license>MIT License</a><a href="https://github.com/Interacti0n/NumForge" target="_blank" rel="noopener noreferrer">GitHub</a></nav></footer>
   </div>
   <script src="/assets/navigation.js"></script>
 </body>

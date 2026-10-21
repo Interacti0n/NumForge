@@ -2,10 +2,7 @@
 body
 {
     isolation: isolate;
-    background:
-        radial-gradient(ellipse 90% 70% at 0% 0%, #67527f12, transparent 75%),
-        radial-gradient(ellipse 70% 80% at 100% 100%, #67527f0c, transparent 75%),
-        linear-gradient(135deg, #190332 0%, #17002f 55%, #1a0434 100%);
+    background: radial-gradient(ellipse at 15% 0%, #38214b55, transparent 55%), var(--background);
 }
 body::before
 {
@@ -129,7 +126,7 @@ body::before
     display: grid;
     order: 4;
     flex: 0 0 auto;
-    grid-template-columns: 78px 102px 112px;
+    grid-template-columns: auto;
     align-items: center;
     gap: 8px;
     padding-left: 20px;
@@ -139,25 +136,6 @@ body::before
 .language-switch a { display: inline-grid; place-items: center; min-height: 30px; padding: 5px 8px; border-radius: 6px; color: #aa96bd; font-size: .75rem; font-weight: 650; text-decoration: none; }
 .language-switch a[aria-current="true"] { background: #ddc4f01a; color: #f6ecff; }
 .language-switch a:hover { color: #fff; }
-.header-actions > a
-{
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 0;
-    min-height: 38px;
-    padding: 8px 12px;
-    border: 1px solid transparent;
-    border-radius: 8px;
-    font-size: .82rem;
-    font-weight: 600;
-    text-decoration: none;
-    white-space: nowrap;
-}
-.header-actions .login-link { color: #d7c8e5; background: transparent; }
-.header-actions .login-link:hover, .header-actions .login-link[aria-current="page"] { color: #fff; background: #ffffff08; }
-.header-actions .register-link { border-color: #d0ade866; background: #ddc4f0; color: #281239; box-shadow: inset 0 1px #ffffff40; }
-.header-actions .register-link:hover, .header-actions .register-link[aria-current="page"] { background: #eedcff; }
 .nav-toggle { display: none; }
 .page-header a:focus-visible, .nav-toggle:focus-visible { outline: 2px solid #d5aff4; outline-offset: 4px; }
 
@@ -170,8 +148,7 @@ body::before
     .brand-text small { display: none; }
     .primary-nav a { padding-inline: 6px; font-size: .8rem; }
     .header-guide { flex-basis: 108px; font-size: .75rem; gap: 5px; }
-    .header-actions { grid-template-columns: 70px 92px 108px; gap: 5px; padding-left: 12px; }
-    .header-actions > a { padding-inline: 5px; font-size: .75rem; }
+    .header-actions { grid-template-columns: auto; gap: 5px; padding-left: 12px; }
     .language-switch a { padding-inline: 6px; font-size: .7rem; }
 }
 
@@ -234,8 +211,6 @@ body::before
     .primary-nav a[aria-current="page"]::after { top: 13px; bottom: 13px; right: auto; left: 0; width: 2px; height: auto; }
     .header-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: 100%; padding: 14px 2px 2px; border-top: 1px solid #dbc5f21a; border-left: 0; }
     .header-actions .language-switch { grid-column: 1 / -1; justify-self: start; margin-bottom: 6px; }
-    .header-actions > a { min-height: 42px; font-size: .85rem; }
-    .header-actions .login-link { border-color: #dbc5f230; }
 }
 
 @media (max-width: 400px)
@@ -258,9 +233,25 @@ body::before
 @media (prefers-reduced-motion: no-preference)
 {
     .page-header { transition: transform 180ms ease; }
-    .primary-nav a, .header-guide, .header-actions > a, .nav-toggle, .menu-icon::before, .menu-icon::after { transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, transform 150ms ease; }
+    .primary-nav a, .header-guide, .nav-toggle, .menu-icon::before, .menu-icon::after { transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, transform 150ms ease; }
 }
 @media (prefers-reduced-motion: reduce)
 {
     .content-leaving, .content-entering { animation: none; transition: none; }
+}
+
+/* Shared visual hierarchy: quiet surfaces, lavender for the main action and active state. */
+button, a, input, textarea, select, summary { -webkit-tap-highlight-color: transparent; }
+textarea:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+button:disabled { cursor: default; }
+.footer-links .login-link, .footer-links .register-link { font-size: .68rem; }
+@media (prefers-reduced-motion: no-preference) {
+    button, .primary-nav a { transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease; }
+    .primary-button:hover { box-shadow: 0 3px 18px #be91ef4d; }
+}
+@media (pointer: coarse) {
+    .language-switch a, .primary-nav a, .nav-toggle, .header-guide { min-height: 44px; }
+    .language-switch a { min-width: 44px; }
+    .field select, .field input, .angle-switch, #copy-result, #expand-result, .graph-view-controls button { min-height: 44px; }
+    .angle-switch button { min-height: 36px; }
 }

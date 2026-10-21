@@ -75,6 +75,10 @@ Legacy clients may append `&client=<32 lowercase hex digits>&revision=<N>`
 after the normal options. `N` is a positive increasing integer up to
 9007199254740991. These parameters opt into a bounded per-client cache;
 successful responses then also contain `"cached":true` or `false`.
+When a retained typed value is available, `approximate` is a boolean copied from
+its C numeric kind (decimal/complex-decimal versus exact rational). It describes
+calculation provenance, not display rounding or an error bound; it is omitted
+when the route has no retained typed value.
 Without them, the endpoint remains stateless and its response shape is unchanged.
 The browser generates a fresh random client ID for each page load, not a cookie
 or shared local-storage identity. The server holds at most eight clients with

@@ -27,27 +27,33 @@ let autoTimer = null;
 let resultExpanded = false;
 let resultCopy = '';
 let resultApproxValue = '';
-let angleUnit = 'rad';
-const settingsOverview = document.querySelector('#settings-overview');
-const mobileSettings = window.matchMedia('(max-width: 600px), (max-width: 960px) and (max-height: 500px) and (orientation: landscape)');
-function syncSettingsPlacement()
+let resultState = '';
+let resultApproximate = null;
+function setResultStatus(state, approximate = null)
 {
-    const settings = document.querySelector('.precision');
-    const parent = document.querySelector(mobileSettings.matches ? '.sidebar' : '.calculator-column');
-    if (settings.parentElement && settings.parentElement !== parent)
-    {
-        if (mobileSettings.matches) parent.append(settings);
-        else parent.prepend(settings);
-    }
+    resultState = state;
+    resultApproximate = typeof approximate === 'boolean' ? approximate : null;
+    const labels = english
+        ? {preview:'Preview · Enter to confirm', confirmed:'Confirmed', calculating:'Calculating…', error:'Check the expression'}
+        : {preview:'Náhľad · Enter potvrdí výsledok', confirmed:'Potvrdené', calculating:'Počítam…', error:'Skontroluj výraz'};
+    const status = document.querySelector('#result-status');
+    status.textContent = labels[state] || '';
+    if (resultApproximate !== null) status.textContent += resultApproximate
+        ? (english ? ' · Approximate calculation' : ' · Približný výpočet')
+        : (english ? ' · Exact value; display may round' : ' · Exaktná hodnota; výpis sa môže zaokrúhliť');
+    status.hidden = !state;
+    document.querySelector('#result-examples').hidden = !!state || !!expression.value.trim();
 }
+let angleUnit = 'rad';
+const mobileSettings = window.matchMedia('(max-width: 600px), (max-width: 960px) and (max-height: 500px) and (orientation: landscape)');
+const settingsOverview = document.querySelector('#settings-overview');
 function updateSettingsOverview()
 {
     const label = precisionMode.value === 'custom' ? precision.value
         : precisionMode.value === 'full' ? (english ? 'Full' : 'Plný') : 'Auto';
     settingsOverview.textContent = label + ' · ' + angleUnit.toUpperCase();
 }
-mobileSettings.addEventListener?.('change', syncSettingsPlacement, {signal: lifecycle.signal});
-syncSettingsPlacement();
+
 
 function setResultApproximation(value)
 {
@@ -120,6 +126,7 @@ function invalidate()
     resultExpanded = false;
     expandResult.textContent = text.showAll;
     result.textContent = '';
+    setResultStatus('');
     setResultApproximation('');
     document.querySelector('#result-time').hidden = true;
     document.querySelector('#result-time').textContent = '';
@@ -745,6 +752,11 @@ if (groups.length)
     });
     selectGroup(0);
 }
+document.querySelectorAll('[data-example]').forEach(button => button.addEventListener('click', () => {
+    expression.value = button.dataset.example;
+    expression.dispatchEvent(new Event('input'));
+    expression.focus();
+}));
 expression.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && !event.isComposing && !event.shiftKey)
     {
@@ -883,6 +895,7 @@ document.querySelectorAll('[data-action]')
         {
             invalidate();
             expression.value = '';
+            setResultStatus('');
             updateExpressionOverflow();
             expression.focus();
         }
@@ -974,6 +987,7 @@ async function calculate(commit)
     }
     result.className = '';
     result.textContent = text.calculating;
+    setResultStatus('calculating');
     copyButtons.forEach(button => { button.disabled = true; });
     let sent = false;
     try
@@ -1006,6 +1020,7 @@ async function calculate(commit)
         }
         if (id !== generation) return;
         result.textContent = data.result;
+        setResultStatus(commit ? 'confirmed' : 'preview', data.approximate);
         const timing = document.querySelector('#result-time');
         const elapsed = data.elapsed_ms;
         timing.hidden = !Number.isSafeInteger(elapsed) || elapsed <= 500;
@@ -1021,6 +1036,7 @@ async function calculate(commit)
     {
         if ((id !== generation && !pendingCommit) || error.name === 'AbortError') return;
         result.className = 'error';
+        setResultStatus('error');
         setResultApproximation('');
         const uncertain = commit && sent && pendingCommit;
         result.textContent = text.error + (uncertain
@@ -1058,7 +1074,7 @@ function saveNavigationState()
             pending: pendingCommit, expression: expression.value,
             precision: precision.value, mode: precisionMode.value,
             notation: notationMode.value, complexForm: complexForm.value, angle: angleUnit,
-            result: result.textContent, resultCopy, resultApprox: resultApproxValue,
+            result: result.textContent, resultCopy, resultApprox: resultApproxValue, resultState, resultApproximate,
             resultError: result.classList.contains('error'),
             sessionTab: activeSessionTab, pendingVariableDeletion, pendingLifecycle: pendingReset, recent: recentItems,
             category: document.querySelector('.function-tabs button[aria-selected="true"]')?.id,
@@ -1124,6 +1140,7 @@ try
             }
             result.textContent = typeof state.result === 'string' ? state.result : '';
             setResultApproximation(state.resultApprox);
+            setResultStatus(['preview','confirmed','error'].includes(state.resultState) ? state.resultState : '', state.resultApproximate);
             result.className = state.resultError === true ? 'error' : '';
             resultCopy = typeof state.resultCopy === 'string' ? state.resultCopy : '';
             copyButtons.forEach(button => { button.disabled = !resultCopy; });

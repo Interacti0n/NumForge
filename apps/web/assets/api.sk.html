@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#17002f">
-  <style>html { background: #17002f; } html:not(.styles-ready) body { visibility: hidden; } html.css-error body { visibility: visible; }</style>
+  <meta name="theme-color" content="#110c20">
+  <style>html { background: #110c20; } html:not(.styles-ready) body { visibility: hidden; } html.css-error body { visibility: visible; }</style>
   <title>NumForge · Použitie a API</title>
   <link rel="icon" type="image/png" href="/assets/logo.png">
   <link rel="stylesheet" href="/assets/api.css" onerror="document.documentElement.classList.add('css-error')">
@@ -32,8 +32,6 @@
             <a href="/api?lang=sk" lang="sk" aria-current="true" title="Slovenčina">SK</a>
             <a href="/api?lang=en" lang="en" title="English">EN</a>
           </span>
-          <a class="login-link" href="/login?lang=sk">Prihlásiť sa</a>
-          <a class="register-link" href="/register?lang=sk">Registrácia</a>
         </div>
       </div>
     </header>
@@ -43,6 +41,7 @@
 <main class="guide-content">
 <article data-guide-panel="calculator">
 <h1 class="guide-title" id="intro">Návod ku kalkulačke</h1><p>Zadaj výraz, napríklad <code>(2+3)*4</code>, a stlač Enter alebo <strong>Vypočítať</strong>. Po dvoch sekundách bez úprav sa zobrazí náhľad; do histórie sa uloží až potvrdený výsledok.</p><p>V knižnici nájdeš funkcie a konštanty aj pod známymi názvami. Vyber položku a doplň jej argumenty. Ak zadanie nie je platné, chyba označí miesto vo výraze.</p>
+<p>Nastavenia zostávajú nad výrazom aj na mobile. V prázdnom výsledku môžeš kliknúť na ukážku výpočtu. Výsledok odlišuje náhľad a potvrdenie aj približnú hodnotu z C jadra; výpis exaktnej hodnoty sa stále môže zaokrúhliť.</p>
 <h2 id="syntax">Zápis výrazov</h2>
   <table><tr><th>Prvok</th><th>Príklady</th></tr>
   <tr><td>Celé a desatinné čísla</td><td><code>42</code>, <code>-1.5</code>, <code>1,5</code>, <code>.25</code>, <code>1.</code></td></tr>
@@ -249,7 +248,7 @@ HTTP/1.1 200 OK
 </ul>
 </article>
 </main></div>
-    <footer class="page-footer"><span>NumForge v@NUMFORGE_VERSION@ · © 2026 Interacti0n</span><nav class="footer-links" aria-label="Informácie o projekte"><a href="/LICENSE" data-license>MIT licencia</a><a href="https://github.com/Interacti0n/NumForge" target="_blank" rel="noopener noreferrer">GitHub</a></nav></footer>
+    <footer class="page-footer"><span>NumForge v@NUMFORGE_VERSION@ · © 2026 Interacti0n</span><nav class="footer-links" aria-label="Informácie o projekte"><a class="login-link" href="/login?lang=sk">Účty · pripravujeme</a><a class="register-link" href="/register?lang=sk">Registrácia · pripravujeme</a><a href="/LICENSE" data-license>MIT licencia</a><a href="https://github.com/Interacti0n/NumForge" target="_blank" rel="noopener noreferrer">GitHub</a></nav></footer>
   </div>
   <script src="/assets/navigation.js"></script>
 </body>

@@ -3,7 +3,7 @@
 The calculator, unit converter, function graphs, equation editor, API guide and upcoming-tools
 page have separate Slovak and English HTML files.
 `calculator.css` and `api.css` style their respective pages, while `chrome.css`
-styles the shared header. `calculator.js` implements calculator behavior; `function-library.js` shares
+styles shared navigation and visual hierarchy. `calculator.js` implements calculator behavior; `function-library.js` shares
 localized descriptions and search aliases with graph rows, while `/api/functions`
 remains authoritative for availability. `graph.js` owns up to four independent
 curve caches, a shared camera/priority transport queue, the searchable library
@@ -45,7 +45,7 @@ are unaffected, and reduced-motion preferences disable the content animation.
 The shared header uses a spacious single-row horizontal menu with equally sized,
 subtle control surfaces. Their positions and widths remain stable when switching
 between Slovak and English. Narrow screens use an accessible
-drop-down menu on narrow screens. Escape or clicking outside closes it.
+drop-down menu. Unimplemented account links remain in the footer. Escape or clicking outside closes it.
 The HTML keeps the content hidden until its stylesheet loads, so navigation does
 not briefly reveal unstyled text. A failed stylesheet request reveals the plain
 page instead of leaving it blank.
@@ -70,15 +70,13 @@ while narrow screens retain inline expansion. Clicking outside the result dialog
 closes it, and its copy button uses the same result text as the main panel. The guide header
 and section menu stay in place; only the guide text scrolls. On narrow screens,
 the menu is a horizontally scrollable row.
-Short results sit vertically centered with a subtle left accent; long values
-start at the top of their clipped display, and errors use the error accent.
+Results start at the top with a subtle left accent; errors use the error accent.
+The C numeric kind supplies exact/approximate provenance independently of display
+rounding. Preview/confirmed status and clickable empty-state examples are UI-only.
 
-The expression starts as a one-line textarea and grows to five lines as text
-wraps. Beyond five lines, an adjacent control enlarges that same field over the
-result, ending before the result text so at least its first line stays visible.
-The keypad and function library remain usable. Enter confirms and collapses the
-field; Esc only collapses it. Clipped results show a visible `...` marker and a
-`Show all...` control.
+The expression starts as a one-line textarea, grows to five lines and then scrolls.
+Enter confirms; Shift+Enter inserts a line break. Clipped results show a visible
+`...` marker and a `Show all...` control.
 
 The full-width settings bar sits above the expression and stays compact in
 height. The calculator and guide use colors based on Melanie Brown's Deep Purple
@@ -87,7 +85,8 @@ function library and session take natural heights inside one scrollable right
 column, keeping session/history reachable in short windows. The left calculator
 column scrolls when needed. Function categories and function buttons have
 separate labelled panels, divided from the search field. Categories form a
-vertical list beside their controls on wide screens, and search matches Slovak
+vertical list beside their controls on wide screens and a horizontal strip on
+phones. Settings remain above the input at every size. Search matches Slovak
 descriptions with or without diacritics. The recent row remembers up to twelve
 distinct constants, operations or functions and shows as many as fit in one row;
 visible buttons share the available width without extending past the card. The function

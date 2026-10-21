@@ -6,6 +6,9 @@ Earlier detailed development notes remain in Git history.
 
 ## Unreleased
 
+- Refined purple web UI with readable short-window results, nearby mobile settings,
+  compact function categories, result confirmation/provenance labels and clickable examples.
+
 - Exact simple linear regression with intercept, independently callable in C and Python.
 - Bounded finite-interval Simpson integration in C/Python, with approximate error
   estimates, evaluation/refinement limits and domain diagnostics.

@@ -558,7 +558,7 @@ for (const lang of ['sk', 'en']) {
             await page.locator(`.primary-nav a[href="/graph?lang=${other}"]`).click();
             await expect(page).toHaveURL(`/graph?lang=${other}`);
             await expect(page.locator('#graph-title')).toBeVisible();
-            await page.locator('.register-link').click();
+            await page.locator('.footer-links .register-link').click();
             await expect(page).toHaveURL(`/register?lang=${other}`);
             expect(await page.evaluate(() => document.querySelector('.page-header') === window.originalHeader &&
                 document.querySelector('.page-footer') === window.originalFooter &&
@@ -874,8 +874,8 @@ for (const lang of ['sk', 'en']) {
             await page.locator('.nav-toggle').click();
             await expect(page.locator('.nav-toggle')).toHaveAttribute('aria-expanded', 'true');
             await expect(page.locator('[data-nav="units"]')).toBeVisible();
-            await expect(page.locator('[data-nav="login"]')).toBeVisible();
-            await expect(page.locator('[data-nav="register"]')).toBeVisible();
+            await expect(page.locator('.header-actions [data-nav="login"]')).toHaveCount(0);
+            await expect(page.locator('.header-actions [data-nav="register"]')).toHaveCount(0);
             await page.keyboard.press('Escape');
             await expect(page.locator('.nav-toggle')).toHaveAttribute('aria-expanded', 'false');
             await page.locator('.nav-toggle').click();
@@ -884,7 +884,7 @@ for (const lang of ['sk', 'en']) {
             await page.setViewportSize({width: 320, height: 667});
             expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
             await page.locator('.nav-toggle').click();
-            await expect(page.locator('[data-nav="register"]')).toBeVisible();
+            await expect(page.locator('.header-actions [data-nav="register"]')).toHaveCount(0);
         });
         test('header, footer and license match the guide', async ({ page }) => {
             const calculatorHeader = await page.locator('.page-header').boundingBox();
@@ -934,13 +934,13 @@ for (const lang of ['sk', 'en']) {
             for (const [width, height] of [[1024, 768], [1280, 720], [1440, 900]]) {
                 await page.setViewportSize({width, height});
                 expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(height);
-                expect(await page.locator('.calculator-column').evaluate(el => el.scrollHeight <= el.clientHeight + 1)).toBe(true);
+                expect(await page.locator('#result').evaluate(el => el.clientHeight)).toBeGreaterThanOrEqual(38);
             }
             await page.setViewportSize({width: 1024, height: 768});
             await page.locator('#precision-mode').selectOption('custom');
             await expect(page.locator('#custom-precision')).toBeVisible();
             expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
-            expect(await page.locator('.calculator-column').evaluate(el => el.scrollHeight <= el.clientHeight + 1)).toBe(true);
+            expect(await page.locator('#result').evaluate(el => el.clientHeight)).toBeGreaterThanOrEqual(38);
             await page.locator('#precision-mode').selectOption('auto');
             await page.setViewportSize({width: 375, height: 667});
             await expect(page.locator('.keypad-card')).toBeHidden();
@@ -1038,7 +1038,7 @@ for (const lang of ['sk', 'en']) {
             await expect(page.locator('#recent-buttons button').first()).toHaveText('π');
             await expect(page.locator('#recent-buttons button')).toHaveCount(7);
             await expect(page.locator('#recent-buttons button:visible')).toHaveCount(7);
-            expect(await page.locator('.calculator-column').evaluate(el => el.scrollHeight <= el.clientHeight + 1)).toBe(true);
+            expect(await page.locator('#result').evaluate(el => el.clientHeight)).toBeGreaterThanOrEqual(38);
             const desktopRows = await page.locator('#recent-buttons button:visible').evaluateAll(buttons =>
                 buttons.map(button => button.getBoundingClientRect().y));
             expect(Math.max(...desktopRows) - Math.min(...desktopRows)).toBeLessThan(2);
@@ -1282,7 +1282,7 @@ test('variable assignments can be typed and confirmed in both languages', async 
     }
 });
 
-test('mobile input actions, constants and bottom settings survive rotation', async ({page}) => {
+test('mobile input actions, constants and nearby settings survive rotation', async ({page}) => {
  for (const lang of ['sk','en']) {
   await page.setViewportSize({width:390,height:844});
   await page.goto('/?lang='+lang);
@@ -1297,7 +1297,7 @@ test('mobile input actions, constants and bottom settings survive rotation', asy
   }
   await page.setViewportSize({width:390,height:844});
   await expect(page.locator('.keypad-card')).toBeHidden();
-  await expect(page.locator('.sidebar > .precision')).toBeVisible();
+  await expect(page.locator('.calculator-column > .precision')).toBeVisible();
   const box=await page.locator('#expression').boundingBox(), form=await page.locator('#calculator').boundingBox();
   expect(Math.abs(box.width-form.width)).toBeLessThan(1);
   expect((await page.locator('.primary-button').boundingBox()).y).toBeGreaterThanOrEqual(box.y+box.height);
@@ -1323,11 +1323,10 @@ test('mobile input actions, constants and bottom settings survive rotation', asy
   await expect(page.locator('.settings-chevron')).toHaveCount(0);
   for (const [width,height] of [[812,375],[667,375],[568,320]]) {
    await page.setViewportSize({width,height});
-   const [session,settings]=await page.evaluate(() =>
-    ['.session-panel','.precision'].map(selector => document.querySelector(selector).getBoundingClientRect().toJSON()));
-   expect(Math.abs(session.width-settings.width)).toBeLessThan(1);
-   expect(Math.abs(session.y-settings.y)).toBeLessThan(1);
-   expect(settings.x).toBeGreaterThan(session.x+session.width);
+   const [settings,input]=await page.evaluate(() =>
+    ['.precision','.expression-card'].map(selector => document.querySelector(selector).getBoundingClientRect().toJSON()));
+   expect(Math.abs(input.width-settings.width)).toBeLessThan(1);
+   expect(settings.bottom).toBeLessThanOrEqual(input.top);
    await expect(page.locator('#settings-controls')).toBeVisible();
    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
   }

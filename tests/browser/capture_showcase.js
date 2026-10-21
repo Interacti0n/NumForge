@@ -18,6 +18,7 @@ async function confirm(page, expression, expected) {
     await page.locator('#expression').fill(expression);
     await expect(page.locator('#result')).toHaveText(expected);
     await page.locator('#expression').press('Enter');
+    await expect(page.locator('#result-status')).toContainText('Confirmed');
     await expect(page.locator('#result')).toHaveText(expected);
 }
 (async () => {

@@ -18,15 +18,19 @@ is accepted; separate function arguments with `;`.
 
 The calculator previews after two seconds without edits. **Enter** or **Calculate**
 confirms immediately; only confirmations update history and `ans`. Editing again
-discards an outdated preview. On phones, confirmation also dismisses the keyboard.
+discards an outdated preview. The result labels previews and confirmations. Its exact/approximate indicator comes
+from the C value; an exact value can still have a rounded decimal display.
+On phones, confirmation also dismisses the keyboard and reveals the result.
 
-Use **RAD/DEG** before trigonometric calculations. The setting applies to the
+Settings stay expanded above the expression, including on phones. Try the clickable
+examples in an empty result panel, or browse the horizontally scrolling mobile
+function categories. Use **RAD/DEG** before trigonometric calculations. The setting applies to the
 whole expression. **Copy** copies the result; **Show all / Zobraziť všetko** expands
 long output. Language, precision and notation settings survive navigation in the
 same browser tab.
 
 The header also opens [units](UNIT_CONVERTER.md), [graphs](GRAPHS.md) and
-[equations](EQUATIONS.md). Sign-in and registration are informational pages;
+[equations](EQUATIONS.md). Footer links to sign-in and registration are informational pages;
 accounts are not implemented.
 
 ## Precision and result format

@@ -212,6 +212,8 @@ test('zoom, pan, keyboard and reset preserve the chosen two-dimensional camera',
 });
 test('touch pinch zooms and empty view controls do not evaluate',async({page,browserName})=>{
  test.skip(browserName!=='chromium','Native multi-touch injection uses the Chromium DevTools protocol.');
+ // Pinch coordinates must remain stable while the explicit plot reveals its result.
+ await page.emulateMedia({reducedMotion:'reduce'});
  await page.setViewportSize({width:390,height:844});await page.goto('/graph?lang=sk');await sample(page,'sin(x)');
  const svg=page.locator('#graph-plot');await svg.scrollIntoViewIfNeeded();const box=await svg.boundingBox();
  const cdp=await page.context().newCDPSession(page),x=Math.round(box.x+box.width/2),y=Math.round(box.y+box.height/2);

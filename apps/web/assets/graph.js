@@ -79,12 +79,17 @@ function initGraph() {
             const payload=await response.text();job.resolve({response,payload,cost:performance.now()-start});
         }catch(error){job.reject(error);}finally{transmitting=false;pump();}
     }
-    async function plotAll(event,keepView=false){
+    async function plotAll(event,keepView=false,reveal=false){
         event?.preventDefault();clearTimeout(viewportTimer);viewportTimer=null;
         if(!$('graph-form').reportValidity())return;
+        const submitted=(event||reveal)?curves.map(c=>[c,c.input.value]):null;
         svg.dataset.featuresState='pending';
         ++foregroundBatches;
         try{await Promise.all(curves.filter(c=>c.state().visible).map(c=>c.plot(null,keepView)));}finally{--foregroundBatches;pump();}
+        if(submitted && !disposed && submitted.length===curves.length &&
+            submitted.every(([curve,input],i)=>curves[i]===curve && curve.input.value===input) &&
+            window.matchMedia('(max-width: 960px)').matches)
+            document.querySelector('.graph-result').scrollIntoView({block:'start',behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
     }
     function scheduleView(){clearTimeout(viewportTimer);viewportTimer=setTimeout(()=>{viewportTimer=null;if(!disposed)plotAll(null,true);},90);}
     // Projection only: mathematics and sample classification come from the C API.
@@ -993,7 +998,7 @@ function initGraph() {
     $('graph-library-close').addEventListener('click',()=>libraryDialog.close(),{signal:lifecycle.signal});
     libraryDialog.addEventListener('close',()=>{if(!disposed)syncLibraryExpression();libraryDetails.open=false;document.body.classList.remove('graph-library-open');if(!disposed)libraryCurve?.input.focus({preventScroll:true});},{signal:lifecycle.signal});
     libraryExpression.addEventListener('input',syncLibraryExpression,{signal:lifecycle.signal});
-    function plotFromLibrary(){syncLibraryExpression();libraryDialog.close();plotAll(null,true);}
+    function plotFromLibrary(){syncLibraryExpression();libraryDialog.close();plotAll(null,true,true);}
     $('graph-library-plot').addEventListener('click',plotFromLibrary,{signal:lifecycle.signal});
     $('graph-library-clear').addEventListener('click',()=>{libraryExpression.value='';libraryExpression.setSelectionRange(0,0);syncLibraryExpression();libraryExpression.focus({preventScroll:true});},{signal:lifecycle.signal});
     libraryExpression.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();plotFromLibrary();}},{signal:lifecycle.signal});
