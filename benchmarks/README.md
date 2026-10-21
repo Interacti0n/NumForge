@@ -74,7 +74,9 @@ probes separate from speed recordings.
 ## HTTP and browser work
 
 `application/http_benchmark.js` measures calculator HTTP phases;
-`http_queue_benchmark.js` observes independent-session queue waiting.
+`http_queue_benchmark.js` observes queue waiting; `--load` adds bounded 10/30/60-client
+HTTP/session scenarios, with `--quick` for fixture validation. See the
+[load protocol](../docs/performance/protocols/APPLICATION.md#multi-client-load).
 `application/benchmark_graph_audit.cjs` owns independent HTTP curve/domain/dense
 checks and supports matching `--before` comparisons. `benchmark_graph_multi.cjs`
 measures browser interaction, `benchmark_graph_stress.cjs` measures sustained cache

@@ -134,6 +134,26 @@ point conversion. Version transport schemas separately from internal structures.
 An adapter's availability is explicit; supporting a new C operation does not
 require implementing every future language binding in the same change.
 
+## Concurrent server prerequisites
+
+The current server is serial. This source audit identifies work before enabling
+workers; it is not a thread-safety proof or a measured concurrency guarantee.
+
+| State | Current ownership | Required before workers |
+| --- | --- | --- |
+| HTTP client store | One static `ApplicationClientStore`; eight FIFO sessions/caches, borrowed lookup pointers | Synchronize lookup/mutation and pin entries until requests finish; eviction must not invalidate active values. Bound session bytes/count/lifetime. |
+| Session values/revisions/RNG | Mutable per-session history, variables, previews, conversions and random state | Serialize mutations of one client; take owned snapshots for read-only work. Preserve retry/stale semantics. |
+| Random seed fallback | Function-static sequence in `random.c`, updated when OS entropy fails | Synchronize the fallback too; the normal OS entropy path alone is insufficient. |
+| Runtime budgets | Thread-local, owner begins/ends on the same thread | Open computation scopes in the executing worker; do not transfer an active scope between threads. |
+| Instrumentation | Thread-local ledgers/profilers; allocation-failure injection is test-only global state | Preserve same-thread accounting or redesign diagnostics before measuring cross-worker frees; isolate failure injection in concurrent tests. |
+
+`web_main.c` currently accepts and handles one entire connection before the next,
+with listen backlog 8. A bounded worker/queue design must also bound socket wait,
+queued bytes and overload responses; simply increasing backlog/session capacity
+does not add parallel computation. Public opaque handles remain externally
+synchronized when shared. See the [load protocol](../performance/protocols/APPLICATION.md#multi-client-load)
+and [hosting limits](../guides/HOSTING.md#capacity-and-state).
+
 ## Application behavior
 
 Sessions own confirmed `ans`, variables, history and preview state. Exact values

@@ -237,9 +237,12 @@ jobs:
           cmake --build build/package-sdk --config Release --parallel 2
           python scripts/package_sdk.py --source . --support . --build build/package-sdk --output build/package-sdk-check \
             --version "$version" --commit "$commit" --platform "$PACKAGE_PLATFORM"
-          if [[ "$RUNNER_OS" == Linux ]]; then
-            echo "NUMFORGE_WEB_EXECUTABLE=$GITHUB_WORKSPACE/build/package-apps-check/extracted-check/NumForge-$version-$PACKAGE_PLATFORM/numforge_web" >> "$GITHUB_ENV"
-          fi
+          suffix=""
+          if [[ "$RUNNER_OS" == Windows ]]; then suffix=".exe"; fi
+          echo "NUMFORGE_WEB_EXECUTABLE=$GITHUB_WORKSPACE/build/package-apps-check/extracted-check/NumForge-$version-$PACKAGE_PLATFORM/numforge_web$suffix" >> "$GITHUB_ENV"
+      - name: Validate the bounded multi-client diagnostic
+        shell: bash
+        run: node benchmarks/application/http_queue_benchmark.js "$NUMFORGE_WEB_EXECUTABLE" --load --quick
       - name: Install workflow browser dependencies
         if: runner.os == 'Linux'
         working-directory: tests/browser

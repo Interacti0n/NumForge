@@ -139,6 +139,49 @@ client receipt or pure wire time. Serialization includes fraction hints and
 copy-text construction, response allocation, JSON construction and cleanup.
 Error scenarios remain separately labeled and are not successful calculations.
 
+## Multi-client load
+
+```sh
+node benchmarks/application/http_queue_benchmark.js build/apps/Release/numforge_web.exe --load
+```
+
+Use a normal Release server without instrumentation; use its actual platform
+path. Without `--load`, the tool retains its three-sample head-of-line CSV.
+`--load --quick` validates fixtures with 2/10 clients once; full mode uses
+10/30/60 clients, three repetitions and a fresh isolated loopback server per
+scenario. It reserves a free port, never uses the running user server/tunnel,
+and closes its own process on success or failure.
+
+The mixed workload has six requests per virtual user, cycling through exact
+arithmetic, fractions, quadratic equations, a 17-point graph and 1000-digit sqrt(2).
+Each user waits for their own response; there is no think time, retry or connection
+reuse. Successful results are independently checked, including every graph point
+and an integer midpoint rounding test for the square-root decimal. Client-side
+checks/scheduling affect total throughput; this is not a pure C kernel measurement.
+
+The session scenario serially starts clients, assigns a distinct x and checks
+retention before concurrent reads. Setup/retention checks are outside timing;
+the timed reads check each client's own value. FIFO expiry is recorded separately
+from connection errors. This measures capacity and isolation, not authenticated
+users or persistent accounts. Both scenarios verify recovery with a fresh 2+2.
+
+JSONL starts with source revision/dirty files, executable SHA-256, Node/host and
+policy metadata. Rows contain outcome counts, errors, completed/verified throughput,
+nearest-rank p50/p95/p99/max latency (including failures) and per-operation mixed
+results. Fresh connections have a 15-second absolute deadline and a 256-KiB
+response cap. Wrong mathematical results fail the tool; application/transport
+failures remain measured outcomes, so exit zero does **not** certify capacity.
+No latency threshold is a CI assertion. The quick mode also runs against extracted
+Windows/Linux applications in the package CI job.
+
+After timing/recovery, Windows PeakWorkingSet64 or Linux `/proc/PID/status` VmHWM
+records process peak resident bytes, including startup and all request work.
+It is neither retained heap nor a per-request delta. The Windows OS query runs
+outside the timed window. Unsupported/unavailable metrics are null, never zero.
+Host/client and OS queueing affect results; TLS, WAN, browser asset loads,
+open-loop arrival rates and sustained-memory behavior require separate scenarios.
+Keep full JSONL under ignored `build/`; retain only useful summarized evidence.
+
 ## Measurement definitions and boundaries
 
 - **Requested bytes/calls:** cumulative application allocation attempts,

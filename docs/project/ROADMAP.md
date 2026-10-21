@@ -42,14 +42,17 @@ have local correctness/failure, installed-consumer and validated benchmark check
 Integration additionally passed all 77 native and 78 Python tests, MSVC x64/x86,
 instrumented GCC, static analysis and executable documentation checks. Its error
 estimate remains heuristic. Published archives still retain their versioned scope.
-Stage 4 is in progress: the selected application workflow is equation input,
+Stage 4 is complete: the selected application workflow is equation input,
 exact roots/approximate previews and graph handoff, in both browser languages.
 Development Windows archives from `1529844` passed CLI/HTTP checks, 39 browser
 tests, 13 SDK examples and 12 C/C++ consumers after extraction. The same CI
 workflow now configures Windows/Linux archive checks and the selected browser
-workflow against the extracted Linux application. These local checks do not
-establish remote platform success. Stage 4 closes after the archive and C/Python matrices pass;
-stages 5–6 remain planned.
+workflow against the extracted Linux application. The full remote
+[20-job CI run at 548a4c9](https://github.com/Interacti0n/NumForge/actions/runs/39518902845)
+passed, including archive and C/Python matrices. Stage 5 has started with a
+[shared-state audit](../design/ARCHITECTURE.md#concurrent-server-prerequisites) and
+[bounded load diagnostic](../performance/protocols/APPLICATION.md#multi-client-load).
+Workers and revised session lifetime/capacity remain unimplemented; stage 6 is planned.
 Finish each bounded stage before opening the next; a defect in a completed stage can interrupt
 the sequence. Dates are not promised: progress is determined by the exit evidence.
 Do not keep adding mathematical functions while stages 1 and 2 remain open.
