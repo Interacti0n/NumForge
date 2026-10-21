@@ -767,11 +767,11 @@ static void numforge_handle_evaluation_impl(
         int response_length =
             snprintf(error_response,
                      sizeof(error_response),
-                     "{\"ok\":false,\"error\":\"%s at column %zu\",\"status\":\"%s\",\"column\":%zu}",
+                     "{\"ok\":false,\"error\":\"%s at column %zu\",\"status\":\"%s\",\"column\":%zu%s}",
                      status_text,
                      column,
                      status_text,
-                     column);
+                     column, status == CALCULATOR_SESSION_MEMORY_LIMIT ? ",\"code\":\"session_memory_limit\"" : "");
 
         if (response_length > 0 && (size_t)response_length < sizeof(error_response))
         {
@@ -1161,4 +1161,9 @@ void numforge_reject_connection(NumForgeSocket socket)
 bool numforge_web_server_shutdown(void)
 {
     return application_client_store_destroy(&numforge_application_clients);
+}
+
+void numforge_web_server_expire(uint64_t now)
+{
+    application_client_expire(&numforge_application_clients, now);
 }

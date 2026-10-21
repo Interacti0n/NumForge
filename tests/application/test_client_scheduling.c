@@ -35,7 +35,7 @@ typedef struct Worker {
     const char *input, *expected, *target;
     uint64_t revision, observed;
     CalculatorStatus status;
-    bool ok, hold, started, joined;
+    bool ok, hold, gate, started, joined;
     Flag ready, proceed;
 #ifdef _WIN32
     HANDLE thread;
@@ -87,6 +87,10 @@ static void *run_worker(void *argument)
     } else {
         worker->status = application_client_acquire_wait(&store, worker->id, worker->access, worker->wait_ms, &lease);
         if (worker->status == CALCULATOR_OK) {
+            if (worker->gate) {
+                signal_flag(&worker->ready);
+                if (!await_flag(&worker->proceed)) worker->ok = false;
+            }
             if (lease.cache) {
                 worker->observed = lease.cache->revision;
                 lease.cache->revision = worker->revision;
@@ -104,8 +108,11 @@ static void *run_worker(void *argument)
                     calculator_value_destroy(&value);
                 } else if (!worker->expected) {
                     worker->ok = calculator_session_mutate(lease.session, worker->revision, CALCULATOR_SESSION_RELEASE) == CALCULATOR_OK;
-                } else worker->ok = calculator_session_compute(lease.session, worker->revision, true, worker->input,
-                    &context, &text, &error, NULL) == CALCULATOR_OK;
+                } else {
+                    worker->status = calculator_session_compute(lease.session, worker->revision, true, worker->input,
+                        &context, &text, &error, NULL);
+                    worker->ok = worker->status == CALCULATOR_OK;
+                }
                 if (worker->expected) worker->ok = worker->ok && text != NULL && strcmp(text, worker->expected) == 0;
                 free(text);
             }
@@ -200,6 +207,8 @@ static void test_fifo_mutations_preserve_replay_and_read_snapshots(void)
         launch(worker); TEST_ASSERT_TRUE(await_pending(i + 1));
     }
     TEST_ASSERT_EQUAL(CALCULATOR_SESSION_BUSY, application_client_acquire(&store, client, APPLICATION_CLIENT_READ, &held[1]));
+    application_client_expire(&store, numforge_monotonic_ms() + NUMFORGE_APPLICATION_CLIENT_IDLE_MS);
+    TEST_ASSERT_FALSE(held[0].read_session->released);
     TEST_ASSERT_EQUAL(CALCULATOR_OK, application_client_acquire_wait(&other, client, APPLICATION_CLIENT_START, 10, &held[1]));
     application_client_release(&held[1]);
     application_client_release(&held[0]); assert_workers(5);
@@ -207,6 +216,25 @@ static void test_fifo_mutations_preserve_replay_and_read_snapshots(void)
     TEST_ASSERT_EQUAL_UINT64(3, held[0].read_session->revision);
     TEST_ASSERT_EQUAL_UINT(3, held[0].read_session->count);
     TEST_ASSERT_EQUAL_UINT64(2, workers[2].observed); TEST_ASSERT_EQUAL_UINT64(2, workers[3].observed);
+}
+static void test_competing_clients_cannot_overcommit_the_shared_memory_quota(void)
+{
+    begin_session(false);
+    size_t bytes = calculator_session_storage_bytes(held[0].session);
+    application_client_release(&held[0]); TEST_ASSERT_TRUE(application_client_store_destroy(&store));
+    ApplicationClientLimits limits = {bytes * 2U, bytes, NUMFORGE_APPLICATION_CLIENT_IDLE_MS};
+    TEST_ASSERT_TRUE(application_client_store_configure(&store, &limits));
+    for (size_t i = 0U; i < 2U; ++i) {
+        Worker *worker = prepare(i, APPLICATION_CLIENT_START);
+        (void)snprintf(worker->id, sizeof(worker->id), "%032u", (unsigned)i);
+        worker->input = "a=3"; worker->expected = "3"; worker->revision = 1U; worker->gate = true;
+        launch(worker); TEST_ASSERT_TRUE(await_flag(&worker->ready));
+    }
+    signal_flag(&workers[0].proceed); signal_flag(&workers[1].proceed);
+    join_worker(&workers[0]); join_worker(&workers[1]);
+    TEST_ASSERT_TRUE((workers[0].status == CALCULATOR_OK && workers[1].status == CALCULATOR_SESSION_MEMORY_LIMIT) ||
+        (workers[1].status == CALCULATOR_OK && workers[0].status == CALCULATOR_SESSION_MEMORY_LIMIT));
+    TEST_ASSERT_EQUAL_UINT(bytes, application_client_retained_bytes(&store));
 }
 static void test_queued_readers_share_a_phase_without_bypassing_the_next_writer(void)
 {
@@ -324,6 +352,7 @@ int main(void)
     UNITY_BEGIN();
     RUN_TEST(test_timeouts_and_validation_leave_the_store_and_lease_unchanged);
     RUN_TEST(test_fifo_mutations_preserve_replay_and_read_snapshots);
+    RUN_TEST(test_competing_clients_cannot_overcommit_the_shared_memory_quota);
     RUN_TEST(test_queued_readers_share_a_phase_without_bypassing_the_next_writer);
     RUN_TEST(test_expired_head_is_removed_and_notifications_do_not_extend_its_deadline);
     RUN_TEST(test_release_tombstones_are_rechecked_after_waiting);

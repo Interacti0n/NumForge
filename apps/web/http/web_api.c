@@ -202,6 +202,7 @@ CalculatorStatus numforge_web_evaluate_cached_form(NumForgeWebCache *cache,
     bool owner;
     bool replace = false;
     size_t length;
+    uint64_t previous_revision = cache ? cache->revision : 0U;
 
     if (reused != NULL)
     {
@@ -283,6 +284,12 @@ CalculatorStatus numforge_web_evaluate_cached_form(NumForgeWebCache *cache,
         }
         if (status == CALCULATOR_OK && replace && !value.uses_random)
         {
+            if (!application_retention_resize(&cache->retention, calculator_value_storage_bytes(&value))) {
+                status = CALCULATOR_SESSION_MEMORY_LIMIT;
+                free(*result); *result = NULL;
+                calculator_error_set(error, status, 0U);
+                goto finished;
+            }
             calculator_value_destroy(&cache->value);
             cache->value = value;
             value.number = NULL;
@@ -293,6 +300,8 @@ CalculatorStatus numforge_web_evaluate_cached_form(NumForgeWebCache *cache,
             memcpy(cache->expression, input, length + 1U);
         }
     }
+finished:
+    if (status == CALCULATOR_SESSION_MEMORY_LIMIT) cache->revision = previous_revision;
     calculator_value_destroy(&value);
     if (owner)
     {

@@ -37,7 +37,8 @@ typedef enum CalculatorStatus
     CALCULATOR_UNKNOWN_UNIT,
     CALCULATOR_INCOMPATIBLE_UNITS,
     CALCULATOR_DIMENSION_ERROR,
-    CALCULATOR_SESSION_BUSY
+    CALCULATOR_SESSION_BUSY,
+    CALCULATOR_SESSION_MEMORY_LIMIT
 } CalculatorStatus;
 
 typedef enum CalculatorAngleUnit
@@ -168,6 +169,9 @@ CalculatorStatus calculator_compute_value_with_answer(
     CalculatorError *error
 );
 void calculator_value_destroy(CalculatorValue *value);
+/* Requested retained heap bytes, including reserved capacity; NULL is zero.
+ * No allocations or formatting. Excludes the inline CalculatorValue itself. */
+size_t calculator_value_storage_bytes(const CalculatorValue *value);
 /* Lossless numeric coordinate text; decimal kinds preserve the finite
  * approximation in scientific notation, without units or display rounding. */
 CalculatorStatus calculator_value_snapshot_text(const CalculatorValue *value, char **result);

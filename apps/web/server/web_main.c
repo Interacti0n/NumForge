@@ -285,8 +285,17 @@ int main(
         fputs("NumForge web: failed to initialize listener control\n", stderr);
         numforge_close_socket(listener); numforge_networking_stop(); return 1;
     }
-    NumForgeWebWorkers *workers = numforge_web_workers_start(worker_count, queue_capacity, port, public_origin);
-    if (!workers) {
+    bool benchmark_serial = false;
+#ifdef NUMFORGE_ENABLE_ALLOC_STATS
+    /* Existing per-request phase/live-allocation diagnostics require the same
+     * thread for retained values, expiry and final cleanup. Never enable those
+     * ledgers in the concurrent production path. */
+    const char *trace = getenv("NUMFORGE_BENCH_TRACE");
+    benchmark_serial = trace && strcmp(trace, "1") == 0;
+#endif
+    NumForgeWebWorkers *workers = benchmark_serial ? NULL :
+        numforge_web_workers_start(worker_count, queue_capacity, port, public_origin);
+    if (!benchmark_serial && !workers) {
         fputs("NumForge web: failed to start workers\n", stderr);
         numforge_close_socket(listener); numforge_networking_stop(); return 1;
     }
@@ -297,13 +306,14 @@ int main(
         printf("Trusted public browser origin: %s (requires a reverse proxy or tunnel)\n", public_origin);
     }
     puts("Press Ctrl+C to stop the local server.");
-    printf("Workers: %u; queued connections: %u\n", worker_count, queue_capacity);
+    printf("Workers: %u; queued connections: %u\n", benchmark_serial ? 1U : worker_count, benchmark_serial ? 0U : queue_capacity);
     numforge_open_browser(port, open_browser);
 
     int result = 0;
     while (!numforge_stopping())
     {
         numforge_web_workers_expire(workers, numforge_monotonic_ms());
+        numforge_web_server_expire(numforge_monotonic_ms());
         fd_set ready;
         struct timeval timeout = {0, 100000L};
         FD_ZERO(&ready); FD_SET(listener, &ready);
@@ -330,7 +340,12 @@ int main(
 
         if (numforge_configure_client_socket(client))
         {
-            if (numforge_web_workers_submit(workers, client, numforge_monotonic_ms())) continue;
+            uint64_t accepted = numforge_monotonic_ms();
+            if (benchmark_serial && accepted <= UINT64_MAX - NUMFORGE_WEB_REQUEST_TIMEOUT_MS) {
+                numforge_handle_connection_before(client, port, public_origin, accepted + NUMFORGE_WEB_REQUEST_TIMEOUT_MS);
+                numforge_close_socket(client); continue;
+            }
+            if (numforge_web_workers_submit(workers, client, accepted)) continue;
             numforge_reject_connection(client);
         }
         numforge_close_socket(client);

@@ -108,10 +108,15 @@ processes, as the recorder does, to interpret process peak per scenario.
 
 ## Real HTTP
 
+The benchmark-enabled server's `NUMFORGE_BENCH_TRACE=1` mode runs serially on
+the acceptor thread, including expiry/cleanup, so thread-local allocation ledgers
+remain valid. Its phase/live metrics do not describe concurrent serving; use
+the ordinary Release server and multi-client protocol below for that workload.
+
 The Node driver starts an isolated loopback server for every scenario/sample,
 sends requests with a fresh connection and verifies response values, status,
 cache reuse, fraction hints, mathematical copy text and session state.
-It includes cold/hit, context changes, FIFO eviction after eight clients,
+It includes cold/hit, context changes, FIFO eviction after filling the client pool,
 stale revisions, previews/confirmation/randomness, expired sessions and a
 plain output rejected by the existing output limit.
 

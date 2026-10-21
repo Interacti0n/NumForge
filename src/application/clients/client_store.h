@@ -6,9 +6,11 @@
 /* Private, transport-independent application storage. Zero-initialize and
  * destroy after use; do not copy or move a live store. IDs identify local clients,
  * not authenticated users.
- * Fixed pools preserve the existing limits. Replacement scans from the FIFO
- * cursor, skipping reserved slots. */
-#define NUMFORGE_APPLICATION_CLIENT_CAPACITY 8U
+ * Replacement scans from the FIFO cursor, skipping held/queued slots. */
+#define NUMFORGE_APPLICATION_CLIENT_CAPACITY 64U
+#define NUMFORGE_APPLICATION_CLIENT_IDLE_MS UINT64_C(1800000)
+#define NUMFORGE_APPLICATION_CLIENT_RETAINED_LIMIT (8U * 1024U * 1024U)
+#define NUMFORGE_APPLICATION_STORE_RETAINED_LIMIT (128U * 1024U * 1024U)
 #define NUMFORGE_APPLICATION_CLIENT_ID_BYTES 32U
 #define NUMFORGE_APPLICATION_CLIENT_PENDING_PER_ENTRY 8U
 #define NUMFORGE_APPLICATION_CLIENT_PENDING_LIMIT 32U
@@ -25,10 +27,22 @@ typedef struct ApplicationClientQueue {
 
 typedef struct ApplicationEvaluationCache
 {
+    ApplicationRetention retention;
     CalculatorValue value;
     char expression[CALCULATOR_MAX_INPUT_BYTES + 1U];
     uint64_t revision;
 } ApplicationEvaluationCache;
+
+typedef struct ApplicationClientLimits {
+    size_t client_bytes; /* Combined session and legacy cache for one ID. */
+    size_t total_bytes;  /* Both pools, excluding fixed store/allocator overhead. */
+    uint64_t idle_ms;
+} ApplicationClientLimits;
+typedef struct ApplicationClientMemory {
+    struct ApplicationClientStore *store;
+    const char *id;
+    size_t bytes;
+} ApplicationClientMemory;
 
 typedef struct ApplicationClientStore
 {
@@ -38,17 +52,31 @@ typedef struct ApplicationClientStore
         bool busy;
         size_t readers;
         ApplicationClientQueue queue;
+        ApplicationClientMemory memory;
+        uint64_t last_used;
     } sessions[NUMFORGE_APPLICATION_CLIENT_CAPACITY];
     struct {
         char id[NUMFORGE_APPLICATION_CLIENT_ID_BYTES + 1U];
         ApplicationEvaluationCache cache;
         bool busy;
         ApplicationClientQueue queue;
+        ApplicationClientMemory memory;
+        uint64_t last_used;
     } caches[NUMFORGE_APPLICATION_CLIENT_CAPACITY];
     size_t next_session;
     size_t next_cache;
     size_t pending;
+    size_t retained_bytes;
+    ApplicationClientLimits limits; /* All zero selects the defaults above. */
 } ApplicationClientStore;
+
+/* Only on an empty store before workers start. Positive limits may tighten the
+ * default byte caps; false leaves the store unchanged. */
+bool application_client_store_configure(ApplicationClientStore *store, const ApplicationClientLimits *limits);
+/* Monotonic sweep: held/read/queued entries are pinned. Expired session IDs keep
+ * bounded tombstones; START cannot revive one while its slot remains retained. */
+void application_client_expire(ApplicationClientStore *store, uint64_t now);
+size_t application_client_retained_bytes(ApplicationClientStore *store);
 
 typedef enum ApplicationClientAccess {
     APPLICATION_CLIENT_LIVE,

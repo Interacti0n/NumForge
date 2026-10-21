@@ -77,9 +77,11 @@ metadata, without parser, evaluator-storage, value-internal or formatter headers
 Numeric status conversion is centralized in `src/engine/api/status.h`; it does
 not require evaluator storage or function dispatch declarations. Established
 decimal error policies remain distinct for compatibility.
-Core storage headers stay within the core, apart from the existing decimal
+Core layout headers stay within the core, apart from the existing decimal
 profiler. The exact rational square-root helper has two named consumers: the
 polynomial solver and exact expression evaluator; it exposes no numeric storage.
+Private footprint queries expose only byte counts over opaque values to the
+engine; the application never reads numeric layouts.
 This source check complements compilation and consumer tests; it does not prove
 the absence of every indirect or link-time dependency.
 
@@ -142,7 +144,7 @@ in [Hosting](../guides/HOSTING.md#capacity-and-state).
 
 | State | Current ownership | Rule / remaining work |
 | --- | --- | --- |
-| HTTP client store | One static `ApplicationClientStore`; eight slots per pool, synchronized read/exclusive reservations | Bound session bytes/count/lifetime. |
+| HTTP client store | 64 slots per pool, synchronized leases, idle expiry and client/global retention quotas | Measure the configured workload before deployment. |
 | Session values/revisions/RNG | Shared immutable reads, exclusive mutations/cache access and bounded FIFO conflict queues | Preserve revision/retry semantics when extending handlers. |
 | Random seed fallback | Thread-local sequence in `random.c`, updated when OS entropy fails | Keep each session's mutable generator state under its exclusive reservation; fallback is not cryptographic entropy. |
 | Runtime budgets | Scopes begin/end in the executing worker | Never transfer an active scope between threads. |
@@ -172,6 +174,17 @@ with active owners. These guards do not provide hard real-time deadlines.
 Contention, limits, replay and snapshot behavior are
 covered by `client_scheduling_tests`, with optional live-allocation tracking
 disabled because its thread-local ledgers cannot follow ownership transfers.
+
+Retention guards reserve prospective committed sizes under the metadata lock.
+Numeric owners report object/limb capacity through private opaque queries;
+session/cache adapters include every owned value and display. Rejected writes
+leave confirmed state and retry identifiers unchanged. Clearing/reset/expiry
+releases the same quota across threads. The store detaches guard callbacks before
+destroying a slot under its lock. `client_policy_tests` compares byte counts with
+the optional allocation ledger in isolated single-threaded fixtures; live tracking
+stays disabled in concurrent requests. Fixed storage and transient work are separate.
+The opt-in benchmark trace mode runs entirely on the acceptor thread to preserve
+existing same-thread phase/allocation measurements; it is not a concurrent load profile.
 
 `web_main.c` owns admission and signal flags; `web_workers.c` owns fixed threads,
 socket slots and queue expiry. The acceptor sweeps expired sockets even with all

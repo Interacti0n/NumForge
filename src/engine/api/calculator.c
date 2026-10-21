@@ -70,6 +70,8 @@ const char *calculator_status_to_string(
             return "session expired; reload the page";
         case CALCULATOR_SESSION_BUSY:
             return "session busy; retry later";
+        case CALCULATOR_SESSION_MEMORY_LIMIT:
+            return "session memory limit exceeded";
         default:
             return "unknown status";
     }

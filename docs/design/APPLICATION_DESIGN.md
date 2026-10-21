@@ -24,13 +24,14 @@ shared by CLI and HTTP. UI summaries do not replace full stored values.
 Formatting projects values without overwriting their exact/approximate/Quantity
 representation.
 
-`ApplicationClientStore` owns two independent fixed FIFO pools: eight sessions
-and eight legacy evaluation caches. Read-only lookup never creates a session
+`ApplicationClientStore` owns two fixed pools: 64 sessions and 64 legacy caches,
+with [idle and retention limits](../guides/HOSTING.md#capacity-and-state).
+Read-only lookup never creates a session
 or revives an expired one. Returned pointers are borrowed until eviction or
 destruction. Invalid IDs do not allocate or evict; destruction releases all
 owned values. Stores are independent instances, not mathematical globals.
-The local server owns one instance and accesses it serially; this is not a
-thread-safe public multiuser backend.
+The server owns one instance and uses synchronized request leases. These private
+application contracts do not create a public session ABI or persistent accounts.
 
 ## Presentation and future storage
 

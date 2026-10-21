@@ -5,9 +5,16 @@
 #include <stdio.h>
 #include "src/core/bigdecimal/bigdecimal_internal.h"
 #include "src/core/bigint/bigint_internal.h"
+#include "src/core/storage.h"
 
 
 struct BigComplex { BigDecimal *real, *imaginary; };
+
+size_t bigcomplex_storage_bytes(const BigComplex *value)
+{
+    return value ? numforge_storage_add(sizeof(*value), numforge_storage_add(
+        bigdecimal_storage_bytes(value->real), bigdecimal_storage_bytes(value->imaginary))) : 0U;
+}
 
 static BigComplexStatus mapped(BigDecimalStatus status)
 {

@@ -3,18 +3,17 @@
 
 #include "src/engine/api/calculator_internal.h"
 #include "src/application/conversions/conversion.h"
+#include "src/application/retention.h"
 
 /*
  * Private client state shared by CLI and web. Zero-initialize and destroy at
  * the end of the session. Entries own values; ans borrows the newest entry
  * or owns detached_answer after clearing history. Confirmed conversions own
- * another independent bounded FIFO; its storage is not included below.
- * Each retained coefficient was allocated under the 512 KiB single-allocation
- * bound. Sixteen entries (value, <=64 KiB display, <=4096-byte input) retain
- * less than 64 MiB including four rational-complex coefficients and object
- * overhead. Preview has one separate value.
- * Up to 32 variable snapshots add their separately owned typed values; the
- * history estimate does not include them. The same per-allocation bound applies.
+ * another independent bounded FIFO. An optional retention policy reserves the
+ * complete prospective heap before changing confirmed values or preview state.
+ * Destruction frees values but preserves an attached policy; stores detach it
+ * before reclaiming a slot. Standalone zero-initialized sessions have no attached
+ * retained-memory limit; ordinary per-operation budgets still apply.
  * No persistence or thread safety. Revisions identify requests, not values.
  *
  * Implementation: src/application/sessions/session.c
@@ -32,6 +31,7 @@ typedef struct CalculatorHistoryEntry
 
 typedef struct CalculatorSession
 {
+    ApplicationRetention retention;
     CalculatorValue detached_answer; /* owns ans after clearing history */
     CalculatorHistoryEntry history[CALCULATOR_HISTORY_CAPACITY];
     size_t count;
@@ -70,6 +70,11 @@ CalculatorStatus calculator_session_mutate(CalculatorSession *session,
 
 void calculator_session_destroy(CalculatorSession *session);
 void calculator_session_clear_preview(CalculatorSession *session);
+/* Owned heap only: all values, displays, detached ans and conversion history.
+ * Fixed inline session storage and temporary request work are separate. */
+size_t calculator_session_storage_bytes(const CalculatorSession *session);
+/* Reconcile after an operation that only releases storage; cannot fail. */
+void calculator_session_release_storage(CalculatorSession *session);
 /* Idempotent deletion at one revision; preserves ans, history and RNG. */
 CalculatorStatus calculator_session_delete_variable(CalculatorSession *session,
     uint64_t revision, const char *name, CalculatorError *error);

@@ -112,12 +112,27 @@ Ctrl+C/Ctrl+Break on Windows or SIGINT/SIGTERM on POSIX stops admission, rejects
 queued sockets, joins active requests under their existing limits and then frees
 sessions. Forced process termination bypasses this cleanup.
 
-Eight client sessions and eight legacy cache entries still use FIFO eviction.
-Sessions are memory-only, have no idle TTL and disappear on restart; IDs are not
-authenticated users. Bounded workers alone do not establish capacity for dozens
-of retained sessions or a sustained public workload.
+The store holds 64 sessions and 64 independent legacy cache entries. Idle values
+expire after 30 minutes since the last request releases its reservation. Held
+readers/writers and queued callers pin their state; expiry never interrupts them.
+Empty/expired slots are reused first, then FIFO replacement skips pinned slots.
+If every replacement is pinned, admission returns `session_busy`. Expired/released
+session IDs remain tombstones until replacement; use a fresh ID after losing state.
+
+Retained heap requests are capped at 8 MiB per ID across both pools and 128 MiB
+per store. This includes numeric objects/reserved limb capacity, displays,
+variables, preview, detached ans and both histories. Fixed inline store memory,
+allocator overhead, sockets and temporary computation/serialization are separate;
+the cap is not process RSS. Those temporary operations keep their existing budgets.
+Writes reserve the complete prospective size before changing state. Rejection
+returns HTTP 400, `session_memory_limit`, preserving data, RNG and retry revisions.
+Clear calculator/conversion history, delete variables or reset a session to free
+space; another client's release can also make a retry succeed.
+
+Sessions are memory-only and disappear on restart; IDs are not authenticated
+users. These bounds still require sustained-load validation on the target host.
 
 Before running a busy public service, add ingress rate limits, monitoring and
-resource limits, and finish session capacity/expiry/memory policy and load validation.
+resource limits, and complete load/deployment validation.
 Multiple instances need sticky routing for the existing in-memory sessions.
 HTTPS exposure alone does not make this a scalable multiuser service.

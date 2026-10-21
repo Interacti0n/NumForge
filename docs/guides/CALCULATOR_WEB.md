@@ -75,7 +75,9 @@ there is no disk persistence. Save important results outside the application.
   cancellation is cooperative.
 - Expression/result text is limited to **4096/65536 UTF-8 bytes**.
 - Each session retains **32 variables** and **16 calculator confirmations**.
-- The server retains **8 sessions**, replacing the oldest when full.
+- The server retains **64 sessions**, with idle expiry and
+  [memory limits](HOSTING.md#capacity-and-state). Clear history/variables or start
+  a new session if its retained-memory limit is reached.
 
 Full precision does not remove limits. Expensive calculations may fail even when
 their inputs are valid. For example, the complete decimal output of `100000!`

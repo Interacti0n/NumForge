@@ -90,13 +90,107 @@ static bool valid_client_id(const char *id)
 void application_evaluation_cache_clear(ApplicationEvaluationCache *cache)
 {
     if (cache == NULL) return;
+    ApplicationRetention policy = cache->retention;
     calculator_value_destroy(&cache->value);
+    if (!application_retention_resize(&policy, 0U)) abort();
     memset(cache, 0, sizeof(*cache));
+    cache->retention = policy;
+}
+
+static ApplicationClientLimits client_limits(const ApplicationClientStore *store)
+{
+    return store->limits.client_bytes ? store->limits : (ApplicationClientLimits){
+        NUMFORGE_APPLICATION_CLIENT_RETAINED_LIMIT, NUMFORGE_APPLICATION_STORE_RETAINED_LIMIT,
+        NUMFORGE_APPLICATION_CLIENT_IDLE_MS};
+}
+static bool retain_client(void *owner, size_t bytes)
+{
+    ApplicationClientMemory *memory = owner;
+    ApplicationClientStore *store = memory->store;
+    lock_clients();
+    ApplicationClientLimits limits = client_limits(store);
+    size_t other = 0U;
+    for (size_t i = 0U; i < NUMFORGE_APPLICATION_CLIENT_CAPACITY; ++i) {
+        if (&store->sessions[i].memory != memory && strcmp(store->sessions[i].id, memory->id) == 0)
+            other += store->sessions[i].memory.bytes;
+        if (&store->caches[i].memory != memory && strcmp(store->caches[i].id, memory->id) == 0)
+            other += store->caches[i].memory.bytes;
+    }
+    bool accepted = bytes <= memory->bytes || (other <= limits.client_bytes && bytes <= limits.client_bytes - other &&
+        bytes - memory->bytes <= limits.total_bytes - store->retained_bytes);
+    if (accepted) {
+        store->retained_bytes = store->retained_bytes - memory->bytes + bytes;
+        memory->bytes = bytes;
+    }
+    unlock_clients();
+    return accepted;
+}
+static ApplicationRetention retention_policy(ApplicationClientStore *store, ApplicationClientMemory *memory, const char *id)
+{
+    *memory = (ApplicationClientMemory){.store = store, .id = id};
+    return (ApplicationRetention){.limit = client_limits(store).client_bytes, .owner = memory, .resize = retain_client};
+}
+/* Called under the metadata lock; detach callbacks before destroying values to
+ * avoid recursively locking. Only unpinned slots may enter these helpers. */
+static void clear_session(ApplicationClientStore *store, size_t slot)
+{
+    store->retained_bytes -= store->sessions[slot].memory.bytes;
+    memset(&store->sessions[slot].memory, 0, sizeof(store->sessions[slot].memory));
+    store->sessions[slot].session.retention = (ApplicationRetention){0};
+    calculator_session_destroy(&store->sessions[slot].session);
+}
+static void clear_cache(ApplicationClientStore *store, size_t slot)
+{
+    store->retained_bytes -= store->caches[slot].memory.bytes;
+    memset(&store->caches[slot].memory, 0, sizeof(store->caches[slot].memory));
+    store->caches[slot].cache.retention = (ApplicationRetention){0};
+    application_evaluation_cache_clear(&store->caches[slot].cache);
+}
+static void expire_clients(ApplicationClientStore *store, uint64_t now)
+{
+    if (now == UINT64_MAX) return;
+    uint64_t idle = client_limits(store).idle_ms;
+    for (size_t i = 0U; i < NUMFORGE_APPLICATION_CLIENT_CAPACITY; ++i) {
+        if (store->sessions[i].id[0] && !store->sessions[i].busy && !store->sessions[i].readers &&
+            !store->sessions[i].queue.count && !store->sessions[i].session.released &&
+            now >= store->sessions[i].last_used && now - store->sessions[i].last_used >= idle) {
+            clear_session(store, i);
+            store->sessions[i].session.released = true;
+            store->sessions[i].session.retention = retention_policy(store, &store->sessions[i].memory, store->sessions[i].id);
+        }
+        if (store->caches[i].id[0] && !store->caches[i].busy && !store->caches[i].queue.count &&
+            now >= store->caches[i].last_used && now - store->caches[i].last_used >= idle) {
+            clear_cache(store, i); store->caches[i].id[0] = '\0';
+        }
+    }
+}
+void application_client_expire(ApplicationClientStore *store, uint64_t now)
+{
+    if (!store) return;
+    lock_clients(); expire_clients(store, now); unlock_clients();
+}
+bool application_client_store_configure(ApplicationClientStore *store, const ApplicationClientLimits *limits)
+{
+    if (!store || !limits || !limits->idle_ms || !limits->client_bytes || !limits->total_bytes ||
+        limits->client_bytes > NUMFORGE_APPLICATION_CLIENT_RETAINED_LIMIT ||
+        limits->total_bytes > NUMFORGE_APPLICATION_STORE_RETAINED_LIMIT) return false;
+    lock_clients();
+    bool empty = !store->pending && !store->retained_bytes;
+    for (size_t i = 0U; empty && i < NUMFORGE_APPLICATION_CLIENT_CAPACITY; ++i)
+        empty = !store->sessions[i].id[0] && !store->caches[i].id[0];
+    if (empty) store->limits = *limits;
+    unlock_clients(); return empty;
+}
+size_t application_client_retained_bytes(ApplicationClientStore *store)
+{
+    if (!store) return 0U;
+    lock_clients(); size_t bytes = store->retained_bytes; unlock_clients(); return bytes;
 }
 
 static CalculatorStatus session_slot(ApplicationClientStore *store,
     const char *id, ApplicationClientAccess access, size_t *slot, const ApplicationClientWaiter *waiter)
 {
+    expire_clients(store, numforge_monotonic_ms());
     for (size_t i = 0U; i < NUMFORGE_APPLICATION_CLIENT_CAPACITY; i++)
         if (strcmp(store->sessions[i].id, id) == 0) {
             *slot = i;
@@ -107,11 +201,16 @@ static CalculatorStatus session_slot(ApplicationClientStore *store,
             return CALCULATOR_OK;
         }
     if (access != APPLICATION_CLIENT_START) return CALCULATOR_SESSION_EXPIRED;
-    for (size_t i = 0U; i < NUMFORGE_APPLICATION_CLIENT_CAPACITY; i++) {
+    for (size_t i = 0U; i < 2U * NUMFORGE_APPLICATION_CLIENT_CAPACITY; i++) {
         size_t candidate = (store->next_session + i) % NUMFORGE_APPLICATION_CLIENT_CAPACITY;
         if (store->sessions[candidate].busy || store->sessions[candidate].readers || store->sessions[candidate].queue.count) continue;
-        calculator_session_destroy(&store->sessions[candidate].session);
+        if (i < NUMFORGE_APPLICATION_CLIENT_CAPACITY && store->sessions[candidate].id[0] &&
+            !store->sessions[candidate].session.released) continue;
+        clear_session(store, candidate);
         memcpy(store->sessions[candidate].id, id, NUMFORGE_APPLICATION_CLIENT_ID_BYTES + 1U);
+        store->sessions[candidate].session.retention = retention_policy(store,
+            &store->sessions[candidate].memory, store->sessions[candidate].id);
+        store->sessions[candidate].last_used = numforge_monotonic_ms();
         store->next_session = (candidate + 1U) % NUMFORGE_APPLICATION_CLIENT_CAPACITY;
         *slot = candidate; return CALCULATOR_OK;
     }
@@ -119,17 +218,22 @@ static CalculatorStatus session_slot(ApplicationClientStore *store,
 }
 static CalculatorStatus cache_slot(ApplicationClientStore *store, const char *id, size_t *slot, const ApplicationClientWaiter *waiter)
 {
+    expire_clients(store, numforge_monotonic_ms());
     for (size_t i = 0U; i < NUMFORGE_APPLICATION_CLIENT_CAPACITY; i++)
         if (strcmp(store->caches[i].id, id) == 0) {
             *slot = i;
             if (store->caches[i].busy || !queue_ready(&store->caches[i].queue, waiter, false)) return CALCULATOR_SESSION_BUSY;
             return CALCULATOR_OK;
         }
-    for (size_t i = 0U; i < NUMFORGE_APPLICATION_CLIENT_CAPACITY; i++) {
+    for (size_t i = 0U; i < 2U * NUMFORGE_APPLICATION_CLIENT_CAPACITY; i++) {
         size_t candidate = (store->next_cache + i) % NUMFORGE_APPLICATION_CLIENT_CAPACITY;
         if (store->caches[candidate].busy || store->caches[candidate].queue.count) continue;
-        application_evaluation_cache_clear(&store->caches[candidate].cache);
+        if (i < NUMFORGE_APPLICATION_CLIENT_CAPACITY && store->caches[candidate].id[0]) continue;
+        clear_cache(store, candidate);
         memcpy(store->caches[candidate].id, id, NUMFORGE_APPLICATION_CLIENT_ID_BYTES + 1U);
+        store->caches[candidate].cache.retention = retention_policy(store,
+            &store->caches[candidate].memory, store->caches[candidate].id);
+        store->caches[candidate].last_used = numforge_monotonic_ms();
         store->next_cache = (candidate + 1U) % NUMFORGE_APPLICATION_CLIENT_CAPACITY;
         *slot = candidate; return CALCULATOR_OK;
     }
@@ -231,6 +335,11 @@ void application_client_release(ApplicationClientLease *lease)
     if (lease->cache) lease->store->caches[lease->slot].busy = false;
     else if (lease->read_session) --lease->store->sessions[lease->slot].readers;
     else lease->store->sessions[lease->slot].busy = false;
+    uint64_t now = numforge_monotonic_ms();
+    if (now != UINT64_MAX) {
+        if (lease->cache) lease->store->caches[lease->slot].last_used = now;
+        else lease->store->sessions[lease->slot].last_used = now;
+    }
     memset(lease, 0, sizeof(*lease));
     notify_clients();
     unlock_clients();
@@ -270,8 +379,8 @@ bool application_client_store_destroy(ApplicationClientStore *store)
     for (size_t i = 0U; i < NUMFORGE_APPLICATION_CLIENT_CAPACITY; i++)
         if (store->sessions[i].busy || store->sessions[i].readers || store->caches[i].busy) { unlock_clients(); return false; }
     for (size_t i = 0U; i < NUMFORGE_APPLICATION_CLIENT_CAPACITY; i++) {
-        calculator_session_destroy(&store->sessions[i].session);
-        application_evaluation_cache_clear(&store->caches[i].cache);
+        clear_session(store, i);
+        clear_cache(store, i);
     }
     memset(store, 0, sizeof(*store));
     unlock_clients();

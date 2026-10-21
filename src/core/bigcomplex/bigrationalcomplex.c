@@ -3,7 +3,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include "src/core/storage.h"
 struct BigRationalComplex { BigRational *real, *imaginary; };
+size_t bigrationalcomplex_storage_bytes(const BigRationalComplex *value)
+{
+    return value ? numforge_storage_add(sizeof(*value), numforge_storage_add(
+        bigrational_storage_bytes(value->real), bigrational_storage_bytes(value->imaginary))) : 0U;
+}
 static BigComplexStatus mapped(BigRationalStatus s) {
     switch(s) {
     case BIGRATIONAL_OK:return BIGCOMPLEX_OK;

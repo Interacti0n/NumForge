@@ -109,7 +109,7 @@ async function sample(name, memory) {
             query.revision = '2'; input = '7';
         }
         if (name === 'eviction' || name === 'session_expiration') {
-            for (let i = 1; i <= 8; i++) {
+            for (let i = 1; i <= 64; i++) {
                 const other = { ...query, client: i.toString(16).padStart(32, '0'), revision: '1' };
                 if (session) other.action = 'start';
                 assert((await send(other, session ? '' : '42')).data.ok);

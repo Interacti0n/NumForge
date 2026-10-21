@@ -2,6 +2,7 @@
 
 #include "src/core/bigdecimal/bigdecimal_internal.h"
 #include "src/runtime/numforge_alloc.h"
+#include "src/core/storage.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -15,6 +16,12 @@ struct BigRational
     BigInt *numerator;
     BigInt *denominator;
 };
+
+size_t bigrational_storage_bytes(const BigRational *value)
+{
+    return value ? numforge_storage_add(sizeof(*value), numforge_storage_add(
+        bigint_storage_bytes(value->numerator), bigint_storage_bytes(value->denominator))) : 0U;
+}
 
 static BigRationalStatus rational_from_integer_status(BigIntStatus status)
 {

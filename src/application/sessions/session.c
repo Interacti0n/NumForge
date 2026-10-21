@@ -2,6 +2,7 @@
 #include "src/engine/evaluator/random.h"
 #include "src/engine/evaluator/constants.h"
 #include "src/engine/evaluator/functions.h"
+#include "src/runtime/storage.h"
 
 #include <numforge/runtime.h>
 #include <stdlib.h>
@@ -13,13 +14,41 @@
  * and history together. Clearing the preview never changes confirmed values.
  */
 
-void calculator_session_clear_preview(CalculatorSession *session)
+size_t calculator_session_storage_bytes(const CalculatorSession *session)
+{
+    if (!session) return 0U;
+    size_t bytes = numforge_storage_add(calculator_value_storage_bytes(&session->preview),
+        calculator_value_storage_bytes(&session->detached_answer));
+    for (size_t i = 0U; i < session->count; ++i) {
+        bytes = numforge_storage_add(bytes, calculator_value_storage_bytes(&session->history[i].value));
+        if (session->history[i].display) bytes = numforge_storage_add(bytes, strlen(session->history[i].display) + 1U);
+    }
+    for (size_t i = 0U; i < session->variable_count; ++i)
+        bytes = numforge_storage_add(bytes, calculator_value_storage_bytes(&session->variables[i].value));
+    for (size_t i = 0U; i < session->conversion_count; ++i) {
+        bytes = numforge_storage_add(bytes, calculator_value_storage_bytes(&session->conversions[i].value));
+        if (session->conversions[i].display) bytes = numforge_storage_add(bytes, strlen(session->conversions[i].display) + 1U);
+    }
+    return bytes;
+}
+void calculator_session_release_storage(CalculatorSession *session)
+{
+    if (!application_retention_resize(&session->retention, calculator_session_storage_bytes(session))) abort();
+}
+static void drop_preview(CalculatorSession *session)
 {
     if (session != NULL)
     {
         calculator_value_destroy(&session->preview);
         session->preview_expression[0] = '\0';
     }
+}
+
+void calculator_session_clear_preview(CalculatorSession *session)
+{
+    if (!session) return;
+    drop_preview(session);
+    calculator_session_release_storage(session);
 }
 
 void calculator_session_destroy(CalculatorSession *session)
@@ -29,7 +58,8 @@ void calculator_session_destroy(CalculatorSession *session)
         return;
     }
 
-    calculator_session_clear_preview(session);
+    ApplicationRetention policy = session->retention;
+    drop_preview(session);
     calculator_value_destroy(&session->detached_answer);
     for (size_t i = 0; i < session->conversion_count; i++)
         application_conversion_destroy(&session->conversions[i]);
@@ -40,7 +70,9 @@ void calculator_session_destroy(CalculatorSession *session)
     }
     for(size_t i=0;i<session->variable_count;i++)
         calculator_value_destroy(&session->variables[i].value);
+    if (!application_retention_resize(&policy, 0U)) abort();
     memset(session, 0, sizeof(*session));
+    session->retention = policy;
 }
 
 const CalculatorValue *calculator_session_answer(const CalculatorSession *session)
@@ -233,6 +265,8 @@ CalculatorStatus calculator_session_compute(
         return CALCULATOR_VALUE_TOO_LARGE;
     }
 
+    uint64_t previous_revision = session->revision, previous_random = session->random_state;
+    bool previous_initialized = session->random_initialized;
     owner = numforge_budget_begin((uint64_t)context->time_limit_ms,
         CALCULATOR_ALLOCATION_BUDGET, CALCULATOR_SINGLE_ALLOCATION);
     last = session->count == 0U ? NULL : &session->history[session->count - 1U];
@@ -343,9 +377,23 @@ CalculatorStatus calculator_session_compute(
         if (status == CALCULATOR_OK && commit && assignment[0] != '\0')
             status = calculator_value_copy(&assigned, &value);
         status = calculator_budget_status(status);
+        if (status == CALCULATOR_OK) {
+            size_t bytes = calculator_session_storage_bytes(session) - calculator_value_storage_bytes(&session->preview);
+            if (commit) {
+                bytes -= calculator_value_storage_bytes(&session->detached_answer);
+                if (session->count == CALCULATOR_HISTORY_CAPACITY)
+                    bytes -= calculator_value_storage_bytes(&session->history[0].value) + strlen(session->history[0].display) + 1U;
+                if (assignment[0] && variable_slot < session->variable_count)
+                    bytes -= calculator_value_storage_bytes(&session->variables[variable_slot].value);
+                bytes = numforge_storage_add(bytes, strlen(display) + 1U);
+                bytes = numforge_storage_add(bytes, calculator_value_storage_bytes(&assigned));
+            }
+            bytes = numforge_storage_add(bytes, calculator_value_storage_bytes(&value));
+            if (!application_retention_resize(&session->retention, bytes)) status = CALCULATOR_SESSION_MEMORY_LIMIT;
+        }
         if (status == CALCULATOR_OK)
         {
-            calculator_session_clear_preview(session);
+            drop_preview(session);
             if (commit)
             {
                 calculator_value_destroy(&session->detached_answer);
@@ -394,6 +442,11 @@ CalculatorStatus calculator_session_compute(
     }
 
 cleanup:
+    if (status == CALCULATOR_SESSION_MEMORY_LIMIT) {
+        session->revision = previous_revision;
+        session->random_state = previous_random;
+        session->random_initialized = previous_initialized;
+    }
     calculator_value_destroy(&value);
     calculator_value_destroy(&assigned);
     free(display);

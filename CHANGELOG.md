@@ -7,7 +7,8 @@ Earlier detailed development notes remain in Git history.
 ## Unreleased
 
 - Bounded HTTP workers and connection queue with overload replies, queue expiry
-  and cooperative shutdown; session capacity remains eight.
+  and cooperative shutdown. Client storage supports 64 sessions, idle expiry and
+  client/global retention quotas; rejected writes preserve state and retry IDs.
 
 - Refined purple web UI with readable short-window results, nearby mobile settings,
   compact function categories, result confirmation/provenance labels and clickable examples.

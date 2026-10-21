@@ -1,6 +1,7 @@
 #include "src/application/conversions/conversion.h"
 #include "src/application/sessions/session.h"
 #include "src/engine/parser/tokenizer.h"
+#include "src/runtime/storage.h"
 #include <numforge/units.h>
 #include <numforge/runtime.h>
 #include <stdlib.h>
@@ -106,7 +107,22 @@ CalculatorStatus application_conversion_confirm(CalculatorSession *session,
     if (status == CALCULATOR_OK && strlen(text) + strlen(prepared.display) +
         6U * strlen(input) + 2048U >= 128U * 1024U) status = CALCULATOR_VALUE_TOO_LARGE;
     free(text);
+    /* Formatters may return spare string capacity. Compact only confirmed
+     * displays so strlen + 1 is the actual retained allocation request. */
+    if (status == CALCULATOR_OK) {
+        char *compact = numforge_realloc(prepared.display, strlen(prepared.display) + 1U);
+        if (!compact) status = CALCULATOR_OUT_OF_MEMORY;
+        else prepared.display = compact;
+    }
     status = calculator_budget_status(status);
+    if (status == CALCULATOR_OK) {
+        size_t bytes = calculator_session_storage_bytes(session);
+        if (session->conversion_count == APPLICATION_CONVERSION_CAPACITY)
+            bytes -= calculator_value_storage_bytes(&session->conversions[0].value) + strlen(session->conversions[0].display) + 1U;
+        bytes = numforge_storage_add(bytes, calculator_value_storage_bytes(&prepared.value));
+        bytes = numforge_storage_add(bytes, strlen(prepared.display) + 1U);
+        if (!application_retention_resize(&session->retention, bytes)) status = CALCULATOR_SESSION_MEMORY_LIMIT;
+    }
     if (status != CALCULATOR_OK) {
         application_conversion_destroy(&prepared);
         if (owner) numforge_budget_end();
@@ -114,6 +130,7 @@ CalculatorStatus application_conversion_confirm(CalculatorSession *session,
         if (status == CALCULATOR_VALUE_TOO_LARGE) *code = "value_too_large";
         else if (status == CALCULATOR_OUT_OF_MEMORY) *code = "out_of_memory";
         else if (status == CALCULATOR_TIME_LIMIT) *code = "time_limit";
+        else if (status == CALCULATOR_SESSION_MEMORY_LIMIT) *code = "session_memory_limit";
         return status;
     }
     if (session->conversion_count == APPLICATION_CONVERSION_CAPACITY) {
@@ -144,6 +161,7 @@ CalculatorStatus application_conversion_clear(CalculatorSession *session, uint64
     session->conversion_sequence = 0U;
     session->conversion_revision = revision;
     session->conversion_clear_revision = revision;
+    calculator_session_release_storage(session);
     return CALCULATOR_OK;
 }
 

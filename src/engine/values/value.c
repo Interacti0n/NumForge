@@ -3,6 +3,7 @@
 #include "src/engine/formatting/formatter.h"
 #include "src/engine/values/quantity.h"
 #include "src/engine/evaluator/exact_functions.h"
+#include "src/core/storage.h"
 
 #include <numforge/runtime.h>
 
@@ -12,6 +13,14 @@
 #include <stdio.h>
 
 /* Typed value ownership, exact projection, and output selection. */
+size_t calculator_value_storage_bytes(const CalculatorValue *value)
+{
+    if (!value) return 0U;
+    size_t bytes = numforge_storage_add(bigdecimal_storage_bytes(value->number), bigint_storage_bytes(value->integer));
+    bytes = numforge_storage_add(bytes, bigrational_storage_bytes(value->rational));
+    bytes = numforge_storage_add(bytes, bigcomplex_storage_bytes(value->complex_decimal));
+    return numforge_storage_add(bytes, bigrationalcomplex_storage_bytes(value->complex_rational));
+}
 bool calculator_value_is_complex(const CalculatorValue *value)
 {
     return value != NULL && (value->kind == CALCULATOR_VALUE_COMPLEX_DECIMAL ||

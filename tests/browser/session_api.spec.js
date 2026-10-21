@@ -64,7 +64,7 @@ test('reset/release are ordered, retryable and cannot revive released clients',a
     expect((await read(request,'/api/session',client)).data.ok).toBe(false);
     const revive=await request.post(`/api/evaluate?precision=10&angle=rad&client=${client}&revision=4&action=start`,{data:''});
     expect(revive.ok()).toBe(false);
-    for(let i=0;i<8;i++)await start(request);
+    for(let i=0;i<64;i++)await start(request);
     expect((await mutate(request,client,3,'release')).data.ok).toBe(false); // bounded tombstone expired
 });
 

@@ -131,11 +131,13 @@ holds the last 16 confirmations and clearing it preserves calculator state.
 Reset advances the conversion high-water mark so pre-reset confirmations cannot
 be replayed; refresh metadata before the next converter mutation.
 
-Eight FIFO sessions remain memory-only. Reload/navigation retains the tab's ID
-and fetches fresh server lists; reset, release, server restart and FIFO eviction
-can discard state. A release tombstone is lost when its FIFO slot is evicted.
+The 64 sessions remain memory-only. Reload/navigation retains the tab's ID
+and fetches fresh server lists; idle expiry, reset, release, restart and FIFO
+replacement can discard state. Held/queued state is pinned; see
+[retention limits](../guides/HOSTING.md#capacity-and-state).
+A release/expiry tombstone is lost when its slot is replaced.
 Do not blindly restart an expired ID: use a fresh client and show the loss to
-the user. There is no disk persistence or automatic TTL.
+the user. There is no disk persistence.
 
 Malformed, unknown or duplicate query fields return 400. Missing sessions return
 400 with `session expired; reload the page`; stale revisions return 409.
@@ -147,8 +149,9 @@ queue, timeout or pool with every replacement entry held/queued returns 503 with
 `session busy; retry later`; session/graph routes also provide `code:session_busy`.
 This failure leaves data and revisions unchanged; retry the original request.
 Waiting is separate from the calculation budget and from the connection queue,
-whose overload uses `code:server_busy`. Session capacity and FIFO eviction limits
-are unchanged.
+whose overload uses `code:server_busy`. Retained-memory rejection returns 400 with
+`session_memory_limit`; no value, history, RNG or retry revision changes. Clear
+stored state or retry after space becomes available.
 Errors include `ok:false`, `schema_version:1`, `status`, `error`, `code` and
 one-based Unicode `column`. Conversion expression errors preserve their original
 positions. Transport limits still use 403/408/411/413 as described in the HTTP guide.

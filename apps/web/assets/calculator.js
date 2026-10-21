@@ -168,6 +168,7 @@ const slovakStatus = {
     'ans is undefined' : 'ans ešte nemá potvrdenú hodnotu',
     'stale session request' : 'zastaraná požiadavka sedenia',
     'session expired; reload the page' : 'sedenie skončilo; obnov stránku',
+    'session memory limit exceeded' : 'pamäťový limit sedenia; vymaž históriu alebo začni nové sedenie',
     'null argument' : 'chýbajúci argument',
     'out of memory' : 'nedostatok pamäte',
     'invalid argument' : 'neplatný argument',

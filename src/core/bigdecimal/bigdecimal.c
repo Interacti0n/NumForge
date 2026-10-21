@@ -1,6 +1,7 @@
 #include "src/core/bigdecimal/bigdecimal_internal.h"
 #include "src/core/bigint/bigint_internal.h"
 #include "src/runtime/numforge_alloc.h"
+#include "src/core/storage.h"
 
 #include <numforge/bigdecimal.h>
 
@@ -8,6 +9,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+
+size_t bigdecimal_storage_bytes(const BigDecimal *value)
+{
+    return value ? numforge_storage_add(sizeof(*value), bigint_storage_bytes(value->coefficient)) : 0U;
+}
 
 /*
 Storage note: BigDecimal stores value = coefficient * 10^(-scale).

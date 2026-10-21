@@ -1,5 +1,6 @@
 #include "src/core/bigint/bigint_internal.h"
 #include "src/runtime/numforge_alloc.h"
+#include "src/core/storage.h"
 #include <numforge/bigint.h>
 
 #include <assert.h>
@@ -15,6 +16,13 @@
 
 #define BIGINT_LIMB_BITS 64U
 #define BIGINT_MAX_LIMBS (SIZE_MAX / BIGINT_LIMB_BITS)
+
+size_t bigint_storage_bytes(const BigInt *value)
+{
+    if (!value) return 0U;
+    if (value->capacity > (SIZE_MAX - sizeof(*value)) / sizeof(*value->limbs)) return SIZE_MAX;
+    return sizeof(*value) + value->capacity * sizeof(*value->limbs);
+}
 
 /*
  * Storage note: limbs are base-2^64, little-endian (limbs[0] is the least

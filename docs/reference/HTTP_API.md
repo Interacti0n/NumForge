@@ -81,7 +81,7 @@ calculation provenance, not display rounding or an error bound; it is omitted
 when the route has no retained typed value.
 Without them, the endpoint remains stateless and its response shape is unchanged.
 The browser generates a fresh random client ID for each page load, not a cookie
-or shared local-storage identity. The server holds at most eight clients with
+or shared local-storage identity. The legacy cache holds at most 64 clients with
 one successful numeric value each; FIFO eviction frees the old value. Older or
 duplicate revisions may compute a response but cannot replace the stored value.
 Errors preserve the last successful value. This is not authentication or a
@@ -121,9 +121,9 @@ successful commit do not advance it. Each session has its own generator state;
 resetting starts a new sequence; reloading retains the session. One-shot and legacy HTTP requests
 draw afresh and do not cache random expressions.
 
-The session pool is separate from the legacy cache: eight sessions, FIFO
-eviction, 16 confirmed entries each and less than 64 MiB retained calculator
-history per session (excluding variables, conversion history and previews).
+The session pool is separate from the legacy cache: 64 sessions with 16 confirmed
+entries each. [Retention policy](../guides/HOSTING.md#capacity-and-state) bounds
+idle lifetime and the combined storage of values, variables, previews and histories.
 Each entry stores input, internal value, context and display. Evaluation
 of an unknown/evicted session returns `session expired; reload the page` and
 never starts another session implicitly. Reload, language and guide navigation
@@ -152,6 +152,8 @@ JSON HTTP 408. The receive deadline starts at acceptance, includes queue time
 and is not restarted by each byte. Responses also have a bounded send deadline.
 Connection overload uses best-effort HTTP 503 with `code:server_busy`, then closes;
 see [worker/queue limits](../guides/HOSTING.md#capacity-and-state).
+Retained-memory rejection returns HTTP 400 with `code:session_memory_limit` and
+`status:session memory limit exceeded`; it preserves stored state and revisions.
 Unknown routes return plain-text HTTP 404; the UI tolerates non-JSON/network
 failures and ignores responses superseded by a new calculation or input edit.
 The UI distinguishes connection failures from unexpected server responses and
