@@ -19,87 +19,91 @@ not_in_nav: |
   /apps/**
   /bindings/**
 nav:
-  - Overview: README.md
   - Start here: docs/README.md
-  - Guides:
-      - Calculator: docs/guides/CALCULATOR_WEB.md
-      - Variables: docs/guides/VARIABLES.md
-      - Units: docs/guides/UNIT_CONVERTER.md
+  - Use the calculator:
+      - First calculation: docs/guides/CALCULATOR_WEB.md
+      - Variables and history: docs/guides/VARIABLES.md
+      - Units and conversions: docs/guides/UNIT_CONVERTER.md
       - Graphs: docs/guides/GRAPHS.md
       - Equations: docs/guides/EQUATIONS.md
-      - C library: docs/guides/LIBRARY_GUIDE.md
-      - Prebuilt SDK: docs/guides/SDK.md
+      - Expression reference: docs/reference/CALCULATOR_EXPRESSIONS.md
+  - Integrate NumForge:
+      - C and C++ from source: docs/guides/LIBRARY_GUIDE.md
+      - Prebuilt C and C++ SDK: docs/guides/SDK.md
       - Python: docs/guides/PYTHON.md
+      - Supported APIs: docs/API.md
       - Hosting: docs/guides/HOSTING.md
-  - API:
-      - Interface index: docs/API.md
-      - C declarations: c-api/files.html
-      - Numeric core: docs/reference/C_API.md
-      - Complex: docs/reference/BIGCOMPLEX.md
-      - Engine: docs/reference/ENGINE_API.md
-      - Modules:
+      - C API reference:
+          - Generated declarations: c-api/files.html
+          - Numeric core: docs/reference/C_API.md
+          - Complex numbers: docs/reference/BIGCOMPLEX.md
+          - Expression engine: docs/reference/ENGINE_API.md
           - Polynomials: docs/reference/POLYNOMIAL_API.md
           - Matrices: docs/reference/MATRIX_API.md
           - Linear systems: docs/reference/LINEAR_SYSTEM_API.md
           - Statistics: docs/reference/STATISTICS_API.md
-          - Numerical overview: docs/reference/NUMERICAL_API.md
-          - Grids and sampling: docs/reference/SAMPLING_API.md
-          - Root search: docs/reference/ROOT_API.md
-          - Units: docs/reference/UNITS.md
-          - Unit catalogue: docs/reference/UNIT_CATALOG.md
-          - Quantities: docs/reference/QUANTITIES.md
-      - Applications and HTTP:
-          - Expressions: docs/reference/CALCULATOR_EXPRESSIONS.md
+          - Numerical methods:
+              - Overview and integration: docs/reference/NUMERICAL_API.md
+              - Grids and sampling: docs/reference/SAMPLING_API.md
+              - Root search: docs/reference/ROOT_API.md
+          - Units:
+              - API: docs/reference/UNITS.md
+              - Catalogue: docs/reference/UNIT_CATALOG.md
+              - Quantities: docs/reference/QUANTITIES.md
+      - HTTP reference:
           - Evaluation: docs/reference/HTTP_API.md
-          - Sessions: docs/reference/SESSION_HTTP_API.md
+          - Sessions and history: docs/reference/SESSION_HTTP_API.md
           - Unit conversion: docs/reference/UNIT_HTTP_API.md
           - Equations: docs/reference/EQUATION_HTTP_API.md
           - Numerical roots: docs/reference/NUMERIC_ROOT_HTTP_API.md
-          - Uniform graphs: docs/reference/GRAPH_HTTP_API.md
-          - Adaptive graphs: docs/reference/ADAPTIVE_GRAPH_HTTP_API.md
-          - Screen graphs: docs/reference/SCREEN_GRAPH_HTTP_API.md
-          - Graph verification: docs/reference/GRAPH_ANALYSIS_HTTP_API.md
+          - Graphs:
+              - Uniform sampling: docs/reference/GRAPH_HTTP_API.md
+              - Adaptive sampling: docs/reference/ADAPTIVE_GRAPH_HTTP_API.md
+              - Screen sampling: docs/reference/SCREEN_GRAPH_HTTP_API.md
+              - Verification: docs/reference/GRAPH_ANALYSIS_HTTP_API.md
           - Interface coverage: docs/reference/WEB_API_PARITY.md
-  - Implementation:
-      - Architecture: docs/design/ARCHITECTURE.md
-      - Integer representation: docs/design/BIGINT_DESIGN.md
-      - Decimal representation: docs/design/BIGDECIMAL_DESIGN.md
-      - Parser: docs/design/EXPRESSION_PARSER.md
-      - Calculator pipeline: docs/design/CALCULATOR_DESIGN.md
-      - Application ownership: docs/design/APPLICATION_DESIGN.md
-      - Prepared application expressions: docs/design/PARAMETRIC_EXPRESSIONS.md
-      - Equation adapters: docs/design/POLYNOMIAL_EQUATIONS.md
-      - Browser and results: docs/design/WEB_DESIGN.md
-  - Development:
+  - Develop NumForge:
       - Contributing: CONTRIBUTING.md
-      - Test source map: tests/README.md
+      - Architecture: docs/design/ARCHITECTURE.md
       - Feature checklist: docs/project/FEATURE_CHECKLIST.md
-      - Testing index: docs/TESTING.md
-      - Numerical testing: docs/testing/NUMERIC_TESTING.md
-      - Browser and CI: docs/testing/WEB_AND_CI.md
-      - Performance method: docs/testing/PERFORMANCE.md
-      - Benchmark tools: benchmarks/README.md
+      - Testing:
+          - Start here: docs/TESTING.md
+          - Test source map: tests/README.md
+          - Numerical methods: docs/testing/NUMERIC_TESTING.md
+          - Browser and CI: docs/testing/WEB_AND_CI.md
+      - Internals:
+          - Integer representation: docs/design/BIGINT_DESIGN.md
+          - Decimal representation: docs/design/BIGDECIMAL_DESIGN.md
+          - Parser: docs/design/EXPRESSION_PARSER.md
+          - Calculator pipeline: docs/design/CALCULATOR_DESIGN.md
+          - Application ownership: docs/design/APPLICATION_DESIGN.md
+          - Prepared expressions: docs/design/PARAMETRIC_EXPRESSIONS.md
+          - Equation adapters: docs/design/POLYNOMIAL_EQUATIONS.md
+          - Browser and results: docs/design/WEB_DESIGN.md
+      - Performance:
+          - Benchmark tools: benchmarks/README.md
+          - Measurement method: docs/testing/PERFORMANCE.md
+          - Evidence and retention: docs/performance/README.md
+          - Protocols:
+              - Application and formatting: docs/performance/protocols/APPLICATION.md
+              - BigInt: docs/performance/protocols/BIGINT.md
+              - Decimal: docs/performance/protocols/DECIMAL.md
+              - Complex: docs/performance/protocols/COMPLEX.md
+          - Recorded baselines:
+              - Serial server: docs/performance/baselines/SERVER.md
+              - Arithmetic: docs/performance/baselines/ARITHMETIC.md
+              - Factorial: docs/performance/baselines/FACTORIAL.md
+              - Logarithm: docs/performance/baselines/LOGARITHM.md
+              - Exact modules: docs/performance/baselines/MODULES.md
+              - Sampling: docs/performance/baselines/SAMPLING.md
+              - Public roots: docs/performance/baselines/ROOTS.md
+              - Equation experiments: docs/performance/baselines/ROOT_EXPERIMENTS.md
+              - Graph corpus: docs/performance/baselines/GRAPHS.md
+              - Graph refinement: docs/performance/baselines/GRAPH_REFINEMENT.md
       - Documentation workflow: docs/project/DOCUMENTATION.md
       - Release packaging: docs/project/RELEASE_PACKAGING.md
-  - Performance:
-      - Evidence and retention: docs/performance/README.md
-      - Protocols:
-          - Application and formatting: docs/performance/protocols/APPLICATION.md
-          - BigInt: docs/performance/protocols/BIGINT.md
-          - Decimal: docs/performance/protocols/DECIMAL.md
-          - Complex: docs/performance/protocols/COMPLEX.md
-      - Recorded baselines:
-          - Serial server: docs/performance/baselines/SERVER.md
-          - Arithmetic: docs/performance/baselines/ARITHMETIC.md
-          - Factorial: docs/performance/baselines/FACTORIAL.md
-          - Logarithm: docs/performance/baselines/LOGARITHM.md
-          - Exact modules: docs/performance/baselines/MODULES.md
-          - Sampling: docs/performance/baselines/SAMPLING.md
-          - Public roots: docs/performance/baselines/ROOTS.md
-          - Equation experiments: docs/performance/baselines/ROOT_EXPERIMENTS.md
-          - Graph corpus: docs/performance/baselines/GRAPHS.md
-          - Graph refinement: docs/performance/baselines/GRAPH_REFINEMENT.md
   - Project:
+      - Overview and downloads: README.md
       - Roadmap: docs/project/ROADMAP.md
       - Changelog: CHANGELOG.md
       - Release verification: docs/project/RELEASES.md

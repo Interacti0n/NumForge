@@ -1,46 +1,33 @@
-# Documentation guide
+# Start here
 
-Choose an entry point; detailed contracts and procedures live in their own guide.
+Choose what you want to do. You do not need to read the whole documentation.
 
-| Task | Start here |
-| --- | --- |
-| Use the browser calculator | [Calculator](guides/CALCULATOR_WEB.md), [variables](guides/VARIABLES.md), [graphs](guides/GRAPHS.md), [equations](guides/EQUATIONS.md), [units](guides/UNIT_CONVERTER.md) |
-| Use the library | [C/C++ library guide](guides/LIBRARY_GUIDE.md), [SDK](guides/SDK.md), [Python](guides/PYTHON.md) |
-| Look up supported operations | [API index](API.md), then the linked `reference/` contracts |
-| Extend the platform | [Architecture](design/ARCHITECTURE.md), [contributing](../CONTRIBUTING.md), [feature checklist](project/FEATURE_CHECKLIST.md) |
-| Validate a change | [Testing](TESTING.md), [numerical methodology](testing/NUMERIC_TESTING.md) |
-| Measure performance | [Benchmark tools](../benchmarks/README.md), [measurement methodology](testing/PERFORMANCE.md) |
-| Plan or publish a release | [Roadmap](project/ROADMAP.md), [release packaging](project/RELEASE_PACKAGING.md), [changelog](../CHANGELOG.md) |
-| Deploy remotely | [Hosting](guides/HOSTING.md) |
-| Build or maintain documentation | [Documentation workflow](project/DOCUMENTATION.md) |
-| Inspect measured results | [Performance evidence](performance/README.md) |
-| Check published release verification | [Release history](project/RELEASES.md) |
+## Use the calculator
 
-Public C headers own parameters, ownership and error contracts. Guides explain
-workflows; references explain operation meaning; design pages explain decisions.
-Keep one owner and link from elsewhere. Selected measurements describe their
-recorded revision, while superseded diaries remain in Git history. New pages
-follow the [documentation workflow](project/DOCUMENTATION.md).
+[Download or build NumForge](../README.md#get-started), launch `numforge_web`,
+then follow [your first calculation](guides/CALCULATOR_WEB.md).
 
-## File tree
+- [Variables and history](guides/VARIABLES.md): reuse results and save variables.
+- [Unit converter](guides/UNIT_CONVERTER.md): convert between units.
+- [Graphs](guides/GRAPHS.md): plot a function.
+- [Equations](guides/EQUATIONS.md): solve an equation.
+- [Expression reference](reference/CALCULATOR_EXPRESSIONS.md): look up operators and functions.
 
-```text
-docs/
-  README.md, API.md, TESTING.md   entry points
-  guides/                       user and integration workflows
-  reference/                    mathematical and interface contracts
-  design/                       implementation decisions and proposals
-  testing/                      verification procedures
-  performance/
-    README.md                   evidence index and retention rules
-    protocols/                  how each benchmark measures work
-    baselines/                  selected results, decisions and limits
-    data/                       CSV evidence used by those baselines
-  project/                      roadmap, contribution/release/docs rules,
-                                structural audit and release verification
-  images/                       real product screenshots
-```
+## Use NumForge in my own project
 
-Executable benchmark tools and reusable input/reference fixtures live in the
-repository's `benchmarks/`; routine output, generated documentation and local
-reports go under ignored `build/`.
+Start with [C/C++ from source](guides/LIBRARY_GUIDE.md), the
+[prebuilt SDK](guides/SDK.md), or [Python](guides/PYTHON.md).
+The [API index](API.md) lists available operations and HTTP interfaces.
+For remote access, read [Hosting](guides/HOSTING.md).
+
+Current source and published downloads can offer different features; follow the
+matching guide for your version. Python is experimental and source-built.
+
+## Contribute to NumForge
+
+Read [Contributing](../CONTRIBUTING.md), then [Architecture](design/ARCHITECTURE.md)
+and [Testing](TESTING.md). Implementation details, benchmark evidence and release
+procedures are grouped under **Develop NumForge** in the generated documentation.
+See the [roadmap](project/ROADMAP.md) for current priorities.
+
+Maintaining these pages? Use the [documentation workflow](project/DOCUMENTATION.md).

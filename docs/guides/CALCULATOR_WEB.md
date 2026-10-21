@@ -1,177 +1,99 @@
 # Browser calculator guide
 
+## First calculation
+
+1. [Download or build NumForge](../../README.md#get-started) and launch `numforge_web`.
+2. Open the local address printed by the application, normally `http://127.0.0.1:8765`.
+3. Enter `2+2` and press **Enter** or **Calculate**. The result is `4`.
+
+For an exact fraction, choose **Full** precision and **Fraction** notation, then
+try `1/3+1/6`: the result is `1/2`.
+
 ## Controls and behavior
 
-The shared header links the calculator, unit converter, function graphs and guide.
-The [equation area](EQUATIONS.md) provides exact linear/quadratic roots and bounded
-real numerical discovery. Sign-in and registration
-currently show informational pages; there is no authentication or payment API.
+Type expressions directly or use the function library. Function buttons insert
+parentheses and place the cursor inside. Search accepts English and Slovak terms;
+selecting a result inserts the supported function name. A decimal point or comma
+is accepted; separate function arguments with `;`.
 
-The local browser page has active keypad buttons for this grammar, including
-power, square, cube, factorial and an argument separator. Named functions are
-organized in six categories with one active panel: Basic, Statistics,
-Integers, Powers & logs, Trigonometry, and Hyperbolic. Function buttons insert
-both parentheses and place the caret inside; Enter calculates and moves the
-caret to the end of the expression. Root, logarithmic and exponential
-and trigonometric controls are active. A RAD/DEG selector on the right beside precision settings
-applies to the complete expression and is remembered by
-the browser. There is no separate angle indicator beside the expression.
-The active mode is highlighted in the shared purple palette; the inactive mode is dark.
-Switching language or visiting the guide and returning in the same tab keeps
-the server session, confirmed `ans`, history, expression, output settings and
-recent tools through session storage when available. Reload retains an existing session; New
-session explicitly resets it. Server restart or eviction still loses the in-memory value.
-Web history numbers successful confirmations in order, retains the last 16
-entries, and keeps the sequence when navigating within the same tab.
-Function buttons show mathematical labels where useful and expose signatures
-and domain hints on hover, keyboard focus and activation (including touch).
-The keypad inserts `.`, while directly typed `,` is accepted as the
-same decimal separator. The page is available in Slovak and English and
-provides a one-click control to copy the displayed result.
-The result panel is five lines high by default. Longer output shows a
-`Show all`/`Zobraziť všetko` control; clicking it or the result expands the
-panel, and the same control collapses it again.
+The calculator previews after two seconds without edits. **Enter** or **Calculate**
+confirms immediately; only confirmations update history and `ans`. Editing again
+discards an outdated preview. On phones, confirmation also dismisses the keyboard.
 
-Results default to 10 decimal places, rounded half-even.
-Calculator and unit-converter previews run after two seconds without changes
-to the input or calculation settings. Further edits restart the wait and discard
-stale results. Enter or Calculate/Convert runs immediately and cancels the pending
-preview; only confirmation updates the respective history. Evaluation errors also
-appear after this pause or on confirmation. Direct API calls have no such delay.
-The browser offers Auto (10 places), Full, and Custom; only Custom shows a
-numeric field. Full skips final output rounding, not working-precision limits.
-On phones, the expression fills the row; Calculate, Clear and the library
-shortcut share one row below it. Input requests a text virtual keyboard so
-variables and separators such as semicolons remain available. Automatic
-capitalization and correction are disabled for expressions;
-the operating system and browser determine its layout and whether autofocus opens it.
-On phones, Calculate or Enter dismisses the input keyboard and reveals the result;
-live previews do not move the page.
-The on-screen keypad is hidden. The library includes a
-searchable Constants category with pi, Euler's number and the golden ratio.
-Function search also accepts common English and Slovak names and abbreviations
-(for example avg/average/priemer, NSD/GCD, tg/tangent and deg2rad).
-These are library search terms: clicking a result inserts the supported function name.
-In landscape on phones, Session and Settings share two equal-width columns,
-with Session on the left and Settings always expanded on the right.
-In portrait, Settings sit below history and variables. Precision, notation and
-angle controls are always visible in every layout; the panel cannot be collapsed.
-Separately, the notation selector offers Auto, plain, scientific,
-mathematical and fraction output. Auto first chooses a short exact fraction
-under the rule above; otherwise it selects scientific when the rounded exponent
-is outside -9..9 or plain output would exceed 80 characters. Scientific uses
-`1.23E+45`; mathematical uses `1.23 × 10^45`. The copy button converts
-mathematical notation to parser-compatible `E` form when possible. A plain
-result over the 65536-byte application output limit returns an error. Language
-switching preserves both selectors and the custom precision value.
-When the primary result is a fraction, a smaller `≈` line shows a decimal
-hint at up to 10 places, independently of the selected output precision.
+Use **RAD/DEG** before trigonometric calculations. The setting applies to the
+whole expression. **Copy** copies the result; **Show all / Zobraziť všetko** expands
+long output. Language, precision and notation settings survive navigation in the
+same browser tab.
 
-A caller can request a
-non-negative output scale from 0 through 10000,
-or `full` to skip the final output rounding. For a numeric scale `N`, non-terminating division
-uses `max(34, N + 4)` significant digits. With `full`, division uses its
-34-significant-digit half-even policy; `full` cannot make a recurring decimal
-exact or recover previously rounded digits. In Auto mode, very large or small
-non-zero output uses scientific notation at an absolute exponent of 10 or greater;
-its mantissa is rounded to at most the selected number of
-decimal places, for example `1.2345678901E-12`.
+The header also opens [units](UNIT_CONVERTER.md), [graphs](GRAPHS.md) and
+[equations](EQUATIONS.md). Sign-in and registration are informational pages;
+accounts are not implemented.
 
-At extreme internal scales, a formatted exponent can exceed the input parser's
-signed 64-bit range. Output is a display representation, not a guaranteed
-round-trip serialization format; copying it back may return a range error.
+## Precision and result format
 
-Exact divisions retain a reduced rational intermediate, including recurring
-quotients. `(1/3)*3-1` therefore evaluates to exactly `0`. The decimal display
-of `1E-40 / 3` is rounded to the current working precision and shows
-`3.3333333333E-41` by default. Raising precision can reformat the stored
-rational without losing its numerator and denominator. Exceeding resource
-limits returns an error rather than a rounded replacement.
+- **Auto precision:** display up to 10 decimal places, rounded half-even.
+- **Custom precision:** choose 0–10000 output decimal places.
+- **Full precision:** skip final display rounding; working precision and resource limits still apply.
+- **Fraction notation:** show a reduced exact fraction when possible.
+- **Plain / Scientific / Mathematical:** choose decimal text, `1.23E+45`, or `1.23 × 10^45`.
+- **Auto notation:** prefer a short exact fraction, otherwise plain or scientific output.
 
-Output places are not a guarantee of whole-expression accuracy. Expressions
-using irrational roots, constants or other approximate functions keep their
-rounded BigDecimal result. `full` uses 34 working digits where approximation is
-needed, not unlimited accuracy. There are currently no `inexact` or `rounded`
-flags. See the evaluation policy in [CALCULATOR_DESIGN.md](../design/CALCULATOR_DESIGN.md).
-No rigorous whole-expression error bound is claimed.
-Constants are prepared at max(34, N+4) significant working digits for an N-place
-output request. Stored 500-place values cover ordinary requests; larger requests
-calculate additional digits dynamically. A forward trigonometric call may
-temporarily reevaluate its argument and constants with additional guard digits
-based on the argument magnitude, so symbolic π multiples survive angle
-reduction. Public `bigdecimal_div` retains
-its original explicit decimal-scale policy, independent of this calculator mode.
+For example, select **Custom: 40** and **Plain**, then calculate `sqrt(2)` for
+40 output places. More output places do not guarantee that every digit of a
+composed approximate expression is accurate.
+
+Exact arithmetic retains rational values: `(1/3)*3-1` is exactly `0`.
+Changing precision can reformat a retained rational value. An approximate result
+cannot recover digits already lost to rounding. **Full** uses 34 working digits
+where approximation is needed; it does not mean unlimited accuracy.
+
+Auto notation switches to scientific if the rounded exponent is outside -9..9
+or plain output would exceed 80 characters. A fraction may have a separate
+`≈` hint at up to 10 places. Copy converts mathematical notation to parser-compatible
+`E` form when possible. Display text is not a lossless serialization format at
+extreme scales. See the [expression reference](../reference/CALCULATOR_EXPRESSIONS.md)
+for domains and precision rules.
+
+## Variables and history
+
+The last confirmed result is available as `ans`. Assign a variable with `x=5`,
+then use `x` in another expression. See [Variables](VARIABLES.md) for editing,
+deletion and typed values.
+
+The session retains the last 16 calculator confirmations. Reload, language
+changes and navigation in the same tab retain an existing session.
+**New session** resets it. Server restart or FIFO eviction can discard its values;
+there is no disk persistence. Save important results outside the application.
 
 ## Application limits
 
-| Resource | Limit |
-| --- | --- |
-| Factorial input | Non-negative integer up to UINT64_MAX; time and memory budgets apply |
-| Root degree | Integer 1–10000 |
-| Output decimal places | 0–10000; default 10 |
-| Calculation time | 5 s, including parsing and output |
-| Allocation budget | 64 MiB cumulative requests; 512 KiB per allocation |
-| Expression / output | 4096 / 65536 UTF-8 bytes |
-| Parser depth / arguments per call | 256 / 256 |
-| Variables | 32 per session; names up to 31 ASCII letters |
-| Calculator / conversion history | 16 / 16 confirmed entries per session |
-| Server sessions | 8, with FIFO eviction; restart clears them |
-| HTTP request / receive time | 8192 bytes total / 2 s |
-| Session API response / page | 128 KiB JSON; 1–32 entries, default 8 |
+- Calculations have a **5-second** budget, including parsing and output;
+  cancellation is cooperative.
+- Expression/result text is limited to **4096/65536 UTF-8 bytes**.
+- Each session retains **32 variables** and **16 calculator confirmations**.
+- The server retains **8 sessions**, replacing the oldest when full.
 
-Time cancellation is cooperative. Freed allocations still count toward the
-64-MiB cumulative allocation budget; this is not process RSS. Allowed inputs
-are not a completion guarantee: `100000!` has 456574 digits, exceeds the full
-plain output bound and may exceed the five-second calculation budget even
-with scientific notation. Full precision does not disable resource limits.
-
-These are application limits, not implicit budgets of the public numeric C API.
-Factorial no longer has a practical 100000-input cap. Its uint64 counter range
-is a representation bound, not a promise that every accepted argument completes.
-Cancellation is cooperative and can return slightly after the nominal deadline.
-See [expression rules](../reference/CALCULATOR_EXPRESSIONS.md),
-[HTTP transport](../reference/HTTP_API.md) and
-[session API](../reference/SESSION_HTTP_API.md) for domains, errors and pagination.
-
-High-precision logarithms can increase working precision internally to resolve
-rounding. This shares the same resource budgets; selecting more output places
-does not guarantee completion. Algorithm selection is automatic in the C API
-used by both CLI and web, without another calculator setting.
+Full precision does not remove limits. Expensive calculations may fail even when
+their inputs are valid. For example, the complete decimal output of `100000!`
+exceeds the result-text limit; use finite precision and scientific notation.
+The [expression reference](../reference/CALCULATOR_EXPRESSIONS.md) defines
+calculation memory, nesting and argument limits; the [HTTP reference](../reference/HTTP_API.md)
+and [session reference](../reference/SESSION_HTTP_API.md) cover transport and paging.
+These application limits do not impose implicit budgets on public numeric C calls.
 
 ## Automatic complex results
 
-`sum`, `product` and `mean` also work with complex arguments. For example,
-`mean(1/3;i;2/3)` retains exact rational components: `1/3 + (1/3)*i`.
-Approximate inputs make the result approximate; other statistics remain
-real-only. These functions use the shared C evaluator through the same API.
-
-Dimensionless inputs no longer require +0i to extend supported real domains.
-Negative logarithms, asin/acos outside [-1,1], acosh below 1, atanh outside
-[-1,1], negative even roots and fractional powers of negative bases select
-principal complex results. Valid real results remain real; real odd roots
-remain real. Complex outputs use radians even in DEG. Poles and integer-only
-or ordering/statistical constraints remain errors. See
-[domain and branch rules](../reference/CALCULATOR_EXPRESSIONS.md#automatic-complex-domains).
+Supported expressions such as `sqrt(-1)` and negative logarithms select principal
+complex results automatically. Real odd roots remain real. Complex angles use
+radians even in DEG mode. `sum`, `product` and `mean` accept complex arguments;
+other statistics are real-only. Poles and integer-only constraints remain errors.
+See [complex domains](../reference/CALCULATOR_EXPRESSIONS.md#automatic-complex-domains).
 
 ## Guide and API parts
 
-The shared **Guide / API** page stays under `/api`. It now separates five parts:
-Calculator, Units, Graphs, Equations and API. Desktop uses part links; mobile uses a compact
-part selector. Each part has its own section menu and scroll position indicator.
-Calculator is the default; Units, Graphs and Equations link directly to their own guides.
-
-Use `/api?section=calculator&lang=en`, `section=units`, `section=graphs`, `section=equations` or
-`section=api`. The fields may appear in either order. Unsupported/duplicate
-fields and values are rejected. English and Slovak contain matching sections.
-The page loads all parts together; switching parts does not fetch HTML or reload.
-Only the selected part appears in navigation and the accessibility tree.
-Without JavaScript the complete reference remains readable.
-
-Existing anchors remain supported: `/api?lang=en#variables` opens Calculator,
-`#units` opens Units, and `#http`, `#limits` or `#library` open API. Anchor targets
-take precedence over the part field so older links continue to work. Language
-switching preserves the part and explicit anchor; Back/Forward restores parts.
-
-User guides explain controls, results and relevant limits. HTTP endpoints,
-protocol/session details, resource tables and C library documentation belong to
-the API part. Detailed mathematical examples remain expandable in Calculator.
+The in-app **Guide / API** page has Calculator, Units, Graphs, Equations and API
+parts. Choose a part and then a section; phones use a compact part selector.
+For example, `/api?section=calculator&lang=en` opens the English calculator guide.
+Older links such as `/api?lang=en#variables` still open their matching section.
+The API part contains developer details; everyday controls and examples are in
+the other four parts.

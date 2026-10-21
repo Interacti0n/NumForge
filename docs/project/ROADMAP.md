@@ -34,7 +34,7 @@ and verifies installed C/Python examples. Local staging/navigation tests and
 desktop/mobile rendering/search checks and the
 [unified remote CI](https://github.com/Interacti0n/NumForge/actions/runs/39463681313) passed.
 Superseded reports/CSVs have been removed;
-the [documentation tree](../README.md#file-tree) separates protocols, baselines
+the [performance index](../performance/README.md) separates protocols, baselines
 and their data. Stage 3 is complete in the current source: exact C/Python
 [linear regression](../reference/STATISTICS_API.md#exact-simple-linear-regression) and
 [bounded finite-interval integration](../reference/NUMERICAL_API.md#finite-interval-integration)

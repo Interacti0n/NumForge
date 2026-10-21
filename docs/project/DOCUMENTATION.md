@@ -47,8 +47,11 @@ their relative paths. It replaces only its dedicated `build/docs/content`, `c`
 and `site` outputs. Do not store hand-written material in those generated folders.
 
 MkDocs navigation is maintained in the root `mkdocs.yml`; every maintained page
-has one canonical entry. Performance protocols, selected baselines and release
-verification have separate menu groups.
+has one canonical entry. Start with user tasks: calculator, integration and
+development. Nest API contracts under integration and implementation/testing/
+performance details under development. The start page offers the shortest path
+to a first result; it is not a file inventory. Extend an existing topic before
+adding a page or another top-level menu group.
 Doxygen reads installed headers only, never private implementation sources.
 `EXTRACT_ALL` includes older declarations whose prose predates Doxygen tags;
 their source views retain those comments. Successful generation does not certify
