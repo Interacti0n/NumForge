@@ -4,11 +4,24 @@
 #include "src/application/sessions/session.h"
 
 /* Private, transport-independent application storage. Zero-initialize and
- * destroy after use. IDs identify local clients, not authenticated users.
+ * destroy after use; do not copy or move a live store. IDs identify local clients,
+ * not authenticated users.
  * Fixed pools preserve the existing limits. Replacement scans from the FIFO
  * cursor, skipping reserved slots. */
 #define NUMFORGE_APPLICATION_CLIENT_CAPACITY 8U
 #define NUMFORGE_APPLICATION_CLIENT_ID_BYTES 32U
+#define NUMFORGE_APPLICATION_CLIENT_PENDING_PER_ENTRY 8U
+#define NUMFORGE_APPLICATION_CLIENT_PENDING_LIMIT 32U
+#define NUMFORGE_APPLICATION_CLIENT_WAIT_MS 250U
+#define NUMFORGE_APPLICATION_CLIENT_MAX_WAIT_MS 5000U
+
+/* Nodes live on waiting callers' stacks and are accessed only under the lock. */
+struct ApplicationClientWaiter;
+typedef struct ApplicationClientQueue {
+    struct ApplicationClientWaiter *head;
+    struct ApplicationClientWaiter *tail;
+    size_t count;
+} ApplicationClientQueue;
 
 typedef struct ApplicationEvaluationCache
 {
@@ -24,14 +37,17 @@ typedef struct ApplicationClientStore
         CalculatorSession session;
         bool busy;
         size_t readers;
+        ApplicationClientQueue queue;
     } sessions[NUMFORGE_APPLICATION_CLIENT_CAPACITY];
     struct {
         char id[NUMFORGE_APPLICATION_CLIENT_ID_BYTES + 1U];
         ApplicationEvaluationCache cache;
         bool busy;
+        ApplicationClientQueue queue;
     } caches[NUMFORGE_APPLICATION_CLIENT_CAPACITY];
     size_t next_session;
     size_t next_cache;
+    size_t pending;
 } ApplicationClientStore;
 
 typedef enum ApplicationClientAccess {
@@ -45,8 +61,10 @@ typedef enum ApplicationClientAccess {
 /* Request-scoped reservation. READ shares a live, immutable session with other
  * readers; all other modes are exclusive. Zero-initialize, do not copy, and release
  * exactly once after the last use of session/cache (release of an empty lease is
- * safe). A held slot cannot be evicted or destroyed; an incompatible acquisition
- * of the same entry returns SESSION_BUSY. If every replacement slot is held, creation
+ * safe). A held slot cannot be evicted or destroyed; nonblocking acquisition
+ * returns SESSION_BUSY on conflict. Pending requests also
+ * pin entries and prevent newer immediate acquisitions from bypassing them.
+ * If every replacement slot is held or queued, creation
  * returns SESSION_BUSY without modifying the store or lease.
  *
  * Acquire/release/destroy synchronize metadata internally. A lease and its
@@ -64,7 +82,20 @@ typedef struct ApplicationClientLease {
 } ApplicationClientLease;
 CalculatorStatus application_client_acquire(ApplicationClientStore *store,
     const char *id, ApplicationClientAccess access, ApplicationClientLease *lease);
+/* Wait at most wait_ms (0 is nonblocking; values above MAX_WAIT_MS are invalid).
+ * Only conflicts on existing entries queue; a full replacement pool fails at once.
+ * FIFO writers cannot be bypassed; consecutive queued READs may share a lease
+ * phase. Per-entry/store limits and the original monotonic deadline apply even
+ * after spurious wakeups. Timeout/full queues return SESSION_BUSY with an empty
+ * lease and unchanged payload/revisions. Queued RELEASE tombstones are rechecked.
+ * OS scheduling/metadata-lock delays are not a hard real-time guarantee.
+ * Workers use cooperative shutdown; never forcibly terminate a lease owner.
+ */
+CalculatorStatus application_client_acquire_wait(ApplicationClientStore *store,
+    const char *id, ApplicationClientAccess access, unsigned int wait_ms, ApplicationClientLease *lease);
 void application_client_release(ApplicationClientLease *lease);
+/* Diagnostic snapshot of queued calls, not active leases or an admission promise. */
+size_t application_client_pending(ApplicationClientStore *store);
 
 /* Serial setup helpers: exclude all concurrent store access while using these
  * functions or their borrowed pointers. Request handlers must use leases instead.
@@ -77,8 +108,8 @@ CalculatorSession *application_client_retained_session(ApplicationClientStore *s
 ApplicationEvaluationCache *application_client_cache(ApplicationClientStore *store,
     const char *id);
 void application_evaluation_cache_clear(ApplicationEvaluationCache *cache);
-/* Refuse destruction while any lease is held; false leaves the entire store
- * unchanged. Otherwise clear all values and reset; NULL is accepted as success.
+/* Refuse destruction while any lease is held or a caller is queued; false leaves
+ * the entire store unchanged. Otherwise clear/reset; NULL is accepted as success.
  * The caller must stop/join future workers before destroying their store. */
 bool application_client_store_destroy(ApplicationClientStore *store);
 

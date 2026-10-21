@@ -626,8 +626,8 @@ static void numforge_handle_evaluation_impl(
 
     if (action != NULL)
     {
-        status = application_client_acquire(&numforge_application_clients, client,
-            strcmp(action, "start") == 0 ? APPLICATION_CLIENT_START : APPLICATION_CLIENT_LIVE, lease);
+        status = application_client_acquire_wait(&numforge_application_clients, client,
+            strcmp(action, "start") == 0 ? APPLICATION_CLIENT_START : APPLICATION_CLIENT_LIVE, NUMFORGE_APPLICATION_CLIENT_WAIT_MS, lease);
         CalculatorSession *session = lease->session;
 
         if (status == CALCULATOR_SESSION_BUSY) {
@@ -671,7 +671,7 @@ static void numforge_handle_evaluation_impl(
     }
     else
     {
-        status = *client ? application_client_acquire(&numforge_application_clients, client, APPLICATION_CLIENT_CACHE, lease) : CALCULATOR_OK;
+        status = *client ? application_client_acquire_wait(&numforge_application_clients, client, APPLICATION_CLIENT_CACHE, NUMFORGE_APPLICATION_CLIENT_WAIT_MS, lease) : CALCULATOR_OK;
         ApplicationEvaluationCache *cache = lease->cache;
         if (status == CALCULATOR_OK) status = numforge_web_evaluate_cached_form(
             cache, revision, body, output_scale, angle_unit, notation, form, &result, &error, &reused);
@@ -864,7 +864,7 @@ static void numforge_handle_conversion(NumForgeSocket socket, const char *target
     if (memchr(body, '\0', body_length) != NULL) code = "invalid_body";
     else if (numforge_web_parse_conversion_options(target, &options))
     {
-        status = options.client[0] ? application_client_acquire(&numforge_application_clients, options.client, APPLICATION_CLIENT_LIVE, &lease) : CALCULATOR_OK;
+        status = options.client[0] ? application_client_acquire_wait(&numforge_application_clients, options.client, APPLICATION_CLIENT_LIVE, NUMFORGE_APPLICATION_CLIENT_WAIT_MS, &lease) : CALCULATOR_OK;
         if (status != CALCULATOR_OK) code = status == CALCULATOR_SESSION_BUSY ? "session_busy" : "session_expired";
         else status = numforge_web_convert(lease.session, body, &options, &response, &error, &code);
     }

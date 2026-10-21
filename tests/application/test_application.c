@@ -187,6 +187,10 @@ static void test_all_held_pools_refuse_replacement_without_mutation(void)
     ApplicationClientLease blocked = {0};
     TEST_ASSERT_EQUAL(CALCULATOR_SESSION_BUSY, application_client_acquire(&store, client, APPLICATION_CLIENT_START, &blocked));
     TEST_ASSERT_EQUAL(CALCULATOR_SESSION_BUSY, application_client_acquire(&store, client, APPLICATION_CLIENT_CACHE, &blocked));
+    TEST_ASSERT_EQUAL(CALCULATOR_SESSION_BUSY, application_client_acquire_wait(&store, client,
+        APPLICATION_CLIENT_START, NUMFORGE_APPLICATION_CLIENT_MAX_WAIT_MS, &blocked));
+    TEST_ASSERT_EQUAL(CALCULATOR_SESSION_BUSY, application_client_acquire_wait(&store, client,
+        APPLICATION_CLIENT_CACHE, NUMFORGE_APPLICATION_CLIENT_MAX_WAIT_MS, &blocked));
     TEST_ASSERT_FALSE(application_client_store_destroy(&store));
     TEST_ASSERT_EQUAL_MEMORY(before, &store, sizeof(store)); free(before);
     TEST_ASSERT_NULL(blocked.store); TEST_ASSERT_NULL(blocked.session); TEST_ASSERT_NULL(blocked.cache); TEST_ASSERT_NULL(blocked.read_session);

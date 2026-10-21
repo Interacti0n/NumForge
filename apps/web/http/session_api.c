@@ -265,7 +265,7 @@ static CalculatorStatus graph_request(ApplicationClientStore *store, const char 
     {
         if (strlen(query->values[CLIENT]) != 32U || strspn(query->values[CLIENT], "0123456789abcdef") != 32U)
             return CALCULATOR_INVALID_ARGUMENT;
-        CalculatorStatus acquired = application_client_acquire(store, query->values[CLIENT], APPLICATION_CLIENT_READ, lease);
+        CalculatorStatus acquired = application_client_acquire_wait(store, query->values[CLIENT], APPLICATION_CLIENT_READ, NUMFORGE_APPLICATION_CLIENT_WAIT_MS, lease);
         if (acquired != CALCULATOR_OK) { if (acquired == CALCULATOR_SESSION_BUSY) *code = "session_busy"; return acquired; }
         session = lease->read_session;
         if ((query->seen & BIT(AT)) && at != session->revision) return CALCULATOR_STALE_REQUEST;
@@ -662,8 +662,8 @@ static CalculatorStatus session_request(ApplicationClientStore *store,
     if (!registry && !(query.seen & BIT(CLIENT))) return CALCULATOR_INVALID_ARGUMENT;
     if (!registry && (strlen(query.values[CLIENT]) != 32U || strspn(query.values[CLIENT], "0123456789abcdef") != 32U)) return CALCULATOR_INVALID_ARGUMENT;
     if (!registry) {
-        CalculatorStatus acquired = application_client_acquire(store, query.values[CLIENT],
-            get ? APPLICATION_CLIENT_READ : APPLICATION_CLIENT_RETAINED, lease);
+        CalculatorStatus acquired = application_client_acquire_wait(store, query.values[CLIENT],
+            get ? APPLICATION_CLIENT_READ : APPLICATION_CLIENT_RETAINED, NUMFORGE_APPLICATION_CLIENT_WAIT_MS, lease);
         if (acquired != CALCULATOR_OK) { if (acquired == CALCULATOR_SESSION_BUSY) *code = "session_busy"; return acquired; }
         session = get ? lease->read_session : lease->session;
     }

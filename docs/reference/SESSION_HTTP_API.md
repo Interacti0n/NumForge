@@ -139,11 +139,15 @@ the user. There is no disk persistence or automatic TTL.
 Malformed, unknown or duplicate query fields return 400. Missing sessions return
 400 with `session expired; reload the page`; stale revisions return 409.
 Graphs and session GETs may share immutable read reservations. Mutations and
-cache access are exclusive. An incompatible reservation, or a pool with every replacement entry held,
-returns 503 with `session busy; retry later`; session/graph routes also provide
-`code:session_busy`. This reservation failure leaves data and revisions unchanged.
-The server remains serial; this is a lifetime prerequisite for future workers,
-not a claim of concurrent serving. Capacity and FIFO eviction limits are unchanged.
+cache access are exclusive. Conflicts on an existing entry wait up to 250 ms in
+FIFO order; consecutive readers may share access, but cannot bypass a queued
+writer. The queues hold at most eight waiters per entry and 32 per store. A full
+queue, timeout or pool with every replacement entry held/queued returns 503 with
+`session busy; retry later`; session/graph routes also provide `code:session_busy`.
+This failure leaves data and revisions unchanged; retry the original request.
+Waiting is separate from the calculation budget. The server remains serial;
+these reservations prepare for future workers. Session capacity and FIFO eviction
+limits are unchanged.
 Errors include `ok:false`, `schema_version:1`, `status`, `error`, `code` and
 one-based Unicode `column`. Conversion expression errors preserve their original
 positions. Transport limits still use 403/408/411/413 as described in the HTTP guide.

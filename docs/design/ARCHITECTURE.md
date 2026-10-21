@@ -142,15 +142,15 @@ workers; it is not a thread-safety proof or a measured concurrency guarantee.
 | State | Current ownership | Required before workers |
 | --- | --- | --- |
 | HTTP client store | One static `ApplicationClientStore`; eight slots per pool, synchronized read/exclusive reservations | Bound session bytes/count/lifetime. |
-| Session values/revisions/RNG | Graphs and GET session routes share immutable reads; mutations reserve exclusively through calculation/serialization | Schedule conflicting same-client requests fairly; preserve revision/retry semantics. |
+| Session values/revisions/RNG | Shared immutable reads, exclusive mutations/cache access and bounded FIFO conflict queues | Preserve revision/retry semantics when introducing workers. |
 | Random seed fallback | Thread-local sequence in `random.c`, updated when OS entropy fails | Keep each session's mutable generator state under its exclusive reservation; fallback is not cryptographic entropy. |
 | Runtime budgets | Thread-local, owner begins/ends on the same thread | Open computation scopes in the executing worker; do not transfer an active scope between threads. |
 | Instrumentation | Thread-local ledgers/profilers; allocation-failure injection is test-only global state | Preserve same-thread accounting or redesign diagnostics before measuring cross-worker frees; isolate failure injection in concurrent tests. |
 
 `ApplicationClientLease` is a private, zero-initialized, non-copyable reservation.
-Acquisition rejects an incompatible reservation with SESSION_BUSY; creation skips held
-slots and fails unchanged if no replacement is available. Release clears the
-reservation; store destruction refuses outstanding leases. Serial setup helpers
+Nonblocking acquisition returns SESSION_BUSY on conflict; HTTP adapters use the
+bounded waiting variant. Creation skips held/queued slots and fails unchanged if
+no replacement is available. Store destruction refuses leases and waiters. Serial setup helpers
 remain for internal fixtures and require excluding concurrent access, but HTTP
 paths use leases. One process-wide OS mutex (Windows SRW lock/POSIX mutex)
 protects acquisition, release and destruction across zero-initialized stores.
@@ -158,8 +158,19 @@ Calculation and serialization run outside that lock. READ leases expose only a
 const session, permit concurrent readers and block mutation/eviction/destruction
 until the last reader releases. Each lease belongs to one thread; cache access
 remains exclusive. Replacement/destruction cleanup still runs under the metadata
-lock. Conflicts return busy immediately; bounded scheduling and writer fairness
-must precede workers. These guards do not make HTTP serving parallel.
+lock.
+
+Existing-entry conflicts queue in FIFO order, with consecutive READs allowed to
+share a phase; later readers cannot bypass a waiting writer. Limits are eight
+waiters per entry and 32 per store across both pools. HTTP waits up to 250 ms,
+separately from the calculation budget; full queues/timeouts return SESSION_BUSY
+without changing data or revisions. An original monotonic deadline survives
+unrelated notifications. Waiting nodes use caller stacks, pin their entries and
+are removed on timeout or deferred POSIX cancellation. Shutdown must cooperate
+with active owners. These guards do not make HTTP serving parallel or provide
+hard real-time deadlines. Contention, limits, replay and snapshot behavior are
+covered by `client_scheduling_tests`, with optional live-allocation tracking
+disabled because its thread-local ledgers cannot follow ownership transfers.
 
 `web_main.c` currently accepts and handles one entire connection before the next,
 with listen backlog 8. A bounded worker/queue design must also bound socket wait,
