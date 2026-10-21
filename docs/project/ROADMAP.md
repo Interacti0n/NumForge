@@ -41,7 +41,7 @@ and their data. Stage 3 is complete in the current source: exact C/Python
 have local correctness/failure, installed-consumer and validated benchmark checks.
 Integration additionally passed all 77 native and 78 Python tests, MSVC x64/x86,
 instrumented GCC, static analysis and executable documentation checks. Its error
-estimate remains heuristic. These source changes have not been pushed or published.
+estimate remains heuristic. Published archives still retain their versioned scope.
 Stage 4 is in progress: the selected application workflow is equation input,
 exact roots/approximate previews and graph handoff, in both browser languages.
 Development Windows archives from `1529844` passed CLI/HTTP checks, 39 browser

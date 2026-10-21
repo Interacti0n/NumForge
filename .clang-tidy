@@ -7,4 +7,7 @@ Checks: >
   bugprone-misplaced-widening-cast,
   clang-analyzer-core.DivideZero
 WarningsAsErrors: '*'
+# Pointer tables intentionally allocate pointer-sized elements (LLVM 18 flags these).
+CheckOptions:
+  bugprone-sizeof-expression.WarnOnSizeOfPointerToAggregate: false
 HeaderFilterRegex: '(^|[/\\])(src|include|apps)[/\\]'
