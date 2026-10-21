@@ -18,6 +18,7 @@ promise for the current checkout, another machine or concurrent server users.
 
 | Record | Recorded dates | Purpose |
 | --- | --- | --- |
+| [Serial server](baselines/SERVER.md) | 21 October 2026 | Validated 10/30/60-client bursts, session retention and queue blocking before workers |
 | [Arithmetic](baselines/ARITHMETIC.md) | October 2026 | Selected division, multiplication, reuse, complex composition and formatting comparisons |
 | [Factorial](baselines/FACTORIAL.md) | 12 October 2026 | Final split workspace, admission boundaries and complete checked outputs |
 | [Logarithm](baselines/LOGARITHM.md) | 11 October 2026 | Production interval algorithm, enclosure rationale and paired timings |

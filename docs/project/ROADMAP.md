@@ -52,6 +52,8 @@ workflow against the extracted Linux application. The full remote
 passed, including archive and C/Python matrices. Stage 5 has started with a
 [shared-state audit](../design/ARCHITECTURE.md#concurrent-server-prerequisites) and
 [bounded load diagnostic](../performance/protocols/APPLICATION.md#multi-client-load).
+The [initial Windows baseline](../performance/baselines/SERVER.md) records connection
+refusals and eight-session retention at 10/30/60 clients, with recovery checks.
 Workers and revised session lifetime/capacity remain unimplemented; stage 6 is planned.
 Finish each bounded stage before opening the next; a defect in a completed stage can interrupt
 the sequence. Dates are not promised: progress is determined by the exit evidence.

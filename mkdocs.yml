@@ -89,6 +89,7 @@ nav:
           - Decimal: docs/performance/protocols/DECIMAL.md
           - Complex: docs/performance/protocols/COMPLEX.md
       - Recorded baselines:
+          - Serial server: docs/performance/baselines/SERVER.md
           - Arithmetic: docs/performance/baselines/ARITHMETIC.md
           - Factorial: docs/performance/baselines/FACTORIAL.md
           - Logarithm: docs/performance/baselines/LOGARITHM.md
