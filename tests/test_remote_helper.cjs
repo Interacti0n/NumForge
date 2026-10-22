@@ -36,7 +36,7 @@ const state = () => JSON.parse(fs.readFileSync(statePath, 'utf8').replace(/^\uFE
 const status = async () => JSON.parse((await call('Status', ['-Json'])).stdout.replace(/^\uFEFF/, ''));
 const writeState = value => fs.writeFileSync(statePath, JSON.stringify(value));
 async function reject(action, extra, pattern) {
-    await assert.rejects(call(action, extra), error => pattern.test(error.stderr), String(pattern));
+    await assert.rejects(call(action, extra), error => {assert.match(error.stderr, pattern); return true;});
 }
 function request(target, body = null) {
     return new Promise((resolve, reject) => {

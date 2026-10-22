@@ -26,12 +26,40 @@ $taskPrefix = '-NoProfile -NonInteractive -WindowStyle Hidden -File "{0}" -Actio
 
 function Get-StartupTask {
     $task = Get-ScheduledTask -TaskPath '\' -TaskName $taskName -ErrorAction SilentlyContinue
+    if (-not $task) { return }
+    $execute = if (@($task.Actions).Count -eq 1) { $task.Actions[0].Execute } else { $null }
+    $knownLauncher = $execute -and (Split-Path $execute -Parent) -ieq $stateRoot -and
+        (Split-Path $execute -Leaf) -cmatch '^remote-launcher-[a-f0-9]{16}\.exe$'
     if ($task -and ($task.Description -cne $taskDescription -or @($task.Actions).Count -ne 1 -or
-        $task.Actions[0].Execute -ine $powershellPath -or $task.Actions[0].WorkingDirectory -ine $projectRoot -or
+        (-not $knownLauncher -and $execute -ine $powershellPath) -or $task.Actions[0].WorkingDirectory -ine $projectRoot -or
         -not $task.Actions[0].Arguments.StartsWith($taskPrefix, [StringComparison]::Ordinal))) {
         throw "Task $taskName is not owned by this preview; it was left unchanged."
     }
     return $task
+}
+function Get-WindowlessLauncher {
+    $source = Join-Path $PSScriptRoot 'remote_launcher.cs'
+    $sourceHash = [Security.Cryptography.SHA256]::Create()
+    try { $digest = ([BitConverter]::ToString($sourceHash.ComputeHash([IO.File]::ReadAllBytes($source)))).Replace('-', '').ToLowerInvariant().Substring(0, 16) }
+    finally { $sourceHash.Dispose() }
+    $launcher = Join-Path $stateRoot "remote-launcher-$digest.exe"
+    # Versioned output avoids replacing a launcher still executing another port's check.
+    $compileLock = [IO.File]::Open("$launcher.lock", 'OpenOrCreate', 'ReadWrite', 'None')
+    $temporary = "$launcher.$([guid]::NewGuid().ToString('N')).tmp.exe"
+    try {
+        if (-not (Test-Path -LiteralPath $launcher)) {
+            $compile = '$ProgressPreference = ''SilentlyContinue''; ' +
+                "Add-Type -Path '$($source.Replace("'", "''"))' -OutputAssembly '$($temporary.Replace("'", "''"))' -OutputType WindowsApplication -ErrorAction Stop"
+            $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($compile))
+            & $powershellPath -NoProfile -NonInteractive -EncodedCommand $encoded
+            if ($LASTEXITCODE -ne 0) { throw 'Windowless launcher compilation failed.' }
+            [IO.File]::Move($temporary, $launcher)
+        }
+        return $launcher
+    } finally {
+        if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary }
+        $compileLock.Dispose()
+    }
 }
 function Disable-Startup {
     if (Get-StartupTask) { Unregister-ScheduledTask -TaskPath '\' -TaskName $taskName -Confirm:$false }
@@ -192,7 +220,7 @@ try {
             [void](Get-StartupTask) # Refuse to replace a task with a colliding name/foreign action.
             $taskArguments = $taskPrefix + ('-ServerPath "{0}" -CloudflaredPath "{1}" -Workers {2} -QueueCapacity {3}' -f
                 $ServerPath, $CloudflaredPath, $Workers, $QueueCapacity)
-            $taskAction = New-ScheduledTaskAction -Execute $powershellPath -Argument $taskArguments -WorkingDirectory $projectRoot
+            $taskAction = New-ScheduledTaskAction -Execute (Get-WindowlessLauncher) -Argument $taskArguments -WorkingDirectory $projectRoot
             $triggers = @((New-ScheduledTaskTrigger -AtLogOn -User $userName),
                 (New-ScheduledTaskTrigger -Once -At ([datetime]::Now.AddMinutes(1)) -RepetitionInterval (New-TimeSpan -Minutes 1)))
             $settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -StartWhenAvailable `
@@ -200,7 +228,7 @@ try {
             $principal = New-ScheduledTaskPrincipal -UserId $userName -LogonType Interactive -RunLevel Limited
             Register-ScheduledTask -TaskPath '\' -TaskName $taskName -Action $taskAction -Trigger $triggers `
                 -Settings $settings -Principal $principal -Description $taskDescription -Force | Out-Null
-            Write-Output "Automatic startup/recovery enabled: $taskName (current user, at logon and every minute)."
+            Write-Output "Automatic startup/recovery enabled: $taskName (current user, windowless, at logon and every minute)."
             return
         }
         if ($tunnelAlive) { $Action = 'Restart' }

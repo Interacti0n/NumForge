@@ -91,14 +91,19 @@ powershell -File scripts/remote.ps1 -Action EnableStartup
 powershell -File scripts/remote.ps1 -Action DisableStartup
 ```
 
-EnableStartup registers one task per project, Windows user and port. It runs
-hidden with the current user's limited privileges, without a stored password,
+EnableStartup registers one task per project, Windows user and port. A GUI
+launcher starts PowerShell without creating a console, avoiding a window flash
+on each check. It runs with the current user's limited privileges, without a stored password,
 after that user logs in and every minute while logged in. Task settings ignore
 overlapping runs and limit each invocation to three minutes. A scheduled check
 also skips a busy action lock, leaving an ongoing manual action in control; see
 [Windows task settings](https://learn.microsoft.com/en-us/powershell/module/scheduledtasks/new-scheduledtasksettingsset).
 This is a preview supervisor, not a service that runs before login. It does not
 wake the PC or change its sleep policy; its checks may run on battery power.
+EnableStartup builds the small launcher with Windows PowerShell 5.1's existing
+.NET compiler and caches a source-versioned executable under `build/remote-state/`.
+Rerunning EnableStartup upgrades older direct-PowerShell tasks in place. Keep
+the cached launcher while the task is enabled.
 
 The task invokes `Ensure`, retaining recorded paths/settings after manual
 upgrades; its explicit executable arguments bootstrap a missing state file.

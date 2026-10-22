@@ -151,7 +151,9 @@ Windows application tests also register `remote_helper_tests`: Windows PowerShel
 restart/rollback, automatic recovery, state compatibility, locking and process
 ownership. The tunnel fixture changes its URL on recreation. Startup-definition
 tests use real Windows task constructors but intercept scheduler registration,
-lookup and removal; they check ownership and delayed checks after disabling.
+lookup and removal; they check ownership, task migration and delayed checks after
+disabling. Launcher checks verify the Windows GUI subsystem, absence of a child
+console, argument quoting and propagated exit codes.
 The suite never contacts Cloudflare or installs a Windows service/task.
 
 Historical test counts are preserved with their recorded revisions, not
