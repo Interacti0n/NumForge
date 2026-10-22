@@ -144,9 +144,15 @@ and survive this source-archive build. Ordinary C builds do not need Python.
 
 Direct source checks are `node scripts/check_architecture.cjs`,
 `node tests/test_architecture.cjs` and `node scripts/check_docs.cjs`.
-The guard uses isolated fixtures without modifying working sources. Historical
-test counts are preserved with their recorded revisions, not advertised as the
-current total.
+The architecture guard uses isolated fixtures without modifying working sources.
+
+Windows application tests also register `remote_helper_tests`: Windows PowerShell
+5.1 starts the real backend with a local tunnel fixture, exercising status,
+restart/rollback, state compatibility, locking and process ownership. It never
+contacts Cloudflare or installs a Windows service/task.
+
+Historical test counts are preserved with their recorded revisions, not
+advertised as the current total.
 
 ## Local output retention
 

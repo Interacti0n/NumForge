@@ -181,6 +181,15 @@ if(NUMFORGE_NODE_EXECUTABLE)
     add_test(NAME web_remote_tests COMMAND "${NUMFORGE_NODE_EXECUTABLE}"
         "${PROJECT_SOURCE_DIR}/tests/test_web_remote.js" $<TARGET_FILE:numforge_web>)
     set_tests_properties(web_remote_tests PROPERTIES TIMEOUT 60)
+    if(WIN32)
+        find_program(NUMFORGE_POWERSHELL NAMES powershell REQUIRED)
+        add_executable(remote_tunnel_fixture http/remote_tunnel_fixture.c)
+        numforge_enable_diagnostics(remote_tunnel_fixture)
+        add_test(NAME remote_helper_tests COMMAND "${NUMFORGE_NODE_EXECUTABLE}"
+            "${PROJECT_SOURCE_DIR}/tests/test_remote_helper.cjs" $<TARGET_FILE:numforge_web>
+            $<TARGET_FILE:remote_tunnel_fixture> "${NUMFORGE_POWERSHELL}")
+        set_tests_properties(remote_helper_tests PROPERTIES TIMEOUT 180)
+    endif()
     endif()
     add_executable(numeric_oracle_driver oracles/numeric_oracle_driver.c)
     target_link_libraries(numeric_oracle_driver PRIVATE numforge_client)

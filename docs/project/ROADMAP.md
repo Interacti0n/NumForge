@@ -51,8 +51,10 @@ packages, supervision and operating limits. The Windows
 [isolated package/restart/rollback rehearsal](RELEASE_PACKAGING.md#restart-and-rollback-rehearsal)
 passes; actual host/proxy switching and restart policy remain unverified.
 The selected preview host is the existing Windows PC with a Quick Tunnel;
-paid hosting and a custom domain are deferred. Next, improve the existing
-start/status/restart/stop helper and verify recovery through that tunnel.
+paid hosting and a custom domain are deferred. The existing helper now supports
+verified local status and backend restart/rollback while retaining a live tunnel,
+with isolated lifecycle/ownership tests. Next, verify public reachability and
+recovery through the actual Quick Tunnel; Windows startup registration is separate.
 Repeat load/memory checks through that proxy and choose capacity on the host.
 This remains the stage 5 completion gate.
 

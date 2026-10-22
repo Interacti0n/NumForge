@@ -34,15 +34,44 @@ install or download software itself.
 ```powershell
 powershell -File scripts/remote.ps1
 powershell -File scripts/remote.ps1 -Action Status
+powershell -File scripts/remote.ps1 -Action Restart
 powershell -File scripts/remote.ps1 -Action Stop
 ```
 
 The helper starts hidden processes on port 8766, gets a Quick Tunnel URL and
-starts NumForge with that exact origin. Logs and process identity are stored in
-ignored `build/remote-state/`. Stop checks executable paths and process start
-times before stopping its processes. Existing local servers are unaffected.
-Keep the state directory while running. `-Port` and `-ServerPath` override defaults.
-Startup failures stop processes started by the helper.
+starts NumForge with that exact origin. Use `-ServerPath` to select an executable
+from a [verified extracted package](../project/RELEASE_PACKAGING.md), or build the
+default `build/remote/Release/numforge_web.exe` above. The selected absolute path,
+arguments and process identities are saved under ignored `build/remote-state/`.
+Keep this directory while running. `-Port` and `-CloudflaredPath` override defaults.
+
+Preview defaults are four workers and 64 queue slots; `-Workers 1-16` and
+`-QueueCapacity 1-64` override them. These are helper settings; the executable's
+own default queue remains 32. `Status` verifies recorded process paths/start
+times and a local 2+2 request with the public Origin. `-Action Status -Json`
+returns machine-readable fields. `Ready` confirms local serving and a live
+tunnel process, not public reachability; that field is explicitly not checked.
+
+`Restart` replaces only the backend while retaining the live tunnel and its URL.
+It inherits the saved executable/settings unless overridden, for example:
+
+```powershell
+powershell -File scripts/remote.ps1 -Action Restart -ServerPath C:\NumForge\candidate\numforge_web.exe
+```
+
+Sessions are lost on restart. If the candidate fails its calculation/origin check,
+the helper attempts to restore the previous backend and arguments, reports an
+error, and retains the tunnel. If rollback also fails, status is incomplete;
+recover with an available executable or Stop/Start. A stopped tunnel requires
+Stop/Start and a new Quick Tunnel URL. No automatic watchdog or Windows startup
+registration is installed by this helper.
+
+Actions are serialized per project/port. Stop checks both executable path and
+creation time before terminating a recorded process; unrelated processes are
+left alone. Old state files remain readable. Startup failure cleans up its own
+new processes. Logs retain the latest server/tunnel output; a failed restart
+also saves `server-PORT.failure.log` before rollback replaces the server log.
+These Windows replacements force-stop processes; they do not drain active work.
 
 Anyone with the printed URL can use it, including a phone on mobile data. Keep
 the PC awake and online. The tunnel needs no inbound firewall exception or router

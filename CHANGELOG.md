@@ -9,6 +9,8 @@ Earlier detailed development notes remain in Git history.
 - Bounded HTTP workers and connection queue with overload replies, queue expiry
   and cooperative shutdown. Client storage supports 64 sessions, idle expiry and
   client/global retention quotas; rejected writes preserve state and retry IDs.
+- Windows preview helper supports calculation-aware status and backend restart
+  with rollback while retaining a live Quick Tunnel.
 
 - Refined purple web UI with readable short-window results, nearby mobile settings,
   compact function categories, result confirmation/provenance labels and clickable examples.
