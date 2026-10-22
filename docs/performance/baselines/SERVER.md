@@ -110,9 +110,9 @@ Repeat on the deployment host with its proxy, CPU/memory limits and actual
 workload. TLS/WAN, open-loop arrivals, arbitrary expensive expressions and
 overnight operation are outside these measurements.
 
-## Windows Quick Tunnel preview — 22 October 2026
+## Windows Quick Tunnel preview
 
-The [verified static Windows package](../../project/RELEASE_PACKAGING.md#restart-and-rollback-rehearsal)
+On 22 October 2026, the [verified static Windows package](../../project/RELEASE_PACKAGING.md#restart-and-rollback-rehearsal)
 from `347dd8d` was served by helper `58ea36c`, with four workers and 64 queue
 slots. Requests used the public HTTPS hostname through Cloudflare, from the
 hosting PC; this is not independent mobile-network or geographic validation.

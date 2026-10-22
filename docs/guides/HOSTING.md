@@ -72,7 +72,7 @@ left alone. Old state files remain readable. Startup failure cleans up its own
 new processes. Logs retain the latest server/tunnel output; a failed restart
 also saves `server-PORT.failure.log` before rollback replaces the server log.
 These Windows replacements force-stop processes; they do not drain active work.
-The [Windows preview checks](../performance/baselines/SERVER.md#windows-quick-tunnel-preview--22-october-2026)
+The [Windows preview checks](../performance/baselines/SERVER.md#windows-quick-tunnel-preview)
 record public calculations, session bursts and restart/rollback through a real
 tunnel, with their scope and remaining operating limits.
 

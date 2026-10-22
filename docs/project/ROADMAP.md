@@ -50,7 +50,7 @@ from the tested 64-slot configuration; it is not target-host capacity evidence.
 packages, supervision and operating limits. The Windows
 [isolated package/restart/rollback rehearsal](RELEASE_PACKAGING.md#restart-and-rollback-rehearsal)
 passes. Public Windows Quick Tunnel restart/rollback and manual crash recovery
-also pass the [bounded proxy checks](../performance/baselines/SERVER.md#windows-quick-tunnel-preview--22-october-2026);
+also pass the [bounded proxy checks](../performance/baselines/SERVER.md#windows-quick-tunnel-preview);
 automatic restart policy and host operating limits remain unverified.
 The selected preview host is the existing Windows PC with a Quick Tunnel;
 paid hosting and a custom domain are deferred. The existing helper now supports
