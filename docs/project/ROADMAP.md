@@ -46,20 +46,17 @@ policy tests cover failure preservation and quota release. Local Windows
 are validated. The report distinguishes the default queue's burst rejections
 from the tested 64-slot configuration; it is not target-host capacity evidence.
 
-**Next: complete deployment and rollback.** Exercise reproducible target-platform
-packages, supervision and operating limits. The Windows
+**Next: complete operating validation on the preview host.** The selected host
+is the existing Windows PC with a Quick Tunnel; paid hosting and a custom domain
+are deferred. The Windows
 [isolated package/restart/rollback rehearsal](RELEASE_PACKAGING.md#restart-and-rollback-rehearsal)
-passes. Public Windows Quick Tunnel restart/rollback and manual crash recovery
-also pass the [bounded proxy checks](../performance/baselines/SERVER.md#windows-quick-tunnel-preview);
-automatic restart policy and host operating limits remain unverified.
-The selected preview host is the existing Windows PC with a Quick Tunnel;
-paid hosting and a custom domain are deferred. The existing helper now supports
-verified local status and backend restart/rollback while retaining a live tunnel,
-with isolated lifecycle/ownership tests. Public calculations, sessions and
-10/30/60-client bursts are checked through the actual tunnel. Next, implement and
-verify Windows startup/failure supervision, then sustained proxy/memory checks
-and capacity under the selected host limits.
-This remains the stage 5 completion gate.
+and [public proxy checks](../performance/baselines/SERVER.md#windows-quick-tunnel-preview)
+pass, including calculations, sessions, 10/30/60-client bursts and recovery.
+Optional per-user Windows startup and periodic recovery are implemented;
+real scheduled backend/tunnel recovery and disabling registration are checked.
+Remaining gates are sustained proxy/memory checks, capacity under the selected
+host operating limits and observation of a full reboot/login. The registered
+logon trigger has not yet been exercised by rebooting the user's PC.
 
 Finish this bounded milestone before opening stage 6. Then choose **one** capability
 for a demonstrated use case: a matrix decomposition, another numerical method,

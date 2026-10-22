@@ -131,10 +131,21 @@ revision/history counts. Public HTML and five assets loaded, and a different
 POST Origin was rejected with 403. Backend restart, an intentionally failing
 candidate with automatic rollback, and manual recovery after a simulated backend
 crash all retained the same tunnel process/URL. Public mathematical checks passed
-after each recovery; old sessions were lost as expected. No watchdog was installed.
+after each recovery; old sessions were lost as expected.
 
 Raw ignored evidence: `build/public-tunnel-check.jsonl` and its one-off probe
 `build/public-tunnel-check.cjs`. The log also retains an initial malformed-query
 probe; the table uses the corrected canonical query order. These short bursts
-do not establish sustained proxy capacity, memory stability or uptime. Windows
-startup, automatic failure supervision and host resource limits remain open.
+do not establish sustained proxy capacity, memory stability or uptime.
+
+The subsequent opt-in Windows task was also exercised on this host: its real
+one-minute trigger restored a killed backend in 24.16 seconds without changing
+the tunnel, and a killed tunnel in 24.12 seconds with a new URL/backend origin.
+Public HTML/assets and mathematical fixtures passed after both recoveries.
+Disabling registration preserved both running processes, and a delayed scheduled
+invocation was ignored; registration was then re-enabled. These are observed
+recovery times, not deadlines. Task definitions use the current account name
+(`computer\user`), interactive limited privileges and no stored password.
+Raw scheduler evidence is in `build/remote-state/startup-check-8766.jsonl` and
+`startup-task-8766.xml`. A reboot/login rehearsal, sustained proxy/memory behavior
+and host resource limits remain open.

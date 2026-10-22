@@ -62,9 +62,9 @@ powershell -File scripts/remote.ps1 -Action Restart -ServerPath C:\NumForge\cand
 Sessions are lost on restart. If the candidate fails its calculation/origin check,
 the helper attempts to restore the previous backend and arguments, reports an
 error, and retains the tunnel. If rollback also fails, status is incomplete;
-recover with an available executable or Stop/Start. A stopped tunnel requires
-Stop/Start and a new Quick Tunnel URL. No automatic watchdog or Windows startup
-registration is installed by this helper.
+recover with an available executable or Stop/Start. `Ensure` repairs stopped
+processes: it preserves a live tunnel, or replaces the old-origin backend when
+creating a new tunnel URL. Start/Restart alone do not install automatic recovery.
 
 Actions are serialized per project/port. Stop checks both executable path and
 creation time before terminating a recorded process; unrelated processes are
@@ -81,6 +81,38 @@ the PC awake and online. The tunnel needs no inbound firewall exception or route
 port forwarding. Its address changes on recreation. Quick Tunnels are for
 testing, with no uptime guarantee; see
 [Cloudflare's documentation](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/).
+
+### Automatic startup and recovery
+
+After selecting a working executable with Start/Restart, opt in with:
+
+```powershell
+powershell -File scripts/remote.ps1 -Action EnableStartup
+powershell -File scripts/remote.ps1 -Action DisableStartup
+```
+
+EnableStartup registers one task per project, Windows user and port. It runs
+hidden with the current user's limited privileges, without a stored password,
+after that user logs in and every minute while logged in. Task settings ignore
+overlapping runs and limit each invocation to three minutes; see
+[Windows task settings](https://learn.microsoft.com/en-us/powershell/module/scheduledtasks/new-scheduledtasksettingsset).
+This is a preview supervisor, not a service that runs before login. It does not
+wake the PC or change its sleep policy; its checks may run on battery power.
+
+The task invokes `Ensure`, retaining recorded paths/settings after manual
+upgrades; its explicit executable arguments bootstrap a missing state file.
+Rerun EnableStartup after an upgrade to refresh those fallback paths. Dead
+processes are repaired on a subsequent check, subject to startup/network delays.
+Live processes are not restarted merely because work is slow or queued. Use
+Status for local calculation health; public reachability is checked separately.
+Recovery actions/errors go to `build/remote-state/supervisor-PORT.log`, retaining
+one previous log when it exceeds 256 KiB. The current URL remains in the state file.
+
+DisableStartup removes only this preview's verified task and keeps the web
+running. Stop also removes that registration before stopping owned processes;
+a delayed scheduled invocation cannot restart a disabled preview. Sessions are
+lost whenever recovery replaces the backend, and a recreated Quick Tunnel gets
+a new public address.
 
 ## Stable hosting
 

@@ -148,8 +148,11 @@ The architecture guard uses isolated fixtures without modifying working sources.
 
 Windows application tests also register `remote_helper_tests`: Windows PowerShell
 5.1 starts the real backend with a local tunnel fixture, exercising status,
-restart/rollback, state compatibility, locking and process ownership. It never
-contacts Cloudflare or installs a Windows service/task.
+restart/rollback, automatic recovery, state compatibility, locking and process
+ownership. The tunnel fixture changes its URL on recreation. Startup-definition
+tests use real Windows task constructors but intercept scheduler registration,
+lookup and removal; they check ownership and delayed checks after disabling.
+The suite never contacts Cloudflare or installs a Windows service/task.
 
 Historical test counts are preserved with their recorded revisions, not
 advertised as the current total.

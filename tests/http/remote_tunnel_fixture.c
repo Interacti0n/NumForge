@@ -7,7 +7,7 @@
 int main(int argc, char **argv)
 {
     if (argc < 2 || strcmp(argv[1], "tunnel") != 0) return 2;
-    (void)fputs("https://numforge-test.trycloudflare.com\n", stderr);
+    (void)fprintf(stderr, "https://numforge-test-%lu.trycloudflare.com\n", (unsigned long)GetCurrentProcessId());
     (void)fflush(stderr);
     Sleep(INFINITE);
     return 0;

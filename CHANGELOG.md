@@ -10,7 +10,8 @@ Earlier detailed development notes remain in Git history.
   and cooperative shutdown. Client storage supports 64 sessions, idle expiry and
   client/global retention quotas; rejected writes preserve state and retry IDs.
 - Windows preview helper supports calculation-aware status and backend restart
-  with rollback while retaining a live Quick Tunnel.
+  with rollback while retaining a live Quick Tunnel, plus optional per-user
+  startup and periodic process recovery through Windows Task Scheduler.
 
 - Refined purple web UI with readable short-window results, nearby mobile settings,
   compact function categories, result confirmation/provenance labels and clickable examples.

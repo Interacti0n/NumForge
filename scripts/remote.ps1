@@ -1,16 +1,51 @@
 param(
-    [ValidateSet('Start', 'Stop', 'Status', 'Restart')][string]$Action = 'Start',
+    [ValidateSet('Start', 'Stop', 'Status', 'Restart', 'Ensure', 'EnableStartup', 'DisableStartup')][string]$Action = 'Start',
     [ValidateRange(1024, 65535)][int]$Port = 8766,
     [string]$ServerPath,
     [string]$CloudflaredPath,
     [ValidateRange(1, 16)][int]$Workers = 4,
     [ValidateRange(1, 64)][int]$QueueCapacity = 64,
-    [switch]$Json
+    [switch]$Json,
+    [switch]$Scheduled
 )
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
 $stateRoot = Join-Path $projectRoot 'build/remote-state'
 $statePath = Join-Path $stateRoot "state-$Port.json"
+$supervised = $Action -eq 'Ensure'
+$powershellPath = Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'
+$userIdentity = [Security.Principal.WindowsIdentity]::GetCurrent()
+$userSid = $userIdentity.User.Value
+$userName = $userIdentity.Name
+$hash = [Security.Cryptography.SHA256]::Create()
+try { $projectId = ([BitConverter]::ToString($hash.ComputeHash([Text.Encoding]::UTF8.GetBytes("$($projectRoot.ToLowerInvariant())|$userSid")))).Replace('-', '').Substring(0, 12) }
+finally { $hash.Dispose() }
+$taskName = "NumForge-preview-$projectId-$Port"
+$taskDescription = "NumForge preview: $projectRoot; port $Port; user $userSid"
+$taskPrefix = '-NoProfile -NonInteractive -WindowStyle Hidden -File "{0}" -Action Ensure -Port {1} -Scheduled ' -f $PSCommandPath, $Port
+
+function Get-StartupTask {
+    $task = Get-ScheduledTask -TaskPath '\' -TaskName $taskName -ErrorAction SilentlyContinue
+    if ($task -and ($task.Description -cne $taskDescription -or @($task.Actions).Count -ne 1 -or
+        $task.Actions[0].Execute -ine $powershellPath -or $task.Actions[0].WorkingDirectory -ine $projectRoot -or
+        -not $task.Actions[0].Arguments.StartsWith($taskPrefix, [StringComparison]::Ordinal))) {
+        throw "Task $taskName is not owned by this preview; it was left unchanged."
+    }
+    return $task
+}
+function Disable-Startup {
+    if (Get-StartupTask) { Unregister-ScheduledTask -TaskPath '\' -TaskName $taskName -Confirm:$false }
+}
+function Write-SupervisorLog($message) {
+    $logPath = Join-Path $stateRoot "supervisor-$Port.log"
+    try {
+        if ((Test-Path -LiteralPath $logPath) -and (Get-Item -LiteralPath $logPath).Length -gt 256KB) {
+            [IO.File]::Copy($logPath, "$logPath.previous", $true)
+            [IO.File]::WriteAllText($logPath, '')
+        }
+        Add-Content -LiteralPath $logPath -Value "$([datetime]::UtcNow.ToString('o')) $message" -Encoding utf8
+    } catch { } # Diagnostics must not prevent recovery.
+}
 
 function Get-OwnedProcess($entry) {
     if (-not $entry) { return }
@@ -79,6 +114,17 @@ New-Item -ItemType Directory -Path $stateRoot -Force | Out-Null
 try { $actionLock = [IO.File]::Open("$statePath.lock", 'OpenOrCreate', 'ReadWrite', 'None') }
 catch { throw "Another remote action is active for port $Port, or its state lock is inaccessible." }
 try {
+    # A queued scheduler invocation must not resurrect processes after Stop/DisableStartup.
+    if ($Scheduled) {
+        if (-not $supervised) { throw '-Scheduled is only valid with Ensure.' }
+        $task = Get-StartupTask
+        if (-not $task -or $task.State -eq 'Disabled') { return }
+    }
+    if ($Action -eq 'DisableStartup') {
+        Disable-Startup
+        Write-Output "Automatic startup/recovery disabled: $taskName. Running processes were retained."
+        return
+    }
     $state = $null
     if (Test-Path -LiteralPath $statePath) {
         $state = Get-Content -LiteralPath $statePath -Raw | ConvertFrom-Json
@@ -107,11 +153,56 @@ try {
         return
     }
     if ($Action -eq 'Stop') {
+        Disable-Startup
         Stop-OwnedProcess $state.Server
         Stop-OwnedProcess $state.Tunnel
         if ($state) { Remove-Item -LiteralPath $statePath }
         Write-Output 'Recorded remote processes stopped; unrelated processes were left running.'
         return
+    }
+    if ($Action -eq 'Ensure' -and $serverAlive -and $tunnelAlive) {
+        # Liveness recovery must not discard sessions just because all workers are busy.
+        Write-Output "Recorded processes already running. $($state.Url)"
+        return
+    }
+    if ($Action -eq 'Ensure' -or $Action -eq 'EnableStartup') {
+        # Recorded paths/settings follow manual upgrades; supplied values bootstrap a lost state file.
+        if ($state.Server.Path -and ($Action -eq 'Ensure' -or -not $ServerPath)) { $ServerPath = $state.Server.Path }
+        if ($state.Tunnel.Path -and ($Action -eq 'Ensure' -or -not $CloudflaredPath)) { $CloudflaredPath = $state.Tunnel.Path }
+        if (-not $PSBoundParameters.ContainsKey('Workers') -or $Action -eq 'Ensure') {
+            if ($state.Workers) { $Workers = $state.Workers }
+        }
+        if (-not $PSBoundParameters.ContainsKey('QueueCapacity') -or $Action -eq 'Ensure') {
+            if ($state.QueueCapacity) { $QueueCapacity = $state.QueueCapacity }
+        }
+        if (-not $ServerPath) { $ServerPath = Join-Path $projectRoot 'build/remote/Release/numforge_web.exe' }
+        if (-not $CloudflaredPath) { $CloudflaredPath = Join-Path $projectRoot 'build/tools/cloudflared.exe' }
+        $ServerPath = (Resolve-Path -LiteralPath $ServerPath).Path
+        $CloudflaredPath = (Resolve-Path -LiteralPath $CloudflaredPath).Path
+        if (-not (Test-Path -LiteralPath $ServerPath -PathType Leaf) -or
+            -not (Test-Path -LiteralPath $CloudflaredPath -PathType Leaf)) { throw 'Preview paths must name executable files.' }
+        if ($Action -eq 'EnableStartup') {
+            [void](Get-StartupTask) # Refuse to replace a task with a colliding name/foreign action.
+            $taskArguments = $taskPrefix + ('-ServerPath "{0}" -CloudflaredPath "{1}" -Workers {2} -QueueCapacity {3}' -f
+                $ServerPath, $CloudflaredPath, $Workers, $QueueCapacity)
+            $taskAction = New-ScheduledTaskAction -Execute $powershellPath -Argument $taskArguments -WorkingDirectory $projectRoot
+            $triggers = @((New-ScheduledTaskTrigger -AtLogOn -User $userName),
+                (New-ScheduledTaskTrigger -Once -At ([datetime]::Now.AddMinutes(1)) -RepetitionInterval (New-TimeSpan -Minutes 1)))
+            $settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -StartWhenAvailable `
+                -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Minutes 3)
+            $principal = New-ScheduledTaskPrincipal -UserId $userName -LogonType Interactive -RunLevel Limited
+            Register-ScheduledTask -TaskPath '\' -TaskName $taskName -Action $taskAction -Trigger $triggers `
+                -Settings $settings -Principal $principal -Description $taskDescription -Force | Out-Null
+            Write-Output "Automatic startup/recovery enabled: $taskName (current user, at logon and every minute)."
+            return
+        }
+        if ($tunnelAlive) { $Action = 'Restart' }
+        else {
+            Stop-OwnedProcess $state.Server
+            $serverAlive = $false
+            $Action = 'Start'
+        }
+        Write-SupervisorLog "Recovering with $Action; previous URL: $($state.Url)"
     }
     if ($Action -eq 'Restart') {
         if (-not $tunnelAlive) { throw 'No live recorded tunnel. Use Stop then Start to obtain a new URL.' }
@@ -160,6 +251,7 @@ try {
             throw "Restart failed; previous backend restored and tunnel retained. $failure"
         }
         Write-Output "Restarted backend; sessions cleared. $($state.Url)"
+        if ($supervised) { Write-SupervisorLog "Backend restored; URL: $($state.Url)" }
         return
     }
     if (-not $CloudflaredPath) { $CloudflaredPath = Join-Path $projectRoot 'build/tools/cloudflared.exe' }
@@ -187,9 +279,13 @@ try {
         Save-State ([pscustomobject]@{ SchemaVersion = 2; Port = $Port; Url = $url; Server = $backend
             Tunnel = $tunnelIdentity; Workers = $Workers; QueueCapacity = $QueueCapacity; ServerArguments = $arguments })
         Write-Output $url
+        if ($supervised) { Write-SupervisorLog "Preview restored; URL: $url" }
     } catch {
         Stop-OwnedProcess $backend
         if ($tunnel -and -not $tunnel.HasExited) { $tunnel.Kill(); [void]$tunnel.WaitForExit(8000) }
         throw
     }
+} catch {
+    if ($supervised) { Write-SupervisorLog "Recovery failed: $_" }
+    throw
 } finally { $actionLock.Dispose() }

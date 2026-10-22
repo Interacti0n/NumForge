@@ -120,6 +120,16 @@ const live = id => {try {process.kill(id, 0); return true;} catch {return false;
         saved = state(); assert.equal(saved.SchemaVersion, 2); assert.equal(saved.Workers, 4);
         assert.equal(saved.QueueCapacity, 64); sameIdentity(saved.Tunnel, tunnelIdentity);
 
+        // Supervision is idempotent and follows a manually selected executable/settings.
+        await call('Ensure', ['-ServerPath', next, '-CloudflaredPath', tunnel, '-Workers', '1']);
+        assert.equal(state().Server.Id, saved.Server.Id);
+        process.kill(saved.Server.Id);
+        await call('Ensure', ['-ServerPath', next, '-CloudflaredPath', tunnel, '-Workers', '1']);
+        saved = state(); assert.equal((await status()).State, 'Ready');
+        assert.equal(saved.Server.Path.toLowerCase(), candidate.toLowerCase());
+        assert.equal(saved.Workers, 4); assert.equal(saved.QueueCapacity, 64);
+        sameIdentity(saved.Tunnel, tunnelIdentity);
+
         // Hold the same lock independently; a second action cannot change state.
         const holder = spawn(powershell, ['-NoProfile', '-NonInteractive', '-Command',
             `$l=[IO.File]::Open('${statePath.replaceAll("'", "''")}.lock','OpenOrCreate','ReadWrite','None'); [Console]::WriteLine('locked'); Start-Sleep -Seconds 20`],
@@ -158,11 +168,23 @@ const live = id => {try {process.kill(id, 0); return true;} catch {return false;
         assert.equal((await status()).TunnelAlive, false);
         await reject('Restart', [], /No live recorded tunnel/i);
         assert.equal(state().Server.Id, saved.Server.Id);
+        await call('Ensure', ['-ServerPath', candidate, '-CloudflaredPath', tunnel]);
+        const renewed = state(); assert.equal((await status()).State, 'Ready');
+        assert.notEqual(renewed.Tunnel.Id, saved.Tunnel.Id); assert.notEqual(renewed.Url, saved.Url);
+        assert.equal(live(saved.Server.Id), false, 'Old-origin backend was replaced');
+        saved = renewed;
         await call('Stop');
         assert.equal(live(saved.Server.Id), false); assert.equal(live(saved.Tunnel.Id), false);
         assert.equal((await status()).State, 'NotRecorded');
         await call('Stop');
-        console.log('Remote helper start/status/restart/rollback, legacy state, locking and ownership checks passed.');
+        await call('Ensure', ['-ServerPath', candidate, '-CloudflaredPath', tunnel, '-Workers', '2', '-QueueCapacity', '8']);
+        assert.equal((await status()).State, 'Ready', 'A lost state file can bootstrap from task arguments');
+        await call('Stop');
+        const startup = await runFile(powershell, ['-NoProfile', '-NonInteractive', '-File',
+            path.join(root, 'tests/test_remote_startup.ps1'), '-ServerPath', candidate, '-TunnelPath', tunnel, '-Port', String(port)],
+            {windowsHide: true, timeout: 30000});
+        console.log(startup.stdout.trim());
+        console.log('Remote lifecycle, supervision, state, locking and ownership checks passed.');
     } finally {
         try {if (statePath && fs.existsSync(statePath)) await call('Stop');}
         finally {
