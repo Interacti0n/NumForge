@@ -34,20 +34,22 @@ They are no longer open planning tasks.
 
 The [server audit](../design/ARCHITECTURE.md#concurrent-server-prerequisites),
 [load driver](../performance/protocols/APPLICATION.md#multi-client-load) and
-[initial Windows baseline](../performance/baselines/SERVER.md) are available.
+[Windows load comparisons](../performance/baselines/SERVER.md) are available.
 Request reservations, synchronized metadata, thread-local seed fallback,
 shared graph/session reads, bounded FIFO conflict scheduling and a fixed worker
 pool with bounded connection waiting are implemented.
 Contention tests cover writer fairness, timeouts, limits, snapshots and replay.
 Worker/HTTP tests cover overload, queue expiry, shutdown and recovery. Client
 storage has bounded capacity, idle expiry and transactional retention quotas;
-policy tests cover failure preservation and quota release. Sustained-load and
-deployment validation remain before the stage 5 gate.
+policy tests cover failure preservation and quota release. Local Windows
+10/30/60-client bursts, three-minute state/memory runs and overload/recovery
+are validated. The report distinguishes the default queue's burst rejections
+from the tested 64-slot configuration; it is not target-host capacity evidence.
 
-| Next, in order | Completion gate |
-| --- | --- |
-| Validate the intended concurrent load | Repeat 10/30/60-client scenarios, sustained load, isolation, overload and recovery; record verified results, latency, errors, queueing and memory against the original protocol. Choose capacity from evidence. |
-| Complete deployment and rollback | Reproducible target-platform packages, startup/restart, operating limits and rollback are exercised. A local calculator smoke test alone is insufficient. |
+**Next: complete deployment and rollback.** Exercise reproducible target-platform
+packages, startup/restart, operating limits and rollback. Repeat load/memory
+checks through the actual proxy and choose capacity on that host. This remains
+the stage 5 completion gate; a local calculator smoke test is insufficient.
 
 Finish this bounded milestone before opening stage 6. Then choose **one** capability
 for a demonstrated use case: a matrix decomposition, another numerical method,

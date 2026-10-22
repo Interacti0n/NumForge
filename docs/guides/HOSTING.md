@@ -130,7 +130,12 @@ Clear calculator/conversion history, delete variables or reset a session to free
 space; another client's release can also make a retry succeed.
 
 Sessions are memory-only and disappear on restart; IDs are not authenticated
-users. These bounds still require sustained-load validation on the target host.
+users. [Local Windows measurements](../performance/baselines/SERVER.md) distinguish
+the default queue from `--workers 4 --queue-capacity 64`: the latter admitted all
+60-client bursts in the recorded workload, while the default rejected some.
+This is a candidate setting to validate, not a universal 60-user capacity claim.
+Repeat load/memory checks on the target host with its actual CPU/memory limits,
+proxy and intended expressions before choosing production capacity.
 
 Before running a busy public service, add ingress rate limits, monitoring and
 resource limits, and complete load/deployment validation.

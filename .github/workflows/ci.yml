@@ -240,9 +240,11 @@ jobs:
           suffix=""
           if [[ "$RUNNER_OS" == Windows ]]; then suffix=".exe"; fi
           echo "NUMFORGE_WEB_EXECUTABLE=$GITHUB_WORKSPACE/build/package-apps-check/extracted-check/NumForge-$version-$PACKAGE_PLATFORM/numforge_web$suffix" >> "$GITHUB_ENV"
-      - name: Validate the bounded multi-client diagnostic
+      - name: Validate multi-client and sustained diagnostic fixtures
         shell: bash
-        run: node benchmarks/application/http_queue_benchmark.js "$NUMFORGE_WEB_EXECUTABLE" --load --quick
+        run: |
+          node benchmarks/application/http_queue_benchmark.js "$NUMFORGE_WEB_EXECUTABLE" --load --quick
+          node benchmarks/application/http_queue_benchmark.js "$NUMFORGE_WEB_EXECUTABLE" --sustained --quick
       - name: Install workflow browser dependencies
         if: runner.os == 'Linux'
         working-directory: tests/browser
