@@ -147,5 +147,41 @@ invocation was ignored; registration was then re-enabled. These are observed
 recovery times, not deadlines. Task definitions use the current account name
 (`computer\user`), interactive limited privileges and no stored password.
 Raw scheduler evidence is in `build/remote-state/startup-check-8766.jsonl` and
-`startup-task-8766.xml`. A reboot/login rehearsal, sustained proxy/memory behavior
-and host resource limits remain open.
+`startup-task-8766.xml`. A reboot/login rehearsal and host resource limits remain
+open; sustained proxy observations follow below.
+
+### Sustained HTTPS state and memory
+
+Clean driver `62a1b88`, the same live static package, four workers and 64 queue
+slots. Each group ran for five minutes, with a one-second pause after each turn,
+fresh TLS connections and no automatic retries. Commits, isolated reads,
+mathematical fixtures and replay checks share the
+[sustained protocol](../protocols/APPLICATION.md#sustained-windows-preview-through-https).
+No other build/test ran alongside this recording; the normal Windows supervisor
+remained enabled. Both process identities and the public URL stayed unchanged.
+
+| Clients | Verified / completed requests | Full-window p95 range, ms | Backend RSS in final minute, MiB | Tunnel RSS in final minute, MiB |
+| --- | --- | --- | --- | --- |
+| 10 | 2,910 / 2,910 | 70.95–89.34 | 10.957–10.961 | 31.270–32.504 |
+| 30 | 8,732 / 8,732 | 75.68–146.62 | 15.383–15.422 | 32.125–32.609 |
+| 60 | 17,424 / 17,424 | 79.15–275.26 | 17.234–17.316 | 32.234–33.176 |
+
+All 29,066 requests passed without application, transport or mathematical
+verification errors. Every final value/revision/history count passed, followed
+by correct 2+2 recovery checks and release of all 100 test sessions. Latency
+ranges use completion windows of at least 29 seconds; shorter final windows
+remain in totals. These are window percentiles, not a pooled percentile.
+Resident samples stayed in narrow bands in each final minute. At 60 clients,
+final-minute private bytes were 11.957–12.043 MiB for the backend and
+75.684–76.719 MiB for the tunnel; private bytes are separate from resident memory.
+
+The post-load manual status check collided with a scheduled check's action lock.
+The scheduled check reported failure without changing either process. It now
+skips a busy lock successfully; isolated tests and a real scheduler collision
+passed. Raw measurement: `build/http-sustained-tunnel.jsonl`; scheduler evidence
+remains in `build/remote-state/startup-check-8766.jsonl`.
+
+This validates the selected workload on this Windows preview through the public
+proxy from the hosting PC. Fifteen minutes does not establish leak freedom,
+overnight uptime or capacity for arbitrary expensive expressions. OS resource
+limits, independent-network/device checks and reboot/login remain separate.

@@ -112,7 +112,14 @@ function Start-Backend($path, $arguments, $url) {
 # Serialize actions for this project/port; never race state replacement or two starts.
 New-Item -ItemType Directory -Path $stateRoot -Force | Out-Null
 try { $actionLock = [IO.File]::Open("$statePath.lock", 'OpenOrCreate', 'ReadWrite', 'None') }
-catch { throw "Another remote action is active for port $Port, or its state lock is inaccessible." }
+catch {
+    $lockError = $_.Exception.GetBaseException()
+    if ($Scheduled -and $supervised -and $lockError -is [IO.IOException] -and ($lockError.HResult -band 0xFFFF) -eq 32) {
+        Write-Output 'Another remote action is active; scheduled check skipped.'
+        return
+    }
+    throw "Another remote action is active for port $Port, or its state lock is inaccessible."
+}
 try {
     # A queued scheduler invocation must not resurrect processes after Stop/DisableStartup.
     if ($Scheduled) {

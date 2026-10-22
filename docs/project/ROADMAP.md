@@ -54,9 +54,10 @@ and [public proxy checks](../performance/baselines/SERVER.md#windows-quick-tunne
 pass, including calculations, sessions, 10/30/60-client bursts and recovery.
 Optional per-user Windows startup and periodic recovery are implemented;
 real scheduled backend/tunnel recovery and disabling registration are checked.
-Remaining gates are sustained proxy/memory checks, capacity under the selected
-host operating limits and observation of a full reboot/login. The registered
-logon trigger has not yet been exercised by rebooting the user's PC.
+Five-minute HTTPS state/memory runs at 10/30/60 clients also pass on this host.
+Remaining gates are capacity under the selected host operating limits and
+observation of a full reboot/login. The registered logon trigger has not yet been
+exercised by rebooting the preview PC.
 
 Finish this bounded milestone before opening stage 6. Then choose **one** capability
 for a demonstrated use case: a matrix decomposition, another numerical method,

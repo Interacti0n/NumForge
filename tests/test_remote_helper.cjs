@@ -141,6 +141,8 @@ const live = id => {try {process.kill(id, 0); return true;} catch {return false;
                 holder.stdout.once('data', () => {clearTimeout(timer); resolve();});
             });
             await reject('Restart', [], /Another remote action/i);
+            await reject('Ensure', [], /Another remote action/i);
+            await call('Ensure', ['-Scheduled']);
             assert.equal(state().Server.Id, saved.Server.Id);
         } finally {
             const exited = new Promise(resolve => holder.once('exit', resolve)); holder.kill(); await exited;

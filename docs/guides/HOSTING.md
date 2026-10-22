@@ -94,7 +94,8 @@ powershell -File scripts/remote.ps1 -Action DisableStartup
 EnableStartup registers one task per project, Windows user and port. It runs
 hidden with the current user's limited privileges, without a stored password,
 after that user logs in and every minute while logged in. Task settings ignore
-overlapping runs and limit each invocation to three minutes; see
+overlapping runs and limit each invocation to three minutes. A scheduled check
+also skips a busy action lock, leaving an ongoing manual action in control; see
 [Windows task settings](https://learn.microsoft.com/en-us/powershell/module/scheduledtasks/new-scheduledtasksettingsset).
 This is a preview supervisor, not a service that runs before login. It does not
 wake the PC or change its sleep policy; its checks may run on battery power.
