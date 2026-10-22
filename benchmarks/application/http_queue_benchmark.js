@@ -11,11 +11,14 @@ const fs = require('node:fs');
 const os = require('node:os');
 const {createHash} = require('node:crypto');
 const executable = process.argv[2];
-const args = process.argv.slice(3), load = args.includes('--load'), quick = args.includes('--quick');
-if (!executable || args.some(arg => !['--load', '--quick'].includes(arg)) || new Set(args).size !== args.length || quick && !load)
-    throw Error('Usage: node benchmarks/application/http_queue_benchmark.js server-executable [--load [--quick]]');
+const args = process.argv.slice(3), load = args.includes('--load'), quick = args.includes('--quick'), sustained = args.includes('--sustained');
+if (!executable || args.some(arg => !['--load', '--sustained', '--quick'].includes(arg)) ||
+    new Set(args).size !== args.length || load && sustained || quick && !load && !sustained)
+    throw Error('Usage: node benchmarks/application/http_queue_benchmark.js server-executable [--load|--sustained] [--quick]');
 const requestedPort = Number(process.env.NUMFORGE_QUEUE_BENCH_PORT || 0);
 assert.ok(Number.isInteger(requestedPort) && (requestedPort === 0 || requestedPort >= 1024 && requestedPort <= 65535));
+const queueCapacity = Number(process.env.NUMFORGE_QUEUE_BENCH_CAPACITY || 32);
+assert.ok(Number.isInteger(queueCapacity) && queueCapacity >= 1 && queueCapacity <= 64);
 let port;
 function availablePort() {
     return new Promise((resolve, reject) => {
@@ -63,7 +66,8 @@ function request(expression, client, options = {}) {
 }
 async function withServer(work) {
     port = await availablePort();
-    const server = spawn(path.resolve(executable), ['--no-browser', '--port', String(port)],
+    const server = spawn(path.resolve(executable), ['--no-browser', '--port', String(port),
+        '--workers', '4', '--queue-capacity', String(queueCapacity)],
         {windowsHide: true, stdio: ['ignore', 'ignore', 'pipe']});
     let spawnError, diagnostics = '';
     server.on('error', error => {spawnError = error;});
@@ -82,7 +86,7 @@ async function withServer(work) {
         if (server.exitCode === null && !spawnError) {
             const exited = new Promise(resolve => server.once('exit', resolve));
             server.kill();
-            const force = setTimeout(() => server.kill('SIGKILL'), 2000);
+            const force = setTimeout(() => server.kill('SIGKILL'), 8000);
             try { await exited; } finally { clearTimeout(force); }
         }
     }
@@ -127,7 +131,7 @@ async function measured(records, operation, call, validate) {
     }
     let error;
     if (response.status !== 200 || response.data.ok !== true)
-        error = `http:${response.status}:` + (response.data.status || 'unspecified');
+        error = `http:${response.status}:` + (response.data.code || response.data.status || 'unspecified');
     else {
         try { validate(response.data); }
         catch (failure) { error = 'verification:' + failure.message; process.exitCode = 1; }
@@ -135,23 +139,54 @@ async function measured(records, operation, call, validate) {
     records.push({operation, ms: response.ms, error});
 }
 const clientId = index => (index + 1).toString(16).padStart(32, '0');
-async function peakMemory(pid) {
+async function processMemory(pid) {
     try {
         if (process.platform === 'win32') {
             const {stdout} = await promisify(execFile)('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
-                `(Get-Process -Id ${pid} -ErrorAction Stop).PeakWorkingSet64`], {windowsHide: true, timeout: 5000});
-            const bytes = Number(stdout.trim());
-            assert.ok(Number.isSafeInteger(bytes) && bytes > 0);
-            return {server_peak_resident_bytes: bytes, memory_source: 'windows_peak_working_set'};
+                `$p = Get-Process -Id ${pid} -ErrorAction Stop; "$($p.WorkingSet64),$($p.PeakWorkingSet64)"`],
+                {windowsHide: true, timeout: 5000});
+            const [current, bytes] = stdout.trim().split(',').map(Number);
+            assert.ok([current, bytes].every(value => Number.isSafeInteger(value) && value > 0));
+            return {server_resident_bytes: current, server_peak_resident_bytes: bytes, memory_source: 'windows_working_set'};
         }
         if (process.platform === 'linux') {
             const status = await fs.promises.readFile(`/proc/${pid}/status`, 'utf8');
             const bytes = Number(status.match(/^VmHWM:\s+(\d+) kB$/m)?.[1]) * 1024;
             assert.ok(Number.isSafeInteger(bytes) && bytes > 0);
-            return {server_peak_resident_bytes: bytes, memory_source: 'linux_vm_hwm'};
+            const current = Number(status.match(/^VmRSS:\s+(\d+) kB$/m)?.[1]) * 1024;
+            assert.ok(Number.isSafeInteger(current) && current > 0);
+            return {server_resident_bytes: current, server_peak_resident_bytes: bytes, memory_source: 'linux_proc_status'};
         }
     } catch { /* Unavailable process metrics must not be reported as zero. */ }
-    return {server_peak_resident_bytes: null, memory_source: 'unavailable'};
+    return {server_resident_bytes: null, server_peak_resident_bytes: null, memory_source: 'unavailable'};
+}
+async function mixedOperation(records, selector, client, options) {
+    switch (selector % 5) {
+        case 0:
+            await measured(records, 'arithmetic', () => request('2+2', client, options), data => assert.equal(data.result, '4')); break;
+        case 1:
+            await measured(records, 'fraction', () => request('1/3+1/6', client, {...options, notation: 'fraction'}),
+                data => assert.equal(data.result, '1/2')); break;
+        case 2:
+            await measured(records, 'equation', () => exchange('/api/equations/solve?mode=expression&precision=16', '(x-2)*(x+3)=0'),
+                data => assert.deepEqual(data.roots.map(root => root.exact), ['-3', '2'])); break;
+        case 3:
+            await measured(records, 'graph', () => exchange('/api/graph/sample?min=0&max=1&points=17', 'x*x'), data => {
+                assert.equal(data.count, 17); assert.equal(data.points.length, 17);
+                data.points.forEach((point, i) => {
+                    assert.equal(point.kind, 'real'); assert.equal(Number(point.x), i / 16);
+                    assert.equal(Number(point.y), (i / 16) ** 2);
+                });
+            }); break;
+        case 4:
+            // Independent integer midpoint test for the transmitted sqrt(2).
+            await measured(records, 'sqrt1000', () => request('sqrt(2)', client, {...options, precision: '1000', notation: 'plain'}), data => {
+                assert.match(data.result, /^1\.\d{999,1000}$/);
+                const scale = data.result.length - 2, n = BigInt(data.result.replace('.', ''));
+                const d = 10n ** BigInt(scale), square = 8n * d * d;
+                assert.ok((2n * n - 1n) ** 2n < square && square < (2n * n + 1n) ** 2n);
+            }); break;
+    }
 }
 async function loadSample(clients, repetition) {
     return withServer(async pid => {
@@ -160,32 +195,7 @@ async function loadSample(clients, repetition) {
         await Promise.all(Array.from({length: clients}, async (_, index) => {
             for (let turn = 0; turn < turns; ++turn) {
                 const client = clientId(index), options = {revision: String(turn + 1)};
-                switch ((index + turn) % 5) {
-                    case 0:
-                        await measured(records, 'arithmetic', () => request('2+2', client, options), data => assert.equal(data.result, '4')); break;
-                    case 1:
-                        await measured(records, 'fraction', () => request('1/3+1/6', client, {...options, notation: 'fraction'}),
-                            data => assert.equal(data.result, '1/2')); break;
-                    case 2:
-                        await measured(records, 'equation', () => exchange('/api/equations/solve?mode=expression&precision=16', '(x-2)*(x+3)=0'),
-                            data => assert.deepEqual(data.roots.map(root => root.exact), ['-3', '2'])); break;
-                    case 3:
-                        await measured(records, 'graph', () => exchange('/api/graph/sample?min=0&max=1&points=17', 'x*x'), data => {
-                            assert.equal(data.count, 17); assert.equal(data.points.length, 17);
-                            data.points.forEach((point, i) => {
-                                assert.equal(point.kind, 'real'); assert.equal(Number(point.x), i / 16);
-                                assert.equal(Number(point.y), (i / 16) ** 2);
-                            });
-                        }); break;
-                    case 4:
-                        // Independent integer midpoint test for the transmitted sqrt(2).
-                        await measured(records, 'sqrt1000', () => request('sqrt(2)', client, {...options, precision: '1000', notation: 'plain'}), data => {
-                            assert.match(data.result, /^1\.\d{999,1000}$/);
-                            const scale = data.result.length - 2, n = BigInt(data.result.replace('.', ''));
-                            const d = 10n ** BigInt(scale), square = 8n * d * d;
-                            assert.ok((2n * n - 1n) ** 2n < square && square < (2n * n + 1n) ** 2n);
-                        }); break;
-                }
+                await mixedOperation(records, index + turn, client, options);
             }
         }));
         const elapsed = performance.now() - begin;
@@ -196,7 +206,7 @@ async function loadSample(clients, repetition) {
         const recovery = await request('2+2', 'f'.repeat(32));
         assert.equal(recovery.status, 200); assert.equal(recovery.data.ok, true); assert.equal(recovery.data.result, '4');
         console.log(JSON.stringify({scenario: 'mixed', clients, repetition, turns, ...summary(records, elapsed),
-            by_operation: byOperation, ...await peakMemory(pid)}));
+            by_operation: byOperation, ...await processMemory(pid)}));
     });
 }
 async function sessionSample(clients, repetition) {
@@ -222,11 +232,108 @@ async function sessionSample(clients, repetition) {
         const recovery = await request('2+2', 'f'.repeat(32));
         assert.equal(recovery.data.ok, true); assert.equal(recovery.data.result, '4');
         console.log(JSON.stringify({scenario: 'sessions', clients, repetition, retained_before_load: retained,
-            expired_before_load: expired, ...summary(records, elapsed), ...await peakMemory(pid)}));
+            expired_before_load: expired, ...summary(records, elapsed), ...await processMemory(pid)}));
+    });
+}
+async function sustainedSample(clients) {
+    return withServer(async pid => {
+        for (let i = 0; i < clients; ++i) {
+            const started = await request('', clientId(i), {precision: 'full', action: 'start'});
+            assert.equal(started.status, 200); assert.equal(started.data.ok, true);
+        }
+        const duration = quick ? 2000 : 180000, think = 50, window = quick ? 1000 : 10000;
+        const records = [], states = [];
+        let previous = 0, requests = 0, ok = 0, windows = 0;
+        const initialMemory = await processMemory(pid);
+        const errors = {}, begin = performance.now();
+        console.log(JSON.stringify({scenario: 'sustained_start', clients, duration_ms: duration,
+            think_time_ms: think, ...initialMemory}));
+        async function flush() {
+            if (!records.length) return;
+            // Preserve the array identity: in-flight requests already hold it.
+            const snapshot = records.splice(0);
+            const elapsed = performance.now() - begin, result = summary(snapshot, elapsed - previous);
+            previous = elapsed; requests += result.requests; ok += result.ok; ++windows;
+            for (const [error, count] of Object.entries(result.errors)) errors[error] = (errors[error] || 0) + count;
+            const memory = await processMemory(pid);
+            console.log(JSON.stringify({scenario: 'sustained_window', clients, window: windows,
+                through_ms: elapsed, ...result, ...memory, memory_sample_elapsed_ms: performance.now() - begin}));
+        }
+        const users = Promise.all(Array.from({length: clients}, async (_, index) => {
+            let revision = 0, value;
+            for (let turn = 0; performance.now() - begin < duration; ++turn) {
+                const client = clientId(index);
+                if (turn % 3 === 0) {
+                    value = (index + 1) * 100000 + turn;
+                    const expected = String(value);
+                    const options = {precision: 'full', action: 'commit', revision: String(++revision)};
+                    await measured(records, 'session_commit', () => request('x=' + expected, client, options),
+                        data => assert.equal(data.result, expected));
+                    if (revision % 10 === 0)
+                        await measured(records, 'session_retry', () => request('x=' + expected, client, options),
+                            data => assert.equal(data.result, expected));
+                } else if (turn % 3 === 1) {
+                    const expected = String(value);
+                    await measured(records, 'session_read', () => exchange('/api/session/value?' +
+                        new URLSearchParams({client, name: 'x'})), data => assert.equal(data.value.text, expected));
+                } else await mixedOperation(records, index + Math.floor(turn / 3), client, {revision: String(turn + 1)});
+                await delay(think);
+            }
+            states[index] = {revision, value: String(value)};
+        }));
+        // Fixed-size time windows discard request records after summarizing. The
+        // load generator must not accumulate minutes of per-request heap state.
+        const monitor = (async () => {
+            while (performance.now() - begin < duration) {
+                await delay(Math.min(window, Math.max(1, duration - (performance.now() - begin))));
+                await flush();
+            }
+        })();
+        await users; await monitor; await flush();
+        for (let i = 0; i < clients; ++i) {
+            const state = await exchange('/api/session?' + new URLSearchParams({client: clientId(i)}));
+            assert.equal(state.status, 200); assert.equal(state.data.ok, true);
+            assert.equal(state.data.revision, String(states[i].revision));
+            assert.equal(state.data.variable_count, 1);
+            assert.equal(state.data.history_count, Math.min(16, states[i].revision));
+            const value = await exchange('/api/session/value?' + new URLSearchParams({client: clientId(i), name: 'x'}));
+            assert.equal(value.status, 200); assert.equal(value.data.value.text, states[i].value);
+        }
+        const recovery = await request('2+2', 'f'.repeat(32));
+        assert.equal(recovery.status, 200); assert.equal(recovery.data.result, '4');
+        if (ok !== requests) process.exitCode = 1;
+        console.log(JSON.stringify({scenario: 'sustained', clients, requests, ok, errors, windows,
+            elapsed_ms: performance.now() - begin, recovery: true, ...await processMemory(pid)}));
+    });
+}
+async function overloadSample() {
+    return withServer(async pid => {
+        const holders = [];
+        try {
+            await Promise.all(Array.from({length: 4}, () => new Promise((resolve, reject) => {
+                const socket = net.connect({host: '127.0.0.1', port}); holders.push(socket);
+                socket.once('error', reject);
+                socket.once('connect', () => { socket.write('G'); resolve(); });
+            })));
+            await delay(100);
+            const records = [], begin = performance.now();
+            await Promise.all(Array.from({length: 60}, (_, i) => measured(records, 'overload',
+                () => request('2+2', clientId(i)), data => assert.equal(data.result, '4'))));
+            const result = summary(records, performance.now() - begin);
+            assert.ok(result.requests > result.ok, 'Held workers must cause observable rejection');
+            assert.ok(records.every(record => !record.error || record.error === 'http:503:server_busy' ||
+                /^transport:(ECONNRESET|EPIPE)$/.test(record.error)), 'Unexpected overload outcome');
+            holders.forEach(socket => socket.destroy());
+            await delay(250);
+            const recovery = await request('2+2', 'f'.repeat(32));
+            assert.equal(recovery.status, 200); assert.equal(recovery.data.result, '4');
+            console.log(JSON.stringify({scenario: 'overload', clients: 60, incomplete_connections: 4,
+                ...result, recovery: true, recovery_ms: recovery.ms, ...await processMemory(pid)}));
+        } finally { holders.forEach(socket => socket.destroy()); }
     });
 }
 (async () => {
-    if (load) {
+    if (load || sustained) {
         let revision = 'unavailable', dirty = [];
         try {
             const root = path.resolve(__dirname, '../..');
@@ -237,7 +344,13 @@ async function sessionSample(clients, repetition) {
             executable: path.resolve(executable), executable_sha256: createHash('sha256').update(fs.readFileSync(executable)).digest('hex'),
             platform: process.platform, architecture: process.arch, node: process.version,
             cpu: os.cpus()[0]?.model, logical_cpus: os.cpus().length, host_memory_bytes: os.totalmem(),
-            request_deadline_ms: 15000, connection_reuse: false, memory_scope: 'process_peak_through_recovery_when_available'}));
+            request_deadline_ms: 15000, connection_reuse: false, workers: 4, queue_capacity: queueCapacity,
+            memory_scope: 'process_resident_and_peak_when_available'}));
+        if (sustained) {
+            for (const clients of quick ? [2, 10] : [10, 30, 60]) await sustainedSample(clients);
+            await overloadSample();
+            return;
+        }
         for (let repetition = 1; repetition <= (quick ? 1 : 3); ++repetition)
             for (const clients of quick ? [2, 10] : [10, 30, 60]) {
                 await loadSample(clients, repetition); await sessionSample(clients, repetition);

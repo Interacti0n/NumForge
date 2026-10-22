@@ -77,6 +77,8 @@ probes separate from speed recordings.
 `http_queue_benchmark.js` observes queue waiting; `--load` adds bounded 10/30/60-client
 HTTP/session scenarios, with `--quick` for fixture validation. See the
 [load protocol](../docs/performance/protocols/APPLICATION.md#multi-client-load).
+`--sustained` adds three-minute state/memory runs and controlled overload/recovery;
+`--sustained --quick` checks those fixtures in seconds.
 `application/benchmark_graph_audit.cjs` owns independent HTTP curve/domain/dense
 checks and supports matching `--before` comparisons. `benchmark_graph_multi.cjs`
 measures browser interaction, `benchmark_graph_stress.cjs` measures sustained cache

@@ -156,6 +156,9 @@ path. Without `--load`, the tool retains its three-sample head-of-line CSV.
 10/30/60 clients, three repetitions and a fresh isolated loopback server per
 scenario. It reserves a free port, never uses the running user server/tunnel,
 and closes its own process on success or failure.
+Workers are explicitly set to four. Queue capacity defaults to 32; set
+`NUMFORGE_QUEUE_BENCH_CAPACITY=64` to measure that existing server option instead.
+The JSONL environment records both settings; do not merge different policies.
 
 The mixed workload has six requests per virtual user, cycling through exact
 arithmetic, fractions, quadratic equations, a 17-point graph and 1000-digit sqrt(2).
@@ -184,8 +187,38 @@ records process peak resident bytes, including startup and all request work.
 It is neither retained heap nor a per-request delta. The Windows OS query runs
 outside the timed window. Unsupported/unavailable metrics are null, never zero.
 Host/client and OS queueing affect results; TLS, WAN, browser asset loads,
-open-loop arrival rates and sustained-memory behavior require separate scenarios.
+and open-loop arrival rates require separate scenarios.
 Keep full JSONL under ignored `build/`; retain only useful summarized evidence.
+
+### Sustained state and overload
+
+```sh
+node benchmarks/application/http_queue_benchmark.js build/apps/Release/numforge_web.exe --sustained
+```
+
+This separate mode runs one fresh server for each of 10/30/60 clients, three
+minutes each, with a 50-ms pause after each response. Clients alternate distinct
+variable commits, reads of their own value and the same five mathematical
+fixtures. Every tenth commit is replayed with its original revision. Final
+values, revisions and bounded history counts are checked. `--sustained --quick`
+uses 2/10 clients for two seconds each to validate fixtures, not capacity.
+
+Ten-second completion windows discard their records after reporting nearest-rank
+latencies and counts; in-flight completions belong to the next window. Do not
+average window percentiles into a pooled percentile. OS queries sample current
+and peak resident memory while load continues; their overhead and the local
+driver affect results. The initial sample is before load, final checks/recovery
+are after it, and sample timestamps are recorded. RSS trends are observations,
+not allocation-ledger leak proofs or a hard process-memory guarantee.
+
+Finally, four incomplete HTTP connections hold the workers while 60 requests
+exercise bounded admission/queue expiry. Overload may return HTTP 503
+`server_busy`, or ECONNRESET/EPIPE if closure races an unread request body.
+The driver releases its connections and requires a correct fresh 2+2 response.
+Unexpected outcomes and any sustained-workload failure make this mode fail;
+expected overload rejections are reported separately. This does not test
+graceful shutdown: Windows child termination is forced, and POSIX SIGTERM may
+drain only within the driver's eight-second cleanup grace period.
 
 ## Measurement definitions and boundaries
 
