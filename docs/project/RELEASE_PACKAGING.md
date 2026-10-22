@@ -154,19 +154,8 @@ code signing can follow later. Portable archives are the first distribution path
 
 ## Local packaging
 
-For 2.1 verification, see [Release 2.1 record](RELEASES.md).
-The following 2.0 validation is historical, not evidence for a new release.
-
-Local validation on 2026-10-07 built the exact `v2.0.0` source with MSVC
-19.51 and a static Release runtime: all 28 CTest tests passed. The Windows
-archive passed extracted CLI/HTTP/embedded-asset checks and imported only Windows
-system DLLs. Existing-archive preservation and version-mismatch rejection were
-also checked. Linux validation and GitHub asset publication are still pending;
-the local Windows archive is an ignored build output, not a published release.
-The automatic-release update passed local YAML parsing, trigger/dependency
-checks, Bash syntax and valid/invalid tag checks. A prerelease-named Windows
-archive also passed extraction checks and retained its suffix in build metadata.
-The GitHub-hosted end-to-end run is still pending.
+Published verification belongs in [release history](RELEASES.md). Local development
+archives and rehearsals are separate from publication; keep their files in `build/`.
 
 The helper requires Python 3.12 (CI) or a Python version with tar extraction
 filters; Windows ZIP packaging was checked with Python 3.11.9. Configure a clean
@@ -176,13 +165,40 @@ on Windows. Then run, substituting the actual source/build/commit paths:
 
 ```sh
 python scripts/package_apps.py --source release-source --build build-apps \
-  --output build/portable-output --version 2.1.0 \
+  --output build/portable-output --version 2.4.0 \
   --commit FULL_SOURCE_COMMIT_SHA --platform win-x64
 ```
 
 Use `--platform linux-x64` on Linux and include a Release build type. Existing
 package names and extraction directories are preserved: use a fresh output path
 for each attempt. SHA-256 files are emitted only after smoke verification succeeds.
+
+### Restart and rollback rehearsal
+
+Keep the previous archive and verify its SHA-256 before extracting it into a
+separate directory. Add `--previous-apps PATH_TO_EXTRACTED_PREVIOUS_APPS` to the
+packaging command to exercise previous → candidate → restarted candidate →
+previous on one unused loopback port. Each process must pass the extracted
+CLI, calculator/assets, function catalogue and equation checks. A failure aborts
+packaging before the candidate checksum is emitted. The previous package must
+support these checks; this is not a general compatibility test for every old tag.
+
+The helper only starts/stops its own temporary processes. This is a cold process
+replacement rehearsal, not an installation, service-manager test, graceful-drain
+test or live proxy/tunnel switch. Keep the previous directory intact; never
+overwrite a running executable. For an actual update, stop the managed backend,
+switch its executable directory, retain the intended port/origin/resource
+settings and run health checks. If they fail, point it back to the previous
+directory and repeat the checks. Sessions are memory-only and are lost on restart.
+
+Local Windows rehearsal on 22 October 2026 passed with candidate `347dd8d`
+and previous `1529844`: both used x64 MSVC 19.51 static Release runtimes.
+All four phases passed on the same isolated port. Candidate archive SHA-256:
+`1647595f1a437184d5b8dc9929f78b6c470c73ed15f6d2f63cbd638d8d63cff8`.
+The extracted candidate also passed all 18 repeated 10/30/60-client load scenarios
+with four workers/64 queue slots and the quick sustained/overload fixtures.
+Files and log: `build/deployment-347dd8d/`. This is a development artifact;
+target-host proxy/supervision/resource-limit verification remains open.
 
 Reference: [manual workflow runs](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow),
 [release events](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#release),

@@ -25,7 +25,7 @@ def execute(arguments, **kwargs):
     return subprocess.run(arguments, check=True, capture_output=True, text=True, **kwargs).stdout
 
 
-def smoke(directory, windows):
+def smoke(directory, windows, port=None):
     suffix = ".exe" if windows else ""
     output = execute([str(directory / ("calculator" + suffix))],
                      input="precision full\nnotation plain\n0.1+0.2\n2^128\nnotation fraction\n1/3\nquit\n", timeout=15)
@@ -33,9 +33,10 @@ def smoke(directory, windows):
     if results != ["0.3", "340282366920938463463374607431768211456", "1/3"]:
         raise RuntimeError("Extracted CLI returned unexpected results")
     # Find an unused loopback port without changing a user's existing server.
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        port = probe.getsockname()[1]
+    if port is None:
+        with socket.socket() as probe:
+            probe.bind(("127.0.0.1", 0))
+            port = probe.getsockname()[1]
     options = {"creationflags": subprocess.CREATE_NO_WINDOW} if windows else {}
     process = subprocess.Popen([str(directory / ("numforge_web" + suffix)),
                                 "--no-browser", "--port", str(port)],
@@ -122,6 +123,8 @@ def main():
     parser.add_argument("--version", required=True)
     parser.add_argument("--commit", required=True)
     parser.add_argument("--platform", required=True, choices=["win-x64", "linux-x64"])
+    parser.add_argument("--previous-apps", type=Path,
+                        help="Rehearse old/new/restarted-new/old on one isolated port using an extracted previous package")
     args = parser.parse_args()
     if (not re.fullmatch(r"\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?", args.version)
             or not re.fullmatch(r"[0-9a-f]{40}", args.commit)):
@@ -147,6 +150,12 @@ def main():
         raise RuntimeError("Windows packages require an MSVC static Release runtime (MultiThreaded)")
     if not windows and cache.get("CMAKE_BUILD_TYPE") != "Release":
         raise RuntimeError("Linux packages require CMAKE_BUILD_TYPE=Release")
+    previous_apps = args.previous_apps.resolve() if args.previous_apps else None
+    if previous_apps is not None:
+        suffix = ".exe" if windows else ""
+        if not all((previous_apps / name).is_file() for name in
+                   ("calculator" + suffix, "numforge_web" + suffix, "START_HERE.txt", "LICENSE")):
+            raise RuntimeError("Previous apps must be a complete extracted application package")
     name = f"NumForge-{args.version}-{args.platform}"
     extension = ".zip" if windows else ".tar.gz"
     directory, archive = output / name, output / (name + extension)
@@ -226,7 +235,17 @@ def main():
         extracted = output / "extracted-check"
         with tarfile.open(archive) as bundle:
             bundle.extractall(extracted, filter="data")
-    smoke(extracted / name, windows)
+    current = extracted / name
+    if previous_apps is None:
+        smoke(current, windows)
+    else:
+        with socket.socket() as probe:
+            probe.bind(("127.0.0.1", 0))
+            port = probe.getsockname()[1]
+        for label, package in (("previous", previous_apps), ("candidate", current),
+                               ("restarted candidate", current), ("rollback", previous_apps)):
+            smoke(package, windows, port)
+            print(f"Verified {label}: {package} on isolated port {port}")
     checksum = hashlib.sha256(archive.read_bytes()).hexdigest()
     (output / (archive.name + ".sha256")).write_text(
         f"{checksum}  {archive.name}\n", encoding="ascii", newline="\n")

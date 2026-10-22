@@ -47,9 +47,11 @@ are validated. The report distinguishes the default queue's burst rejections
 from the tested 64-slot configuration; it is not target-host capacity evidence.
 
 **Next: complete deployment and rollback.** Exercise reproducible target-platform
-packages, startup/restart, operating limits and rollback. Repeat load/memory
-checks through the actual proxy and choose capacity on that host. This remains
-the stage 5 completion gate; a local calculator smoke test is insufficient.
+packages, supervision and operating limits. The Windows
+[isolated package/restart/rollback rehearsal](RELEASE_PACKAGING.md#restart-and-rollback-rehearsal)
+passes; actual host/proxy switching and restart policy remain unverified.
+Repeat load/memory checks through that proxy and choose capacity on the host.
+This remains the stage 5 completion gate.
 
 Finish this bounded milestone before opening stage 6. Then choose **one** capability
 for a demonstrated use case: a matrix decomposition, another numerical method,

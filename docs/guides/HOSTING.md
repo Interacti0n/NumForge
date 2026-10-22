@@ -93,6 +93,12 @@ CPUQuota=100%
 WantedBy=multi-user.target
 ```
 
+Keep versioned application directories and a verified previous archive for
+rollback. The [packaging rehearsal](../project/RELEASE_PACKAGING.md#restart-and-rollback-rehearsal)
+checks cold replacement/restart on an isolated port before any live switch.
+Verify the actual supervisor, proxy, operating limits and rollback on the host;
+the rehearsal alone does not establish those deployment properties.
+
 ## Capacity and state
 
 The loopback server uses four fixed workers and a FIFO queue of 32 connections.
