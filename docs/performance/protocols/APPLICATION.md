@@ -154,7 +154,7 @@ Use a normal Release server without instrumentation; use its actual platform
 path. Without `--load`, the tool retains its three-sample head-of-line CSV.
 `--load --quick` validates fixtures with 2/10 clients once; full mode uses
 10/30/60 clients, three repetitions and a fresh isolated loopback server per
-scenario. It reserves a free port, never uses the running user server/tunnel,
+scenario. By default it reserves a free port, never uses the running user server/tunnel,
 and closes its own process on success or failure.
 Workers are explicitly set to four. Queue capacity defaults to 32; set
 `NUMFORGE_QUEUE_BENCH_CAPACITY=64` to measure that existing server option instead.
@@ -219,6 +219,34 @@ Unexpected outcomes and any sustained-workload failure make this mode fail;
 expected overload rejections are reported separately. This does not test
 graceful shutdown: Windows child termination is forced, and POSIX SIGTERM may
 drain only within the driver's eight-second cleanup grace period.
+
+### Sustained Windows preview through HTTPS
+
+```sh
+node benchmarks/application/http_queue_benchmark.js PATH_TO_RUNNING_EXE --sustained --remote-state build/remote-state/state-8766.json
+```
+
+This explicit mode attaches to the existing Windows Quick Tunnel recorded by
+the [preview helper](../../guides/HOSTING.md). It never starts/stops processes
+or runs the incomplete-connection overload fixture. The selected executable must
+match the recorded backend; paths, creation times and PIDs of both backend and
+tunnel are checked before load and at every memory sample. Changed identities,
+URL or settings invalidate the run rather than silently switching targets.
+
+Each of 10/30/60 clients runs for five minutes, pausing one second after each
+turn; mathematical/session fixtures and replay checks are shared with local
+mode. Thirty-second completion windows include TLS/network time with fresh
+connections, a 15-second deadline and no automatic retries. `--quick` retains
+the local short 2/10-client fixture settings. Random test IDs are regenerated
+per scenario; final values/revisions/history are checked and only these sessions
+are released afterward. Legacy expression cache entries remain bounded by the
+server's normal policy.
+
+OS samples record resident, private and peak resident bytes and cumulative CPU
+seconds for both processes; peaks include earlier activity in these live
+processes. The load generator runs on the hosting PC and contributes host load.
+This is a closed-loop API workload through the public proxy, not physical-device,
+independent-network, browser-interaction or uptime validation.
 
 ## Measurement definitions and boundaries
 

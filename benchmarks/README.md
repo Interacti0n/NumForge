@@ -79,11 +79,13 @@ HTTP/session scenarios, with `--quick` for fixture validation. See the
 [load protocol](../docs/performance/protocols/APPLICATION.md#multi-client-load).
 `--sustained` adds three-minute state/memory runs and controlled overload/recovery;
 `--sustained --quick` checks those fixtures in seconds.
+Explicit `--sustained --remote-state STATE.json` reuses the fixtures for five-minute
+HTTPS preview checks without restarting its backend/tunnel; see the same protocol.
 `application/benchmark_graph_audit.cjs` owns independent HTTP curve/domain/dense
 checks and supports matching `--before` comparisons. `benchmark_graph_multi.cjs`
 measures browser interaction, `benchmark_graph_stress.cjs` measures sustained cache
 lifetime, and `benchmark_graph_budget.cjs` checks heavy graph queue/abort recovery.
-They launch and close their own loopback servers. Browser tools use dependencies
+Default modes launch and close their own loopback servers. Browser tools use dependencies
 from `tests/browser`; mobile emulation does not establish physical-device behavior.
 
 ## Keep only useful tools
