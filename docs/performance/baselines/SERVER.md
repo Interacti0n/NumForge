@@ -109,3 +109,32 @@ Raw recording: `build/http-sustained-workers-queue64.jsonl`.
 Repeat on the deployment host with its proxy, CPU/memory limits and actual
 workload. TLS/WAN, open-loop arrivals, arbitrary expensive expressions and
 overnight operation are outside these measurements.
+
+## Windows Quick Tunnel preview — 22 October 2026
+
+The [verified static Windows package](../../project/RELEASE_PACKAGING.md#restart-and-rollback-rehearsal)
+from `347dd8d` was served by helper `58ea36c`, with four workers and 64 queue
+slots. Requests used the public HTTPS hostname through Cloudflare, from the
+hosting PC; this is not independent mobile-network or geographic validation.
+One fresh-connection burst per client count verified arithmetic, fractions,
+quadratic roots, graph points and sqrt(2) with 1,000-digit precision, followed by
+separate session start, commit and isolated-read bursts:
+
+| Clients | Verified requests across four bursts | Mixed p95, ms | Session-read p95, ms |
+| --- | --- | --- | --- |
+| 10 | 40/40 | 131.19 | 139.08 |
+| 30 | 120/120 | 153.19 | 268.18 |
+| 60 | 240/240 | 276.83 | 346.80 |
+
+All 400 requests passed without transport or application errors; replay preserved
+revision/history counts. Public HTML and five assets loaded, and a different
+POST Origin was rejected with 403. Backend restart, an intentionally failing
+candidate with automatic rollback, and manual recovery after a simulated backend
+crash all retained the same tunnel process/URL. Public mathematical checks passed
+after each recovery; old sessions were lost as expected. No watchdog was installed.
+
+Raw ignored evidence: `build/public-tunnel-check.jsonl` and its one-off probe
+`build/public-tunnel-check.cjs`. The log also retains an initial malformed-query
+probe; the table uses the corrected canonical query order. These short bursts
+do not establish sustained proxy capacity, memory stability or uptime. Windows
+startup, automatic failure supervision and host resource limits remain open.

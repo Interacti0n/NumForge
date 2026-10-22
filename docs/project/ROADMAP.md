@@ -49,13 +49,16 @@ from the tested 64-slot configuration; it is not target-host capacity evidence.
 **Next: complete deployment and rollback.** Exercise reproducible target-platform
 packages, supervision and operating limits. The Windows
 [isolated package/restart/rollback rehearsal](RELEASE_PACKAGING.md#restart-and-rollback-rehearsal)
-passes; actual host/proxy switching and restart policy remain unverified.
+passes. Public Windows Quick Tunnel restart/rollback and manual crash recovery
+also pass the [bounded proxy checks](../performance/baselines/SERVER.md#windows-quick-tunnel-preview--22-october-2026);
+automatic restart policy and host operating limits remain unverified.
 The selected preview host is the existing Windows PC with a Quick Tunnel;
 paid hosting and a custom domain are deferred. The existing helper now supports
 verified local status and backend restart/rollback while retaining a live tunnel,
-with isolated lifecycle/ownership tests. Next, verify public reachability and
-recovery through the actual Quick Tunnel; Windows startup registration is separate.
-Repeat load/memory checks through that proxy and choose capacity on the host.
+with isolated lifecycle/ownership tests. Public calculations, sessions and
+10/30/60-client bursts are checked through the actual tunnel. Next, implement and
+verify Windows startup/failure supervision, then sustained proxy/memory checks
+and capacity under the selected host limits.
 This remains the stage 5 completion gate.
 
 Finish this bounded milestone before opening stage 6. Then choose **one** capability
