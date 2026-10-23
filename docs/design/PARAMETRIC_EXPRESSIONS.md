@@ -56,8 +56,8 @@ Resource exhaustion, scale/size overflow and structural input errors abort the
 whole batch. No partially filled result array is published. An allocation fault
 or deadline leaves the handle reusable after the enclosing budget is ended.
 
-All points share one time budget and the existing cumulative 64 MiB allocation /
-512 KiB single-allocation bounds. Nested calls inherit a caller's runtime scope
+All points share one time budget and the existing cumulative 128 MiB allocation /
+8 MiB single-allocation bounds. Nested calls inherit a caller's runtime scope
 and do not clear or end it. A graph/solver adapter spanning preparation and
 multiple adaptive batches must install one outer budget before preparation.
 Separate calls without an outer scope are separate bounded operations, not an

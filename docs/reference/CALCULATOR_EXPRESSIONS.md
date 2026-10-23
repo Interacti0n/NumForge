@@ -221,8 +221,8 @@ multiplication, division and decimal conversion loops check cancellation too.
 Exceeding the deadline returns `CALCULATOR_TIME_LIMIT` (`TLE`). This is
 cooperative cancellation, not an OS-enforced hard real-time deadline.
 
-Application limits are 64 MiB of cumulative allocation requests per calculation,
-512 KiB per allocation, 4096 UTF-8 input bytes, 65536 output bytes, and 10000
+Application limits are 128 MiB of cumulative allocation requests per calculation,
+8 MiB per allocation, 4096 UTF-8 input bytes, 65536 output bytes, and 10000
 selected output places. These byte limits are not character counts.
 Freed allocations still count toward the cumulative work budget; it is not a
 measurement of process RSS. Resource limits return `value too large`, not TLE.

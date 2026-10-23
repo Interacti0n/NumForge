@@ -73,7 +73,7 @@ The source session remains intact after successful or failed requests.
 
 One ten-second budget covers range conversion, expression preparation,
 coordinate generation, every point and serialization. Cumulative allocation is
-64 MiB, a single allocation is at most 512 KiB, and the successful JSON response
+128 MiB, a single allocation is at most 8 MiB, and the successful JSON response
 must fit the 128 KiB adapter buffer including its terminating null byte. Dense
 or expensive requests can fail within these bounds; 1024 is a count limit, not a
 completion guarantee. The lower-level C sampler inherits an outer caller budget.

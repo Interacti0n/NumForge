@@ -122,8 +122,8 @@ roots project real and imaginary components separately. Formatting and previews
 inherit the operation budget; HTTP includes both within its request scope.
 
 The context is validated even for constant equations. Each operation uses the
-existing application time limit (ten seconds by default), cumulative 64 MiB
-allocation budget and 512 KiB single-allocation limit. Nested calls inherit an
+existing application time limit (ten seconds by default), cumulative 128 MiB
+allocation budget and 8 MiB single-allocation limit. Nested calls inherit an
 active outer budget and never reset or end it. Solving and materializing roots
 are separate bounded operations unless the caller wraps them in one outer
 scope. The HTTP adapter keeps coefficient evaluation, solving and successful

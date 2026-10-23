@@ -76,7 +76,7 @@ The browser calls the [documented polynomial HTTP API](../reference/EQUATION_HTT
 with `mode=expression` or `mode=coefficients`.
 All mathematics and formatting run in C. The complete coefficient body fits in
 4096 UTF-8 bytes. Evaluation, solving, root previews and serialization share the
-cooperative ten-second budget, cumulative 64 MiB allocation budget and 512 KiB
+cooperative ten-second budget, cumulative 128 MiB allocation budget and 8 MiB
 single-allocation limit. Exact strings are bounded to 65536 bytes each and the
 HTTP response to 128 KiB. More requested digits do not guarantee completion.
 

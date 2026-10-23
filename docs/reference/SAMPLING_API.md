@@ -31,8 +31,8 @@ See the [grid baseline](../performance/baselines/SAMPLING.md#exact-grid-baseline
 
 ## Python exact grids
 
-`grid(lower, upper, count, *, time_limit_ms=10000, allocation_bytes=64*1024*1024,
-single_allocation=512*1024)` returns an immutable tuple of exact Fraction
+`grid(lower, upper, count, *, time_limit_ms=10000, allocation_bytes=128*1024*1024,
+single_allocation=8*1024*1024)` returns an immutable tuple of exact Fraction
 coordinates. `visit_grid(lower, upper, count, visit, *, same limits)` visits those
 coordinates synchronously and returns None after all visits succeed. Both call
 `numforge_grid_visit`; Python does not duplicate the spacing algorithm. See the

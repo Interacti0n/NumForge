@@ -246,7 +246,7 @@ Uncertain/non-real samples use precision classification at the same projected
 coordinate. Ordinary uncertainty recovery stops at 128 exact probes; locating
 actual abs corners/rectified phase anchors can extend the shared total to 512.
 This does not increase the ten-second, point or memory budgets. A 3 MiB / 300 ms
-reserve remains. One shared ten-second / 64 MiB cumulative / 512 KiB single-allocation
+reserve remains. One shared ten-second / 128 MiB cumulative / 8 MiB single-allocation
 budget covers the request and serialization. Compact JSON is capped at 512 KiB;
 precision schema 2 stays at 256 KiB, uniform/session limits are unchanged. Actual
 resource failure returns no partial success.

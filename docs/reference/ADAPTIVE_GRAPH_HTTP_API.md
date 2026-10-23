@@ -117,7 +117,7 @@ Before each new probe the sampler checks remaining cumulative bytes and time,
 reserving 2 MiB and 200 ms for finishing/serialization plus twice the largest
 observed probe cost. It can stop with `limited:true` before exhausting the budget.
 This is an estimate, not a guarantee for an unexpectedly expensive next sample.
-One ten-second/64 MiB cumulative/512 KiB single-allocation budget covers the
+One ten-second/128 MiB cumulative/8 MiB single-allocation budget covers the
 whole operation and serialization; adaptive graph JSON must fit 256 KiB.
 Uniform graph and other session responses retain their 128 KiB limits. Resource failure
 still returns no partial success. No per-point budgets or binary floating-point math

@@ -6,6 +6,9 @@ Earlier detailed development notes remain in Git history.
 
 ## Unreleased
 
+- Default calculation allocation budgets increased to 128 MiB cumulative requests
+  and 8 MiB per allocation across the engine, applications and Python adapter.
+
 - Refreshed the shared web palette with indigo surfaces, lavender actions and cyan
   accents across the calculator, graphs, equations, units and guide.
 

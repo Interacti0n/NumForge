@@ -61,7 +61,7 @@ typedef enum NumForgeResultKind {
 
 /** Create an owned context, or NULL on allocation failure.
  * Defaults: 34 working significant digits, half-even rounding, radians,
- * 10000 ms, 64 MiB cumulative allocations, 512 KiB per allocation.
+ * 10000 ms, 128 MiB cumulative allocations, 8 MiB per allocation.
  * Contexts are thread-confined. NULL context arguments below select these defaults.
  */
 NumForgeContext *numforge_context_create(void);

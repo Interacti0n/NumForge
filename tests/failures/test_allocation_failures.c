@@ -2545,6 +2545,15 @@ static void test_factorial_admission_bounds_and_scope(void)
     TEST_ASSERT_EQUAL_UINT64(524288U, largest);
     TEST_ASSERT_TRUE(bigint_factorial_tree_plan(high, &total, &largest));
     TEST_ASSERT_TRUE(largest > 524288U);
+    /* The application defaults admit both sides of the former 512 KiB cliff. */
+    TEST_ASSERT_TRUE(numforge_budget_begin(UINT64_MAX,
+        CALCULATOR_ALLOCATION_BUDGET, CALCULATOR_SINGLE_ALLOCATION));
+    TEST_ASSERT_TRUE(bigint_factorial_tree_fits(247572U));
+    TEST_ASSERT_TRUE(bigint_factorial_tree_fits(247573U));
+    TEST_ASSERT_TRUE(bigint_factorial_tree_fits(248000U));
+    TEST_ASSERT_TRUE(bigint_factorial_tree_fits(250000U));
+    TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_OK, numforge_budget_failure());
+    numforge_budget_end();
 }
 
 static void test_production_agm_cancellation_preserves_destination(void)

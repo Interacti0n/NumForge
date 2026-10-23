@@ -17,8 +17,8 @@ enumerate roots or provide certified root-error bounds.
   precision. Only mode/min/max/precision are accepted; duplicate/unknown options fail.
 - The body is at most 4096 UTF-8 bytes, without CR/LF or NUL. Existing framing
   limits apply: 8192 bytes including headers and a two-second receive deadline.
-- Preparation, solving and serialization share five cooperative seconds, 64 MiB
-  cumulative allocations and 512 KiB single allocations. Response limit: 128 KiB.
+- Preparation, solving and serialization share ten cooperative seconds, 128 MiB
+  cumulative allocations and 8 MiB single allocations. Response limit: 128 KiB.
 - At most 96 iterations and 192 evaluated coordinates. Each coordinate evaluates
   both original sides, not just one primitive math operation. This includes the
   repeated final coordinate used by the higher-precision verification.

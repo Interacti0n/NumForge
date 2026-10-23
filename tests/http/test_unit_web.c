@@ -5,7 +5,7 @@
 #include <string.h>
 
 void setUp(void) {}
-void tearDown(void) { numforge_test_allocator_end(); }
+void tearDown(void) { numforge_test_allocator_end(); numforge_budget_end(); }
 
 static NumForgeConversionOptions options(const char *target)
 {
@@ -126,7 +126,13 @@ static void test_failures_and_limits(void)
     char large[CALCULATOR_MAX_INPUT_BYTES + 2]; memset(large, '1', sizeof(large)-1); large[sizeof(large)-1] = '\0';
     TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE, numforge_web_convert(NULL, large, &opts, &response, &error, &code));
     TEST_ASSERT_NULL(response);
+    /* Check memory rejection under a caller-owned bound, independently of
+     * application defaults and the machine's speed. */
+    TEST_ASSERT_TRUE(numforge_budget_begin(UINT64_MAX,
+        64U * 1024U * 1024U, 512U * 1024U));
     TEST_ASSERT_EQUAL(CALCULATOR_VALUE_TOO_LARGE, numforge_web_convert(NULL, "1E1000000", &opts, &response, &error, &code));
+    TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_MEMORY, numforge_budget_failure());
+    numforge_budget_end();
     TEST_ASSERT_NULL(response);
     TEST_ASSERT_EQUAL(CALCULATOR_NULL_ARGUMENT, numforge_web_convert(NULL, NULL, &opts, &response, &error, &code));
     TEST_ASSERT_NULL(response);

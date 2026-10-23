@@ -18,7 +18,7 @@ static PyObject *native_number(PyObject *module, PyObject *args)
     if (strcmp(kind, "integer") != 0 && strcmp(kind, "rational") != 0 && strcmp(kind, "decimal") != 0) {
         PyErr_SetString(PyExc_ValueError, "invalid numeric kind"); return NULL;
     }
-    bool owner = numforge_budget_begin(10000U, 64U*1024U*1024U, 512U*1024U);
+    bool owner = numforge_budget_begin(10000U, 128U*1024U*1024U, 8U*1024U*1024U);
     NumForgeResult *result = NULL;
     BigInt *top = bigint_create(), *bottom = bigint_create();
     BigRational *rational = bigrational_create(); BigDecimal *decimal = bigdecimal_create();
@@ -149,7 +149,7 @@ static PyObject *native_fraction(PyObject *module, PyObject *args)
     if (!PyArg_ParseTuple(args, "O:fraction", &capsule)) return NULL;
     NumForgeResult *result = PyCapsule_GetPointer(capsule, NF_PYTHON_RESULT_CAPSULE);
     if (result == NULL) return NULL;
-    bool owner = numforge_budget_begin(10000U, 64U*1024U*1024U, 512U*1024U);
+    bool owner = numforge_budget_begin(10000U, 128U*1024U*1024U, 8U*1024U*1024U);
     PyObject *output = NULL;
     const BigRational *rational = numforge_result_rational(result);
     const BigInt *integer = numforge_result_integer(result);

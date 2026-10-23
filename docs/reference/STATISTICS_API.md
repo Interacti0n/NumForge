@@ -90,7 +90,7 @@ assert nf.covariance([1, 2, 3], [3, 1, -1], sample=True) == Fraction(-2)
 ```
 
 `covariance(left, right, *, sample=False, time_limit_ms=10000,
-allocation_bytes=64*1024*1024, single_allocation=512*1024)` returns an independent
+allocation_bytes=128*1024*1024, single_allocation=8*1024*1024)` returns an independent
 Fraction. Both iterables follow the exact-real input rules of `describe` below.
 They must be nonempty and equally sized; a sample singleton raises ValueError.
 `sample` must be a bool. Native copies, computation and serialization share the

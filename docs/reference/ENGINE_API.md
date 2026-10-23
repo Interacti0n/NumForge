@@ -169,8 +169,8 @@ statuses for logic, never diagnostic strings. Non-source failures use offset zer
 | TIME_LIMIT / MEMORY_LIMIT | Cooperative deadline/cumulative or single allocation limit |
 
 Limits: 4096 input bytes, AST depth 256, at most 256 call arguments, root degree
-at most 10000, serialization at most 65536 bytes. Defaults: 10000 ms, 64 MiB
-cumulative requested allocations and 512 KiB per allocation. Set operation
+at most 10000, serialization at most 65536 bytes. Defaults: 10000 ms, 128 MiB
+cumulative requested allocations and 8 MiB per allocation. Set operation
 budgets with `numforge_context_set_limits()`. Zero denies work; SIZE_MAX disables
 either memory limit; milliseconds must fit INT64_MAX. Direct numeric APIs keep
 their existing contracts and do not inherit these engine structural caps.
