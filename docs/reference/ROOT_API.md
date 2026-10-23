@@ -68,7 +68,7 @@ route is added.
 The source-built [Python adapter](../guides/PYTHON.md#bounded-numerical-roots)
 provides `find_root(function, lower, upper, *, continuous=False,
 decimal_places=34, x_tolerance="1E-12", residual_tolerance="1E-12",
-max_iterations=96, max_evaluations=192, time_limit_ms=5000,
+max_iterations=96, max_evaluations=192, time_limit_ms=10000,
 allocation_bytes=64*1024*1024, single_allocation=512*1024)`.
 It calls `numforge_root_solve`; there is no separate Python search algorithm.
 
@@ -192,7 +192,7 @@ can still be missed. More grid cells do not establish completeness.
 `find_roots(function, lower, upper, *, continuous=False, decimal_places=34,
 x_tolerance="1E-12", residual_tolerance="1E-12", max_iterations=96,
 max_root_evaluations=192, segments=128, max_roots=32, max_evaluations=4096,
-time_limit_ms=5000, allocation_bytes=64*1024*1024, single_allocation=512*1024)`
+time_limit_ms=10000, allocation_bytes=64*1024*1024, single_allocation=512*1024)`
 delegates to `numforge_roots_scan`, sharing the
 [single-root callback, exactness, continuity, input and budget rules](#python-single-root-search).
 There is no additional Python discovery/refinement algorithm or private AST access.

@@ -6,6 +6,9 @@ Earlier detailed development notes remain in Git history.
 
 ## Unreleased
 
+- Default calculation budget increased from 5 to 10 seconds across the engine,
+  applications and Python adapter; browser request deadlines allow extra transfer time.
+
 - Bounded HTTP workers and connection queue with overload replies, queue expiry
   and cooperative shutdown. Client storage supports 64 sessions, idle expiry and
   client/global retention quotas; rejected writes preserve state and retry IDs.

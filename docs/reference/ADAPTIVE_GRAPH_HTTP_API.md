@@ -117,7 +117,7 @@ Before each new probe the sampler checks remaining cumulative bytes and time,
 reserving 2 MiB and 200 ms for finishing/serialization plus twice the largest
 observed probe cost. It can stop with `limited:true` before exhausting the budget.
 This is an estimate, not a guarantee for an unexpectedly expensive next sample.
-One five-second/64 MiB cumulative/512 KiB single-allocation budget covers the
+One ten-second/64 MiB cumulative/512 KiB single-allocation budget covers the
 whole operation and serialization; adaptive graph JSON must fit 256 KiB.
 Uniform graph and other session responses retain their 128 KiB limits. Resource failure
 still returns no partial success. No per-point budgets or binary floating-point math
@@ -159,14 +159,14 @@ more than 1500 ms including transport, limited responses and errors stop that
 batch. There is no repeated timer/polling loop. Moves, edits and disposal abort
 browser requests and reject obsolete responses; aborting a fetch does not promise
 to interrupt a C evaluation already running on the server. Each server request
-still independently shares the original five-second/allocation budget.
+still independently shares the original ten-second/allocation budget.
 
 The current page supports at most four curves and retains per function at most
 12 ranges, 12288 cached point-or-band records, an 8 MiB estimated cache weight, and 48 bounded
 prefetch-attempt keys. Four curves permit 49152 records and 32 MiB estimated weight.
 A shared transport queue prioritizes foreground requests over background tiles.
 Each function/range request has its own server budget; these budgets do not merge
-into an overall five-second multi-curve timeout. Weight is twice the JSON
+into an overall ten-second multi-curve timeout. Weight is twice the JSON
 character count plus 256 bytes per point and 128 bytes per dense band, not a
 browser heap measurement.
 Oldest ranges are evicted when any bound is exceeded; visible chunks can still

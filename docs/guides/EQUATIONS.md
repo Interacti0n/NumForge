@@ -76,7 +76,7 @@ The browser calls the [documented polynomial HTTP API](../reference/EQUATION_HTT
 with `mode=expression` or `mode=coefficients`.
 All mathematics and formatting run in C. The complete coefficient body fits in
 4096 UTF-8 bytes. Evaluation, solving, root previews and serialization share the
-cooperative five-second budget, cumulative 64 MiB allocation budget and 512 KiB
+cooperative ten-second budget, cumulative 64 MiB allocation budget and 512 KiB
 single-allocation limit. Exact strings are bounded to 65536 bytes each and the
 HTTP response to 128 KiB. More requested digits do not guarantee completion.
 
@@ -135,7 +135,7 @@ their domains. Steps, tan and some nested expressions may remain unverified.
 Exactly zero typed rational points do not require a continuous surrounding
 interval. Old numerical results saved before these checks are discarded while
 the tab's inputs are retained; solving again checks the current expression.
-The same five-second/memory budget applies. All math uses BigRational/BigDecimal;
+The same ten-second/memory budget applies. All math uses BigRational/BigDecimal;
 finite-precision signs and residuals still do not give certified existence or
 root-error bounds. See the [numerical API](../reference/NUMERIC_ROOT_HTTP_API.md).
 
@@ -173,5 +173,5 @@ between samples, several roots in one section, approximate endpoint zeros and
 very dense oscillations can be missed. An empty list means this scan confirmed
 no root, not that none exist. Try a narrower/shifted interval. The scan stops at
 32 results or its 4096-coordinate work ceiling and explains which limit was
-reached. It shares one five-second/memory budget, rather than granting five
+reached. It shares one ten-second/memory budget, rather than granting ten
 seconds per root. Resource failures discard the whole pending result.

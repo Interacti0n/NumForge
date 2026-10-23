@@ -354,7 +354,7 @@ async function deleteVariable(name)
         if (!sessionStarted) await ensureSession();
         const {response, data} = await requestEvaluation('/api/evaluate?precision=10&angle=rad', {
             method: 'POST', headers: {'Content-Type': 'text/plain; charset=utf-8'}, body: name,
-            signal: AbortSignal.timeout(10000)
+            signal: AbortSignal.timeout(15000)
         }, 'delete-variable', deletion.id);
         if (!response.ok || !data.ok) {
             pendingVariableDeletion = null;
@@ -503,7 +503,7 @@ async function mutateSession(action)
         if (action !== 'reset') await ensureSession();
         pendingReset ||= {action, id: ++generation};
         const response = await fetch('/api/session?client=' + cacheClient + '&revision=' + pendingReset.id + '&action=' + pendingReset.action, {
-            method: 'POST', body: '', signal: AbortSignal.timeout(10000)
+            method: 'POST', body: '', signal: AbortSignal.timeout(15000)
         });
         const data = await response.json();
         if (!response.ok || !data.ok) {

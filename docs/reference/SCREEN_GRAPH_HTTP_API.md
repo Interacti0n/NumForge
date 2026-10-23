@@ -210,7 +210,7 @@ Exact probes continue to classify complex/domain results. Confirmed non-real
 seed values do not force the whole real portion into precision fallback. If a
 known non-real intermediate becomes a real final value, such as `abs(sqrt(x))`
 at negative x, the precision sampler remains necessary. Numeric uncertainty,
-resource errors and the shared five-second budget retain their original rules.
+resource errors and the shared ten-second budget retain their original rules.
 
 Captured trig arguments limit hidden whole periods. Denominator/log/sqrt/power
 guards reject sampled domain crossings and tangent phase regions separate poles.
@@ -245,8 +245,8 @@ features; `limited` does not imply a timeout or prove discontinuity.
 Uncertain/non-real samples use precision classification at the same projected
 coordinate. Ordinary uncertainty recovery stops at 128 exact probes; locating
 actual abs corners/rectified phase anchors can extend the shared total to 512.
-This does not increase the five-second, point or memory budgets. A 3 MiB / 300 ms
-reserve remains. One shared five-second / 64 MiB cumulative / 512 KiB single-allocation
+This does not increase the ten-second, point or memory budgets. A 3 MiB / 300 ms
+reserve remains. One shared ten-second / 64 MiB cumulative / 512 KiB single-allocation
 budget covers the request and serialization. Compact JSON is capped at 512 KiB;
 precision schema 2 stays at 256 KiB, uniform/session limits are unchanged. Actual
 resource failure returns no partial success.
@@ -300,7 +300,7 @@ The browser supports up to four independent function rows in a shared camera.
 Each row uses this existing single-expression endpoint, inferred parameter,
 cache and request generation. A failed/deleted/edited row does not replace another
 row's results. Foreground requests are serialized with priority over background
-preparation; each request has its own original budget, not one shared five-second
+preparation; each request has its own original budget, not one shared ten-second
 budget across all four functions. A color change only repaints its own layer.
 
 Cache bounds per function are 12 ranges / 12288 point-or-band records / 8 MiB estimated weight

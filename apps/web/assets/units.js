@@ -235,7 +235,7 @@ function initUnits() {
         const revision=String(conversionRevision+1n);
         pendingConversion={action:'clear',revision};saveHistory();
         try {
-            const response=await fetch('/api/conversions?client='+client+'&action=clear&revision='+revision,{method:'POST',body:'',signal:AbortSignal.timeout(10000)});
+            const response=await fetch('/api/conversions?client='+client+'&action=clear&revision='+revision,{method:'POST',body:'',signal:AbortSignal.timeout(15000)});
             const body=await response.json();
             if(!response.ok || !body.ok){pendingConversion=null;saveHistory();throw Error(body.error || text.network);}
             pendingConversion=null;saveHistory();await refreshUnitHistory();
@@ -327,7 +327,7 @@ function initUnits() {
             saveHistory();
         }
         setStatus(text.calculating); root.setAttribute('aria-busy','true');
-            const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:expression,signal:confirm?AbortSignal.timeout(10000):conversion.signal});
+            const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:expression,signal:confirm?AbortSignal.timeout(15000):conversion.signal});
             let body=await response.json();
             if(confirm && response.ok && body.ok){
                 pendingConversion=null;saveHistory();

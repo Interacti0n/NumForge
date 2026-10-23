@@ -71,7 +71,7 @@ Preparation copies only referenced session variables and `ans`. Sampling does
 not modify variables, ans, histories, previews/cache, random draws or revisions.
 The source session remains intact after successful or failed requests.
 
-One five-second budget covers range conversion, expression preparation,
+One ten-second budget covers range conversion, expression preparation,
 coordinate generation, every point and serialization. Cumulative allocation is
 64 MiB, a single allocation is at most 512 KiB, and the successful JSON response
 must fit the 128 KiB adapter buffer including its terminating null byte. Dense

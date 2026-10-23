@@ -125,7 +125,7 @@ Errors have no partial root response. If memory exhaustion prevents an envelope,
 the server retains its small fallback error response.
 
 Parsing/normalizing whole equations or evaluating all coefficients, exact solving and successful serialization
-share one five-second limit, cumulative 64 MiB allocation budget and 512 KiB
+share one ten-second limit, cumulative 64 MiB allocation budget and 512 KiB
 single-allocation limit. The response buffer is bounded to 128 KiB. Oversized
 values/responses fail rather than truncate exact values. Direct C callers may
 install a stricter outer scope; nested operations preserve it. HTTP clients

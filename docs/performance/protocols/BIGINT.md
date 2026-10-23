@@ -33,7 +33,7 @@ evaluation and scientific/auto formatting for 10000!, 20000!, 50000! and
 100000!, one iteration per case, checking independently derived output text.
 Repeat the process for comparison ranges. This diagnostic disables phase time
 limits while retaining memory and output budgets; it does not change the
-combined CLI/HTTP calculation's five-second budget. It measures allocation traffic,
+combined CLI/HTTP calculation's ten-second budget. It measures allocation traffic,
 not peak live storage. The arithmetic recorder remains isolated and records
 three runs of exact factorial/product-tree values and live-memory metrics.
 

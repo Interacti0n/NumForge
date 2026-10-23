@@ -30,7 +30,7 @@ stride `ceil(integer_count/(limit-1))` (at least 1). Limit is
 min(256, floor(width/8)); width retains its existing 320–2048 bounds. Stride > 1
 sets `limited:true` and means omitted integer positions, not failed continuity.
 Bounds outside ±(2^53−1) are rejected because integer coordinates would no longer
-be reliably distinct in the browser. The same 5-second, cumulative allocation and
+be reliably distinct in the browser. The same 10-second, cumulative allocation and
 single-allocation budgets apply. An expensive factorial can still exhaust them;
 failure is atomic. The browser always requests auto rendering, including restored settings;
 explicit API clients may still choose curve or points independently.

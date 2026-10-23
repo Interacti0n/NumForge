@@ -19,7 +19,7 @@ _ROUNDING = {"toward_zero": 0, "away_from_zero": 1, "floor": 2,
              "ceiling": 3, "half_up": 4, "half_even": 5}
 
 
-def _options(precision=34, rounding="half_even", time_limit_ms=5000,
+def _options(precision=34, rounding="half_even", time_limit_ms=10000,
              allocation_bytes=64 * 1024 * 1024, single_allocation=512 * 1024):
     if type(precision) is not int:
         raise TypeError("precision must be an integer")
@@ -112,7 +112,7 @@ class Expression:
     def parameters(self):
         return self._parameters
 
-    def evaluate(self, arguments=(), *, precision=34, rounding="half_even", time_limit_ms=5000,
+    def evaluate(self, arguments=(), *, precision=34, rounding="half_even", time_limit_ms=10000,
                  allocation_bytes=64 * 1024 * 1024, single_allocation=512 * 1024):
         """Evaluate borrowed arguments by declaration order or by an exact name mapping.
 
@@ -148,7 +148,7 @@ def prepare(expression, parameters=()):
     return Expression(_native.prepare(expression, tuple(parameters)))
 
 
-def evaluate(expression, *, variables=None, precision=34, rounding="half_even", time_limit_ms=5000,
+def evaluate(expression, *, variables=None, precision=34, rounding="half_even", time_limit_ms=10000,
              allocation_bytes=64 * 1024 * 1024, single_allocation=512 * 1024):
     """Evaluate using the shared C engine; precision is working significant digits.
 
@@ -167,7 +167,7 @@ def evaluate(expression, *, variables=None, precision=34, rounding="half_even", 
         time_limit_ms=time_limit_ms, allocation_bytes=allocation_bytes, single_allocation=single_allocation)
 
 
-def sqrt(value, *, precision=34, rounding="half_even", time_limit_ms=5000,
+def sqrt(value, *, precision=34, rounding="half_even", time_limit_ms=10000,
          allocation_bytes=64 * 1024 * 1024, single_allocation=512 * 1024):
     """Principal square root through the existing C typed evaluator.
 
@@ -234,7 +234,7 @@ def _integer_range(name, value, minimum, maximum):
 
 def _root_arguments(function, lower, upper, *, continuous=False, decimal_places=34,
               x_tolerance="1E-12", residual_tolerance="1E-12", max_iterations=96,
-              max_evaluations=192, time_limit_ms=5000,
+              max_evaluations=192, time_limit_ms=10000,
               allocation_bytes=64 * 1024 * 1024, single_allocation=512 * 1024):
     """Shared conversion and callback bridge; no Python search or root discovery."""
     if not callable(function):
@@ -280,7 +280,7 @@ class IntegralResult:
 
 
 def integrate(function, lower, upper, *, decimal_places=34, absolute_tolerance="1E-12",
-              max_refinements=12, max_evaluations=4097, time_limit_ms=5000,
+              max_refinements=12, max_evaluations=4097, time_limit_ms=10000,
               allocation_bytes=64 * 1024 * 1024, single_allocation=512 * 1024):
     """Finite lower<upper integration through the public C composite Simpson kernel.
 
@@ -315,7 +315,7 @@ def integrate(function, lower, upper, *, decimal_places=34, absolute_tolerance="
 
 def find_root(function, lower, upper, *, continuous=False, decimal_places=34,
               x_tolerance="1E-12", residual_tolerance="1E-12", max_iterations=96,
-              max_evaluations=192, time_limit_ms=5000,
+              max_evaluations=192, time_limit_ms=10000,
               allocation_bytes=64 * 1024 * 1024, single_allocation=512 * 1024):
     """Search a bracket with the public C bisection kernel.
 
@@ -341,7 +341,7 @@ def find_root(function, lower, upper, *, continuous=False, decimal_places=34,
 def find_roots(function, lower, upper, *, continuous=False, decimal_places=34,
                x_tolerance="1E-12", residual_tolerance="1E-12", max_iterations=96,
                max_root_evaluations=192, segments=128, max_roots=32, max_evaluations=4096,
-               time_limit_ms=5000, allocation_bytes=64 * 1024 * 1024, single_allocation=512 * 1024):
+               time_limit_ms=10000, allocation_bytes=64 * 1024 * 1024, single_allocation=512 * 1024):
     """Scan an exact rational grid using the public C multiple-root kernel.
 
     Callback, precision, continuity, exceptions and budgets follow find_root().
@@ -368,7 +368,7 @@ def find_roots(function, lower, upper, *, continuous=False, decimal_places=34,
         data["rejected_brackets"], data["candidate_samples"], data["candidate_roots"], data["candidate_gaps"])
 
 
-def visit_grid(lower, upper, count, visit, *, time_limit_ms=5000,
+def visit_grid(lower, upper, count, visit, *, time_limit_ms=10000,
                allocation_bytes=64 * 1024 * 1024, single_allocation=512 * 1024):
     """Visit count exact Fraction coordinates through the C uniform-grid kernel.
 
@@ -393,7 +393,7 @@ def visit_grid(lower, upper, count, visit, *, time_limit_ms=5000,
     return _native.visit_grid(tuple(value._handle for value in values), count, callback, options)
 
 
-def grid(lower, upper, count, *, time_limit_ms=5000,
+def grid(lower, upper, count, *, time_limit_ms=10000,
          allocation_bytes=64 * 1024 * 1024, single_allocation=512 * 1024):
     """Return an immutable tuple of exact Fraction grid coordinates from C.
 
@@ -443,7 +443,7 @@ class PolynomialSolution:
     discriminant: Fraction | None
 
 
-def solve_quadratic(a, b, c, *, time_limit_ms=5000,
+def solve_quadratic(a, b, c, *, time_limit_ms=10000,
                     allocation_bytes=64 * 1024 * 1024, single_allocation=512 * 1024):
     """Solve a*x*x+b*x+c=0 in C with exact real coefficients.
 
@@ -510,7 +510,7 @@ def _paired_inputs(left, right, minimum):
     return x, y
 
 
-def linear_regression(x, y, *, time_limit_ms=5000,
+def linear_regression(x, y, *, time_limit_ms=10000,
                       allocation_bytes=64 * 1024 * 1024, single_allocation=512 * 1024):
     """Fit the unique unweighted least-squares line using exact C statistics.
 
@@ -525,7 +525,7 @@ def linear_regression(x, y, *, time_limit_ms=5000,
     return LinearRegression(data["count"], _fraction(data["slope"]), _fraction(data["intercept"]))
 
 
-def covariance(left, right, *, sample=False, time_limit_ms=5000,
+def covariance(left, right, *, sample=False, time_limit_ms=10000,
                allocation_bytes=64 * 1024 * 1024, single_allocation=512 * 1024):
     """Exact Fraction covariance of equally sized paired real inputs, through C.
 
@@ -540,7 +540,7 @@ def covariance(left, right, *, sample=False, time_limit_ms=5000,
     return _fraction(_native.covariance(x, y, sample, options))
 
 
-def describe(values, *, time_limit_ms=5000,
+def describe(values, *, time_limit_ms=10000,
              allocation_bytes=64 * 1024 * 1024, single_allocation=512 * 1024):
     """Exact summary of a nonempty iterable of real number() inputs, through C.
 
@@ -572,7 +572,7 @@ class Matrix:
     """
     __slots__ = ("_handle",)
 
-    def __init__(self, rows, *, time_limit_ms=5000,
+    def __init__(self, rows, *, time_limit_ms=10000,
                  allocation_bytes=64 * 1024 * 1024, single_allocation=512 * 1024):
         options = _options(34, "half_even", time_limit_ms, allocation_bytes, single_allocation)
         if isinstance(rows, (str, bytes)):
@@ -601,7 +601,7 @@ class Matrix:
     def exact(self):
         return True
 
-    def _operation(self, name, other=None, *, time_limit_ms=5000,
+    def _operation(self, name, other=None, *, time_limit_ms=10000,
                    allocation_bytes=64 * 1024 * 1024, single_allocation=512 * 1024):
         options = _options(34, "half_even", time_limit_ms, allocation_bytes, single_allocation)
         return _native.matrix_operation(name, self._handle, None if other is None else other._handle, options)

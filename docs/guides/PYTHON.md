@@ -217,7 +217,7 @@ expression remains reusable after a domain or budget error. Python references ow
 opaque C capsules and release native values/ASTs when the last reference disappears.
 Results outlive their source expression and coefficients.
 
-Evaluation/solve accept `time_limit_ms=5000`, `allocation_bytes=64*1024*1024` and
+Evaluation/solve accept `time_limit_ms=10000`, `allocation_bytes=64*1024*1024` and
 `single_allocation=512*1024`. Zero denies C work; None disables either allocation
 limit. `time_limit_ms` must fit a nonnegative signed 64-bit value. C heap budgets
 count cumulative requested bytes, not peak/live heap. Native solver descriptor

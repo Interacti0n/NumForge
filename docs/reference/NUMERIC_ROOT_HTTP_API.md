@@ -151,7 +151,7 @@ The scan retains up to 32 ordered roots, removing exact-coordinate duplicates
 without merging distinct points by tolerance. It caps all grid/refinement work
 at 4096 coordinate pairs, conservatively reserving 192 before each refinement.
 The entire scan, all nested solvers and serialization share **one** cooperative
-five-second/64-MiB/512-KiB operation budget. A resource/structural failure preserves
+ten-second/64-MiB/512-KiB operation budget. A resource/structural failure preserves
 the C destination and publishes no partial successful HTTP result. A work/result
 ceiling is a successful, explicitly limited discovery result instead.
 

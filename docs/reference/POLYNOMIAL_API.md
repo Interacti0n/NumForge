@@ -83,7 +83,7 @@ complex and 1000-digit-coefficient cases, reporting mean milliseconds, allocatio
 calls and cumulative requested bytes (not peak live memory). Exact root
 sum/product invariants are checked outside timing. It measures the extracted
 existing algorithm, including numeric allocations but excluding coefficient setup,
-descriptor verification and destruction; each solve has a 5-second / 64-MiB
+descriptor verification and destruction; each solve has a 10-second / 64-MiB
 cumulative / 512-KiB single-allocation scope. No speedup is claimed.
 The [initial Windows/GCC baseline](../performance/baselines/MODULES.md#polynomials)
 records three runs, allocation traffic and validation scope.

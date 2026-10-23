@@ -215,7 +215,7 @@ of the underlying BigInt API. There is no separate practical input cap.
 Non-terminating division defaults to 34 significant digits with half-even
 rounding. For `N` output places, CLI/HTTP uses `max(34, N + 4)` working digits;
 `full` retains the 34-digit policy and skips only final display rounding.
-The complete CLI/HTTP calculation has a five-second monotonic time
+The complete CLI/HTTP calculation has a ten-second monotonic time
 budget, including parsing and output formatting. Expensive BigInt parsing,
 multiplication, division and decimal conversion loops check cancellation too.
 Exceeding the deadline returns `CALCULATOR_TIME_LIMIT` (`TLE`). This is

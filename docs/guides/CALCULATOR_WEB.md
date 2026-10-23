@@ -71,7 +71,7 @@ there is no disk persistence. Save important results outside the application.
 
 ## Application limits
 
-- Calculations have a **5-second** budget, including parsing and output;
+- Calculations have a **10-second** budget, including parsing and output;
   cancellation is cooperative.
 - Expression/result text is limited to **4096/65536 UTF-8 bytes**.
 - Each session retains **32 variables** and **16 calculator confirmations**.

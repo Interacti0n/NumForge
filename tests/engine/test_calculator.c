@@ -104,7 +104,7 @@ void test_context_defaults_and_status_strings(void)
     TEST_ASSERT_EQUAL_INT64(CALCULATOR_DEFAULT_DIVISION_SCALE, context.division_scale);
     TEST_ASSERT_EQUAL_INT64(CALCULATOR_DEFAULT_OUTPUT_SCALE, context.output_scale);
     TEST_ASSERT_EQUAL(CALCULATOR_ANGLE_RADIANS, context.angle_unit);
-    TEST_ASSERT_EQUAL_INT64(CALCULATOR_DEFAULT_TIME_LIMIT_MS, context.time_limit_ms);
+    TEST_ASSERT_EQUAL_INT64(10000, context.time_limit_ms);
     TEST_ASSERT_EQUAL(BIGDECIMAL_ROUND_HALF_EVEN, context.rounding);
     TEST_ASSERT_EQUAL_STRING("syntax error", calculator_status_to_string(CALCULATOR_SYNTAX_ERROR));
     TEST_ASSERT_EQUAL_STRING("TLE: time limit exceeded", calculator_status_to_string(CALCULATOR_TIME_LIMIT));
