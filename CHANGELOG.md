@@ -6,6 +6,9 @@ Earlier detailed development notes remain in Git history.
 
 ## Unreleased
 
+- Refreshed the shared web palette with indigo surfaces, lavender actions and cyan
+  accents across the calculator, graphs, equations, units and guide.
+
 - Default calculation budget increased from 5 to 10 seconds across the engine,
   applications and Python adapter; browser request deadlines allow extra transfer time.
 

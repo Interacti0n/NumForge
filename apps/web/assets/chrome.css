@@ -1,16 +1,47 @@
-/* Quiet mathematical sketches and a small anvil sit behind the workbench. */
+/* Shared palette: violet actions, cyan details and quiet indigo work surfaces. */
+:root
+{
+    --background: #0b0e19;
+    --surface: #121726;
+    --surface-raised: #1b2236;
+    --surface-input: #0d1220;
+    --surface-hover: #26304b;
+    --surface-selected: #303554;
+    --border: #5b6d90;
+    --border-soft: #2d3651;
+    --border-active: #8b83c7;
+    --text: #f1f4ff;
+    --muted: #bec8e0;
+    --quiet: #9caac8;
+    --accent: #bca7ff;
+    --accent-strong: #e1d7ff;
+    --accent-ink: #101326;
+    --action-end: #9dc5ff;
+    --mint: #79dfdc;
+    --danger: #ff8eac;
+    --backdrop: #060914d9;
+    --radius: 18px;
+    accent-color: var(--accent);
+    scrollbar-color: var(--border) var(--background);
+}
+
 body
 {
     isolation: isolate;
-    background: radial-gradient(ellipse at 15% 0%, #38214b55, transparent 55%), var(--background);
+    background:
+        radial-gradient(ellipse at 8% 0%, #7350d51a, transparent 55%),
+        radial-gradient(ellipse at 100% 80%, #39c9d20a, transparent 55%),
+        var(--background);
 }
 body::before
 {
     position: fixed;
     inset: 0;
     z-index: -1;
-    background: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%271600%27%20height%3D%271000%27%20viewBox%3D%270%200%201600%201000%27%20fill%3D%27none%27%3E%3Cg%20stroke%3D%27%23c997f0%27%20stroke-width%3D%271.5%27%20opacity%3D%27.13%27%3E%3Cpath%20d%3D%27M-30%20290H240M70%20180V420M-15%20365C35%20360%2048%20305%2075%20290S130%20210%20210%20215%27%2F%3E%3Ccircle%20cx%3D%2775%27%20cy%3D%27290%27%20r%3D%275%27%2F%3E%3Cpath%20d%3D%27M1380%20530H1660M1500%20415V690M1395%20630Q1500%20365%201610%20630%27%2F%3E%3Cpath%20d%3D%27M40%20780H195L170%20815H135V850L160%20870H65L90%20850V815H60Z%27%2F%3E%3Cpath%20d%3D%27M145%20732L178%20699L196%20717L163%20750ZM165%20748L135%20778M205%20765L219%20759M196%20781L208%20790M181%20774L184%20789%27%2F%3E%3Cpath%20d%3D%27M1410%20170L1460%20140L1510%20170L1460%20200ZM1460%20140V90M1510%20170H1560M1460%20200V250%27%2F%3E%3C%2Fg%3E%3Cg%20fill%3D%27%23d8b3f5%27%20opacity%3D%27.12%27%20font-family%3D%27Georgia%2Cserif%27%20font-style%3D%27italic%27%3E%3Ctext%20x%3D%2718%27%20y%3D%27155%27%20font-size%3D%2736%27%3Ef(x)%20%3D%20x%C2%B2%3C%2Ftext%3E%3Ctext%20x%3D%271365%27%20y%3D%27340%27%20font-size%3D%2746%27%3E%E2%88%91%3C%2Ftext%3E%3Ctext%20x%3D%271430%27%20y%3D%27360%27%20font-size%3D%2728%27%3E1%2Fn%C2%B2%3C%2Ftext%3E%3Ctext%20x%3D%27-15%27%20y%3D%27575%27%20font-size%3D%2730%27%3E%CF%80%20%E2%89%88%203.14159%3C%2Ftext%3E%3Ctext%20x%3D%271380%27%20y%3D%27810%27%20font-size%3D%2734%27%3Ee%E2%81%B1%CF%80%20%2B%201%20%3D%200%3C%2Ftext%3E%3Ctext%20x%3D%2785%27%20y%3D%27945%27%20font-size%3D%2736%27%3E%E2%88%AB%20f(x)%20dx%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fsvg%3E") center / cover no-repeat;
-    opacity: .18;
+    background-image: linear-gradient(#b2bcdf08 1px, transparent 1px),
+                      linear-gradient(90deg, #b2bcdf08 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: linear-gradient(#0009, transparent 85%);
     pointer-events: none;
     content: '';
 }
@@ -19,7 +50,7 @@ body::before
     body::before { display: none; }
 }
 
-/* Shared navigation: text-led tools, one utility group and a restrained surface. */
+/* Navigation stays readable above every work surface. */
 @keyframes content-enter { from { opacity: 0; } to { opacity: 1; } }
 .content-leaving { opacity: 0; transition: opacity 130ms ease; pointer-events: none; }
 .content-entering { animation: content-enter 180ms ease-out both; }
@@ -40,8 +71,8 @@ body::before
     z-index: -1;
     inset: 0 auto 0 calc(50% - 50vw);
     width: 100vw;
-    border-bottom: 1px solid #bc85ef38;
-    background: linear-gradient(110deg, #260b42f5 0%, #200837f5 55%, #30114af5 100%);
+    border-bottom: 1px solid var(--border-soft);
+    background: linear-gradient(110deg, #15182cf5, #101726f5);
     backdrop-filter: blur(18px);
     content: '';
 }
@@ -55,10 +86,10 @@ body::before
     color: var(--text);
     text-decoration: none;
 }
-.brand-mark { display: block; flex: 0 0 auto; width: 42px; height: 42px; border-radius: 11px; object-fit: cover; }
+.brand-mark { display: block; flex: 0 0 auto; width: 42px; height: 42px; border-radius: 11px; object-fit: cover; box-shadow: 0 0 20px #9e79ff24; }
 .brand-text { display: grid; gap: 3px; }
 .brand-text strong { font-size: 1.2rem; font-weight: 700; letter-spacing: -.035em; }
-.brand-text small { color: #aa96bd; font-size: .75rem; font-weight: 450; }
+.brand-text small { color: var(--quiet); font-size: .75rem; font-weight: 450; }
 .site-navigation { display: contents; }
 .primary-nav
 {
@@ -84,14 +115,14 @@ body::before
     border: 1px solid transparent;
     border-radius: 8px;
     background: transparent;
-    color: #bca9ce;
+    color: var(--muted);
     font-size: .9rem;
     font-weight: 550;
     text-decoration: none;
     white-space: nowrap;
 }
-.primary-nav a:hover { color: #fff; background: #ffffff08; }
-.primary-nav a[aria-current="page"] { color: #f4e6ff; background: #bd8aef24; }
+.primary-nav a:hover { color: var(--text); background: #ffffff08; }
+.primary-nav a[aria-current="page"] { color: var(--text); border-color: #bca7ff2b; background: #bca7ff12; }
 .primary-nav a[aria-current="page"]::after
 {
     position: absolute;
@@ -100,7 +131,7 @@ body::before
     left: 16px;
     height: 2px;
     border-radius: 2px;
-    background: #c89aef;
+    background: linear-gradient(90deg, var(--accent), var(--mint));
     content: '';
 }
 .header-guide
@@ -113,14 +144,14 @@ body::before
     gap: 7px;
     min-height: 40px;
     border-radius: 8px;
-    color: #bca9ce;
+    color: var(--muted);
     font-size: .82rem;
     font-weight: 550;
     text-decoration: none;
     white-space: nowrap;
 }
 .header-guide::before { display: inline-grid; place-items: center; width: 17px; height: 17px; border: 1px solid #ae95c56b; border-radius: 50%; font-size: .7rem; content: '?'; }
-.header-guide:hover, .header-guide[aria-current="page"] { color: #efdfff; background: #ffffff08; }
+.header-guide:hover, .header-guide[aria-current="page"] { color: var(--text); background: #ffffff08; }
 .header-actions
 {
     display: grid;
@@ -133,11 +164,11 @@ body::before
     border-left: 1px solid #dbc5f21a;
 }
 .language-switch { display: inline-flex; justify-content: center; gap: 2px; padding: 3px; border: 1px solid #dbc5f226; border-radius: 9px; background: #ffffff03; }
-.language-switch a { display: inline-grid; place-items: center; min-height: 30px; padding: 5px 8px; border-radius: 6px; color: #aa96bd; font-size: .75rem; font-weight: 650; text-decoration: none; }
+.language-switch a { display: inline-grid; place-items: center; min-height: 30px; padding: 5px 8px; border-radius: 6px; color: var(--quiet); font-size: .75rem; font-weight: 650; text-decoration: none; }
 .language-switch a[aria-current="true"] { background: #ddc4f01a; color: #f6ecff; }
-.language-switch a:hover { color: #fff; }
+.language-switch a:hover { color: var(--text); }
 .nav-toggle { display: none; }
-.page-header a:focus-visible, .nav-toggle:focus-visible { outline: 2px solid #d5aff4; outline-offset: 4px; }
+.page-header a:focus-visible, .nav-toggle:focus-visible { outline: 2px solid var(--mint); outline-offset: 4px; }
 
 @media (max-width: 1120px)
 {
@@ -179,7 +210,7 @@ body::before
         font: 600 .82rem Inter, "Segoe UI", system-ui, sans-serif;
         cursor: pointer;
     }
-    .nav-toggle:hover, .page-header.menu-open .nav-toggle { border-color: #c89aef70; background: #c89aef15; }
+    .nav-toggle:hover, .page-header.menu-open .nav-toggle { border-color: var(--border-active); background: var(--surface-selected); }
     .menu-icon, .menu-icon::before, .menu-icon::after { display: block; width: 18px; height: 1.5px; border-radius: 2px; background: currentColor; }
     .menu-icon { position: relative; }
     .menu-icon::before, .menu-icon::after { position: absolute; left: 0; content: ''; }
@@ -200,14 +231,14 @@ body::before
         overflow-y: auto;
         border: 1px solid #dbc5f230;
         border-radius: 16px;
-        background: linear-gradient(135deg, #2b0d46f7, #210938f7);
+        background: linear-gradient(135deg, #1b2035fa, #111827fa);
         backdrop-filter: blur(18px);
         box-shadow: 0 18px 48px #08001180;
     }
     .page-header.menu-open .site-navigation { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
     .primary-nav { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; width: 100%; max-width: none; margin: 0; }
     .primary-nav a { justify-content: flex-start; min-height: 46px; padding: 12px 14px; font-size: .95rem; }
-    .primary-nav a[aria-current="page"] { background: #c89aef16; }
+    .primary-nav a[aria-current="page"] { background: var(--surface-selected); }
     .primary-nav a[aria-current="page"]::after { top: 13px; bottom: 13px; right: auto; left: 0; width: 2px; height: auto; }
     .header-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: 100%; padding: 14px 2px 2px; border-top: 1px solid #dbc5f21a; border-left: 0; }
     .header-actions .language-switch { grid-column: 1 / -1; justify-self: start; margin-bottom: 6px; }
@@ -240,14 +271,14 @@ body::before
     .content-leaving, .content-entering { animation: none; transition: none; }
 }
 
-/* Shared visual hierarchy: quiet surfaces, lavender for the main action and active state. */
+/* Keep focus and touch targets clear; motion is optional. */
 button, a, input, textarea, select, summary { -webkit-tap-highlight-color: transparent; }
-textarea:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 button:disabled { cursor: default; }
 .footer-links .login-link, .footer-links .register-link { font-size: .68rem; }
 @media (prefers-reduced-motion: no-preference) {
     button, .primary-nav a { transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease; }
-    .primary-button:hover { box-shadow: 0 3px 18px #be91ef4d; }
+    .primary-button:hover { box-shadow: 0 4px 20px #a391ff38; }
 }
 @media (pointer: coarse) {
     .language-switch a, .primary-nav a, .nav-toggle, .header-guide { min-height: 44px; }
