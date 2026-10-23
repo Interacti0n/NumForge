@@ -65,7 +65,7 @@ for(const lang of ['sk','en']) for(const width of [390,1280]) {
             ['acos(1+i)','0.9045568943 - 1.0612750619*i'],
             ['atan(1+i)','1.0172219679 + 0.4023594781*i'],
             ['asin(0.1+1E-100i)','0.1001674212 + 1.0050378153E-100*i'],
-            ['acos(1-1E-60+0i)','1.4142135624E-30'],
+            ['acos(1-1E-60+0i)','1.4142135624 × 10-30'],
             ['asin(2+0i)','1.5707963268 - 1.3169578969*i'],
             ['arcsin(0.5+0i)','0.5235987756'],['asin(0.5)','30']
         ]) {await input.fill(expression);await input.press('Enter');await expect(result).toHaveText(expected);}

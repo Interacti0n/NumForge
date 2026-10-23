@@ -2,7 +2,7 @@
 #include "benchmarks/core/karatsuba_experiment.h"
 #include "src/core/bigint/bigint_internal.h"
 #include "src/runtime/numforge_alloc.h"
-#include "src/runtime/instrumentation/benchmark_profile.h"
+#include "src/runtime/phase_profile.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

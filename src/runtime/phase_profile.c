@@ -4,13 +4,17 @@
 #define _POSIX_C_SOURCE 200809L
 #endif
 
-#include "src/runtime/instrumentation/benchmark_profile.h"
+#include "src/runtime/phase_profile.h"
 #ifdef _WIN32
 #include <windows.h>
+#ifdef NUMFORGE_ENABLE_ALLOC_STATS
 #include <psapi.h>
+#endif
 #else
 #include <time.h>
+#ifdef NUMFORGE_ENABLE_ALLOC_STATS
 #include <sys/resource.h>
+#endif
 #endif
 #ifdef _MSC_VER
 #define PROFILE_LOCAL __declspec(thread)
@@ -28,8 +32,9 @@ static PROFILE_LOCAL int complete;
 static double profile_clock(void)
 {
 #ifdef _WIN32
-    LARGE_INTEGER counter, frequency;
-    if (!QueryPerformanceFrequency(&frequency) || frequency.QuadPart <= 0 ||
+    LARGE_INTEGER counter;
+    static PROFILE_LOCAL LARGE_INTEGER frequency;
+    if ((frequency.QuadPart <= 0 && (!QueryPerformanceFrequency(&frequency) || frequency.QuadPart <= 0)) ||
         !QueryPerformanceCounter(&counter)) return -1.0;
     return (double)counter.QuadPart / (double)frequency.QuadPart;
 #else
@@ -60,6 +65,7 @@ void numforge_profile_stop(void)
     active = 0;
 }
 int numforge_profile_complete(void) { return complete; }
+int numforge_profile_active(void) { return active; }
 NumForgeProfilePhase numforge_profile_enter(NumForgeProfilePhase phase)
 {
     NumForgeProfilePhase previous = current;
@@ -80,6 +86,7 @@ void numforge_profile_leave(NumForgeProfilePhase previous)
 }
 double numforge_profile_seconds(NumForgeProfilePhase phase) { return totals[phase]; }
 
+#ifdef NUMFORGE_ENABLE_ALLOC_STATS
 unsigned long long numforge_profile_process_peak(void)
 {
 #ifdef _WIN32
@@ -96,3 +103,4 @@ unsigned long long numforge_profile_process_peak(void)
 #endif
 #endif
 }
+#endif

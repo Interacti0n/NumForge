@@ -19,7 +19,7 @@ test('conversion input grows to three lines and scrolls without shifting desktop
         expect(metrics.overflow).toBe(true);
         if(width>980)expect((await page.locator('.card[aria-labelledby="unit-result-title"]').boundingBox()).y).toBe(resultTop);
         await page.locator('#unit-input').press('Enter');
-        await expect(page.locator('#unit-result')).toHaveText('181000');
+        await expect(page.locator('#unit-result')).toHaveText('181\u202f000');
         await page.locator('#unit-input').fill('1');
         expect((await page.locator('#unit-input').boundingBox()).height).toBe(oneLine);
     }
@@ -30,7 +30,7 @@ for(const lang of ['sk','en']) test.describe(lang,()=>{
         // This scenario intentionally waits through several two-second previews.
         test.setTimeout(30000);
         await page.goto('/units?lang='+lang);
-        await expect(page.locator('#unit-result')).toHaveText('1000');
+        await expect(page.locator('#unit-result')).toHaveText('1\u202f000');
         await expect(page.locator('[data-quantity]')).toHaveCount(10);
         await page.locator('#unit-input').fill('1/3');
         await expect(page.locator('#unit-result')).toHaveText('1000/3');
@@ -66,7 +66,7 @@ for(const lang of ['sk','en']) test.describe(lang,()=>{
     });
     test('settings, invalid inputs, source links and responsive keyboard controls',async({page})=>{
         await page.goto('/units?lang='+lang);
-        await expect(page.locator('#unit-result')).toHaveText('1000');
+        await expect(page.locator('#unit-result')).toHaveText('1\u202f000');
         await page.locator('[data-quantity="speed"]').click();
         await page.locator('#unit-input').fill('1');
         await expect(page.locator('.unit-settings h3')).toBeVisible();
@@ -111,7 +111,7 @@ test('navigation preserves calculator variables, history and converter selection
     await page.locator('#expression').fill('x=2/3');await page.locator('#expression').press('Enter');
     await expect(page.locator('#history-list li')).toHaveCount(1);
     await page.locator('.primary-nav a[href="/units?lang=en"]').click();
-    await expect(page.locator('#unit-result')).toHaveText('1000');
+    await expect(page.locator('#unit-result')).toHaveText('1\u202f000');
     await page.locator('#unit-input').fill('x+ans');
     await expect(page.locator('#unit-result')).toHaveText('4000/3');
     await page.locator('#unit-input').press('Enter');
@@ -128,7 +128,7 @@ test('desktop precision settings keep converter and result geometry stable',asyn
     for(const lang of ['sk','en']) {
         await page.goto('/units?lang='+lang);
         await page.locator('#unit-input').fill('1');
-        await expect(page.locator('#unit-result')).toHaveText('1000');
+        await expect(page.locator('#unit-result')).toHaveText('1\u202f000');
         await expect(page.locator('.unit-example-card')).toHaveCount(0);
         for(const [width,height] of [[1920,1080],[1366,768],[1100,700]]) {
             await page.setViewportSize({width,height});
@@ -145,7 +145,7 @@ test('desktop precision settings keep converter and result geometry stable',asyn
             expect(await geometry(),`${lang}: ${width} × ${height}`).toEqual(before);
             await page.locator('#unit-input').fill('2');
             await page.locator('#unit-submit').click();
-            await expect(page.locator('#unit-result')).toHaveText('2000');
+            await expect(page.locator('#unit-result')).toHaveText('2\u202f000');
         }
         await page.setViewportSize({width:390,height:844});
         await page.locator('.unit-settings summary').click();
@@ -160,7 +160,7 @@ test('desktop precision settings keep converter and result geometry stable',asyn
 
 test('expanded desktop workbench fits the viewport while smaller screens scroll naturally',async({page})=>{
     await page.goto('/units?lang=sk');
-    await expect(page.locator('#unit-result')).toHaveText('1000');
+    await expect(page.locator('#unit-result')).toHaveText('1\u202f000');
     await expect(page.locator('.unit-settings h3')).toBeVisible();
     await page.locator('#unit-places-mode').selectOption('custom');
     await page.locator('.unit-info summary').click();
@@ -196,7 +196,7 @@ test('catalogue and conversion failures recover, and stale previews cannot overw
     await page.goto('/units?lang=en');
     await expect(page.locator('#unit-retry')).toBeVisible();
     failed=false;await page.locator('#unit-retry').click();
-    await expect(page.locator('#unit-result')).toHaveText('1000');
+    await expect(page.locator('#unit-result')).toHaveText('1\u202f000');
     let release;
     await page.route('**/api/convert?**',async route=>{
         if(route.request().postData()==='2') {
@@ -207,18 +207,18 @@ test('catalogue and conversion failures recover, and stale previews cannot overw
     });
     await page.locator('#unit-input').fill('2');await expect.poll(()=>!!release).toBe(true);
     await page.locator('#unit-input').fill('4');
-    await expect(page.locator('#unit-result')).toHaveText('4000');release();
-    await expect(page.locator('#unit-result')).toHaveText('4000');
+    await expect(page.locator('#unit-result')).toHaveText('4\u202f000');release();
+    await expect(page.locator('#unit-result')).toHaveText('4\u202f000');
     await page.locator('#unit-input').fill('3');
     await expect(page.locator('#unit-retry')).toBeVisible();
     await expect(page.locator('#unit-copy')).toBeDisabled();
     await page.locator('#unit-input').fill('5');
-    await expect(page.locator('#unit-result')).toHaveText('5000');
+    await expect(page.locator('#unit-result')).toHaveText('5\u202f000');
 });
 
 test('history keeps exact values, restores snapshots and ignores previews/errors',async({page})=>{
     await page.goto('/units?lang=en');
-    await expect(page.locator('#unit-result')).toHaveText('1000');
+    await expect(page.locator('#unit-result')).toHaveText('1\u202f000');
     await expect(page.locator('#unit-history-list li')).toHaveCount(0);
     await page.locator('#unit-input').fill('1/3');
     await expect(page.locator('.unit-settings h3')).toBeVisible();
@@ -253,7 +253,7 @@ test('history freezes calculator-dependent values and bounds confirmations witho
     await page.locator('#expression').fill('x=2');await page.locator('#expression').press('Enter');
     await expect(page.locator('#history-list li')).toHaveCount(1);
     await page.locator('.primary-nav a[href^="/units"]').click();
-    await expect(page.locator('#unit-result')).toHaveText('1000');
+    await expect(page.locator('#unit-result')).toHaveText('1\u202f000');
     await page.locator('#unit-input').fill('x+ans');await page.locator('#unit-input').press('Enter');
     await expect(page.locator('#unit-history-list li')).toHaveCount(1);
     await page.locator('.primary-nav a[href="/?lang=en"]').click();
@@ -261,9 +261,9 @@ test('history freezes calculator-dependent values and bounds confirmations witho
     await page.locator('#expression').fill('x=3');await page.locator('#expression').press('Enter');
     await expect(page.locator('#history-list li')).toHaveCount(2);
     await page.locator('.primary-nav a[href^="/units"]').click();
-    await expect(page.locator('#unit-result')).toHaveText('6000');
+    await expect(page.locator('#unit-result')).toHaveText('6\u202f000');
     await page.locator('#unit-history-list .unit-history-restore').click();
-    await expect(page.locator('#unit-result')).toHaveText('4000');
+    await expect(page.locator('#unit-result')).toHaveText('4\u202f000');
     await expect(page.locator('#unit-history-list li')).toHaveCount(1);
     let release;
     await page.route('**/api/conversions?**action=commit**',async route=>{
@@ -286,7 +286,7 @@ test('history freezes calculator-dependent values and bounds confirmations witho
 });
 
 test('a lost confirmation response can be retried without duplicate history',async({page})=>{
-    await page.goto('/units?lang=en');await expect(page.locator('#unit-result')).toHaveText('1000');
+    await page.goto('/units?lang=en');await expect(page.locator('#unit-result')).toHaveText('1\u202f000');
     let fail=true;
     await page.route('**/api/conversions?**action=commit**',async route=>{
         if(fail){fail=false;await route.fetch();await route.abort('failed');}
@@ -303,5 +303,5 @@ test('a lost confirmation response can be retried without duplicate history',asy
     await expect(page.locator('#unit-input')).toHaveValue('1');
     await expect(page.locator('#unit-from')).toHaveValue('km');
     await expect(page.locator('#unit-to')).toHaveValue('m');
-    await expect(page.locator('#unit-result')).toHaveText('1000');
+    await expect(page.locator('#unit-result')).toHaveText('1\u202f000');
 });

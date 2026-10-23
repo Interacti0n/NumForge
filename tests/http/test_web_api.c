@@ -6,6 +6,7 @@
 #include "apps/web/http/web_api.h"
 #include "apps/web/http/session_api.h"
 #include <numforge/runtime.h>
+#include "src/runtime/phase_profile.h"
 
 void setUp(void)
 {
@@ -309,6 +310,36 @@ static void test_optional_result_timing(void)
     free(json);
 }
 
+static void test_result_phases_are_exclusive_and_stop_with_the_request(void)
+{
+    char *result = NULL;
+    CalculatorError error;
+    numforge_profile_reset();
+    TEST_ASSERT_TRUE(numforge_profile_active());
+    TEST_ASSERT_EQUAL(CALCULATOR_OK, numforge_web_evaluate_with_output_scale("200!", 10, &result, &error));
+    free(result);
+    numforge_profile_stop();
+    TEST_ASSERT_FALSE(numforge_profile_active());
+    TEST_ASSERT_TRUE(numforge_profile_complete());
+    double total = 0.0;
+    for (int i = 0; i < NUMFORGE_PHASE_COUNT; ++i) {
+        double value = numforge_profile_seconds((NumForgeProfilePhase)i);
+        TEST_ASSERT_TRUE(value >= 0.0);
+        total += value;
+    }
+    TEST_ASSERT_TRUE(total > 0.0);
+    TEST_ASSERT_TRUE(numforge_profile_seconds(NUMFORGE_PHASE_PARSE) > 0.0);
+    TEST_ASSERT_TRUE(numforge_profile_seconds(NUMFORGE_PHASE_EVALUATE) > 0.0);
+    TEST_ASSERT_TRUE(numforge_profile_seconds(NUMFORGE_PHASE_NORMALIZE) > 0.0);
+    double stopped = numforge_profile_seconds(NUMFORGE_PHASE_OTHER);
+    NumForgeProfilePhase previous = numforge_profile_enter(NUMFORGE_PHASE_FORMAT);
+    numforge_profile_leave(previous);
+    TEST_ASSERT_TRUE(stopped == numforge_profile_seconds(NUMFORGE_PHASE_OTHER));
+    numforge_profile_reset();
+    TEST_ASSERT_TRUE(numforge_profile_seconds(NUMFORGE_PHASE_NORMALIZE) == 0.0);
+    numforge_profile_stop();
+}
+
 static void test_session_routes_release_reservations_on_success_and_failure(void)
 {
     ApplicationClientStore *store = calloc(1, sizeof(*store)); TEST_ASSERT_NOT_NULL(store);
@@ -401,6 +432,7 @@ int main(void)
     RUN_TEST(test_read_routes_share_a_session_and_exclude_mutations);
     RUN_TEST(test_session_routes_release_reservations_on_success_and_failure);
     RUN_TEST(test_optional_result_timing);
+    RUN_TEST(test_result_phases_are_exclusive_and_stop_with_the_request);
 
     RUN_TEST(test_web_api_evaluates_with_exact_c_bigdecimal);
     RUN_TEST(test_web_api_honors_output_precision);

@@ -2,7 +2,7 @@
 #include "apps/web/http/web_api.h"
 #include "src/application/sessions/session.h"
 #include "src/runtime/numforge_alloc.h"
-#include "src/runtime/instrumentation/benchmark_profile.h"
+#include "src/runtime/phase_profile.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -174,7 +174,7 @@ int main(int argc, char **argv)
     }
     puts("case,samples,min_ns,median_ns,max_ns,alloc_calls,requested_bytes,baseline_live_bytes,"
          "live_after_bytes,peak_tracked_payload_bytes,process_peak_bytes,other_ns,parse_ns,"
-         "evaluate_ns,format_ns,convert_ns,round_ns,compose_ns,serialize_ns,send_ns");
+         "evaluate_ns,format_ns,convert_ns,round_ns,compose_ns,serialize_ns,send_ns,normalize_ns");
     for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++)
     {
         if (selected != NULL && strcmp(selected, cases[i]) != 0) continue;

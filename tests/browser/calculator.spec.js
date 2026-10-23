@@ -16,7 +16,7 @@ for(const lang of ['sk','en']) for(const width of [390,1280]) {
     test(`large factorial scientific display ${lang} ${width}`,async({page})=>{
         await page.setViewportSize({width,height:844});await page.goto('/?lang='+lang);
         await page.locator('#expression').fill('20000!');
-        await expect(page.locator('#result')).toHaveText('1.8192063202E+77337');
+        await expect(page.locator('#result')).toHaveText('1.8192063202 × 1077\u202f337');
         expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     });
 }
@@ -143,7 +143,7 @@ test('HTTP sessions: confirmation replay, isolation and expiration', async ({ re
     expect((await send(client, 3, 'commit', 'ans+1')).status).toBe('stale session request');
     expect((await send(client, 6, 'commit', '1/0')).ok).toBe(false);
     expect((await send(client, 7, 'preview', 'ans', 'full')).result).toBe('9/8');
-    for (let index = 20; index < 28; index++) {
+    for (let index = 20; index < 84; index++) {
         const other = index.toString(16).padStart(32, '0');
         expect((await send(other, 1, 'start')).ok).toBe(true);
         expect((await send(other, 1, 'preview', 'ans')).status).toBe('ans is undefined');
@@ -203,7 +203,7 @@ test('HTTP cache validation, stale revisions and bounded eviction', async ({ req
         [first, '999999999999999999'], ['z'.repeat(32), '1'], ['a', '1']]) {
         expect((await send(client, revision)).status()).toBe(400);
     }
-    for (let n = 1; n <= 8; n++) {
+    for (let n = 1; n <= 64; n++) {
         expect((await (await send(n.toString(16).padStart(32, '0'), 1)).json()).cached).toBe(false);
     }
     expect((await (await send(first, 5)).json()).cached).toBe(false);
@@ -367,7 +367,7 @@ for (const lang of ['sk', 'en']) {
         async function calculate(page, input, expected) {
             await page.locator('#expression').fill(input);
             await page.locator('#expression').press('Enter');
-            await expect(page.locator('#result')).toHaveText(expected);
+            await expect(page.locator('#result')).toHaveAttribute('data-raw-result', expected);
         }
         test('text and mathematical values use their respective font families', async ({ page }) => {
             await calculate(page, '1/3', '1/3');
@@ -709,7 +709,7 @@ for (const lang of ['sk', 'en']) {
                     await page.locator('#expression').pressSequentially(argumentsToType[i]);
                 }
                 await page.locator('#expression').press('Enter');
-                await expect(page.locator('#result')).toHaveText(expected);
+                await expect(page.locator('#result')).toHaveAttribute('data-raw-result', expected);
             }
             await calculate(page, 'min(abs(-3);max(1;sign(-2)))', '1');
             await page.locator('#expression').fill('isqrt(-1)');
@@ -731,7 +731,7 @@ for (const lang of ['sk', 'en']) {
                     await page.locator('#expression').pressSequentially(argumentsToType[i]);
                 }
                 await page.locator('#expression').press('Enter');
-                await expect(page.locator('#result')).toHaveText(expected);
+                await expect(page.locator('#result')).toHaveAttribute('data-raw-result', expected);
             }
             await calculate(page, '√(0,25)', '0.5');
             if (await page.locator('#precision-mode').inputValue() !== 'custom')
@@ -763,7 +763,7 @@ for (const lang of ['sk', 'en']) {
             await expect(page.locator('#result-more-marker')).toBeVisible();
             await page.locator('#expand-result').click();
             await expect(page.locator('#result-dialog')).toBeVisible();
-            await expect(page.locator('#result-full')).toHaveText((2n ** 2000n).toString()[0] + '.' + (2n ** 2000n).toString().slice(1) + 'E+602');
+            await expect(page.locator('#result-full')).toHaveAttribute('data-raw-result', (2n ** 2000n).toString()[0] + '.' + (2n ** 2000n).toString().slice(1) + 'E+602');
             expect((await result.boundingBox()).height).toBeGreaterThanOrEqual(
                 (await page.locator('.result-body').boundingBox()).height - 8);
             await page.locator('#copy-result-dialog').click();
@@ -835,7 +835,7 @@ for (const lang of ['sk', 'en']) {
             await expect(page.locator('.equation-entry h1')).toHaveText(other === 'sk' ? 'Rovnice' : 'Equations');
             await page.locator('.primary-nav a[href^="/units"]').click();
             await expect(page.locator('#unit-converter')).toBeVisible();
-            await expect(page.locator('#unit-result')).toHaveText('1000');
+            await expect(page.locator('#unit-result')).toHaveText('1\u202f000');
             await page.locator('.primary-nav a[href^="/?lang="]').click();
             await expect(page.locator('#history-list .history-index')).toHaveText(['#1']);
             await expect(page.locator('#expression')).toHaveValue('ans+1');

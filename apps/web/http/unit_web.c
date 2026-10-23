@@ -1,6 +1,7 @@
 #include "apps/web/http/http_request.h"
 #include "apps/web/http/unit_web.h"
 #include "apps/web/http/web_api.h"
+#include "src/runtime/phase_profile.h"
 #include "src/runtime/numforge_alloc.h"
 #include <numforge/runtime.h>
 #include <stdarg.h>
@@ -199,12 +200,17 @@ CalculatorStatus numforge_web_convert(const CalculatorSession *session,
         return CALCULATOR_INVALID_ARGUMENT;
     }
     uint64_t started = numforge_monotonic_ms();
+    numforge_profile_reset();
     ApplicationConversion entry = {0};
     bool owner = numforge_budget_begin((uint64_t)options->context.time_limit_ms,
         CALCULATOR_ALLOCATION_BUDGET, CALCULATOR_SINGLE_ALLOCATION);
+    NumForgeProfilePhase compute_previous = numforge_profile_enter(NUMFORGE_PHASE_EVALUATE);
     CalculatorStatus status = application_conversion_compute(session, input, options->from,
         options->to, &options->context, &entry, error, code);
+    numforge_profile_leave(compute_previous);
+    NumForgeProfilePhase previous = numforge_profile_enter(NUMFORGE_PHASE_SERIALIZE);
     if (status == CALCULATOR_OK) status = numforge_web_conversion_response(&entry, options->snapshot, response);
+    numforge_profile_leave(previous);
     application_conversion_destroy(&entry);
     if (status != CALCULATOR_OK) calculator_error_set(error, status, error == NULL ? 0 : error->offset);
     if (status == CALCULATOR_TIME_LIMIT) *code = "time_limit";
@@ -212,6 +218,7 @@ CalculatorStatus numforge_web_convert(const CalculatorSession *session,
     else if (status == CALCULATOR_OUT_OF_MEMORY) *code = "out_of_memory";
     if (owner) numforge_budget_end();
     if (status == CALCULATOR_OK) numforge_web_result_timing(response, started, numforge_monotonic_ms());
+    numforge_profile_stop();
     return status;
 }
 CalculatorStatus numforge_web_unit_catalog(char **response)

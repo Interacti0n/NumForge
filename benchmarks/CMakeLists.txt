@@ -32,7 +32,6 @@ numforge_benchmark(numeric_root_benchmark numforge_application application/numer
 numforge_benchmark(numeric_root_scan_benchmark numforge_application application/numeric_root_scan_benchmark.c)
 
 target_sources(numforge PRIVATE
-    "${PROJECT_SOURCE_DIR}/src/runtime/instrumentation/benchmark_profile.c"
     "${PROJECT_SOURCE_DIR}/src/runtime/instrumentation/decimal_profile.c")
 target_compile_definitions(numforge PRIVATE NUMFORGE_ENABLE_ALLOC_STATS)
 if(WIN32)

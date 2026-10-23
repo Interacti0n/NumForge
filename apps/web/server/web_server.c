@@ -1,4 +1,4 @@
-#include "src/runtime/instrumentation/benchmark_profile.h"
+#include "src/runtime/phase_profile.h"
 #include "src/runtime/numforge_alloc.h"
 #include <errno.h>
 #include <limits.h>
@@ -678,7 +678,6 @@ static void numforge_handle_evaluation_impl(
         if (status == CALCULATOR_OK && cache != NULL && strcmp(cache->expression,body)==0) output_value = &cache->value;
     }
 
-    uint64_t finished = numforge_monotonic_ms();
     NumForgeProfilePhase serial_previous = numforge_profile_enter(NUMFORGE_PHASE_SERIALIZE);
     if (status == CALCULATOR_OK)
     {
@@ -737,7 +736,7 @@ static void numforge_handle_evaluation_impl(
                 (void)snprintf(response + used - 1U, response_capacity - used + 1U,
                     ",\"approx\":\"%s\"}", approximation);
             }
-            if (!reused) numforge_web_result_timing(&response, started, finished);
+            if (!reused) numforge_web_result_timing(&response, started, numforge_monotonic_ms());
             numforge_send_response(socket, 200, "OK", "application/json; charset=utf-8", response);
             free(response);
         }
@@ -815,17 +814,17 @@ static void numforge_handle_evaluation(
         if (memory != NULL && strcmp(memory, "1") == 0)
             (void)numforge_alloc_stats_track(true);
         numforge_alloc_stats_reset();
-        numforge_profile_reset();
     }
 #endif
+    numforge_profile_reset();
     ApplicationClientLease lease = {0};
     numforge_handle_evaluation_impl(socket, body, output_scale, angle_unit,
         notation, form, client, revision, action, &lease);
     application_client_release(&lease);
+    numforge_profile_stop();
 #ifdef NUMFORGE_ENABLE_ALLOC_STATS
     if (measure)
     {
-        numforge_profile_stop();
         fprintf(stderr, "BENCH,%d,%zu,%zu,%zu,%zu,%llu",
             numforge_profile_complete() && numforge_alloc_stats_complete(),
             numforge_alloc_stats_calls(), numforge_alloc_stats_bytes(),
@@ -1053,6 +1052,10 @@ void numforge_handle_connection_before(
     else if (strcmp(method, "GET") == 0 && strcmp(target, "/assets/calculator.js") == 0)
     {
         numforge_send_response(socket, 200, "OK", "text/javascript; charset=utf-8", (const char *)NUMFORGE_CALCULATOR_JS);
+    }
+    else if (strcmp(method, "GET") == 0 && strcmp(target, "/assets/result-display.js") == 0)
+    {
+        numforge_send_response(socket, 200, "OK", "text/javascript; charset=utf-8", (const char *)NUMFORGE_RESULT_DISPLAY_JS);
     }
     else if (strcmp(method, "GET") == 0 && strcmp(target, "/assets/navigation.js") == 0)
     {

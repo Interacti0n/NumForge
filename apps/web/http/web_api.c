@@ -1,4 +1,5 @@
 #include "apps/web/http/web_api.h"
+#include "src/runtime/phase_profile.h"
 
 #include <numforge/runtime.h>
 #include <stdlib.h>
@@ -8,14 +9,44 @@
 void numforge_web_result_timing(char **response, uint64_t started, uint64_t finished)
 {
     if (response == NULL || *response == NULL || started == UINT64_MAX ||
-        finished == UINT64_MAX || finished < started || finished - started <= 500U) return;
+        finished == UINT64_MAX || finished < started) return;
+    uint64_t elapsed = finished - started;
+    int profiled = numforge_profile_active();
+    if (profiled) {
+        NumForgeProfilePhase previous = numforge_profile_enter(NUMFORGE_PHASE_OTHER);
+        numforge_profile_leave(previous);
+        profiled = numforge_profile_complete();
+        if (profiled) {
+            double total = 0.0;
+            for (int phase = 0; phase < NUMFORGE_PHASE_COUNT; ++phase)
+                total += numforge_profile_seconds((NumForgeProfilePhase)phase);
+            elapsed = (uint64_t)(total * 1000.0);
+        }
+    }
+    if (elapsed <= 500U) return;
     size_t length = strlen(*response);
-    if (length == 0U || length > 128U * 1024U - 48U || (*response)[length - 1U] != '}') return;
-    char *extended = realloc(*response, length + 48U);
+    if (length == 0U || length > 128U * 1024U - 768U || (*response)[length - 1U] != '}') return;
+    char metadata[768];
+    size_t used = (size_t)snprintf(metadata, sizeof(metadata), ",\"elapsed_ms\":%llu",
+        (unsigned long long)elapsed);
+    if (profiled)
+    {
+        static const char *keys[] = {"other", "parse", "evaluate", "format", "convert",
+            "round", "compose", "serialize", "send", "normalize"};
+        _Static_assert(sizeof(keys) / sizeof(keys[0]) == NUMFORGE_PHASE_COUNT, "Profile keys must cover all phases");
+        used += (size_t)snprintf(metadata + used, sizeof(metadata) - used, ",\"timings_us\":{");
+        for (int phase = 0; phase < NUMFORGE_PHASE_COUNT; ++phase)
+            used += (size_t)snprintf(metadata + used, sizeof(metadata) - used, "%s\"%s\":%llu",
+                phase ? "," : "", keys[phase],
+                (unsigned long long)(numforge_profile_seconds((NumForgeProfilePhase)phase) * 1000000.0));
+        metadata[used++] = '}';
+    }
+    metadata[used++] = '}';
+    metadata[used] = '\0';
+    char *extended = realloc(*response, length + used);
     if (extended == NULL) return;
     *response = extended;
-    (void)snprintf(extended + length - 1U, 49U, ",\"elapsed_ms\":%llu}",
-        (unsigned long long)(finished - started));
+    memcpy(extended + length - 1U, metadata, used + 1U);
 }
 
 /*

@@ -19,14 +19,14 @@ for(const lang of ['sk','en']) {
     test(`mobile converter is compact with history below its revealed result (${lang})`,async({page})=>{
         await page.setViewportSize({width:390,height:844});
         await page.goto('/units?lang='+lang);
-        await expect(page.locator('#unit-result')).toHaveText('1000');
+        await expect(page.locator('#unit-result')).toHaveText('1\u202f000');
         await expect(page.locator('.units-column > .intro')).toBeHidden();
         await expect(page.locator('#unit-input-help')).toBeHidden();
         await expect(page.locator('.units-column > .unit-history-card')).toBeVisible();
         expect(await page.evaluate(()=>document.querySelector('[aria-labelledby="unit-result-title"]').compareDocumentPosition(document.querySelector('.unit-history-card'))&Node.DOCUMENT_POSITION_FOLLOWING)).toBeTruthy();
         await page.locator('#unit-input').fill('2');
         const before=await page.evaluate(()=>scrollY);
-        await expect(page.locator('#unit-result')).toHaveText('2000');
+        await expect(page.locator('#unit-result')).toHaveText('2\u202f000');
         expect(Math.abs(await page.evaluate(()=>scrollY)-before)).toBeLessThan(2);
         await page.locator('#unit-submit').click();
         await expect(page.locator('#unit-history-list li')).toHaveCount(1);
@@ -41,7 +41,7 @@ for(const lang of ['sk','en']) {
         await expect(page.locator('.units-column > .unit-history-card')).toBeVisible();
         await expect(page.locator('.units-column > .intro')).toBeHidden();
         await page.locator('#unit-input').fill('3');
-        await expect(page.locator('#unit-result')).toHaveText('3000');
+        await expect(page.locator('#unit-result')).toHaveText('3\u202f000');
         await page.locator('#unit-submit').click();
         await expect(page.locator('#unit-history-list li')).toHaveCount(2);
         await expect.poll(()=>card.evaluate(n=>{

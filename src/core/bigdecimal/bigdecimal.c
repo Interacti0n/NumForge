@@ -2,6 +2,7 @@
 #include "src/core/bigint/bigint_internal.h"
 #include "src/runtime/numforge_alloc.h"
 #include "src/core/storage.h"
+#include "src/runtime/phase_profile.h"
 
 #include <numforge/bigdecimal.h>
 
@@ -242,9 +243,11 @@ static BigDecimalStatus normalize_unprofiled(BigDecimal *value)
 
 BigDecimalStatus bigdecimal_normalize(BigDecimal *value)
 {
+    NumForgeProfilePhase phase = numforge_profile_enter(NUMFORGE_PHASE_NORMALIZE);
     NumForgeDecimalPhase previous = numforge_decimal_enter(NUMFORGE_DECIMAL_NORMALIZE);
     BigDecimalStatus status = normalize_unprofiled(value);
     numforge_decimal_leave(previous);
+    numforge_profile_leave(phase);
     return status;
 }
 

@@ -69,7 +69,7 @@ function updateResultExpansion()
 {
     if (resultDialog.open)
     {
-        resultFull.textContent = result.textContent;
+        window.numforgeDisplay.render(resultFull, result.dataset.rawResult ?? result.textContent, notationMode.value);
     }
     const overflowing = result.scrollHeight > result.clientHeight + 1;
     resultMoreMarker.hidden = !overflowing || resultExpanded;
@@ -91,7 +91,7 @@ function toggleResultExpansion()
     }
     if (window.matchMedia('(min-width: 961px)').matches)
     {
-        resultFull.textContent = result.textContent;
+        window.numforgeDisplay.render(resultFull, result.dataset.rawResult ?? result.textContent, notationMode.value);
         if (!resultDialog.open) resultDialog.showModal();
         return;
     }
@@ -126,6 +126,8 @@ function invalidate()
     resultExpanded = false;
     expandResult.textContent = text.showAll;
     result.textContent = '';
+    delete result.dataset.rawResult;
+    result.removeAttribute('aria-label');
     setResultStatus('');
     setResultApproximation('');
     document.querySelector('#result-time').hidden = true;
@@ -1020,13 +1022,10 @@ async function calculate(commit)
             });
         }
         if (id !== generation) return;
-        result.textContent = data.result;
+        window.numforgeDisplay.render(result, data.result, request.notation);
         setResultStatus(commit ? 'confirmed' : 'preview', data.approximate);
         const timing = document.querySelector('#result-time');
-        const elapsed = data.elapsed_ms;
-        timing.hidden = !Number.isSafeInteger(elapsed) || elapsed <= 500;
-        timing.textContent = timing.hidden ? '' : (english ? 'Calculation time: ' : 'Čas výpočtu: ') +
-            (elapsed / 1000).toLocaleString(english ? 'en' : 'sk', {maximumFractionDigits: 3}) + ' s';
+        window.numforgeDisplay.timing(timing, data, english);
         setResultApproximation(data.approx);
         resultCopy = Object.hasOwn(data, 'copy') ? (typeof data.copy === 'string' ? data.copy : '') :
             (request.notation === 'math' ? '' : data.result);
@@ -1075,7 +1074,7 @@ function saveNavigationState()
             pending: pendingCommit, expression: expression.value,
             precision: precision.value, mode: precisionMode.value,
             notation: notationMode.value, complexForm: complexForm.value, angle: angleUnit,
-            result: result.textContent, resultCopy, resultApprox: resultApproxValue, resultState, resultApproximate,
+            result: result.dataset.rawResult ?? result.textContent, resultCopy, resultApprox: resultApproxValue, resultState, resultApproximate,
             resultError: result.classList.contains('error'),
             sessionTab: activeSessionTab, pendingVariableDeletion, pendingLifecycle: pendingReset, recent: recentItems,
             category: document.querySelector('.function-tabs button[aria-selected="true"]')?.id,
@@ -1139,7 +1138,8 @@ try
                 search.value = state.search;
                 search.dispatchEvent(new Event('input'));
             }
-            result.textContent = typeof state.result === 'string' ? state.result : '';
+            if (state.resultError) result.textContent = typeof state.result === 'string' ? state.result : '';
+            else window.numforgeDisplay.render(result, state.result, state.notation);
             setResultApproximation(state.resultApprox);
             setResultStatus(['preview','confirmed','error'].includes(state.resultState) ? state.resultState : '', state.resultApproximate);
             result.className = state.resultError === true ? 'error' : '';

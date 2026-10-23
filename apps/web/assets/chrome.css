@@ -280,6 +280,18 @@ button:disabled { cursor: default; }
     button, .primary-nav a { transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease; }
     .primary-button:hover { box-shadow: 0 4px 20px #a391ff38; }
 }
+.result-time.timing-details { position: relative; }
+.timing-details > summary { cursor: pointer; width: fit-content; list-style: none; border-radius: 4px; }
+.timing-details > summary::-webkit-details-marker { display: none; }
+.timing-details > summary::after { content: ' ⓘ'; color: var(--accent, #b9a7ff); }
+.timing-details > summary:focus-visible { outline: 2px solid var(--accent, #b9a7ff); outline-offset: 4px; }
+.timing-breakdown { display: none; position: absolute; bottom: calc(100% + 8px); left: 0; z-index: 20; box-sizing: border-box; width: min(350px, calc(100vw - 72px)); padding: 16px; border: 1px solid var(--border-soft); border-radius: 12px; background: var(--surface-raised); color: var(--text); box-shadow: 0 12px 36px #0006; font-size: .78rem; }
+.timing-details[open] > .timing-breakdown, .timing-details:has(> summary:focus-visible) > .timing-breakdown { display: block; }
+@media (hover: hover) { .timing-details:hover > .timing-breakdown { display: block; } }
+.timing-breakdown dl { display: grid; grid-template-columns: 1fr auto; gap: 5px 16px; margin: 0 0 12px; }
+.timing-breakdown dd { margin: 0; font-variant-numeric: tabular-nums; }
+.timing-breakdown p { margin: 0; color: var(--muted, #b3adc5); line-height: 1.5; }
+#result sup, #result-full sup, #unit-result sup { font-size: .65em; vertical-align: super; line-height: 0; white-space: nowrap; }
 @media (pointer: coarse) {
     .language-switch a, .primary-nav a, .nav-toggle, .header-guide { min-height: 44px; }
     .language-switch a { min-width: 44px; }

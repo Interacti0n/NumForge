@@ -1,4 +1,4 @@
-#include "src/runtime/instrumentation/benchmark_profile.h"
+#include "src/runtime/phase_profile.h"
 #include <numforge/bigdecimal.h>
 
 #include "src/core/bigdecimal/bigdecimal_internal.h"

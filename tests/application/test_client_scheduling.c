@@ -3,6 +3,8 @@
 #endif
 #include "src/application/clients/client_store.h"
 #include "apps/web/http/session_api.h"
+#include "apps/web/http/web_api.h"
+#include "src/runtime/phase_profile.h"
 #include <numforge/runtime.h>
 #include <unity.h>
 #include <stdio.h>
@@ -35,7 +37,7 @@ typedef struct Worker {
     const char *input, *expected, *target;
     uint64_t revision, observed;
     CalculatorStatus status;
-    bool ok, hold, gate, started, joined;
+    bool ok, hold, gate, started, joined, profile;
     Flag ready, proceed;
 #ifdef _WIN32
     HANDLE thread;
@@ -79,7 +81,17 @@ static void *run_worker(void *argument)
 {
     Worker *worker = argument;
     ApplicationClientLease lease = {0};
-    if (worker->target) {
+    if (worker->profile) {
+        char *result = NULL;
+        CalculatorError error;
+        worker->ok = !numforge_profile_active();
+        numforge_profile_reset();
+        worker->ok = worker->ok && numforge_web_evaluate("200!", &result, &error) == CALCULATOR_OK;
+        free(result);
+        numforge_profile_stop();
+        worker->ok = worker->ok && numforge_profile_complete() &&
+            numforge_profile_seconds(NUMFORGE_PHASE_PARSE) > 0.0;
+    } else if (worker->target) {
         char *response = NULL;
         worker->status = numforge_web_session_request(&store, "GET", worker->target, "", &response);
         worker->ok = response != NULL && strstr(response, worker->expected) != NULL;
@@ -347,9 +359,26 @@ static void test_deferred_cancellation_unpins_the_waiting_entry(void)
     TEST_ASSERT_EQUAL(CALCULATOR_OK, application_client_acquire(&store, client, APPLICATION_CLIENT_READ, &held[1]));
 }
 #endif
+static void test_request_profiles_are_thread_local(void)
+{
+    Worker *worker = prepare(0, APPLICATION_CLIENT_CACHE);
+    worker->profile = true;
+    numforge_profile_reset();
+    NumForgeProfilePhase previous = numforge_profile_enter(NUMFORGE_PHASE_PARSE);
+    launch(worker);
+    join_worker(worker);
+    TEST_ASSERT_TRUE(worker->ok);
+    TEST_ASSERT_TRUE(numforge_profile_active());
+    TEST_ASSERT_TRUE(numforge_profile_seconds(NUMFORGE_PHASE_PARSE) == 0.0);
+    numforge_profile_leave(previous);
+    numforge_profile_stop();
+    TEST_ASSERT_TRUE(numforge_profile_seconds(NUMFORGE_PHASE_PARSE) > 0.0);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_request_profiles_are_thread_local);
     RUN_TEST(test_timeouts_and_validation_leave_the_store_and_lease_unchanged);
     RUN_TEST(test_fifo_mutations_preserve_replay_and_read_snapshots);
     RUN_TEST(test_competing_clients_cannot_overcommit_the_shared_memory_quota);

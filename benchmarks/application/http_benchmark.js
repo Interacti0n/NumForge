@@ -4,7 +4,7 @@ const { spawn } = require('node:child_process');
 const http = require('node:http');
 const path = require('node:path');
 const assert = require('node:assert/strict');
-const phases = ['other', 'parse', 'evaluate', 'format', 'convert', 'round', 'compose', 'serialize', 'send'];
+const phases = ['other', 'parse', 'evaluate', 'format', 'convert', 'round', 'compose', 'serialize', 'send', 'normalize'];
 const scenarios = ['cold', 'hit', 'precision', 'notation', 'angle', 'expression',
     'approx_precision', 'stale', 'eviction', 'session_cold', 'session_hit',
     'commit', 'random', 'session_expiration', 'math_copy', 'output_limit'];
@@ -126,7 +126,7 @@ async function sample(name, memory) {
         }
         const response = await send(query, input);
         const record = response.record;
-        assert(record && record.length === 15 && record[0] === 1, 'Missing/incomplete phase or memory trace');
+        assert(record && record.length === 6 + phases.length && record[0] === 1, 'Missing/incomplete phase or memory trace');
         if (name === 'session_expiration') {
             assert.equal(response.status, 400); assert.match(response.data.status, /session expired/);
         } else if (name === 'output_limit') {

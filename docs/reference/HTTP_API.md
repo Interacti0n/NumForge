@@ -183,6 +183,10 @@ The [graph sampling HTTP API](GRAPH_HTTP_API.md) adds read-only
 `POST /api/graph/sample` with exact internal coordinates, bounded plotting
 projections and per-point classification. The complete request shares one budget.
 
-## Calculation duration
+## Processing duration
 
-Successful evaluation and conversion responses may include `elapsed_ms` when server computation takes more than 500 milliseconds. Timing uses monotonic clocks and excludes network latency and the preview delay. Cached calculator results and stored history omit it. The web UI displays it below the result in both languages; editing or replacing the result clears it. Timing metadata is best effort and cannot fail an otherwise successful result.
+Successful evaluation and conversion responses may include `elapsed_ms` for processing longer than 500 ms. This covers parsing, computation, number conversion and normalization, formatting, state operations and response preparation. Network transfer, the worker request queue, preview delay and browser rendering are excluded. Calculator session acquisition is included; unit conversion timing starts after session acquisition. Cached calculator results and stored history omit timing.
+
+Optional `timings_us` contains exclusive monotonic phase durations in integer microseconds: `parse`, `evaluate`, `convert`, `normalize`, `round`, `compose`, `format`, `serialize`, `other`, and `send` (zero before transmission). Nested phases are subtracted from their parents; `other` includes unclassified state and adapter work. Totals can differ from `elapsed_ms` slightly because of clock resolution and sampling. Metadata assembly itself is excluded. Metadata is best effort and cannot fail a valid calculation.
+
+The web labels this **Processing time**. Hover, focus or tap to inspect phases. Auto presents scalar E notation with superscripts and groups integer digits; Scientific retains E notation. Copy preserves the original parser-compatible value. These display changes do not affect API result strings or calculation precision.

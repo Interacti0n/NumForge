@@ -10,6 +10,7 @@ set(NUMFORGE_WEB_ASSETS
     apps/web/assets/api.css
     apps/web/assets/chrome.css
     apps/web/assets/navigation.js
+    apps/web/assets/result-display.js
     apps/web/assets/calculator.js
     apps/web/assets/function-library.js
     apps/web/assets/units.sk.html

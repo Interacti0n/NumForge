@@ -1,5 +1,5 @@
 #include "benchmarks/common/benchmark_clock.h"
-#include "src/runtime/instrumentation/benchmark_profile.h"
+#include "src/runtime/phase_profile.h"
 #include "src/runtime/numforge_alloc.h"
 
 #include <numforge/bigdecimal.h>
@@ -319,12 +319,13 @@ static bool run_fixture(const char *name, size_t digits, FormatOperation operati
     }
 
     sort_samples(samples, sample_count);
-    printf("%s,%zu,%zu,%zu,%zu,%.3f,%.3f,%.3f,%zu,%zu,%zu,%llu,%.3f,%.3f,%.3f,%.3f\n",
+    printf("%s,%zu,%zu,%zu,%zu,%.3f,%.3f,%.3f,%zu,%zu,%zu,%llu,%.3f,%.3f,%.3f,%.3f,%.3f\n",
            name, digits, iterations, sample_count, output_bytes,
            samples[0], samples[sample_count / 2U], samples[sample_count - 1U],
            allocation_calls, allocation_bytes, peak_bytes, numforge_profile_process_peak(),
            phases[NUMFORGE_PHASE_CONVERT] * 1e9, phases[NUMFORGE_PHASE_ROUND] * 1e9,
-           phases[NUMFORGE_PHASE_COMPOSE] * 1e9, phases[NUMFORGE_PHASE_OTHER] * 1e9);
+           phases[NUMFORGE_PHASE_COMPOSE] * 1e9, phases[NUMFORGE_PHASE_OTHER] * 1e9,
+           phases[NUMFORGE_PHASE_NORMALIZE] * 1e9);
     success = true;
 
 cleanup:
@@ -383,7 +384,7 @@ int main(int argc, char **argv)
 
     puts("operation,input_digits,iterations,samples,output_bytes,min_ns_per_op,"
          "median_ns_per_op,max_ns_per_op,alloc_calls_per_op,requested_bytes_per_op,peak_tracked_payload_bytes,process_peak_bytes,profile_convert_ns,"
-         "profile_round_ns,profile_compose_ns,profile_other_ns");
+         "profile_round_ns,profile_compose_ns,profile_other_ns,profile_normalize_ns");
 
     static const struct { const char *name; FormatOperation operation; } operations[] = {
         {"bigint_full", FORMAT_BIGINT_FULL},

@@ -1,4 +1,4 @@
-#include "src/runtime/instrumentation/benchmark_profile.h"
+#include "src/runtime/phase_profile.h"
 #include "src/engine/values/value_internal.h"
 #include "src/engine/formatting/formatter.h"
 #include "src/engine/values/quantity.h"
@@ -169,7 +169,7 @@ failed:
     return CALCULATOR_OUT_OF_MEMORY;
 }
 
-CalculatorStatus calculator_materialize_exact(
+static CalculatorStatus materialize_exact_unprofiled(
     BigDecimal *result, const CalculatorValue *value, const CalculatorContext *context)
 {
     if (calculator_value_is_complex(value)) return CALCULATOR_INVALID_ARGUMENT;
@@ -188,6 +188,15 @@ CalculatorStatus calculator_materialize_exact(
             rational_status == BIGRATIONAL_INVALID_ARGUMENT ? CALCULATOR_INVALID_ARGUMENT :
             CALCULATOR_VALUE_TOO_LARGE;
     }
+}
+
+CalculatorStatus calculator_materialize_exact(
+    BigDecimal *result, const CalculatorValue *value, const CalculatorContext *context)
+{
+    NumForgeProfilePhase previous = numforge_profile_enter(NUMFORGE_PHASE_CONVERT);
+    CalculatorStatus status = materialize_exact_unprofiled(result, value, context);
+    numforge_profile_leave(previous);
+    return status;
 }
 
 static CalculatorStatus calculator_format_exact_text(

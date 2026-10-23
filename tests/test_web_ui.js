@@ -20,6 +20,7 @@ async function createUI(english) {
             classList: {toggle() {}},
             addEventListener(event, handler) { this.listeners[event] = handler; },
             setAttribute() {},
+            removeAttribute() {},
             children: [],
             append(...children) { this.children.push(...children); },
             replaceChildren() { this.children = []; },
@@ -46,6 +47,7 @@ async function createUI(english) {
             addEventListener() {},
             querySelector: element,
             createElement: name => element(Symbol(name)),
+            createTextNode: text => ({textContent:text}),
             querySelectorAll: selector => selector === '[data-action]' ? [clear]
                 : selector === '[data-angle]' ? [angleRad, angleDeg]
                 : selector === '[data-insert]' ? [insert] : []
@@ -76,6 +78,7 @@ async function createUI(english) {
     };
     runtime.window.matchMedia = () => ({matches: false, addEventListener() {}});
     vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../apps/web/assets/function-library.js'), 'utf8'), runtime);
+    vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../apps/web/assets/result-display.js'), 'utf8'), runtime);
     vm.runInNewContext(instrumentedSource, runtime);
     Object.assign(runtime, runtime.window.__numforgeTest);
     await runtime.ensureSession();

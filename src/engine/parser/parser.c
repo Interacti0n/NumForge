@@ -1,4 +1,4 @@
-#include "src/runtime/instrumentation/benchmark_profile.h"
+#include "src/runtime/phase_profile.h"
 #include "src/engine/parser/expression_internal.h"
 #include "src/engine/parser/tokenizer.h"
 #include <numforge/units.h>

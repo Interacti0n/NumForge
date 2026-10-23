@@ -7,7 +7,7 @@ for (const lang of ['sk', 'en']) {
             await page.goto((units ? '/units' : '/') + '?lang=' + lang);
             const input = page.locator(units ? '#unit-input' : '#expression');
             const result = page.locator(units ? '#unit-result' : '#result');
-            if (units) await expect(result).toHaveText('1000');
+            if (units) await expect(result).toHaveText('1\u202f000');
             const requests = [];
             page.on('request', request => {
                 const url = new URL(request.url());
@@ -25,7 +25,7 @@ for (const lang of ['sk', 'en']) {
             await page.clock.runFor(1999);
             expect(requests).toHaveLength(0);
             await page.clock.runFor(1);
-            await expect(result).toHaveText(units ? '5000' : '5');
+            await expect(result).toHaveText(units ? '5\u202f000' : '5');
             expect(requests).toHaveLength(1);
             expect(requests[0].postData()).toBe('2+3');
 
@@ -34,7 +34,7 @@ for (const lang of ['sk', 'en']) {
             expect(requests).toHaveLength(1);
             await input.fill('4+5');
             await input.press('Enter');
-            await expect(result).toHaveText(units ? '9000' : '9');
+            await expect(result).toHaveText(units ? '9\u202f000' : '9');
             expect(requests).toHaveLength(2);
             expect(new URL(requests[1].url()).searchParams.get('action')).toBe('commit');
             await page.clock.runFor(2500);

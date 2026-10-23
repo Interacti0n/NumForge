@@ -2,6 +2,7 @@
 #include "apps/web/http/session_api.h"
 #include "apps/web/http/unit_web.h"
 #include "apps/web/http/web_api.h"
+#include "src/runtime/phase_profile.h"
 #include "src/engine/evaluator/functions.h"
 #include "src/application/graphs/graph.h"
 #include "src/application/graphs/fast_graph.h"
@@ -623,7 +624,7 @@ static CalculatorStatus session_request(ApplicationClientStore *store,
     if (store == NULL || method == NULL || target == NULL || body == NULL || response == NULL) return CALCULATOR_NULL_ARGUMENT;
     *response = NULL;
     uint64_t conversion_started = UINT64_MAX;
-    uint64_t conversion_finished = UINT64_MAX;
+    NumForgeProfilePhase response_phase = NUMFORGE_PHASE_OTHER;
     Query query; char path[64];
     if (!parse(target, path, &query)) return CALCULATOR_INVALID_ARGUMENT;
     if (strcmp(path, "/api/equations/solve") == 0)
@@ -699,8 +700,11 @@ static CalculatorStatus session_request(ApplicationClientStore *store,
             NumForgeConversionOptions options;
             if (!numforge_web_parse_conversion_options(convert_target, &options)) { status = CALCULATOR_INVALID_ARGUMENT; goto done; }
             conversion_started = numforge_monotonic_ms();
+            numforge_profile_reset();
+            NumForgeProfilePhase compute_previous = numforge_profile_enter(NUMFORGE_PHASE_EVALUATE);
             status = application_conversion_confirm(lease->session, revision, body, options.from, options.to, &options.context, &confirmed, error, code);
-            conversion_finished = numforge_monotonic_ms();
+            numforge_profile_leave(compute_previous);
+            response_phase = numforge_profile_enter(NUMFORGE_PHASE_SERIALIZE);
         } else status = CALCULATOR_INVALID_ARGUMENT;
         if (status != CALCULATOR_OK) goto done;
     }
@@ -762,7 +766,11 @@ done:
     if (status == CALCULATOR_OK) *response = json.data;
     else free(json.data);
     if (owner) numforge_budget_end();
-    if (status == CALCULATOR_OK) numforge_web_result_timing(response, conversion_started, conversion_finished);
+    if (conversion_started != UINT64_MAX) {
+        if (status == CALCULATOR_OK) numforge_web_result_timing(response, conversion_started, numforge_monotonic_ms());
+        numforge_profile_leave(response_phase);
+        numforge_profile_stop();
+    }
     return status;
 }
 
