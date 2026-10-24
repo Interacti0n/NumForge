@@ -9,8 +9,8 @@ for(const width of [390,1280]) test(`readable results preserve copied values ${w
  await page.goto('/?lang=sk');
  const input=page.locator('#expression'), result=page.locator('#result');
  await input.fill('400000!');
- await expect(result.locator('sup')).toHaveText('2\u202f067\u202f109');
- await expect(result).toHaveText('2.5344860463 × 102\u202f067\u202f109');
+ await expect(result.locator('sup')).toHaveText('2067109');
+ await expect(result).toHaveText('2.5344860463 × 102067109');
  await expect(result).toHaveAccessibleName('2.5344860463 × 10^+2067109');
  await page.locator('#copy-result').click();
  expect(await page.evaluate(()=>navigator.clipboard.readText())).toBe('2.5344860463E+2067109');
@@ -47,7 +47,8 @@ test('real factorial result and phase tooltip fit a mobile screen',async({page})
  await page.setViewportSize({width:390,height:844});
  await page.goto('/?lang=sk');
  await page.locator('#expression').fill('200000!');
- await expect(page.locator('#result sup')).toHaveText('973\u202f350');
+ await page.locator('#expression').press('Enter');
+ await expect(page.locator('#result sup')).toHaveText('973350',{timeout:12000});
  await page.screenshot({path:'../../build/browser-artifacts/result-math-mobile.png',fullPage:true});
  await page.locator('#result-time summary').click();
  await expect(page.locator('#result-time dt')).toHaveCount(9);

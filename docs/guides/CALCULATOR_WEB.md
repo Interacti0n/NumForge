@@ -11,6 +11,10 @@ try `1/3+1/6`: the result is `1/2`.
 
 ## Controls and behavior
 
+On desktop, the session panel aligns with the keypad. History and variables
+scroll inside the panel; filtering functions does not move it. Very short
+windows allow page scrolling so all controls remain reachable.
+
 Type expressions directly or use the function library. Function buttons insert
 parentheses and place the cursor inside. Search accepts English and Slovak terms;
 selecting a result inserts the supported function name. A decimal point or comma

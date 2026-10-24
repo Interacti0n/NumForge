@@ -14,7 +14,7 @@ window.numforgeDisplay = (() => {
         if (scientific && notation !== 'scientific') {
             const exponent = scientific[2] ?? scientific[3];
             const power = document.createElement('sup');
-            power.textContent = number(exponent.replace(/^\+/, ''));
+            power.textContent = exponent.replace(/^\+/, '');
             target.append(document.createTextNode(number(scientific[1]) + ' × 10'), power);
             // Superscripts have no textual separator when read as plain text.
             target.setAttribute('aria-label', scientific[1] + ' × 10^' + exponent);

@@ -11,6 +11,13 @@ persist in the same tab across language/tool navigation. Completed cached curves
 return immediately; reload recalculates previously completed visible functions.
 Editing clears only that row's old curve and keeps the camera and other results.
 
+On desktop, the function inputs align with the graph preview; the function
+library sits below the graph and edits the last focused row. **Graph history**
+keeps up to eight successful, explicitly plotted sets in the current browser
+tab. Select one to restore its expressions, colors, visibility and camera.
+Repeated sets are merged; errors and automatic pan/zoom requests add no entries.
+Clear removes this local history without changing the current graph.
+
 From [Equations](EQUATIONS.md#show-a-solution-in-the-graph), **Show in graph**
 adds the difference between equation sides and centers near a selected real root.
 It reuses matching expressions and respects the four-function limit. Graph

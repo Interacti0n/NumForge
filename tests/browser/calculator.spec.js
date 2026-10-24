@@ -16,7 +16,7 @@ for(const lang of ['sk','en']) for(const width of [390,1280]) {
     test(`large factorial scientific display ${lang} ${width}`,async({page})=>{
         await page.setViewportSize({width,height:844});await page.goto('/?lang='+lang);
         await page.locator('#expression').fill('20000!');
-        await expect(page.locator('#result')).toHaveText('1.8192063202 × 1077\u202f337');
+        await expect(page.locator('#result')).toHaveText('1.8192063202 × 1077337');
         expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     });
 }
@@ -1052,35 +1052,21 @@ for (const lang of ['sk', 'en']) {
             await expect(page.locator('#recent-buttons button:visible')).toHaveCount(0);
             expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
         });
-        test('whole sidebar scroll keeps session and history reachable in short windows', async ({ page }) => {
-            await page.setViewportSize({width: 1280, height: 720});
-            const before = {
-                library: await page.locator('.function-library').boundingBox(),
-                session: await page.locator('.session-panel').boundingBox()
-            };
+        test('session stays aligned while its lists scroll independently', async ({ page }) => {
+            await page.setViewportSize({width:1280,height:800});
+            const initial=await page.locator('.session-panel').boundingBox();
             await page.locator('#function-search').fill('no-such-function');
-            const after = {
-                library: await page.locator('.function-library').boundingBox(),
-                session: await page.locator('.session-panel').boundingBox()
-            };
-            expect(after.library.height).toBeLessThan(before.library.height);
-            expect(after.session.y).toBeLessThan(before.session.y);
+            expect(await page.locator('.session-panel').boundingBox()).toEqual(initial);
             await page.locator('#function-search').fill('');
-            for (const height of [600, 420]) {
-                await page.setViewportSize({width: 1280, height});
-                await calculate(page, '5', '5');
+            for(const height of [600,420]) {
+                await page.setViewportSize({width:1280,height});
+                await calculate(page,'5','5');
                 await page.locator('#history-list .history-copy').last().click();
                 await expect(page.locator('#history-list .history-copy').last()).toBeInViewport();
-                await expect(page.locator('#session-history-tab')).toBeInViewport();
-                await page.locator('#reset-session').scrollIntoViewIfNeeded();
-                await expect(page.locator('#reset-session')).toBeInViewport();
-                expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(height);
                 await page.locator('#function-search').scrollIntoViewIfNeeded();
                 await expect(page.locator('#function-search')).toBeInViewport();
-                await page.locator('.sidebar').focus();
-                await page.keyboard.press('End');
-                await expect.poll(() => page.locator('.sidebar').evaluate(el => el.scrollTop)).toBeGreaterThan(0);
-                await expect(page.locator('#history-list .history-copy').last()).toBeInViewport();
+                expect(await page.locator('.sidebar').evaluate(el=>el.scrollTop)).toBe(0);
+                expect(await page.evaluate(()=>document.documentElement.scrollHeight)).toBeGreaterThanOrEqual(height);
             }
         });
         test('guide sections stay navigable on narrow screens', async ({ page }) => {

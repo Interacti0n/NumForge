@@ -34,7 +34,7 @@ function initGraph() {
     function drawSoon(){if(drawFrame===null)drawFrame=requestAnimationFrame(()=>{drawFrame=null;if(!disposed)draw();});}
     function dimensions(){
         const result=root.querySelector('.graph-result');
-        if(!$('graph-expanded').open){const width=Math.max(320,Math.min(800,result.clientWidth-48));return {width,height:width<600?300:440};}
+        if(!$('graph-expanded').open&&!window.matchMedia('(min-width: 961px)').matches){const width=Math.max(320,Math.min(800,result.clientWidth-48));return {width,height:width<600?300:440};}
         const rendered=svg.clientWidth||result.clientWidth-48,width=Math.max(320,Math.min(2048,rendered));
         const available=root.querySelector('.graph-canvas').clientHeight;
         return {width,height:Math.round(Math.max(160,Math.min(1200,available*width/rendered)))};
@@ -86,6 +86,7 @@ function initGraph() {
         svg.dataset.featuresState='pending';
         ++foregroundBatches;
         try{await Promise.all(curves.filter(c=>c.state().visible).map(c=>c.plot(null,keepView)));}finally{--foregroundBatches;pump();}
+        if(submitted&&!disposed&&submitted.length===curves.length&&submitted.every(([curve,input],i)=>curves[i]===curve&&curve.input.value===input)&&curves.some(c=>c.state().visible)&&curves.filter(c=>c.state().visible).every(c=>c.hasResult()))rememberGraph();
         if(submitted && !disposed && submitted.length===curves.length &&
             submitted.every(([curve,input],i)=>curves[i]===curve && curve.input.value===input) &&
             window.matchMedia('(max-width: 960px)').matches)
@@ -947,6 +948,38 @@ function initGraph() {
     curves.push(createCurve(initialRow));activeCurve=curves[0];
     for(const entry of restoredCurves.slice(1))addCurve(entry.expression,/^#[0-9a-f]{6}$/i.test(entry.color)?entry.color:null,false,entry.visible!==false);
     activeCurve=curves.find(c=>c.input.value===importedExpression)||curves[0];relabel();
+    let graphHistory=[];
+    const historyKey='numforge-graph-history';
+    const validHistory=entry=>entry?.version===2&&validAxis(entry.view?.x)&&validAxis(entry.view?.y)&&
+        Array.isArray(entry.curves)&&entry.curves.length>0&&entry.curves.length<=maximumCurves&&
+        entry.curves.every(c=>valid(c)&&/^#[0-9a-f]{6}$/i.test(c.color)&&typeof c.visible==='boolean')&&entry.curves.some(c=>c.visible&&c.expression.trim());
+    try{const saved=sessionStorage.getItem(historyKey);if(saved&&saved.length<=200000){const entries=JSON.parse(saved);if(Array.isArray(entries))graphHistory=entries.filter(validHistory).slice(0,8);}}catch(_){}
+    function renderHistory(){
+        const list=$('graph-history-list');list.replaceChildren();$('graph-history-empty').hidden=!!graphHistory.length;$('graph-history-clear').disabled=!graphHistory.length;
+        graphHistory.forEach((entry,index)=>{
+            const row=document.createElement('li'),button=document.createElement('button'),name=document.createElement('strong'),view=document.createElement('span');button.type='button';
+            name.textContent=entry.curves.map(c=>c.expression).join(' · ');button.title=name.textContent;
+            view.textContent=`x: ${entry.view.x.map(n=>Number(n.toPrecision(5))).join(' … ')} · y: ${entry.view.y.map(n=>Number(n.toPrecision(5))).join(' … ')}`;
+            button.dataset.historyIndex=String(index);button.append(name,view);row.append(button);list.append(row);
+        });
+    }
+    function persistHistory(){try{sessionStorage.setItem(historyKey,JSON.stringify(graphHistory));}catch(_){}renderHistory();}
+    function historyIdentity(entry){return JSON.stringify([entry.view,entry.curves.map(c=>[c.expression,c.color,c.visible])]);}
+    function rememberGraph(){
+        const entry=settings(),key=historyIdentity(entry);
+        graphHistory=[entry,...graphHistory.filter(saved=>historyIdentity(saved)!==key)].slice(0,8);persistHistory();
+    }
+    function restoreHistory(entry){
+        locateRequest?.abort();clearInspection();
+        const row=curves[0].row.cloneNode(true);curves.forEach(c=>c.dispose());curves.length=0;$('graph-curves').replaceChildren(row);
+        row.querySelector('.graph-curve-status').hidden=true;row.querySelector('input:not([type=color])').value=entry.curves[0].expression;
+        row.querySelector('input[type=color]').value=entry.curves[0].color;row.querySelector('.graph-visibility').setAttribute('aria-pressed',String(entry.curves[0].visible));
+        curves.push(createCurve(row));for(const c of entry.curves.slice(1))addCurve(c.expression,c.color,false,c.visible);
+        viewport=entry.view.x.slice();yViewport=entry.view.y.slice();activeCurve=curves[0];relabel();save();
+        plotAll(null,true,true).then(()=>{if(!disposed)svg.focus({preventScroll:true});});
+    }
+    $('graph-history-list').addEventListener('click',event=>{const button=event.target.closest('button[data-history-index]');if(button&&graphHistory[button.dataset.historyIndex])restoreHistory(graphHistory[button.dataset.historyIndex]);},{signal:lifecycle.signal});
+    $('graph-history-clear').addEventListener('click',()=>{graphHistory=[];persistHistory();},{signal:lifecycle.signal});renderHistory();
     $('graph-form').addEventListener('submit',event=>plotAll(event),{signal:lifecycle.signal});
     $('graph-add').addEventListener('click',()=>addCurve(),{signal:lifecycle.signal});
     $('graph-legend').addEventListener('click',event=>{const button=event.target.closest('.graph-legend-toggle'),curve=curves.find(c=>String(c.id)===button?.dataset.curve);if(curve)curve.setVisible(!curve.state().visible);},{signal:lifecycle.signal});
@@ -989,14 +1022,23 @@ function initGraph() {
     window.addEventListener('resize',resized,{signal:lifecycle.signal});
 
     const libraryDetails=$('graph-library'),libraryDialog=$('graph-library-dialog'),libraryExpression=$('graph-library-expression');let libraryCurve=null;
+    const libraryDock=$('graph-library-dock'),libraryFilters=libraryDialog.querySelector('.graph-library-filters'),catalogue=libraryDialog.querySelector('.graph-catalogue');
+    const searchField=libraryFilters.querySelector('.search-field'),categoryField=libraryFilters.querySelector('.graph-library-category');
+    const desktopLibrary=window.matchMedia('(min-width: 961px)');
+    function placeLibrary(){
+        const inline=desktopLibrary.matches&&!libraryDialog.open;
+        (inline?libraryDock.querySelector('.graph-library-filters'):libraryFilters).append(searchField,categoryField);
+        (inline?libraryDock:libraryDialog).append(catalogue);
+    }
+    desktopLibrary.addEventListener('change',placeLibrary,{signal:lifecycle.signal});placeLibrary();
     function syncLibraryExpression(){if(!libraryCurve)return;const input=libraryCurve.input,changed=input.value!==libraryExpression.value;input.value=libraryExpression.value;input.setSelectionRange(libraryExpression.selectionStart,libraryExpression.selectionEnd);if(changed)input.dispatchEvent(new Event('input',{bubbles:true}));}
     libraryDetails.addEventListener('toggle',()=>{
         if(disposed)return;
-        if(libraryDetails.open&&!libraryDialog.open){libraryCurve=activeCurve||curves[0];libraryExpression.value=libraryCurve.input.value;$('graph-library-target').textContent=`${text.function} ${curves.indexOf(libraryCurve)+1} · y =`;libraryExpression.setSelectionRange(libraryCurve.input.selectionStart,libraryCurve.input.selectionEnd);libraryDialog.showModal();document.body.classList.add('graph-library-open');libraryExpression.focus({preventScroll:true});}
+        if(libraryDetails.open&&!libraryDialog.open){libraryCurve=activeCurve||curves[0];libraryExpression.value=libraryCurve.input.value;$('graph-library-target').textContent=`${text.function} ${curves.indexOf(libraryCurve)+1} · y =`;libraryExpression.setSelectionRange(libraryCurve.input.selectionStart,libraryCurve.input.selectionEnd);libraryDialog.showModal();placeLibrary();document.body.classList.add('graph-library-open');libraryExpression.focus({preventScroll:true});}
         else if(!libraryDetails.open&&libraryDialog.open)libraryDialog.close();
     },{signal:lifecycle.signal});
     $('graph-library-close').addEventListener('click',()=>libraryDialog.close(),{signal:lifecycle.signal});
-    libraryDialog.addEventListener('close',()=>{if(!disposed)syncLibraryExpression();libraryDetails.open=false;document.body.classList.remove('graph-library-open');if(!disposed)libraryCurve?.input.focus({preventScroll:true});},{signal:lifecycle.signal});
+    libraryDialog.addEventListener('close',()=>{if(!disposed){syncLibraryExpression();placeLibrary();}libraryDetails.open=false;document.body.classList.remove('graph-library-open');if(!disposed)libraryCurve?.input.focus({preventScroll:true});},{signal:lifecycle.signal});
     libraryExpression.addEventListener('input',syncLibraryExpression,{signal:lifecycle.signal});
     function plotFromLibrary(){syncLibraryExpression();libraryDialog.close();plotAll(null,true,true);}
     $('graph-library-plot').addEventListener('click',plotFromLibrary,{signal:lifecycle.signal});
