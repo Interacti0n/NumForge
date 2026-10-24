@@ -48,7 +48,7 @@ for(const lang of ['en','sk'])test(`graph library searches shared aliases and in
  await search.fill(lang==='sk'?'LUDOLFOVO CISLO':"LUDOLPH'S NUMBER");await page.locator('#graph-functions button[data-insert="π"]').click();await expect(input(page,1)).toHaveValue('sqrt(π)');
  await search.fill('ARCTG');await expect(page.locator('#graph-functions button[data-function=atan]')).toBeVisible();
  await search.fill('');await expect(page.locator('#graph-functions button[data-function=rand]')).toHaveCount(0);
- await page.locator('#graph-function-categories button[data-category="2"]').click();await expect(page.locator('#graph-functions button[data-function=sin]')).toBeVisible();await expect(page.locator('#graph-functions button[data-function=sqrt]')).toBeHidden();
+ await page.locator('#graph-function-categories').getByRole('button',{name:lang==='en'?'Trigonometry':'Goniometria',exact:true}).click();await expect(page.locator('#graph-functions button[data-function=sin]')).toBeVisible();await expect(page.locator('#graph-functions button[data-function=sqrt]')).toBeHidden();
  await page.locator('#graph-library').screenshot({path:artifactPath(`graph-library-${lang}.png`)});
 });
 for(const [width,height] of [[1280,900],[390,844],[844,390]])test(`expanded graph keeps the canvas and camera and returns cleanly ${width}x${height}`,async({page})=>{

@@ -1025,10 +1025,15 @@ function initGraph() {
     const libraryDock=$('graph-library-dock'),libraryFilters=libraryDialog.querySelector('.graph-library-filters'),catalogue=libraryDialog.querySelector('.graph-catalogue');
     const searchField=libraryFilters.querySelector('.search-field'),categoryField=libraryFilters.querySelector('.graph-library-category');
     const desktopLibrary=window.matchMedia('(min-width: 961px)');
+    let refreshLibrary=()=>{};
     function placeLibrary(){
         const inline=desktopLibrary.matches&&!libraryDialog.open;
         (inline?libraryDock.querySelector('.graph-library-filters'):libraryFilters).append(searchField,categoryField);
         (inline?libraryDock:libraryDialog).append(catalogue);
+        catalogue.classList.toggle('function-groups',inline);
+        catalogue.querySelector('.graph-catalogue-results').classList.toggle('function-group',inline);
+        (inline?libraryDock:catalogue.querySelector('.graph-catalogue-results')).append($('graph-function-help'));
+        refreshLibrary();
     }
     desktopLibrary.addEventListener('change',placeLibrary,{signal:lifecycle.signal});placeLibrary();
     function syncLibraryExpression(){if(!libraryCurve)return;const input=libraryCurve.input,changed=input.value!==libraryExpression.value;input.value=libraryExpression.value;input.setSelectionRange(libraryExpression.selectionStart,libraryExpression.selectionEnd);if(changed)input.dispatchEvent(new Event('input',{bubbles:true}));}
@@ -1065,15 +1070,16 @@ function initGraph() {
             const library=window.numforgeFunctionLibrary,{functionHelp,functionSearchAliases,inverseFunctionAliases}=library;
             const categories=[
                 [english?'Basic':'Základné',['abs','sign','min','max','floor','ceil','trunc','round']],
-                [english?'Powers & logs':'Mocniny a logaritmy',['pow','sqrt','cbrt','root','exp','ln','log']],
-                [english?'Trigonometry':'Goniometria',['sin','cos','tan','asin','acos','atan','radians','degrees']],
-                [english?'Hyperbolic':'Hyperbolické',['sinh','cosh','tanh','asinh','acosh','atanh']],
                 [english?'Statistics':'Štatistika',['sum','product','mean','median','geomean','harmean','variance','stdevp','stdev']],
                 [english?'Integers':'Celé čísla',['gcd','lcm','mod','npr','ncr','factorial','isqrt']],
-                [english?'Complex components':'Komplexné zložky',['complex','re','im','conj','arg']],
+                [english?'Powers & logs':'Mocniny a logy',['pow','sqrt','cbrt','root','exp','ln','log']],
+                [english?'Trigonometry':'Goniometria',['sin','cos','tan','asin','acos','atan','radians','degrees']],
+                [english?'Hyperbolic':'Hyperbolické',['sinh','cosh','tanh','asinh','acosh','atanh']],
+                [english?'Complex numbers':'Komplexné čísla',['complex','re','im','conj','arg']],
                 [english?'Constants':'Konštanty',[]]
             ];
             const buttons=[],container=$('graph-functions'),selector=$('graph-function-category'),search=$('function-search'),searchStatus=$('search-status'),help=$('graph-function-help');
+            help.textContent=english?'Choose a function for argument details. Separate arguments with ;.':'Vyber funkciu pre opis argumentov. Argumenty oddeľ bodkočiarkou ;.';
             const makeButton=(label,insertion,description,terms,category,name='')=>{
                 const button=document.createElement('button');button.type='button';button.textContent=label;button.dataset.insert=insertion;button.dataset.function=name;button.title=description;button.dataset.category=String(category);
                 const searchable=library.normalize([label,insertion,description,...terms].join(' '));
@@ -1097,17 +1103,23 @@ function initGraph() {
                 $('graph-function-categories').append(button);return button;
             });
             let page=0;
-            function filter(reset=true){if(reset)page=0;const query=library.normalize(search.value.trim()),category=selector.value;
+            if(desktopLibrary.matches&&!libraryDialog.open)selector.value='0';
+            function filter(reset=true){if(reset){page=0;catalogue.querySelector('.graph-catalogue-results').scrollTop=0;}const query=library.normalize(search.value.trim()),category=selector.value;
+                const inline=catalogue.parentElement===libraryDock;
+                catalogue.classList.toggle('searching',inline&&!!query);
+                $('graph-function-categories').hidden=inline&&!!query;
+                catalogue.querySelector('.graph-library-pages').hidden=inline;
                 categoryButtons.forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.category===category)));
                 const matches=buttons.filter(({searchable,category:group})=>(!category||String(group)===category)&&searchable.includes(query));
-                const perPage=innerHeight<=460?3:innerHeight<=760?6:9,pages=Math.max(1,Math.ceil(matches.length/perPage));page=Math.min(page,pages-1);
+                const perPage=inline?Math.max(1,matches.length):innerHeight<=460||(innerWidth<=360&&innerHeight<=650)?3:innerHeight<=760?6:9,pages=Math.max(1,Math.ceil(matches.length/perPage));page=Math.min(page,pages-1);
                 const shown=new Set(matches.slice(page*perPage,(page+1)*perPage));
                 buttons.forEach(entry=>{entry.button.hidden=!shown.has(entry);});
                 searchStatus.hidden=!!matches.length;searchStatus.textContent=text.noMatch;
                 $('graph-library-page').textContent=`${page+1} / ${pages}`;
                 $('graph-library-previous').disabled=page===0;$('graph-library-next').disabled=page===pages-1;
             }
-            search.addEventListener('input',()=>{if(search.value.trim())selector.value='';filter();},{signal:lifecycle.signal});selector.addEventListener('change',()=>filter(),{signal:lifecycle.signal});
+            refreshLibrary=()=>filter(false);
+            search.addEventListener('input',()=>{selector.value=search.value.trim()?'':'0';filter();if(!search.value.trim())$('graph-function-categories').scrollTop=0;},{signal:lifecycle.signal});selector.addEventListener('change',()=>filter(),{signal:lifecycle.signal});
             $('graph-library-previous').addEventListener('click',()=>{--page;filter(false);},{signal:lifecycle.signal});
             $('graph-library-next').addEventListener('click',()=>{++page;filter(false);},{signal:lifecycle.signal});
             window.addEventListener('resize',()=>filter(false),{signal:lifecycle.signal});

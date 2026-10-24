@@ -12,7 +12,11 @@ return immediately; reload recalculates previously completed visible functions.
 Editing clears only that row's old curve and keeps the camera and other results.
 
 On desktop, the function inputs align with the graph preview; the function
-library sits below the graph and edits the last focused row. **Graph history**
+library sits below the graph and edits the last focused row. It shares the
+calculator's category order, button styles and description area: categories on
+the left, functions on the right, with search across categories. The inline
+library scrolls within its columns; the compact editor keeps pagination.
+**Graph history**
 keeps up to eight successful, explicitly plotted sets in the current browser
 tab. Select one to restore its expressions, colors, visibility and camera.
 Repeated sets are merged; errors and automatic pan/zoom requests add no entries.

@@ -249,7 +249,7 @@ html[lang="en"] .function-group:not(.search-results)::before { content: "Functio
 .function-groups .function-group { grid-column: 2; grid-row: 1; }
 .function-groups.searching { grid-template-columns: minmax(0, 1fr); }
 .function-groups.searching .function-group { grid-column: 1; grid-row: auto; }
-.function-tabs button[aria-selected="true"] { border-color: var(--mint); background: var(--surface-selected); color: var(--text); box-shadow: inset 3px 0 var(--accent); }
+.function-tabs button[aria-selected="true"], .function-tabs button[aria-pressed="true"] { border-color: var(--mint); background: var(--surface-selected); color: var(--text); box-shadow: inset 3px 0 var(--accent); }
 .function-group { min-width: 0; padding: 10px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
 .function-group summary { cursor: pointer; }
 .function-group.search-results { padding-top: 13px; }

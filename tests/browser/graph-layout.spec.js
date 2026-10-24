@@ -6,6 +6,8 @@ for(const [width,height,lang] of [[1280,800,'en'],[390,844,'sk'],[844,390,'en'],
   const before=await page.evaluate(()=>document.documentElement.scrollHeight);
   await page.locator('#graph-library summary').click();const dialog=page.locator('#graph-library-dialog');await expect(dialog).toBeVisible();
   await expect(page.locator('#graph-functions button').first()).toBeVisible();
+  const allCategories=page.locator('#graph-function-categories button[data-category=""]');
+  if(await allCategories.isVisible())await allCategories.click();else await page.locator('#graph-function-category').selectOption('');
   const visited=new Set(),total=await page.locator('#graph-functions button').count();
   for(let i=0;i<40;i++){
    const fit=await dialog.evaluate(e=>{const r=e.getBoundingClientRect();return {top:r.top,bottom:r.bottom,height:innerHeight,overflow:e.scrollHeight-e.clientHeight};});
@@ -40,7 +42,10 @@ for(const width of [390,1280])test(`library edits the selected complete expressi
  await expect(page.getByRole('heading',{name:'Function editor',exact:true})).toBeVisible();
  const inputBox=await editor.boundingBox(),actionsBox=await page.locator('.graph-editor-actions').boundingBox();expect(actionsBox.y).toBeGreaterThanOrEqual(inputBox.y+inputBox.height);
  await page.locator('#graph-library-clear').click();await expect(editor).toBeFocused();await expect(target).toHaveValue('');await expect(page.locator('#graph-expression')).toHaveValue('sin(x)');
- await editor.fill('x + ');await page.locator('#graph-library-next').click();await expect(editor).toHaveValue('x + ');
+ await editor.fill('x + ');
+ const allCategories=page.locator('#graph-function-categories button[data-category=""]');
+ if(await allCategories.isVisible())await allCategories.click();else await page.locator('#graph-function-category').selectOption('');
+ await page.locator('#graph-library-next').click();await expect(editor).toHaveValue('x + ');
  await page.locator('#function-search').fill('square root');await page.locator('#graph-functions button[data-function=sqrt]').click();await expect(editor).toBeFocused();await editor.press('2');
  await expect(editor).toHaveValue('x + sqrt(2)');await expect(target).toHaveValue('x + sqrt(2)');await expect(page.locator('#graph-expression')).toHaveValue('sin(x)');
  await editor.evaluate(e=>e.setSelectionRange(0,1));await page.locator('#function-search').fill('sine');await page.locator('#graph-functions button[data-function=sin]').click();
