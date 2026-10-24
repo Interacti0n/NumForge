@@ -101,6 +101,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .function-shortcut:hover { text-decoration: underline; }
 
 .precision-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+/* Keep the custom precision slot so changing modes cannot reflow the panel. */
+#custom-precision[hidden] { display: flex !important; visibility: hidden; }
 .settings-title { width: 100%; padding: 0; border: 0; background: transparent; color: var(--text); text-align: left; font: inherit; }
 #settings-title { font-size: 1rem; font-weight: 750; }
 #settings-overview { display: none; }
