@@ -1283,7 +1283,7 @@ test('mobile input actions, constants and nearby settings survive rotation', asy
   }
   await page.setViewportSize({width:390,height:844});
   await expect(page.locator('.keypad-card')).toBeHidden();
-  await expect(page.locator('.calculator-column > .precision')).toBeVisible();
+  await expect(page.locator('.workspace > .precision')).toBeVisible();
   const box=await page.locator('#expression').boundingBox(), form=await page.locator('#calculator').boundingBox();
   expect(Math.abs(box.width-form.width)).toBeLessThan(1);
   expect((await page.locator('.primary-button').boundingBox()).y).toBeGreaterThanOrEqual(box.y+box.height);
@@ -1326,7 +1326,7 @@ test('mobile input actions, constants and nearby settings survive rotation', asy
   await expect(page.locator('#settings-controls')).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
   await page.setViewportSize({width:1280,height:720});
-  await expect(page.locator('.calculator-column > .precision')).toBeVisible();
+  await expect(page.locator('.workspace > .precision')).toBeVisible();
   await expect(page.locator('.keypad-card')).toBeVisible();
   await expect(page.locator('#clear-expression')).toBeHidden();
   await page.locator('#precision-mode').selectOption('auto');

@@ -11,7 +11,8 @@ try `1/3+1/6`: the result is `1/2`.
 
 ## Controls and behavior
 
-On desktop, the session panel aligns with the keypad. History and variables
+On desktop, settings use one full-width row, including Custom precision.
+The session panel aligns with the keypad. History and variables
 scroll inside the panel; filtering functions does not move it. Very short
 windows allow page scrolling so all controls remain reachable.
 
