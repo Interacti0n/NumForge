@@ -52,6 +52,16 @@ times and a local 2+2 request with the public Origin. `-Action Status -Json`
 returns machine-readable fields. `Ready` confirms local serving and a live
 tunnel process, not public reachability; that field is explicitly not checked.
 
+The Windows helper starts the backend at `BelowNormal` process priority so
+interactive desktop applications take precedence under CPU contention. Restart,
+rollback and recovery apply the same priority. This is a scheduling preference,
+not a hard CPU/RAM cap. `Status -Json` also reports the actual priority, resident
+and private bytes, and cumulative process CPU seconds for the verified backend.
+The tested 4-worker/64-slot profile is retained on the 8-core/16-thread preview
+PC; see the [current mixed-load measurement](../performance/baselines/SERVER.md#current-preview-profile).
+Request allocation budgets and retained-session quotas remain separate from
+process RAM. A Windows Job Object limit is not currently installed.
+
 `Restart` replaces only the backend while retaining the live tunnel and its URL.
 It inherits the saved executable/settings unless overridden, for example:
 

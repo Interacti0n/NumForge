@@ -185,3 +185,43 @@ This validates the selected workload on this Windows preview through the public
 proxy from the hosting PC. Fifteen minutes does not establish leak freedom,
 overnight uptime or capacity for arbitrary expensive expressions. OS resource
 limits, independent-network/device checks and reboot/login remain separate.
+# Current preview profile
+
+Measured 25 October 2026 on Ryzen 7 7435HS (8 cores/16 logical CPUs), 31.82 GiB
+RAM, Windows x64, MSVC 19.51 Release. Embedded server revision `49239c3`;
+driver changes add `--mixed-heavy`, Windows CPU/private-memory observations and
+BelowNormal priority. The live helper now applies that priority after every start.
+Raw local records: `build/http-mixed-heavy-4.jsonl` and
+`build/http-mixed-heavy-tunnel.jsonl` (ignored diagnostic outputs).
+
+Profile: 4 workers, queue 64, 10 s cooperative budget, 128 MiB cumulative
+allocation requests, 8 MiB single allocation. Two heavy clients each submit two
+uncached `246000!+turn*0` requests; the remaining clients each submit two existing
+mixed arithmetic/fraction/equation/graph/sqrt(2)-1000 requests. No retries;
+correctness is checked. Factorial rounding was independently checked using
+Python `math.factorial` and integer division/remainder, without decimal strings.
+
+| Clients | Local verified | Local light max | HTTPS verified | HTTPS light max |
+| --- | --- | --- | --- | --- |
+| 10 | 20/20 | 24 ms | 20/20 | 322 ms |
+| 30 | 60/60 | 65 ms | 60/60 | see raw per-operation records |
+| 60 | 120/120 | 159 ms | 120/120 | 684 ms |
+
+Local factorial maxima were 4.22–4.47 s; HTTPS maxima stayed below 4.67 s.
+Local peak resident RAM was 17.3 MiB. The already-running HTTPS backend's
+lifetime peak was 31.0 MiB (not an isolated interval peak); tunnel lifetime peak
+was 40.4 MiB. Backend CPU deltas were approximately 15–17 CPU seconds per
+8–9 s scenario, roughly two busy logical CPUs on average. This does not measure
+desktop responsiveness, CPU peak, or a universal throughput guarantee.
+
+Local forced overload held all four workers with incomplete connections:
+60/60 requests returned `503 server_busy`, followed by correct recovery in
+1.8 ms. HTTPS test sessions were released after each scenario. Isolated helper
+tests passed start/restart, bad-candidate rollback, process-loss recovery,
+identity/lock protection and windowless scheduler construction. Actual Windows
+reboot/login remains deferred; this gate is not claimed complete.
+
+Retain 4/64 and BelowNormal for the preview. More clients are plausible when
+most requests are short; this test covers only two simultaneous heavy clients,
+not 60 factorials. There is no process RAM or hard CPU cap. Reassess if workloads
+or concurrency change rather than raising budgets based on this burst alone.

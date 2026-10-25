@@ -121,6 +121,8 @@ function Start-Backend($path, $arguments, $url) {
         -RedirectStandardError (Join-Path $stateRoot "server-$Port.stderr.log") `
         -RedirectStandardOutput (Join-Path $stateRoot "server-$Port.stdout.log")
     try {
+        # Keep interactive desktop work ahead of this background preview.
+        $process.PriorityClass = [Diagnostics.ProcessPriorityClass]::BelowNormal
         $identity = Get-Identity $process $path
         $startup = [Diagnostics.Stopwatch]::StartNew()
         while ($startup.Elapsed.TotalSeconds -lt 10) {
@@ -184,6 +186,13 @@ try {
             ServerAlive = $serverAlive; TunnelAlive = $tunnelAlive; LocalHealthy = $healthy
             ServerPath = $state.Server.Path; Workers = $state.Workers; QueueCapacity = $state.QueueCapacity
             PublicReachability = 'Not checked' }
+        $ownedBackend = Get-OwnedProcess $state.Server
+        if ($ownedBackend) {
+            $report | Add-Member NoteProperty ServerPriority ([string]$ownedBackend.PriorityClass)
+            $report | Add-Member NoteProperty ServerResidentBytes $ownedBackend.WorkingSet64
+            $report | Add-Member NoteProperty ServerPrivateBytes $ownedBackend.PrivateMemorySize64
+            $report | Add-Member NoteProperty ServerCpuSeconds $ownedBackend.TotalProcessorTime.TotalSeconds
+        }
         if ($Json) { $report | ConvertTo-Json } else { $report | Format-List }
         return
     }

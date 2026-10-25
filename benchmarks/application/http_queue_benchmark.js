@@ -15,9 +15,10 @@ const executable = process.argv[2];
 const args = process.argv.slice(3), remoteIndex = args.indexOf('--remote-state');
 const remotePath = remoteIndex < 0 ? null : args.splice(remoteIndex, 2)[1];
 const load = args.includes('--load'), quick = args.includes('--quick'), sustained = args.includes('--sustained');
-if (!executable || args.some(arg => !['--load', '--sustained', '--quick'].includes(arg)) ||
-    new Set(args).size !== args.length || load && sustained || quick && !load && !sustained || remoteIndex >= 0 && (!remotePath || !sustained))
-    throw Error('Usage: node benchmarks/application/http_queue_benchmark.js server-executable [--load|--sustained] [--quick] [--remote-state state.json]');
+const heavy = args.includes('--mixed-heavy');
+if (!executable || args.some(arg => !['--load', '--sustained', '--quick', '--mixed-heavy'].includes(arg)) ||
+    new Set(args).size !== args.length || Number(load)+Number(sustained)+Number(heavy)>1 || quick && !load && !sustained || remoteIndex >= 0 && (!remotePath || !sustained && !heavy))
+    throw Error('Usage: node benchmarks/application/http_queue_benchmark.js server-executable [--load|--sustained|--mixed-heavy] [--quick] [--remote-state state.json]');
 const remoteState = remotePath ? JSON.parse(fs.readFileSync(remotePath, 'utf8').replace(/^\uFEFF/, '')) : null;
 if (remoteState) {
     assert.equal(process.platform, 'win32', 'Remote-state metrics require the Windows preview helper');
@@ -30,6 +31,8 @@ const requestedPort = Number(process.env.NUMFORGE_QUEUE_BENCH_PORT || 0);
 assert.ok(Number.isInteger(requestedPort) && (requestedPort === 0 || requestedPort >= 1024 && requestedPort <= 65535));
 const queueCapacity = Number(process.env.NUMFORGE_QUEUE_BENCH_CAPACITY || 32);
 assert.ok(Number.isInteger(queueCapacity) && queueCapacity >= 1 && queueCapacity <= 64);
+const workers = Number(process.env.NUMFORGE_QUEUE_BENCH_WORKERS || 4);
+assert.ok(Number.isInteger(workers) && workers >= 1 && workers <= 16);
 let port;
 let clientNamespace;
 const remoteSessions = new Map();
@@ -102,7 +105,7 @@ async function withServer(work) {
     }
     port = await availablePort();
     const server = spawn(path.resolve(executable), ['--no-browser', '--port', String(port),
-        '--workers', '4', '--queue-capacity', String(queueCapacity)],
+        '--workers', String(workers), '--queue-capacity', String(queueCapacity)],
         {windowsHide: true, stdio: ['ignore', 'ignore', 'pipe']});
     let spawnError, diagnostics = '';
     server.on('error', error => {spawnError = error;});
@@ -116,6 +119,8 @@ async function withServer(work) {
             catch {await delay(20);}
         }
         assert.ok(ready, 'Dedicated server did not start');
+        if (process.platform === 'win32') await promisify(execFile)('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
+            `(Get-Process -Id ${server.pid} -ErrorAction Stop).PriorityClass='BelowNormal'`], {windowsHide:true, timeout:5000});
         return await work(server.pid);
     } finally {
         if (server.exitCode === null && !spawnError) {
@@ -200,11 +205,12 @@ async function processMemory(pid) {
     try {
         if (process.platform === 'win32') {
             const {stdout} = await promisify(execFile)('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
-                `$p = Get-Process -Id ${pid} -ErrorAction Stop; "$($p.WorkingSet64),$($p.PeakWorkingSet64)"`],
+                `$p = Get-Process -Id ${pid} -ErrorAction Stop; "$($p.WorkingSet64),$($p.PeakWorkingSet64),$($p.PrivateMemorySize64),$($p.TotalProcessorTime.TotalSeconds.ToString([Globalization.CultureInfo]::InvariantCulture))"`],
                 {windowsHide: true, timeout: 5000});
-            const [current, bytes] = stdout.trim().split(',').map(Number);
+            const [current, bytes, privateBytes, cpuSeconds] = stdout.trim().split(',').map(Number);
             assert.ok([current, bytes].every(value => Number.isSafeInteger(value) && value > 0));
-            return {server_resident_bytes: current, server_peak_resident_bytes: bytes, memory_source: 'windows_working_set'};
+            return {server_resident_bytes: current, server_peak_resident_bytes: bytes,
+                server_private_bytes: privateBytes, server_cpu_seconds: cpuSeconds, memory_source: 'windows_working_set_and_private_bytes'};
         }
         if (process.platform === 'linux') {
             const status = await fs.promises.readFile(`/proc/${pid}/status`, 'utf8');
@@ -264,6 +270,34 @@ async function loadSample(clients, repetition) {
         assert.equal(recovery.status, 200); assert.equal(recovery.data.ok, true); assert.equal(recovery.data.result, '4');
         console.log(JSON.stringify({scenario: 'mixed', clients, repetition, turns, ...summary(records, elapsed),
             by_operation: byOperation, ...await processMemory(pid)}));
+    });
+}
+async function heavySample(clients) {
+    return withServer(async pid => {
+        if(remoteState) for(let index=0;index<clients;index++) {
+            const client=clientId(index);remoteSessions.set(client,0);
+            const started=await request('',client,{action:'start'});
+            assert.equal(started.status,200);assert.equal(started.data.ok,true);
+        }
+        const records=[], initial=await processMemory(pid), begin=performance.now();
+        await Promise.all(Array.from({length:clients},async(_,index)=>{
+            for(let turn=0;turn<2;turn++) {
+                if(index<2) await measured(records,'factorial246000',()=>request(`246000!+${turn}*0`,clientId(index),{revision:String(turn+1)}),
+                    data=>assert.equal(data.result,'4.8792926407E+1219336'));
+                else await mixedOperation(records,index+turn,clientId(index),{revision:String(turn+1)});
+            }
+        }));
+        const elapsed=performance.now()-begin, final=await processMemory(pid);
+        const recovery=await request('2+2',clientId(clients));
+        assert.equal(recovery.status,200);assert.equal(recovery.data.result,'4');
+        const byOperation={};
+        for(const operation of new Set(records.map(r=>r.operation)))
+            byOperation[operation]=summary(records.filter(r=>r.operation===operation),elapsed);
+        console.log(JSON.stringify({scenario:'mixed_heavy',clients,turns:2,heavy_clients:2,...summary(records,elapsed),
+            by_operation:byOperation,initial_memory:initial,...final,
+            server_cpu_delta_seconds:final.server_cpu_seconds-initial.server_cpu_seconds,
+            recovery:true,recovery_ms:recovery.ms}));
+        assert.ok(records.every(r=>!r.error || /^http:503:server_busy$/.test(r.error)), 'Unexpected mixed-heavy failure');
     });
 }
 async function sessionSample(clients, repetition) {
@@ -396,7 +430,7 @@ async function overloadSample() {
     });
 }
 (async () => {
-    if (load || sustained) {
+    if (load || sustained || heavy) {
         let revision = 'unavailable', dirty = [];
         try {
             const root = path.resolve(__dirname, '../..');
@@ -407,10 +441,15 @@ async function overloadSample() {
             executable: path.resolve(executable), executable_sha256: createHash('sha256').update(fs.readFileSync(executable)).digest('hex'),
             platform: process.platform, architecture: process.arch, node: process.version,
             cpu: os.cpus()[0]?.model, logical_cpus: os.cpus().length, host_memory_bytes: os.totalmem(),
-            request_deadline_ms: 15000, connection_reuse: false, workers: remoteState ? remoteState.Workers : 4,
+            request_deadline_ms: 15000, connection_reuse: false, workers: remoteState ? remoteState.Workers : workers,
             queue_capacity: remoteState ? remoteState.QueueCapacity : queueCapacity,
             memory_scope: 'process_resident_and_peak_when_available', ...(remoteState ? {remote_state: path.resolve(remotePath),
                 url: remoteState.Url, server: remoteState.Server, tunnel: remoteState.Tunnel} : {})}));
+        if (heavy) {
+            for(const clients of [10,30,60]) await heavySample(clients);
+            if(!remoteState) await overloadSample();
+            return;
+        }
         if (sustained) {
             for (const clients of quick ? [2, 10] : [10, 30, 60]) await sustainedSample(clients);
             if (!remoteState) await overloadSample();

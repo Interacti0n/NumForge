@@ -103,6 +103,8 @@ const live = id => {try {process.kill(id, 0); return true;} catch {return false;
         assert.match(fs.readFileSync(path.join(root, `build/remote-state/server-${port}.failure.log`), 'utf8'), /Candidate:/);
         saved = state();
         const restored = await status(); assert.equal(restored.State, 'Ready', JSON.stringify({restored, saved}));
+        assert.equal(restored.ServerPriority, 'BelowNormal');
+        assert.ok(restored.ServerResidentBytes > 0 && restored.ServerPrivateBytes > 0 && restored.ServerCpuSeconds >= 0);
         assert.equal(saved.Server.Path.toLowerCase(), next.toLowerCase());
         assert.equal(saved.Workers, 2); assert.equal(saved.QueueCapacity, 8);
         sameIdentity(saved.Tunnel, tunnelIdentity);
