@@ -21,6 +21,8 @@
     --danger: #ff8eac;
     --backdrop: #060914d9;
     --radius: 18px;
+    --panel-radius: 12px;
+    --dialog-shadow: 0 24px 80px #0009, inset 0 1px 0 #ffffff08;
     accent-color: var(--accent);
     scrollbar-color: var(--border) var(--background);
 }
@@ -275,6 +277,13 @@ body::before
 button, a, input, textarea, select, summary { -webkit-tap-highlight-color: transparent; }
 textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 button:disabled { cursor: default; }
+/* Raised dialogs and recessed subpanels share the same visual hierarchy. */
+dialog:modal { box-shadow: var(--dialog-shadow); }
+dialog::backdrop { background: var(--backdrop); backdrop-filter: blur(5px); }
+:where(#history-list, #variable-list, #unit-history-list, #graph-history-list, #graph-curves) {
+    overscroll-behavior: contain;
+    scroll-padding-block: 4px;
+}
 .footer-links .login-link, .footer-links .register-link { font-size: .68rem; }
 @media (prefers-reduced-motion: no-preference) {
     button, .primary-nav a { transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease; }

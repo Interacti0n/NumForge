@@ -1,8 +1,8 @@
 @import url('/assets/calculator.css');
 body { height:auto; min-height:100dvh; overflow:auto; }
 .units-shell { min-height:100dvh; display:flex; flex-direction:column; }
-.equations-workspace { flex:1; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); align-items:start; gap:24px; padding:32px 0; }
-.equations-workspace .card { min-width:0; padding:28px; }
+.equations-workspace { flex:1; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); align-items:start; gap:16px; padding:20px 0; }
+.equations-workspace .card { min-width:0; padding:24px; }
 .equation-entry h1 { margin:0; font-size:1.5rem; }
 .equation-formula { color:var(--accent); font:1.7rem var(--font-math); margin:16px 0 26px; }
 .equation-coefficients { display:grid; gap:16px; }
@@ -24,7 +24,7 @@ body { height:auto; min-height:100dvh; overflow:auto; }
 .equation-result h2 { margin:0 0 22px; font-size:1.2rem; }
 #equation-error { color:var(--danger); line-height:1.6; }
 #equation-roots { list-style:none; padding:0; margin:0; display:grid; gap:18px; }
-.equation-root { border-top:1px solid var(--border-soft); padding-top:18px; display:grid; gap:12px; }
+.equation-root { border:1px solid var(--border-soft); border-radius:var(--panel-radius); background:var(--surface-input); padding:16px; display:grid; gap:12px; }
 .equation-root code { display:block; font:1.15rem/1.6 var(--font-math); overflow-wrap:anywhere; white-space:pre-wrap; }
 .equation-approx { color:var(--muted); border-top:1px solid var(--border-soft); padding-top:12px; }
 .equation-root small { color:var(--quiet); }
@@ -52,9 +52,9 @@ body { height:auto; min-height:100dvh; overflow:auto; }
 .editor-action-icon { display:none; }
 .equation-editor-filters { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px; margin-top:12px; }
 .equation-editor-filters :is(input,select) { min-height:40px; font-family:var(--font-ui,inherit); font-size:.85rem; }
-.equation-editor-catalogue { margin-top:12px; padding-top:12px; border-top:2px solid var(--border); }
+.equation-editor-catalogue { margin-top:12px; padding-top:12px; border-top:1px solid var(--border-soft); }
 #equation-editor-tabs { display:none; }
-.equation-editor-results { min-width:0; padding:10px; border:1px solid var(--border); border-radius:12px; background:var(--surface); }
+.equation-editor-results { min-width:0; padding:10px; border:1px solid var(--border-soft); border-radius:var(--panel-radius); background:var(--surface-input); }
 #equation-editor-functions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
 #equation-editor-functions button { min-width:0; min-height:39px; padding:6px 5px; border-color:var(--border); background:var(--surface-raised); color:var(--text); font:750 .94rem/1.25 var(--font-math); overflow-wrap:anywhere; }
 #equation-editor-functions button:hover { border-color:var(--accent); color:var(--accent); }
