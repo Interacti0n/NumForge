@@ -98,11 +98,11 @@ body::before
     display: grid;
     order: 2;
     flex: 1 1 0;
-    grid-template-columns: 1.25fr .8fr .95fr 1fr;
+    grid-template-columns: 1.25fr .8fr .95fr .85fr 1fr;
     align-items: center;
     gap: 4px;
     min-width: 0;
-    max-width: 440px;
+    max-width: 520px;
     margin-right: auto;
 }
 .primary-nav a

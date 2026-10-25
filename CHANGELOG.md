@@ -6,6 +6,10 @@ Earlier detailed development notes remain in Git history.
 
 ## Unreleased
 
+- SK/EN exact matrix editor with determinant, rank, products and unique square
+  solves through the existing C kernels; bounded stateless HTTP, TSV paste/copy
+  and tab-local input retention.
+
 - Default calculation allocation budgets increased to 128 MiB cumulative requests
   and 8 MiB per allocation across the engine, applications and Python adapter.
 

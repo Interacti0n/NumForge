@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="sk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b0e19">
+  <style>html { background: #0b0e19; } html:not(.styles-ready) body { visibility: hidden; } html.css-error body { visibility: visible; }</style>
+  <title>Matice · NumForge</title>
+  <link rel="icon" type="image/png" href="/assets/logo.png">
+  <link rel="stylesheet" href="/assets/matrices.css" onerror="document.documentElement.classList.add('css-error')">
+  <link rel="stylesheet" href="/assets/chrome.css" onload="document.documentElement.classList.add('styles-ready')" onerror="document.documentElement.classList.add('css-error','styles-ready')">
+</head>
+<body>
+  <div class="app-shell units-shell">
+    <header class="page-header">
+      <a class="brand" href="/?lang=sk" aria-label="NumForge">
+        <img class="brand-mark" src="/assets/logo.png" alt="" width="45" height="45">
+        <span class="brand-text"><strong>NumForge</strong><small>Presné výpočty</small></span>
+      </a>
+      <a class="guide-link header-guide" href="/api?section=equations&amp;lang=sk">Návod / API</a>
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-navigation" aria-label="Otvoriť navigáciu"><span class="menu-icon" aria-hidden="true"></span><span class="menu-label">Menu</span></button>
+      <div class="site-navigation" id="site-navigation">
+        <nav class="primary-nav" aria-label="Hlavná navigácia">
+          <a href="/?lang=sk">Kalkulačka</a>
+          <a href="/graph?lang=sk">Grafy</a>
+          <a href="/solve?lang=sk">Rovnice</a>
+          <a href="/matrices?lang=sk" aria-current="page">Matice</a>
+          <a href="/units?lang=sk" data-nav="units">Jednotky</a>
+        </nav>
+        <div class="header-actions">
+          <span class="language-switch" aria-label="Výber jazyka">
+            <a href="/matrices?lang=sk" lang="sk" aria-current="true" title="Slovenčina">SK</a>
+            <a href="/matrices?lang=en" lang="en" title="English">EN</a>
+          </span>
+        </div>
+      </div>
+    </header>
+
+
+    <main class="units-workspace matrix-workspace">
+      <section class="card matrix-entry" aria-labelledby="matrix-title">
+        <div class="section-heading"><h1 id="matrix-title">Matice</h1><span>Presná racionálna aritmetika</span></div>
+        <p class="matrix-help">Celé čísla, zlomky a konečné desatinné čísla s bodkou. Najviac 8 × 8; výrazy a premenné zatiaľ nie sú podporované.</p>
+        <form id="matrix-form">
+          <label class="field matrix-operation" for="matrix-operation">Operácia<select id="matrix-operation"><option value="determinant">det(A) · Determinant</option><option value="rank">rank(A) · Hodnosť</option><option value="multiply">A × B · Násobenie</option><option value="solve">A × X = B · Vyriešiť</option></select></label>
+          <fieldset class="matrix-panel" id="matrix-panel-a"><legend>Matica A</legend><div class="matrix-dimensions"><label>Riadky<select id="matrix-a-rows" aria-label="A: riadky"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option></select></label><span aria-hidden="true">×</span><label>Stĺpce<select id="matrix-a-columns" aria-label="A: stĺpce"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option></select></label><button type="button" data-clear="a">Vynulovať</button></div><div class="matrix-scroll" tabindex="0" aria-label="Bunky matice A"><table id="matrix-a" aria-label="Matica A"></table></div></fieldset><fieldset class="matrix-panel" id="matrix-panel-b"><legend>Matica B</legend><div class="matrix-dimensions"><label>Riadky<select id="matrix-b-rows" aria-label="B: riadky"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option></select></label><span aria-hidden="true">×</span><label>Stĺpce<select id="matrix-b-columns" aria-label="B: stĺpce"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option></select></label><button type="button" data-clear="b">Vynulovať</button></div><div class="matrix-scroll" tabindex="0" aria-label="Bunky matice B"><table id="matrix-b" aria-label="Matica B"></table></div></fieldset>
+          <p class="matrix-help" id="matrix-operation-help"></p>
+          <div class="matrix-actions"><button class="primary-button" id="matrix-submit" type="submit">Vypočítať</button><button id="matrix-example" type="button">Obnoviť príklad</button></div>
+        </form>
+      </section>
+      <section class="card matrix-result" aria-labelledby="matrix-result-title"><div class="section-heading"><h2 id="matrix-result-title">Výsledok</h2><button id="matrix-copy" type="button" disabled>Kopírovať</button></div><p id="matrix-status" role="status">Uprav maticu a zvoľ Vypočítať.</p><p id="matrix-error" role="alert" hidden></p><div id="matrix-output" class="matrix-scroll" tabindex="0" aria-label="Presný výsledok"></div><p class="matrix-help">Výsledok je exaktný, bez zaokrúhľovania. Kopírovanie matice používa tabulátory a nové riadky.</p></section>
+    </main>
+    <footer class="page-footer"><span>NumForge v@NUMFORGE_VERSION@ · © 2026 Interacti0n</span><nav class="footer-links" aria-label="Informácie o projekte"><a class="login-link" href="/login?lang=sk">Účty · pripravujeme</a><a class="register-link" href="/register?lang=sk">Registrácia · pripravujeme</a><a href="/LICENSE" data-license>MIT licencia</a><a href="https://github.com/Interacti0n/NumForge" target="_blank" rel="noopener noreferrer">GitHub</a></nav></footer>
+  </div>
+  <script src="/assets/result-display.js"></script>
+  <script src="/assets/navigation.js"></script>
+  <script src="/assets/matrices.js"></script>
+</body>
+</html>

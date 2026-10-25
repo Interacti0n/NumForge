@@ -22,6 +22,7 @@
 #include "apps/web/http/session_api.h"
 #include "apps/web/http/http_request.h"
 #include "web_page.h"
+#include "apps/web/http/matrix_web.h"
 #include <numforge/runtime.h>
 
 #define NUMFORGE_WEB_SOCKET_TIMEOUT_MS 2000
@@ -461,6 +462,7 @@ static bool numforge_parse_guide_page(const char *target, bool *english)
                    (length == 13U && strncmp(field, "section=units", length) == 0) ||
                    (length == 14U && strncmp(field, "section=graphs", length) == 0) ||
                    (length == 17U && strncmp(field, "section=equations", length) == 0) ||
+                   (length == 16U && strncmp(field, "section=matrices", length) == 0) ||
                    (length == 11U && strncmp(field, "section=api", length) == 0)) {
             flag = 2U;
         } else return false;
@@ -991,6 +993,18 @@ void numforge_handle_connection_before(
     {
         numforge_send_page(socket, english ? NUMFORGE_API_PAGE_EN : NUMFORGE_API_PAGE);
     }
+    else if (strcmp(method, "GET") == 0 && numforge_parse_page_language(target, "/matrices", &english))
+    {
+        numforge_send_page(socket,english ? NUMFORGE_MATRICES_PAGE_EN : NUMFORGE_MATRICES_PAGE);
+    }
+    else if (strcmp(method,"GET")==0 && strcmp(target,"/assets/matrices.css")==0)
+    {
+        numforge_send_response(socket,200,"OK","text/css; charset=utf-8",(const char *)NUMFORGE_MATRICES_CSS);
+    }
+    else if (strcmp(method,"GET")==0 && strcmp(target,"/assets/matrices.js")==0)
+    {
+        numforge_send_response(socket,200,"OK","text/javascript; charset=utf-8",(const char *)NUMFORGE_MATRICES_JS);
+    }
     else if (strcmp(method, "GET") == 0 && numforge_parse_page_language(target, "/units", &english))
     {
         numforge_send_page(socket, english ? NUMFORGE_UNITS_PAGE_EN : NUMFORGE_UNITS_PAGE);
@@ -1088,6 +1102,16 @@ void numforge_handle_connection_before(
     {
         numforge_send_response(
             socket, 411, "Length Required", "text/plain; charset=utf-8", "Content-Length is required.\n");
+    }
+    else if (strcmp(method, "POST") == 0 && body != NULL &&
+             (strcmp(target,"/api/matrix")==0 || strncmp(target,"/api/matrix?",12U)==0))
+    {
+        char *response=NULL;
+        CalculatorStatus status=numforge_web_matrix_request(target,body,body_length,&response);
+        numforge_send_response(socket,status==CALCULATOR_OK ? 200 : 400,
+            status==CALCULATOR_OK ? "OK" : "Bad Request","application/json; charset=utf-8",
+            response ? response : "{\"ok\":false,\"status\":\"out of memory\"}");
+        free(response);
     }
     else if (strcmp(method, "POST") == 0 && body != NULL &&
              numforge_web_is_session_target(target))

@@ -98,6 +98,8 @@ numforge_add_unit_test(unit_web_tests numforge_client http/test_unit_web.c)
 target_compile_definitions(unit_web_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
 
 numforge_add_unit_test(web_api_tests numforge_client http/test_web_api.c)
+numforge_add_unit_test(matrix_adapter_tests numforge_client application/test_matrix_adapter.c)
+target_compile_definitions(matrix_adapter_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
 
 if(NUMFORGE_BUILD_APPS)
 numforge_add_unit_test(web_workers_tests numforge_web_backend http/test_web_workers.c)

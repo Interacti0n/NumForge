@@ -6,7 +6,7 @@ let licenseDialog = null;
 const navToggle = document.querySelector('.nav-toggle');
 const pageHeader = document.querySelector('.page-header');
 const pageFooter = document.querySelector('.page-footer');
-const routes = new Set(['/', '/api', '/graph', '/solve', '/units', '/login', '/register']);
+const routes = new Set(['/', '/api', '/graph', '/solve', '/matrices', '/units', '/login', '/register']);
 
 function setMenuOpen(open)
 {
@@ -374,6 +374,8 @@ async function navigate(destination, addHistory = true)
         window.numforgeDisposeGraph = null;
         window.numforgeDisposeEquations?.();
         window.numforgeDisposeEquations = null;
+        window.numforgeDisposeMatrices?.();
+        window.numforgeDisposeMatrices = null;
         disposeGuideNavigation?.();
         disposeGuideNavigation = null;
 
@@ -415,6 +417,14 @@ async function navigate(destination, addHistory = true)
             else await new Promise((resolve, reject) => {
                 const script = document.createElement('script'); script.src = '/assets/equations.js';
                 script.onload = resolve; script.onerror = reject; document.body.append(script);
+            });
+        }
+        if (replacement.querySelector('#matrix-form'))
+        {
+            if (window.numforgeInitMatrices) window.numforgeDisposeMatrices = window.numforgeInitMatrices();
+            else await new Promise((resolve,reject)=>{
+                const script=document.createElement('script');script.src='/assets/matrices.js';
+                script.onload=resolve;script.onerror=reject;document.body.append(script);
             });
         }
         if (replacement.querySelector('#unit-converter'))

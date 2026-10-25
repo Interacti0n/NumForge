@@ -15,7 +15,7 @@ index; selected baselines preserve evidence for their recorded revisions.
 | Statistics | [Exact rational batch summaries, paired covariance and simple linear regression](../reference/STATISTICS_API.md), with population/sample divisors in C/Python. |
 | Numerical | [Exact grids, adaptive sampling rules, phase anchors, bounded roots and finite-interval integration](../reference/NUMERICAL_API.md); graph/equation applications reuse sampling/root kernels. |
 | Scientific | [Unit conversion](../reference/UNITS.md), a sourced catalogue and private [quantity expressions](../reference/QUANTITIES.md). |
-| Applications | SK/EN CLI/browser calculator, sessions, converter, four-function graphs and bounded numerical equation searches. |
+| Applications | SK/EN CLI/browser calculator, sessions, converter, four-function graphs, bounded numerical equation searches and an exact matrix web editor. |
 | Integration | Installed C/C++ packages and an experimental source-built [Python adapter](../guides/PYTHON.md), including grids, roots and finite-interval integration through the C kernels. |
 
 The [architecture](../design/ARCHITECTURE.md) defines ownership and extension
@@ -55,12 +55,15 @@ pass, including calculations, sessions, 10/30/60-client bursts and recovery.
 Optional per-user Windows startup and periodic recovery are implemented;
 real scheduled backend/tunnel recovery and disabling registration are checked.
 Five-minute HTTPS state/memory runs at 10/30/60 clients also pass on this host.
-Remaining gates are capacity under the selected host operating limits and
-observation of a full reboot/login. The registered logon trigger has not yet been
-exercised by rebooting the preview PC.
+The selected 4-worker/64-slot BelowNormal preview profile also passes the
+[current mixed-heavy load](../performance/baselines/SERVER.md#current-preview-profile)
+at 10/30/60 clients. It has no hard process CPU/RAM cap. A full reboot/login
+remains deferred; the registered logon trigger has not yet been exercised by
+rebooting the preview PC.
 
-Finish this bounded milestone before opening stage 6. Then choose **one** capability
-for a demonstrated use case: a matrix decomposition, another numerical method,
+At the user's request the first bounded matrix web workflow is developed while
+the reboot gate remains open. This exposes existing kernels and does not close
+stage 5. After review choose **one** next capability: a matrix decomposition, another numerical method,
 broader statistics, user functions or a first symbolic subset. Define the owning
 module, interfaces, assumptions and [feature completion gate](FEATURE_CHECKLIST.md)
 before implementation. Persistence requires a defined saved-work/account feature.

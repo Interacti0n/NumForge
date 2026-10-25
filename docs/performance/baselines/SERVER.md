@@ -185,7 +185,7 @@ This validates the selected workload on this Windows preview through the public
 proxy from the hosting PC. Fifteen minutes does not establish leak freedom,
 overnight uptime or capacity for arbitrary expensive expressions. OS resource
 limits, independent-network/device checks and reboot/login remain separate.
-# Current preview profile
+## Current preview profile
 
 Measured 25 October 2026 on Ryzen 7 7435HS (8 cores/16 logical CPUs), 31.82 GiB
 RAM, Windows x64, MSVC 19.51 Release. Embedded server revision `49239c3`;
@@ -204,7 +204,7 @@ Python `math.factorial` and integer division/remainder, without decimal strings.
 | Clients | Local verified | Local light max | HTTPS verified | HTTPS light max |
 | --- | --- | --- | --- | --- |
 | 10 | 20/20 | 24 ms | 20/20 | 322 ms |
-| 30 | 60/60 | 65 ms | 60/60 | see raw per-operation records |
+| 30 | 60/60 | 65 ms | 60/60 | 249 ms |
 | 60 | 120/120 | 159 ms | 120/120 | 684 ms |
 
 Local factorial maxima were 4.22–4.47 s; HTTPS maxima stayed below 4.67 s.

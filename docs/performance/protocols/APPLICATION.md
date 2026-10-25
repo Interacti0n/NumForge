@@ -146,6 +146,16 @@ Error scenarios remain separately labeled and are not successful calculations.
 
 ## Multi-client load
 
+For the current preview's short mixed-heavy burst, use `--mixed-heavy` instead
+of `--load`. It checks 10/30/60 clients with two heavy clients, two turns each,
+and independently frozen factorial rounding; remaining calls use the fixtures
+below. Local runs also force overload/recovery. `NUMFORGE_QUEUE_BENCH_CAPACITY=64`
+selects the preview queue and `NUMFORGE_QUEUE_BENCH_WORKERS` selects 1–16 workers
+(default 4). Windows local runs use BelowNormal priority and report CPU seconds,
+private bytes and resident/lifetime-peak memory. `--mixed-heavy --remote-state
+state.json` targets the verified running preview without restarting it and
+releases its test sessions. This burst does not replace sustained validation.
+
 ```sh
 node benchmarks/application/http_queue_benchmark.js build/apps/Release/numforge_web.exe --load
 ```

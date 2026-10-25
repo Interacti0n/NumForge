@@ -1,0 +1,33 @@
+@import url('/assets/calculator.css');
+body { height:auto; min-height:100dvh; overflow:auto; }
+.units-shell { min-height:100dvh; display:flex; flex-direction:column; }
+.matrix-workspace { flex:1; display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); align-items:start; gap:16px; padding:20px 0; }
+.matrix-workspace .card { min-width:0; padding:24px; }
+.matrix-workspace h1,.matrix-workspace h2 { margin:0; font-size:1.2rem; }
+.matrix-help,#matrix-status { color:var(--muted); font-size:.8rem; line-height:1.6; }
+.matrix-operation { max-width:360px; margin:18px 0; }
+.matrix-panel { min-width:0; margin:16px 0; padding:14px; border:1px solid var(--border-soft); border-radius:var(--panel-radius); background:var(--surface-input); }
+.matrix-panel legend { padding:0 7px; color:var(--accent); font-weight:700; }
+.matrix-dimensions { display:flex; align-items:end; flex-wrap:wrap; gap:10px; margin-bottom:12px; }
+.matrix-dimensions label { display:grid; gap:5px; color:var(--muted); font-size:.75rem; }
+.matrix-dimensions select { min-height:36px; min-width:62px; padding:5px; color:var(--text); border:1px solid var(--border); border-radius:8px; background:var(--surface-raised); }
+.matrix-dimensions > span { align-self:center; color:var(--quiet); }
+.matrix-dimensions button { margin-left:auto; }
+.matrix-scroll { max-width:100%; overflow:auto; overscroll-behavior:contain; scrollbar-width:thin; border-radius:8px; padding:4px; }
+.matrix-scroll:focus-visible { outline:2px solid var(--mint); outline-offset:2px; }
+.matrix-scroll table { border-collapse:separate; border-spacing:6px; margin:auto; }
+.matrix-scroll td { padding:0; }
+.matrix-scroll input { display:block; width:90px; min-height:42px; padding:8px; border:1px solid var(--border); border-radius:8px; color:var(--text); background:var(--surface-raised); font:1rem var(--font-math); text-align:center; }
+.matrix-scroll input[aria-invalid=true] { border-color:var(--danger); }
+.matrix-workspace button:not(.primary-button) { min-height:36px; padding:7px 11px; border:1px solid var(--border); border-radius:8px; color:var(--text); background:var(--surface-raised); }
+.matrix-workspace button:disabled { opacity:.45; cursor:default; }
+.matrix-workspace button:not(:disabled):hover { border-color:var(--accent); }
+.matrix-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:16px; }
+.matrix-actions .primary-button { min-height:44px; }
+#matrix-output { margin:18px 0; background:var(--surface-input); }
+#matrix-output:empty { display:none; }
+#matrix-output td { padding:10px 14px; border:1px solid var(--border-soft); border-radius:8px; font:1rem/1.5 var(--font-math); white-space:nowrap; }
+#matrix-output > p { padding:16px; margin:0; font:1.4rem var(--font-math); overflow-wrap:anywhere; }
+#matrix-error { color:var(--danger); font-size:.85rem; line-height:1.5; }
+@media(max-width:980px) { .matrix-workspace { grid-template-columns:minmax(0,1fr); } }
+@media(max-width:600px) { .matrix-workspace .card { padding:16px; } .matrix-workspace { padding:16px 0; } .matrix-panel { padding:8px; } .matrix-scroll input { width:76px; } }

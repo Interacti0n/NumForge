@@ -12,6 +12,7 @@ target_sources(numforge_application PRIVATE
     equations/numeric_root.c
     equations/numeric_root_brent.c
     conversions/conversion.c
+    matrices/matrix.c
     sessions/session.c
     clients/client_store.c
 )

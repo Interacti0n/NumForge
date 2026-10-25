@@ -5,6 +5,8 @@
 For exact linear/quadratic equations, use the separate stateless
 [polynomial equation endpoint](EQUATION_HTTP_API.md). Its three coefficient
 expressions do not read or change calculator sessions.
+The [matrix endpoint](MATRIX_API.md#web-editor-and-http) provides separate exact
+matrix operations without reading calculator variables or sessions.
 
 Evaluation accepts the shared [calculator expression grammar](CALCULATOR_EXPRESSIONS.md),
 including exact fractions and automatic complex-domain promotion. Mathematical

@@ -25,7 +25,7 @@ def execute(arguments, **kwargs):
     return subprocess.run(arguments, check=True, capture_output=True, text=True, **kwargs).stdout
 
 
-def smoke(directory, windows, port=None):
+def smoke(directory, windows, port=None, require_matrices=False):
     suffix = ".exe" if windows else ""
     output = execute([str(directory / ("calculator" + suffix))],
                      input="precision full\nnotation plain\n0.1+0.2\n2^128\nnotation fraction\n1/3\nquit\n", timeout=15)
@@ -68,6 +68,22 @@ def smoke(directory, windows, port=None):
             result = json.load(response)
         if not result.get("ok") or result.get("result") != "1/3":
             raise RuntimeError("Extracted HTTP calculator returned an unexpected result")
+        if require_matrices:
+            for language in ("sk", "en"):
+                with urllib.request.urlopen(base + "/matrices?lang=" + language, timeout=5) as response:
+                    matrix_html = response.read().decode("utf-8")
+                if 'id="matrix-form"' not in matrix_html:
+                    raise RuntimeError("Matrix editor missing from extracted package")
+                for asset in set(re.findall(r'(?:src|href)="(/assets/[^"?#]+)', matrix_html)):
+                    with urllib.request.urlopen(base + asset, timeout=5) as response:
+                        if not response.read():
+                            raise RuntimeError(f"Empty matrix asset: {asset}")
+            request = urllib.request.Request(base + "/api/matrix?operation=solve",
+                data=b"2 0\n0 4\n\n1\n2", method="POST", headers={"Content-Type": "text/plain"})
+            with urllib.request.urlopen(request, timeout=5) as response:
+                matrix = json.load(response)
+            if matrix != {"ok": True, "exact": True, "matrix": [["1/2"], ["1/2"]]}:
+                raise RuntimeError("Extracted matrix solver returned an unexpected result")
         # Exercise the embedded equation editor and both solver paths from the
         # extracted archive, without relying on a source-tree web directory.
         equation_assets = set()
@@ -237,14 +253,15 @@ def main():
             bundle.extractall(extracted, filter="data")
     current = extracted / name
     if previous_apps is None:
-        smoke(current, windows)
+        smoke(current, windows, require_matrices=(source / "apps/web/assets/matrices.js").is_file())
     else:
         with socket.socket() as probe:
             probe.bind(("127.0.0.1", 0))
             port = probe.getsockname()[1]
         for label, package in (("previous", previous_apps), ("candidate", current),
                                ("restarted candidate", current), ("rollback", previous_apps)):
-            smoke(package, windows, port)
+            smoke(package, windows, port, require_matrices=package == current and
+                  (source / "apps/web/assets/matrices.js").is_file())
             print(f"Verified {label}: {package} on isolated port {port}")
     checksum = hashlib.sha256(archive.read_bytes()).hexdigest()
     (output / (archive.name + ".sha256")).write_text(

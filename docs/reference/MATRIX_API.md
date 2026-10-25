@@ -124,9 +124,44 @@ systems. Native errors have offset zero; resource errors retain `time_limit`/
 `memory_limit`, while Python shape/type/policy validation raises ValueError/TypeError.
 Failures return no partial solution and both inputs remain usable.
 
-Matrix expression syntax, CLI/web controls, REST endpoints and WASM bindings are
-not part of this initial module. Approximate/complex matrix domains,
+Matrix expression syntax, CLI controls and WASM bindings remain unavailable.
+The bounded web/HTTP adapter below reuses these C operations. Approximate/complex matrix domains,
 eigenvalues, decompositions and symbolic elements remain future work.
+
+## Web editor and HTTP
+
+Open `/matrices?lang=en` (or `sk`). Choose determinant, rank, multiplication or
+`A X = B`, edit dimensions/cells, then Calculate. Pasting tab-separated rows
+replaces that input matrix. Inputs survive navigation/reload in the current
+tab's sessionStorage; results are not stored on the server. Copy uses TSV.
+
+`POST /api/matrix?operation=determinant|rank|multiply|solve` is stateless and
+shares the server's Content-Length/origin rules. Send `text/plain`: whitespace
+separates cells, LF separates rows, and one empty line separates A from B.
+CRLF is accepted. Unary operations ignore optional B. For example:
+
+```sh
+curl -H 'Content-Type: text/plain' --data-binary '1 2
+3 4' 'http://127.0.0.1:8765/api/matrix?operation=determinant'
+```
+
+Returns `{"ok":true,"exact":true,"scalar":"-2"}`. Rank also returns `scalar`;
+multiply/solve return `matrix`, an array of row arrays containing canonical
+rational strings, for example `[["17"],["39"]]`. No rounding or preview precision.
+
+Adapter limits: 1–8 rows/columns, 64 bytes per input cell, 6000 body bytes,
+128 KiB response, and inherited default calculation time/allocation budgets.
+Accepted cells: signed integers, integer fractions with nonzero denominators,
+finite dot decimals. Exponents, expressions, variables and units are rejected.
+The standalone C/Python APIs retain their existing broader size/type contracts.
+
+Errors return HTTP 400 with `ok:false`, `status`, `error`, and zero-based
+`matrix` (0=A, 1=B) / row-major `cell` for parse failures, otherwise -1.
+Bad syntax/shape uses `invalid argument`; zero denominator or singular square
+solve uses `division by zero`. Singular solve does not classify none/infinite
+solutions; use the C/Python general-system API for that. Time, allocation and
+size failures preserve inputs and publish no partial result. Shared origin,
+framing and worker-overload handling can instead return 403/411/413/503.
 
 ## Verification
 
@@ -138,6 +173,11 @@ numeric target. Python tests independently check random 1..4-dimensional rationa
 determinants by permutation expansion, products and recovered known solutions
 using Python Fraction arithmetic. The source archive/wheel check verifies the
 installed adapter and example.
+
+`matrix_adapter_tests` covers exact text/HTTP results, invalid domains, dimensions,
+cell positions, all allocation failures for a representative solve, and inherited
+time/memory exhaustion. Browser matrix tests cover SK/EN editing, copy, paste,
+navigation/reload, mobile overflow, retry, stale replies and forbidden origins.
 
 The opt-in [benchmark](../performance/baselines/MODULES.md#matrices) records an initial
 Release baseline, validates exact closed-form results outside timing and reports

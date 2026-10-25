@@ -13,7 +13,7 @@ HTML structure, labels, guide part keys and section IDs aligned.
 | `api.*.html`, `api.css` | Guide content and its reading layout. |
 | `function-library.js` | Localized descriptions/search aliases; `/api/functions` owns availability. |
 | `graph.js`, `graph.css` | Up to four curve caches, camera, request queue, editor and expanded plot. |
-| `equations.js`, `units.js` and their styles | C/HTTP adapters, result presentation and same-tab state for each tool. |
+| `equations.js`, `units.js`, `matrices.js` and their styles | C/HTTP adapters, result presentation and same-tab state for each tool. |
 
 Mathematics and typed values belong to C. JavaScript validates/projects coordinates
 and presents results; add application and HTTP contracts alongside new tools.
@@ -22,7 +22,7 @@ The purple palette originated from Melanie Brown's Deep Purple VS Code theme.
 ## Embedding and checks
 
 CMake embeds the registered assets and root `LICENSE` in `numforge_web`.
-The executable serves `/`, `/api`, `/graph`, `/solve`, `/units`, `/login`,
+The executable serves `/`, `/api`, `/graph`, `/solve`, `/matrices`, `/units`, `/login`,
 `/register`, `/assets/` and `/LICENSE`; no asset directory, Node.js or Python is
 needed at runtime. Account routes remain informational placeholders.
 
@@ -58,8 +58,8 @@ Preview/confirmed labels are UI state; exact/approximate provenance comes from
 the C numeric kind independently of display rounding. User instructions live in
 the [calculator guide](../../../docs/guides/CALCULATOR_WEB.md).
 
-The guide has five `data-guide-panel` articles. Its route accepts
-`section=calculator|units|graphs|equations|api` and `lang=sk|en` in either order.
+The guide has six `data-guide-panel` articles. Its route accepts
+`section=calculator|units|graphs|equations|matrices|api` and `lang=sk|en` in either order.
 `navigation.js` handles active sections, legacy hashes and browser history;
 without JavaScript, all guide content remains readable. Other routes retain
 their existing query contracts.

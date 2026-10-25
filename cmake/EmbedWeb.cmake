@@ -46,6 +46,10 @@ numforge_embed_web_file(NUMFORGE_GRAPH_SK_HTML graph.sk.html)
 numforge_embed_web_file(NUMFORGE_GRAPH_EN_HTML graph.en.html)
 numforge_embed_web_file(NUMFORGE_GRAPH_CSS graph.css)
 numforge_embed_web_file(NUMFORGE_GRAPH_JS graph.js)
+numforge_embed_web_file(NUMFORGE_MATRICES_SK_HTML matrices.sk.html)
+numforge_embed_web_file(NUMFORGE_MATRICES_EN_HTML matrices.en.html)
+numforge_embed_web_file(NUMFORGE_MATRICES_CSS matrices.css)
+numforge_embed_web_file(NUMFORGE_MATRICES_JS matrices.js)
 numforge_embed_web_file(NUMFORGE_LICENSE_TEXT ../../../LICENSE)
 
 # CMake strings cannot hold NUL bytes, so read PNG assets directly as hex.
@@ -62,6 +66,8 @@ numforge_embed_web_binary(NUMFORGE_WORDMARK_PNG wordmark.png)
 
 string(APPEND numforge_web_generated
     "static const char *const NUMFORGE_GRAPH_PAGE[] = {(const char *)NUMFORGE_GRAPH_SK_HTML, NULL};\n"
+    "static const char *const NUMFORGE_MATRICES_PAGE[] = {(const char *)NUMFORGE_MATRICES_SK_HTML, NULL};\n"
+    "static const char *const NUMFORGE_MATRICES_PAGE_EN[] = {(const char *)NUMFORGE_MATRICES_EN_HTML, NULL};\n"
     "static const char *const NUMFORGE_EQUATIONS_PAGE[] = {(const char *)NUMFORGE_EQUATIONS_SK_HTML, NULL};\n"
     "static const char *const NUMFORGE_EQUATIONS_PAGE_EN[] = {(const char *)NUMFORGE_EQUATIONS_EN_HTML, NULL};\n"
     "static const char *const NUMFORGE_GRAPH_PAGE_EN[] = {(const char *)NUMFORGE_GRAPH_EN_HTML, NULL};\n"

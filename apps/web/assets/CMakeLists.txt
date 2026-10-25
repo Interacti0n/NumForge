@@ -25,6 +25,10 @@ set(NUMFORGE_WEB_ASSETS
     apps/web/assets/graph.en.html
     apps/web/assets/graph.css
     apps/web/assets/graph.js
+    apps/web/assets/matrices.sk.html
+    apps/web/assets/matrices.en.html
+    apps/web/assets/matrices.css
+    apps/web/assets/matrices.js
     apps/web/assets/logo.png
     apps/web/assets/wordmark.png
     PARENT_SCOPE

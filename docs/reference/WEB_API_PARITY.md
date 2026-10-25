@@ -12,6 +12,7 @@ private application/session headers are not installed SDK interfaces.
 | Preview/commit, variables, answer, history and function registry | [Sessions](SESSION_HTTP_API.md) |
 | Uniform, adaptive and screen-space graphs; marker verification | [Sampling](GRAPH_HTTP_API.md), [adaptive curves](ADAPTIVE_GRAPH_HTTP_API.md), [screen sampling](SCREEN_GRAPH_HTTP_API.md), [verification](GRAPH_ANALYSIS_HTTP_API.md) |
 | Exact polynomial equations and bounded numerical root discovery | [Polynomial](EQUATION_HTTP_API.md), [numerical](NUMERIC_ROOT_HTTP_API.md) |
+| Exact matrix determinant, rank, product and unique square solve | [Matrix editor and HTTP](MATRIX_API.md#web-editor-and-http) |
 | Unit catalogue, conversion and conversion history | [Units](UNIT_HTTP_API.md), [sessions](SESSION_HTTP_API.md) |
 
 Accounts remain browser placeholders. There is no account API or database.
