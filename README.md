@@ -63,17 +63,19 @@ requests. No Node.js, Python or database is needed at runtime.
 ![Current calculator with exact fractions and confirmed history](docs/images/calculator-desktop.png)
 
 <details>
-<summary>Graphs, equations and mobile view</summary>
+<summary>Graphs, equations, matrices and mobile view</summary>
 
 <p><img src="docs/images/graphs-desktop.png" alt="Three functions plotted in the graph workspace"></p>
 
 <p><img src="docs/images/equations-desktop.png" alt="Exact quadratic roots with decimal previews"></p>
 
+<p><img src="docs/images/matrices-desktop.png" alt="An exact family of solutions in the matrix workbench"></p>
+
 <img src="docs/images/calculator-mobile.png" alt="Calculator on a phone" width="320">
 
 </details>
 
-Real application captures, refreshed on 21 October 2026 from development source.
+Real application captures, refreshed on 27 October 2026 from development source.
 Start with the [calculator guide](docs/guides/CALCULATOR_WEB.md),
 [graphs](docs/guides/GRAPHS.md) or [equations](docs/guides/EQUATIONS.md).
 

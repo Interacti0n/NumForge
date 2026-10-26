@@ -104,7 +104,7 @@ evidence of a remote pass for unpushed changes.
 4. Each package is archived, extracted and checked from the extracted folder:
    CLI decimal/integer/fraction results, HTTP fraction evaluation, embedded
    calculator/equation assets in both equation languages, matrix assets and an
-   exact matrix solve when present in the source revision, the function registry,
+   exact matrix solve/general family when present in the source revision, the function registry,
    exact equation radicals and a rational numerical contact (including its
    residual and incomplete-discovery contract). The workflow saves the resulting archives/checksums as
    Actions artifacts for inspection.

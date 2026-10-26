@@ -95,7 +95,7 @@ static CalculatorStatus parse(NumForgeMatrix **result, const char *text,
 }
 void application_matrix_result_destroy(ApplicationMatrixResult *result)
 {
-    if(result) {numforge_matrix_destroy(result->matrix);free(result->scalar);free(result);}
+    if(result) {numforge_matrix_destroy(result->matrix);numforge_linear_solution_destroy(result->solution);free(result->scalar);free(result);}
 }
 CalculatorStatus application_matrix_compute(ApplicationMatrixResult **result,
     const char *operation, const char *a, const char *b, const CalculatorContext *context,
@@ -105,7 +105,8 @@ CalculatorStatus application_matrix_compute(ApplicationMatrixResult **result,
     if(failed_matrix) *failed_matrix=SIZE_MAX;
     if(failed_cell) *failed_cell=SIZE_MAX;
     if(!result || !operation || !a || !context) return CALCULATOR_NULL_ARGUMENT;
-    bool binary=strcmp(operation,"multiply")==0 || strcmp(operation,"solve")==0;
+    bool general=strcmp(operation,"solve_general")==0;
+    bool binary=general || strcmp(operation,"multiply")==0 || strcmp(operation,"solve")==0;
     if((!binary && strcmp(operation,"determinant")!=0 && strcmp(operation,"rank")!=0) || (binary && !b)) return CALCULATOR_INVALID_ARGUMENT;
     CalculatorStatus status=calculator_context_validate(context,error);
     if(status!=CALCULATOR_OK) return status;
@@ -117,7 +118,9 @@ CalculatorStatus application_matrix_compute(ApplicationMatrixResult **result,
         if(status!=CALCULATOR_OK && failed_matrix) *failed_matrix=i;
     }
     if(status==CALCULATOR_OK) {out=calloc(1U,sizeof(*out));if(!out) status=CALCULATOR_OUT_OF_MEMORY;}
-    if(status==CALCULATOR_OK && binary) status=matrix_status(strcmp(operation,"multiply")==0 ?
+    if(status==CALCULATOR_OK && general)
+        status=matrix_status(numforge_matrix_solve_general(&out->solution,matrices[0],matrices[1]));
+    else if(status==CALCULATOR_OK && binary) status=matrix_status(strcmp(operation,"multiply")==0 ?
         numforge_matrix_multiply(&out->matrix,matrices[0],matrices[1]) : numforge_matrix_solve(&out->matrix,matrices[0],matrices[1]));
     else if(status==CALCULATOR_OK && strcmp(operation,"rank")==0) {
         size_t rank=0U;status=matrix_status(numforge_matrix_rank(&rank,matrices[0]));

@@ -61,7 +61,8 @@ at 10/30/60 clients. It has no hard process CPU/RAM cap. A full reboot/login
 remains deferred; the registered logon trigger has not yet been exercised by
 rebooting the preview PC.
 
-At the user's request the first bounded matrix web workflow is developed while
+At the user's request the bounded matrix web workflow, now including general
+single-RHS families and local workspace files, is developed while
 the reboot gate remains open. This exposes existing kernels and does not close
 stage 5. After review choose **one** next capability: a matrix decomposition, another numerical method,
 broader statistics, user functions or a first symbolic subset. Define the owning

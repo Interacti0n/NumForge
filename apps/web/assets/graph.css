@@ -35,7 +35,7 @@ body { height: auto; min-height: 100dvh; overflow: auto; }
 #graph-status { min-height: 1.5em; font-size: .85rem; color: var(--quiet); overflow-wrap: anywhere; }
 #graph-status.error { color: var(--danger); }
 #graph-plot { display: block; width: 100%; height: auto; border: 1px solid var(--border-soft); border-radius: 12px; background: var(--background); }
-.graph-grid { stroke: #91a4ca20; stroke-width: 1; }
+.graph-grid { stroke: #91a4ca28; stroke-width: 1; }
 .graph-axis { stroke: #a2b6de80; stroke-width: 1; }
 .graph-tick { fill: var(--quiet); font: 12px var(--font-math); }
 .graph-line { stroke: var(--graph-color,var(--accent)); stroke-width: 1.8; fill: none; }

@@ -130,8 +130,9 @@ nullity zero uses nullspace=None because zero-column matrices are not represente
 Both methods use the [matrix input, budget and error rules](MATRIX_API.md#python-and-other-interfaces),
 with no precision parameter. Inconsistency is a successful `none` result.
 
-Matrix expression syntax, CLI/web controls, public REST and WASM bindings remain
-future interfaces. Multiple-RHS general classification, approximate least
+The bounded [web editor and HTTP adapter](MATRIX_API.md#web-editor-and-http)
+also expose general single-RHS families. Matrix expression syntax, CLI controls
+and WASM remain future interfaces. Multiple-RHS general classification, approximate least
 squares, eigenvalues and orthogonal decompositions are outside this operation.
 
 ## Verification

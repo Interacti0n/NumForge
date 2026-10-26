@@ -1,21 +1,29 @@
 @import url('/assets/calculator.css');
 body { height:auto; min-height:100dvh; overflow:auto; }
 .units-shell { min-height:100dvh; display:flex; flex-direction:column; }
-.matrix-workspace { flex:1; display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); align-items:start; gap:16px; padding:20px 0; }
+.matrix-workspace { flex:1; display:grid; grid-template-columns:minmax(0,1.55fr) minmax(320px,.85fr); align-items:stretch; gap:16px; padding:20px 0; }
 .matrix-workspace .card { min-width:0; padding:24px; }
 .matrix-workspace h1,.matrix-workspace h2 { margin:0; font-size:1.2rem; }
 .matrix-help,#matrix-status { color:var(--muted); font-size:.8rem; line-height:1.6; }
 .matrix-operation { max-width:360px; margin:18px 0; }
+.matrix-workspace-tools { display:flex; align-items:end; flex-wrap:wrap; gap:8px; padding:12px 0; border-block:1px solid var(--border-soft); }
+.matrix-presets { display:grid; gap:5px; margin-left:auto; color:var(--quiet); font-size:.7rem; }
+.matrix-presets select { max-width:100%; min-height:36px; padding:6px 8px; border:1px solid var(--border); border-radius:8px; background:var(--surface-input); color:var(--text); font:inherit; }
+.matrix-shape { display:inline-block; margin-left:10px; color:var(--quiet); font:500 .7rem var(--font-math); }
 .matrix-panel { min-width:0; margin:16px 0; padding:14px; border:1px solid var(--border-soft); border-radius:var(--panel-radius); background:var(--surface-input); }
 .matrix-panel legend { padding:0 7px; color:var(--accent); font-weight:700; }
 .matrix-dimensions { display:flex; align-items:end; flex-wrap:wrap; gap:10px; margin-bottom:12px; }
 .matrix-dimensions label { display:grid; gap:5px; color:var(--muted); font-size:.75rem; }
 .matrix-dimensions select { min-height:36px; min-width:62px; padding:5px; color:var(--text); border:1px solid var(--border); border-radius:8px; background:var(--surface-raised); }
 .matrix-dimensions > span { align-self:center; color:var(--quiet); }
-.matrix-dimensions button { margin-left:auto; }
+.matrix-dimensions button { min-width:36px; }
+.matrix-dimensions [data-clear] { margin-left:auto; }
 .matrix-scroll { max-width:100%; overflow:auto; overscroll-behavior:contain; scrollbar-width:thin; border-radius:8px; padding:4px; }
 .matrix-scroll:focus-visible { outline:2px solid var(--mint); outline-offset:2px; }
 .matrix-scroll table { border-collapse:separate; border-spacing:6px; margin:auto; }
+.matrix-scroll th { padding:3px; color:var(--quiet); font:500 .7rem var(--font-math); }
+.matrix-scroll tr:focus-within > th,.matrix-scroll .active-column { color:var(--mint); }
+.matrix-scroll input:focus { border-color:var(--mint); background:#162d3d; }
 .matrix-scroll td { padding:0; }
 .matrix-scroll input { display:block; width:90px; min-height:42px; padding:8px; border:1px solid var(--border); border-radius:8px; color:var(--text); background:var(--surface-raised); font:1rem var(--font-math); text-align:center; }
 .matrix-scroll input[aria-invalid=true] { border-color:var(--danger); }
@@ -24,10 +32,29 @@ body { height:auto; min-height:100dvh; overflow:auto; }
 .matrix-workspace button:not(:disabled):hover { border-color:var(--accent); }
 .matrix-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:16px; }
 .matrix-actions .primary-button { min-height:44px; }
+.matrix-keyboard-hint { margin:0; color:var(--quiet); font-size:.68rem; }
+.matrix-result { min-height:340px; }
+#matrix-status::before { content:''; display:inline-block; width:6px; height:6px; margin-right:8px; border-radius:50%; background:var(--quiet); }
+#matrix-status[data-state=ready]::before { background:var(--mint); }
+#matrix-status[data-state=busy]::before { background:var(--accent); }
+#matrix-status[data-state=error]::before { background:var(--danger); }
 #matrix-output { margin:18px 0; background:var(--surface-input); }
 #matrix-output:empty { display:none; }
 #matrix-output td { padding:10px 14px; border:1px solid var(--border-soft); border-radius:8px; font:1rem/1.5 var(--font-math); white-space:nowrap; }
 #matrix-output > p { padding:16px; margin:0; font:1.4rem var(--font-math); overflow-wrap:anywhere; }
 #matrix-error { color:var(--danger); font-size:.85rem; line-height:1.5; }
-@media(max-width:980px) { .matrix-workspace { grid-template-columns:minmax(0,1fr); } }
-@media(max-width:600px) { .matrix-workspace .card { padding:16px; } .matrix-workspace { padding:16px 0; } .matrix-panel { padding:8px; } .matrix-scroll input { width:76px; } }
+.solution-title { margin:14px; color:var(--mint); font-size:1.1rem; }
+#matrix-output > .solution-meta { padding:0 14px; color:var(--quiet); font:.75rem/1.6 var(--font-ui); }
+#matrix-output > .solution-formula { padding:16px; color:var(--accent-strong); font:1.35rem var(--font-math); border-block:1px solid var(--border-soft); }
+.solution-panels { display:flex; flex-wrap:wrap; gap:12px; padding:14px; }
+.solution-panels > section { min-width:0; max-width:100%; padding:10px; border:1px solid var(--border-soft); border-radius:var(--panel-radius); background:var(--surface); }
+.solution-panels h4 { margin:0 0 8px; color:var(--accent); font:600 .8rem var(--font-math); }
+#matrix-output > .matrix-help { padding:0 14px 14px; font:.75rem/1.6 var(--font-ui); }
+@media(min-width:1200px) {
+    #matrix-form[data-binary=true] { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 12px; align-content:start; }
+    #matrix-form[data-binary=true] > :not(.matrix-panel) { grid-column:1/-1; }
+    .matrix-panel .matrix-scroll { max-height:440px; }
+}
+@media(max-width:980px) { .matrix-workspace { grid-template-columns:minmax(0,1fr); } .matrix-result { min-height:0; } }
+@media(max-width:600px) { .matrix-workspace .card { padding:16px; } .matrix-workspace { padding:16px 0; } .matrix-panel { padding:8px; } .matrix-scroll input { width:76px; } .matrix-workspace-tools { align-items:stretch; } .matrix-presets { flex:1 1 100%; margin-left:0; } .matrix-keyboard-hint { display:none; } }
+@media(pointer:coarse) { .matrix-workspace button:not(.primary-button),.matrix-workspace select { min-height:44px; } .matrix-scroll input { min-height:44px; } }

@@ -8,12 +8,14 @@
 typedef struct ApplicationMatrixResult {
     NumForgeMatrix *matrix;
     char *scalar;
+    NumForgeLinearSolution *solution;
 } ApplicationMatrixResult;
 
 /* Stateless exact adapter: rows separated by LF (CRLF accepted), entries by
  * spaces/tabs. Signed integers, finite dot decimals and integer fractions only;
  * no expressions, exponents, variables or sessions. Up to 8x8, 64 bytes/cell.
- * operations: determinant, rank, multiply, solve (square A, multi-column B).
+ * operations: determinant, rank, multiply, solve (square A, multi-column B),
+ * solve_general (rectangular A, single-column B; none/unique/infinite).
  * Optional B is ignored for unary operations. All work inherits/starts the
  * supplied budget. Success publishes a new owned result; every failure leaves
  * *result unchanged. failed_matrix=0/1 and zero-based failed_cell identify parse

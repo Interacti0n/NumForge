@@ -84,6 +84,14 @@ def smoke(directory, windows, port=None, require_matrices=False):
                 matrix = json.load(response)
             if matrix != {"ok": True, "exact": True, "matrix": [["1/2"], ["1/2"]]}:
                 raise RuntimeError("Extracted matrix solver returned an unexpected result")
+            if 'value="solve_general"' in matrix_html:
+                request = urllib.request.Request(base + "/api/matrix?operation=solve_general",
+                    data=b"1 2\n\n3", method="POST", headers={"Content-Type": "text/plain"})
+                with urllib.request.urlopen(request, timeout=5) as response:
+                    family = json.load(response)
+                if family != {"ok": True, "exact": True, "solution": {"kind": "infinite", "rank": 1,
+                        "nullity": 1, "particular": [["3"], ["0"]], "basis": [["-2"], ["1"]], "free_columns": [1]}}:
+                    raise RuntimeError("Extracted general matrix solver returned an unexpected family")
         # Exercise the embedded equation editor and both solver paths from the
         # extracted archive, without relying on a source-tree web directory.
         equation_assets = set()

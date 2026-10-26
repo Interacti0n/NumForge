@@ -130,12 +130,26 @@ eigenvalues, decompositions and symbolic elements remain future work.
 
 ## Web editor and HTTP
 
-Open `/matrices?lang=en` (or `sk`). Choose determinant, rank, multiplication or
-`A X = B`, edit dimensions/cells, then Calculate. Pasting tab-separated rows
+Open `/matrices?lang=en` (or `sk`). Choose determinant, rank, multiplication,
+square `A X = B` or **General system**, edit dimensions/cells, then Calculate. Pasting tab-separated rows
 replaces that input matrix. Inputs survive navigation/reload in the current
-tab's sessionStorage; results are not stored on the server. Copy uses TSV.
+tab's sessionStorage; results are not stored on the server. Matrix copies use TSV.
+General systems distinguish unique, infinite and inconsistent outcomes, including
+rectangular and singular matrices. B must have exactly one column.
 
-`POST /api/matrix?operation=determinant|rank|multiply|solve` is stateless and
+Zero, identity (square inputs only), transpose and A/B swap edit inputs without
+rounding. Enter/Shift+Enter moves down/up a column, Alt+arrows moves between
+cells, and Ctrl/Cmd+Enter calculates. Tab retains normal focus traversal.
+Examples include unique, infinite, inconsistent and exact-fraction cases.
+
+Save/Load workspace uses local UTF-8 JSON: `format:"numforge.matrix-workspace"`,
+`version:1`, `operation`, and rectangular string arrays `a`/`b`. File limit is
+20,000 bytes; dimensions/cell limits below apply. Draft invalid/empty cell text
+can be saved but must be corrected before calculation. Unknown versions, malformed
+shapes, control characters in cells or oversized files leave current inputs unchanged. No file is uploaded;
+only matrix text is sent when Calculate is chosen. Results are not in the file.
+
+`POST /api/matrix?operation=determinant|rank|multiply|solve|solve_general` is stateless and
 shares the server's Content-Length/origin rules. Send `text/plain`: whitespace
 separates cells, LF separates rows, and one empty line separates A from B.
 CRLF is accepted. Unary operations ignore optional B. For example:
@@ -149,6 +163,16 @@ Returns `{"ok":true,"exact":true,"scalar":"-2"}`. Rank also returns `scalar`;
 multiply/solve return `matrix`, an array of row arrays containing canonical
 rational strings, for example `[["17"],["39"]]`. No rounding or preview precision.
 
+`solve_general` instead returns `solution` with `kind:"none"|"unique"|"infinite"`,
+integer `rank`/`nullity`, `particular` (n×1 or null for none), `basis` (n×nullity
+or null when nullity=0), and ascending zero-based `free_columns`. The C
+[general-system contract](LINEAR_SYSTEM_API.md) owns their mathematical meaning.
+For A=`1 2` and B=`3`: particular=`[["3"],["0"]]`, basis=`[["-2"],["1"]]`,
+free_columns=`[1]`; every rational solution is `[3;0]+t1·[-2;1]`.
+An inconsistent system is a successful mathematical outcome, not HTTP 400.
+The browser shows `x = x₀ + N·t` for infinite families, with arbitrary rational
+parameters; its family copy is a vector expression rather than TSV.
+
 Adapter limits: 1–8 rows/columns, 64 bytes per input cell, 6000 body bytes,
 128 KiB response, and inherited default calculation time/allocation budgets.
 Accepted cells: signed integers, integer fractions with nonzero denominators,
@@ -158,8 +182,8 @@ The standalone C/Python APIs retain their existing broader size/type contracts.
 Errors return HTTP 400 with `ok:false`, `status`, `error`, and zero-based
 `matrix` (0=A, 1=B) / row-major `cell` for parse failures, otherwise -1.
 Bad syntax/shape uses `invalid argument`; zero denominator or singular square
-solve uses `division by zero`. Singular solve does not classify none/infinite
-solutions; use the C/Python general-system API for that. Time, allocation and
+solve uses `division by zero`. The existing square `solve` keeps this contract;
+use `solve_general` for classification. Time, allocation and
 size failures preserve inputs and publish no partial result. Shared origin,
 framing and worker-overload handling can instead return 403/411/413/503.
 
@@ -175,9 +199,10 @@ using Python Fraction arithmetic. The source archive/wheel check verifies the
 installed adapter and example.
 
 `matrix_adapter_tests` covers exact text/HTTP results, invalid domains, dimensions,
-cell positions, all allocation failures for a representative solve, and inherited
-time/memory exhaustion. Browser matrix tests cover SK/EN editing, copy, paste,
-navigation/reload, mobile overflow, retry, stale replies and forbidden origins.
+cell positions, allocation failures through square/general solve and general
+serialization, and inherited time/memory exhaustion. Browser tests cover SK/EN
+solution families, editing, keyboard navigation, TSV/file round trips, rejected
+imports, navigation/reload, mobile overflow, retry, malformed/stale replies and origins.
 
 The opt-in [benchmark](../performance/baselines/MODULES.md#matrices) records an initial
 Release baseline, validates exact closed-form results outside timing and reports

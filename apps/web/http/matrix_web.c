@@ -14,6 +14,38 @@ static bool append(char *json, size_t *used, const char *text)
     if(length>=MATRIX_JSON_CAPACITY-*used) return false;
     memcpy(json+*used,text,length+1U);*used+=length;return true;
 }
+static bool matrix_json(char *json, size_t *used, const NumForgeMatrix *matrix, CalculatorStatus *status)
+{
+    if(!matrix) return append(json,used,"null");
+    bool valid=append(json,used,"[");
+    for(size_t row=0U;row<numforge_matrix_rows(matrix) && valid;++row) {
+        valid=append(json,used,row ? ",[" : "[");
+        for(size_t column=0U;column<numforge_matrix_columns(matrix) && valid;++column) {
+            char *value=NULL;
+            *status=calculator_from_rational_status(bigrational_to_string(numforge_matrix_entry(matrix,row,column),&value));
+            valid=*status==CALCULATOR_OK && append(json,used,column ? ",\"" : "\"") && append(json,used,value) && append(json,used,"\"");
+            free(value);
+        }
+        valid=valid && append(json,used,"]");
+    }
+    return valid && append(json,used,"]");
+}
+static bool solution_json(char *json, size_t *used, const NumForgeLinearSolution *solution, CalculatorStatus *status)
+{
+    NumForgeLinearSolutionKind kind=numforge_linear_solution_kind(solution);
+    char metadata[128];
+    (void)snprintf(metadata,sizeof(metadata),"\"solution\":{\"kind\":\"%s\",\"rank\":%zu,\"nullity\":%zu,\"particular\":",
+        kind==NUMFORGE_LINEAR_NONE ? "none" : kind==NUMFORGE_LINEAR_UNIQUE ? "unique" : "infinite",
+        numforge_linear_solution_rank(solution),numforge_linear_solution_nullity(solution));
+    bool valid=append(json,used,metadata) && matrix_json(json,used,numforge_linear_solution_particular(solution),status) &&
+        append(json,used,",\"basis\":") && matrix_json(json,used,numforge_linear_solution_nullspace(solution),status) &&
+        append(json,used,",\"free_columns\":[");
+    for(size_t i=0U;i<numforge_linear_solution_nullity(solution) && valid;++i) {
+        (void)snprintf(metadata,sizeof(metadata),"%s%zu",i ? "," : "",numforge_linear_solution_free_column(solution,i));
+        valid=append(json,used,metadata);
+    }
+    return valid && append(json,used,"]}");
+}
 CalculatorStatus numforge_web_matrix_request(const char *target, const char *body,
     size_t length, char **response)
 {
@@ -45,20 +77,8 @@ CalculatorStatus numforge_web_matrix_request(const char *target, const char *bod
             used=0U;json[0]='\0';
             bool valid=append(json,&used,"{\"ok\":true,\"exact\":true,");
             if(result->scalar) valid=valid && append(json,&used,"\"scalar\":\"") && append(json,&used,result->scalar) && append(json,&used,"\"");
-            else {
-                valid=valid && append(json,&used,"\"matrix\":[");
-                for(size_t row=0U;row<numforge_matrix_rows(result->matrix) && valid;++row) {
-                    valid=append(json,&used,row ? ",[" : "[");
-                    for(size_t column=0U;column<numforge_matrix_columns(result->matrix) && valid;++column) {
-                        char *value=NULL;
-                        status=calculator_from_rational_status(bigrational_to_string(numforge_matrix_entry(result->matrix,row,column),&value));
-                        valid=status==CALCULATOR_OK && append(json,&used,column ? ",\"" : "\"") && append(json,&used,value) && append(json,&used,"\"");
-                        free(value);
-                    }
-                    valid=valid && append(json,&used,"]");
-                }
-                valid=valid && append(json,&used,"]");
-            }
+            else if(result->solution) valid=valid && solution_json(json,&used,result->solution,&status);
+            else valid=valid && append(json,&used,"\"matrix\":") && matrix_json(json,&used,result->matrix,&status);
             valid=valid && append(json,&used,"}");
             if(!valid && status==CALCULATOR_OK) status=CALCULATOR_VALUE_TOO_LARGE;
         }

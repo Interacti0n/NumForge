@@ -7,14 +7,15 @@ Earlier detailed development notes remain in Git history.
 ## Unreleased
 
 - SK/EN exact matrix editor with determinant, rank, products and unique square
-  solves through the existing C kernels; bounded stateless HTTP, TSV paste/copy
-  and tab-local input retention.
+  solves plus rectangular/singular solution families through existing C kernels;
+  bounded stateless HTTP, TSV paste/copy, keyboard/input tools, local workspace
+  files and tab-local input retention.
 
 - Default calculation allocation budgets increased to 128 MiB cumulative requests
   and 8 MiB per allocation across the engine, applications and Python adapter.
 
-- Refreshed the shared web palette with indigo surfaces, lavender actions and cyan
-  accents across the calculator, graphs, equations, units and guide.
+- Refined the shared web palette and panel hierarchy with indigo surfaces,
+  lavender actions and cyan accents across browser tools and the guide.
 
 - Default calculation budget increased from 5 to 10 seconds across the engine,
   applications and Python adapter; browser request deadlines allow extra transfer time.

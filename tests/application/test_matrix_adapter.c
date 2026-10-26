@@ -52,15 +52,18 @@ static void test_allocation_and_outer_budget_failures(void)
 {
     ApplicationMatrixResult *sentinel=NULL;
     TEST_ASSERT_EQUAL(CALCULATOR_OK,compute(&sentinel,"rank","1",NULL));
-    numforge_test_allocator_begin(0U);
     ApplicationMatrixResult *out=NULL;
-    TEST_ASSERT_EQUAL(CALCULATOR_OK,compute(&out,"solve","2 1\n1 3","1\n2"));
-    size_t calls=numforge_test_allocator_call_count();numforge_test_allocator_end();application_matrix_result_destroy(out);
-    for(size_t i=1U;i<=calls;++i) {
-        out=sentinel;numforge_test_allocator_begin(i);
-        CalculatorStatus status=compute(&out,"solve","2 1\n1 3","1\n2");
-        numforge_test_allocator_end();
-        TEST_ASSERT_NOT_EQUAL(CALCULATOR_OK,status);TEST_ASSERT_EQUAL_PTR(sentinel,out);
+    const char *operations[]={"solve","solve_general"};
+    for(size_t operation=0U;operation<2U;++operation) {
+        numforge_test_allocator_begin(0U);out=NULL;
+        TEST_ASSERT_EQUAL(CALCULATOR_OK,compute(&out,operations[operation],"2 1\n1 3","1\n2"));
+        size_t calls=numforge_test_allocator_call_count();numforge_test_allocator_end();application_matrix_result_destroy(out);
+        for(size_t i=1U;i<=calls;++i) {
+            out=sentinel;numforge_test_allocator_begin(i);
+            CalculatorStatus status=compute(&out,operations[operation],"2 1\n1 3","1\n2");
+            numforge_test_allocator_end();
+            TEST_ASSERT_NOT_EQUAL(CALCULATOR_OK,status);TEST_ASSERT_EQUAL_PTR(sentinel,out);
+        }
     }
     TEST_ASSERT_TRUE(numforge_budget_begin(0U,SIZE_MAX,SIZE_MAX));out=sentinel;
     TEST_ASSERT_EQUAL(CALCULATOR_TIME_LIMIT,compute(&out,"rank","1",NULL));
@@ -68,6 +71,34 @@ static void test_allocation_and_outer_budget_failures(void)
     TEST_ASSERT_TRUE(numforge_budget_begin(UINT64_MAX,8U,8U));
     TEST_ASSERT_NOT_EQUAL(CALCULATOR_OK,compute(&out,"rank","1",NULL));
     numforge_budget_end();TEST_ASSERT_EQUAL_PTR(sentinel,out);application_matrix_result_destroy(sentinel);
+}
+static void test_general_families_and_http_failures(void)
+{
+    ApplicationMatrixResult *out=NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,compute(&out,"solve_general","1 2 3\n2 4 6","1\n2"));
+    TEST_ASSERT_EQUAL(NUMFORGE_LINEAR_INFINITE,numforge_linear_solution_kind(out->solution));
+    TEST_ASSERT_EQUAL(2,numforge_linear_solution_nullity(out->solution));
+    TEST_ASSERT_EQUAL(1,numforge_linear_solution_free_column(out->solution,0));
+    char *value=NULL;
+    TEST_ASSERT_EQUAL(BIGRATIONAL_OK,bigrational_to_string(numforge_matrix_entry(numforge_linear_solution_nullspace(out->solution),0,1),&value));
+    TEST_ASSERT_EQUAL_STRING("-3",value);free(value);application_matrix_result_destroy(out);out=NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,compute(&out,"solve_general","1 2\n2 4","1\n3"));
+    TEST_ASSERT_EQUAL(NUMFORGE_LINEAR_NONE,numforge_linear_solution_kind(out->solution));
+    application_matrix_result_destroy(out);out=NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_INVALID_ARGUMENT,compute(&out,"solve_general","1","1 2"));
+    const char *body="1 2\n\n3";char *json=NULL;
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,numforge_web_matrix_request("/api/matrix?operation=solve_general",body,strlen(body),&json));
+    TEST_ASSERT_EQUAL_STRING("{\"ok\":true,\"exact\":true,\"solution\":{\"kind\":\"infinite\",\"rank\":1,\"nullity\":1,\"particular\":[[\"3\"],[\"0\"]],\"basis\":[[\"-2\"],[\"1\"]],\"free_columns\":[1]}}",json);free(json);
+    numforge_test_allocator_begin(0U);
+    TEST_ASSERT_EQUAL(CALCULATOR_OK,numforge_web_matrix_request("/api/matrix?operation=solve_general",body,strlen(body),&json));
+    size_t calls=numforge_test_allocator_call_count();numforge_test_allocator_end();free(json);
+    for(size_t i=1U;i<=calls;++i) {
+        json=NULL;numforge_test_allocator_begin(i);
+        CalculatorStatus status=numforge_web_matrix_request("/api/matrix?operation=solve_general",body,strlen(body),&json);
+        numforge_test_allocator_end();TEST_ASSERT_NOT_EQUAL(CALCULATOR_OK,status);
+        if(json) {TEST_ASSERT_NOT_NULL(strstr(json,"\"ok\":false"));TEST_ASSERT_EQUAL_CHAR('}',json[strlen(json)-1U]);}
+        free(json);
+    }
 }
 static void test_http_schema_and_bounded_body(void)
 {
@@ -82,5 +113,6 @@ static void test_http_schema_and_bounded_body(void)
 int main(void)
 {
     UNITY_BEGIN();RUN_TEST(test_exact_matrix_operations);RUN_TEST(test_domains_positions_and_atomic_failures);
-    RUN_TEST(test_allocation_and_outer_budget_failures);RUN_TEST(test_http_schema_and_bounded_body);return UNITY_END();
+    RUN_TEST(test_allocation_and_outer_budget_failures);RUN_TEST(test_http_schema_and_bounded_body);
+    RUN_TEST(test_general_families_and_http_failures);return UNITY_END();
 }
