@@ -214,6 +214,10 @@ function initMatrices() {
                 output.append(tableResult(data.matrix));copied=matrixText(data.matrix);
             }else throw Error('Invalid result');
             copy.disabled=false;status.dataset.state='ready';status.textContent=t('Hotovo · Exaktný výsledok','Done · Exact result');recent.remember(state);
+            if(matchMedia('(max-width:760px)').matches) {
+                document.activeElement?.blur();
+                document.querySelector('.matrix-result').scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth'});
+            }
         }catch(failure) {
             if(id===generation){output.replaceChildren();showError(t('Server neodpovedal alebo odpoveď nie je platná. Skús výpočet znova.','The server did not respond or returned an invalid response. Try again.'));}
         }finally{clearTimeout(timeout);if(id===generation){submit.disabled=false;form.removeAttribute('aria-busy');request=null;}}

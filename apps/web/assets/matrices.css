@@ -59,7 +59,7 @@ body { height:auto; min-height:100dvh; overflow:auto; }
 @media(max-width:600px) { .matrix-workspace .card { padding:16px; } .matrix-workspace { padding:16px 0; } .matrix-panel { padding:8px; } .matrix-scroll input { width:76px; } .matrix-workspace-tools { align-items:stretch; } .matrix-presets { flex:1 1 100%; margin-left:0; } .matrix-keyboard-hint { display:none; } }
 @media(pointer:coarse) { .matrix-workspace button:not(.primary-button),.matrix-workspace select { min-height:44px; } .matrix-scroll input { min-height:44px; } }
 
-.matrix-result { display:flex; flex-direction:column; }
+.matrix-result { display:flex; flex-direction:column; scroll-margin-top:88px; }
 .matrix-result #matrix-output { min-height:0; overflow:auto; scrollbar-width:thin; }
 .matrix-result:has(#matrix-output:not(:empty)) #matrix-empty,
 .matrix-result:has(#matrix-error:not([hidden])) #matrix-empty,

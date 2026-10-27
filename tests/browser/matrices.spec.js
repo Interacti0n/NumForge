@@ -6,6 +6,24 @@ async function fill(page,name,values) {
  const inputs=page.locator(`#matrix-${name} input`);
  for(let i=0;i<values.flat().length;i++)await inputs.nth(i).fill(values.flat()[i]);
 }
+for(const lang of ['sk','en'])test(`phone matrix confirmation reveals the result and dismisses input ${lang}`,async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.emulateMedia({reducedMotion:lang==='en'?'reduce':'no-preference'});
+ await page.goto('/matrices?lang='+lang);
+ await page.locator('#matrix-preset').selectOption('infinite');
+ const input=page.locator('#matrix-a input').first();await input.focus();
+ await input.press('Control+Enter');
+ await expect(page.locator('.solution-formula')).toBeVisible();
+ await expect(input).not.toBeFocused();
+ await expect.poll(async()=>{
+  const box=await page.locator('.matrix-result').boundingBox();return box.y;
+ }).toBeGreaterThanOrEqual(70);
+ await expect.poll(async()=>{
+  const box=await page.locator('.matrix-result').boundingBox();return box.y;
+ }).toBeLessThan(200);
+ await expect(page.locator('#matrix-copy')).toBeInViewport();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(390);
+});
 for(const lang of ['sk','en'])test(`exact matrix workflow, errors, copy and navigation ${lang}`,async({page})=>{
  await page.goto('/matrices?lang='+lang);
  const run=async()=>page.locator('#matrix-submit').click();
