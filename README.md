@@ -55,10 +55,12 @@ accuracy. Numerical root discovery and graph sampling can miss roots or features
 ## In the browser
 
 The Slovak/English application combines a scientific calculator, unit converter,
-up to four function graphs, exact/numerical equation solving, an
+up to four [function graphs](docs/guides/GRAPHS.md), exact/numerical equation solving, an
 [exact matrix editor](docs/reference/MATRIX_API.md#web-editor-and-http), variables and
 confirmed history. Arithmetic runs in C; JavaScript handles presentation and
-requests. No Node.js, Python or database is needed at runtime.
+requests. Graphs and matrices support local workspace files; completed graphs
+export as standalone SVG/PNG images. No Node.js, Python or database is needed
+at runtime.
 
 ![Current calculator with exact fractions and confirmed history](docs/images/calculator-desktop.png)
 

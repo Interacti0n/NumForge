@@ -107,6 +107,15 @@ def smoke(directory, windows, port=None, require_matrices=False):
             with urllib.request.urlopen(base + asset, timeout=5) as response:
                 if not response.read():
                     raise RuntimeError(f"Empty equation asset: {asset}")
+        for language in ("sk", "en"):
+            with urllib.request.urlopen(base + "/graph?lang=" + language, timeout=5) as response:
+                graph_html = response.read().decode("utf-8")
+            if 'id="graph-plot"' not in graph_html:
+                raise RuntimeError("Graph preview missing from extracted package")
+            for asset in set(re.findall(r'(?:src|href)="(/assets/[^"?#]+)', graph_html)):
+                with urllib.request.urlopen(base + asset, timeout=5) as response:
+                    if not response.read():
+                        raise RuntimeError(f"Empty graph asset: {asset}")
         with urllib.request.urlopen(base + "/api/functions", timeout=5) as response:
             registry = json.load(response)
         if not registry.get("ok") or not any(

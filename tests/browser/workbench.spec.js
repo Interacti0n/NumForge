@@ -35,7 +35,7 @@ test('desktop graph panels share rows and the inline library edits the active cu
  await page.locator('#graph-functions button[data-function=sin]').click();await second.press('x');
  await expect(second).toHaveValue('sin(x)');await expect(page.locator('#graph-expression')).toHaveValue('sin(x)');
  await page.locator('#graph-submit').click();await expect(page.locator('path.graph-line')).toHaveCount(2);
- await expect(page.locator('#graph-history-list button')).toHaveCount(1);
+ await expect(page.locator('#graph-history-list .graph-history-restore')).toHaveCount(1);
  expect(await page.evaluate(()=>document.documentElement.scrollHeight)).toBe(800);
  await page.screenshot({path:artifactPath('graph-workbench-desktop.png')});
  await page.locator('.graph-edit').last().click();await expect(page.locator('#graph-library-dialog')).toBeVisible();
@@ -47,17 +47,17 @@ for(const width of [390,1280])test(`graph history restores function sets and sur
  await page.setViewportSize({width,height:844});await page.goto('/graph?lang=en');
  await page.locator('#graph-expression').fill('x');await page.locator('#graph-add').click();
  await page.locator('.graph-curve').last().locator('input:not([type=color])').fill('2*x');
- await page.locator('#graph-submit').click();await expect(page.locator('#graph-history-list button')).toHaveCount(1);
+ await page.locator('#graph-submit').click();await expect(page.locator('#graph-history-list .graph-history-restore')).toHaveCount(1);
  const originalColor=await page.locator('#graph-color').inputValue();
  await page.locator('#graph-expression').fill('x^2');await page.locator('#graph-submit').click();
- await expect(page.locator('#graph-history-list button')).toHaveCount(2);
- await page.locator('#graph-history-list button').last().click();await expect(page.locator('#graph-expression')).toHaveValue('x');
+ await expect(page.locator('#graph-history-list .graph-history-restore')).toHaveCount(2);
+ await page.locator('#graph-history-list .graph-history-restore').last().click();await expect(page.locator('#graph-expression')).toHaveValue('x');
  await expect(page.locator('path.graph-line')).toHaveCount(2);await expect(page.locator('#graph-color')).toHaveValue(originalColor);
- await expect(page.locator('#graph-history-list button')).toHaveCount(2);
- await page.reload();await expect(page.locator('#graph-history-list button')).toHaveCount(2);
+ await expect(page.locator('#graph-history-list .graph-history-restore')).toHaveCount(2);
+ await page.reload();await expect(page.locator('#graph-history-list .graph-history-restore')).toHaveCount(2);
  await page.locator('#graph-expression').fill('unknown(x)');await page.locator('#graph-submit').click();
- await expect(page.locator('#graph-status')).toHaveClass(/error/);await expect(page.locator('#graph-history-list button')).toHaveCount(2);
- await page.locator('#graph-history-clear').click();await expect(page.locator('#graph-history-list button')).toHaveCount(0);
+ await expect(page.locator('#graph-status')).toHaveClass(/error/);await expect(page.locator('#graph-history-list .graph-history-restore')).toHaveCount(2);
+ await page.locator('#graph-history-clear').click();await expect(page.locator('#graph-history-list .graph-history-restore')).toHaveCount(0);
  await expect(page.locator('#graph-history-empty')).toBeVisible();
 });
 
@@ -68,16 +68,16 @@ test('graph history is bounded and restores hidden curves, colors and camera',as
  await rows.last().locator('input[type=color]').evaluate(e=>{e.value='#ff1234';e.dispatchEvent(new Event('input',{bubbles:true}));});
  await page.locator('#graph-submit').click();await expect(page.locator('path.graph-line')).toHaveCount(1);
  const svg=page.locator('#graph-plot');await svg.press('+');
- await page.locator('#graph-submit').click();await expect(page.locator('#graph-history-list button')).toHaveCount(2);
+ await page.locator('#graph-submit').click();await expect(page.locator('#graph-history-list .graph-history-restore')).toHaveCount(2);
  const camera=await svg.getAttribute('data-xmin');
- await page.locator('#graph-history-list button').first().click();
+ await page.locator('#graph-history-list .graph-history-restore').first().click();
  await expect(rows.first().locator('.graph-visibility')).toHaveAttribute('aria-pressed','false');
  await expect(rows.last().locator('input[type=color]')).toHaveValue('#ff1234');
- await expect(svg).toHaveAttribute('data-xmin',camera);await expect(page.locator('#graph-history-list button')).toHaveCount(2);
+ await expect(svg).toHaveAttribute('data-xmin',camera);await expect(page.locator('#graph-history-list .graph-history-restore')).toHaveCount(2);
  for(let i=0;i<9;i++){
   await rows.last().locator('input:not([type=color])').fill('x+'+i);await page.locator('#graph-submit').click();
   await expect(page.locator('#graph-history-list strong').first()).toContainText('x+'+i);
  }
- await expect(page.locator('#graph-history-list button')).toHaveCount(8);
- await page.reload();await expect(page.locator('#graph-history-list button')).toHaveCount(8);
+ await expect(page.locator('#graph-history-list .graph-history-restore')).toHaveCount(8);
+ await page.reload();await expect(page.locator('#graph-history-list .graph-history-restore')).toHaveCount(8);
 });

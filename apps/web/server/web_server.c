@@ -1035,6 +1035,10 @@ void numforge_handle_connection_before(
     {
         numforge_send_response(socket, 200, "OK", "text/css; charset=utf-8", (const char *)NUMFORGE_GRAPH_CSS);
     }
+    else if (strcmp(method, "GET") == 0 && strcmp(target, "/assets/graph-files.js") == 0)
+    {
+        numforge_send_response(socket, 200, "OK", "text/javascript; charset=utf-8", (const char *)NUMFORGE_GRAPH_FILES_JS);
+    }
     else if (strcmp(method, "GET") == 0 && strcmp(target, "/assets/graph.js") == 0)
     {
         numforge_send_response(socket, 200, "OK", "text/javascript; charset=utf-8", (const char *)NUMFORGE_GRAPH_JS);

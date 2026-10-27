@@ -8,6 +8,7 @@ function initGraph() {
     function rememberVerification(key,value){if(verificationCache.has(key))return;verificationCache.set(key,value);verificationBytes+=key.length*2+128;while(verificationCache.size>256||verificationBytes>512*1024){const oldest=verificationCache.keys().next().value;verificationBytes-=oldest.length*2+128;verificationCache.delete(oldest);}}
     const $=id=>root.querySelector('#'+id),english=document.documentElement.lang==='en';
     const lifecycle=new AbortController(),svg=$('graph-plot'),status=$('graph-status');
+    const files=window.numforgeGraphFiles;let exportBusy=false,workspaceAwaitingPlot=false;
     const curves=[],palette=['#dfafff','#20c997','#ffb454','#66b3ff'],maximumCurves=4;
     let disposed=false,restoring=true,viewport=null,yViewport=[-10,10],viewportTimer=null,drawFrame=null,nextId=1,activeCurve=null;
     const pointers=new Map();let gesture=null;
@@ -29,9 +30,11 @@ function initGraph() {
     };
     const errors=english?{'undefined answer':'Graphs do not use calculator ans.'}:{'division by zero':'Delenie nulou','undefined variable':'Nedefinovaná premenná','undefined answer':'Graf nepoužíva ans z kalkulačky','syntax error':'Chyba syntaxe','time limit exceeded':'Prekročený časový limit','invalid argument':'Neplatný argument'};
     function message(value,error=false){status.textContent=value+(!error&&verificationState==='limited'?(english?' · Some intersections could not be verified. Zoom in to retry.':' · Niektoré priesečníky sa nepodarilo overiť. Skús priblížiť graf.'):'');status.classList.toggle('error',error);status.dataset.detail=String(error||verificationState==='limited'||curves.some(c=>{const s=c.state();return s.visible&&(s.error||s.notice);}));}
-    function settings(){const first=curves[0];return {version:2,expression:first?.input.value||'',color:first?.color.value||palette[0],view:{x:bounds().slice(),y:yViewport.slice()},curves:curves.map(c=>({expression:c.input.value,color:c.color.value,render:'auto',visible:c.state().visible,plotted:c.hasResult()}))};}
-    function save(){if(restoring||disposed)return;try{sessionStorage.setItem('numforge-graph-state',JSON.stringify(settings()));}catch(_) {}}
-    function drawSoon(){if(drawFrame===null)drawFrame=requestAnimationFrame(()=>{drawFrame=null;if(!disposed)draw();});}
+    function settings(){const first=curves[0];return {version:2,awaitingPlot:workspaceAwaitingPlot,expression:first?.input.value||'',color:first?.color.value||palette[0],view:{x:bounds().slice(),y:yViewport.slice()},curves:curves.map(c=>({expression:c.input.value,color:c.color.value,render:'auto',visible:c.state().visible,plotted:c.hasResult()}))};}
+    function save(){if(restoring||disposed)return;try{sessionStorage.setItem('numforge-graph-state',JSON.stringify(settings()));}catch(_) {}markHistory();}
+    function canExport(){const visible=curves.filter(c=>c.state().visible&&c.input.value.trim());return !disposed&&!exportBusy&&drawFrame===null&&!svg.hasAttribute('hidden')&&visible.length>0&&visible.every(c=>c.hasResult()&&!c.state().busy&&!c.state().pendingView&&!c.state().error)&&verificationState!=='pending'&&svg.dataset.featuresState!=='pending';}
+    function syncFiles(){const disabled=!canExport();$('graph-export-svg').disabled=disabled;$('graph-export-png').disabled=disabled;}
+    function drawSoon(){if(drawFrame===null){drawFrame=requestAnimationFrame(()=>{drawFrame=null;if(!disposed)draw();});syncFiles();}}
     function dimensions(){
         const result=root.querySelector('.graph-result');
         if(!$('graph-expanded').open&&!window.matchMedia('(min-width: 961px)').matches){const width=Math.max(320,Math.min(800,result.clientWidth-48));return {width,height:width<600?300:440};}
@@ -54,6 +57,7 @@ function initGraph() {
         return (state.chunks||[{bands:state.bands}]).flatMap(chunk=>(chunk.bands||[]).filter(b=>b[0]<Math.min(high,chunk.high??high)&&b[1]>Math.max(low,chunk.low??low)&&Math.max(b[2],bottom)<Math.min(b[3],top)).map(b=>[Math.max(low,chunk.low??low,b[0]),Math.min(high,chunk.high??high,b[1]),b[2],b[3]]));
     }
     function syncStatus(){
+        syncFiles();
         const allStates=curves.map(c=>c.state()),states=allStates.filter(s=>s.visible);
         root.toggleAttribute('aria-busy',states.some(s=>s.busy));if(root.hasAttribute('aria-busy'))root.setAttribute('aria-busy','true');
         curves.forEach((c,i)=>{const s=allStates[i],node=c.row.querySelector('.graph-curve-status');node.hidden=!s.visible||curves.length===1||(!s.error&&!s.busy&&!s.notice);node.textContent=s.message;node.classList.toggle('error',s.error);node.dataset.notice=s.notice;});
@@ -81,12 +85,14 @@ function initGraph() {
     }
     async function plotAll(event,keepView=false,reveal=false){
         event?.preventDefault();clearTimeout(viewportTimer);viewportTimer=null;
+        if(workspaceAwaitingPlot&&!event&&!reveal)return;
         if(!$('graph-form').reportValidity())return;
+        if(event||reveal)workspaceAwaitingPlot=false;
         const submitted=(event||reveal)?curves.map(c=>[c,c.input.value]):null;
         svg.dataset.featuresState='pending';
         ++foregroundBatches;
         try{await Promise.all(curves.filter(c=>c.state().visible).map(c=>c.plot(null,keepView)));}finally{--foregroundBatches;pump();}
-        if(submitted&&!disposed&&submitted.length===curves.length&&submitted.every(([curve,input],i)=>curves[i]===curve&&curve.input.value===input)&&curves.some(c=>c.state().visible)&&curves.filter(c=>c.state().visible).every(c=>c.hasResult()))rememberGraph();
+        if(submitted&&!disposed&&submitted.length===curves.length&&submitted.every(([curve,input],i)=>curves[i]===curve&&curve.input.value===input)&&curves.some(c=>c.state().visible&&c.input.value.trim())&&curves.filter(c=>c.state().visible&&c.input.value.trim()).every(c=>c.hasResult()))rememberGraph();
         if(submitted && !disposed && submitted.length===curves.length &&
             submitted.every(([curve,input],i)=>curves[i]===curve && curve.input.value===input) &&
             window.matchMedia('(max-width: 960px)').matches)
@@ -446,7 +452,7 @@ function initGraph() {
         const markers=element('g',{class:'graph-features','clip-path':'url(#graph-clip)'});
         const shownFeatures=featureMarkers();displayedFeatures=new Set(shownFeatures);svg.dataset.markerCount=String(shownFeatures.length);
         for(const feature of shownFeatures){const marker=element('circle',{class:'graph-feature',cx:px(feature.x),cy:py(feature.y),r:4,'data-kind':feature.kind,'data-x':feature.x,'data-y':feature.y,'data-verified':'true','data-curve':feature.curve.id,...(feature.other?{'data-other':feature.other.id}:{}),style:`fill:${feature.curve.color.value}`});markers.append(marker);}
-        group.append(markers);svg.dataset.featuresState=states.some(s=>s.busy||s.pendingView)?'pending':verificationState;updateInspection();
+        group.append(markers);svg.dataset.featuresState=states.some(s=>s.busy||s.pendingView)?'pending':verificationState;updateInspection();syncFiles();
     }
     function createCurve(row){
         const input=row.querySelector('input:not([type=color])'),color=row.querySelector('input[type=color]'),controller=new AbortController();
@@ -652,6 +658,9 @@ function initGraph() {
                     const next=new URLSearchParams(query);next.set('min',String(a));next.set('max',String(b));
                     const targetSpan=nextZoom?span/2:span;
                     next.set('width',String(Math.max(320,Math.min(2048,Math.round(Number(query.get('width'))*(b-a)/targetSpan)))));
+                    // Prepare vertical detail too: expanding the short desktop
+                    // preview must not discard otherwise reusable samples.
+                    if(nextZoom&&!$('graph-expanded').open)next.set('height',String(Math.min(1200,Number(query.get('height'))*2)));
                     next.set('ymin',String(yLow));next.set('ymax',String(yHigh));
                     try {
                         const entry=await fetchPlot(next,expression,signal,true);
@@ -766,19 +775,19 @@ function initGraph() {
             },
             needsVerticalView(){return visible&&(busy||pendingView||!!samples&&!showCached(...bounds(),false));},
             invalidData(){samples=null;bands=null;chunks=null;pendingView=false;message(text.range,true);},
-            cameraChanged(){if(!visible)return;++generation;request?.abort();request=null;busy=false;stopPrefetch();pendingView=!!input.value.trim();const hit=showCached(...bounds(),false);if(!hit)message(input.value.trim()?text.busy:text.ready);syncStatus();},
+            cameraChanged(){if(!visible||workspaceAwaitingPlot)return;++generation;request?.abort();request=null;busy=false;stopPrefetch();pendingView=!!input.value.trim();const hit=showCached(...bounds(),false);if(!hit)message(input.value.trim()?text.busy:text.ready);syncStatus();},
             setVisible(value){
                 if(visible===value)return;
                 locateRequest?.abort();
                 if(!value){hiddenCamera=cameraKey();hiddenReady=!!samples&&!pendingView;}
                 visible=value;++generation;request?.abort();request=null;busy=false;stopPrefetch();
                 const retained=visible&&hiddenReady&&!!samples&&hiddenCamera===cameraKey();
-                pendingView=visible&&!!input.value.trim()&&!retained&&!showCached(...bounds(),false);
+                pendingView=!workspaceAwaitingPlot&&visible&&!!input.value.trim()&&!retained&&!showCached(...bounds(),false);
                 relabel();save();drawSoon();if(pendingView)scheduleView();
             },
             dispose(){disposed=true;invalidate();controller.abort();}
         };
-        input.addEventListener('input',()=>{locateRequest?.abort();clearTimeout(viewportTimer);viewportTimer=null;if(curves.length===1){viewport=null;yViewport=[-10,10];}invalidate();save();renderLegend();},{signal:controller.signal});
+        input.addEventListener('input',()=>{locateRequest?.abort();clearTimeout(viewportTimer);viewportTimer=null;if(curves.length===1&&!workspaceAwaitingPlot){viewport=null;yViewport=[-10,10];}invalidate();save();renderLegend();},{signal:controller.signal});
 
         row.addEventListener('focusin',()=>{activeCurve=curve;highlightActive();},{signal:controller.signal});
         color.addEventListener('input',()=>{row.querySelector('.graph-color-swatch').style.setProperty('--swatch',color.value);save();renderLegend();drawSoon();},{signal:controller.signal});
@@ -827,7 +836,8 @@ function initGraph() {
             if(y===null){message(english?'This function has no real, displayable value at x = 0.':'Táto funkcia nemá pri x = 0 reálnu zobraziteľnú hodnotu.',true);return;}
             const radius=Math.max(10,Math.abs(y)*1e-6);
             if(!Number.isFinite(y-radius)||!Number.isFinite(y+radius)){message(text.range,true);return;}
-            moveView(-10,10,y-radius,y+radius);
+            const deferred=workspaceAwaitingPlot;workspaceAwaitingPlot=false;moveView(-10,10,y-radius,y+radius);
+            if(deferred)plotAll(null,true,true);
         }catch(error){if(!disposed&&error.name!=='AbortError')message(error instanceof TypeError?text.network:error.message,true);}
         finally{if(locateRequest===request)locateRequest=null;button.disabled=false;button.removeAttribute('aria-busy');}
     },{signal:lifecycle.signal});
@@ -922,8 +932,8 @@ function initGraph() {
     }
     const initialRow=root.querySelector('.graph-curve');let restored,importedExpression=null;
     try{restored=JSON.parse(sessionStorage.getItem('numforge-graph-state')||'null');}catch(_){}
-    const valid=entry=>entry&&typeof entry.expression==='string'&&entry.expression.length<=4096;
-    const validAxis=a=>Array.isArray(a)&&a.length===2&&a.every(Number.isFinite)&&a[1]>a[0]&&Number.isFinite(a[1]-a[0])&&a[1]-a[0]>=Math.max(1,...a.map(Math.abs))*1e-8;
+    const valid=entry=>entry&&files.validExpression(entry.expression);
+    const validAxis=files.validAxis;
     // A one-shot, bounded handoff preserves existing functions and never marks
     // the solver's rounded camera coordinate as a verified graph intercept.
     try{
@@ -940,6 +950,7 @@ function initGraph() {
             }
         }
     }catch(_){}
+    workspaceAwaitingPlot=restored?.awaitingPlot===true;
     const restoredCurves=Array.isArray(restored?.curves)?restored.curves.filter(valid).slice(0,maximumCurves):valid(restored)?[restored]:[];
     if(restored?.version===2&&validAxis(restored.view?.x)&&validAxis(restored.view?.y)){viewport=restored.view.x.slice();yViewport=restored.view.y.slice();}
     if(restoredCurves.length){initialRow.querySelector('input:not([type=color])').value=restoredCurves[0].expression;if(/^#[0-9a-f]{6}$/i.test(restoredCurves[0].color))initialRow.querySelector('input[type=color]').value=restoredCurves[0].color;}
@@ -950,36 +961,63 @@ function initGraph() {
     activeCurve=curves.find(c=>c.input.value===importedExpression)||curves[0];relabel();
     let graphHistory=[];
     const historyKey='numforge-graph-history';
-    const validHistory=entry=>entry?.version===2&&validAxis(entry.view?.x)&&validAxis(entry.view?.y)&&
-        Array.isArray(entry.curves)&&entry.curves.length>0&&entry.curves.length<=maximumCurves&&
-        entry.curves.every(c=>valid(c)&&/^#[0-9a-f]{6}$/i.test(c.color)&&typeof c.visible==='boolean')&&entry.curves.some(c=>c.visible&&c.expression.trim());
+    const validHistory=entry=>entry?.version===2&&files.valid(entry)&&entry.curves.some(c=>c.visible&&c.expression.trim());
     try{const saved=sessionStorage.getItem(historyKey);if(saved&&saved.length<=200000){const entries=JSON.parse(saved);if(Array.isArray(entries))graphHistory=entries.filter(validHistory).slice(0,8);}}catch(_){}
     function renderHistory(){
         const list=$('graph-history-list');list.replaceChildren();$('graph-history-empty').hidden=!!graphHistory.length;$('graph-history-clear').disabled=!graphHistory.length;
         graphHistory.forEach((entry,index)=>{
             const row=document.createElement('li'),button=document.createElement('button'),name=document.createElement('strong'),view=document.createElement('span');button.type='button';
+            button.className='graph-history-restore';const colors=document.createElement('span');colors.className='graph-history-colors';colors.setAttribute('aria-hidden','true');
+            entry.curves.forEach(c=>{const dot=document.createElement('i');dot.style.backgroundColor=c.color;dot.classList.toggle('is-hidden',!c.visible);colors.append(dot);});
             name.textContent=entry.curves.map(c=>c.expression).join(' · ');button.title=name.textContent;
             view.textContent=`x: ${entry.view.x.map(n=>Number(n.toPrecision(5))).join(' … ')} · y: ${entry.view.y.map(n=>Number(n.toPrecision(5))).join(' … ')}`;
-            button.dataset.historyIndex=String(index);button.append(name,view);row.append(button);list.append(row);
+            button.dataset.historyIndex=String(index);button.append(colors,name,view);
+            const remove=document.createElement('button');remove.type='button';remove.className='graph-history-remove';remove.dataset.deleteHistory=String(index);remove.textContent='×';remove.setAttribute('aria-label',(english?'Remove set: ':'Odstrániť zostavu: ')+name.textContent);
+            row.append(button,remove);list.append(row);
         });
+        markHistory();
     }
+    function markHistory(){const key=historyIdentity(settings());$('graph-history-list').querySelectorAll('.graph-history-restore').forEach(button=>{if(historyIdentity(graphHistory[button.dataset.historyIndex])===key)button.setAttribute('aria-current','true');else button.removeAttribute('aria-current');});}
     function persistHistory(){try{sessionStorage.setItem(historyKey,JSON.stringify(graphHistory));}catch(_){}renderHistory();}
     function historyIdentity(entry){return JSON.stringify([entry.view,entry.curves.map(c=>[c.expression,c.color,c.visible])]);}
     function rememberGraph(){
         const entry=settings(),key=historyIdentity(entry);
         graphHistory=[entry,...graphHistory.filter(saved=>historyIdentity(saved)!==key)].slice(0,8);persistHistory();
     }
-    function restoreHistory(entry){
-        locateRequest?.abort();clearInspection();
+    function applyWorkspace(entry,plot=false){
+        clearTimeout(viewportTimer);viewportTimer=null;locateRequest?.abort();verificationRequest?.abort();clearTimeout(verificationTimer);clearInspection();
+        pointers.clear();gesture=null;features=[];featureCacheKey=null;verificationState='ready';restoring=true;workspaceAwaitingPlot=!plot;
         const row=curves[0].row.cloneNode(true);curves.forEach(c=>c.dispose());curves.length=0;$('graph-curves').replaceChildren(row);
         row.querySelector('.graph-curve-status').hidden=true;row.querySelector('input:not([type=color])').value=entry.curves[0].expression;
         row.querySelector('input[type=color]').value=entry.curves[0].color;row.querySelector('.graph-visibility').setAttribute('aria-pressed',String(entry.curves[0].visible));
         curves.push(createCurve(row));for(const c of entry.curves.slice(1))addCurve(c.expression,c.color,false,c.visible);
-        viewport=entry.view.x.slice();yViewport=entry.view.y.slice();activeCurve=curves[0];relabel();save();
-        plotAll(null,true,true).then(()=>{if(!disposed)svg.focus({preventScroll:true});});
+        viewport=entry.view.x.slice();yViewport=entry.view.y.slice();activeCurve=curves[0];relabel();restoring=false;save();
+        if(drawFrame!==null){cancelAnimationFrame(drawFrame);drawFrame=null;}draw();
+        if(plot)plotAll(null,true,true).then(()=>{if(!disposed)svg.focus({preventScroll:true});});
     }
-    $('graph-history-list').addEventListener('click',event=>{const button=event.target.closest('button[data-history-index]');if(button&&graphHistory[button.dataset.historyIndex])restoreHistory(graphHistory[button.dataset.historyIndex]);},{signal:lifecycle.signal});
+    $('graph-history-list').addEventListener('click',event=>{
+        const button=event.target.closest('button[data-history-index]');if(button&&graphHistory[button.dataset.historyIndex])applyWorkspace(graphHistory[button.dataset.historyIndex],true);
+        const remove=event.target.closest('button[data-delete-history]');if(remove){const index=Number(remove.dataset.deleteHistory);graphHistory.splice(index,1);persistHistory();($('graph-history-list').querySelectorAll('.graph-history-remove')[Math.min(index,graphHistory.length-1)]||$('graph-save')).focus();}
+    },{signal:lifecycle.signal});
     $('graph-history-clear').addEventListener('click',()=>{graphHistory=[];persistHistory();},{signal:lifecycle.signal});renderHistory();
+    const fileStatus=$('graph-workspace-status'),fileInput=$('graph-file'),exportMenu=$('graph-export-menu');
+    function fileMessage(message,error=false){fileStatus.hidden=false;fileStatus.textContent=message;fileStatus.classList.toggle('error',error);}
+    $('graph-save').addEventListener('click',()=>{try{files.download(files.workspace(settings()),'numforge-graphs.json');fileMessage(english?'Workspace saved.':'Úloha uložená.');}catch{fileMessage(english?'The workspace cannot be saved (limit 100 kB).':'Úlohu sa nepodarilo uložiť (limit 100 kB).',true);}},{signal:lifecycle.signal});
+    $('graph-load').addEventListener('click',()=>fileInput.click(),{signal:lifecycle.signal});
+    fileInput.addEventListener('change',async()=>{
+        const file=fileInput.files[0],key=historyIdentity(settings());fileInput.value='';if(!file)return;
+        try{const entry=await files.read(file);if(disposed||key!==historyIdentity(settings()))return;applyWorkspace(entry);fileMessage(english?'Workspace loaded. Choose Plot to calculate.':'Úloha načítaná. Pre výpočet zvoľ Vykresliť.');}
+        catch{if(!disposed&&key===historyIdentity(settings()))fileMessage(english?'Invalid NumForge graph file (maximum 100 kB). Current work was preserved.':'Neplatný súbor grafov NumForge (najviac 100 kB). Pôvodná práca zostala zachovaná.',true);}
+    },{signal:lifecycle.signal});
+    for(const format of ['svg','png'])$('graph-export-'+format).addEventListener('click',async()=>{
+        if(!canExport())return;
+        try{exportBusy=true;syncFiles();exportMenu.open=false;const snapshot=files.capture(svg,settings(),english,status.textContent),blob=format==='png'?await files.png(snapshot):snapshot.blob;
+            if(!disposed){files.download(blob,'numforge-graph.'+format);fileMessage(english?'Graph image saved.':'Obrázok grafu uložený.');}}
+        catch{if(!disposed)fileMessage(english?'Image export failed or exceeded 8 MiB. Try a simpler view.':'Export obrázka zlyhal alebo presiahol 8 MiB. Skús jednoduchší výrez.',true);}
+        finally{exportBusy=false;if(!disposed)syncFiles();}
+    },{signal:lifecycle.signal});
+    document.addEventListener('click',event=>{if(!exportMenu.contains(event.target))exportMenu.open=false;},{signal:lifecycle.signal});
+    exportMenu.addEventListener('keydown',event=>{if(event.key==='Escape'){event.stopPropagation();exportMenu.open=false;exportMenu.querySelector('summary').focus();}},{signal:lifecycle.signal});
     $('graph-form').addEventListener('submit',event=>plotAll(event),{signal:lifecycle.signal});
     $('graph-add').addEventListener('click',()=>addCurve(),{signal:lifecycle.signal});
     $('graph-legend').addEventListener('click',event=>{const button=event.target.closest('.graph-legend-toggle'),curve=curves.find(c=>String(c.id)===button?.dataset.curve);if(curve)curve.setVisible(!curve.state().visible);},{signal:lifecycle.signal});
@@ -1137,7 +1175,7 @@ function initGraph() {
     }
     // Reloads have settings but no in-memory samples. Recalculate only curves
     // that had a completed plot; unfinished/edited input stays unsubmitted.
-    const resume=curves.filter((c,i)=>!restoredResults[i]&&restored?.version===2&&restoredCurves[i]?.plotted===true&&c.state().visible);
+    const resume=curves.filter((c,i)=>!workspaceAwaitingPlot&&!restoredResults[i]&&restored?.version===2&&restoredCurves[i]?.plotted===true&&c.state().visible);
     if(resume.length){++foregroundBatches;Promise.all(resume.map(c=>c.plot(null,true))).finally(()=>{--foregroundBatches;pump();save();});}
     else save();
     return ()=>{save();initGraph.retained={key:JSON.stringify(settings()),size:dimensions(),curves:curves.map(c=>c.retain()),verifications:verificationCache};disposed=true;leaveExpanded(false);colorDialog.close();libraryDialog.close();document.body.classList.remove('graph-library-open');curves.forEach(c=>c.dispose());clearTimeout(viewportTimer);if(drawFrame!==null)cancelAnimationFrame(drawFrame);if(inspectionFrame!==null)cancelAnimationFrame(inspectionFrame);clearInspection();inspectionLayer.remove();pointers.clear();resize.disconnect();lifecycle.abort();};

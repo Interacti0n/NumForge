@@ -21,6 +21,37 @@ keeps up to eight successful, explicitly plotted sets in the current browser
 tab. Select one to restore its expressions, colors, visibility and camera.
 Repeated sets are merged; errors and automatic pan/zoom requests add no entries.
 Clear removes this local history without changing the current graph.
+The highlighted entry matches the current inputs/view; colored dots also show
+hidden curves dimmed. The × beside one entry removes only that set.
+
+## Workspace files and image export
+
+**Save workspace / Uložiť úlohu** downloads a local JSON file containing up to
+four expressions, colors, visibility and the x/y view. **Load workspace** restores
+these inputs, including unfinished/hidden rows. It cancels previous requests and
+waits for explicit **Plot** (or **Locate function**) before calculating, including
+after reload or resize. Invalid files leave the current work unchanged. Files
+contain no sampled results, caches or calculator variables, and are not uploaded.
+
+The UTF-8 format is `format:"numforge.graph-workspace"`, `version:1`,
+`view:{x:[low,high],y:[low,high]}` and `curves:[{expression,color,visible}]`.
+Limit: 100,000 bytes, 1–4 rows, 4096 UTF-8 bytes per expression, `#rrggbb`
+colors and boolean visibility. Expressions cannot contain control characters;
+axes must be finite, increasing and distinguishable at the browser's supported
+relative span (at least `max(1,abs(low),abs(high))*1e-8`). Unknown versions,
+invalid shapes/colors or oversized files are rejected. Saving a file does not
+guarantee that its unfinished expressions are mathematically valid.
+
+**Export → SVG / PNG** captures a completed visible view, with function labels,
+current colors, confirmed markers and an approximate-result note. SVG carries
+its own styles; PNG is a raster image up to 2048 pixels per side. Both work
+offline once the graph is complete. Hidden curves and the hover crosshair are
+omitted. Export performs no new mathematical evaluation and does not alter
+history. Resolve or hide failed rows before exporting; pending sampling/marker
+verification temporarily disables it. Extremely large exports are bounded to
+8 MiB and 12,000 SVG elements; simplify the view if it exceeds these limits.
+The image preserves the current approximation, not an exact mathematical proof.
+Future engine versions can resample a workspace differently.
 
 From [Equations](EQUATIONS.md#show-a-solution-in-the-graph), **Show in graph**
 adds the difference between equation sides and centers near a selected real root.

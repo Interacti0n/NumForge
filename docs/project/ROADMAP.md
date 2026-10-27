@@ -89,8 +89,9 @@ alone does not establish a speedup.
 
 Graph refinement remains heuristic rather than a continuity proof; numerical
 root discovery is bounded and does not guarantee completeness. General tangency
-discovery, configurable tolerances, broader physical-device validation and
-graph export/import remain future work. Release gates are tracked in the
+discovery, configurable tolerances and broader physical-device validation
+remain future work. Graphs support bounded local workspace files and standalone
+SVG/PNG snapshots of completed views. Release gates are tracked in the
 [published release verification](RELEASES.md).
 
 ## Later, according to use cases

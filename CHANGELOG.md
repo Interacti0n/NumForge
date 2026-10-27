@@ -6,6 +6,9 @@ Earlier detailed development notes remain in Git history.
 
 ## Unreleased
 
+- Graph workspace files, standalone SVG/PNG image export, and individually
+  removable history entries with current-view/color indicators.
+
 - SK/EN exact matrix editor with determinant, rank, products and unique square
   solves plus rectangular/singular solution families through existing C kernels;
   bounded stateless HTTP, TSV paste/copy, keyboard/input tools, local workspace

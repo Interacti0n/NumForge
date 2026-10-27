@@ -25,6 +25,7 @@ set(NUMFORGE_WEB_ASSETS
     apps/web/assets/graph.en.html
     apps/web/assets/graph.css
     apps/web/assets/graph.js
+    apps/web/assets/graph-files.js
     apps/web/assets/matrices.sk.html
     apps/web/assets/matrices.en.html
     apps/web/assets/matrices.css

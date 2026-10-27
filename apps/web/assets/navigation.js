@@ -403,6 +403,10 @@ async function navigate(destination, addHistory = true)
             });
         if (replacement.querySelector('#graph-form'))
         {
+            if(!window.numforgeGraphFiles) await new Promise((resolve,reject)=>{
+                const script=document.createElement('script');script.src='/assets/graph-files.js';
+                script.onload=resolve;script.onerror=reject;document.body.append(script);
+            });
             if (window.numforgeInitGraph) window.numforgeDisposeGraph = window.numforgeInitGraph();
             else await new Promise((resolve, reject) => {
                 const script = document.createElement('script');

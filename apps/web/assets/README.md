@@ -13,6 +13,7 @@ HTML structure, labels, guide part keys and section IDs aligned.
 | `api.*.html`, `api.css` | Guide content and its reading layout. |
 | `function-library.js` | Localized descriptions/search aliases; `/api/functions` owns availability. |
 | `graph.js`, `graph.css` | Up to four curve caches, camera, request queue, editor and expanded plot. |
+| `graph-files.js` | Bounded workspace-file validation and standalone SVG/PNG capture; no sampling mathematics. |
 | `equations.js`, `units.js`, `matrices.js` and their styles | C/HTTP adapters, result presentation and same-tab state for each tool. |
 
 Mathematics and typed values belong to C. JavaScript validates/projects coordinates
