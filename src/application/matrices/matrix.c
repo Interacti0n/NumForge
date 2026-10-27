@@ -139,5 +139,6 @@ CalculatorStatus application_matrix_compute(ApplicationMatrixResult **result,
     else if(error && error->status==CALCULATOR_OK) calculator_error_set(error,status,0U);
     application_matrix_result_destroy(out);
     numforge_matrix_destroy(matrices[0]);numforge_matrix_destroy(matrices[1]);
-    if(owner) numforge_budget_end();return status;
+    if(owner) numforge_budget_end();
+    return status;
 }
