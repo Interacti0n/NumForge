@@ -64,10 +64,11 @@ rebooting the preview PC.
 At the user's request the bounded matrix web workflow, now including general
 single-RHS families and local workspace files, is developed while
 the reboot gate remains open. This exposes existing kernels and does not close
-stage 5. After review choose **one** next capability: a matrix decomposition, another numerical method,
-broader statistics, user functions or a first symbolic subset. Define the owning
-module, interfaces, assumptions and [feature completion gate](FEATURE_CHECKLIST.md)
-before implementation. Persistence requires a defined saved-work/account feature.
+stage 5. The user's next selected direction is PostgreSQL-backed accounts,
+preferences and saved workspaces. The [account proposal](../design/APPLICATION_DESIGN.md#proposed-accounts-and-saved-work)
+defines scope, ownership and staged completion gates. Implementation remains
+pending; current sessions are anonymous and memory-only. For subsequent math
+features choose one owning module and [completion gate](FEATURE_CHECKLIST.md).
 Push, release publication and deployment remain separately authorized actions;
 this is an ordered plan, not a release calendar.
 
@@ -99,5 +100,6 @@ SVG/PNG snapshots of completed views. Release gates are tracked in the
 Symbolic mathematics requires an explicit expression/assumption model; the current
 calculator AST is not a public CAS. Scientific simulations, approximate/complex
 matrix domains and broader distributions need individual contracts.
-Accounts and persistence remain proposals behind
-the application layer, independent of mathematical algorithms.
+Account persistence is now a selected next step, with its proposal above;
+broader collaboration, native apps and shared public workspaces need separate
+use cases. Mathematical algorithms retain no account/database dependency.
