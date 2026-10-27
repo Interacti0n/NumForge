@@ -84,7 +84,7 @@ PyObject *nf_python_matrix_create(PyObject *module, PyObject *args)
     if (rows <= 0 || columns <= 0 || rows > PY_SSIZE_T_MAX / columns) {
         PyErr_SetString(PyExc_ValueError, "matrix dimensions must be positive and fit the platform"); return NULL;
     }
-    PyObject *values = PySequence_Fast(items, "matrix entries must be a sequence");
+    PyObject *values = PySequence_Tuple(items);
     if (values == NULL) return NULL;
     Py_ssize_t count = rows * columns;
     if (PySequence_Fast_GET_SIZE(values) != count) {

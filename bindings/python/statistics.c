@@ -7,9 +7,9 @@ enum PairedStatistic { POPULATION_COVARIANCE, SAMPLE_COVARIANCE, LINEAR_REGRESSI
 static PyObject *paired_statistics(PyObject *module, PyObject *left_items,
     PyObject *right_items, PyObject *options, enum PairedStatistic operation)
 {
-    PyObject *left = PySequence_Fast(left_items, "left samples must be a sequence");
+    PyObject *left = PySequence_Tuple(left_items);
     if (left == NULL) return NULL;
-    PyObject *right = PySequence_Fast(right_items, "right samples must be a sequence");
+    PyObject *right = PySequence_Tuple(right_items);
     if (right == NULL) { Py_DECREF(left); return NULL; }
     Py_ssize_t count = PySequence_Fast_GET_SIZE(left);
     if (count != PySequence_Fast_GET_SIZE(right) || count < (operation == POPULATION_COVARIANCE ? 1 : 2)) {
@@ -71,7 +71,7 @@ PyObject *nf_python_describe(PyObject *module, PyObject *args)
 {
     PyObject *items, *options;
     if (!PyArg_ParseTuple(args, "OO:describe", &items, &options)) return NULL;
-    PyObject *values = PySequence_Fast(items, "samples must be a sequence");
+    PyObject *values = PySequence_Tuple(items);
     if (values == NULL) return NULL;
     Py_ssize_t count = PySequence_Fast_GET_SIZE(values);
     if (count == 0) { Py_DECREF(values); return nf_python_raise_status(module, NUMFORGE_INVALID_ARGUMENT, 0); }

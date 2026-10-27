@@ -29,6 +29,24 @@ class PythonAdapterTests(unittest.TestCase):
         self.assertEqual(summary.mean, expected)
         self.assertEqual(matrix.to_rows(), ((expected, expected),))
 
+    def test_native_exact_inputs_survive_reentrant_policy_conversion(self):
+        # __index__ can run Python after native adapters validate the input count.
+        operations = (
+            (lambda values, policy: nf._native.describe(values, policy)["sum"], ("1", "1")),
+            (lambda values, policy: nf._native.covariance(values, values, False, policy), ("1", "36")),
+            (lambda values, policy: nf.Matrix._from_handle(
+                nf._native.matrix_create(1, 2, values, policy)).to_rows(), ((Fraction(1, 3), Fraction(2, 3)),)))
+        for operation, expected in operations:
+            values = [nf.number(Fraction(1, 3))._handle, nf.number(Fraction(2, 3))._handle]
+            class Precision:
+                def __index__(self):
+                    values.clear()
+                    gc.collect()
+                    return 34
+            result = operation(values, (Precision(), 0, 10000, 128*1024*1024, 8*1024*1024))
+            self.assertEqual(values, [])
+            self.assertEqual(result, expected)
+
     def test_lossless_inputs(self):
         for value, expected in ((2**128, Fraction(2**128)),
                                 (Fraction(-7, 19), Fraction(-7, 19)),
