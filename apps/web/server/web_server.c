@@ -19,6 +19,7 @@
 #include "apps/web/http/web_api.h"
 #include "src/application/clients/client_store.h"
 #include "apps/web/http/unit_web.h"
+#include "apps/web/http/currency_web.h"
 #include "apps/web/http/session_api.h"
 #include "apps/web/http/http_request.h"
 #include "web_page.h"
@@ -1051,6 +1052,10 @@ void numforge_handle_connection_before(
     {
         numforge_send_response(socket, 200, "OK", "text/javascript; charset=utf-8", (const char *)NUMFORGE_UNITS_JS);
     }
+    else if (strcmp(method, "GET") == 0 && strcmp(target, "/assets/currency.js") == 0)
+    {
+        numforge_send_response(socket, 200, "OK", "text/javascript; charset=utf-8", (const char *)NUMFORGE_CURRENCY_JS);
+    }
     else if (strcmp(method, "GET") == 0 && strcmp(target, "/assets/calculator.css") == 0)
     {
         numforge_send_response(socket, 200, "OK", "text/css; charset=utf-8", (const char *)NUMFORGE_CALCULATOR_CSS);
@@ -1106,6 +1111,16 @@ void numforge_handle_connection_before(
     {
         numforge_send_response(
             socket, 411, "Length Required", "text/plain; charset=utf-8", "Content-Length is required.\n");
+    }
+    else if (strcmp(method, "POST") == 0 && body != NULL &&
+             (strcmp(target,"/api/currency/convert")==0 || strncmp(target,"/api/currency/convert?",22U)==0))
+    {
+        char *response=NULL;
+        CalculatorStatus status=numforge_web_currency_request(target,body,body_length,&response);
+        int http_status=status==CALCULATOR_OK ? 200 : status==CALCULATOR_OUT_OF_MEMORY ? 500 : 400;
+        numforge_send_response(socket,http_status,http_status==200 ? "OK" : http_status==500 ? "Internal Server Error" : "Bad Request",
+            "application/json; charset=utf-8",response ? response : "{\"ok\":false,\"status\":\"out of memory\"}");
+        free(response);
     }
     else if (strcmp(method, "POST") == 0 && body != NULL &&
              (strcmp(target,"/api/matrix")==0 || strncmp(target,"/api/matrix?",12U)==0))

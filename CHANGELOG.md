@@ -6,6 +6,9 @@ Earlier detailed development notes remain in Git history.
 
 ## Unreleased
 
+- Free daily ECB currency rates through Frankfurter, searchable rate table,
+  cached/offline-source fallback and decimal conversions rounded once in C.
+
 - Graph workspace files, standalone SVG/PNG image export, and individually
   removable history entries with current-view/color indicators.
 

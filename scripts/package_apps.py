@@ -25,7 +25,7 @@ def execute(arguments, **kwargs):
     return subprocess.run(arguments, check=True, capture_output=True, text=True, **kwargs).stdout
 
 
-def smoke(directory, windows, port=None, require_matrices=False):
+def smoke(directory, windows, port=None, require_matrices=False, require_currencies=False):
     suffix = ".exe" if windows else ""
     output = execute([str(directory / ("calculator" + suffix))],
                      input="precision full\nnotation plain\n0.1+0.2\n2^128\nnotation fraction\n1/3\nquit\n", timeout=15)
@@ -116,6 +116,22 @@ def smoke(directory, windows, port=None, require_matrices=False):
                 with urllib.request.urlopen(base + asset, timeout=5) as response:
                     if not response.read():
                         raise RuntimeError(f"Empty graph asset: {asset}")
+        if require_currencies:
+            for language in ("sk", "en"):
+                with urllib.request.urlopen(base + "/units?lang=" + language, timeout=5) as response:
+                    units_html = response.read().decode("utf-8")
+                if 'id="currency-form"' not in units_html:
+                    raise RuntimeError("Currency converter missing from extracted package")
+                for asset in set(re.findall(r'(?:src|href)="(/assets/[^"?#]+)', units_html)):
+                    with urllib.request.urlopen(base + asset, timeout=5) as response:
+                        if not response.read():
+                            raise RuntimeError(f"Empty converter asset: {asset}")
+            request = urllib.request.Request(base + "/api/currency/convert?places=2",
+                data=b"9007199254740993\n1\n1.2", method="POST")
+            with urllib.request.urlopen(request, timeout=5) as response:
+                currency = json.load(response)
+            if currency != {"ok": True, "approximate": True, "result": "10808639105689191.6"}:
+                raise RuntimeError("Extracted currency converter lost amount precision")
         with urllib.request.urlopen(base + "/api/functions", timeout=5) as response:
             registry = json.load(response)
         if not registry.get("ok") or not any(
@@ -270,7 +286,8 @@ def main():
             bundle.extractall(extracted, filter="data")
     current = extracted / name
     if previous_apps is None:
-        smoke(current, windows, require_matrices=(source / "apps/web/assets/matrices.js").is_file())
+        smoke(current, windows, require_matrices=(source / "apps/web/assets/matrices.js").is_file(),
+              require_currencies=(source / "apps/web/assets/currency.js").is_file())
     else:
         with socket.socket() as probe:
             probe.bind(("127.0.0.1", 0))
@@ -278,7 +295,8 @@ def main():
         for label, package in (("previous", previous_apps), ("candidate", current),
                                ("restarted candidate", current), ("rollback", previous_apps)):
             smoke(package, windows, port, require_matrices=package == current and
-                  (source / "apps/web/assets/matrices.js").is_file())
+                  (source / "apps/web/assets/matrices.js").is_file(), require_currencies=package == current and
+                  (source / "apps/web/assets/currency.js").is_file())
             print(f"Verified {label}: {package} on isolated port {port}")
     checksum = hashlib.sha256(archive.read_bytes()).hexdigest()
     (output / (archive.name + ".sha256")).write_text(

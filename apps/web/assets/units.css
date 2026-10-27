@@ -1,6 +1,61 @@
 /* Reuse calculator controls; chrome.css owns the palette across all routes. */
 @import url('/assets/calculator.css');
 
+.units-workspace > [hidden] { display:none !important; }
+.converter-tabs { grid-column:1 / -1; grid-row:1; display:flex; gap:6px; }
+.converter-tabs button { min-width:110px; min-height:38px; padding:7px 18px; border:1px solid var(--border); border-radius:10px; color:var(--muted); background:var(--surface-input); font:600 .85rem var(--font-ui); cursor:pointer; }
+.converter-tabs button[aria-selected=true] { color:var(--text); border-color:var(--mint); background:var(--surface-selected); box-shadow:inset 0 -2px var(--accent); }
+.units-workspace > #unit-converter-panel,.units-workspace > #unit-sidebar-panel { grid-row:2; }
+.currency-workspace { grid-column:1 / -1; grid-row:2; min-height:0; display:grid; grid-template-columns:minmax(0,1fr) minmax(300px,.85fr); gap:18px; align-items:start; }
+.currency-workspace > .card { min-width:0; padding:24px; }
+.currency-workspace h1,.currency-workspace h2 { margin:0; font-size:1.15rem; }
+.currency-intro,.currency-note,.currency-source { color:var(--muted); font-size:.8rem; line-height:1.6; }
+.currency-intro { margin:14px 0 22px; }
+.currency-workspace input,.currency-workspace select { min-width:0; width:100%; }
+#currency-amount { font:1.1rem var(--font-math); }
+.currency-actions { display:flex; justify-content:space-between; align-items:end; gap:16px; margin-top:18px; }
+.currency-actions > label { flex:1; max-width:240px; }
+.currency-actions button { min-height:44px; }
+.currency-result-heading { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:24px; border-top:1px solid var(--border-soft); padding-top:18px; }
+.currency-result-heading h2 { font-size:.9rem; }
+.currency-result-line { display:flex; align-items:baseline; gap:10px; min-height:60px; margin:16px 0 8px; color:var(--accent); }
+#currency-result { min-width:0; overflow-wrap:anywhere; color:var(--text); font:clamp(1.5rem,3vw,2.1rem)/1.45 var(--font-math); }
+#currency-result-code { flex:none; font-weight:650; }
+.currency-source { margin-top:20px; padding-top:16px; border-top:1px solid var(--border-soft); }
+.currency-source p { margin:7px 0; }
+.currency-source > strong { display:block; color:var(--mint); }
+.currency-source > strong.error { color:var(--danger); }
+#currency-refresh { margin:6px 0; min-height:40px; }
+.currency-list { display:flex; flex-direction:column; min-height:0; }
+.currency-table-scroll { overflow:auto; min-height:0; max-height:600px; scrollbar-width:thin; margin-top:16px; }
+.currency-list table { border-collapse:collapse; width:100%; table-layout:fixed; font-size:.8rem; }
+.currency-list th,.currency-list td { padding:10px 8px; border-bottom:1px solid var(--border-soft); text-align:left; overflow-wrap:anywhere; }
+.currency-list th { position:sticky; top:0; background:var(--surface); color:var(--quiet); }
+.currency-list th:first-child { width:19%; }.currency-list th:last-child { width:28%; }
+.currency-list td:first-child { color:var(--accent); font-weight:650; }.currency-list td:last-child { text-align:right; font-variant-numeric:tabular-nums; }
+.converter-tabs button:focus-visible,.currency-workspace button:focus-visible { outline:2px solid var(--mint); outline-offset:3px; }
+@media (min-width:1200px) and (min-height:740px) {
+    .units-workspace:has(> .converter-tabs) { grid-template-rows:38px minmax(0,1fr); row-gap:10px; }
+    .units-workspace > #unit-converter-panel { grid-template-rows:minmax(0,min(450px,calc(100dvh - 368px))) minmax(160px,1fr); }
+    .currency-workspace { height:100%; align-items:stretch; }
+    .currency-workspace > .card { overflow:auto; scrollbar-width:thin; padding:18px; }
+    .currency-table-scroll { flex:1; max-height:none; }
+}
+@media (max-width:980px) {
+    .units-workspace > #unit-converter-panel { grid-row:3; }
+    .units-workspace > #unit-sidebar-panel { grid-row:2; }
+    .currency-workspace { grid-template-columns:minmax(0,1fr); }
+}
+@media (max-width:620px) {
+    .converter-tabs button { flex:1; min-height:44px; }
+    .currency-workspace > .card { padding:18px; }
+    .currency-actions { align-items:stretch; flex-direction:column; }.currency-actions > label { max-width:none; }
+    .currency-workspace .unit-pair { grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr); gap:8px; }
+    .currency-workspace .unit-pair select { font-size:.8rem; padding:0 6px; }
+    .currency-workspace .unit-pair button { min-height:44px; width:44px; transform:none; }
+    .currency-workspace button { min-height:44px; }
+}
+
 .units-shell { min-height: 100dvh; display: flex; flex-direction: column; }
 /* The shared calculator sheet locks desktop scrolling; units opt in below
    only when the viewport has room for the complete workbench. */
@@ -145,4 +200,11 @@ body { height: auto; min-height: 100dvh; overflow: auto; }
     #unit-category-toggle { display: block; width: 100%; min-height: 44px; text-align: left; color: var(--text); }
     .unit-categories { margin-top: 12px; }
     .units-workspace { padding-top: 16px; gap: 16px; }
+}
+
+@media (min-width:1200px) and (min-height:740px) and (max-height:820px) {
+    #unit-converter-panel .unit-settings-grid { row-gap:6px; margin-top:8px; }
+    #unit-converter-panel .unit-settings .field { gap:4px; }
+    #unit-converter-panel .unit-info { margin-top:8px; padding-top:8px; }
+    #unit-converter-panel .unit-info p { margin-top:7px; }
 }

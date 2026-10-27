@@ -3,6 +3,7 @@
 function initUnits() {
     const root = document.querySelector('.units-workspace');
     if (!root) return () => {};
+    const disposeCurrency = window.numforgeInitCurrency(root);
     const lifecycle = new AbortController();
     const $ = id => root.querySelector('#' + id);
     const english = document.documentElement.lang === 'en';
@@ -416,7 +417,7 @@ function initUnits() {
         } catch(error) { if (!disposed && error.name!=='AbortError') {setStatus(text.catalogue,true);$('unit-retry').hidden=false;} }
     }
     loadCatalogue();
-    return ()=>{ save();disposed=true;lifecycle.abort();invalidate();catalogRequest?.abort(); };
+    return ()=>{ save();disposed=true;lifecycle.abort();invalidate();catalogRequest?.abort();disposeCurrency(); };
 }
 window.numforgeInitUnits=initUnits;
 if(document.querySelector('#unit-converter')) window.numforgeDisposeUnits=initUnits();

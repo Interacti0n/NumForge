@@ -17,6 +17,7 @@ set(NUMFORGE_WEB_ASSETS
     apps/web/assets/units.en.html
     apps/web/assets/units.css
     apps/web/assets/units.js
+    apps/web/assets/currency.js
     apps/web/assets/equations.sk.html
     apps/web/assets/equations.en.html
     apps/web/assets/equations.css

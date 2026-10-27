@@ -104,3 +104,59 @@ not authoritative history. A lost response is retried with the same revision,
 expression and settings; the server returns the saved result without appending
 twice. A pending confirmation cannot be submitted twice concurrently.
 Examples are collapsible; history scrolls within its card.
+
+## Currencies
+
+Choose **Currencies / Meny** on the same page. Enter a decimal amount (dot or
+comma), choose a pair and press **Convert** or Enter. Swap keeps the input
+amount; Copy copies only the rounded number. Auto uses the target currency's
+usual decimal places; explicit 2/4/8 places are also available. Negative amounts
+and up to 200 integer digits are accepted; expressions and exponents are not.
+
+The free, keyless [Frankfurter API](https://frankfurter.dev/) supplies
+[ECB reference rates](https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html)
+via `https://api.frankfurter.dev/v2/providers/ecb/rates?base=EUR`.
+These are daily reference rates, usually published around 16:00 CET on working
+days, **not live trading quotes**. The page shows publication date, last check
+and attribution. The searchable table quotes currencies per 1 EUR. Supported
+currencies follow the provider's current ECB set; crypto is outside this scope.
+
+Only opening Currencies contacts the provider. One validated table is cached in
+sessionStorage for the current tab and rechecked after an hour while visible.
+Manual refresh has a one-minute cooldown. Source failures may use the saved
+table with an explicit warning; publication/check ages of ten days or more,
+future dates, inconsistent dates, duplicate codes and invalid rates are rejected.
+Without usable rates conversion is disabled. Reload/language/tool navigation
+retain input and the table, not a guaranteed saved monetary result. Amounts are
+sent only to NumForge, never to the rate provider. No key, database or added
+server runtime is required. Banks may use different rates, spreads and fees.
+
+### Supplied-rate HTTP arithmetic
+
+`POST /api/currency/convert?places=2`, `Content-Type: text/plain`, body:
+
+```text
+100
+1
+1.2
+```
+
+The three LF-separated values are amount, source units per common base and
+target units per common base. The response is
+`{"ok":true,"approximate":true,"result":"120"}`. This endpoint **does not fetch
+or authenticate rates**; source/date metadata belongs to the supplied snapshot.
+It is stateless and does not read/change calculator variables or history.
+Existing origin and Content-Length rules apply. The query accepts exactly one
+`places` digit, 0–8. Body is at most 308 bytes, with no trailing newline, NUL,
+whitespace, expression or exponent: amount at most 256 bytes (200 integer/100
+fractional digits), positive rate at most 25 bytes (12 integer/12 fractional
+digits). Errors return `ok:false,status` with HTTP 400, or 500 for allocation
+failure. Invalid requests never publish a partial result.
+
+The adapter calls shared `bigdecimal_mul` exactly, then `bigdecimal_div` once at
+the requested fixed decimal scale with ties-to-even rounding. Thus large amounts
+do not pass through JavaScript floating-point arithmetic or calculator working
+precision. Standalone C callers can use the same public numeric operations.
+`approximate:true` describes the indicative market data, not an error bound or
+an exact executable price. Currency snapshots are separate from fixed units and
+are not accepted as `Quantity` expressions.

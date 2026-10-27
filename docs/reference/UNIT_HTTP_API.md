@@ -5,6 +5,10 @@ conversion core as the [C API](UNITS.md). The [SK/EN browser page](../guides/UNI
 uses these routes. They are intended for the local application, with the existing
 request framing, origin checks and calculator resource limits.
 
+Variable currency rates are separate from these fixed definitions. The
+[currency guide](../guides/UNIT_CONVERTER.md#supplied-rate-http-arithmetic)
+owns the supplied-rate arithmetic endpoint and its limits.
+
 The conversion core belongs to the standalone numeric library. The HTTP adapter
 borrows session values from the private application layer; it does not own
 client pools or persistence. See [Application design](../design/APPLICATION_DESIGN.md).

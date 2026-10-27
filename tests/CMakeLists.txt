@@ -96,6 +96,8 @@ endforeach()
 
 numforge_add_unit_test(unit_web_tests numforge_client http/test_unit_web.c)
 target_compile_definitions(unit_web_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
+numforge_add_unit_test(currency_web_tests numforge_client http/test_currency_web.c)
+target_compile_definitions(currency_web_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
 
 numforge_add_unit_test(web_api_tests numforge_client http/test_web_api.c)
 numforge_add_unit_test(matrix_adapter_tests numforge_client application/test_matrix_adapter.c)

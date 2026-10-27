@@ -22,6 +22,10 @@ The purple palette originated from Melanie Brown's Deep Purple VS Code theme.
 
 ## Embedding and checks
 
+`currency.js` owns the optional ECB/Frankfurter daily-rate table and tab-local
+cache; `currency_web.c` applies supplied decimal factors through BigDecimal.
+Market data is separate from fixed unit definitions and never fetched by C core.
+
 CMake embeds the registered assets and root `LICENSE` in `numforge_web`.
 The executable serves `/`, `/api`, `/graph`, `/solve`, `/matrices`, `/units`, `/login`,
 `/register`, `/assets/` and `/LICENSE`; no asset directory, Node.js or Python is

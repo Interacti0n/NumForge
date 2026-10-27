@@ -433,6 +433,10 @@ async function navigate(destination, addHistory = true)
         }
         if (replacement.querySelector('#unit-converter'))
         {
+            if (!window.numforgeInitCurrency) await new Promise((resolve,reject)=>{
+                const script=document.createElement('script');script.src='/assets/currency.js';
+                script.onload=resolve;script.onerror=reject;document.body.append(script);
+            });
             if (window.numforgeInitUnits)
                 window.numforgeDisposeUnits = window.numforgeInitUnits();
             else await new Promise((resolve, reject) => {
