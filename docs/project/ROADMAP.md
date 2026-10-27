@@ -1,105 +1,54 @@
 # Current scope and roadmap
 
-This is a development direction, not a release schedule. Source development can
-be ahead of published archives. [API.md](../API.md) is the supported-operation
-index; selected baselines preserve evidence for their recorded revisions.
+Development order, not a delivery calendar. [API index](../API.md) owns current
+availability; [architecture](../design/ARCHITECTURE.md) owns module boundaries.
 
 ## Available in the current source
 
-| Area | Supported foundation |
-| --- | --- |
-| Arithmetic | Opaque C17 integer, finite-decimal, rational and complex types; exact arithmetic and precision-aware approximations. |
-| Expression engine | [Stateless public C API](../reference/ENGINE_API.md), reusable prepared expressions, explicit parameters, typed results and operation budgets. |
-| Algebra | [Exact linear/quadratic coefficient solver](../reference/POLYNOMIAL_API.md), shared by application equation adapters. |
-| Linear algebra | [Dense rational matrices](../reference/MATRIX_API.md), products, determinants, square solves and [complete rectangular single-RHS systems](../reference/LINEAR_SYSTEM_API.md). |
-| Statistics | [Exact rational batch summaries, paired covariance and simple linear regression](../reference/STATISTICS_API.md), with population/sample divisors in C/Python. |
-| Numerical | [Exact grids, adaptive sampling rules, phase anchors, bounded roots and finite-interval integration](../reference/NUMERICAL_API.md); graph/equation applications reuse sampling/root kernels. |
-| Scientific | [Unit conversion](../reference/UNITS.md), a sourced catalogue and private [quantity expressions](../reference/QUANTITIES.md). |
-| Applications | SK/EN CLI/browser calculator, sessions, converter, four-function graphs, bounded numerical equation searches and an exact matrix web editor. |
-| Integration | Installed C/C++ packages and an experimental source-built [Python adapter](../guides/PYTHON.md), including grids, roots and finite-interval integration through the C kernels. |
+Standalone numeric types, a public expression engine, exact linear/quadratic
+solving, rational matrices/general systems, statistics/regression, grids/sampling,
+bounded roots and finite-interval integration. C/C++ and experimental Python
+share C kernels. The SK/EN application adds calculator sessions, units/currencies,
+graphs with files/image export, equations and a matrix editor.
 
-The [architecture](../design/ARCHITECTURE.md) defines ownership and extension
-rules. Numeric-only use does not require an engine, application session or web
-server. Source directories now follow those boundaries; each implemented module
-owns its source manifest. There are no empty future-module placeholders.
+Typed math needs no web/session/database. See the [API index](../API.md) for exact
+interface coverage; published downloads may lag source.
 
 ## Execution order and completion gates
 
-**Current milestone: stage 5, concurrent server preparation.** Structural cleanup,
-the documentation workflow, C/Python regression and integration, and the selected
-equation-to-graph/package workflow are complete (stages 1–4). Their contracts and
-evidence live in the references above, [changelog](../../CHANGELOG.md),
-[performance index](../performance/README.md) and [release verification](RELEASES.md).
-They are no longer open planning tasks.
+1. **Stages 1–4 complete:** modular structure, documentation/testing workflow,
+   C/Python integration and equation/graph/package foundations.
+2. **Stage 5 open: operating validation on the Windows preview PC.** Workers,
+   bounded queues, session quotas/expiry, hidden recovery, package restart/rollback
+   and [local/HTTPS load checks](../performance/baselines/SERVER.md) exist. The
+   4-worker/64-slot BelowNormal profile has no hard CPU/RAM cap. Real reboot/login
+   validation remains deferred; do not mark this stage complete before it passes.
+3. **Review the unified UI** on actual desktop/mobile devices; fix concrete
+   usability findings without replacing mathematical algorithms.
+4. **Next selected feature: PostgreSQL accounts and saved work.** Follow the
+   [account proposal](../design/APPLICATION_DESIGN.md#proposed-accounts-and-saved-work).
+   Backend implementation is pending; current sessions are anonymous/memory-only.
+5. Add subsequent mathematics through one owning module and the
+   [feature checklist](FEATURE_CHECKLIST.md). Push/publication require their
+   own authorization.
 
-The [server audit](../design/ARCHITECTURE.md#concurrent-server-prerequisites),
-[load driver](../performance/protocols/APPLICATION.md#multi-client-load) and
-[Windows load comparisons](../performance/baselines/SERVER.md) are available.
-Request reservations, synchronized metadata, thread-local seed fallback,
-shared graph/session reads, bounded FIFO conflict scheduling and a fixed worker
-pool with bounded connection waiting are implemented.
-Contention tests cover writer fairness, timeouts, limits, snapshots and replay.
-Worker/HTTP tests cover overload, queue expiry, shutdown and recovery. Client
-storage has bounded capacity, idle expiry and transactional retention quotas;
-policy tests cover failure preservation and quota release. Local Windows
-10/30/60-client bursts, three-minute state/memory runs and overload/recovery
-are validated. The report distinguishes the default queue's burst rejections
-from the tested 64-slot configuration; it is not target-host capacity evidence.
-
-**Next: complete operating validation on the preview host.** The selected host
-is the existing Windows PC with a Quick Tunnel; paid hosting and a custom domain
-are deferred. The Windows
-[isolated package/restart/rollback rehearsal](RELEASE_PACKAGING.md#restart-and-rollback-rehearsal)
-and [public proxy checks](../performance/baselines/SERVER.md#windows-quick-tunnel-preview)
-pass, including calculations, sessions, 10/30/60-client bursts and recovery.
-Optional per-user Windows startup and periodic recovery are implemented;
-real scheduled backend/tunnel recovery and disabling registration are checked.
-Five-minute HTTPS state/memory runs at 10/30/60 clients also pass on this host.
-The selected 4-worker/64-slot BelowNormal preview profile also passes the
-[current mixed-heavy load](../performance/baselines/SERVER.md#current-preview-profile)
-at 10/30/60 clients. It has no hard process CPU/RAM cap. A full reboot/login
-remains deferred; the registered logon trigger has not yet been exercised by
-rebooting the preview PC.
-
-At the user's request the bounded matrix web workflow, now including general
-single-RHS families and local workspace files, is developed while
-the reboot gate remains open. This exposes existing kernels and does not close
-stage 5. The user's next selected direction is PostgreSQL-backed accounts,
-preferences and saved workspaces. The [account proposal](../design/APPLICATION_DESIGN.md#proposed-accounts-and-saved-work)
-defines scope, ownership and staged completion gates. Implementation remains
-pending; current sessions are anonymous and memory-only. For subsequent math
-features choose one owning module and [completion gate](FEATURE_CHECKLIST.md).
-Push, release publication and deployment remain separately authorized actions;
-this is an ordered plan, not a release calendar.
+[Concurrency ownership](../design/ARCHITECTURE.md#concurrent-server-prerequisites) ·
+[Operating limits](../guides/HOSTING.md#capacity-and-state) ·
+[Restart/rollback checks](RELEASE_PACKAGING.md#restart-and-rollback-rehearsal)
 
 ## Accuracy and performance priorities
 
-General correctly rounded approximate functions remain an open goal. Working
-precision and guard digits are not universal error guarantees, particularly after
-cancellation or poorly conditioned composition. Preserve existing rounding
-exceptions until supported by stronger evidence. Independent decimal references
-and [measurements](../performance/protocols/DECIMAL.md) cover selected cases
-through 2,000 significant digits, not every possible input.
+Approximate working precision is not a universal correct-rounding guarantee.
+Preserve existing contracts until stronger independent evidence supports changes.
+Graph refinement/root discovery remain heuristic and potentially incomplete.
+Candidate work: stronger rounding enclosures, lower interval-allocation traffic,
+broader contact discovery and configurable root tolerances.
 
-Further optimizations need repeated Release measurements with independently
-validated results. Existing arithmetic, factorial and logarithm optimizations are
-recorded in the [benchmark guide](../../benchmarks/README.md); their implementation
-chronology is not repeated here. Lower interval-allocation traffic and stronger
-enclosure-based rounding remain candidates. Reorganization or code reduction
-alone does not establish a speedup.
-
-Graph refinement remains heuristic rather than a continuity proof; numerical
-root discovery is bounded and does not guarantee completeness. General tangency
-discovery, configurable tolerances and broader physical-device validation
-remain future work. Graphs support bounded local workspace files and standalone
-SVG/PNG snapshots of completed views. Release gates are tracked in the
-[published release verification](RELEASES.md).
+Optimize only from independently validated, repeated Release measurements;
+structural cleanup alone is not a speedup. [Measurement method](../testing/PERFORMANCE.md).
 
 ## Later, according to use cases
 
-Symbolic mathematics requires an explicit expression/assumption model; the current
-calculator AST is not a public CAS. Scientific simulations, approximate/complex
-matrix domains and broader distributions need individual contracts.
-Account persistence is now a selected next step, with its proposal above;
-broader collaboration, native apps and shared public workspaces need separate
-use cases. Mathematical algorithms retain no account/database dependency.
+Symbolic assumptions/rewrites, ODE/scientific models, wider matrix domains,
+distributions, native apps and collaboration need separate contracts/use cases.
+The calculator AST is not a public CAS; accounts never become a math dependency.

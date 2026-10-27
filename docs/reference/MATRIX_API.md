@@ -1,11 +1,82 @@
 # Exact rational matrices
 
-Status: implemented in current post-2.4.0 source, in the public numeric library.
-Include `numforge/matrix.h` and link `NumForge::numforge`. No expression engine,
-Python, application session or web server is required. Existing published 2.4.0
-archives predate this API. The public header's Doxygen comments are authoritative.
+Exact rational products, determinants, rank and linear-system solutions.
+Use the browser editor below, or the C/Python APIs further down.
+
+## Web editor and HTTP
+
+Open `/matrices?lang=en` (or `sk`). Choose determinant, rank, multiplication,
+square `A X = B` or **General system**, edit dimensions/cells, then Calculate. Pasting tab-separated rows
+replaces that input matrix. Inputs survive navigation/reload in the current
+tab's sessionStorage; results are not stored on the server. Matrix copies use TSV.
+On phones, successful calculation closes the input keyboard and reveals the result.
+General systems distinguish unique, infinite and inconsistent outcomes, including
+rectangular and singular matrices. B must have exactly one column.
+
+Zero, identity (square inputs only), transpose and A/B swap edit inputs without
+rounding. Enter/Shift+Enter moves down/up a column, Alt+arrows moves between
+cells, and Ctrl/Cmd+Enter calculates. Tab retains normal focus traversal.
+Examples include unique, infinite, inconsistent and exact-fraction cases.
+
+Desktop grids occupy the left column, with results/recent tasks on the right;
+large grids and results scroll internally. **Recent matrices** keeps up to eight
+completed input sets in the current tab. Restore recovers both grids and the
+operation without calculating, and cancels older pending work. Entries can be
+removed or cleared independently of the current inputs; results are not stored.
+The [shared input-history limits](../design/WEB_DESIGN.md#shared-workbench-layout) apply.
+
+Save/Load workspace uses local UTF-8 JSON: `format:"numforge.matrix-workspace"`,
+`version:1`, `operation`, and rectangular string arrays `a`/`b`. File limit is
+20,000 bytes; dimensions/cell limits below apply. Draft invalid/empty cell text
+can be saved but must be corrected before calculation. Unknown versions, malformed
+shapes, control characters in cells or oversized files leave current inputs unchanged. No file is uploaded;
+only matrix text is sent when Calculate is chosen. Results are not in the file.
+
+`### HTTP
+
+POST /api/matrix?operation=determinant|rank|multiply|solve|solve_general` is stateless and
+shares the server's Content-Length/origin rules. Send `text/plain`: whitespace
+separates cells, LF separates rows, and one empty line separates A from B.
+CRLF is accepted. Unary operations ignore optional B. For example:
+
+```sh
+curl -H 'Content-Type: text/plain' --data-binary '1 2
+3 4' 'http://127.0.0.1:8765/api/matrix?operation=determinant'
+```
+
+Returns `{"ok":true,"exact":true,"scalar":"-2"}`. Rank also returns `scalar`;
+multiply/solve return `matrix`, an array of row arrays containing canonical
+rational strings, for example `[["17"],["39"]]`. No rounding or preview precision.
+
+`solve_general` instead returns `solution` with `kind:"none"|"unique"|"infinite"`,
+integer `rank`/`nullity`, `particular` (n×1 or null for none), `basis` (n×nullity
+or null when nullity=0), and ascending zero-based `free_columns`. The C
+[general-system contract](LINEAR_SYSTEM_API.md) owns their mathematical meaning.
+For A=`1 2` and B=`3`: particular=`[["3"],["0"]]`, basis=`[["-2"],["1"]]`,
+free_columns=`[1]`; every rational solution is `[3;0]+t1·[-2;1]`.
+An inconsistent system is a successful mathematical outcome, not HTTP 400.
+The browser shows `x = x₀ + N·t` for infinite families, with arbitrary rational
+parameters; its family copy is a vector expression rather than TSV.
+
+Adapter limits: 1–8 rows/columns, 64 bytes per input cell, 6000 body bytes,
+128 KiB response, and inherited default calculation time/allocation budgets.
+Accepted cells: signed integers, integer fractions with nonzero denominators,
+finite dot decimals. Exponents, expressions, variables and units are rejected.
+The standalone C/Python APIs retain their existing broader size/type contracts.
+
+Errors return HTTP 400 with `ok:false`, `status`, `error`, and zero-based
+`matrix` (0=A, 1=B) / row-major `cell` for parse failures, otherwise -1.
+Bad syntax/shape uses `invalid argument`; zero denominator or singular square
+solve uses `division by zero`. The existing square `solve` keeps this contract;
+use `solve_general` for classification. Time, allocation and
+size failures preserve inputs and publish no partial result. Shared origin,
+framing and worker-overload handling can instead return 403/411/413/503.
 
 ## Initial operations
+
+Include `numforge/matrix.h` and link `NumForge::numforge`; no engine, session or
+server is required. Published 2.4.0 archives predate this API. Installed-header
+Doxygen comments define the package's contract.
 
 | Operation | Result and domain |
 | --- | --- |
@@ -127,72 +198,6 @@ Failures return no partial solution and both inputs remain usable.
 Matrix expression syntax, CLI controls and WASM bindings remain unavailable.
 The bounded web/HTTP adapter below reuses these C operations. Approximate/complex matrix domains,
 eigenvalues, decompositions and symbolic elements remain future work.
-
-## Web editor and HTTP
-
-Open `/matrices?lang=en` (or `sk`). Choose determinant, rank, multiplication,
-square `A X = B` or **General system**, edit dimensions/cells, then Calculate. Pasting tab-separated rows
-replaces that input matrix. Inputs survive navigation/reload in the current
-tab's sessionStorage; results are not stored on the server. Matrix copies use TSV.
-General systems distinguish unique, infinite and inconsistent outcomes, including
-rectangular and singular matrices. B must have exactly one column.
-
-Zero, identity (square inputs only), transpose and A/B swap edit inputs without
-rounding. Enter/Shift+Enter moves down/up a column, Alt+arrows moves between
-cells, and Ctrl/Cmd+Enter calculates. Tab retains normal focus traversal.
-Examples include unique, infinite, inconsistent and exact-fraction cases.
-
-Desktop grids occupy the left column, with results/recent tasks on the right;
-large grids and results scroll internally. **Recent matrices** keeps up to eight
-completed input sets in the current tab. Restore recovers both grids and the
-operation without calculating, and cancels older pending work. Entries can be
-removed or cleared independently of the current inputs; results are not stored.
-The [shared input-history limits](../design/WEB_DESIGN.md#shared-workbench-layout) apply.
-
-Save/Load workspace uses local UTF-8 JSON: `format:"numforge.matrix-workspace"`,
-`version:1`, `operation`, and rectangular string arrays `a`/`b`. File limit is
-20,000 bytes; dimensions/cell limits below apply. Draft invalid/empty cell text
-can be saved but must be corrected before calculation. Unknown versions, malformed
-shapes, control characters in cells or oversized files leave current inputs unchanged. No file is uploaded;
-only matrix text is sent when Calculate is chosen. Results are not in the file.
-
-`POST /api/matrix?operation=determinant|rank|multiply|solve|solve_general` is stateless and
-shares the server's Content-Length/origin rules. Send `text/plain`: whitespace
-separates cells, LF separates rows, and one empty line separates A from B.
-CRLF is accepted. Unary operations ignore optional B. For example:
-
-```sh
-curl -H 'Content-Type: text/plain' --data-binary '1 2
-3 4' 'http://127.0.0.1:8765/api/matrix?operation=determinant'
-```
-
-Returns `{"ok":true,"exact":true,"scalar":"-2"}`. Rank also returns `scalar`;
-multiply/solve return `matrix`, an array of row arrays containing canonical
-rational strings, for example `[["17"],["39"]]`. No rounding or preview precision.
-
-`solve_general` instead returns `solution` with `kind:"none"|"unique"|"infinite"`,
-integer `rank`/`nullity`, `particular` (n×1 or null for none), `basis` (n×nullity
-or null when nullity=0), and ascending zero-based `free_columns`. The C
-[general-system contract](LINEAR_SYSTEM_API.md) owns their mathematical meaning.
-For A=`1 2` and B=`3`: particular=`[["3"],["0"]]`, basis=`[["-2"],["1"]]`,
-free_columns=`[1]`; every rational solution is `[3;0]+t1·[-2;1]`.
-An inconsistent system is a successful mathematical outcome, not HTTP 400.
-The browser shows `x = x₀ + N·t` for infinite families, with arbitrary rational
-parameters; its family copy is a vector expression rather than TSV.
-
-Adapter limits: 1–8 rows/columns, 64 bytes per input cell, 6000 body bytes,
-128 KiB response, and inherited default calculation time/allocation budgets.
-Accepted cells: signed integers, integer fractions with nonzero denominators,
-finite dot decimals. Exponents, expressions, variables and units are rejected.
-The standalone C/Python APIs retain their existing broader size/type contracts.
-
-Errors return HTTP 400 with `ok:false`, `status`, `error`, and zero-based
-`matrix` (0=A, 1=B) / row-major `cell` for parse failures, otherwise -1.
-Bad syntax/shape uses `invalid argument`; zero denominator or singular square
-solve uses `division by zero`. The existing square `solve` keeps this contract;
-use `solve_general` for classification. Time, allocation and
-size failures preserve inputs and publish no partial result. Shared origin,
-framing and worker-overload handling can instead return 403/411/413/503.
 
 ## Verification
 

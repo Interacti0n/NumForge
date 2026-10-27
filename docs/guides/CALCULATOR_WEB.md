@@ -2,109 +2,69 @@
 
 ## First calculation
 
-1. [Download or build NumForge](../../README.md#get-started) and launch `numforge_web`.
-2. Open the local address printed by the application, normally `http://127.0.0.1:8765`.
-3. Enter `2+2` and press **Enter** or **Calculate**. The result is `4`.
+1. [Download or build](../../README.md#get-started), then launch `numforge_web`.
+2. Open its printed address, normally `http://127.0.0.1:8765`.
+3. Enter `2+2` and press **Enter** or **Calculate**: `4`.
 
-For an exact fraction, choose **Full** precision and **Fraction** notation, then
-try `1/3+1/6`: the result is `1/2`.
+Choose **Full / Fraction** for `1/3+1/6` → `1/2`.
 
 ## Controls and behavior
 
-On desktop, settings use one full-width row, including Custom precision.
-The session panel aligns with the keypad. History and variables
-scroll inside the panel; filtering functions does not move it. Very short
-windows allow page scrolling so all controls remain reachable.
+Type directly or search the function library in English/Slovak. Function buttons
+insert at the caret; arguments use `;`. Decimal points and commas are accepted.
+**RAD/DEG** applies to the whole expression; complex functions use radians.
 
-Type expressions directly or use the function library. Function buttons insert
-parentheses and place the cursor inside. Search accepts English and Slovak terms;
-selecting a result inserts the supported function name. A decimal point or comma
-is accepted; separate function arguments with `;`.
+A preview appears after two seconds without edits. **Calculate / Enter** confirms
+immediately and updates `ans` and history. Editing cancels outdated previews.
+**Copy** copies the result; **Show all** expands long output. On phones,
+confirmation dismisses the keyboard and reveals the result.
 
-The calculator previews after two seconds without edits. **Enter** or **Calculate**
-confirms immediately; only confirmations update history and `ans`. Editing again
-discards an outdated preview. The result labels previews and confirmations. Its exact/approximate indicator comes
-from the C value; an exact value can still have a rounded decimal display.
-On phones, confirmation also dismisses the keyboard and reveals the result.
-
-Settings stay expanded above the expression, including on phones. Try the clickable
-examples in an empty result panel, or browse the horizontally scrolling mobile
-function categories. Use **RAD/DEG** before trigonometric calculations. The setting applies to the
-whole expression. **Copy** copies the result; **Show all / Zobraziť všetko** expands
-long output. Language, precision and notation settings survive navigation in the
-same browser tab.
-
-The header also opens [units](UNIT_CONVERTER.md), [graphs](GRAPHS.md) and
-[equations](EQUATIONS.md). Footer links to sign-in and registration are informational pages;
-accounts are not implemented.
+Desktop lists scroll inside aligned panels; smaller windows scroll normally.
+Settings survive tool/language navigation in the same tab. Header links open
+Units/Currencies, Graphs, Equations and Matrices. Accounts are planned.
 
 ## Precision and result format
 
-- **Auto precision:** display up to 10 decimal places, rounded half-even.
-- **Custom precision:** choose 0–10000 output decimal places.
-- **Full precision:** skip final display rounding; working precision and resource limits still apply.
-- **Fraction notation:** show a reduced exact fraction when possible.
-- **Plain / Scientific / Mathematical:** choose decimal text, `1.23E+45`, or `1.23 × 10^45`.
-- **Auto notation:** prefer a short exact fraction, otherwise plain or scientific output.
+| Setting | Meaning |
+| --- | --- |
+| Auto precision | Up to 10 output decimal places, ties-to-even rounding |
+| Custom | 0–10000 output decimal places |
+| Full | No final display rounding; approximations use 34 working digits |
+| Fraction | Reduced exact fraction where possible |
+| Plain / Scientific / Mathematical | Decimal text / `1.23E+45` / superscript exponent |
+| Auto notation | Short exact fraction, otherwise plain or mathematical scientific display |
 
-For example, select **Custom: 40** and **Plain**, then calculate `sqrt(2)` for
-40 output places. More output places do not guarantee that every digit of a
-composed approximate expression is accurate.
-
-Exact arithmetic retains rational values: `(1/3)*3-1` is exactly `0`.
-Changing precision can reformat a retained rational value. An approximate result
-cannot recover digits already lost to rounding. **Full** uses 34 working digits
-where approximation is needed; it does not mean unlimited accuracy.
-
-Auto notation switches to scientific if the rounded exponent is outside -9..9
-or plain output would exceed 80 characters. A fraction may have a separate
-`≈` hint at up to 10 places. Copy converts mathematical notation to parser-compatible
-`E` form when possible. Display text is not a lossless serialization format at
-extreme scales. See the [expression reference](../reference/CALCULATOR_EXPRESSIONS.md)
-for domains and precision rules.
+For 40 output places of `sqrt(2)`, select **Custom: 40 / Plain**. More output
+places do not certify whole-expression accuracy. Exact values can have rounded
+displays; approximate values cannot recover discarded digits by reformatting.
+Auto switches beyond exponents −9..9 or 80 plain characters. Copy uses
+parser-compatible `E` notation where possible.
 
 ## Variables and history
 
-The last confirmed result is available as `ans`. Assign a variable with `x=5`,
-then use `x` in another expression. See [Variables](VARIABLES.md) for editing,
-deletion and typed values.
-
-The session retains the last 16 calculator confirmations. Reload, language
-changes and navigation in the same tab retain an existing session.
-**New session** resets it. Server restart or FIFO eviction can discard its values;
-there is no disk persistence. Save important results outside the application.
+Confirm `x=2/3`, then use `x*3` → `2`. The last confirmed value is `ans`.
+The Session panel retains 32 variables and 16 calculator confirmations.
+Reload/navigation retain the tab's session; **New session**, expiry, eviction
+or server restart discard it. Save important work elsewhere.
+See [variables](VARIABLES.md) for value and deletion rules.
 
 ## Application limits
 
-- Calculations have a **10-second** budget, including parsing and output;
-  cancellation is cooperative.
-- Expression/result text is limited to **4096/65536 UTF-8 bytes**.
-- Each session retains **32 variables** and **16 calculator confirmations**.
-- The server retains **64 sessions**, with idle expiry and
-  [memory limits](HOSTING.md#capacity-and-state). Clear history/variables or start
-  a new session if its retained-memory limit is reached.
+Processing has a cooperative **10-second** budget, including parsing and output;
+valid inputs can still exceed time/memory limits. Input/output text is bounded
+to 4096/65536 UTF-8 bytes. Use finite precision and scientific notation for huge
+factorials. **Full** does not remove these limits.
 
-Full precision does not remove limits. Expensive calculations may fail even when
-their inputs are valid. For example, the complete decimal output of `100000!`
-exceeds the result-text limit; use finite precision and scientific notation.
-The [expression reference](../reference/CALCULATOR_EXPRESSIONS.md) defines
-calculation memory, nesting and argument limits; the [HTTP reference](../reference/HTTP_API.md)
-and [session reference](../reference/SESSION_HTTP_API.md) cover transport and paging.
-These application limits do not impose implicit budgets on public numeric C calls.
+[Expression domains and budgets](../reference/CALCULATOR_EXPRESSIONS.md) ·
+[Hosting and retained memory](HOSTING.md#capacity-and-state)
 
 ## Automatic complex results
 
-Supported expressions such as `sqrt(-1)` and negative logarithms select principal
-complex results automatically. Real odd roots remain real. Complex angles use
-radians even in DEG mode. `sum`, `product` and `mean` accept complex arguments;
-other statistics are real-only. Poles and integer-only constraints remain errors.
+`sqrt(-1)` and negative logarithms select principal complex values; real odd
+roots remain real. Poles and integer-domain restrictions still apply.
 See [complex domains](../reference/CALCULATOR_EXPRESSIONS.md#automatic-complex-domains).
 
 ## Guide and API parts
 
-The in-app **Guide / API** page has Calculator, Units, Graphs, Equations and API
-parts. Choose a part and then a section; phones use a compact part selector.
-For example, `/api?section=calculator&lang=en` opens the English calculator guide.
-Older links such as `/api?lang=en#variables` still open their matching section.
-The API part contains developer details; everyday controls and examples are in
-the other four parts.
+**Guide / API** opens help for the current tool. Choose another part for
+Calculator, Units, Graphs, Equations, Matrices or API details.

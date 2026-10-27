@@ -1,56 +1,41 @@
 # API guide
 
-Choose the interface you use. Arithmetic, application state and HTTP transport
-have different ownership and compatibility contracts.
-
-Current source can contain additions absent from published archives. Use the
-version-matched installed headers and release record for a downloaded package.
+Typed mathematics is independent of expressions, sessions and HTTP. Installed
+headers define each C package's available API; current source can be newer than
+published downloads.
 
 ## C library and Python
 
-| Reference | What it covers |
+| Need | Reference |
 | --- | --- |
-| [Numerical methods](reference/NUMERICAL_API.md) | Exact grids, adaptive scheduling/curve acceptance, phase anchors and bounded root searches with explicit work/accuracy semantics. |
-| [Public C API](reference/C_API.md) | BigInt, BigDecimal, BigRational, BigComplex, BigRationalComplex, units, runtime scopes and ownership. |
-| [Standalone engine C API](reference/ENGINE_API.md) | Public stateless scalar expressions, reusable handles, typed results, precision and budgets. |
-| [Exact polynomial C API](reference/POLYNOMIAL_API.md) | Standalone linear/quadratic coefficient solver with exact radical/complex descriptors; numeric target only. |
-| [Exact matrix C API](reference/MATRIX_API.md) | Dense rational products, determinants and unique square-system solves; numeric target only. |
-| [General linear systems](reference/LINEAR_SYSTEM_API.md) | Exact rectangular rank, inconsistency/uniqueness, particular solutions and a complete nullspace basis in C/Python. |
-| [Exact statistics](reference/STATISTICS_API.md) | Rational dataset count, sum, extrema, mean, population/sample variance, paired covariance and simple linear regression in C/Python. |
-| [Finite-interval integration](reference/NUMERICAL_API.md#finite-interval-integration) | Bounded approximate Simpson quadrature, estimated error, work limits and domain diagnostics in C/Python. |
-| [Python adapter](guides/PYTHON.md) | Source-built CPython subset for typed values, expressions, exact equations/matrices/statistics/grids and bounded single/multiple-root searches. |
-| [BigComplex foundation](reference/BIGCOMPLEX.md) | Standalone complex arithmetic, principal functions, precision and calculator integration. |
+| Numeric types, ownership, budgets | [C API](reference/C_API.md), [complex](reference/BIGCOMPLEX.md) |
+| Stateless/prepared expressions | [Engine](reference/ENGINE_API.md) |
+| Exact linear/quadratic roots | [Polynomials](reference/POLYNOMIAL_API.md) |
+| Rational matrices and systems | [Matrices](reference/MATRIX_API.md), [general systems](reference/LINEAR_SYSTEM_API.md) |
+| Summaries, covariance, regression | [Statistics](reference/STATISTICS_API.md) |
+| Integration, grids, sampling, roots | [Numerical APIs](reference/NUMERICAL_API.md) |
+| Python build and examples | [Python](guides/PYTHON.md) |
 
-Use typed numeric/module calls without expression parsing. Link
-`NumForge::engine` only when expressions are needed; Python's supported subset
-delegates to these same C implementations.
+Numeric/module calls link `NumForge::numforge`; expressions add
+`NumForge::engine`. Python delegates to these C implementations.
 
 ## Applications and HTTP
 
-| Reference | What it covers |
+| Need | Reference |
 | --- | --- |
-| [Calculator expressions](reference/CALCULATOR_EXPRESSIONS.md) | Operators, named calls, precision, syntax and limits. |
-| [Polynomial equation application](design/POLYNOMIAL_EQUATIONS.md) | Private parsing/preview/context adapters over the public exact coefficient solver. |
-| [Polynomial equation HTTP API](reference/EQUATION_HTTP_API.md) | Whole polynomial equations or exact coefficient expressions, algebraic root text and approximate decimal previews. |
-| [Numerical interval roots](reference/NUMERIC_ROOT_HTTP_API.md) | One high-precision bracketed root or bounded multiple-root scanning, residuals and diagnostic outcomes. |
-| [Local HTTP API](reference/HTTP_API.md) | Evaluation, preview/confirmation, client IDs, revisions and errors. |
-| [Session HTTP API](reference/SESSION_HTTP_API.md) | Authoritative variables/history, typed snapshots, reset/release, functions and conversion history. |
-| [Unit HTTP API](reference/UNIT_HTTP_API.md) | Catalogue and compatible expression conversions. |
-| [Currency conversions](guides/UNIT_CONVERTER.md#supplied-rate-http-arithmetic) | Stateless decimal arithmetic over supplied rates; optional daily ECB browser feed. |
-| [Graph sampling HTTP API](reference/GRAPH_HTTP_API.md) | Bounded uniform grids, plotting projections, point classifications and read-only session snapshots. |
-| [Screen-space graph HTTP API](reference/SCREEN_GRAPH_HTTP_API.md) | Adaptive display sampling, derivatives, dense ranges and precision fallback. |
-| [Graph points and verification](reference/GRAPH_ANALYSIS_HTTP_API.md) | Integer-domain sampling and bounded C confirmation of marker candidates. |
-| [Web/API coverage](reference/WEB_API_PARITY.md) | Supported web actions and application API gaps. |
+| Expression syntax/domains | [Expressions](reference/CALCULATOR_EXPRESSIONS.md) |
+| Evaluation, revisions, errors | [HTTP](reference/HTTP_API.md) |
+| Variables, history, lifecycle | [Sessions](reference/SESSION_HTTP_API.md) |
+| Units and supplied currency rates | [Conversion](reference/UNIT_HTTP_API.md) |
+| Polynomial/numerical equations | [Exact](reference/EQUATION_HTTP_API.md), [interval search](reference/NUMERIC_ROOT_HTTP_API.md) |
+| Matrix HTTP | [Matrix editor/API](reference/MATRIX_API.md#web-editor-and-http) |
+| Graphs | [Uniform](reference/GRAPH_HTTP_API.md), [adaptive](reference/ADAPTIVE_GRAPH_HTTP_API.md), [screen](reference/SCREEN_GRAPH_HTTP_API.md), [verification](reference/GRAPH_ANALYSIS_HTTP_API.md) |
+| Interface availability/gaps | [Coverage](reference/WEB_API_PARITY.md) |
 
 ## Values and sessions
 
-- [Variables](guides/VARIABLES.md): confirmed assignments, deletion, snapshots and lifetime.
-- [Units](reference/UNITS.md): exact conversion, case-sensitive IDs and sourced definitions.
-- [Quantities](reference/QUANTITIES.md): `qty(...)`, dimensions, arithmetic and temperature rules.
-- [Browser calculator](guides/CALCULATOR_WEB.md) and [converter](guides/UNIT_CONVERTER.md): user controls.
+[Variables](guides/VARIABLES.md) · [Units](reference/UNITS.md) ·
+[Quantities](reference/QUANTITIES.md) · [Hosting](guides/HOSTING.md)
 
-Public installed interfaces are declared under `include/numforge/`; expression
-evaluation links the optional `NumForge::engine` target. Internal calculator/session
-headers remain private. The HTTP server is a local loopback tool;
-it is not a separately versioned public Internet service. See
-[Application design](design/APPLICATION_DESIGN.md) for the boundaries.
+Application/session headers stay private. HTTP is a loopback application
+interface, not a separately versioned public service.

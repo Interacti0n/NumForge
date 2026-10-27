@@ -2,33 +2,24 @@
 
 ## Put information in one place
 
-| Material | Owner | Keep elsewhere as |
-| --- | --- | --- |
-| Project purpose and first build | Root README | Short links from other entry points |
-| User/developer workflows | `docs/guides/` | API links, not copied operation contracts |
-| C parameters, statuses, precision and ownership | Installed `include/numforge/` headers | Generated Doxygen declarations |
-| Mathematical meaning and interface-specific rules | `docs/reference/` | Links from guides/API index |
-| Implementation choices and invariants | `docs/design/` | Links to current contracts |
-| Verification commands and methodology | `docs/TESTING.md`, `docs/testing/` | Dated evidence links |
-| Benchmark executable/options | `benchmarks/README.md` | Links to methods and measured reports |
-| Plans and release procedure | `docs/project/` | Roadmap status and links |
-| Selected measurements and algorithm decisions | [Performance evidence](../performance/README.md) | Date/revision-qualified baselines and supporting data |
-| Published release outcomes | [Release verification](RELEASES.md) | Feature chronology in the changelog |
+| Content | Owner |
+| --- | --- |
+| Purpose, first build | Root README |
+| User workflows | `docs/guides/` |
+| C parameters/statuses/ownership | Installed headers → Doxygen |
+| Mathematical meaning and transport rules | `docs/reference/` |
+| Implementation invariants | `docs/design/` |
+| Verification procedure | `docs/TESTING.md`, `docs/testing/` |
+| Benchmark options / selected evidence | `benchmarks/README.md` / `docs/performance/` |
+| Plans, completion gates, packaging | `docs/project/` |
 
-Current source and published packages can differ. Mark proposals explicitly;
-preserve relevant historical failures in selected comparisons even after fixes.
-Superseded diaries remain in Git history, rather than accumulating as active pages.
-Generated catalogue
-tables and distinct API domains can be long; avoid shortening away failure,
-precision or ownership rules. A short introduction may repeat context, not the
-full contract.
+Link to the owner instead of copying contracts. Keep domains, precision, failure
+and ownership rules; remove diaries and obsolete plans. Mark proposals and
+historical measurements explicitly. Current source can differ from downloads.
 
 ## Build locally
 
-Build from the full source checkout/archive, rather than the minimal Python
-package source distribution. Documentation tools are optional and independent of the library build. Use
-Python 3.10+, MkDocs from `docs/requirements.txt` and Doxygen 1.9+ on PATH.
-Create a dedicated virtual environment and install the requirements there:
+Requires the full checkout, Python 3.10+, Doxygen 1.9+ and optional doc dependencies:
 
 ```sh
 python -m venv build/docs-venv
@@ -36,80 +27,41 @@ build/docs-venv/bin/python -m pip install -r docs/requirements.txt
 build/docs-venv/bin/python scripts/build_docs.py
 ```
 
-In PowerShell use `build/docs-venv/Scripts/python.exe` for those two commands.
-If Doxygen is elsewhere, append `--doxygen /absolute/path/to/doxygen`.
-The helper does not install tools, open a server, push or publish.
+PowerShell: use `build/docs-venv/Scripts/python.exe`. Supply `--doxygen PATH`
+if needed. Output: `build/docs/site/index.html`; only generated content/c/site
+children are replaced. Keep hand-written files elsewhere.
 
-Output is `build/docs/site/index.html`: guides/references plus linked generated
-C declarations under `c-api/`. The Markdown source remains browsable in the
-repository. The helper stages existing pages and linked supporting files, keeping
-their relative paths. It replaces only its dedicated `build/docs/content`, `c`
-and `site` outputs. Do not store hand-written material in those generated folders.
-
-MkDocs navigation is maintained in the root `mkdocs.yml`; every maintained page
-has one canonical entry. Start with user tasks: calculator, integration and
-development. Nest API contracts under integration and implementation/testing/
-performance details under development. The start page offers the shortest path
-to a first result; it is not a file inventory. Extend an existing topic before
-adding a page or another top-level menu group.
-Doxygen reads installed headers only, never private implementation sources.
-`EXTRACT_ALL` includes older declarations whose prose predates Doxygen tags;
-their source views retain those comments. Successful generation does not certify
-complete parameter documentation. Improve annotations when changing an API,
-following the [feature checklist](FEATURE_CHECKLIST.md).
-
-Configuration options follow the [MkDocs configuration reference](https://www.mkdocs.org/user-guide/configuration/)
-and [Doxygen manual](https://www.doxygen.nl/manual/config.html). No external theme
-or hosted service is required.
+`mkdocs.yml` gives each maintained page one canonical entry, grouped by user
+task; [reader styles](../assets/reader.css) bound long code/tables on small screens.
+Extend an existing topic before adding a page. Doxygen reads public headers;
+successful generation does not prove every older declaration is fully annotated.
 
 ## Verify edits
 
-1. Run `node scripts/check_docs.cjs` for repository links/anchors.
-   `python tests/test_docs.py` checks source staging, bounded cleanup and complete
-   navigation coverage in isolated fixtures under `build/`.
-2. Run `python scripts/build_docs.py` for strict rendered links and C doc warnings.
-3. Run affected examples against installed packages:
+```sh
+node scripts/check_docs.cjs
+python tests/test_docs.py
+python scripts/build_docs.py
+python scripts/check_doc_examples.py --prefix /path/to/sdk --output build/docs-c-examples
+python scripts/check_doc_examples.py --python-site build/python-package-check/site-packages
+```
 
-   ```sh
-   python scripts/check_doc_examples.py --prefix /path/to/sdk --output build/docs-c-examples
-   python scripts/check_doc_examples.py --python-site build/python-package-check/site-packages
-   ```
-
-   The C check compiles the complete library/engine examples and requires an
-   engine-enabled SDK plus a fresh output directory. The Python check executes
-   the guide/module examples and verifies the installed module origin. Use the
-   [package check](../TESTING.md#installed-packages-and-python) to prepare that wheel.
-   Partial snippets are usage illustrations, not standalone programs. Never
-   present a future interface as an existing callable API.
-4. Inspect navigation, tables, code and images in the generated pages. Keep the
-   generated site/tools and scratch measurements out of commits.
-
-For a new page, add its canonical navigation entry. Prefer extending an existing
-topic over adding another progress report. Apply the
-[performance retention policy](../performance/README.md#retention-policy) to measurements.
-Preserve existing section anchors when possible. If a topic moves, update links
-or retain a small section pointing to its new owner. Update the roadmap only when
-the documented completion gate is actually met.
-
-The documentation CI workflow checks staging/navigation, builds both outputs and
-compiles the C examples. Python package CI executes its examples against the
-isolated installed wheel. CI configuration is not a claim of a completed remote
-run; all build output remains unpublished until a separate release action.
+Use an engine-enabled installed SDK, an [isolated wheel](../TESTING.md#installed-packages-and-python)
+and fresh example output directories. Preserve anchors or update their links.
+Inspect rendered navigation/tables/code. Keep generated sites and scratch results
+out of Git; retain only [useful measurement evidence](../performance/README.md#retention-policy).
+CI checks staging, generation and installed examples; configured jobs are not
+proof that local changes passed remotely.
 
 ## Product screenshots
 
-Use real product captures and captions stating their version. Current README
-images show development source captured on 21 October 2026 in English: the
-calculator in Full/Fraction mode, three plotted functions and exact quadratic
-roots with decimal previews. Refresh them after relevant UI changes:
+Use real captures, identify development source versus published packages and
+refresh affected views after UI changes:
 
 ```sh
 node tests/browser/capture_showcase.js build/dev/Release/numforge_web.exe
 ```
 
-Pass the actual executable path; single-configuration builds omit `Release/`.
-The script starts its own loopback server on port 18773, checks calculator
-results, graph completion and equation roots, captures the desktop/mobile
-calculator and desktop graph/equation views, then closes its browser/server.
-Inspect all images for clipping and legibility. Keep demonstration claims consistent
-with the current API and distinguish published archives from development source.
+Adjust the executable path for the generator. The script owns port 18773 and
+closes its browser/server. Inspect clipping, labels and result accuracy; keep
+only maintained images. Dates/captions belong beside the images, not here.

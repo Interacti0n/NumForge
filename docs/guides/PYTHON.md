@@ -1,61 +1,29 @@
 # Python adapter
 
-Status: experimental, implemented in current post-2.4.0 source. Package version
-`0.1.0.dev0` is independent of the C core version reported by
-`numforge.core_version`. No Python distribution has been published to PyPI and
-existing published C/application archives do not include it.
+Experimental, source-built; not on PyPI. Package `0.1.0.dev0` and
+`numforge.core_version` identify adapter/core independently. Downloads may lag source.
 
 ## Build and install
 
-Use CPython 3.10+ with development headers/import libraries, CMake 3.20+, a C17
-compiler, setuptools and wheel. Create a virtual environment and run from the
-repository root:
+Requires CPython 3.10+ development headers, CMake 3.20+, C17 compiler,
+setuptools/wheel and a virtual environment:
 
 ```sh
 python -m pip install .
 ```
 
-For an offline build with the build tools already installed:
+Offline, with build tools installed:
 
 ```sh
 python -m pip wheel . --no-build-isolation --no-deps --no-index --wheel-dir build/python-dist
 ```
 
-Install the resulting platform-specific wheel by its filename. Source builds
-reuse the project CMake targets with applications/tests/benchmarks disabled.
-NumForge numeric/engine code is statically linked into the extension. No separate
-NumForge DLL, server, browser assets, Node or repository source files are needed
-at runtime. Ordinary C SDK builds keep `NUMFORGE_BUILD_PYTHON=OFF` (the default)
-and do not need a Python installation.
-
-Windows requires a compatible MSVC toolchain and the dynamic Visual C++ runtime
-(`/MD`). A wheel is specific to its CPython ABI, OS and architecture; this is not
-an abi3 wheel. Local execution has been checked on Windows x64 / CPython 3.12.
-Keep the source/output path short on Windows: MSBuild can still reject deeply
-nested paths even when Windows long-path support is enabled. The adapter keeps
-its CMake cache directly under `build/nf-<interpreter-tag>` to reduce nesting.
-The Python CI workflow adds Linux 3.10/3.12, Windows 3.12 and macOS 3.12 checks;
-configured CI coverage is not a claim that those remote jobs have already run.
+Install the resulting wheel by filename. It statically links numeric/engine code;
+no NumForge DLL, server, Node or source tree is needed at runtime. Wheels match
+CPython ABI/OS/architecture, not abi3. Windows uses compatible MSVC `/MD`; keep
+paths short. Ordinary C builds do not require Python. CI owns platform coverage.
 
 ## Initial API
-
-| Operation | Contract |
-| --- | --- |
-| `number(value)` | Owned typed C value from int, Fraction, finite Decimal or a numeric literal string; existing Result is reused |
-| `evaluate(text, *, variables=None, precision=34, ...)` | Shared C scalar real/complex evaluator, optional explicit variable mapping |
-| `prepare(text, parameters=())` | Owned prepared C expression; `.parameters` is the copied declaration order |
-| `Expression.evaluate(arguments=(), *, precision=34, ...)` | Reuse the AST with positional values or an exact-name mapping |
-| `sqrt(value, *, precision=34, ...)` | Principal root through the C typed evaluator, including exact rational roots and supported complex promotion |
-| `solve_quadratic(a, b, c, *, ...)` | Exact real coefficients; linear/constant reduction, irrational/complex descriptors and multiplicities |
-| `Matrix(rows, *, ...)` | Immutable rational matrices; exact products, determinants, rank and square/general system solves |
-| `describe(values, *, ...)` | Exact rational batch count/sum/extrema/mean and population/sample variance, copied into StatisticsSummary |
-| `covariance(left, right, *, sample=False, ...)` | Exact paired population/sample covariance, returned as Fraction |
-| `linear_regression(x, y, ...)` | Exact unweighted least-squares slope/intercept, returned as frozen LinearRegression |
-| `find_root(function, lower, upper, *, ...)` | Public C bracket search with exact callback coordinates and explicit convergence diagnostics |
-| `find_roots(function, lower, upper, *, ...)` | Bounded public C scan returning sampled roots, stop reason and work/domain diagnostics |
-| `integrate(function, lower, upper, *, ...)` | Approximate finite-interval Simpson value/error, stop reason and work counts |
-| `grid(lower, upper, count, *, ...)` | Immutable tuple of exact Fraction coordinates from the C uniform-grid walker |
-| `visit_grid(lower, upper, count, visit, *, ...)` | Visit the same exact C coordinates without collecting a Python point list |
 
 ```python
 from decimal import Decimal
@@ -72,8 +40,8 @@ value = expression.evaluate({"x": Fraction(1, 3), "y": Fraction(1, 9)})
 assert value.exact and value.as_fraction() == Fraction(2, 9)
 ```
 
-These are actual source-built Python APIs. The standalone example in
-`examples/python/standalone.py` is tested after installing the wheel.
+`number`, `evaluate`, `prepare` and `sqrt` return typed C values/handles.
+Prepared expressions use explicit parameters, not persistent sessions.
 
 ## Exact descriptive statistics
 
@@ -86,14 +54,8 @@ assert s.variance_sample == Fraction(1, 3)
 assert numforge.describe([5]).variance_sample is None
 ```
 
-`describe` returns a frozen summary of exact real observations. Use the
-[statistics reference](../reference/STATISTICS_API.md#python-and-interface-availability)
-for accepted inputs, all fields, singleton semantics, errors and budget boundaries.
-Paired datasets use `covariance(left, right, sample=False)`; see the
-[covariance contract and example](../reference/STATISTICS_API.md#paired-covariance).
-
-For an exact fitted line use `numforge.linear_regression(x, y)`; see the
-[regression contract and example](../reference/STATISTICS_API.md#exact-simple-linear-regression).
+`describe`, `covariance` and `linear_regression` compute exact rational
+results. [Fields, inputs and singleton rules](../reference/STATISTICS_API.md#python-and-interface-availability).
 
 ## Exact matrices
 
@@ -107,9 +69,6 @@ assert x.to_rows() == ((Fraction(1, 3),), (Fraction(7, 2),))
 assert (a @ x).to_rows() == b.to_rows()
 ```
 
-Use `.solve()` for a square invertible coefficient matrix. Use `.solve_general()`
-to classify a rectangular system and obtain its complete solution family:
-
 ```python
 a = numforge.Matrix([[0, 2, 4], [0, 3, 6]])
 family = a.solve_general(numforge.Matrix([[10], [15]]))
@@ -118,10 +77,9 @@ assert family.particular.to_rows() == ((0,), (5,), (0,))
 assert family.nullspace.to_rows() == ((1, 0), (0, -2), (0, 1))
 ```
 
-The [matrix reference](../reference/MATRIX_API.md#python-and-other-interfaces)
-owns input/shape rules, method return types, errors and operation budgets.
-The [linear-system reference](../reference/LINEAR_SYSTEM_API.md#python) owns
-classification, pivot/free columns, particular/kernel matrices and their lifetime.
+Immutable exact rational matrices support `@`, determinant, rank, square
+solves and complete single-RHS families. [Matrix rules](../reference/MATRIX_API.md#python-and-other-interfaces) ·
+[General systems](../reference/LINEAR_SYSTEM_API.md#python).
 
 ## Exact grids
 
@@ -134,9 +92,8 @@ numforge.visit_grid(0, 1, 4, lambda x, index: visited.append((index, x)))
 assert visited == list(enumerate(coordinates))
 ```
 
-Use `visit_grid` to process points without retaining the whole collection. Both
-functions delegate coordinate generation to C. The [Python grid contract](../reference/SAMPLING_API.md#python-exact-grids)
-describes inputs, ownership, count ranges, callback failures and memory accounting.
+`grid` collects exact Fraction coordinates; `visit_grid` visits them without
+retaining a list. [Grid contract](../reference/SAMPLING_API.md#python-exact-grids).
 
 ## Bounded numerical roots
 
@@ -146,47 +103,35 @@ assert root.kind == "found" and not root.exact_zero
 assert abs(root.x*root.x-2) <= Fraction(1, 10**12)
 ```
 
-The callback receives an exact Fraction coordinate and requested fractional scale;
-the C numerical kernel performs the search. Here `continuous=True` asserts the
-known continuity of this polynomial. See the [Python root contract](../reference/ROOT_API.md#python-single-root-search)
-for sample accuracy, tolerances, outcomes, budgets and caller responsibilities.
-
 ```python
 scan = numforge.find_roots(lambda x, places: x*(x-2)*(x+3), -4, 4, segments=8)
 assert tuple(root.x for root in scan.roots) == (-3, 0, 2)
 assert scan.kind == "finished" and not scan.complete
 ```
 
-`finished` describes grid processing, not complete root discovery. See the
-[Python scan contract](../reference/ROOT_API.md#python-multiple-root-scanning)
-for partial-limit results, exact contacts and separate scan/per-bracket limits.
+Callbacks receive exact Fraction coordinates and requested fractional scale.
+`continuous=True` is the caller's continuity assertion, not an automatic proof.
+`finished` means the grid was processed, never complete discovery.
+[Single-root contract](../reference/ROOT_API.md#python-single-root-search) ·
+[Scan contract](../reference/ROOT_API.md#python-multiple-root-scanning).
 
 ## Input, precision and results
 
-Inputs never pass through a Python float. Binary floats, built-in complex floats,
-booleans and arbitrary coercible objects raise TypeError. Numeric input strings
-use the C decimal/exponent literal syntax; they are not expressions. Use Fraction
-or `evaluate("1/3")` for a recurring fraction. Strings and Decimal values explicitly
-denote exact finite input; passing an existing approximate Result retains its
-original provenance. NaN/infinity and embedded NULs are rejected.
+Inputs: int, Fraction, finite Decimal, numeric literal strings and existing
+Result. Float/complex float, bool, NaN/infinity and NUL are rejected. Strings
+denote finite exact literals; use Fraction/evaluate for recurring fractions.
+Existing approximate Results retain provenance.
 
-`Result.kind` identifies integer/rational/decimal/complex-rational/complex-decimal
-storage. `Result.exact` reports proven exactness. `str(result)` serializes the
-stored value without additional display rounding, possibly in scientific notation.
-`result.as_fraction()` copies exact real integers/rationals into Python Fraction;
-it raises TypeError for approximate or complex results. Fraction creation is output
-type conversion, not a second implementation of NumForge arithmetic. Python's
-integer/text conversion limits still apply and are never changed globally.
+`Result.kind` identifies storage; `.exact` reports proven exactness. `str(result)`
+serializes stored digits, possibly scientifically. `.as_fraction()` copies exact
+real values only; approximate/complex values raise TypeError. Interpreter
+integer/text limits remain unchanged.
 
-`precision` is 1..10000 **working significant digits**, not decimal places,
-display digits or a certified final-expression accuracy. Algorithms can use minimum
-precision/internal guards. Exact operations stay exact. Increasing precision cannot
-recover digits lost in an approximate input. Existing C transcendental/composed
-complex limitations remain in effect. See [the engine contract](../reference/ENGINE_API.md).
-
-`rounding` accepts `toward_zero`, `away_from_zero`, `floor`, `ceiling`, `half_up`
-or `half_even` (default). All expressions use radians. Sessions, ans, assignment,
-random calls, quantities and user-defined functions remain outside this subset.
+`precision=34` means 1–10000 working significant digits, not display places or a
+certified error bound. Exact work stays exact; higher precision cannot repair
+approximate inputs. Rounding: toward_zero, away_from_zero, floor, ceiling,
+half_up, half_even (default). Expressions use radians; sessions/ans/assignment,
+random calls, quantities and custom functions are outside this subset.
 
 ## Exact equation descriptors
 
@@ -198,37 +143,27 @@ for root in solution.roots:
     print(root.center, root.sign, root.radicand)  # 0, -1/+1, 2
 ```
 
-The frozen solution has `kind` (`finite`, `none`, `all`), reduced `degree`, exact
-Fraction `discriminant` when applicable, and a tuple of roots. A root has Fraction
-`center`, nonnegative Fraction `radicand`, `imaginary`, `sign`, `multiplicity` and
-optional typed `value`. It represents center +/- sqrt(radicand), multiplied by i
-for the offset when imaginary. A single root has sign zero. `value` is available
-when the components are rational; an irrational root retains an exact descriptor
-and never silently becomes a decimal approximation. Approximate/complex coefficients
-raise TypeError. No numerical scanning or higher-degree solving is implied.
-See [the polynomial contract](../reference/POLYNOMIAL_API.md).
+`solve_quadratic` accepts exact real coefficients. Frozen roots keep Fraction
+center/radicand, sign, imaginary flag and multiplicity; optional typed value
+exists for rational components. Irrational descriptors remain exact.
+[Polynomial contract](../reference/POLYNOMIAL_API.md).
 
 ## Errors, lifetime and execution policy
 
-C failures raise `numforge.Error`, a RuntimeError subclass, with stable string
-`status` and zero-based UTF-8 byte `offset`. Python input/policy mistakes raise
-TypeError/ValueError. A failed evaluation does not modify arguments and a prepared
-expression remains reusable after a domain or budget error. Python references own
-opaque C capsules and release native values/ASTs when the last reference disappears.
-Results outlive their source expression and coefficients.
+C failures raise `numforge.Error` (RuntimeError) with string `status` and
+zero-based UTF-8 `offset`; Python validation uses TypeError/ValueError. Failures
+preserve arguments/reusable expressions. Python references own C capsules;
+results outlive expressions/coefficient inputs.
 
-Evaluation/solve accept `time_limit_ms=10000`, `allocation_bytes=128*1024*1024` and
-`single_allocation=8*1024*1024`. Zero denies C work; None disables either allocation
-limit. `time_limit_ms` must fit a nonnegative signed 64-bit value. C heap budgets
-count cumulative requested bytes, not peak/live heap. Native solver descriptor
-copying occurs inside the solver scope. Input construction, expression preparation
-and `as_fraction()` conversion have separate default budgets. Python object memory,
-Python type conversion and finalizers are not a hard process time/memory limit.
-Serialization inherits the result's copied C policy and the engine output limit.
+Defaults: `time_limit_ms=10000`, `allocation_bytes=128*1024*1024`,
+`single_allocation=8*1024*1024`. Zero denies work; None disables allocation
+limits. Time fits nonnegative int64. C bytes are cumulative traffic, not live
+RAM. Solver descriptor copying stays inside its scope; construction/preparation/
+Fraction conversion have separate defaults. Serialization inherits result policy.
+Python memory/conversion/finalizers are outside these cooperative limits.
 
-Native calls retain the GIL, serializing access to thread-confined C handles.
-There is no promise of parallel native evaluation, instant Ctrl-C interruption,
-PyPy or free-threaded CPython support. Work limits are cooperative.
+Native calls retain the GIL. No parallel-native, instant Ctrl-C, PyPy or
+free-threaded CPython guarantee. Callbacks are not preempted.
 
 ## Finite-interval integration
 
@@ -240,32 +175,18 @@ limited = numforge.integrate(lambda x, places: x**4, 0, 1, max_evaluations=8)
 assert limited.kind == "evaluation_limit" and limited.evaluations == 5
 ```
 
-The callback receives an exact Fraction and requested working precision; return
-a supported real value or None for a domain gap. Exceptions propagate unchanged.
-Bounds/tolerance must be exact real inputs, with `lower<upper` and positive
-`absolute_tolerance` (default `1E-12`). Other defaults are `decimal_places=34`,
-`max_refinements=12`, `max_evaluations=4097`, and the usual runtime budgets.
-`IntegralResult` is immutable; its Fraction value/error represent an approximation,
-even with zero estimated error. Check `kind` before accepting a result and read
-the [error limitations](../reference/NUMERICAL_API.md#finite-interval-integration).
+Callbacks return supported real samples or None for a gap; exceptions propagate.
+Bounds/tolerances must be exact with lower<upper. Defaults: decimal_places=34,
+absolute_tolerance=1E-12, max_refinements=12, max_evaluations=4097. Check kind;
+Fraction value/error remain approximate even when estimated error is zero.
+[Error meaning](../reference/NUMERICAL_API.md#finite-interval-integration).
 
 ## Reproduce installation verification
-
-With setuptools/wheel/pip and a compiler already available:
 
 ```sh
 python scripts/check_python_package.py --output build/python-package-check
 ```
 
-Use a fresh output directory. The checker builds a source archive, extracts only
-confined regular files, builds a wheel from the extracted source with network
-lookup disabled, installs into a dedicated directory, and runs Python with `-I`
-from a separate consumer folder. It asserts both Python and native module imports
-come from the installed directory. The copied tests and standalone example have
-no runtime access to the source package. Nothing is uploaded or globally installed.
-
-The installed [adapter tests](../../tests/python/test_numforge.py) cover lossless
-conversion, high precision, rounding, diagnostics, ownership and failure recovery.
-Module references describe their independent mathematical oracles and C coverage.
-The [initial verification record](../design/ARCHITECTURE.md#dependencies) preserves
-the platform/build evidence for that revision; it is not a current test count.
+Use a fresh directory and installed build tools. The check builds an sdist/wheel
+offline, installs locally and tests imports/examples from a separate isolated
+consumer. Nothing is uploaded or installed globally. See [Testing](../TESTING.md#installed-packages-and-python).

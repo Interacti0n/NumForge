@@ -1,153 +1,95 @@
 # Application and calculation boundaries
 
-The application uses memory only; there is no database or account backend.
-The public numeric library can still be built and installed alone.
-
-The [architecture](ARCHITECTURE.md) owns the source map and target dependency
-rules. Application and HTTP support targets remain private. The public expression
-contract is [engine.h](../reference/ENGINE_API.md); calculator implementation
-headers are not installed.
+Current sessions use memory only; accounts/database are not implemented.
+Numeric APIs and the public engine remain independently installable.
+[Architecture](ARCHITECTURE.md) owns source/target boundaries.
 
 ## Ownership
 
-The expression engine receives explicit context and borrowed variable/ans
-values, and returns an owned typed result. It does not own client IDs, session
-pools, confirmation history, UI fields, accounts or persistence. For random
-expressions the caller supplies state; the application decides whether preview
-draws become confirmed state.
-
-`CalculatorSession`, in `src/application/sessions/session.h`, owns variable/history
-values, confirmed conversions and one preview. Clearing calculator history moves
-its latest typed value into separately owned ans storage. Reset destroys values;
-release retains a bounded tombstone until FIFO eviction. Confirmation, deletion and revision handling remain
-shared by CLI and HTTP. UI summaries do not replace full stored values.
-Formatting projects values without overwriting their exact/approximate/Quantity
-representation.
-
-`ApplicationClientStore` owns two fixed pools: 64 sessions and 64 legacy caches,
-with [idle and retention limits](../guides/HOSTING.md#capacity-and-state).
-Read-only lookup never creates a session
-or revives an expired one. Returned pointers are borrowed until eviction or
-destruction. Invalid IDs do not allocate or evict; destruction releases all
-owned values. Stores are independent instances, not mathematical globals.
-The server owns one instance and uses synchronized request leases. These private
-application contracts do not create a public session ABI or persistent accounts.
+- Engine: explicit context, borrowed values/RNG, owned typed results; no IDs,
+  history, UI or persistence.
+- `CalculatorSession`: confirmed ans, variables, calculator/conversion history
+  and preview. Confirmation stages values before atomic commit. Clearing
+  calculator history preserves separately owned ans; reset destroys values;
+  release keeps a bounded tombstone. Display strings never replace typed values.
+- `ApplicationClientStore`: independent session/cache pools, synchronized leases,
+  [expiry/retention quotas](../guides/HOSTING.md#capacity-and-state). Reads never
+  create/revive sessions; invalid IDs cannot evict. Destruction releases owners.
 
 ## Presentation and future storage
 
-The engine has no database dependency and receives no DOM/layout state.
-Confirmed conversion history belongs to the application session, independently
-of calculator ans/history and RNG. The browser retains presentation fields and
-the session ID, then reads authoritative saved values from the server.
-
-The [HTTP coverage](../reference/WEB_API_PARITY.md) and
-[session API](../reference/SESSION_HTTP_API.md) document list/read, lifecycle,
-function registry and converter-history routes. Snapshot schema version 1
-represents exact values, approximations, Quantity dimensions/units, temperature
-semantics and original context. Responses are bounded and paginated; full values
-are requested explicitly without silently rounding exact values.
-
-The next selected product direction is PostgreSQL-backed accounts and saved
-work. The proposal below is not implemented: login/register remain informational,
-and current server sessions still disappear on restart.
+Browsers retain presentation fields/session IDs and fetch authoritative
+[versioned snapshots](../reference/SESSION_HTTP_API.md). Exact/approximate values,
+quantity metadata and original contexts remain distinct. Lists are bounded and
+paginated; full reads never silently round exact values.
 
 ## Proposed accounts and saved work
 
-Keep PostgreSQL and account management outside `src/core/`, `src/modules/` and
-the installed C API. Recommend an optional, small Django account service using
-its maintained authentication, database sessions, CSRF protection, ORM and
-migrations, with PostgreSQL as storage. Choose a supported LTS/patch combination
-at implementation time. The C server continues to own mathematical operations;
-no calculation is reimplemented in Python. The standalone library, CLI and guest
-application remain usable without this service or database.
-
-This adds Python/PostgreSQL to account-enabled deployments; the existing portable
-guest executable keeps its current requirements. Start with a local development
-database and an isolated preview. Use one public HTTPS origin with explicit
-gateway routing; PostgreSQL and internal service ports stay private. Redis,
-queues, paid hosting and a managed identity provider are not initial requirements.
+**Proposal, not implementation.** Use optional Django authentication/sessions/
+CSRF/migrations with PostgreSQL, choosing supported versions when implemented.
+Math stays in C. The guest executable/CLI/library work without Python or a DB.
+Start isolated, with one HTTPS origin/gateway; DB/internal ports stay private.
+Redis, queues and paid hosting are not initial requirements.
 
 ### Useful first account screen
 
-| Area | User controls and persistence |
+| Area | Saved controls |
 | --- | --- |
-| Profile | Display name, email, password change, account export/deletion. |
-| Calculation defaults | Language, working precision, decimal places, notation, rounding and RAD/DEG; validate against existing C limits. |
-| Tools | Preferred unit/currency pair, graph view and colors, matrix/editor inputs; use the existing versioned graph/matrix formats. |
-| Workspaces | Named calculator/graph/matrix/equation tasks, duplicate/rename/delete, explicit save and optional autosave. |
-| Privacy | History off/on, retention choice within server limits, save inputs only or include supported results; guest work imports only on explicit request. |
-| Sign-in | Optional remembered login, active devices, revoke one/all sessions; reauthentication for sensitive changes. |
+| Profile | Name/email, password, export/deletion |
+| Defaults | Language, precision, notation, rounding, RAD/DEG |
+| Tools | Unit/currency pairs, graph view/colors, editor inputs |
+| Workspaces | Named tasks, duplicate/rename/delete, explicit save/optional autosave |
+| Privacy | History/retention choice and explicit guest import |
+| Sign-in | Remembered login, device revocation, sensitive-action reauthentication |
 
-On login, load account preferences, then the selected workspace. Restore inputs
-without executing expensive calculations. Autosave after edits settle, with
-visible Saving/Saved/Offline states; on failure retain dirty local work. Each
-write includes the expected revision. Conflicts between tabs/devices preserve
-both versions or ask for a choice, never silently overwrite newer work.
-Signing out clears account-scoped browser state. Signing into another account
-must not import the previous account's fields, cache or pending saves.
+Restore inputs without computing. Autosave shows Saving/Saved/Offline and retains
+dirty work after failure. Expected revisions detect tab/device conflicts;
+preserve both versions or ask, never silently overwrite. Sign-out/account changes
+clear account-specific caches and pending saves.
 
 ### Storage and ownership
 
-Use framework-owned users/auth sessions, plus preferences, workspaces and
-optional history entries linked to their owner. Index owner/update time and
-enforce ownership in every read/write/export/delete using the authenticated
-server identity, never a submitted user ID. Use validated, versioned JSONB for
-tool payloads; exact numbers/fractions remain strings, never binary floats.
-Store original context and approximation provenance with saved results.
+Framework users/sessions own preferences, versioned JSONB workspaces and optional
+history. Enforce authenticated ownership for every read/write/export/delete,
+never trust submitted owner IDs. Exact numbers stay strings, with context and
+approximation provenance. Index owner/update time.
 
-Existing typed snapshots can be read but do not yet provide a complete restore
-contract. Full variable/ans/history restoration requires a bounded validated C
-decoder and transactional restore; never replay stored expressions, assignments
-or random operations to reconstruct old values. First delivery can save inputs
-and settings while that separate capability is developed.
+Full ans/variable/history restore needs a bounded transactional C decoder;
+existing snapshots only support reads. Never replay saved expressions/random
+calls to reconstruct values. Inputs/settings can ship first. Bind private C
+execution/session access to authenticated owners before restoring runtime state;
+anonymous client IDs and Origin checks are not authorization.
 
-Authentication cookies and C calculation client IDs have different roles.
-The existing anonymous session routes are not an account authorization boundary.
-Before restoring private runtime state, implement/test an authenticated bridge
-that binds execution/session access to the owner and prevents direct anonymous
-access. An unguessable client ID or a valid Origin alone is not sufficient.
-
-Provisional pilot limits: 100 named workspaces and 25 MiB saved payload per user,
-1 MiB per workspace and 200 KiB per history entry, with existing stricter tool
-limits retained. Reject oversized saves explicitly; never truncate an exact
-result and label it complete. History retention/autosave are configurable within
-server caps. These are proposed defaults to validate, not existing guarantees.
+Proposed pilot caps: 100 workspaces/25 MiB per user, 1 MiB/workspace and
+200 KiB/history entry, retaining stricter tool limits. Reject oversized values
+without truncation. These are proposed defaults, not current guarantees.
 
 ### Implementation order and completion gates
 
-1. Isolated PostgreSQL/account-service setup, versioned migrations, connection
-   configuration outside Git, least-privilege DB user and tested backup/restore.
-2. Private pilot accounts, login/logout, remembered sign-in, account settings,
-   expiration/revocation, CSRF and bounded login attempts. Use framework password
-   handling with Argon2id configured and measured; no custom password/token crypto.
-3. Preferences and named input workspaces, explicit guest import, autosave,
-   quotas and revision-conflict handling. Verify restore after backend/DB restart
-   and on a second browser, plus isolation between two different users.
-4. Account UI for device management, export/deletion and recovery. Configure mail
-   and test verification/reset flows before enabling public self-registration;
-   a private pilot can start with manually provisioned users instead.
-5. Typed calculator snapshot restore and authenticated execution binding, then
-   optional confirmed history/variables/ans with original context and provenance.
-6. Cross-account access, sign-out/cache isolation, revoked cookies, lost writes,
-   outages, migration rollback, backup recovery and representative mixed load.
-   Move the public preview only after these gates pass.
+1. Local PostgreSQL/service, migrations, least-privilege credentials outside Git,
+   tested backup/restore.
+2. Private pilot login/logout, remembered sessions, expiry/revocation, CSRF and
+   login-attempt limits; framework password handling with measured Argon2id.
+3. Defaults/named inputs, guest import, autosave, quotas/conflicts; verify backend/
+   DB restart, second-browser restore and two-user isolation.
+4. Device management/export/deletion/recovery. Test mail verification/reset before
+   public registration; private users can be manually provisioned.
+5. Typed C restore plus authenticated execution bridge; then optional saved
+   history/variables/ans.
+6. Verify revoked sessions, cross-user access, sign-out/cache isolation, lost
+   writes, outages, migration rollback, recovery and mixed load before deployment.
 
-PostgreSQL restart must preserve saved work. If a Quick Tunnel hostname changes,
-users sign in again at the new origin; their data remains in the database.
-TLS cookies use Secure/HttpOnly/SameSite and server-enforced expiry. Credentials
-do not belong in browser storage. Account deletion covers active data and
-documents the backup expiry period; exact recovery/retention policy is part of
-the implementation, not an implied unlimited archive.
+Use Secure/HttpOnly/SameSite cookies with server expiry, never browser-stored
+credentials. A changed tunnel origin requires signing in again, not losing DB
+data. Define deletion/backup expiry explicitly.
 
-Implementation references: [Django authentication](https://docs.djangoproject.com/en/5.2/topics/auth/default/),
-[database sessions](https://docs.djangoproject.com/en/5.2/topics/http/sessions/),
-[password storage](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
-and [session management](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html).
+[Django auth](https://docs.djangoproject.com/en/5.2/topics/auth/default/) ·
+[Sessions](https://docs.djangoproject.com/en/5.2/topics/http/sessions/) ·
+[Password storage](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html) ·
+[Session management](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html)
 
 ## Verification
 
-`application_tests` links the application without HTTP and checks independent
-stores, preservation, separate FIFO eviction, invalid IDs and destruction with
-typed values. Existing calculator/session, CLI/HTTP, allocation-failure, fuzz
-and benchmark checks keep their contracts. Package consumers reject accidental
-export of private targets.
+Application tests link without HTTP and check isolated stores, preserved values,
+eviction and destruction. Session/CLI/HTTP/fault suites cover adapters; installed
+consumers reject private target exports. [Testing](../TESTING.md).

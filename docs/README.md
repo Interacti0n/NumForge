@@ -2,7 +2,7 @@
 
 Choose what you want to do. You do not need to read the whole documentation.
 
-## Use the calculator
+## Use NumForge
 
 [Download or build NumForge](../README.md#get-started), launch `numforge_web`,
 then follow [your first calculation](guides/CALCULATOR_WEB.md).
@@ -11,6 +11,7 @@ then follow [your first calculation](guides/CALCULATOR_WEB.md).
 - [Unit converter](guides/UNIT_CONVERTER.md): convert between units.
 - [Graphs](guides/GRAPHS.md): plot a function.
 - [Equations](guides/EQUATIONS.md): solve an equation.
+- [Matrices](reference/MATRIX_API.md#web-editor-and-http): edit matrices and solve systems.
 - [Expression reference](reference/CALCULATOR_EXPRESSIONS.md): look up operators and functions.
 
 ## Use NumForge in my own project

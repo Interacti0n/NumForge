@@ -1,35 +1,24 @@
 # NumForge SDK: start here
 
-Use the `sdk-win-x64.zip` or `sdk-linux-x64.tar.gz` release asset to link the
-public numeric C API from C or C++. Download its matching `.sha256` file and
-verify the checksum before extracting the whole archive. This SDK contains
-BigInt, BigDecimal, BigRational, complex, units and runtime APIs. SDKs built from
-current post-2.4.0 source also contain the newer mathematical modules and optional
-public expression engine, not sessions or the HTTP server. Published archives retain their original
-numeric-only scope. For HTTP clients, use the separate application download and
-its documented HTTP API.
+Download the matching SDK archive and `.sha256`, verify, then extract the whole
+folder. Published 2.4.0 SDKs are numeric-only; newer source SDKs add modules and
+the optional expression engine. Installed headers/BUILDINFO.json define the
+package scope. Application/session/HTTP internals are not SDK interfaces.
 
 ## Choose a compatible toolchain
 
-- **Windows x64:** MSVC Release static library, built with the dynamic C runtime
-  `/MD`. Use an x64 MSVC toolchain compatible with the compiler version in
-  `BUILDINFO.json` and `/MD` in your application. This is not a MinGW library.
-  `/MT` and Debug `/MDd` builds need a matching library built from source.
-  Running your application requires the corresponding Microsoft Visual C++
-  runtime. Do not mix CRTs: returned strings are freed with your `free()`.
-- **Linux x64:** GCC Release static library for glibc systems. The GCC version
-  and build glibc are recorded in `BUILDINFO.json`. Use the build glibc version
-  or newer as the supported baseline; this is not an Alpine/musl SDK.
-- Other architectures, compilers, runtime choices and instrumented builds:
-  build from the release source with CMake instead.
+- Windows x64: compatible MSVC Release static library and `/MD`. Match
+  BUILDINFO.json and install the corresponding Visual C++ runtime. MinGW,
+  `/MT` and `/MDd` need a matching source build; never mix CRT ownership.
+- Linux x64: GCC/glibc, with the recorded build glibc or newer; not Alpine/musl.
+- Other compilers/architectures/instrumentation: build from source.
 
-You need CMake 3.20+ and a C/C++ compiler to develop with the SDK. Node.js,
-Python and the NumForge source tree are not needed to build the included example.
+Development needs CMake 3.20+ and a C/C++ compiler, not Python, Node or the source
+tree. The linked library needs no NumForge DLL.
 
 ## Build the included example
 
-Open a terminal in the extracted SDK directory. Use a Visual Studio developer
-terminal on Windows:
+In the extracted folder (MSVC developer terminal on Windows):
 
 ```sh
 cmake -S example -B example-build -DCMAKE_BUILD_TYPE=Release
@@ -37,16 +26,9 @@ cmake --build example-build --config Release
 ctest --test-dir example-build -C Release --output-on-failure
 ```
 
-The included example locates the SDK beside its own directory. On Windows,
-add `-A x64 -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL` to the configure
-command when using the Visual Studio generator. Build with `--config Release`.
-The example prints `0.1 + 0.2 = 0.3` using exact decimal arithmetic.
-
-Current source SDKs add examples for prepared expressions, exact polynomial and
-matrix operations, statistics/covariance and callback-based numerical methods.
-Their CMake project enables examples according to the installed headers/targets.
-Numeric/module examples link only the numeric library; engine examples additionally
-use `NumForge::engine`. The bundled headers define the available package scope.
+For Visual Studio add `-A x64 -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL`
+to configure. The example locates its sibling SDK. Newer source packages enable
+additional module/engine examples according to installed headers/targets.
 
 ## Use in your project
 
@@ -55,26 +37,12 @@ find_package(NumForge CONFIG REQUIRED)
 target_link_libraries(my_target PRIVATE NumForge::numforge)
 ```
 
-Configure your project with `-DCMAKE_PREFIX_PATH=/absolute/path/to/extracted-sdk`.
-Include public headers such as `<numforge/bigint.h>` or
-`<numforge/bigdecimal.h>`. CMake supplies include paths and the library; the
-export is relocatable. C++ headers provide C linkage automatically. A static
-library is linked into your application; there is no NumForge DLL to copy.
+Configure with `-DCMAKE_PREFIX_PATH=/absolute/sdk`. Include public headers;
+CMake supplies paths/libraries and C++ linkage. Use `NumForge::engine` plus
+`<numforge/engine.h>` for expressions; it transitively links numeric code.
 
-For stateless scalar expressions, link `NumForge::engine` instead and include
-`<numforge/engine.h>`. It transitively links the numeric library. The public
-engine supports typed results and reusable expressions without a server.
-
-Current source builds also provide `<numforge/numerical.h>` in
-`NumForge::numforge` for [callback-based root search and scans](../reference/NUMERICAL_API.md).
-The `example/numerical.c` and `example/numerical_scan.c` programs need no expression engine. Published 2.4.0
-archives predate this addition.
-
-Check return statuses, destroy owned numeric objects with their matching
-`*_destroy()` functions and free returned allocated strings with `free()`.
-See the version-matched online [C API reference](https://github.com/Interacti0n/NumForge/blob/v2.4.0/docs/reference/C_API.md)
-and [library guide](https://github.com/Interacti0n/NumForge/blob/v2.4.0/docs/guides/LIBRARY_GUIDE.md).
-
-The SDK includes only `include/`, `lib/` (with CMake exports), `example/`, this
-guide, `LICENSE` and `BUILDINFO.json`. Source and full documentation are available
-from the same GitHub release. The library is licensed under MIT.
+Check statuses, destroy owned handles and `free()` returned strings. The archive
+contains include/, lib/exports, examples, guide, LICENSE and BUILDINFO.json.
+Full source/docs come with the matching download.
+[C API](https://github.com/Interacti0n/NumForge/blob/main/docs/reference/C_API.md) ·
+[Source installation](https://github.com/Interacti0n/NumForge/blob/main/docs/guides/LIBRARY_GUIDE.md).

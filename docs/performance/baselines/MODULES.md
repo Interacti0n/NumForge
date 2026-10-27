@@ -1,28 +1,32 @@
 # Exact module baselines
 
-Historical Windows x64 / GCC 16.2 / C17 Release measurements, 19–20 October 2026,
-with warnings as errors and opt-in allocation instrumentation. No speedup over a
-previous implementation is claimed. Each subsection retains its independent
-input/reference protocol. Requested bytes mean cumulative allocation traffic,
-not peak live memory or RSS. Verification and input setup are outside timing.
+Historical Windows x64/GCC 16.2/C17 Release, 19–20 October 2026, warnings as errors
+and allocation instrumentation. These are shared-machine baselines, not speedups,
+Python/HTTP timings or portable capacity claims.
 
-Configure with `NUMFORGE_BUILD_BENCHMARKS=ON`, `NUMFORGE_BUILD_APPS=OFF` and
-`BUILD_TESTING=OFF`; build the named executable. Visual Studio executables use
-the configuration subdirectory and `.exe`. Results are checked after timing;
-smoke tests check correctness and completion rather than a speed threshold.
+```sh
+cmake -S . -B build/module-bench -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DNUMFORGE_BUILD_APPS=OFF -DNUMFORGE_BUILD_BENCHMARKS=ON -DNUMFORGE_WARNINGS_AS_ERRORS=ON
+cmake --build build/module-bench --config Release --target polynomial_benchmark matrix_benchmark statistics_benchmark
+```
+
+Run each named executable (Visual Studio: `Release/` and `.exe`). Except for the
+polynomial scope below, each call uses 5000 ms / 128 MiB cumulative / 2 MiB per
+allocation. Three complete invocations × three calls/fixture; ranges are min/max
+invocation means in ms. Allocation counts/bytes matched across invocations and
+were read before verification. Bytes count cumulative traffic, not live/peak/RSS.
+Input/reference setup, independent checking and returned-result destruction are
+outside timing. Result tables retain their original values.
+
+Smoke tests validate correctness/completion with 120-second timeouts, no speed
+threshold. Ordinary builds omit instrumentation. Wider growth/streaming domains
+need separate measurements; [method](../../testing/PERFORMANCE.md).
 
 ## Polynomials
 
-Windows x64, GCC 16.2.0, C17 Release, warnings as errors, opt-in allocation
-instrumentation. `NUMFORGE_BUILD_APPS=OFF`, `BUILD_TESTING=OFF`,
-`NUMFORGE_BUILD_BENCHMARKS=ON`. Build target: `polynomial_benchmark`.
-
-Three complete invocations, ten solves per case per invocation. Each solve gets
-a fresh 5000-ms / 64-MiB cumulative / 512-KiB single-allocation budget. Timing
-covers solving and numeric allocations; setup, descriptor verification and result
-destruction are outside timing. Exact root-sum/product invariants are verified
-after every result. Allocation counters are read before verification. Requested
-bytes are cumulative allocation traffic, not live/peak heap usage or process RSS.
+`polynomial_benchmark`: three invocations × ten solves/fixture, fresh
+5000 ms / 64 MiB cumulative / 512 KiB single-allocation scopes. Time includes
+solve/output construction; setup, exact descriptor checks and destruction are
+excluded. Root sums/products are checked independently. All 120 solves passed.
 
 | Case: (a, b, c) | Run 1 mean ms | Run 2 mean ms | Run 3 mean ms | Allocation calls/solve | Requested bytes/solve |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -31,39 +35,14 @@ bytes are cumulative allocation traffic, not live/peak heap usage or process RSS
 | Complex: (9, 0, 1) | 0.030580 | 0.030350 | 0.029650 | 368 | 6,872 |
 | Large coefficients: (1, 10^1000, 1) | 0.319910 | 0.292740 | 0.306780 | 413 | 60,504 |
 
-All 120 solves completed and passed exact verification. Small timing differences
-include machine scheduling/measurement noise; these data establish a local
-baseline rather than a universal performance guarantee. No peak-memory
-measurement or before/after acceleration claim is made.
-
 ## Matrices
 
-Windows x64, GCC 16.2.0, C17 Release, warnings as errors, allocation instrumentation.
-Use a separate uninstrumented build for ordinary application use.
-
-```sh
-cmake -S . -B build/matrix-bench -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DNUMFORGE_BUILD_APPS=OFF -DNUMFORGE_BUILD_BENCHMARKS=ON -DNUMFORGE_WARNINGS_AS_ERRORS=ON
-cmake --build build/matrix-bench --config Release --target matrix_benchmark
-```
-
-Run `build/matrix-bench/matrix_benchmark` (on Visual Studio,
-`build/matrix-bench/Release/matrix_benchmark.exe`). Three complete local invocations
-were recorded, each with three repetitions per operation/shape. Each operation
-starts a fresh 5000-ms / 128-MiB cumulative / 2-MiB single-allocation scope.
-Timing includes output creation and numeric work, but excludes input/reference
-construction, verification and output destruction. Allocation counters are read
-before verification: calls and requested bytes describe cumulative traffic, not
-peak/live memory or process RSS. These are short local timings on a shared machine.
-
-Fixtures use A=(I+J)/d, where J is all ones and d=10^p+1. The exact scalar
-references are det(A)=(n+1)/d^n, A*ones=(n+1)/d and
-A*A=((n+2)J+I)/d^2. Every result/entry is compared as a reduced rational after
-timing; no matrix operation is used to construct these reference values.
-
-### Results
-
-Ranges are minimum/maximum of the three invocation means (ms per operation).
-Allocation counts/bytes were identical across invocations.
+`matrix_benchmark`: three invocations × three repetitions/shape/operation.
+Fixtures `A=(I+J)/d`, `d=10^p+1`; independent references are
+`det(A)=(n+1)/d^n`, `A*ones=(n+1)/d`, `A*A=((n+2)J+I)/d^2`.
+All 108 calls passed reduced-rational checks. p=1000 means 1001-digit
+denominators. Structured dense fixtures do not cover arbitrary denominator
+growth, sparse systems or approximate conditioning.
 
 | n | p | Operation | Mean ms range | Allocations | Requested bytes |
 | ---: | ---: | --- | ---: | ---: | ---: |
@@ -80,35 +59,14 @@ Allocation counts/bytes were identical across invocations.
 | 2 | 1000 | determinant | 0.062167–0.090333 | 259 | 26,648 |
 | 2 | 1000 | solve | 0.061800–0.121233 | 412 | 39,632 |
 
-All 108 timed operations passed exact verification within their scopes. The
-1000-exponent denominators have 1001 digits. These structured fixtures exercise
-dimensions and large rational inputs; they do not characterize arbitrary
-denominator growth, sparse matrices, singular-case throughput or ill-conditioned
-approximate solvers. The separate correctness suite tests row exchanges,
-singularity, unrelated rational entries and large cancellation.
-
-The allocation volume supports investigating reusable scalar workspaces and
-fraction-free elimination later. Neither change is included here, and no
-performance threshold is enforced in CI. The opt-in `matrix_benchmark_smoke`
-checks completion and exact results; its CTest timeout is 120 seconds.
-
 ## General linear systems
 
-Use the [initial matrix benchmark commands](MODULES.md#matrices)
-to build/run `matrix_benchmark`. The expanded harness still verifies all original
-product/determinant/square-solve fixtures, then adds rank and solve_general to
-each. Four full-rank fixtures use A=(I+J)/(10^p+1), with exact rank=n and known
-ones solution. Additional 2-by-3 fixtures use A=[[0,2,4],[0,3,6]], b=[10,15] or
-[10,16], exact rank=1 and the known canonical basis [[1,0],[0,-2],[0,1]].
-
-Three complete invocations, three repetitions per operation/fixture, GCC 16.2
-C17 Release on the same local Windows machine. Each call has a fresh 5000-ms /
-128-MiB cumulative / 2-MiB single-allocation scope. Timed work includes input
-copies, elimination, classification and complete output construction. Input/
-reference setup, exact verification and destruction are outside timing. Counters
-are read before verification; requested bytes are allocation traffic, not live/
-peak memory or RSS. Short shared-machine timing is informational, not a CI speed
-threshold or an optimization comparison.
+The expanded matrix harness adds rank/general solve to the original fixtures.
+Full-rank references use rank=n and an all-ones solution. Rank-one fixtures use
+`A=[[0,2,4],[0,3,6]]`, b=[10,15] or [10,16], with canonical nullspace
+`[[1,0],[0,-2],[0,1]]`. All 216 calls passed, including 108 rank/general calls.
+Time includes input copies, elimination, classification and complete output.
+This does not measure general multiple-RHS or numerical least squares.
 
 | Fixture | Operation | Mean ms range across 3 invocations | Allocations | Requested bytes |
 | --- | --- | ---: | ---: | ---: |
@@ -125,42 +83,13 @@ threshold or an optimization comparison.
 | 2x3 inconsistent | rank | 0.016533–0.022600 | 193 | 3,736 |
 | 2x3 inconsistent | solve_general | 0.040567–0.056133 | 484 | 9,336 |
 
-All **216 timed operations** completed within their scopes and passed exact
-verification, including 108 rank/general calls. Allocation counters match across
-invocations. These are structured baselines, not measurements of arbitrary
-rational growth or large sparse/approximate systems. The benchmark smoke test
-retains its 120-second timeout and checks correctness rather than speed.
-
-Further work can investigate reusable factorizations, fraction-free elimination
-or approximate domain contracts after defining the use case. General multiple-RHS
-classification and numerical least squares remain separate capabilities.
-
 ## Statistics
 
-```sh
-cmake -S . -B build/statistics-bench -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DNUMFORGE_BUILD_APPS=OFF -DNUMFORGE_BUILD_BENCHMARKS=ON -DNUMFORGE_WARNINGS_AS_ERRORS=ON
-cmake --build build/statistics-bench --config Release --target statistics_benchmark
-```
-
-Run `build/statistics-bench/statistics_benchmark` (Visual Studio:
-`build/statistics-bench/Release/statistics_benchmark.exe`). Local measurements use
-GCC 16.2.0 C17 Release with opt-in allocation instrumentation. Each summary has a
-fresh 5000-ms / 128-MiB cumulative / 2-MiB single-allocation scope. Three complete
-invocations each perform three summaries per fixture. Timing includes validation,
-arithmetic and all output field construction. Input/reference construction,
-verification and destruction lie outside timing. Counters are read before
-verification. Requested bytes are allocation traffic, not peak/live memory or RSS.
-
-Fixtures are x_j=offset+j/d for j=0..n-1, d=10^p. References use exact closed
-forms outside timing: mean=offset+(n-1)/(2*d), population variance=(n*n-1)/(12*d*d),
-sample variance=n*(n+1)/(12*d*d) for n>1. Sum and extrema are checked too, as are
-the count and unavailable singleton sample field. Reference values are built
-with scalar arithmetic without calling the summary implementation.
-
-### Results
-
-Ranges are minimum/maximum of three invocation means (ms per complete summary).
-Allocation counts/bytes match across invocations.
+`statistics_benchmark`: `x_j=offset+j/d`, j=0..n−1, d=10^p.
+Independent closed forms: mean=`offset+(n-1)/(2d)`, population variance=
+`(n*n-1)/(12*d*d)`, sample variance=`n*(n+1)/(12*d*d)`. Count/sum/extrema and
+unavailable singleton sample variance are checked too. All 54 summaries passed.
+Time includes validation, arithmetic and complete output fields.
 
 | Fixture | Count | Offset | d | Mean ms range | Allocations | Requested bytes |
 | --- | ---: | --- | --- | ---: | ---: | ---: |
@@ -171,37 +100,13 @@ Allocation counts/bytes match across invocations.
 | offset1000 | 128 | 10^1000 | 1 | 1.924933–2.125633 | 17,645 | 831,112 |
 | tiny1000 | 128 | 0 | 10^1000 | 7.330600–7.475800 | 20,417 | 4,237,176 |
 
-All **54 summaries** completed within their scopes and passed exact field checks.
-These short shared-machine timings establish a local baseline; they do not claim
-an algorithmic speedup, Python end-to-end timing, arbitrary denominator-growth
-coverage or streaming throughput. The smoke check enforces exact results and a
-120-second CTest timeout rather than a speed threshold. Ordinary builds omit the
-instrumentation, and using the C library does not require Python or the engine.
-
 ## Covariance
 
-Use the existing [statistics benchmark setup](MODULES.md#statistics).
-The same `statistics_benchmark` executable now emits six additional `cov_*` rows
-without changing its CSV columns. Each row performs three calls. Run the complete
-executable three times to obtain nine checked calls per fixture.
-
-Local measurements use Windows x64, GCC 16.2.0, C17 Release, warnings as errors,
-with opt-in allocation instrumentation. Every call inherits a fresh 5000-ms,
-128-MiB cumulative, 2-MiB single-allocation scope. Timing includes validation,
-arithmetic and the final owned scalar copy. Inputs, initialized destination,
-reference construction, result verification and destruction are outside timing.
-Counters are read before verification. Requested bytes are allocation traffic,
-not peak/live storage or process RSS.
-
-Inputs are x_j=offset+j/d and y_j=x_(n-1-j), for j=0..n-1. The independent
-closed-form references are population covariance `-(n*n-1)/(12*d*d)` and sample
-covariance `-n*(n+1)/(12*d*d)`. Each scalar result is compared exactly outside
-timing. The original six summary rows and their checks also run.
-
-### Results
-
-Ranges show the minimum/maximum of three invocation means, in milliseconds.
-Allocation counts and requested bytes agree across all invocations.
+The statistics harness adds six `cov_*` fixtures, each with three repetitions
+per invocation. `x_j=offset+j/d`, `y_j=x_(n-1-j)`; independent population/sample
+references are `-(n*n-1)/(12*d*d)` and `-n*(n+1)/(12*d*d)`.
+All 54 covariance and 54 summary calls passed. Timing includes validation,
+arithmetic and the owned scalar copy; initialized destination is outside timing.
 
 | Fixture | Pairs | Offset | d | Mean ms range | Allocations | Requested bytes |
 | --- | ---: | --- | --- | ---: | ---: | ---: |
@@ -212,33 +117,16 @@ Allocation counts and requested bytes agree across all invocations.
 | sample offset1000 | 128 | 10^1000 | 1 | 2.355067–2.963633 | 20,773 | 843,928 |
 | population tiny1000 | 128 | 0 | 10^1000 | 9.270233–10.548533 | 24,062 | 4,772,872 |
 
-All 54 covariance calls and 54 summary calls completed within their scopes and
-passed exact checks. These are local shared-machine measurements, not a server
-capacity estimate, Python end-to-end benchmark, streaming throughput claim or
-coverage of arbitrary denominator growth. The benchmark smoke test checks results
-and its existing timeout, with no speed threshold.
-
 ## Linear regression
-
-The existing `statistics_benchmark` adds five `reg_*` rows without changing CSV
-columns or the twelve summary/covariance fixtures. Inputs are x_j=offset+j/d,
-y_j=x_(n-1-j), for j=0..n-1. Independent closed-form references are slope=-1 and
-intercept=2*offset+(n-1)/d, constructed outside timing without a regression or
-covariance call. Both coefficients and the reported count are checked after every
-call. Each row runs three repetitions in the same fresh scopes as covariance.
-
-Timing includes validation, the reused exact summaries/covariance, coefficient
-construction and internal cleanup. Input/reference creation and returned-fit
-destruction are outside timing. Allocation counters are read before validation;
-requested bytes are cumulative traffic. This measures the current composed
-implementation, not a specialized new moments algorithm or a speedup.
 
 ### Local baseline — 20 October 2026
 
-Source `b6a02e4`, Windows x64, GCC 16.2.0, C17 Release/Ninja with opt-in allocation
-instrumentation. Three isolated executable invocations give nine checked calls
-per fixture, with no concurrent build/test job. Each call uses the covariance
-scope: 5000 ms, 128 MiB cumulative bytes and 2 MiB single allocation.
+Source `b6a02e4`, Windows x64/GCC 16.2/C17 Release/Ninja, no concurrent job.
+Five `reg_*` fixtures extend the unchanged summary/covariance rows. With the same
+reversed pairs, independent slope=−1 and intercept=`2*offset+(n-1)/d`.
+Time includes validation, reused summaries/covariance, fit construction and
+internal cleanup. All 153 calls passed, including 45 regression fits.
+This measures the composed implementation, not a specialized moments algorithm.
 
 | Fixture | Pairs | Mean ms range | Allocations | Requested bytes |
 | --- | ---: | ---: | ---: | ---: |
@@ -247,7 +135,3 @@ scope: 5000 ms, 128 MiB cumulative bytes and 2 MiB single allocation.
 | ordinary large | 1024 | 40.471–43.737 | 439,917 | 8,096,912 |
 | offset 10^1000 | 128 | 5.798–6.800 | 56,173 | 2,513,360 |
 | spread 10^-1000 | 128 | 23.458–26.384 | 66,308 | 13,833,568 |
-
-All 153 calls passed exact checks, including 45 regression fits. Allocation
-counts/bytes agreed across invocations. These are short shared-machine baselines,
-not Python/HTTP timings, arbitrary denominator-growth coverage or speed claims.

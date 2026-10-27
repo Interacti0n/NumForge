@@ -1,0 +1,11 @@
+/* Keep long API names and examples inside the reading column on phones. */
+.wy-nav-content { max-width:1100px; }
+.wy-nav-content, .wy-nav-content-wrap { min-width:0; }
+.rst-content { overflow-wrap:anywhere; }
+.rst-content code { white-space:normal; overflow-wrap:anywhere; }
+.rst-content pre { overflow-x:auto; }
+.rst-content pre code { white-space:pre; overflow-wrap:normal; }
+.rst-content .wy-table-responsive { min-width:0; overflow-x:auto; }
+@media (max-width:768px) {
+    .wy-nav-content { padding:1.2rem; }
+}

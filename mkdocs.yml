@@ -6,6 +6,8 @@ docs_dir: build/docs/content
 site_dir: build/docs/site
 use_directory_urls: false
 theme: readthedocs
+extra_css:
+  - docs/assets/reader.css
 markdown_extensions:
   - tables
   - fenced_code
@@ -20,12 +22,13 @@ not_in_nav: |
   /bindings/**
 nav:
   - Start here: docs/README.md
-  - Use the calculator:
+  - Use NumForge:
       - First calculation: docs/guides/CALCULATOR_WEB.md
       - Variables and history: docs/guides/VARIABLES.md
       - Units and conversions: docs/guides/UNIT_CONVERTER.md
       - Graphs: docs/guides/GRAPHS.md
       - Equations: docs/guides/EQUATIONS.md
+      - Matrices: docs/reference/MATRIX_API.md
       - Expression reference: docs/reference/CALCULATOR_EXPRESSIONS.md
   - Integrate NumForge:
       - C and C++ from source: docs/guides/LIBRARY_GUIDE.md
@@ -39,7 +42,6 @@ nav:
           - Complex numbers: docs/reference/BIGCOMPLEX.md
           - Expression engine: docs/reference/ENGINE_API.md
           - Polynomials: docs/reference/POLYNOMIAL_API.md
-          - Matrices: docs/reference/MATRIX_API.md
           - Linear systems: docs/reference/LINEAR_SYSTEM_API.md
           - Statistics: docs/reference/STATISTICS_API.md
           - Numerical methods:

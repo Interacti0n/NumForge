@@ -5,9 +5,7 @@ conversion core as the [C API](UNITS.md). The [SK/EN browser page](../guides/UNI
 uses these routes. They are intended for the local application, with the existing
 request framing, origin checks and calculator resource limits.
 
-Variable currency rates are separate from these fixed definitions. The
-[currency guide](../guides/UNIT_CONVERTER.md#supplied-rate-http-arithmetic)
-owns the supplied-rate arithmetic endpoint and its limits.
+Variable rates use the separate [currency arithmetic](#currency-arithmetic) endpoint.
 
 The conversion core belongs to the standalone numeric library. The HTTP adapter
 borrows session values from the private application layer; it does not own
@@ -106,3 +104,33 @@ missing Content-Length is 411, foreign Origin is 403 and a body exceeding 4096
 bytes is 413. Embedded NUL bytes are rejected. Evaluation, conversion and result
 formatting share the calculator's cooperative time/allocation budget. This is
 not a public hosted-service isolation model; see [the roadmap](../project/ROADMAP.md).
+
+## Currency arithmetic
+
+`POST /api/currency/convert?places=2`, `Content-Type: text/plain`, body:
+
+```text
+100
+1
+1.2
+```
+
+The three LF-separated values are amount, source units per common base and
+target units per common base. The response is
+`{"ok":true,"approximate":true,"result":"120"}`. This endpoint **does not fetch
+or authenticate rates**; source/date metadata belongs to the supplied snapshot.
+It is stateless and does not read/change calculator variables or history.
+Existing origin and Content-Length rules apply. The query accepts exactly one
+`places` digit, 0–8. Body is at most 308 bytes, with no trailing newline, NUL,
+whitespace, expression or exponent: amount at most 256 bytes (200 integer/100
+fractional digits), positive rate at most 25 bytes (12 integer/12 fractional
+digits). Errors return `ok:false,status` with HTTP 400, or 500 for allocation
+failure. Invalid requests never publish a partial result.
+
+The adapter calls shared `bigdecimal_mul` exactly, then `bigdecimal_div` once at
+the requested fixed decimal scale with ties-to-even rounding. Thus large amounts
+do not pass through JavaScript floating-point arithmetic or calculator working
+precision. Standalone C callers can use the same public numeric operations.
+`approximate:true` describes the indicative market data, not an error bound or
+an exact executable price. Currency snapshots are separate from fixed units and
+are not accepted as `Quantity` expressions.

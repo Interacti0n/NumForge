@@ -1,89 +1,45 @@
 # Parametric expression foundation
 
-The internal C application layer provides reusable expressions for graph sampling
-and numerical equation solving. It shares the calculator's typed
-evaluation stage: exact integers/fractions, complex numbers, quantities, angle
-units and approximation metadata follow the existing calculator contracts.
-
-The [bounded HTTP graph sampler](../reference/GRAPH_HTTP_API.md) now calls this
-foundation through the C application operation in `src/application/graphs/graph.h`.
-The [browser graph page](../guides/GRAPHS.md) now draws [adaptive curves](../reference/ADAPTIVE_GRAPH_HTTP_API.md).
-The separate [public engine](../reference/ENGINE_API.md) offers opaque prepared
-expressions to installed consumers. Application handles retain additional
-snapshot/domain/graph behavior and are private. The
-[coefficient-based linear/quadratic adapter](POLYNOMIAL_EQUATIONS.md) delegates
-to the public numeric solver. Graph sampling does not implement mathematics in
-JavaScript or reparse the expression for every point.
+Private `src/application/expressions/expression.h` prepares typed expressions
+for graph/root adapters. Installed consumers use the separate opaque
+[public engine](../reference/ENGINE_API.md).
 
 ## C application operation
 
-Declarations are in `src/application/expressions/expression.h`:
+- `application_expression_prepare` owns the parsed AST, copied context and one
+  typed snapshot per referenced variable/ans. The parameter shadows a session
+  name under [naming rules](../guides/VARIABLES.md#syntax-and-lifetime). Assignment
+  and every random alias are rejected. Source text/session can then be destroyed.
+- `application_expression_sample` borrows typed parameters, returning an owned
+  sample array without reparsing, source substitution or display round trips.
+- Destroy handles/samples with their matching functions. Initialize outputs;
+  success publishes new ownership, failure preserves pointers. Samples outlive
+  handles/inputs. Handles are neither concurrent nor reentrant.
 
-- `application_expression_prepare` parses one expression and returns an owned
-  opaque handle. The parameter follows [session naming rules](../guides/VARIABLES.md#syntax-and-lifetime)
-  and shadows a session variable of the same name. Assignments and every
-  registered random-call alias are rejected, including nested calls.
-- Only referenced variables and `ans` are copied, each once, into owned typed
-  snapshots. The context is copied too. Input text and the source session may
-  subsequently change or be destroyed without invalidating the handle.
-- `application_expression_sample` evaluates borrowed typed parameter values
-  against the prepared AST. It returns an owned array of typed samples. There
-  is no string substitution, reparsing or conversion of results to display text.
-- `application_expression_destroy` and
-  `application_expression_samples_destroy(samples, count)` release the owned
-  resources. Callers initialize output pointers and destroy old outputs before
-  replacing them: success publishes a new object; failure preserves the pointer.
-
-Preparation and sampling do not change variables, ans, preview/cache values,
-history, random state or session revisions. Handles temporarily borrow one
-parameter during execution and must not be used concurrently or reentrantly.
-Samples own their results independently of the handle and inputs.
+Preparation/sampling never mutate session values, preview/history/RNG or revisions.
 
 ## Errors and resource limits
 
-Preparation retains original UTF-8 byte offsets for syntax, forbidden random
-calls and unresolved names. Missing `ans` fails during preparation. Released
-sessions cannot be used as sources.
+Errors retain original UTF-8 byte offsets. Missing ans/unresolved names fail
+preparation; released sessions are invalid sources. Batches accept 1–1024 valid
+typed parameters. Domain/dimension errors produce individual empty samples;
+later points continue. Graph adapters classify non-real/quantity values explicitly.
 
-A batch accepts 1–1024 parameter values. Each value must be a valid typed
-calculator value with its numeric presence marker populated. Division by zero,
-invalid numeric domains, dimension errors and unsupported functions produce
-individual empty samples with their `CalculatorError`. Later points still run.
-The graph adapter must additionally classify non-real/quantity outputs and
-discontinuities; complex results are not silently projected onto the real axis.
-
-Resource exhaustion, scale/size overflow and structural input errors abort the
-whole batch. No partially filled result array is published. An allocation fault
-or deadline leaves the handle reusable after the enclosing budget is ended.
-
-All points share one time budget and the existing cumulative 128 MiB allocation /
-8 MiB single-allocation bounds. Nested calls inherit a caller's runtime scope
-and do not clear or end it. A graph/solver adapter spanning preparation and
-multiple adaptive batches must install one outer budget before preparation.
-Separate calls without an outer scope are separate bounded operations, not an
-unlimited graph/solver request. Output formatting and HTTP serialization must
-also remain inside that adapter's outer operation budget.
+Resource/scale/structural failures abort the whole batch, preserving output.
+Handles recover after the enclosing failed scope ends. All points share one
+budget; nested calls never reset/end it. Graph/solver workflows must wrap
+preparation, batches, formatting and serialization in one outer scope.
 
 ## Next integration
 
-1. The application sampler and HTTP contract now generate exact inclusive
-   uniform grids, classify domain/complex/quantity points and preserve sessions.
-   Adaptive midpoint refinement now provides bounded heuristic gap detection.
-2. Responsive 2D `y = f(x)` plotting, axes and accessible point data are available.
-   Automatic AST parameters and conservative adaptive connections are available.
-   Pan/zoom, screen-space derivatives/refinement, supported integer points and
-   bounded candidate verification are implemented; sampling is not a proof.
-3. The [bounded real-root adapter](../reference/NUMERIC_ROOT_HTTP_API.md) reuses
-   prepared expressions, residual verification and one complete-operation budget.
-   Public callback-based kernels remain independent of expression parsing.
+Uniform/adaptive/screen graph adapters and checked numerical roots already use
+this foundation. Grids/root kernels are public; expression/domain adaptation
+remains private. Sampling and discovered points do not prove completeness.
+[Graph contracts](../API.md) · [Numerical equations](../reference/NUMERIC_ROOT_HTTP_API.md).
 
 ## Verification
 
-`application_expression_tests` checks exact results, complex/quantity parameters,
-parameter shadowing, source-text/session lifetime, preserved session bytes,
-angle/context snapshots, domain gaps, naming/random restrictions, atomic
-preparation and sampling failures, cancellation and recovery. Allocation-enabled
-builds also require zero live allocations after cleanup and verify that a budget
-large enough for one point cannot pay for two by resetting per-point limits.
-Existing calculator/session/HTTP numerical references exercise the shared typed
-evaluation stage after its extraction from the one-shot pipeline.
+`application_expression_tests` covers snapshots, lifetime, typed domains,
+parameter shadowing, failures and shared budgets. Allocation-enabled fixtures
+require zero live allocations and ensure a one-point budget cannot fund two
+points by resetting counters. [Testing](../TESTING.md).

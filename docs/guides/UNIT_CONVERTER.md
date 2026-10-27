@@ -1,162 +1,62 @@
 # Browser unit converter
 
-Calculator expressions also accept `convert(value; "from"; "to")`.
-For example, `convert(90; "km/h"; "m/s")` returns `25`, and
-`convert(1/3; "km"; "m")` returns the exact number `1000/3`.
-See [expression syntax and limits](../reference/UNITS.md#calculator-expressions).
-Typed [Quantity expressions](../reference/QUANTITIES.md) are available in the calculator.
-This converter still expects a numeric coordinate; use explicit `convert(...)`
-to extract a number from a quantity variable or quantity-valued `ans` first.
+Open **Units / Jednotky** (`/units`).
 
-Open **Units / Jednotky** in the local application, or `/units?lang=en` /
-`/units?lang=sk`. The page shares the calculator's purple workbench, navigation,
-form controls and background. All assets are embedded in `numforge_web`.
+1. Choose a category, source and destination unit.
+2. Enter a number or expression, e.g. `1/3` or `sqrt(2)`.
+3. Wait two seconds for a preview, or press **Enter / Convert** to confirm.
 
-1. Choose a quantity. On mobile, open the quantity selector above the converter.
-2. Enter a number or calculator expression, such as `1/3` or `sqrt(2)`.
-3. Choose source and destination units. Common units appear first, followed by
-   the remaining catalogue entries and prefixes. Both menus contain only units
-   in the selected compatible category.
-4. The result previews after two seconds without edits. Press Enter or
-   **Convert / Previesť** to calculate immediately and
-   confirm the displayed conversion. **Swap** exchanges units and keeps the input
-   value. **Copy** copies the result number; the destination symbol is displayed
-   separately. Long results wrap and can be scrolled with keyboard focus.
+**Swap** exchanges units while keeping the input; **Copy** copies the number
+without its unit. Mobile confirmation closes the keyboard and reveals the result.
+Small windows scroll normally; desktop results/history scroll inside their cards.
 
-The desktop sidebar offers ten quantity categories and conversion history. On narrow
-screens the categories collapse behind a button; choosing one closes the menu
-and returns keyboard focus to that button. Native selects, visible focus,
-labelled controls and live status messages support keyboard/screen-reader use.
-Shift+Enter inserts a line break; Enter converts.
-The input starts at one line, grows to at most three visible lines, and then
-scrolls internally without an expansion button.
+**Precision and display** separates working digits (default 34) from displayed
+places (default 10). Full/custom output, notation and six rounding modes are
+available. RAD/DEG affects functions in the expression, not the selected units.
+Exact and approximate factors/results are identified; a rounded display is not
+an error bound. **About units and sources** explains definitions and distinctions
+such as temperature points/intervals, MB/MiB and US/UK volumes.
 
-On phones, confirming a conversion dismisses the input keyboard and reveals the
-result below the navigation. The mobile header hides when scrolling down and
-returns when scrolling up. Live previews keep the page position. History
-sits below the result in portrait and landscape, and introductory/help paragraphs
-are hidden; error messages and unit-source information remain available.
-
-On desktop viewports at least 1200 pixels wide and 740 pixels high, the page
-uses one screen: settings stay visible beside the input, with the result and
-footer remaining accessible. The converter reserves a stable height; remaining
-space goes to the result panel. Long numeric results scroll within their field.
-Narrower or shorter windows use normal page scrolling, including around
-961–1199 pixels where the calculator's desktop styles would otherwise lock it.
-
-**Precision and display** separates working significant digits from displayed
-decimal places. Defaults are 34 working digits and 10 displayed places, with
-automatic notation and nearest/ties-to-even rounding. Full/custom output,
-plain/scientific/fraction notation and all six rounding modes are available.
-RAD/DEG controls functions inside the expression; source/destination units
-control the conversion. Approximation notes distinguish approximate expression
-evaluation and pi-based angle factors. Exact factors do not imply unrounded
-displayed text or certified rounding of approximate calculations.
-On desktop these controls are permanently visible; smaller screens retain a
-collapsible section. Short fraction results also show a secondary decimal hint
-with the output unit, separated from the exact value by a rule. Copying keeps
-the primary exact value; the hint is not an error bound.
-
-**About units and sources** links to the definitions for the selected units and
-explains distinctions such as temperature points versus intervals, MB versus
-MiB, and US versus UK volume units. Values below absolute zero are converted
-mathematically; physical-domain validation is outside this converter's scope.
-
-When arriving from the calculator in the same tab, conversions can read its
-confirmed `ans` and session variables. They never change them, calculator
-history, random state or pending previews. Confirmation adds a record to the
-separate converter history. Assignments and `rand()` are rejected. If the session
-expires, reset/start a new calculator session. A direct visit starts a session. Selections/settings/input survive language and
-tool navigation in the same tab; each result is recomputed. A page reload can
-restore converter fields, and the same retained server session is read again.
-
-Previews use the [unit HTTP API](../reference/UNIT_HTTP_API.md); confirmations
-and saved history use the [session HTTP API](../reference/SESSION_HTTP_API.md).
-Editing cancels previews and clears the old copy value. Outdated responses
-cannot overwrite newer results. Sent confirmations remain retryable with their
-original revision and input even if the response is lost or the user navigates.
+Conversions can read the same tab's confirmed calculator variables/ans, but do
+not change them. Assignments and random calls are rejected. A quantity-valued
+input needs an explicit numeric conversion first. The calculator also accepts
+`convert(90;"km/h";"m/s")` → `25` and
+`convert(1/3;"km";"m")` → exact `1000/3`.
 
 ## Conversion history
 
-Only a successful Enter/Convert adds an entry. Previews, errors and restoring an
-entry add nothing. The application retains the last 16 confirmations per session;
-clear history resets converter numbering without changing calculator state.
+Only successful confirmations add entries: up to 16 per session. Select an entry
+to restore its original inputs and saved value without reevaluating changed
+variables. Its copy button uses the full saved number; the main Copy uses the
+displayed number. Editing resumes preview; Enter creates a new confirmation.
 
-Each record owns the expression, source/destination units, original context,
-display and a versioned typed value. Exact results preserve integers or reduced
-rationals; approximate results preserve all digits of the finite computed decimal,
-tagged `decimal_approximation`. This preserves the approximation without making
-the mathematical result exact. Numeric text is limited to 65,536 bytes and a full
-JSON response to 128 KiB; an oversized confirmation fails before adding an entry.
-
-Click an entry to retrieve and restore its original fields and displayed result,
-without reevaluating against changed variables/ans. Its copy button copies the
-full saved numeric text (a fraction or finite decimal in scientific notation),
-without the unit. The main result copy button copies displayed numeric text.
-Editing restored fields starts a fresh preview; Enter creates a new confirmation.
-
-History lives in server memory under the tab's session ID, shared with the
-calculator. Reload and tool/language navigation read that same session;
-independently started sessions remain isolated. Server restart, reset/release
-or FIFO session eviction removes saved values. There is no permanent archive.
-Browser session storage keeps presentation fields and a small pending request,
-not authoritative history. A lost response is retried with the same revision,
-expression and settings; the server returns the saved result without appending
-twice. A pending confirmation cannot be submitted twice concurrently.
-Examples are collapsible; history scrolls within its card.
+Clear removes converter history while preserving calculator state. Reload and
+tool/language navigation retain the session; expiry, reset/eviction or server
+restart remove stored values. Inputs/settings are tab-local, not a permanent
+archive. [Session contract](../reference/SESSION_HTTP_API.md).
 
 ## Currencies
 
-Choose **Currencies / Meny** on the same page. Enter a decimal amount (dot or
-comma), choose a pair and press **Convert** or Enter. Swap keeps the input
-amount; Copy copies only the rounded number. Auto uses the target currency's
-usual decimal places; explicit 2/4/8 places are also available. Negative amounts
-and up to 200 integer digits are accepted; expressions and exponents are not.
+Choose **Currencies / Meny**, enter a decimal amount (point or comma), choose a
+pair and press Convert. Auto uses the target currency's usual decimal places;
+2/4/8 places can be selected. Negative amounts and up to 200 integer digits are
+accepted; expressions and exponents are not.
 
-The free, keyless [Frankfurter API](https://frankfurter.dev/) supplies
-[ECB reference rates](https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html)
-via `https://api.frankfurter.dev/v2/providers/ecb/rates?base=EUR`.
-These are daily reference rates, usually published around 16:00 CET on working
-days, **not live trading quotes**. The page shows publication date, last check
-and attribution. The searchable table quotes currencies per 1 EUR. Supported
-currencies follow the provider's current ECB set; crypto is outside this scope.
+The free [Frankfurter API](https://frankfurter.dev/) provides daily
+[ECB reference rates](https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html),
+**not live trading quotes**. Publication date, last check and source are shown;
+the searchable table quotes units per 1 EUR. Banks may apply different rates/fees.
 
-Only opening Currencies contacts the provider. One validated table is cached in
-sessionStorage for the current tab and rechecked after an hour while visible.
-Manual refresh has a one-minute cooldown. Source failures may use the saved
-table with an explicit warning; publication/check ages of ten days or more,
-future dates, inconsistent dates, duplicate codes and invalid rates are rejected.
-Without usable rates conversion is disabled. Reload/language/tool navigation
-retain input and the table, not a guaranteed saved monetary result. Amounts are
-sent only to NumForge, never to the rate provider. No key, database or added
-server runtime is required. Banks may use different rates, spreads and fees.
+Opening this tab fetches/caches a validated table and rechecks after an hour
+while visible. Manual refresh has a one-minute cooldown. Failures may use a
+saved table with a warning; unusable/ten-day-old data disables conversion.
+Amounts go only to NumForge, never to the provider. Large amounts are calculated
+in C, with one ties-to-even rounding step. Currency rates are separate from fixed
+units and Quantity expressions.
 
 ### Supplied-rate HTTP arithmetic
 
-`POST /api/currency/convert?places=2`, `Content-Type: text/plain`, body:
-
-```text
-100
-1
-1.2
-```
-
-The three LF-separated values are amount, source units per common base and
-target units per common base. The response is
-`{"ok":true,"approximate":true,"result":"120"}`. This endpoint **does not fetch
-or authenticate rates**; source/date metadata belongs to the supplied snapshot.
-It is stateless and does not read/change calculator variables or history.
-Existing origin and Content-Length rules apply. The query accepts exactly one
-`places` digit, 0–8. Body is at most 308 bytes, with no trailing newline, NUL,
-whitespace, expression or exponent: amount at most 256 bytes (200 integer/100
-fractional digits), positive rate at most 25 bytes (12 integer/12 fractional
-digits). Errors return `ok:false,status` with HTTP 400, or 500 for allocation
-failure. Invalid requests never publish a partial result.
-
-The adapter calls shared `bigdecimal_mul` exactly, then `bigdecimal_div` once at
-the requested fixed decimal scale with ties-to-even rounding. Thus large amounts
-do not pass through JavaScript floating-point arithmetic or calculator working
-precision. Standalone C callers can use the same public numeric operations.
-`approximate:true` describes the indicative market data, not an error bound or
-an exact executable price. Currency snapshots are separate from fixed units and
-are not accepted as `Quantity` expressions.
+The stateless endpoint accepts supplied rates; it does not fetch/authenticate
+them. See the [currency HTTP contract](../reference/UNIT_HTTP_API.md#currency-arithmetic)
+for body, rounding and size/error rules. Fixed-unit conversion uses the
+[unit HTTP API](../reference/UNIT_HTTP_API.md).

@@ -14,6 +14,7 @@ private application/session headers are not installed SDK interfaces.
 | Exact polynomial equations and bounded numerical root discovery | [Polynomial](EQUATION_HTTP_API.md), [numerical](NUMERIC_ROOT_HTTP_API.md) |
 | Exact matrix determinant, rank, product, square solve and general linear-system families | [Matrix editor and HTTP](MATRIX_API.md#web-editor-and-http) |
 | Unit catalogue, conversion and conversion history | [Units](UNIT_HTTP_API.md), [sessions](SESSION_HTTP_API.md) |
+| Decimal amount conversion using supplied exchange rates | [Currency arithmetic](UNIT_HTTP_API.md#currency-arithmetic) |
 
 Accounts remain browser placeholders. There is no account API or database.
 Input editing, clipboard, language and scrolling are presentation actions.
