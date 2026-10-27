@@ -44,7 +44,7 @@ for(const lang of ['en','sk'])test(`numeric constants use shared translated alia
 });
 
 test('examples are mode-aware, fill interval and coefficients, and wait for explicit solve',async({page})=>{
- await page.goto('/solve?lang=en');await page.locator('.equation-example-list summary').click();
+ await page.goto('/solve?lang=en');
  await page.locator('#equation-examples button').last().click();await expect(page.locator('#equation-expression')).toHaveValue('x^2+1=0');
  await expect(page.locator('.equation-root')).toHaveCount(0);await page.locator('#equation-submit').click();await expect(page.locator('#equation-roots')).toContainText('-i');
  await page.locator('#equation-mode').selectOption('numeric');await page.locator('#equation-examples button').first().click();

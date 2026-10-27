@@ -1056,6 +1056,10 @@ void numforge_handle_connection_before(
     {
         numforge_send_response(socket, 200, "OK", "text/javascript; charset=utf-8", (const char *)NUMFORGE_CURRENCY_JS);
     }
+    else if (strcmp(method, "GET") == 0 && strcmp(target, "/assets/input-history.js") == 0)
+    {
+        numforge_send_response(socket, 200, "OK", "text/javascript; charset=utf-8", (const char *)NUMFORGE_INPUT_HISTORY_JS);
+    }
     else if (strcmp(method, "GET") == 0 && strcmp(target, "/assets/calculator.css") == 0)
     {
         numforge_send_response(socket, 200, "OK", "text/css; charset=utf-8", (const char *)NUMFORGE_CALCULATOR_CSS);

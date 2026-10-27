@@ -6,6 +6,9 @@ Earlier detailed development notes remain in Git history.
 
 ## Unreleased
 
+- Unified desktop tool workspaces, wider monitor support, bounded input recents
+  for equations/matrices, and separate currency input/result panels.
+
 - Free daily ECB currency rates through Frankfurter, searchable rate table,
   cached/offline-source fallback and decimal conversions rounded once in C.
 

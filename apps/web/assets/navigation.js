@@ -415,6 +415,11 @@ async function navigate(destination, addHistory = true)
                 document.body.append(script);
             });
         }
+        if(replacement.querySelector('#equation-form,#matrix-form')&&!window.numforgeInputHistory)
+            await new Promise((resolve,reject)=>{
+                const script=document.createElement('script');script.src='/assets/input-history.js';
+                script.onload=resolve;script.onerror=reject;document.body.append(script);
+            });
         if (replacement.querySelector('#equation-form'))
         {
             if (window.numforgeInitEquations) window.numforgeDisposeEquations = window.numforgeInitEquations();

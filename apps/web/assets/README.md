@@ -9,11 +9,12 @@ HTML structure, labels, guide part keys and section IDs aligned.
 | --- | --- |
 | `calculator.*.html`, `calculator.js` | Expression input, previews, confirmation, function categories, keypad and session UI. |
 | `calculator.css` | Shared workbench controls and responsive calculator layout; tool styles import it. |
-| `chrome.css`, `navigation.js` | Shared header/footer, internal navigation, language changes and guide selection. |
+| `chrome.css`, `navigation.js` | Shared theme/panel primitives, header/footer, navigation lifecycle, language and guide selection. |
 | `api.*.html`, `api.css` | Guide content and its reading layout. |
 | `function-library.js` | Localized descriptions/search aliases; `/api/functions` owns availability. |
 | `graph.js`, `graph.css` | Up to four curve caches, camera, request queue, editor and expanded plot. |
 | `graph-files.js` | Bounded workspace-file validation and standalone SVG/PNG capture; no sampling mathematics. |
+| `input-history.js` | Bounded input-only recents shared by equations/matrices; restoration never calculates. |
 | `equations.js`, `units.js`, `matrices.js` and their styles | C/HTTP adapters, result presentation and same-tab state for each tool. |
 
 Mathematics and typed values belong to C. JavaScript validates/projects coordinates

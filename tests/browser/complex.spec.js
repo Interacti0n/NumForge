@@ -1,7 +1,8 @@
 const {test, expect}=require('@playwright/test');
+const {randomBytes}=require('node:crypto');
 // Confirm long function catalogues immediately; preview.spec.js checks idle scheduling.
 test('HTTP complex logarithm preserves a tiny component after cancellation',async({request})=>{
-    const client='bcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbc';
+    const client=randomBytes(16).toString('hex');
     const base='/api/evaluate?precision=10&client='+client;
     expect((await (await request.post(base+'&revision=1&action=start',{data:''})).json()).ok).toBe(true);
     const imaginary='1.'+'0'.repeat(59)+'1';
@@ -23,7 +24,7 @@ for(const lang of ['sk','en']) for(const width of [390,1280]) {
     });
 }
 test('HTTP complex aggregates keep exact components and failed commits preserve state',async({request})=>{
-    const client='abababababababababababababababab';
+    const client=randomBytes(16).toString('hex');
     const base='/api/evaluate?precision=10&client='+client;let revision=1;
     const evaluate=async(expression,action='preview')=>(await request.post(base+'&revision='+revision+++'&action='+action,{data:expression})).json();
     expect((await evaluate('','start')).ok).toBe(true);
@@ -203,7 +204,7 @@ for(const lang of ['sk','en']) for(const width of [390,1280]) {
     });
 }
 test('HTTP forms reject invalid options and retain exact snapshots',async({request})=>{
-    const client='abababababababababababababababab';
+    const client=randomBytes(16).toString('hex');
     const base='/api/evaluate?precision=10&angle=rad&notation=auto';
     const start=await request.post(base+'&client='+client+'&revision=1&action=start',{data:''});expect(start.ok()).toBeTruthy();
     const response=await request.post(base+'&form=exp&client='+client+'&revision=2&action=commit',{data:'z=complex(-1;0)'});
@@ -247,7 +248,7 @@ test('HTTP complex roots retain exact components and preserve real domains',asyn
 });
 
 test('HTTP principal logarithm retains radians, typed values and failed-assignment state',async({request})=>{
-    const client='bcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbc',base='/api/evaluate?precision=10&angle=deg&notation=auto&client='+client;
+    const client=randomBytes(16).toString('hex'),base='/api/evaluate?precision=10&angle=deg&notation=auto&client='+client;
     let revision=1;
     const send=async(body,action='commit')=>(await request.post(base+'&revision='+(revision++)+'&action='+action,{data:body})).json();
     expect((await send('','start')).ok).toBe(true);

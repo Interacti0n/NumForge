@@ -142,6 +142,13 @@ rounding. Enter/Shift+Enter moves down/up a column, Alt+arrows moves between
 cells, and Ctrl/Cmd+Enter calculates. Tab retains normal focus traversal.
 Examples include unique, infinite, inconsistent and exact-fraction cases.
 
+Desktop grids occupy the left column, with results/recent tasks on the right;
+large grids and results scroll internally. **Recent matrices** keeps up to eight
+completed input sets in the current tab. Restore recovers both grids and the
+operation without calculating, and cancels older pending work. Entries can be
+removed or cleared independently of the current inputs; results are not stored.
+The [shared input-history limits](../design/WEB_DESIGN.md#shared-workbench-layout) apply.
+
 Save/Load workspace uses local UTF-8 JSON: `format:"numforge.matrix-workspace"`,
 `version:1`, `operation`, and rectangular string arrays `a`/`b`. File limit is
 20,000 bytes; dimensions/cell limits below apply. Draft invalid/empty cell text

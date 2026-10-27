@@ -323,13 +323,13 @@ test(`header controls keep their size and position when changing language (${fon
 
 test('guide stays separate from tools and accessible with the mobile menu closed', async ({ page }) => {
     for (const lang of ['sk', 'en']) {
-        for (const route of ['/', '/api', '/units', '/graph', '/solve']) {
+        for (const route of ['/', '/api', '/units', '/graph', '/matrices', '/solve']) {
             await page.setViewportSize({width: 320, height: 812});
             await page.goto(`${route}?lang=${lang}`);
             const guide = page.locator('.header-guide');
             await expect(guide).toBeVisible();
-            await expect(guide).toHaveAttribute('href', route === '/solve' ? `/api?section=equations&lang=${lang}` : route === '/units' ? `/api?section=units&lang=${lang}` : route === '/graph' ? `/api?section=graphs&lang=${lang}` : `/api?lang=${lang}`);
-            await expect(page.locator('.primary-nav a')).toHaveCount(4);
+            await expect(guide).toHaveAttribute('href', route === '/solve' ? `/api?section=equations&lang=${lang}` : route === '/units' ? `/api?section=units&lang=${lang}` : route === '/graph' ? `/api?section=graphs&lang=${lang}` : route === '/matrices' ? `/api?section=matrices&lang=${lang}` : `/api?lang=${lang}`);
+            await expect(page.locator('.primary-nav a')).toHaveCount(5);
             expect(await guide.evaluate(link => link.closest('.site-navigation') === null)).toBe(true);
             const boxes = await page.locator('.brand, .header-guide, .nav-toggle').evaluateAll(controls =>
                 controls.map(control => {

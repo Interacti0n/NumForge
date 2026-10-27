@@ -17,7 +17,7 @@
         <img class="brand-mark" src="/assets/logo.png" alt="" width="45" height="45">
         <span class="brand-text"><strong>NumForge</strong><small>Presné výpočty</small></span>
       </a>
-      <a class="guide-link header-guide" href="/api?section=equations&amp;lang=sk">Návod / API</a>
+      <a class="guide-link header-guide" href="/api?section=matrices&amp;lang=sk">Návod / API</a>
       <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-navigation" aria-label="Otvoriť navigáciu"><span class="menu-icon" aria-hidden="true"></span><span class="menu-label">Menu</span></button>
       <div class="site-navigation" id="site-navigation">
         <nav class="primary-nav" aria-label="Hlavná navigácia">
@@ -49,12 +49,17 @@
           <div class="matrix-actions"><button class="primary-button" id="matrix-submit" type="submit">Vypočítať</button><button id="matrix-swap" type="button" hidden>A ↔ B</button><button id="matrix-example" type="button">Obnoviť príklad</button></div>
         </form>
       </section>
-      <section class="card matrix-result" aria-labelledby="matrix-result-title"><div class="section-heading"><h2 id="matrix-result-title">Výsledok</h2><button id="matrix-copy" type="button" disabled>Kopírovať</button></div><p id="matrix-status" role="status">Uprav maticu a zvoľ Vypočítať.</p><p id="matrix-error" role="alert" hidden></p><div id="matrix-output" class="matrix-scroll" tabindex="0" aria-label="Presný výsledok"></div><p class="matrix-help">Bez zaokrúhľovania. Matice sa kopírujú ako tabuľka; rodina riešení ako vektorový zápis.</p></section>
+      <section class="card matrix-result" aria-labelledby="matrix-result-title"><div class="section-heading"><h2 id="matrix-result-title">Výsledok</h2><button id="matrix-copy" type="button" disabled>Kopírovať</button></div><p id="matrix-status" role="status">Uprav maticu a zvoľ Vypočítať.</p><p id="matrix-error" role="alert" hidden></p><div id="matrix-empty" class="workbench-placeholder"><span id="matrix-empty-symbol" aria-hidden="true">det(A)</span><p>Uprav bunky alebo načítaj príklad a zvoľ Vypočítať. Výsledok zostáva exaktný.</p></div><div id="matrix-output" class="matrix-scroll" tabindex="0" aria-label="Presný výsledok"></div><p class="matrix-help">Bez zaokrúhľovania. Matice sa kopírujú ako tabuľka; rodina riešení ako vektorový zápis.</p></section>
+      <section class="card workspace-history matrix-history" id="matrix-history" aria-labelledby="matrix-history-title" tabindex="-1">
+        <div class="workbench-panel-heading"><h2 id="matrix-history-title">Posledné matice</h2><button type="button" data-history-clear>Vymazať</button></div>
+        <p class="workspace-history-note">V tejto karte · obnoví zadanie bez výpočtu</p><p data-history-empty>Po dokončení výpočtu tu nájdeš posledné zadania.</p><ol data-history-list></ol>
+      </section>
     </main>
     <footer class="page-footer"><span>NumForge v@NUMFORGE_VERSION@ · © 2026 Interacti0n</span><nav class="footer-links" aria-label="Informácie o projekte"><a class="login-link" href="/login?lang=sk">Účty · pripravujeme</a><a class="register-link" href="/register?lang=sk">Registrácia · pripravujeme</a><a href="/LICENSE" data-license>MIT licencia</a><a href="https://github.com/Interacti0n/NumForge" target="_blank" rel="noopener noreferrer">GitHub</a></nav></footer>
   </div>
   <script src="/assets/result-display.js"></script>
   <script src="/assets/navigation.js"></script>
+  <script src="/assets/input-history.js"></script>
   <script src="/assets/matrices.js"></script>
 </body>
 </html>

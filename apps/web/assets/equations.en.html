@@ -39,7 +39,7 @@
 
     <div class="units-workspace equations-workspace">
       <main class="card equation-entry">
-        <h1>Equations</h1><p class="equation-formula">ax² + bx + c = 0</p>
+        <div class="workbench-panel-heading"><h1>Equations</h1><p class="equation-formula">ax² + bx + c = 0</p></div>
         <form id="equation-form">
           <label class="equation-mode-label" for="equation-mode">Mode<select id="equation-mode"><option value="expression">Whole equation</option><option value="coefficients">Coefficients a, b, c</option><option value="numeric">Numerical interval root</option><option value="numeric_scan">Multiple interval roots</option></select></label>
           <label for="equation-expression" id="equation-expression-field">Equation in x<input id="equation-expression" type="text" value="x^2 - 2 = 0" maxlength="4096" spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="equation-help" required></label>
@@ -53,7 +53,7 @@
             <label for="equation-c">c<input id="equation-c" name="c" type="text" value="-2" maxlength="4096" spellcheck="false" autocapitalize="off" autocomplete="off" required></label>
           </div>
           <p class="equation-hint" id="equation-help">Linear or quadratic in x, e.g. 3x + 1 = 7 or (x - 2)*(x + 3) = 0. Exact real constants; no x in denominators.</p>
-          <div class="equation-tools"><button type="button" id="equation-edit" aria-haspopup="dialog" aria-controls="equation-editor">ƒ Functions &amp; constants</button><details class="equation-example-list"><summary>Examples</summary><div id="equation-examples" aria-label="Examples"></div></details></div>
+          <div class="equation-tools"><button type="button" id="equation-edit" aria-haspopup="dialog" aria-controls="equation-editor">ƒ Functions &amp; constants</button></div>
           <div class="equation-actions"><button class="primary-button" type="submit" id="equation-submit">Solve</button><button type="button" id="equation-clear">Clear</button></div>
           <details class="equation-settings"><summary>Preview precision</summary><label for="equation-precision">Significant digits<input id="equation-precision" type="number" min="1" max="1000" value="16" required></label><p>Exact roots are preserved. Decimal previews are approximate.</p></details>
         </form>
@@ -67,7 +67,12 @@
       <section class="card equation-result" aria-labelledby="equation-result-title">
         <h2 id="equation-result-title">Solutions</h2>
         <p id="equation-status" role="status" aria-live="polite">Enter an equation and choose Solve.</p>
-        <p id="equation-error" role="alert" hidden></p><ol id="equation-roots"></ol>
+        <p id="equation-error" role="alert" hidden></p><ol id="equation-roots"></ol><div id="equation-empty" class="workbench-placeholder"><span aria-hidden="true">x = ?</span><p>Enter an equation or choose an example. Exact roots and numerical previews appear here.</p></div>
+      </section>
+      <section class="card equation-examples-card" aria-labelledby="equation-examples-title"><div class="workbench-panel-heading"><h2 id="equation-examples-title">Examples to explore</h2><span aria-hidden="true">ƒ</span></div><p class="workspace-history-note">Choose a template for the current mode. Solve when ready.</p><div id="equation-examples" aria-labelledby="equation-examples-title"></div></section>
+      <section class="card workspace-history equation-history" id="equation-history" aria-labelledby="equation-history-title" tabindex="-1">
+        <div class="workbench-panel-heading"><h2 id="equation-history-title">Recent equations</h2><button type="button" data-history-clear>Clear</button></div>
+        <p class="workspace-history-note">This tab · restore inputs without calculating</p><p data-history-empty>Your recent tasks appear here after a completed calculation.</p><ol data-history-list></ol>
       </section>
     </div>
     <footer class="page-footer"><span>NumForge v@NUMFORGE_VERSION@ · © 2026 Interacti0n</span><nav class="footer-links" aria-label="Project information"><a class="login-link" href="/login?lang=en">Accounts · planned</a><a class="register-link" href="/register?lang=en">Registration · planned</a><a href="/LICENSE" data-license>MIT License</a><a href="https://github.com/Interacti0n/NumForge" target="_blank" rel="noopener noreferrer">GitHub</a></nav></footer>
@@ -75,6 +80,7 @@
   <script src="/assets/function-library.js"></script>
   <script src="/assets/result-display.js"></script>
   <script src="/assets/navigation.js"></script>
+  <script src="/assets/input-history.js"></script>
   <script src="/assets/equations.js"></script>
 </body>
 </html>

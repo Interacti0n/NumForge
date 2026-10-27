@@ -11,7 +11,7 @@ CMake embeds editable `apps/web/assets/` files in the server. Rebuilding updates
 the executable; runtime does not locate a separate asset directory. See the
 [asset source guide](../../apps/web/assets/README.md) for edit/build rules.
 
-Calculator, Units, Graphs and Equations are implemented. Guide/API is a separate
+Calculator, Units/Currencies, Graphs, Equations and Matrices are implemented. Guide/API is a separate
 utility page. Login/register pages remain informational; there is no account or
 persistence backend. Internal navigation replaces tool content while retaining
 the shared header/footer and same-tab workspace. Browser history uses the same
@@ -23,11 +23,32 @@ another mathematics implementation. UI state, camera and layout stay in clients.
 Generated responses are checked against request generations so stale work does
 not replace newer input. Aborting a fetch does not replace C resource limits.
 
-The server is sequential and loopback-bound. Absolute monotonic receive/send
+The server is loopback-bound with a bounded worker pool. Absolute monotonic receive/send
 deadlines prevent slow clients from extending a request indefinitely. Origin,
 framing, input/response bounds and remote-proxy configuration belong to the
 [HTTP contract](../reference/HTTP_API.md) and [hosting guide](../guides/HOSTING.md).
-These protections do not establish concurrent-server readiness.
+The tested operating profile and its limits are documented in the hosting guide.
+
+## Shared workbench layout
+
+Tool pages share the indigo/violet/cyan palette, panel treatment, focus styles
+and spacing. Roomy desktop windows use the available height between navigation
+and footer; wide monitors expand the app frame up to 1920px. Short/narrow windows
+retain normal page scrolling. Long lists, numeric output and large matrices
+scroll within their own bounded areas, without hiding primary actions.
+
+The calculator aligns its session with the keypad; graphs align input/preview
+above history/library. Equations use input/solutions above examples/recent tasks.
+Matrices give grids the full left column and divide the right into results/recent
+tasks. Units align converter/categories above result/history. Currencies separate
+input and result beside the rate table. Empty results show an actionable hint,
+never a fabricated calculation or marketing filler.
+
+`input-history.js` owns input-only equation/matrix recents: up to eight per tool,
+20,000 UTF-8 bytes per task and 64,000 bytes per stored collection. Entries are
+deduplicated, removable and local to the current browser tab. Restoring cancels
+pending work, restores inputs and waits for explicit calculation. It is separate
+from typed calculator history, graph sampling and planned account persistence.
 
 ## Retained results and automatic precision
 

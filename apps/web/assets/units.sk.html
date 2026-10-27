@@ -92,12 +92,14 @@
             <div class="unit-pair"><label class="field">Z meny<select id="currency-from" disabled></select></label><button id="currency-swap" type="button" disabled aria-label="Vymeniť meny">⇄</button><label class="field">Do meny<select id="currency-to" disabled></select></label></div>
             <div class="currency-actions"><label class="field">Desatinné miesta<select id="currency-places"><option value="auto">Auto · podľa meny</option><option>2</option><option>4</option><option>8</option></select></label><button id="currency-submit" class="primary-button" type="submit" disabled>Previesť →</button></div>
           </form>
-          <div class="currency-result-heading"><h2>Orientačný výsledok</h2><button id="currency-copy" class="unit-copy" type="button" disabled>⧉ Kopírovať</button></div>
+        </section>
+        <section class="card currency-result" aria-labelledby="currency-result-title">
+          <div class="currency-result-heading"><h2 id="currency-result-title">Orientačný výsledok</h2><button id="currency-copy" class="unit-copy" type="button" disabled>⧉ Kopírovať</button></div>
           <div class="currency-result-line"><span aria-hidden="true">≈</span><output id="currency-result" for="currency-amount currency-from currency-to currency-places"></output><span id="currency-result-code"></span></div>
           <p id="currency-status" class="unit-status" role="status"></p><p id="currency-used" class="currency-note"></p>
           <div class="currency-source"><strong id="currency-rate-status" role="status"></strong><p id="currency-date"></p><p id="currency-checked"></p><button id="currency-refresh" class="unit-copy" type="button">↻ Obnoviť kurzy</button>
-          <p>Zdroj: <a href="https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html" target="_blank" rel="noopener noreferrer">ECB</a> · <a href="https://frankfurter.dev/" target="_blank" rel="noopener noreferrer">Frankfurter</a></p>
-          <p>Kurzy sa zvyčajne menia raz za pracovný deň okolo 16:00 CET. Cez víkendy a sviatky platí posledný zverejnený kurz. Banka alebo zmenáreň môže použiť iný kurz a poplatky.</p></div>
+<details class="currency-source-details"><summary>Zdroj a aktualizácia</summary>          <p>Zdroj: <a href="https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html" target="_blank" rel="noopener noreferrer">ECB</a> · <a href="https://frankfurter.dev/" target="_blank" rel="noopener noreferrer">Frankfurter</a></p>
+          <p>Kurzy sa zvyčajne menia raz za pracovný deň okolo 16:00 CET. Cez víkendy a sviatky platí posledný zverejnený kurz. Banka alebo zmenáreň môže použiť iný kurz a poplatky.</p></details></div>
         </section>
         <section class="card currency-list" aria-labelledby="currency-list-title"><h2 id="currency-list-title">Kurzový lístok</h2><p class="currency-note">Jednotky cudzej meny za 1 EUR</p><label class="field">Hľadať menu<input id="currency-search" type="search" maxlength="80" placeholder="EUR, USD, CZK…"></label><div class="currency-table-scroll"><table><thead><tr><th>Kód</th><th>Mena</th><th>1 EUR</th></tr></thead><tbody id="currency-rates"></tbody></table><p id="currency-empty" class="unit-status" hidden></p></div></section>
       </main>

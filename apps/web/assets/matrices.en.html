@@ -17,7 +17,7 @@
         <img class="brand-mark" src="/assets/logo.png" alt="" width="45" height="45">
         <span class="brand-text"><strong>NumForge</strong><small>Precise computing</small></span>
       </a>
-      <a class="guide-link header-guide" href="/api?section=equations&amp;lang=en">Guide &amp; API</a>
+      <a class="guide-link header-guide" href="/api?section=matrices&amp;lang=en">Guide &amp; API</a>
       <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-navigation" aria-label="Open navigation"><span class="menu-icon" aria-hidden="true"></span><span class="menu-label">Menu</span></button>
       <div class="site-navigation" id="site-navigation">
         <nav class="primary-nav" aria-label="Main navigation">
@@ -49,12 +49,17 @@
           <div class="matrix-actions"><button class="primary-button" id="matrix-submit" type="submit">Calculate</button><button id="matrix-swap" type="button" hidden>A ↔ B</button><button id="matrix-example" type="button">Reset example</button></div>
         </form>
       </section>
-      <section class="card matrix-result" aria-labelledby="matrix-result-title"><div class="section-heading"><h2 id="matrix-result-title">Result</h2><button id="matrix-copy" type="button" disabled>Copy</button></div><p id="matrix-status" role="status">Edit the matrix and choose Calculate.</p><p id="matrix-error" role="alert" hidden></p><div id="matrix-output" class="matrix-scroll" tabindex="0" aria-label="Exact result"></div><p class="matrix-help">No rounding. Matrices copy as a table; solution families as vector expressions.</p></section>
+      <section class="card matrix-result" aria-labelledby="matrix-result-title"><div class="section-heading"><h2 id="matrix-result-title">Result</h2><button id="matrix-copy" type="button" disabled>Copy</button></div><p id="matrix-status" role="status">Edit the matrix and choose Calculate.</p><p id="matrix-error" role="alert" hidden></p><div id="matrix-empty" class="workbench-placeholder"><span id="matrix-empty-symbol" aria-hidden="true">det(A)</span><p>Edit cells or load an example, then choose Calculate. The result remains exact.</p></div><div id="matrix-output" class="matrix-scroll" tabindex="0" aria-label="Exact result"></div><p class="matrix-help">No rounding. Matrices copy as a table; solution families as vector expressions.</p></section>
+      <section class="card workspace-history matrix-history" id="matrix-history" aria-labelledby="matrix-history-title" tabindex="-1">
+        <div class="workbench-panel-heading"><h2 id="matrix-history-title">Recent matrices</h2><button type="button" data-history-clear>Clear</button></div>
+        <p class="workspace-history-note">This tab · restore inputs without calculating</p><p data-history-empty>Your recent tasks appear here after a completed calculation.</p><ol data-history-list></ol>
+      </section>
     </main>
     <footer class="page-footer"><span>NumForge v@NUMFORGE_VERSION@ · © 2026 Interacti0n</span><nav class="footer-links" aria-label="Project information"><a class="login-link" href="/login?lang=en">Accounts · planned</a><a class="register-link" href="/register?lang=en">Registration · planned</a><a href="/LICENSE" data-license>MIT License</a><a href="https://github.com/Interacti0n/NumForge" target="_blank" rel="noopener noreferrer">GitHub</a></nav></footer>
   </div>
   <script src="/assets/result-display.js"></script>
   <script src="/assets/navigation.js"></script>
+  <script src="/assets/input-history.js"></script>
   <script src="/assets/matrices.js"></script>
 </body>
 </html>

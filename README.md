@@ -62,6 +62,10 @@ requests. Graphs and matrices support local workspace files; completed graphs
 export as standalone SVG/PNG images. No Node.js, Python or database is needed
 at runtime.
 
+Tool workspaces share a full-height desktop layout with independently scrolling
+panels; smaller windows use normal page scrolling. Equations and matrices also
+keep recent inputs for quick restoration without recalculating.
+
 ![Current calculator with exact fractions and confirmed history](docs/images/calculator-desktop.png)
 
 <details>

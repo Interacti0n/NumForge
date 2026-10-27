@@ -44,10 +44,18 @@ bounds. Opening, searching or selecting an example does **not** run a solve.
 If the catalogue cannot load, manual input still works and reopening retries.
 The editor closes cleanly on tool/language navigation without losing input.
 
-**Examples / Príklady** provides three inputs per mode, including complex
+**Examples / Príklady** provides four inputs per mode, including complex
 quadratic roots, a fractional coefficient, a cosine bracket, sine roots and a
 rational contact. Examples fill the appropriate coefficients/bounds and clear
 old results; explicitly choose Solve to evaluate them.
+
+Roomy desktop windows align input/solutions above examples/recent tasks; each
+long result list scrolls inside its panel. Smaller windows use page scrolling.
+**Recent equations / Posledné rovnice** keeps up to eight completed input sets
+in this tab, including mode, coefficients, interval and precision. Selecting one
+cancels pending work and clears the result; Solve is always explicit. Entries
+can be removed individually or cleared together. It is input-only local storage,
+not account history; [shared limits](../design/WEB_DESIGN.md#shared-workbench-layout) apply.
 
 Coefficients accept exact real numbers and calculator expressions, including
 finite decimal literals, fractions, integer powers and exact roots such as

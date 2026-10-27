@@ -72,7 +72,7 @@ test('guide routes accept only supported parts and languages in either order',as
 });
 
 test('tools open focused help, expandable detail and readable mobile/desktop layouts',async({page})=>{
- for(const [tool,part] of [['units','units'],['graph','graphs']]) {
+ for(const [tool,part] of [['units','units'],['graph','graphs'],['solve','equations'],['matrices','matrices']]) {
   await page.goto('/'+tool+'?lang=sk');await page.locator('.header-guide').click();
   await expect(page.locator(`[data-guide-panel="${part}"]`)).toBeVisible();
  }

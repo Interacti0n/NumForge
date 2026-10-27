@@ -68,7 +68,8 @@ function initEquations() {
         found:'Roots found: ', empty:'This scan could not confirm a root. ',
         gaps:' Some sections were undefined or a root could not be verified.'
     };
-    let controller = null, generation = 0, result = null;
+    let controller = null, generation = 0, result = null, recent = null;
+    const inputState=()=>({mode:mode.value,inputs:inputs.map(input=>input.value),expression:expression.value,bounds:bounds.map(input=>input.value),precision:precision.value});
     const equationHelp = document.querySelector('#equation-help').textContent;
     function save() {
         const state = {numericDomainVersion:2, scanCandidateVersion:1, inputs:inputs.map(input => input.value), expression:expression.value, bounds:bounds.map(input=>input.value), mode:mode.value, precision:precision.value, result};
@@ -76,8 +77,10 @@ function initEquations() {
             if (JSON.stringify(state).length > 24000) state.result = null;
             sessionStorage.setItem('numforge-equations-v1', JSON.stringify(state));
         } catch (_) { /* Storage is optional. */ }
+        recent?.refresh();
     }
     function render(value) {
+        document.querySelector('#equation-empty').hidden=!!value;
         roots.replaceChildren();
         status.textContent = value?.kind === 'numeric_scan' ?
             (value.count ? scanWords.found + value.count + '. ' : scanWords.empty) + scanWords[value.outcome] +
@@ -193,10 +196,10 @@ function initEquations() {
         renderExamples();
     }
     const examples = {
-        expression:[['3x + 1 = 7','3x+1=7'],['x² = 2','x^2=2'],['x² + 1 = 0','x^2+1=0']],
-        coefficients:[['1/3 · x − 2 = 0',['0','1/3','-2']],['x² − 2 = 0',['1','0','-2']],['(2x + 3)² = 0',['4','12','9']]],
-        numeric:[['cos(x) = x','cos(x)=x','0','1'],['ln(x) = 2','ln(x)=2','1','10'],['√x = 2','sqrt(x)=2','0','8']],
-        numeric_scan:[['sin(x) = 0','sin(x)=0','-10','10'],['(x − 1/3)² = 0','(x-1/3)^2=0','0','1'],['(x − 0.01)(x − 0.02) = 0','(x-0.01)*(x-0.02)=0','0','1']]
+        expression:[['3x + 1 = 7','3x+1=7'],['x² = 2','x^2=2'],['x² = 1/9','x^2=1/9'],['x² + 1 = 0','x^2+1=0']],
+        coefficients:[['1/3 · x − 2 = 0',['0','1/3','-2']],['x² − 2 = 0',['1','0','-2']],['x² − 1/9 = 0',['1','0','-1/9']],['(2x + 3)² = 0',['4','12','9']]],
+        numeric:[['cos(x) = x','cos(x)=x','0','1'],['ln(x) = 2','ln(x)=2','1','10'],['exp(x) = 2','exp(x)=2','0','1'],['√x = 2','sqrt(x)=2','0','8']],
+        numeric_scan:[['sin(x) = 0','sin(x)=0','-10','10'],['(x − 1/3)² = 0','(x-1/3)^2=0','0','1'],['cos(x) = 0','cos(x)=0','-10','10'],['(x − 0.01)(x − 0.02) = 0','(x-0.01)*(x-0.02)=0','0','1']]
     };
     function renderExamples() {
         const container = document.querySelector('#equation-examples'); container.replaceChildren();
@@ -351,7 +354,7 @@ function initEquations() {
             if (current !== generation) return;
             if (!response.ok || !data.ok) { showError(data); return; }
             if (!validResult(data)) throw Error('Invalid response');
-            result = data; render(data); save();
+            result = data; render(data); save();recent.remember(inputState());
             if (matchMedia('(max-width:760px)').matches) document.querySelector('.equation-result').scrollIntoView({block:'start',behavior:'smooth'});
         } catch (_) {
             if (current === generation) { error.textContent = words.network; error.hidden = false; status.textContent = ''; }
@@ -379,6 +382,12 @@ function initEquations() {
             value.roots.every(root=>typeof root.approximation==='string' && (isNumeric(value.kind) ? typeof root.x==='string' && typeof root.residual==='string' : typeof root.exact==='string'));
     }
     syncMode(); render(result);
+    const cleanText=(value,limit)=>typeof value==='string'&&new TextEncoder().encode(value).length<=limit&&!/[\u0000-\u001f\u007f]/.test(value);
+    recent=window.numforgeInputHistory({root:$('equation-history'),key:'numforge-equation-recent-v1',signal,current:inputState,
+        valid:s=>s&&['expression','coefficients','numeric','numeric_scan'].includes(s.mode)&&Array.isArray(s.inputs)&&s.inputs.length===3&&s.inputs.every(v=>cleanText(v,4096))&&cleanText(s.expression,4096)&&Array.isArray(s.bounds)&&s.bounds.length===2&&s.bounds.every(v=>cleanText(v,47))&&typeof s.precision==='string'&&/^\d{1,4}$/.test(s.precision)&&Number(s.precision)>=1&&Number(s.precision)<=1000,
+        label:s=>({title:s.mode==='coefficients'?s.inputs.map((v,i)=>'abc'[i]+' = '+v).join(' · '):s.expression,detail:mode.querySelector(`option[value="${s.mode}"]`).textContent+' · '+s.precision+(isNumeric(s.mode)?' · ['+s.bounds.join(', ')+']':'')}),
+        restore:s=>{mode.value=s.mode;inputs.forEach((input,i)=>input.value=s.inputs[i]);expression.value=s.expression;bounds.forEach((input,i)=>input.value=s.bounds[i]);precision.value=s.precision;syncMode();edit();(s.mode==='coefficients'?inputs[0]:expression).focus();}
+    });
     return () => { save(); cancel(); lifecycle.abort(); };
 }
 window.numforgeInitEquations = initEquations;

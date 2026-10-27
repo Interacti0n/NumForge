@@ -16,12 +16,12 @@ function initMatrices() {
     const matrixText=m=>m.map(row=>row.map(s=>s.trim()).join('\t')).join('\n');
     const canonical=value=>typeof value==='string'&&/^-?\d+(?:\/[1-9]\d*)?$/.test(value);
     const validResult=m=>valid(m,128*1024)&&m.every(row=>row.every(canonical));
-    let state=defaults(), request=null, generation=0, copied='';
+    let state=defaults(), request=null, generation=0, copied='', recent=null;
     try {
         const saved=JSON.parse(sessionStorage.getItem(key));
         if(saved?.version===1&&validState(saved)) state={operation:saved.operation,a:saved.a,b:saved.b};
     }catch{}
-    function save() {try{sessionStorage.setItem(key,JSON.stringify({version:1,...state}));}catch{}}
+    function save() {try{sessionStorage.setItem(key,JSON.stringify({version:1,...state}));}catch{}recent?.refresh();}
     function invalidate() {
         ++generation;request?.abort();request=null;submit.disabled=false;
         output.replaceChildren();copied='';copy.disabled=true;error.hidden=true;
@@ -52,6 +52,7 @@ function initMatrices() {
         document.querySelector(`[data-identity="${name}"]`).disabled=matrix.length!==matrix[0].length;
     }
     function mode() {
+        document.querySelector('#matrix-empty-symbol').textContent={determinant:'det(A)',rank:'rank(A)',multiply:'A · B',solve:'A · X = B',solve_general:'A · x = b'}[state.operation];
         const binary=['multiply','solve','solve_general'].includes(state.operation);
         form.dataset.binary=String(binary);document.querySelector('#matrix-swap').hidden=!binary;
         document.querySelector('#matrix-panel-b').hidden=!binary;
@@ -212,7 +213,7 @@ function initMatrices() {
             }else if(validResult(data.matrix)) {
                 output.append(tableResult(data.matrix));copied=matrixText(data.matrix);
             }else throw Error('Invalid result');
-            copy.disabled=false;status.dataset.state='ready';status.textContent=t('Hotovo · Exaktný výsledok','Done · Exact result');
+            copy.disabled=false;status.dataset.state='ready';status.textContent=t('Hotovo · Exaktný výsledok','Done · Exact result');recent.remember(state);
         }catch(failure) {
             if(id===generation){output.replaceChildren();showError(t('Server neodpovedal alebo odpoveď nie je platná. Skús výpočet znova.','The server did not respond or returned an invalid response. Try again.'));}
         }finally{clearTimeout(timeout);if(id===generation){submit.disabled=false;form.removeAttribute('aria-busy');request=null;}}
@@ -222,6 +223,10 @@ function initMatrices() {
         try{await navigator.clipboard.writeText(copied);if(id===generation)status.textContent=t('Výsledok skopírovaný.','Result copied.');}
         catch{if(id===generation)status.textContent=t('Kopírovanie nie je dostupné. Označ a skopíruj výsledok ručne.','Copy is unavailable. Select and copy the result manually.');}
     },options);
+    recent=window.numforgeInputHistory({root:document.querySelector('#matrix-history'),key:'numforge-matrix-recent-v1',signal:lifecycle.signal,valid:validState,current:()=>state,
+        label:s=>({title:operation.querySelector(`option[value="${s.operation}"]`).textContent,detail:`A ${s.a.length}×${s.a[0].length}: ${s.a[0].join(' · ')}${['multiply','solve','solve_general'].includes(s.operation)?` | B ${s.b.length}×${s.b[0].length}: ${s.b[0].join(' · ')}`:''}`}),
+        restore:s=>{invalidate();state=s;operation.value=s.operation;render('a');render('b');mode();save();document.querySelector('#matrix-a input').focus();}
+    });
     return ()=>{++generation;request?.abort();lifecycle.abort();save();};
 }
 window.numforgeInitMatrices=initMatrices;
