@@ -23,7 +23,8 @@ NumForgeStatus nf_python_budget_status(NumForgeStatus status);
 int nf_python_policy_parse(PyObject *module, PyObject *object, NFPythonPolicy *policy);
 PyObject *nf_python_fraction_pair(PyObject *module, const BigRational *value);
 int nf_python_dictionary_put(PyObject *dictionary, const char *name, PyObject *value);
-/* Own partially constructed arrays too; always destroy after this call.
+/* Retain values through the numeric call: rational entries borrow its capsules.
+ * Own partially constructed arrays/integer projections; always destroy after this call.
  * A pending Python exception can accompany OK and must be checked by the caller. */
 NumForgeStatus nf_python_exact_inputs(PyObject *values, Py_ssize_t count, const char *error,
     BigRational ***entries, const BigRational ***borrowed);

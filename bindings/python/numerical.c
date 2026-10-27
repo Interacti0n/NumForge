@@ -89,9 +89,10 @@ PyObject *nf_python_visit_grid(PyObject *module, PyObject *args)
     size_t count = PyLong_AsSize_t(count_object);
     if (PyErr_Occurred()) return NULL;
     if (!PyCallable_Check(function)) { PyErr_SetString(PyExc_TypeError, "visit must be callable"); return NULL; }
-    PyObject *values = PySequence_Fast(items, "grid bounds must be a sequence");
+    /* Callbacks may mutate caller-owned sequences; pin the capsule references. */
+    PyObject *values = PySequence_Tuple(items);
     if (values == NULL) return NULL;
-    if (PySequence_Fast_GET_SIZE(values) != 2) {
+    if (PyTuple_GET_SIZE(values) != 2) {
         Py_DECREF(values); PyErr_SetString(PyExc_ValueError, "expected two grid bounds"); return NULL;
     }
     NFPythonPolicy policy;
@@ -101,7 +102,7 @@ PyObject *nf_python_visit_grid(PyObject *module, PyObject *args)
     NumForgeStatus status = nf_python_exact_inputs(values, 2, "grid bounds must be exact real values", &entries, &borrowed);
     GridCallback work = {module, function}; PyObject *output = NULL;
     if (status == NUMFORGE_OK && !PyErr_Occurred())
-        status = numerical_status(numforge_grid_visit(entries[0], entries[1], count, grid_visit, &work));
+        status = numerical_status(numforge_grid_visit(borrowed[0], borrowed[1], count, grid_visit, &work));
     status = nf_python_budget_status(status);
     if (!PyErr_Occurred()) {
         if (status == NUMFORGE_OK) output = Py_NewRef(Py_None);
@@ -177,7 +178,7 @@ static PyObject *native_root_search(PyObject *module, PyObject *args, bool scann
         scan_options.max_evaluations = PyLong_AsSize_t(PyTuple_GetItem(settings, 6));
     }
     if (PyErr_Occurred()) return NULL;
-    PyObject *values = PySequence_Fast(items, "root bounds/tolerance must be a sequence");
+    PyObject *values = PySequence_Tuple(items);
     if (values == NULL) return NULL;
     if (PySequence_Fast_GET_SIZE(values) != 3) {
         Py_DECREF(values); PyErr_SetString(PyExc_ValueError, "expected two bounds and x tolerance"); return NULL;
@@ -196,13 +197,13 @@ static PyObject *native_root_search(PyObject *module, PyObject *args, bool scann
         if (!tolerance || !work.numerator) status = NUMFORGE_OUT_OF_MEMORY;
     }
     if (status == NUMFORGE_OK) status = nf_python_decimal_status(bigdecimal_set_string(tolerance, residual_text));
-    root_options.x_tolerance = entries ? entries[2] : NULL;
+    root_options.x_tolerance = borrowed ? borrowed[2] : NULL;
     root_options.residual_tolerance = tolerance;
     scan_options.root_options = root_options;
     if (status == NUMFORGE_OK) {
         NumForgeNumericalStatus solved = scanning ?
-            numforge_roots_scan(&scan, root_callback, root_domain, &work, entries[0], entries[1], &scan_options) :
-            numforge_root_solve(&root, root_sample, root_domain, &work, entries[0], entries[1], &root_options);
+            numforge_roots_scan(&scan, root_callback, root_domain, &work, borrowed[0], borrowed[1], &scan_options) :
+            numforge_root_solve(&root, root_sample, root_domain, &work, borrowed[0], borrowed[1], &root_options);
         status = solved == NUMFORGE_NUMERICAL_CALLBACK_FAILED && work.status != NUMFORGE_OK ?
             work.status : numerical_status(solved);
     }
@@ -237,7 +238,7 @@ PyObject *nf_python_integrate(PyObject *module, PyObject *args)
     policy.max_refinements = PyLong_AsSize_t(PyTuple_GetItem(settings, 1));
     policy.max_evaluations = PyLong_AsSize_t(PyTuple_GetItem(settings, 2));
     if (PyErr_Occurred()) return NULL;
-    PyObject *values = PySequence_Fast(items, "integration bounds/tolerance must be a sequence");
+    PyObject *values = PySequence_Tuple(items);
     if (values == NULL) return NULL;
     if (PySequence_Fast_GET_SIZE(values) != 3) {
         Py_DECREF(values); PyErr_SetString(PyExc_ValueError, "expected two bounds and tolerance"); return NULL;
@@ -255,8 +256,8 @@ PyObject *nf_python_integrate(PyObject *module, PyObject *args)
         if (!work.numerator) status = NUMFORGE_OUT_OF_MEMORY;
     }
     if (status == NUMFORGE_OK && !PyErr_Occurred()) {
-        policy.absolute_tolerance = entries[2];
-        NumForgeNumericalStatus integrated = numforge_integrate(&integral, root_sample, &work, entries[0], entries[1], &policy);
+        policy.absolute_tolerance = borrowed[2];
+        NumForgeNumericalStatus integrated = numforge_integrate(&integral, root_sample, &work, borrowed[0], borrowed[1], &policy);
         status = integrated == NUMFORGE_NUMERICAL_CALLBACK_FAILED && work.status != NUMFORGE_OK ?
             work.status : numerical_status(integrated);
     }

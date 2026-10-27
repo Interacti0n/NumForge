@@ -179,12 +179,27 @@ static bool calculator_expression_can_wrap(
     return expression->depth < CALCULATOR_MAX_EXPRESSION_DEPTH;
 }
 
-static bool calculator_expressions_can_combine(
-    const CalculatorExpression *left,
-    const CalculatorExpression *right
-)
+/* Consume both children; publish the combined tree only after all checks pass. */
+static CalculatorStatus calculator_parser_combine(
+    CalculatorParser *parser, CalculatorExpression **result,
+    CalculatorBinaryOperator operation, size_t offset,
+    CalculatorExpression *left, CalculatorExpression *right)
 {
-    return left->depth < CALCULATOR_MAX_EXPRESSION_DEPTH && right->depth < CALCULATOR_MAX_EXPRESSION_DEPTH;
+    CalculatorStatus status = CALCULATOR_OK;
+    if (left->depth >= CALCULATOR_MAX_EXPRESSION_DEPTH || right->depth >= CALCULATOR_MAX_EXPRESSION_DEPTH)
+        status = calculator_parser_depth_error(parser, offset);
+    else {
+        CalculatorExpression *combined = calculator_expression_create_binary(operation, offset, left, right);
+        if (combined != NULL) {
+            *result = combined;
+            return CALCULATOR_OK;
+        }
+        status = CALCULATOR_OUT_OF_MEMORY;
+        calculator_error_set(parser->error, status, offset);
+    }
+    calculator_expression_destroy(left);
+    calculator_expression_destroy(right);
+    return status;
 }
 
 static CalculatorStatus calculator_parse_expression(
@@ -638,7 +653,6 @@ static CalculatorStatus calculator_parse_power(
 {
     CalculatorExpression *base = NULL;
     CalculatorExpression *exponent = NULL;
-    CalculatorExpression *expression = NULL;
     CalculatorStatus status = calculator_parse_postfix(parser, &base);
 
     if (status != CALCULATOR_OK)
@@ -683,28 +697,7 @@ static CalculatorStatus calculator_parse_power(
             return status;
         }
 
-        if (!calculator_expressions_can_combine(base, exponent))
-        {
-            calculator_expression_destroy(base);
-            calculator_expression_destroy(exponent);
-
-            return calculator_parser_depth_error(parser, offset);
-        }
-
-        expression = calculator_expression_create_binary(CALCULATOR_BINARY_POWER, offset, base, exponent);
-
-        if (expression == NULL)
-        {
-            calculator_expression_destroy(base);
-            calculator_expression_destroy(exponent);
-            calculator_error_set(parser->error, CALCULATOR_OUT_OF_MEMORY, offset);
-
-            return CALCULATOR_OUT_OF_MEMORY;
-        }
-
-        *result = expression;
-
-        return CALCULATOR_OK;
+        return calculator_parser_combine(parser, result, CALCULATOR_BINARY_POWER, offset, base, exponent);
     }
 }
 
@@ -799,7 +792,6 @@ static CalculatorStatus calculator_parse_multiplicative(
                                                  : CALCULATOR_BINARY_MULTIPLY;
         size_t offset = parser->current.offset;
         CalculatorExpression *right = NULL;
-        CalculatorExpression *combined = NULL;
 
         if (explicit_operator)
         {
@@ -822,26 +814,8 @@ static CalculatorStatus calculator_parse_multiplicative(
             return status;
         }
 
-        if (!calculator_expressions_can_combine(left, right))
-        {
-            calculator_expression_destroy(left);
-            calculator_expression_destroy(right);
-
-            return calculator_parser_depth_error(parser, offset);
-        }
-
-        combined = calculator_expression_create_binary(operation, offset, left, right);
-
-        if (combined == NULL)
-        {
-            calculator_expression_destroy(left);
-            calculator_expression_destroy(right);
-            calculator_error_set(parser->error, CALCULATOR_OUT_OF_MEMORY, offset);
-
-            return CALCULATOR_OUT_OF_MEMORY;
-        }
-
-        left = combined;
+        status = calculator_parser_combine(parser, &left, operation, offset, left, right);
+        if (status != CALCULATOR_OK) return status;
     }
 
     *result = left;
@@ -869,7 +843,6 @@ static CalculatorStatus calculator_parse_expression(
                                                  : CALCULATOR_BINARY_SUBTRACT;
         size_t offset = parser->current.offset;
         CalculatorExpression *right = NULL;
-        CalculatorExpression *combined = NULL;
 
         status = calculator_parser_advance(parser);
 
@@ -889,26 +862,8 @@ static CalculatorStatus calculator_parse_expression(
             return status;
         }
 
-        if (!calculator_expressions_can_combine(left, right))
-        {
-            calculator_expression_destroy(left);
-            calculator_expression_destroy(right);
-
-            return calculator_parser_depth_error(parser, offset);
-        }
-
-        combined = calculator_expression_create_binary(operation, offset, left, right);
-
-        if (combined == NULL)
-        {
-            calculator_expression_destroy(left);
-            calculator_expression_destroy(right);
-            calculator_error_set(parser->error, CALCULATOR_OUT_OF_MEMORY, offset);
-
-            return CALCULATOR_OUT_OF_MEMORY;
-        }
-
-        left = combined;
+        status = calculator_parser_combine(parser, &left, operation, offset, left, right);
+        if (status != CALCULATOR_OK) return status;
     }
 
     *result = left;

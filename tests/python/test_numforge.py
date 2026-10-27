@@ -12,6 +12,23 @@ import numforge as nf
 
 
 class PythonAdapterTests(unittest.TestCase):
+    def test_shared_exact_inputs_preserve_values_and_result_lifetimes(self):
+        expected = Fraction(10**1000 + 1, 3)
+        value = nf.number(expected)
+        summary = nf.describe([value, value])
+        matrix = nf.Matrix([[value, value]])
+        self.assertEqual(nf.covariance([value, value], [value, value]), 0)
+        approximate = nf.sqrt(2)
+        for operation in (lambda: nf.describe([value, approximate]),
+                          lambda: nf.Matrix([[value, approximate]])):
+            with self.assertRaises(TypeError):
+                operation()
+            self.assertEqual(value.as_fraction(), expected)
+        del value, approximate
+        gc.collect()
+        self.assertEqual(summary.mean, expected)
+        self.assertEqual(matrix.to_rows(), ((expected, expected),))
+
     def test_lossless_inputs(self):
         for value, expected in ((2**128, Fraction(2**128)),
                                 (Fraction(-7, 19), Fraction(-7, 19)),

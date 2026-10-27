@@ -109,7 +109,8 @@ int nf_python_dictionary_put(PyObject *dictionary, const char *name, PyObject *v
     if (value == NULL) return 0;
     int status = PyDict_SetItemString(dictionary, name, value); Py_DECREF(value); return status == 0;
 }
-/* Own both arrays even after partial conversion so callers share one cleanup. */
+/* Callers retain the capsule sequence: rational values can be borrowed while
+ * integer-to-rational projections are owned by entries, including on failure. */
 NumForgeStatus nf_python_exact_inputs(PyObject *values, Py_ssize_t count, const char *error,
     BigRational ***entries, const BigRational ***borrowed)
 {
@@ -120,14 +121,15 @@ NumForgeStatus nf_python_exact_inputs(PyObject *values, Py_ssize_t count, const 
     for (Py_ssize_t i = 0; i < count; ++i) {
         const NumForgeResult *input = PyCapsule_GetPointer(PySequence_Fast_GET_ITEM(values, i), NF_PYTHON_RESULT_CAPSULE);
         if (input == NULL) return NUMFORGE_OK; /* Preserve the Python exception. */
-        if (numforge_result_integer(input) == NULL && numforge_result_rational(input) == NULL) {
+        const BigRational *rational = numforge_result_rational(input);
+        if (rational != NULL) { (*borrowed)[i] = rational; continue; }
+        const BigInt *integer = numforge_result_integer(input);
+        if (integer == NULL) {
             PyErr_SetString(PyExc_TypeError, error); return NUMFORGE_OK;
         }
         (*entries)[i] = bigrational_create(); (*borrowed)[i] = (*entries)[i];
         if ((*entries)[i] == NULL) return NUMFORGE_OUT_OF_MEMORY;
-        NumForgeStatus status = nf_python_rational_status(numforge_result_integer(input) != NULL ?
-            bigrational_from_bigint((*entries)[i], numforge_result_integer(input)) :
-            bigrational_copy((*entries)[i], numforge_result_rational(input)));
+        NumForgeStatus status = nf_python_rational_status(bigrational_from_bigint((*entries)[i], integer));
         if (status != NUMFORGE_OK) return status;
     }
     return NUMFORGE_OK;

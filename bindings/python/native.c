@@ -20,21 +20,29 @@ static PyObject *native_number(PyObject *module, PyObject *args)
     }
     bool owner = numforge_budget_begin(10000U, 128U*1024U*1024U, 8U*1024U*1024U);
     NumForgeResult *result = NULL;
-    BigInt *top = bigint_create(), *bottom = bigint_create();
-    BigRational *rational = bigrational_create(); BigDecimal *decimal = bigdecimal_create();
-    NumForgeStatus status = top && bottom && rational && decimal ? NUMFORGE_OK : NUMFORGE_OUT_OF_MEMORY;
-    if (status == NUMFORGE_OK && strcmp(kind, "decimal") == 0) {
+    BigInt *top = NULL, *bottom = NULL;
+    BigRational *rational = NULL; BigDecimal *decimal = NULL;
+    NumForgeStatus status;
+    if (strcmp(kind, "decimal") == 0) {
         bool integral = false;
-        status = nf_python_decimal_status(bigdecimal_set_string(decimal, text));
+        decimal = bigdecimal_create();
+        status = decimal ? nf_python_decimal_status(bigdecimal_set_string(decimal, text)) : NUMFORGE_OUT_OF_MEMORY;
         if (status == NUMFORGE_OK) status = nf_python_decimal_status(bigdecimal_is_integer(&integral, decimal));
-        if (status == NUMFORGE_OK) status = integral ? nf_python_decimal_status(bigdecimal_to_bigint(top, decimal)) :
-            nf_python_rational_status(bigrational_from_bigdecimal(rational, decimal));
+        if (status == NUMFORGE_OK && integral) {
+            top = bigint_create();
+            status = top ? nf_python_decimal_status(bigdecimal_to_bigint(top, decimal)) : NUMFORGE_OUT_OF_MEMORY;
+        } else if (status == NUMFORGE_OK) {
+            rational = bigrational_create();
+            status = rational ? nf_python_rational_status(bigrational_from_bigdecimal(rational, decimal)) : NUMFORGE_OUT_OF_MEMORY;
+        }
         if (status == NUMFORGE_OK) status = integral ? numforge_result_from_integer(&result, top, NULL, NULL) :
             numforge_result_from_rational(&result, rational, NULL, NULL);
-    } else if (status == NUMFORGE_OK) {
-        status = nf_python_integer_status(bigint_set_string(top, text));
+    } else {
+        top = bigint_create();
+        status = top ? nf_python_integer_status(bigint_set_string(top, text)) : NUMFORGE_OUT_OF_MEMORY;
         if (status == NUMFORGE_OK && strcmp(kind, "rational") == 0) {
-            status = nf_python_integer_status(bigint_set_string(bottom, denominator));
+            bottom = bigint_create(); rational = bigrational_create();
+            status = bottom && rational ? nf_python_integer_status(bigint_set_string(bottom, denominator)) : NUMFORGE_OUT_OF_MEMORY;
             if (status == NUMFORGE_OK) status = nf_python_rational_status(bigrational_set_fraction(rational, top, bottom));
             if (status == NUMFORGE_OK) status = numforge_result_from_rational(&result, rational, NULL, NULL);
         } else if (status == NUMFORGE_OK) status = numforge_result_from_integer(&result, top, NULL, NULL);

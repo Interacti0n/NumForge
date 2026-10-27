@@ -50,7 +50,6 @@ a:focus-visible { outline: 2px solid var(--mint); outline-offset: 3px; }
 }
 h1 { margin: 0 0 22px; font-size: clamp(2rem, 4vw, 3rem); line-height: 1.12; letter-spacing: -.055em; }
 .guide-title { display: grid; justify-items: start; gap: 4px; scroll-margin-top: 22px; }
-.guide-wordmark { display: block; width: min(100%, 520px); height: auto; }
 .guide-title span { font-size: clamp(1.2rem, 2.2vw, 1.5rem); font-weight: 700; letter-spacing: -.025em; }
 h2 { scroll-margin-top: 22px; margin: 42px 0 15px; padding-top: 34px; border-top: 1px solid var(--border-soft); font-size: 1.38rem; letter-spacing: -.025em; }
 h3 { margin: 27px 0 12px; color: var(--accent); font-size: 1.03rem; }

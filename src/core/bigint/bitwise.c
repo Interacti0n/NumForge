@@ -6,182 +6,61 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#define BIGINT_LIMB_BITS 64U
-#define BIGINT_MAX_LIMBS (SIZE_MAX / BIGINT_LIMB_BITS)
 
-/*
- * Bitwise, shift, and sign utility functions for BigInt.
- *
- * The public operations are kept in this translation unit so the core
- * lifecycle and arithmetic implementation remains easy to navigate.
- */
+typedef enum BigIntBitwiseOperation {
+    BIGINT_BITWISE_AND, BIGINT_BITWISE_OR, BIGINT_BITWISE_XOR
+} BigIntBitwiseOperation;
 
-
-/* Bitwise operation functions for BigInt. */
-
-BigIntStatus bigint_and( /*Bitwise AND for BigInts (a&b). Operands must be non-negative.*/
-    BigInt *result,
-    const BigInt *a,
-    const BigInt *b
-)
+static BigIntStatus bigint_bitwise(BigInt *result, const BigInt *a,
+    const BigInt *b, BigIntBitwiseOperation operation)
 {
-    if (result == NULL || a == NULL || b == NULL)
-    {
-        return BIGINT_NULL_ARGUMENT;
-    }
-
-    if (a->is_negative || b->is_negative)
-    {
-        return BIGINT_NEGATIVE_ARGUMENT;
-    }
-
-    size_t min_size = (a->size < b->size) ? a->size : b->size;
-
+    if (result == NULL || a == NULL || b == NULL) return BIGINT_NULL_ARGUMENT;
+    if (a->is_negative || b->is_negative) return BIGINT_NEGATIVE_ARGUMENT;
+    size_t smaller = a->size < b->size ? a->size : b->size;
+    size_t larger = a->size > b->size ? a->size : b->size;
+    size_t size = operation == BIGINT_BITWISE_AND ? smaller : larger;
     uint64_t *limbs = NULL;
-
-    if (min_size > 0)
-    {
+    if (size > 0) {
         size_t bytes;
-
-        if (bigint_size_mul(min_size, sizeof(uint64_t), &bytes) != BIGINT_OK)
-        {
+        if (bigint_size_mul(size, sizeof(*limbs), &bytes) != BIGINT_OK)
             return BIGINT_OUT_OF_MEMORY;
-        }
-
         limbs = numforge_malloc(bytes);
+        if (limbs == NULL) return BIGINT_OUT_OF_MEMORY;
 
-        if (limbs == NULL)
-        {
-            return BIGINT_OUT_OF_MEMORY;
-        }
-
-        for (size_t i = 0; i < min_size; i++)
-        {
-            limbs[i] = a->limbs[i] & b->limbs[i];
+        /* Select once; keep the limb loops free of operation dispatch. */
+        switch (operation) {
+        case BIGINT_BITWISE_AND:
+            for (size_t i = 0; i < size; ++i) limbs[i] = a->limbs[i] & b->limbs[i];
+            break;
+        case BIGINT_BITWISE_OR:
+            for (size_t i = 0; i < size; ++i)
+                limbs[i] = (i < a->size ? a->limbs[i] : 0) | (i < b->size ? b->limbs[i] : 0);
+            break;
+        case BIGINT_BITWISE_XOR:
+            for (size_t i = 0; i < size; ++i)
+                limbs[i] = (i < a->size ? a->limbs[i] : 0) ^ (i < b->size ? b->limbs[i] : 0);
+            break;
         }
     }
-
-    free(result->limbs);
-    result->limbs = limbs;
-    result->capacity = min_size;
-    result->size = min_size;
-    result->is_negative = false;
-
-    bigint_normalize(result);
-
+    BigInt temporary = {limbs, size, size, false};
+    bigint_normalize(&temporary);
+    bigint_commit(result, &temporary);
     return BIGINT_OK;
 }
 
-BigIntStatus bigint_or( /*Bitwise OR for BigInts (a|b). Operands must be non-negative.*/
-    BigInt *result,
-    const BigInt *a,
-    const BigInt *b
-)
+BigIntStatus bigint_and(BigInt *result, const BigInt *a, const BigInt *b)
 {
-    if (result == NULL || a == NULL || b == NULL)
-    {
-        return BIGINT_NULL_ARGUMENT;
-    }
-
-    if (a->is_negative || b->is_negative)
-    {
-        return BIGINT_NEGATIVE_ARGUMENT;
-    }
-
-    size_t max_size = (a->size > b->size) ? a->size : b->size;
-
-    uint64_t *limbs = NULL;
-
-    if (max_size > 0)
-    {
-        size_t bytes;
-
-        if (bigint_size_mul(max_size, sizeof(uint64_t), &bytes) != BIGINT_OK)
-        {
-            return BIGINT_OUT_OF_MEMORY;
-        }
-
-        limbs = numforge_malloc(bytes);
-
-        if (limbs == NULL)
-        {
-            return BIGINT_OUT_OF_MEMORY;
-        }
-
-        for (size_t i = 0; i < max_size; i++)
-        {
-            uint64_t limb_a = (i < a->size) ? a->limbs[i] : 0;
-            uint64_t limb_b = (i < b->size) ? b->limbs[i] : 0;
-
-            limbs[i] = limb_a | limb_b;
-        }
-    }
-
-    free(result->limbs);
-    result->limbs = limbs;
-    result->capacity = max_size;
-    result->size = max_size;
-    result->is_negative = false;
-
-    bigint_normalize(result);
-
-    return BIGINT_OK;
+    return bigint_bitwise(result, a, b, BIGINT_BITWISE_AND);
 }
 
-BigIntStatus bigint_xor( /*Bitwise XOR for BigInts (a^b). Operands must be non-negative.*/
-    BigInt *result,
-    const BigInt *a,
-    const BigInt *b
-)
+BigIntStatus bigint_or(BigInt *result, const BigInt *a, const BigInt *b)
 {
-    if (result == NULL || a == NULL || b == NULL)
-    {
-        return BIGINT_NULL_ARGUMENT;
-    }
+    return bigint_bitwise(result, a, b, BIGINT_BITWISE_OR);
+}
 
-    if (a->is_negative || b->is_negative)
-    {
-        return BIGINT_NEGATIVE_ARGUMENT;
-    }
-
-    size_t max_size = (a->size > b->size) ? a->size : b->size;
-
-    uint64_t *limbs = NULL;
-
-    if (max_size > 0)
-    {
-        size_t bytes;
-
-        if (bigint_size_mul(max_size, sizeof(uint64_t), &bytes) != BIGINT_OK)
-        {
-            return BIGINT_OUT_OF_MEMORY;
-        }
-
-        limbs = numforge_malloc(bytes);
-
-        if (limbs == NULL)
-        {
-            return BIGINT_OUT_OF_MEMORY;
-        }
-
-        for (size_t i = 0; i < max_size; i++)
-        {
-            uint64_t limb_a = (i < a->size) ? a->limbs[i] : 0;
-            uint64_t limb_b = (i < b->size) ? b->limbs[i] : 0;
-
-            limbs[i] = limb_a ^ limb_b;
-        }
-    }
-
-    free(result->limbs);
-    result->limbs = limbs;
-    result->capacity = max_size;
-    result->size = max_size;
-    result->is_negative = false;
-
-    bigint_normalize(result);
-
-    return BIGINT_OK;
+BigIntStatus bigint_xor(BigInt *result, const BigInt *a, const BigInt *b)
+{
+    return bigint_bitwise(result, a, b, BIGINT_BITWISE_XOR);
 }
 
 BigIntStatus bigint_not( /*Bitwise NOT for BigInts (~a), defined arbitrary-precision as -(a+1)*/
@@ -198,11 +77,7 @@ BigIntStatus bigint_not( /*Bitwise NOT for BigInts (~a), defined arbitrary-preci
     BigInt one;
     bigint_wrap_uint64(&one, &one_storage, 1);
 
-    BigInt sum;
-    sum.limbs = NULL;
-    sum.size = 0;
-    sum.capacity = 0;
-    sum.is_negative = false;
+    BigInt sum = {0};
 
     BigIntStatus status = bigint_add(&sum, a, &one);
 
@@ -268,13 +143,9 @@ BigIntStatus bigint_shift_left( /*Left shift for BigInts (a<<n)*/
         }
     }
 
-    free(result->limbs);
-    result->limbs = limbs;
-    result->capacity = new_size;
-    result->size = new_size;
-    result->is_negative = a->is_negative;
-
-    bigint_normalize(result);
+    BigInt temporary = {limbs, new_size, new_size, a->is_negative};
+    bigint_normalize(&temporary);
+    bigint_commit(result, &temporary);
 
     return BIGINT_OK;
 }
@@ -338,13 +209,9 @@ BigIntStatus bigint_shift_right( /*Right shift for BigInts (a>>n), truncating to
         limbs[i] = merged;
     }
 
-    free(result->limbs);
-    result->limbs = limbs;
-    result->capacity = new_size;
-    result->size = new_size;
-    result->is_negative = a->is_negative;
-
-    bigint_normalize(result);
+    BigInt temporary = {limbs, new_size, new_size, a->is_negative};
+    bigint_normalize(&temporary);
+    bigint_commit(result, &temporary);
 
     return BIGINT_OK;
 }

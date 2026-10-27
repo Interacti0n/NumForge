@@ -1477,6 +1477,27 @@ void test_combinatorics_aliasing_and_domains(void)
 
 /* BITWISE AND */
 
+void test_bitwise_unequal_limbs_and_aliases(void)
+{
+    BigIntStatus (*operations[])(BigInt *, const BigInt *, const BigInt *) = {
+        bigint_and, bigint_or, bigint_xor
+    };
+    const char *expected[] = {"1", "340282366920938463481821351505477763079",
+                             "340282366920938463481821351505477763078"};
+    for (size_t operation = 0; operation < 3; ++operation) {
+        for (size_t alias = 0; alias < 2; ++alias) {
+            BigInt *a = test_integer("340282366920938463463374607431768211461"); /* 2^128 + 5 */
+            BigInt *b = test_integer("18446744073709551619"); /* 2^64 + 3 */
+            BigInt *out = alias ? b : a;
+            TEST_ASSERT_EQUAL(BIGINT_OK, operations[operation](out, a, b));
+            test_assert_integer(out, expected[operation]);
+            TEST_ASSERT_EQUAL(BIGINT_OK, bigint_xor(out, out, out));
+            test_assert_integer(out, "0");
+            bigint_destroy(a); bigint_destroy(b);
+        }
+    }
+}
+
 void test_and_basic(void)
 {
     BigInt *a = test_integer("12"); /* 1100 */
@@ -2391,6 +2412,7 @@ int main(void)
 
     /* Bitwise */
     RUN_TEST(test_and_basic);
+    RUN_TEST(test_bitwise_unequal_limbs_and_aliases);
     RUN_TEST(test_and_zero);
     RUN_TEST(test_and_negative_argument);
 

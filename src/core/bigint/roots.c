@@ -5,7 +5,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define BIGINT_LIMB_BITS 64U
 
 /*
  * Integer square-root operations for BigInt.

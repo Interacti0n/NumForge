@@ -14,8 +14,6 @@
 #include <intrin.h>
 #endif
 
-#define BIGINT_LIMB_BITS 64U
-#define BIGINT_MAX_LIMBS (SIZE_MAX / BIGINT_LIMB_BITS)
 
 size_t bigint_storage_bytes(const BigInt *value)
 {

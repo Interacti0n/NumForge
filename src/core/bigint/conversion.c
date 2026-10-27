@@ -8,7 +8,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define BIGINT_LIMB_BITS 64U
 
 BigIntStatus bigint_decimal_digits(const BigInt *value, size_t *digits)
 {
