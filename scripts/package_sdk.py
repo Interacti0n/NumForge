@@ -90,7 +90,7 @@ def main():
         raise RuntimeError('Unexpected installed SDK files: ' + str(actual.symmetric_difference(expected)))
     shutil.copy2(source / 'LICENSE', package / 'LICENSE')
     shutil.copytree(support / 'examples/sdk', package / 'example')
-    readme = re.sub(r'/blob/(?:main|v\d+\.\d+\.\d+)/', f'/blob/v{args.version}/',
+    readme = re.sub(r'/blob/(?:main|v\d+\.\d+\.\d+)/', f'/blob/{args.commit}/',
                   (support / 'docs/guides/SDK.md').read_text(encoding='utf-8'))
     (package / 'README.md').write_text(readme, encoding='utf-8', newline='\n')
     info = {'version': args.version, 'source_commit': args.commit, 'platform': args.platform,
