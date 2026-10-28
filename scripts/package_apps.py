@@ -92,16 +92,17 @@ def smoke(directory, windows, port=None, require_matrices=False, require_currenc
                 if family != {"ok": True, "exact": True, "solution": {"kind": "infinite", "rank": 1,
                         "nullity": 1, "particular": [["3"], ["0"]], "basis": [["-2"], ["1"]], "free_columns": [1]}}:
                     raise RuntimeError("Extracted general matrix solver returned an unexpected family")
-        # Exercise the embedded equation editor and both solver paths from the
+        # Exercise the embedded equation library and both solver paths from the
         # extracted archive, without relying on a source-tree web directory.
         equation_assets = set()
         for language in ("en", "sk"):
             with urllib.request.urlopen(base + "/solve?lang=" + language, timeout=5) as response:
                 equation_html = response.read().decode("utf-8")
-            if ('id="equation-editor"' not in equation_html
+            if ('id="equation-editor-functions"' not in equation_html
+                    or 'id="equation-editor-search"' not in equation_html
                     or 'id="equation-expression"' not in equation_html
                     or '/assets/function-library.js' not in equation_html):
-                raise RuntimeError("Equation editor missing from extracted package")
+                raise RuntimeError("Equation library missing from extracted package")
             equation_assets.update(re.findall(r'(?:src|href)="(/assets/[^"?#]+)', equation_html))
         for asset in equation_assets:
             with urllib.request.urlopen(base + asset, timeout=5) as response:
