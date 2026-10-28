@@ -5,6 +5,7 @@
 #include "apps/web/server/web_server.h"
 #include <numforge/runtime.h>
 #include <unity.h>
+#include <stdlib.h>
 #include <string.h>
 #ifndef _WIN32
 #include <arpa/inet.h>
@@ -81,14 +82,33 @@ static void submit(size_t index, const char *text, uint64_t accepted)
 }
 static void expect_response(size_t index, const char *status, const char *body)
 {
-    char response[4096]; size_t used = 0U;
+    char response[4096]; size_t used = 0U, framed = 0U;
     while (used + 1U < sizeof(response)) {
         int received = recv(connections[index].peer, response + used, (int)(sizeof(response) - used - 1U), 0);
         TEST_ASSERT_TRUE(received >= 0);
         if (!received) break;
         used += (size_t)received;
+        response[used] = '\0';
+        /* A rejected connection can retain unread request bytes. Validate its
+         * complete HTTP frame without requiring a clean TCP EOF afterwards. */
+        if (!framed) {
+            const char *headers = strstr(response, "\r\n\r\n");
+            if (headers) {
+                const char *length = strstr(response, "\r\nContent-Length: ");
+                TEST_ASSERT_TRUE(length != NULL && length < headers);
+                const char *digits = length + strlen("\r\nContent-Length: ");
+                char *end = NULL;
+                unsigned long body_length = strtoul(digits, &end, 10);
+                TEST_ASSERT_TRUE(*digits >= '0' && *digits <= '9' && end <= headers && end[0] == '\r' && end[1] == '\n');
+                size_t header_length = (size_t)(headers - response) + 4U;
+                TEST_ASSERT_TRUE(body_length <= sizeof(response) - header_length - 1U);
+                framed = header_length + (size_t)body_length;
+            }
+        }
+        if (framed && used >= framed) break;
     }
     response[used] = '\0';
+    TEST_ASSERT_TRUE(framed != 0U && used == framed);
     TEST_ASSERT_EQUAL_INT(0, strncmp(response, status, strlen(status)));
     TEST_ASSERT_NOT_NULL(strstr(response, body));
 }
