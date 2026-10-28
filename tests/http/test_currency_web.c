@@ -41,7 +41,8 @@ static void test_invalid_requests_have_no_result(void)
 }
 static void test_maximum_body_retains_all_amount_digits(void)
 {
-    char body[309],amount[257],expected[256],*response=NULL;
+    char body[309],amount[257],*response=NULL;
+    char expected[sizeof(amount)+sizeof("\"result\":\"\"")];
     memset(amount,'1',256U);amount[200]='.';amount[256]='\0';
     (void)snprintf(body,sizeof(body),"%s\n999999999999.123456789012\n999999999999.123456789012",amount);
     TEST_ASSERT_EQUAL_UINT(308U,strlen(body));

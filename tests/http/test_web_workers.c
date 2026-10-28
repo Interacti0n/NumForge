@@ -34,7 +34,7 @@ static bool connect_pair(size_t index)
     NumForgeSocket listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (listener == NUMFORGE_INVALID_SOCKET) return false;
     struct sockaddr_in address; memset(&address, 0, sizeof(address));
-    address.sin_family = AF_INET; address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    address.sin_family = AF_INET; address.sin_addr.s_addr = htonl(UINT32_C(0x7f000001)); /* 127.0.0.1 */
 #ifdef _WIN32
     int length = sizeof(address);
 #else
