@@ -253,7 +253,7 @@ function initEquations() {
         const selected=editorTarget.value.slice(start,end),arity=name?(registry.get(name)?.minimum_arguments||1):0;
         const insertion=name?name+'('+selected+';'.repeat(Math.max(0,arity-1))+')':value;
         if (editorTarget.value.length-(end-start)+insertion.length>4096) { libraryStatus.hidden=false; libraryStatus.textContent=catalogueWords.tooLong; return; }
-        editorTarget.setRangeText(insertion,start,end,'end'); editorTarget.focus({preventScroll:true});
+        editorTarget.setRangeText(insertion,start,end,'end'); editorTarget.focus();
         if (name) { const caret=selected?(arity>1?start+name.length+selected.length+2:start+insertion.length):start+name.length+1; editorTarget.setSelectionRange(caret,caret); }
         editorTarget.dispatchEvent(new Event('input',{bubbles:true}));
     }
@@ -299,7 +299,7 @@ function initEquations() {
         if (inputs.includes(input)) targets.value=input.id.slice(-1);
     },{signal});
     targets.addEventListener('change',()=>{
-        editorTarget=inputs['abc'.indexOf(targets.value)]; editorTarget.focus({preventScroll:true});
+        editorTarget=inputs['abc'.indexOf(targets.value)]; editorTarget.focus();
     },{signal});
     search.addEventListener('input',()=>{if(search.value.trim())selectedCategory='';filterCatalogue();},{signal});
     $('equation-editor-tabs').addEventListener('click',event=>{

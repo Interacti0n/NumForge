@@ -114,3 +114,12 @@ test('desktop solve buttons stay visible in every mode without scrolling the inp
   expect(await page.evaluate(()=>document.documentElement.scrollHeight)).toBeLessThanOrEqual(769);
  }
 });
+
+test('mobile library insertion returns to the visible equation and keeps the argument caret',async({page})=>{
+ await page.setViewportSize({width:390,height:844});await page.goto('/solve?lang=en');
+ const input=page.locator('#equation-expression');await input.fill('x=');await find(page,'sqrt');
+ await page.locator('#equation-editor-functions [data-function=sqrt]').click();
+ await expect(input).toBeInViewport();await expect(input).toBeFocused();
+ await page.keyboard.type('4');await expect(input).toHaveValue('x=sqrt(4)');
+ await page.locator('#equation-submit').click();await expect(page.locator('#equation-roots')).toContainText('x = 2');
+});
