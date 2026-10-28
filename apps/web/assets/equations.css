@@ -1,7 +1,7 @@
 @import url('/assets/calculator.css');
 body { height:auto; min-height:100dvh; overflow:auto; }
 .units-shell { min-height:100dvh; display:flex; flex-direction:column; }
-.equations-workspace { flex:1; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); align-items:start; gap:16px; padding:20px 0; }
+.equations-workspace { flex:1; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.15fr); grid-template-areas:'entry result' 'library history'; align-items:start; gap:16px; padding:20px 0; }
 .equations-workspace .card { min-width:0; padding:24px; }
 .equation-entry h1 { margin:0; font-size:1.5rem; }
 .equation-formula { color:var(--accent); font:1.7rem var(--font-math); margin:16px 0 26px; }
@@ -32,41 +32,6 @@ body { height:auto; min-height:100dvh; overflow:auto; }
 .equation-verification code { margin:10px 0; font-size:.9rem; }
 .equation-root button { justify-self:start; min-height:40px; padding:8px 14px; }
 .equation-root-actions { display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
-.equation-tools { display:flex; flex-wrap:wrap; align-items:start; gap:10px; margin-top:16px; }
-#equation-edit { min-height:40px; padding:8px 12px; cursor:pointer; }
-#equation-examples { display:grid; gap:6px; margin-top:8px; }
-#equation-examples button { min-height:38px; padding:7px 10px; text-align:left; overflow-wrap:anywhere; font-family:var(--font-math); }
-.equation-editor { box-sizing:border-box; width:min(740px,calc(100vw - 24px)); max-width:none; max-height:min(var(--editor-height,calc(100dvh - 24px)),calc(100dvh - 24px)); padding:16px; border:1px solid var(--border); border-radius:14px; color:var(--text); background:var(--surface); overflow-y:auto; }
-.equation-editor::backdrop { background:var(--backdrop); }
-.equation-editor-open { overflow:hidden; }
-.equation-editor-heading { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
-.equation-editor-heading h2 { flex:1; margin:0; font-size:1.1rem; }
-.equation-editor-heading select { width:70px; }
-.equation-editor button { min-height:36px; padding:6px 10px; }
-#equation-editor-close { min-width:36px; font-size:1.25rem; }
-.equation-editor-entry { display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:8px; }
-.equation-editor-entry input { font-size:1rem; }
-.equation-editor-entry .primary-button { min-height:44px; padding:8px 14px; font-size:.85rem; }
-.editor-action-icon { display:none; }
-.equation-editor-filters { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px; margin-top:12px; }
-.equation-editor-filters :is(input,select) { min-height:40px; font-family:var(--font-ui,inherit); font-size:.85rem; }
-.equation-editor-catalogue { margin-top:12px; padding-top:12px; border-top:1px solid var(--border-soft); }
-#equation-editor-tabs { display:none; }
-.equation-editor-results { min-width:0; padding:10px; border:1px solid var(--border-soft); border-radius:var(--panel-radius); background:var(--surface-input); }
-#equation-editor-functions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
-#equation-editor-functions button { min-width:0; min-height:39px; padding:6px 5px; border-color:var(--border); background:var(--surface-raised); color:var(--text); font:750 .94rem/1.25 var(--font-math); overflow-wrap:anywhere; }
-#equation-editor-functions button:hover { border-color:var(--accent); color:var(--accent); }
-.equation-editor-pages { display:flex; justify-content:center; align-items:center; gap:16px; margin-top:10px; font-size:.8rem; }
-.equation-editor-pages button:disabled { opacity:.4; cursor:default; }
-#equation-editor-help,#equation-editor-status { font-size:.75rem; line-height:1.5; overflow-wrap:anywhere; }
-#equation-editor-help { margin:8px 0 0; color:var(--mint); min-height:3em; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-@media(min-width:600px) and (min-height:700px) { .equation-editor-catalogue { display:grid; grid-template-columns:170px minmax(0,1fr); align-items:start; gap:10px; } #equation-editor-tabs { display:grid; gap:4px; padding:8px; } #equation-editor-tabs button { min-height:30px; padding:5px 8px; } #equation-editor-tabs button[aria-pressed=true] { border-color:var(--mint); background:var(--surface-selected); color:var(--text); box-shadow:inset 3px 0 var(--accent); } }
-.equation-editor[data-compact] { padding:10px; }
-.equation-editor[data-compact] .equation-editor-heading { margin-bottom:8px; }
-.equation-editor[data-compact] .equation-editor-catalogue { display:block; margin-top:8px; padding-top:8px; }
-.equation-editor[data-compact] #equation-editor-tabs,.equation-editor[data-compact] #equation-editor-help { display:none; }
-.equation-editor[data-compact] .equation-editor-filters { margin-top:8px; }
-@media(max-width:400px) { #equation-editor-clear .editor-action-name { display:none; } #equation-editor-clear .editor-action-icon { display:inline; font-size:1.1rem; } #equation-editor-clear { min-width:44px; } }
 .equation-graph-link { display:inline-flex; align-items:center; min-height:40px; padding:8px 14px; border:1px solid var(--border); border-radius:10px; color:var(--accent); text-decoration:none; }
 .equation-graph-link:hover { background:var(--border-soft); }
 .equation-graph-link:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
@@ -76,17 +41,13 @@ body { height:auto; min-height:100dvh; overflow:auto; }
 .equation-result #equation-roots { min-height:0; overflow:auto; scrollbar-width:thin; overscroll-behavior:contain; }
 .equation-result:has(#equation-error:not([hidden])) #equation-empty,
 .equations-workspace:has(#equation-form[aria-busy]) #equation-empty { display:none; }
-.equation-examples-card { display:flex; flex-direction:column; min-height:0; }
-#equation-examples { flex:1; grid-template-columns:repeat(2,minmax(0,1fr)); min-height:0; margin:0; overflow:auto; scrollbar-width:thin; }
-#equation-examples button { min-height:44px; padding:12px; border-color:var(--border-soft); background:var(--surface-input); font-size:.88rem; }
 .equation-history { min-height:200px; }
-.equation-tools #equation-edit { width:100%; }
+.equation-entry { grid-area:entry; }.equation-result { grid-area:result; }.equation-library { grid-area:library; }.equation-history { grid-area:history; }
 @media(min-width:1100px) and (min-height:740px) {
     body { height:100dvh; overflow:hidden; }
     .units-shell { height:100dvh; min-height:0; }
-    .equations-workspace { min-height:0; grid-template-columns:minmax(0,1fr) minmax(0,1.15fr); grid-template-rows:minmax(340px,1.4fr) minmax(200px,.8fr); grid-template-areas:'entry result' 'examples history'; gap:var(--workbench-gap); padding:8px 0; align-items:stretch; }
+    .equations-workspace { min-height:0; grid-template-rows:minmax(0,auto) minmax(200px,1fr); gap:var(--workbench-gap); padding:8px 0; align-items:stretch; }
     .equations-workspace > .card { min-height:0; padding:16px; overflow:auto; scrollbar-width:thin; }
-    .equation-entry { grid-area:entry; }.equation-result { grid-area:result; }.equation-examples-card { grid-area:examples; }.equation-history { grid-area:history; }
     .equation-entry .workbench-panel-heading { margin-bottom:12px; }
     .equation-entry label { gap:5px; font-size:.78rem; }
     .equation-entry input,.equation-entry select { min-height:38px; padding:7px 10px; font-size:.94rem; }
@@ -94,7 +55,6 @@ body { height:auto; min-height:100dvh; overflow:auto; }
     .equation-coefficients { grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
     .equation-range { gap:10px; margin-top:10px; }
     .equation-hint { margin:10px 0; font-size:.75rem; line-height:1.45; }
-    .equation-tools { margin-top:10px; }.equation-tools #equation-edit { min-height:36px; font-size:.78rem; }
     .equation-actions { margin:10px 0; gap:8px; }.equation-actions button { min-height:40px; height:40px; font-size:.82rem; }
     .equation-settings { padding-top:10px; }.equation-settings summary { font-size:.76rem; }
     .equation-settings label { display:flex; align-items:center; justify-content:space-between; margin-top:10px; }.equation-settings input { width:110px; }
@@ -103,6 +63,60 @@ body { height:auto; min-height:100dvh; overflow:auto; }
     .equation-result #equation-roots { gap:10px; }.equation-root { padding:12px; gap:8px; }.equation-root code { font-size:1rem; }.equation-approx { padding-top:8px; }
     .equation-result .equation-root-actions { gap:8px; }.equation-result .equation-root-actions > * { min-height:34px; padding:6px 10px; font-size:.76rem; }
 }
-@media(max-width:1099px) { .equation-examples-card { order:3; }.equation-history { order:4; }.equation-history ol { max-height:360px; } }
-@media(max-width:600px) { #equation-examples { grid-template-columns:minmax(0,1fr); }.equations-workspace .card { padding:16px; }.equation-formula { font-size:1.1rem; }.equation-entry .workbench-panel-heading { align-items:baseline; flex-wrap:wrap; } }
 @media(pointer:coarse) { .equations-workspace button,.equations-workspace .equation-root-actions > * { min-height:44px; } }
+
+.equation-examples-row { display:flex; align-items:baseline; gap:8px; margin-top:10px; }
+.equation-examples-row > span { flex:none; color:var(--quiet); font-size:.73rem; }
+#equation-examples { display:flex; flex-wrap:wrap; gap:6px; }
+.equations-workspace #equation-examples button { min-height:32px; padding:5px 9px; font:.75rem var(--font-math); border-radius:8px; background:var(--surface-input); }
+.equation-library { display:flex; flex-direction:column; min-height:0; }
+.equation-library .workbench-panel-heading { flex-shrink:0; margin-bottom:8px; }
+.equation-library .workbench-panel-heading h2 { margin:0; font-size:1.1rem; }
+.equation-library .workspace-history-note { margin:0 0 10px; }
+.equation-library [hidden] { display:none!important; }
+.equation-library-target { display:flex; align-items:center; gap:8px; color:var(--muted); font-size:.75rem; }
+.equation-library-target select { min-height:34px; padding:4px 8px; border:1px solid var(--border); border-radius:8px; color:var(--text); background:var(--surface-input); }
+.equation-editor-filters { flex-shrink:0; }
+#equation-editor-search { width:100%; min-width:0; min-height:40px; padding:8px 12px; color:var(--text); background:var(--surface-input); border:1px solid var(--border); border-radius:10px; font:inherit; }
+.equation-editor-catalogue { flex:1; min-height:0; align-content:stretch; }
+#equation-editor-tabs { min-height:0; overflow-y:auto; scrollbar-width:thin; }
+.equation-editor-results { min-height:0; overflow-y:auto; scrollbar-width:thin; overscroll-behavior:contain; }
+#equation-editor-functions { display:grid; grid-template-columns:repeat(auto-fit,minmax(76px,1fr)); align-content:start; gap:7px; }
+#equation-editor-functions button { min-width:0; min-height:39px; padding:6px; font:750 .9rem var(--font-math); overflow-wrap:anywhere; }
+#equation-editor-help,#equation-editor-status { margin:10px 0 0; font-size:.73rem; line-height:1.45; color:var(--mint); }
+@media(pointer:coarse) { .equations-workspace #equation-examples button { min-height:44px; } }
+@media(min-width:1100px) and (min-height:740px) {
+    .equations-workspace { grid-template-columns:minmax(0,1fr) minmax(0,1.15fr); }
+    .equation-library { overflow:hidden!important; }
+    .equation-library .function-tabs button { min-height:31px; padding:4px 8px; font-size:.76rem; }
+    #equation-examples { min-width:0; flex-wrap:nowrap; overflow-x:auto; padding:2px; scrollbar-width:thin; }
+    #equation-examples button { flex:none; white-space:nowrap; }
+    #equation-form:has(#equation-range:not([hidden])) { display:grid; grid-template-columns:minmax(0,1.4fr) minmax(0,1fr); gap:10px; }
+    #equation-form:has(#equation-range:not([hidden])) > * { grid-column:1/-1; }
+    #equation-form:has(#equation-range:not([hidden])) .equation-mode-label { display:grid!important; grid-column:1; grid-row:1; margin:0; }
+    #equation-form:has(#equation-range:not([hidden])) .equation-range { grid-column:2; grid-row:1; margin:0; }
+    #equation-form:has(#equation-range:not([hidden])) :is(.equation-hint,.equation-actions,.equation-examples-row) { margin:0; }
+}
+@media(min-width:1100px) and (min-height:740px) and (max-height:850px) {
+    .equation-library .function-groups { display:flex; flex-direction:column; }
+    .equation-library .function-tabs { display:flex; flex:none; overflow-x:auto; overflow-y:hidden; padding:4px; }
+    .equation-library .function-tabs::before { display:none; }
+    .equation-library .function-tabs button { flex:none; width:auto; white-space:nowrap; }
+    .equation-editor-results { flex:1; }
+}
+@media(max-width:1099px) {
+    .equations-workspace { grid-template-columns:minmax(0,1fr); grid-template-areas:'entry' 'library' 'result' 'history'; }
+    .equation-library .function-groups { flex:none; max-height:350px; }
+    .equation-history ol { max-height:360px; }
+}
+@media(max-width:600px) {
+    .equations-workspace .card { padding:16px; }
+    .equation-formula { font-size:1.1rem; }
+    .equation-entry .workbench-panel-heading { align-items:baseline; flex-wrap:wrap; }
+    .equation-library .function-groups { display:flex; flex-direction:column; max-height:none; overflow:visible; }
+    #equation-editor-tabs { flex:none; overflow-x:auto; overflow-y:hidden; }
+    .equation-library .function-tabs::before { display:none; }
+    .equation-editor-results { max-height:260px; }
+    .equation-library-target { font-size:.7rem; }
+    .equation-examples-row { align-items:flex-start; }
+}

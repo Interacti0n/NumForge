@@ -16,16 +16,16 @@ two at every step. `3x`, parentheses, constant division and powers 0/1/2 work;
 Use numerical modes for supported non-polynomial equations.
 
 Exact roots have copy buttons and separate decimal previews. Preview precision
-is 1–1000 significant digits (default 16); it does not change the exact root.
+is fixed at 16 significant digits in the web UI; it does not change the exact root.
 Repeated roots appear once with multiplicity. Approximate previews are not
 certified rounding intervals.
 
 ### Editor and examples
 
-**Functions & constants** edits the current equation or selected coefficient.
+The **Function library** below Solve inserts into the current equation or selected coefficient.
 Search accepts localized names/aliases; insertion wraps selected text or places
-the caret inside a call. Use `;` between arguments. Close/Escape retains edits;
-Solve/Enter submits the form. Opening the editor or choosing an example does not
+the caret inside a call. Use `;` between arguments. Solve/Enter submits the form.
+Choosing a function, category or compact example does not
 calculate. Exact modes offer exact constant operations; numerical modes add
 supported functions of x. Manual input works if the catalogue is unavailable.
 
@@ -46,7 +46,7 @@ C verification. Transfer requires session storage in the same tab.
 ## Numerical interval search
 
 Use a continuous interval with opposite signs at its endpoints. The unknown is
-lowercase x; angles use radians. Working precision is 16–100 digits. Width and
+lowercase x; angles use radians. Advanced working precision is 16–100 digits (default 34). Width and
 residual tolerances are fixed at `1E-12`; preview digits do not tighten them.
 
 **Checked point** reveals the full coordinate and residual; **Copy point** copies

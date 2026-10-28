@@ -12,8 +12,7 @@ function initEquations() {
     const status = document.querySelector('#equation-status'), error = document.querySelector('#equation-error');
     const roots = document.querySelector('#equation-roots');
     const sk = document.documentElement.lang === 'sk';
-    const editor = document.querySelector('#equation-editor'), editorInput = document.querySelector('#equation-editor-input');
-    let editorTarget = expression, submittingEditor = false;
+    let editorTarget = expression;
     const isNumeric = kind => kind === 'numeric' || kind === 'numeric_scan';
     const words = sk ? {
         idle:'Zadaj rovnicu a zvoľ Vyriešiť.', busy:'Počítam…', finite:'Presné riešenia',
@@ -69,7 +68,7 @@ function initEquations() {
         gaps:' Some sections were undefined or a root could not be verified.'
     };
     let controller = null, generation = 0, result = null, recent = null;
-    const inputState=()=>({mode:mode.value,inputs:inputs.map(input=>input.value),expression:expression.value,bounds:bounds.map(input=>input.value),precision:precision.value});
+    const inputState=()=>({mode:mode.value,inputs:inputs.map(input=>input.value),expression:expression.value,bounds:bounds.map(input=>input.value),precision:isNumeric(mode.value)?precision.value:'16'});
     const equationHelp = document.querySelector('#equation-help').textContent;
     function save() {
         const state = {numericDomainVersion:2, scanCandidateVersion:1, inputs:inputs.map(input => input.value), expression:expression.value, bounds:bounds.map(input=>input.value), mode:mode.value, precision:precision.value, result};
@@ -186,10 +185,13 @@ function initEquations() {
         inputs.forEach(input => input.disabled = whole);
         document.querySelector('#equation-range').hidden = !numerical;
         bounds.forEach(input=>input.disabled = !numerical);
-        precision.min = numerical ? '16' : '1'; precision.max = numerical ? '100' : '1000';
-        if (numerical && (Number(precision.value)<16 || Number(precision.value)>100)) precision.value = '34';
-        document.querySelector('.equation-settings summary').textContent = numerical ? (sk ? 'Výpočtová presnosť' : 'Calculation precision') : (sk ? 'Presnosť náhľadu' : 'Preview precision');
-        document.querySelector('.equation-settings p').textContent = numerical ? (sk ? 'Presnosť výpočtu aj náhľadu. Tolerancia zostáva 1E-12; viac číslic nezaručuje nájdenie koreňa.' : 'Calculation and preview precision. Tolerances stay at 1E-12; more digits do not guarantee a root.') : (sk ? 'Presné korene zostávajú zachované. Desatinné náhľady sú približné.' : 'Exact roots are preserved. Decimal previews are approximate.');
+        document.querySelector('.equation-settings').hidden = !numerical;
+        precision.disabled = !numerical;
+        if (Number(precision.value)<16 || Number(precision.value)>100) precision.value = '34';
+        editorTarget = mode.value==='coefficients' ? inputs[0] : expression;
+        document.querySelector('.equation-library-target').hidden = mode.value!=='coefficients';
+        document.querySelector('#equation-editor-target').value = 'a';
+        if (registry) renderCatalogue();
         document.querySelector('#equation-help').textContent = mode.value === 'numeric_scan' ? scanWords.help : numerical ? numericWords.help : whole ? equationHelp : (sk
             ? 'Čísla alebo presné výrazy, napr. 1/3 či sqrt(4). Pre lineárnu rovnicu nastav a = 0.'
             : 'Numbers or exact expressions, e.g. 1/3 or sqrt(4). Use a = 0 for a linear equation.');
@@ -218,50 +220,42 @@ function initEquations() {
     },{signal});
     const catalogueWords = sk ? {
         all:'Všetky kategórie', algebra:'Zápis', basic:'Základné', powers:'Mocniny a logaritmy', trig:'Goniometria', hyperbolic:'Hyperbolické', integers:'Celé čísla', stats:'Štatistika', constants:'Konštanty',
-        noMatch:'Žiadna zhoda. Skús iný názov.', unavailable:'Knižnica nie je dostupná. Skús ju znovu otvoriť; zadanie môžeš písať ručne.',
+        noMatch:'Žiadna zhoda. Skús iný názov.', unavailable:'Knižnica nie je dostupná. Obnov stránku alebo pokračuj ručným zadaním.',
         exact:'V presnom režime sú funkcie iba pre konštanty; výsledok musí byť presný a reálny. x patrí iba do polynómu do stupňa 2.',
         numeric:'Použi x a radiány. Argumenty oddeľuj bodkočiarkou; niektoré definičné obory nemusí riešič overiť.',
         coefficient:'Koeficient ', equation:'Rovnica v x', tooLong:'Zadanie môže mať najviac 4096 znakov.'
     } : {
         all:'All categories', algebra:'Notation', basic:'Basic', powers:'Powers & logs', trig:'Trigonometry', hyperbolic:'Hyperbolic', integers:'Integers', stats:'Statistics', constants:'Constants',
-        noMatch:'No match. Try another name.', unavailable:'The library is unavailable. Try reopening it; you can still type the input.',
+        noMatch:'No match. Try another name.', unavailable:'The library is unavailable. Reload the page or continue typing manually.',
         exact:'In exact mode, functions apply to constants only and must yield an exact real value. x belongs only in a polynomial of degree at most 2.',
         numeric:'Use x and radians. Separate arguments with semicolons; some domains may remain unverified.',
         coefficient:'Coefficient ', equation:'Equation in x', tooLong:'The input must fit in 4096 characters.'
     };
-    let cataloguePromise = null, registry = null, catalogueEntries = [], cataloguePage = 0, catalogueFailed = false;
-    const category = $('equation-editor-category'), search = $('equation-editor-search'), help = $('equation-editor-help');
+    let cataloguePromise = null, registry = null, catalogueEntries = [], catalogueFailed = false;
+    let selectedCategory = 'algebra';
+    const search = $('equation-editor-search'), help = $('equation-editor-help');
     const targets = $('equation-editor-target'), libraryStatus = $('equation-editor-status');
-    const editorTitle=$('equation-editor-title').textContent;
-    function syncEditor() {
-        if (!editorTarget || !editor.open) return;
-        editorTarget.value=editorInput.value; editorTarget.setSelectionRange(editorInput.selectionStart,editorInput.selectionEnd);
-        editorTarget.dispatchEvent(new Event('input',{bubbles:true}));
-    }
-    function filterCatalogue(reset=true) {
-        if (reset) cataloguePage=0;
+    function filterCatalogue() {
         const library=window.numforgeFunctionLibrary;
-        const height=window.visualViewport?.height||innerHeight, compact=height<=460;
-        editor.toggleAttribute('data-compact',compact);
-        editor.style.setProperty('--editor-height',Math.max(120,height-24)+'px');
-        const perPage=compact?3:height<=700?6:9, query=library?.normalize(search.value.trim())||'';
-        const matches=catalogueEntries.filter(entry=>(!category.value||entry.category===category.value)&&entry.searchable.includes(query));
-        const pages=Math.max(1,Math.ceil(matches.length/perPage)); cataloguePage=Math.min(cataloguePage,pages-1);
-        const shown=new Set(matches.slice(cataloguePage*perPage,(cataloguePage+1)*perPage));
+        const query=library?.normalize(search.value.trim())||'';
+        const catalogue=$('equation-editor-tabs').parentElement;
+        catalogue.classList.toggle('searching',!!query);
+        $('equation-editor-tabs').hidden=!!query;
+        const matches=catalogueEntries.filter(entry=>(!selectedCategory||entry.category===selectedCategory)&&entry.searchable.includes(query));
+        const shown=new Set(matches);
         catalogueEntries.forEach(entry=>entry.button.hidden=!shown.has(entry));
-        for (const tab of $('equation-editor-tabs').children) tab.setAttribute('aria-pressed',String(tab.dataset.category===category.value));
-        $('equation-editor-page').textContent=`${cataloguePage+1} / ${pages}`;
-        $('equation-editor-previous').disabled=cataloguePage===0; $('equation-editor-next').disabled=cataloguePage===pages-1;
-        libraryStatus.hidden=registry?!!matches.length:!catalogueFailed; if (registry) libraryStatus.textContent=catalogueWords.noMatch;
+        for (const tab of $('equation-editor-tabs').children) tab.setAttribute('aria-pressed',String(tab.dataset.category===selectedCategory));
+        libraryStatus.hidden=registry?!!matches.length:!catalogueFailed;
+        if (registry) libraryStatus.textContent=catalogueWords.noMatch;
     }
     function insertEditor(value,name='') {
-        const start=editorInput.selectionStart??editorInput.value.length,end=editorInput.selectionEnd??start;
-        const selected=editorInput.value.slice(start,end),arity=name?(registry.get(name)?.minimum_arguments||1):0;
+        const start=editorTarget.selectionStart??editorTarget.value.length,end=editorTarget.selectionEnd??start;
+        const selected=editorTarget.value.slice(start,end),arity=name?(registry.get(name)?.minimum_arguments||1):0;
         const insertion=name?name+'('+selected+';'.repeat(Math.max(0,arity-1))+')':value;
-        if (editorInput.value.length-(end-start)+insertion.length>4096) { libraryStatus.hidden=false; libraryStatus.textContent=catalogueWords.tooLong; return; }
-        editorInput.setRangeText(insertion,start,end,'end'); editorInput.focus({preventScroll:true});
-        if (name) { const caret=selected?(arity>1?start+name.length+selected.length+2:start+insertion.length):start+name.length+1; editorInput.setSelectionRange(caret,caret); }
-        syncEditor();
+        if (editorTarget.value.length-(end-start)+insertion.length>4096) { libraryStatus.hidden=false; libraryStatus.textContent=catalogueWords.tooLong; return; }
+        editorTarget.setRangeText(insertion,start,end,'end'); editorTarget.focus({preventScroll:true});
+        if (name) { const caret=selected?(arity>1?start+name.length+selected.length+2:start+insertion.length):start+name.length+1; editorTarget.setSelectionRange(caret,caret); }
+        editorTarget.dispatchEvent(new Event('input',{bubbles:true}));
     }
     function renderCatalogue() {
         if (!registry) return;
@@ -271,15 +265,14 @@ function initEquations() {
             ['trig',['sin','cos','tan','asin','acos','atan','radians','degrees']],['hyperbolic',['sinh','cosh','tanh','asinh','acosh','atanh']],
             ['integers',['gcd','lcm','mod','npr','ncr','factorial','isqrt']],['stats',['sum','product','mean','median','geomean','harmean','variance','stdevp','stdev']]
         ] : [['basic',['abs','sign','min','max','sum','product']],['powers',['pow','sqrt','cbrt','root']],['integers',['gcd','lcm','mod','npr','ncr','factorial','isqrt']]];
-        const buttons=$('equation-editor-functions'),tabs=$('equation-editor-tabs'); buttons.replaceChildren();tabs.replaceChildren();category.replaceChildren();catalogueEntries=[];
-        category.add(new Option(catalogueWords.all,''));
+        const buttons=$('equation-editor-functions'),tabs=$('equation-editor-tabs'); buttons.replaceChildren();tabs.replaceChildren();catalogueEntries=[];
         function add(label,value,terms,group,name='',description='') {
             const button=document.createElement('button');button.type='button';button.textContent=label;button.dataset.insert=value;button.dataset.function=name;button.title=description;
             buttons.append(button);catalogueEntries.push({button,category:group,searchable:library.normalize([label,value,description,...terms].join(' '))});
         }
         const groupIds=['algebra',...groups.map(([id])=>id),...(numeric?['constants']:[])];
         for (const id of groupIds) {
-            category.add(new Option(catalogueWords[id],id)); const button=document.createElement('button');button.type='button';button.textContent=catalogueWords[id];button.dataset.category=id;
+            const button=document.createElement('button');button.type='button';button.textContent=catalogueWords[id];button.dataset.category=id;
             tabs.append(button);
         }
         for (const [label,value] of [...(!coefficients?[['x','x'],['x²','x^2'],['=','=']]:[]),['+','+'],['−','-'],['×','*'],['÷','/'],['(', '('],[')',')'],[';',';'],['1/3','1/3']]) add(label,value,[],'algebra');
@@ -290,7 +283,7 @@ function initEquations() {
             add(name,name+'(',[...aliases,...(library.functionSearchAliases[name]||[]),...(library.inverseFunctionAliases[name]||[])],id,name,description);
         }
         if (numeric) for (const [symbol,en,sl] of [['π','Pi','Pí'],['e','Euler’s number','Eulerovo číslo'],['φ','Golden ratio','Zlatý rez']]) add(symbol,symbol,library.constantAliasesFor(!sk)[symbol],'constants','',sk?sl:en);
-        help.textContent=catalogueWords[numeric?'numeric':'exact'];category.value=query?'':'algebra';search.value=query;filterCatalogue();
+        help.textContent=catalogueWords[numeric?'numeric':'exact'];selectedCategory=query?'':'algebra';search.value=query;filterCatalogue();
     }
     async function loadCatalogue() {
         if (registry) { renderCatalogue(); return; }
@@ -301,34 +294,26 @@ function initEquations() {
         try { await cataloguePromise;if(!signal.aborted)renderCatalogue(); }
         catch (error) { if(!signal.aborted&&error.name!=='AbortError') { catalogueFailed=true;libraryStatus.hidden=false;libraryStatus.textContent=catalogueWords.unavailable; } }
     }
-    function openEditor() {
-        if (editorTarget.disabled || ![expression,...inputs].includes(editorTarget)) editorTarget=mode.value==='coefficients'?inputs[0]:expression;
-        targets.hidden=mode.value!=='coefficients'; targets.value=inputs.includes(editorTarget)?editorTarget.id.slice(-1):'expression';
-        $('equation-editor-title').textContent=mode.value==='coefficients'?catalogueWords.coefficient+targets.value:editorTitle;
-        editorInput.value=editorTarget.value;editorInput.setAttribute('aria-label',mode.value==='coefficients'?catalogueWords.coefficient+targets.value:catalogueWords.equation);
-        editorInput.setSelectionRange(editorTarget.selectionStart,editorTarget.selectionEnd);submittingEditor=false;search.value='';
-        editor.showModal();document.body.classList.add('equation-editor-open');filterCatalogue();editorInput.focus({preventScroll:true});loadCatalogue();
-    }
-    for (const input of [expression,...inputs]) input.addEventListener('focus',()=>editorTarget=input,{signal});
-    $('equation-edit').addEventListener('click',openEditor,{signal});
-    $('equation-editor-close').addEventListener('click',()=>editor.close(),{signal});
-    editor.addEventListener('close',()=>{document.body.classList.remove('equation-editor-open');if(!signal.aborted&&!submittingEditor)editorTarget.focus({preventScroll:true});},{signal});
-    editor.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();editor.close();}},{signal});
-    editorInput.addEventListener('input',syncEditor,{signal});
-    targets.addEventListener('change',()=>{editorTarget=inputs['abc'.indexOf(targets.value)];editorInput.value=editorTarget.value;$('equation-editor-title').textContent=catalogueWords.coefficient+targets.value;editorInput.setAttribute('aria-label',catalogueWords.coefficient+targets.value);editorInput.focus({preventScroll:true});},{signal});
-    function submitEditor() { syncEditor();submittingEditor=true;editor.close();form.requestSubmit(); }
-    $('equation-editor-solve').addEventListener('click',submitEditor,{signal});
-    $('equation-editor-clear').addEventListener('click',()=>{editorInput.value='';syncEditor();editorInput.focus({preventScroll:true});},{signal});
-    editorInput.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();submitEditor();}},{signal});
-    search.addEventListener('input',()=>{if(search.value.trim())category.value='';filterCatalogue();},{signal});category.addEventListener('change',()=>filterCatalogue(),{signal});
-    $('equation-editor-tabs').addEventListener('click',event=>{const button=event.target.closest('button[data-category]');if(button){category.value=button.dataset.category;search.value='';filterCatalogue();}},{signal});
-    $('equation-editor-functions').addEventListener('click',event=>{const button=event.target.closest('button[data-insert]');if(button){help.textContent=button.title||catalogueWords[isNumeric(mode.value)?'numeric':'exact'];insertEditor(button.dataset.insert,button.dataset.function);}},{signal});
-    $('equation-editor-functions').addEventListener('focusin',event=>{const button=event.target.closest('button[data-insert]');if(button)help.textContent=button.title||catalogueWords[isNumeric(mode.value)?'numeric':'exact'];},{signal});
-    $('equation-editor-previous').addEventListener('click',()=>{--cataloguePage;filterCatalogue(false);},{signal});
-    $('equation-editor-next').addEventListener('click',()=>{++cataloguePage;filterCatalogue(false);},{signal});
-    window.addEventListener('resize',()=>{if(editor.open)filterCatalogue(false);},{signal});
-    window.visualViewport?.addEventListener('resize',()=>{if(editor.open)filterCatalogue(false);},{signal});
-    signal.addEventListener('abort',()=>{editor.close();document.body.classList.remove('equation-editor-open');},{once:true});
+    for (const input of [expression,...inputs]) input.addEventListener('focus',()=>{
+        editorTarget=input;
+        if (inputs.includes(input)) targets.value=input.id.slice(-1);
+    },{signal});
+    targets.addEventListener('change',()=>{
+        editorTarget=inputs['abc'.indexOf(targets.value)]; editorTarget.focus({preventScroll:true});
+    },{signal});
+    search.addEventListener('input',()=>{if(search.value.trim())selectedCategory='';filterCatalogue();},{signal});
+    $('equation-editor-tabs').addEventListener('click',event=>{
+        const button=event.target.closest('button[data-category]');
+        if(button){selectedCategory=button.dataset.category;search.value='';filterCatalogue();}
+    },{signal});
+    $('equation-editor-functions').addEventListener('click',event=>{
+        const button=event.target.closest('button[data-insert]');
+        if(button){help.textContent=button.title||catalogueWords[isNumeric(mode.value)?'numeric':'exact'];insertEditor(button.dataset.insert,button.dataset.function);}
+    },{signal});
+    $('equation-editor-functions').addEventListener('focusin',event=>{
+        const button=event.target.closest('button[data-insert]');
+        if(button)help.textContent=button.title||catalogueWords[isNumeric(mode.value)?'numeric':'exact'];
+    },{signal});
     mode.addEventListener('change', () => { syncMode(); edit(); }, {signal});
     form.addEventListener('input', edit, {signal});
     document.querySelector('#equation-clear').addEventListener('click', () => { const active = mode.value !== 'coefficients' ? [expression] : inputs; active.forEach(input => input.value = ''); edit(); active[0].focus(); }, {signal});
@@ -345,7 +330,7 @@ function initEquations() {
         const timeout = setTimeout(() => request.abort(), 15000);
         submit.disabled = true; form.setAttribute('aria-busy','true'); status.textContent = words.busy; save();
         try {
-            let target = '/api/equations/solve?mode=' + mode.value + '&precision=' + encodeURIComponent(precision.value);
+            let target = '/api/equations/solve?mode=' + mode.value + '&precision=' + encodeURIComponent(isNumeric(mode.value)?precision.value:'16');
             if (isNumeric(mode.value)) target += '&min=' + encodeURIComponent(bounds[0].value) + '&max=' + encodeURIComponent(bounds[1].value);
             const response = await fetch(target, {
                 method:'POST', headers:{'Content-Type':'text/plain; charset=utf-8'}, body, signal:request.signal
@@ -370,7 +355,7 @@ function initEquations() {
             mode.value = ['expression','numeric','numeric_scan'].includes(saved.mode) ? saved.mode : 'coefficients';
             if (Array.isArray(saved.bounds) && saved.bounds.length === 2 && saved.bounds.every(value=>typeof value==='string'&&value.length<=47)) bounds.forEach((input,index)=>input.value=saved.bounds[index]);
             if (typeof saved.expression === 'string' && saved.expression.length <= 4096) expression.value = saved.expression;
-            if (/^\d+$/.test(saved.precision) && Number(saved.precision) >= 1 && Number(saved.precision) <= 1000) precision.value = saved.precision;
+            if (/^\d+$/.test(saved.precision) && Number(saved.precision) >= 16 && Number(saved.precision) <= 100) precision.value = saved.precision;
             if (validResult(saved.result) && (!isNumeric(saved.result.kind) || saved.numericDomainVersion === 2) &&
                 (saved.result.kind !== 'numeric_scan' || saved.scanCandidateVersion === 1)) result = saved.result;
         }
@@ -381,11 +366,11 @@ function initEquations() {
             (value.kind !== 'numeric' || Object.hasOwn(numericWords, value.outcome) && ['found','not_bracketed','domain_gap','domain_unverified','iteration_limit','precision_limit'].includes(value.outcome)) &&
             value.roots.every(root=>typeof root.approximation==='string' && (isNumeric(value.kind) ? typeof root.x==='string' && typeof root.residual==='string' : typeof root.exact==='string'));
     }
-    syncMode(); render(result);
+    syncMode(); render(result); loadCatalogue();
     const cleanText=(value,limit)=>typeof value==='string'&&new TextEncoder().encode(value).length<=limit&&!/[\u0000-\u001f\u007f]/.test(value);
     recent=window.numforgeInputHistory({root:$('equation-history'),key:'numforge-equation-recent-v1',signal,current:inputState,
         valid:s=>s&&['expression','coefficients','numeric','numeric_scan'].includes(s.mode)&&Array.isArray(s.inputs)&&s.inputs.length===3&&s.inputs.every(v=>cleanText(v,4096))&&cleanText(s.expression,4096)&&Array.isArray(s.bounds)&&s.bounds.length===2&&s.bounds.every(v=>cleanText(v,47))&&typeof s.precision==='string'&&/^\d{1,4}$/.test(s.precision)&&Number(s.precision)>=1&&Number(s.precision)<=1000,
-        label:s=>({title:s.mode==='coefficients'?s.inputs.map((v,i)=>'abc'[i]+' = '+v).join(' · '):s.expression,detail:mode.querySelector(`option[value="${s.mode}"]`).textContent+' · '+s.precision+(isNumeric(s.mode)?' · ['+s.bounds.join(', ')+']':'')}),
+        label:s=>({title:s.mode==='coefficients'?s.inputs.map((v,i)=>'abc'[i]+' = '+v).join(' · '):s.expression,detail:mode.querySelector(`option[value="${s.mode}"]`).textContent+(isNumeric(s.mode)?' · '+s.precision+' · ['+s.bounds.join(', ')+']':'')}),
         restore:s=>{mode.value=s.mode;inputs.forEach((input,i)=>input.value=s.inputs[i]);expression.value=s.expression;bounds.forEach((input,i)=>input.value=s.bounds[i]);precision.value=s.precision;syncMode();edit();(s.mode==='coefficients'?inputs[0]:expression).focus();}
     });
     return () => { save(); cancel(); lifecycle.abort(); };

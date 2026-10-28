@@ -70,7 +70,7 @@ test('editing aborts a scan and numeric precision controls stay appropriate',asy
  await page.route('**/api/equations/solve?mode=numeric_scan**',async route=>{started();await held;await route.fulfill({json:{ok:true,kind:'numeric_scan',outcome:'scanned',complete:false,count:1,roots:[{x:'999',approximation:'999',residual:'0'}]}}).catch(()=>{});});
  await page.locator('#equation-submit').click();await waiting;await page.locator('#equation-expression').fill('x=1');release();
  await expect(page.locator('#equation-submit')).toBeEnabled();await expect(page.locator('.equation-root')).toHaveCount(0);
- await page.locator('#equation-mode').selectOption('expression');await expect(page.locator('.equation-settings summary')).toHaveText('Preview precision');
+ await page.locator('#equation-mode').selectOption('expression');await expect(page.locator('.equation-settings')).toBeHidden();
  await expect(page.locator('#equation-range')).toBeHidden();
 });
 

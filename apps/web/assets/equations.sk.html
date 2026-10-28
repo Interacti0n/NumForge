@@ -53,23 +53,23 @@
             <label for="equation-c">c<input id="equation-c" name="c" type="text" value="-2" maxlength="4096" spellcheck="false" autocapitalize="off" autocomplete="off" required></label>
           </div>
           <p class="equation-hint" id="equation-help">Lineárna alebo kvadratická v x, napr. 3x + 1 = 7 či (x - 2)*(x + 3) = 0. Presné reálne konštanty; bez x v menovateli.</p>
-          <div class="equation-tools"><button type="button" id="equation-edit" aria-haspopup="dialog" aria-controls="equation-editor">ƒ Funkcie a konštanty</button></div>
+          <div class="equation-examples-row"><span id="equation-examples-title">Príklady</span><div id="equation-examples" role="group" aria-labelledby="equation-examples-title"></div></div>
           <div class="equation-actions"><button class="primary-button" type="submit" id="equation-submit">Vyriešiť</button><button type="button" id="equation-clear">Vymazať</button></div>
-          <details class="equation-settings"><summary>Presnosť náhľadu</summary><label for="equation-precision">Platné číslice<input id="equation-precision" type="number" min="1" max="1000" value="16" required></label><p>Presné korene zostávajú zachované. Desatinný náhľad je približný.</p></details>
+          <details class="equation-settings" hidden><summary>Výpočtová presnosť</summary><label for="equation-precision">Platné číslice<input id="equation-precision" type="number" min="16" max="100" value="34" required disabled></label><p>Pracovná presnosť numerického riešiča. Tolerancia zostáva 1E-12.</p></details>
         </form>
-        <dialog id="equation-editor" class="equation-editor" aria-labelledby="equation-editor-title">
-          <div class="equation-editor-heading"><h2 id="equation-editor-title">Editor rovnice</h2><select id="equation-editor-target" aria-label="Upravovaný koeficient" hidden><option value="a">a</option><option value="b">b</option><option value="c">c</option></select><button id="equation-editor-close" type="button" aria-label="Zavrieť editor rovnice">×</button></div>
-          <div class="equation-editor-entry"><input id="equation-editor-input" maxlength="4096" aria-label="Rovnica v x" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go"><button id="equation-editor-solve" class="primary-button" type="button">Vyriešiť</button><button id="equation-editor-clear" type="button" aria-label="Vymazať" title="Vymazať"><span class="editor-action-name">Vymazať</span><span class="editor-action-icon" aria-hidden="true">⌫</span></button></div>
-          <div class="equation-editor-filters"><input id="equation-editor-search" type="search" aria-label="Hľadať funkcie" placeholder="Skús odmocnina, sin, pí…" autocomplete="off"><select id="equation-editor-category" aria-label="Kategória"><option value="">Všetky kategórie</option></select></div>
-          <div class="equation-editor-catalogue"><div id="equation-editor-tabs" class="function-tabs" role="group" aria-label="Kategória"></div><div class="equation-editor-results"><p id="equation-editor-status" role="status" hidden></p><div id="equation-editor-functions"></div><nav class="equation-editor-pages" aria-label="Strany funkcií"><button id="equation-editor-previous" type="button" aria-label="Predošlá strana">←</button><span id="equation-editor-page" role="status"></span><button id="equation-editor-next" type="button" aria-label="Ďalšia strana">→</button></nav><p id="equation-editor-help"></p></div></div>
-        </dialog>
+
       </main>
+      <section class="card equation-library" aria-labelledby="equation-library-title">
+        <div class="workbench-panel-heading"><h2 id="equation-library-title">Knižnica funkcií</h2><label class="equation-library-target" hidden>Vložiť do koeficientu<select id="equation-editor-target"><option value="a">a</option><option value="b">b</option><option value="c">c</option></select></label></div>
+        <p class="workspace-history-note">Vyhľadaj názov alebo vyber kategóriu. Kliknutím vložíš funkciu do zadania.</p>
+          <div class="equation-editor-filters"><input id="equation-editor-search" type="search" aria-label="Hľadať funkcie" placeholder="Skús odmocnina, sin, pí…" autocomplete="off"></div>
+          <div class="equation-editor-catalogue function-groups"><div id="equation-editor-tabs" class="function-tabs" role="group" aria-label="Kategória"></div><div class="equation-editor-results function-group"><p id="equation-editor-status" role="status" hidden></p><div id="equation-editor-functions"></div><p id="equation-editor-help"></p></div></div>
+      </section>
       <section class="card equation-result" aria-labelledby="equation-result-title">
         <h2 id="equation-result-title">Riešenia</h2>
         <p id="equation-status" role="status" aria-live="polite">Zadaj rovnicu a zvoľ Vyriešiť.</p>
         <p id="equation-error" role="alert" hidden></p><ol id="equation-roots"></ol><div id="equation-empty" class="workbench-placeholder"><span aria-hidden="true">x = ?</span><p>Zadaj rovnicu alebo vyber príklad. Presné korene a numerické náhľady nájdeš tu.</p></div>
       </section>
-      <section class="card equation-examples-card" aria-labelledby="equation-examples-title"><div class="workbench-panel-heading"><h2 id="equation-examples-title">Príklady na vyskúšanie</h2><span aria-hidden="true">ƒ</span></div><p class="workspace-history-note">Vyber predlohu pre aktuálny režim. Výpočet spustíš sám.</p><div id="equation-examples" aria-labelledby="equation-examples-title"></div></section>
       <section class="card workspace-history equation-history" id="equation-history" aria-labelledby="equation-history-title" tabindex="-1">
         <div class="workbench-panel-heading"><h2 id="equation-history-title">Posledné rovnice</h2><button type="button" data-history-clear>Vymazať</button></div>
         <p class="workspace-history-note">V tejto karte · obnoví zadanie bez výpočtu</p><p data-history-empty>Po dokončení výpočtu tu nájdeš posledné zadania.</p><ol data-history-list></ol>

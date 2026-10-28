@@ -59,13 +59,12 @@ test('editing cancels pending equation work and prevents stale solutions',async(
  await expect(page.locator('#equation-error')).toBeHidden();
 });
 
-test('preview precision changes decimals while preserving exact roots',async({page})=>{
+test('fixed preview precision preserves exact roots without an extra setting',async({page})=>{
  await page.goto('/solve?lang=en');
- await page.locator('.equation-settings summary').click();
- await page.locator('#equation-precision').fill('4');
+ await expect(page.locator('.equation-settings')).toBeHidden();
  await page.locator('#equation-submit').click();
  await expect(page.locator('.equation-root').last().locator('code').first()).toHaveText('x₂ = sqrt(2)');
- await expect(page.locator('.equation-root').last().locator('.equation-approx')).toHaveText('≈ 1.414');
+ await expect(page.locator('.equation-root').last().locator('.equation-approx')).toHaveText('≈ 1.414213562373095');
 });
 
 for(const language of ['sk','en'])test(`whole equation entry, products and supported domains ${language}`,async({page})=>{

@@ -55,7 +55,7 @@ test('graph capacity blocks handoff without deleting existing functions',async({
 
 test('one-digit preview only positions a wide camera and never publishes a fake intercept',async({page})=>{
  await page.goto('/solve?lang=en');await page.locator('#equation-expression').fill('x=149');
- await page.locator('.equation-settings summary').click();await page.locator('#equation-precision').fill('1');
+ await page.route('**/api/equations/solve?**',route=>{const url=new URL(route.request().url());url.searchParams.set('precision','1');return route.continue({url:url.href});});
  await page.locator('#equation-submit').click();await page.locator('.equation-graph-link').click();
  await expect(page.locator('#graph-plot')).toHaveAttribute('data-xmin','40');
  await expect(page.locator('.graph-feature[data-kind="x-axis"][data-verified="true"]')).toHaveCount(1);
@@ -71,8 +71,8 @@ test('unavailable storage reports a failed handoff and keeps the solution',async
 });
 
 test('long previews retain graph actions while unrepresentable roots do not',async({page})=>{
- await page.goto('/solve?lang=en');await page.locator('.equation-settings summary').click();
- await page.locator('#equation-precision').fill('200');await page.locator('#equation-submit').click();
+ await page.route('**/api/equations/solve?**',route=>{const url=new URL(route.request().url());url.searchParams.set('precision','200');return route.continue({url:url.href});});
+ await page.goto('/solve?lang=en');await page.locator('#equation-submit').click();
  await expect(page.locator('.equation-graph-link')).toHaveCount(2);
  await page.locator('#equation-expression').fill('x=1E400');await page.locator('#equation-submit').click();
  await expect(page.locator('.equation-root')).toHaveCount(1);await expect(page.locator('.equation-graph-link')).toHaveCount(0);

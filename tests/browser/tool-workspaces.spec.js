@@ -12,7 +12,7 @@ for(const [width,height]of [[1280,768],[1440,900],[1920,1080]])for(const tool of
  expect(geometry.cards.every(r=>r.top>=72&&r.bottom<=height-25&&r.width>240)).toBe(true);
  if(width===1920)expect(geometry.frameWidth).toBeGreaterThan(1800);
  if(tool==='solve'){
-  const aligned=await page.locator('.equation-entry,.equation-result,.equation-examples-card,.equation-history').evaluateAll(cards=>cards.map(e=>e.getBoundingClientRect()));
+  const aligned=await page.evaluate(()=>['.equation-entry','.equation-result','.equation-library','.equation-history'].map(selector=>document.querySelector(selector).getBoundingClientRect()));
   expect(aligned[0].top).toBe(aligned[1].top);expect(aligned[0].bottom).toBe(aligned[1].bottom);expect(aligned[2].bottom).toBe(aligned[3].bottom);
  }
  if(tool==='currencies')expect(await page.locator('.currency-result').evaluate(e=>e.scrollHeight-e.clientHeight)).toBeLessThanOrEqual(1);
