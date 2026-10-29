@@ -216,6 +216,7 @@ body { height: auto; min-height: 100dvh; overflow: auto; }
 }
 
 @media (min-width:1200px) and (min-height:740px) and (max-height:820px) {
+    .units-workspace > :is(#unit-converter-panel,#unit-sidebar-panel) { grid-template-rows:minmax(0,min(450px,calc(100dvh - 344px))) minmax(160px,1fr); }
     #unit-converter-panel .unit-settings-grid { row-gap:6px; margin-top:8px; }
     #unit-converter-panel .unit-settings .field { gap:4px; }
     #unit-converter-panel .unit-info { margin-top:8px; padding-top:8px; }

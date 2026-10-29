@@ -39,9 +39,10 @@ test('conversion preserves exact inputs, supports angles, options and errors', a
     expect(await convert('from=m&to=cm','1+rand()')).toMatchObject({status:400,body:{code:'random_not_allowed',column:3}});
     expect(await convert('from=m&to=cm','1/0')).toMatchObject({status:400,body:{code:'expression_error',status:'division by zero'}});
     expect(await convert('from=m&to=cm','1'.repeat(4097))).toMatchObject({status:413,body:{status:'value too large'}});
-    const oversized=await convert('from=m&to=cm','1E1000000');
-    expect(oversized.status).toBe(400);
-    expect(['value_too_large','time_limit']).toContain(oversized.body.code);
+    expect(await convert('from=m&to=cm&notation=scientific','1E1000'))
+        .toMatchObject({status:200,body:{ok:true,result:'1E+1002',input_approximate:false,factor_approximate:false}});
+    expect(await convert('from=m&to=cm','1E9223372036854775808'))
+        .toMatchObject({status:400,body:{code:'expression_error',status:'scale overflow'}});
 });
 
 test('conversion reads isolated session variables and ans without changing previews or revisions', async ({request}) => {

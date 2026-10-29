@@ -50,6 +50,10 @@ foreach(suite IN ITEMS polynomial matrix linear_system statistics regression num
 endforeach()
 set_tests_properties(numerical_scan_tests PROPERTIES TIMEOUT 180)
 set_tests_properties(numerical_tests PROPERTIES TIMEOUT 180)
+if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+    # The unchanged 1000-digit root check is much slower with 32-bit wide arithmetic.
+    set_tests_properties(numerical_tests PROPERTIES TIMEOUT 360)
+endif()
 
 numforge_add_unit_test(bigint_property_tests numforge core/test_bigint_properties.c)
 
