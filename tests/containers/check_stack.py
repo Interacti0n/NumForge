@@ -1,6 +1,7 @@
 """End-to-end Compose check. Only disposable numforge-test-* projects may run."""
 import json
 import os
+import secrets
 from pathlib import Path
 import sys
 import urllib.request
@@ -38,7 +39,7 @@ try:
     compose.docker("restart", "accounts")
     account_code("from django.contrib.auth import get_user_model; "
                  "assert get_user_model().objects.get(username='container-check').check_password('test-only')")
-    archive = compose.STATE / "backups/container-check.dump"
+    archive = compose.STATE / f"backups/container-check-{secrets.token_hex(6)}.dump"
     compose.backup(archive)
     compose.verify(archive)
     compose.docker("stop", "db")
