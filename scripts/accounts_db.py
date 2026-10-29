@@ -81,6 +81,12 @@ def init(port):
     with (STATE / "data/postgresql.conf").open("a", encoding="utf-8") as output:
         output.write(f"\nlisten_addresses = '127.0.0.1'\nport = {port}\nmax_connections = 20\nshared_buffers = '64MB'\n")
     start()
+    provision(configurations)
+    migrate()
+
+
+def provision(configurations):
+    """Provision an empty database, shared by native and container setup."""
     with connect(configurations["admin"]) as connection:
         for name in ("migrate", "app"):
             config = configurations[name]
@@ -94,7 +100,6 @@ def init(port):
         connection.execute("GRANT USAGE ON SCHEMA public TO nf_accounts")
         connection.execute("ALTER DEFAULT PRIVILEGES FOR ROLE nf_migrate IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO nf_accounts")
         connection.execute("ALTER DEFAULT PRIVILEGES FOR ROLE nf_migrate IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO nf_accounts")
-    migrate()
 
 
 def migrate():
@@ -140,18 +145,21 @@ def verify_backup(path, config=None):
                  "--username", admin["user"], "--dbname", name, "--no-password", "--exit-on-error",
                  "--single-transaction", Path(path).resolve()], env=os.environ | {"PGPASSWORD": admin["password"]})
             with connect(admin, dbname=name) as restored, connect(migrator) as source:
-                tables = source.execute("SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename").fetchall()
-                restored_tables = restored.execute("SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename").fetchall()
-                if not tables or tables != restored_tables:
-                    raise ValueError("Restored table set differs from source.")
-                for (table,) in tables:
-                    # Compare complete rows and multiplicities, independent of row order.
-                    query = sql.SQL("SELECT row_to_json(t)::text FROM {} t ORDER BY row_to_json(t)::text").format(sql.Identifier(table))
-                    if source.execute(query).fetchall() != restored.execute(query).fetchall():
-                        raise ValueError(f"Restored data differs in {table}; quiesce writes and retry.")
-                print(f"Restore verified: {len(tables)} tables and all rows; source unchanged.")
+                compare_databases(source, restored)
         finally:
             connection.execute(sql.SQL("DROP DATABASE {} WITH (FORCE)").format(sql.Identifier(name)))
+
+
+def compare_databases(source, restored):
+    tables = source.execute("SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename").fetchall()
+    restored_tables = restored.execute("SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename").fetchall()
+    if not tables or tables != restored_tables:
+        raise ValueError("Restored table set differs from source.")
+    for (table,) in tables:
+        query = sql.SQL("SELECT row_to_json(t)::text FROM {} t ORDER BY row_to_json(t)::text").format(sql.Identifier(table))
+        if source.execute(query).fetchall() != restored.execute(query).fetchall():
+            raise ValueError(f"Restored data differs in {table}; quiesce writes and retry.")
+    print(f"Restore verified: {len(tables)} tables and all rows; source unchanged.")
 
 
 def main():

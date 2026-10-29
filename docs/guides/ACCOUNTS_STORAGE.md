@@ -4,6 +4,7 @@ Local development foundation only: Django 5.2 LTS, Psycopg 3 and PostgreSQL 14+.
 The custom identity and framework auth/session tables have migrations. There are
 no public account routes, login UI, saved workspaces or C-session bridge yet.
 CMake, the mathematical libraries and the existing guest web need none of these.
+For the separate container deployment, see [Docker Compose](CONTAINERS.md).
 
 ## Local setup
 

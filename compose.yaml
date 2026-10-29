@@ -1,0 +1,75 @@
+name: numforge
+services:
+  web:
+    build:
+      context: .
+      dockerfile: deploy/web.Dockerfile
+    ports: ["127.0.0.1:${NUMFORGE_PORT:-18876}:${NUMFORGE_PORT:-18876}"]
+    command: ["--port", "${NUMFORGE_PORT:-18876}", "--workers", "4", "--queue-capacity", "64"]
+    environment:
+      NUMFORGE_PORT: ${NUMFORGE_PORT:-18876}
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD-SHELL, 'curl --fail --silent "http://127.0.0.1:$${NUMFORGE_PORT}/"']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  db:
+    image: postgres:18.6-bookworm
+    environment:
+      POSTGRES_USER: nf_local_admin
+      POSTGRES_PASSWORD_FILE: /run/secrets/admin_password
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    secrets: [admin_password]
+    volumes: [accounts-data:/var/lib/postgresql]
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD, pg_isready, -h, 127.0.0.1, -U, nf_local_admin, -d, postgres]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  setup:
+    build:
+      context: .
+      dockerfile: deploy/accounts.Dockerfile
+    command: [python, /support/accounts_setup.py]
+    secrets: [admin, migrate, app]
+    depends_on:
+      db: {condition: service_healthy}
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+
+  accounts:
+    build:
+      context: .
+      dockerfile: deploy/accounts.Dockerfile
+    environment:
+      NF_ACCOUNTS_CONFIG: /run/secrets/app
+    secrets: [app]
+    depends_on:
+      setup: {condition: service_completed_successfully}
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD, python, manage.py, shell, -c, "from django.db import connection; connection.cursor().execute('SELECT 1')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  accounts-data:
+secrets:
+  admin_password: {file: .local/compose/admin-password}
+  admin: {file: .local/compose/admin.json}
+  migrate: {file: .local/compose/migrate.json}
+  app: {file: .local/compose/app.json}

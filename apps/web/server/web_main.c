@@ -156,7 +156,8 @@ static bool numforge_parse_options(
     bool *open_browser,
     const char **public_origin,
     unsigned int *workers,
-    unsigned int *queue
+    unsigned int *queue,
+    bool *bind_all
 )
 {
     int index;
@@ -171,6 +172,7 @@ static bool numforge_parse_options(
     *public_origin = NULL;
     *workers = NUMFORGE_WEB_DEFAULT_WORKERS;
     *queue = NUMFORGE_WEB_DEFAULT_QUEUE;
+    *bind_all = false;
 
     for (index = 1; index < argc; index++)
     {
@@ -186,6 +188,13 @@ static bool numforge_parse_options(
             {
                 return false;
             }
+        }
+        else if (strcmp(argv[index], "--bind") == 0 && index + 1 < argc)
+        {
+            const char *binding = argv[++index];
+            if (strcmp(binding, "0.0.0.0") == 0) *bind_all = true;
+            else if (strcmp(binding, "127.0.0.1") == 0) *bind_all = false;
+            else return false;
         }
         else if (strcmp(argv[index], "--origin") == 0 && index + 1 < argc && *public_origin == NULL)
         {
@@ -223,12 +232,13 @@ int main(
     int reuse_address = 1;
     uint16_t port;
     bool open_browser;
+    bool bind_all;
     const char *public_origin;
     unsigned int worker_count, queue_capacity;
 
-    if (!numforge_parse_options(argc, argv, &port, &open_browser, &public_origin, &worker_count, &queue_capacity))
+    if (!numforge_parse_options(argc, argv, &port, &open_browser, &public_origin, &worker_count, &queue_capacity, &bind_all))
     {
-        fputs("Usage: numforge_web [--port 1-65535] [--no-browser] [--origin https://host[:port]] [--workers 1-16] [--queue-capacity 1-64]\n", stderr);
+        fputs("Usage: numforge_web [--port 1-65535] [--bind 127.0.0.1|0.0.0.0] [--no-browser] [--origin https://host[:port]] [--workers 1-16] [--queue-capacity 1-64]\n", stderr);
 
         return 2;
     }
@@ -268,7 +278,7 @@ int main(
 #endif
     memset(&address, 0, sizeof(address));
     address.sin_family = AF_INET;
-    address.sin_addr.s_addr = htonl(UINT32_C(0x7f000001)); /* 127.0.0.1; INADDR_LOOPBACK is not POSIX. */
+    address.sin_addr.s_addr = htonl(bind_all ? UINT32_C(0) : UINT32_C(0x7f000001));
     address.sin_port = htons(port);
 
     if (bind(listener, (const struct sockaddr *)&address, sizeof(address)) != 0 ||

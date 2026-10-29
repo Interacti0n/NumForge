@@ -1,5 +1,7 @@
 # Remote hosting
 
+[Docker Compose](CONTAINERS.md) provides a separate local container stack.
+
 Keep C on loopback behind HTTPS; pages/API share one public hostname:
 
 ```sh

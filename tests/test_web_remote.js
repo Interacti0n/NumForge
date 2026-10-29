@@ -25,12 +25,13 @@ function request(url, options = {}) {
     });
 }
 
-async function run(publicOrigin, overload = false) {
+async function run(publicOrigin, overload = false, binding = null) {
     const reservation = net.createServer();
     await new Promise(resolve => reservation.listen(0, '127.0.0.1', resolve));
     const port = reservation.address().port;
     await new Promise(resolve => reservation.close(resolve));
     const args = ['--port', String(port), '--no-browser'];
+    if (binding) args.push('--bind', binding);
     if (overload) args.push('--workers', '1', '--queue-capacity', '1');
     if (publicOrigin) args.push('--origin', publicOrigin);
     const child = spawn(executable, args, { windowsHide: true, stdio: 'ignore' });
@@ -126,10 +127,13 @@ async function run(publicOrigin, overload = false) {
         assert.equal(spawnSync(executable, ['--origin', value], { windowsHide: true }).status, 2);
     }
     for (const args of [['--workers', '0'], ['--workers', '17'], ['--workers'],
-        ['--queue-capacity', '0'], ['--queue-capacity', '65'], ['--queue-capacity']])
+        ['--queue-capacity', '0'], ['--queue-capacity', '65'], ['--queue-capacity'],
+        ['--bind'], ['--bind', '*'], ['--bind', '192.168.1.1']])
         assert.equal(spawnSync(executable, args, {windowsHide: true}).status, 2);
     await run(null);
     await run(origin);
+    await run(origin, false, '0.0.0.0');
+    await run(null, false, '127.0.0.1');
     await run(null, true);
     console.log('Origin, concurrent sessions, bounded overload and recovery checks passed.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

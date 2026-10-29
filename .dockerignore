@@ -1,0 +1,17 @@
+**
+!CMakeLists.txt
+!LICENSE
+!cmake/
+!cmake/**
+!src/
+!src/**
+!include/
+!include/**
+!apps/
+!apps/**
+!scripts/
+!scripts/accounts_db.py
+!deploy/
+!deploy/**
+**/__pycache__
+**/*.pyc

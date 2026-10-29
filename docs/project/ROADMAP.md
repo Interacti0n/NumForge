@@ -29,7 +29,10 @@ interface coverage; published downloads may lag source.
    [account proposal](../design/APPLICATION_DESIGN.md#proposed-accounts-and-saved-work).
    [Local storage foundation](../guides/ACCOUNTS_STORAGE.md), migrations and
    backup/restore checks exist. Next: private login/logout, then saved preferences
-   and named workspaces. Current calculator sessions remain anonymous/memory-only.
+   and named workspaces. A [Compose deployment](../guides/CONTAINERS.md) and CI
+   integration check are prepared; the Windows Docker/WSL runtime still needs
+   installation and a local full-stack check. Current calculator sessions remain
+   anonymous/memory-only.
 5. Add subsequent mathematics through one owning module and the
    [feature checklist](FEATURE_CHECKLIST.md). Push/publication require their
    own authorization.

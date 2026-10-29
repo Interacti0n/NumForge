@@ -16,6 +16,7 @@ tests/
   oracles/           independent reference drivers/checkers
   browser/, python/  adapter and user-interface suites
   accounts/          optional real-PostgreSQL storage/restore checks
+  containers/        disposable Docker Compose integration check
   package_consumer/  installed C/C++ consumers
   fuzz/              fuzz targets, replay and dictionary
 ```

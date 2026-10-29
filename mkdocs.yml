@@ -68,6 +68,7 @@ nav:
       - Contributing: CONTRIBUTING.md
       - Architecture: docs/design/ARCHITECTURE.md
       - Optional account storage: docs/guides/ACCOUNTS_STORAGE.md
+      - Docker Compose: docs/guides/CONTAINERS.md
       - Feature checklist: docs/project/FEATURE_CHECKLIST.md
       - Testing:
           - Start here: docs/TESTING.md
