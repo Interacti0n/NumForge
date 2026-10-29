@@ -181,16 +181,37 @@ static void test_budget_failures_and_scope_ownership(void)
     const char *left[] = {"0", "2", "4", "0", "3", "6"}, *right[] = {"10", "15"};
     a = matrix(2, 3, left); b = matrix(2, 1, right); analyze();
     for (unsigned operation = 0; operation < 2; ++operation)
-        for (unsigned mode = 0; mode < 4; ++mode) {
+        for (unsigned mode = 0; mode < 2; ++mode) {
             size_t rank = 99; NumForgeLinearSolution *output = solution;
             TEST_ASSERT_TRUE(numforge_budget_begin(5000, mode == 0 ? 0 : SIZE_MAX, mode == 1 ? 0 : SIZE_MAX));
-            if (mode >= 2) numforge_test_budget_expire_after(mode == 2 ? 1 : 128);
             NumForgeMatrixStatus status = operation ? numforge_matrix_rank(&rank, a) : numforge_matrix_solve_general(&output, a, b);
             TEST_ASSERT_EQUAL(NUMFORGE_MATRIX_OUT_OF_MEMORY, status);
             TEST_ASSERT_EQUAL_PTR(solution, output); TEST_ASSERT_EQUAL_UINT(99, rank);
-            TEST_ASSERT_EQUAL(mode < 2 ? NUMFORGE_BUDGET_MEMORY : NUMFORGE_BUDGET_TIME, numforge_budget_failure());
+            TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_MEMORY, numforge_budget_failure());
             TEST_ASSERT_FALSE(numforge_budget_begin(5000, SIZE_MAX, SIZE_MAX)); numforge_budget_end();
         }
+    for (unsigned operation = 0; operation < 2; ++operation) {
+        bool completed = false;
+        for (size_t check = 1; check < 8192; ++check) {
+            size_t rank = 99; NumForgeLinearSolution *output = solution;
+            TEST_ASSERT_TRUE(numforge_budget_begin(5000, SIZE_MAX, SIZE_MAX));
+            numforge_test_budget_expire_after(check);
+            NumForgeMatrixStatus status = operation ? numforge_matrix_rank(&rank, a) : numforge_matrix_solve_general(&output, a, b);
+            NumForgeBudgetFailure failure = numforge_budget_failure();
+            TEST_ASSERT_FALSE(numforge_budget_begin(5000, SIZE_MAX, SIZE_MAX)); numforge_budget_end();
+            if (failure == NUMFORGE_BUDGET_TIME) {
+                TEST_ASSERT_EQUAL(NUMFORGE_MATRIX_OUT_OF_MEMORY, status);
+                TEST_ASSERT_EQUAL_PTR(solution, output); TEST_ASSERT_EQUAL_UINT(99, rank);
+            } else {
+                TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_OK, failure); TEST_ASSERT_EQUAL(NUMFORGE_MATRIX_OK, status);
+                if (operation) TEST_ASSERT_EQUAL_UINT(1, rank);
+                else { TEST_ASSERT_EQUAL_UINT(1, numforge_linear_solution_rank(output)); numforge_linear_solution_destroy(output); }
+                completed = true;
+            }
+            if (completed) break;
+        }
+        TEST_ASSERT_TRUE(completed);
+    }
     size_t rank = 99; TEST_ASSERT_TRUE(numforge_budget_begin(5000, SIZE_MAX, SIZE_MAX));
     TEST_ASSERT_EQUAL(NUMFORGE_MATRIX_OK, numforge_matrix_rank(&rank, a)); TEST_ASSERT_EQUAL_UINT(1, rank);
     TEST_ASSERT_FALSE(numforge_budget_begin(5000, SIZE_MAX, SIZE_MAX)); numforge_budget_end();

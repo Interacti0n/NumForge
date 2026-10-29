@@ -13,6 +13,47 @@
  * ownership and budget conventions.
  */
 
+static bool power_of_two_shift(const BigInt *value, size_t *shift)
+{
+    if (!value->size) return false;
+    uint64_t high = value->limbs[value->size - 1U];
+    if (high & (high - 1U)) return false;
+    for (size_t i = 0; i + 1U < value->size; ++i) {
+        if (!(i & 255U) && !numforge_budget_check()) return false;
+        if (value->limbs[i]) return false;
+    }
+    size_t bits = 0;
+    while (high > 1U) { high >>= 1U; ++bits; }
+    *shift = (value->size - 1U) * BIGINT_LIMB_BITS + bits;
+    return true;
+}
+
+/* gcd(x,2^k)=2^min(v2(x),k), including x=0 and negative magnitudes.
+ * Dyadic coordinates otherwise trigger long Euclidean chains in root scans. */
+static BigIntStatus gcd_power_of_two(BigInt *result, const BigInt *value, size_t power)
+{
+    size_t trailing = power;
+    if (value->size) {
+        size_t limb = 0;
+        while (limb < value->size && !value->limbs[limb] && limb < power / BIGINT_LIMB_BITS) {
+            if (!(limb & 255U) && !numforge_budget_check()) return BIGINT_OUT_OF_MEMORY;
+            ++limb;
+        }
+        trailing = limb * BIGINT_LIMB_BITS;
+        uint64_t low = value->limbs[limb];
+        while (trailing < power && !(low & 1U)) { low >>= 1U; ++trailing; }
+    }
+    size_t count = trailing / BIGINT_LIMB_BITS + 1U;
+    BigInt temporary = {0};
+    temporary.limbs = numforge_calloc(count, sizeof(*temporary.limbs));
+    if (!temporary.limbs) return BIGINT_OUT_OF_MEMORY;
+    temporary.size = temporary.capacity = count;
+    temporary.limbs[count-1U] = UINT64_C(1) << (trailing % BIGINT_LIMB_BITS);
+    if (!numforge_budget_check()) { free(temporary.limbs); return BIGINT_OUT_OF_MEMORY; }
+    bigint_commit(result, &temporary);
+    return BIGINT_OK;
+}
+
 BigIntStatus bigint_gcd( /*Greatest common divisor for BigInts (gcd(a,b)) via the Euclidean algorithm*/
     BigInt *result,
     const BigInt *a,
@@ -24,6 +65,11 @@ BigIntStatus bigint_gcd( /*Greatest common divisor for BigInts (gcd(a,b)) via th
         return BIGINT_NULL_ARGUMENT;
     }
 
+    if (!numforge_budget_check()) return BIGINT_OUT_OF_MEMORY;
+
+    size_t power;
+    if (power_of_two_shift(a, &power)) return gcd_power_of_two(result, b, power);
+    if (power_of_two_shift(b, &power)) return gcd_power_of_two(result, a, power);
     if (!numforge_budget_check()) return BIGINT_OUT_OF_MEMORY;
 
     BigInt x;

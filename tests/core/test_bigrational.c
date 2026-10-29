@@ -1,5 +1,6 @@
 #include "tests/support/numbers.h"
 #include <numforge/bigrational.h>
+#include "src/runtime/numforge_alloc.h"
 
 #include <unity.h>
 
@@ -247,6 +248,52 @@ static void test_small_integer_reference_grid(void)
     }
 }
 
+/* Exercise each allocation/checkpoint of the distinct canonical paths. Build
+ * fixtures before injection and inspect outputs only after disabling it. */
+static void test_optimized_paths_preserve_outputs_on_faults(void)
+{
+    typedef BigRationalStatus (*Operation)(BigRational *, const BigRational *, const BigRational *);
+    const Operation operations[] = {bigrational_add, bigrational_sub, bigrational_mul, bigrational_div};
+    const char *cases[][8] = {
+        {"1","6","1","6","1/3","0","1/36","1"},
+        {"0","1","-5","7","-5/7","5/7","0","0"},
+        {"7","8","1","1","15/8","-1/8","7/8","7/8"},
+        {"2","3","-9","10","-7/30","47/30","-3/5","-20/27"},
+        {"1","6","1","10","4/15","1/15","1/60","5/3"},
+        {"1","6","1","15","7/30","1/10","1/90","5/2"}
+    };
+    for (size_t c = 0; c < sizeof(cases)/sizeof(cases[0]); ++c)
+        for (size_t op = 0; op < 4; ++op) for (int alias = 0; alias < 3; ++alias)
+            for (int deadline = 0; deadline < 2; ++deadline) {
+                bool completed = false;
+                for (size_t index = 1; index < 512; ++index) {
+                    BigRational *a = test_fraction(cases[c][0], cases[c][1]);
+                    BigRational *b = test_fraction(cases[c][2], cases[c][3]);
+                    BigRational *separate = test_fraction("13", "17"), *out = alias == 1 ? a : alias == 2 ? b : separate;
+                    char *original = NULL;
+                    TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_to_string(out, &original));
+                    bool owner = numforge_budget_begin(60000, SIZE_MAX, SIZE_MAX);
+                    TEST_ASSERT_TRUE(owner);
+                    numforge_test_allocator_begin(deadline ? 0 : index);
+                    if (deadline) numforge_test_budget_expire_after(index);
+                    BigRationalStatus status = operations[op](out, a, b);
+                    bool failed = deadline ? numforge_budget_failure() == NUMFORGE_BUDGET_TIME : numforge_test_allocator_did_fail();
+                    numforge_budget_end(); numforge_test_allocator_end();
+                    if (failed) {
+                        TEST_ASSERT_EQUAL(BIGRATIONAL_OUT_OF_MEMORY, status);
+                        test_assert_fraction(original, out);
+                    } else {
+                        TEST_ASSERT_EQUAL(BIGRATIONAL_OK, status);
+                        test_assert_fraction(cases[c][4+op], out);
+                        completed = true;
+                    }
+                    free(original); bigrational_destroy(a); bigrational_destroy(b); bigrational_destroy(separate);
+                    if (completed) break;
+                }
+                TEST_ASSERT_TRUE(completed);
+            }
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -255,5 +302,6 @@ int main(void)
     RUN_TEST(test_decimal_conversion_and_rounding);
     RUN_TEST(test_domains_preserve_outputs);
     RUN_TEST(test_small_integer_reference_grid);
+    RUN_TEST(test_optimized_paths_preserve_outputs_on_faults);
     return UNITY_END();
 }

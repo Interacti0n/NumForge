@@ -19,11 +19,14 @@ static const Case cases[]={
  {"sine_wide","sin(3x)","-1000","1000",8},
  {"sine_million","sin(x)","-1000000","1000000",0},
  {"sine_trillion","sin(x)","-1000000000000","1000000000000",0},
- {"cancellation","(10000000000000000+x)-10000000000000000","-10","10",9}};
+ {"cancellation","(10000000000000000+x)-10000000000000000","-10","10",9},
+ {"constant_log","ln(2)","-10","10",10},
+ {"constant_fraction","1/3","-10","10",11}};
 static double reference(int kind,double x){switch(kind){
  case 0:return sin(x);case 1:return sin(33*x);case 2:return sin(3*x)+cos(2*x);
  case 3:return sin(3*x)*exp(-x*x/20);case 4:return tan(x);case 5:return 1/x;
- case 6:return sqrt(x);case 7:return log(x);case 8:return sin(3*x);default:return x;}}
+ case 6:return sqrt(x);case 7:return log(x);case 8:return sin(3*x);
+ case 10:return log(2);case 11:return 1.0/3;default:return x;}}
 static double project(const BigDecimal *value){char *text=NULL;double number=NAN;
  if(bigdecimal_to_string(value,&text)==BIGDECIMAL_OK)number=strtod(text,NULL);
  free(text);return number;}

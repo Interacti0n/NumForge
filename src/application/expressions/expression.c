@@ -22,6 +22,7 @@ struct ApplicationExpression
     CalculatorVariable variables[CALCULATOR_VARIABLE_CAPACITY];
     size_t variable_count;
     bool uses_variables;
+    bool parameter_dependent;
     bool graph_phases, phase_overflow;
     const CalculatorExpression *phase_nodes[APPLICATION_EXPRESSION_MAX_PHASES];
     int phase_kinds[APPLICATION_EXPRESSION_MAX_PHASES];
@@ -65,6 +66,7 @@ static CalculatorStatus bind_snapshot(ApplicationExpression *prepared,
             const char *name = node->data.variable.name;
             if (strcmp(name, prepared->parameter_name) == 0)
             {
+                prepared->parameter_dependent = true;
                 node->data.variable.value = &prepared->parameter;
                 break;
             }
@@ -411,7 +413,17 @@ CalculatorStatus application_expression_sample(ApplicationExpression *expression
         if (arguments[i].number == NULL) { status = CALCULATOR_INVALID_ARGUMENT; break; }
         expression->parameter = arguments[i];
         samples[i].value.uses_variables = expression->uses_variables;
-        status = calculator_evaluate_parsed_value(expression->tree, &expression->context,
+        if (i && !expression->parameter_dependent) {
+            /* Context and referenced values are immutable snapshots. Reuse only
+             * within this batch, with separately owned typed outputs. Random
+             * calls were rejected during binding. Domain errors keep offsets. */
+            samples[i].error = samples[0].error;
+            status = samples[0].error.status;
+            if (status == CALCULATOR_OK) {
+                status = calculator_value_copy(&samples[i].value, &samples[0].value);
+                if (status != CALCULATOR_OK) calculator_error_set(&samples[i].error, status, expression->tree->offset);
+            }
+        } else status = calculator_evaluate_parsed_value(expression->tree, &expression->context,
             expression->answer.number == NULL ? NULL : &expression->answer, NULL,
             &samples[i].value, &samples[i].error);
         if (status == CALCULATOR_OK && expression->graph_phases) status = sample_graph_phases(expression,&samples[i]);

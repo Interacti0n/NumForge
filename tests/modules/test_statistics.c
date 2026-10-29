@@ -146,15 +146,29 @@ static void test_allocation_and_budget_failures_are_atomic(void)
         }
         TEST_ASSERT_TRUE(complete);
     }
-    const size_t checks[] = {1, 64, 512};
-    for (unsigned mode = 0; mode < 5; ++mode) {
+    for (unsigned mode = 0; mode < 2; ++mode) {
         TEST_ASSERT_TRUE(numforge_budget_begin(5000, mode == 0 ? 0 : SIZE_MAX, mode == 1 ? 0 : SIZE_MAX));
-        if (mode >= 2) numforge_test_budget_expire_after(checks[mode - 2]);
         TEST_ASSERT_EQUAL(BIGRATIONAL_OUT_OF_MEMORY, numforge_statistics_describe(&summary, values, 3));
         TEST_ASSERT_EQUAL_PTR(saved, summary);
-        TEST_ASSERT_EQUAL(mode < 2 ? NUMFORGE_BUDGET_MEMORY : NUMFORGE_BUDGET_TIME, numforge_budget_failure());
+        TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_MEMORY, numforge_budget_failure());
         TEST_ASSERT_FALSE(numforge_budget_begin(5000, SIZE_MAX, SIZE_MAX)); numforge_budget_end();
     }
+    bool deadline_completed = false;
+    for (size_t check = 1; check < 8192; ++check) {
+        TEST_ASSERT_TRUE(numforge_budget_begin(5000, SIZE_MAX, SIZE_MAX));
+        numforge_test_budget_expire_after(check);
+        BigRationalStatus status = numforge_statistics_describe(&summary, values, 3);
+        NumForgeBudgetFailure failure = numforge_budget_failure(); numforge_budget_end();
+        if (failure == NUMFORGE_BUDGET_TIME) {
+            TEST_ASSERT_EQUAL(BIGRATIONAL_OUT_OF_MEMORY, status); TEST_ASSERT_EQUAL_PTR(saved, summary);
+        } else {
+            TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_OK, failure); TEST_ASSERT_EQUAL(BIGRATIONAL_OK, status);
+            numforge_statistics_summary_destroy(summary); summary = saved; deadline_completed = true;
+        }
+        equals(numforge_statistics_summary_mean(saved), "1/6"); equals(samples[0], "-1/3");
+        if (deadline_completed) break;
+    }
+    TEST_ASSERT_TRUE(deadline_completed);
     TEST_ASSERT_TRUE(numforge_budget_begin(5000, SIZE_MAX, SIZE_MAX));
     TEST_ASSERT_EQUAL(BIGRATIONAL_OK, numforge_statistics_describe(&summary, values, 3));
     TEST_ASSERT_FALSE(numforge_budget_begin(5000, SIZE_MAX, SIZE_MAX)); numforge_budget_end();
@@ -223,15 +237,29 @@ static void test_covariance_validation_and_atomic_failures(void)
         }
         TEST_ASSERT_TRUE(complete);
     }
-    const size_t checks[] = {1, 64, 512};
-    for (unsigned mode = 0; mode < 5; ++mode) {
+    for (unsigned mode = 0; mode < 2; ++mode) {
         TEST_ASSERT_TRUE(numforge_budget_begin(5000, mode == 0 ? 0 : SIZE_MAX, mode == 1 ? 0 : SIZE_MAX));
-        if (mode >= 2) numforge_test_budget_expire_after(checks[mode - 2]);
         TEST_ASSERT_EQUAL(BIGRATIONAL_OUT_OF_MEMORY, numforge_statistics_covariance(samples[0], x, x, 3, true));
-        TEST_ASSERT_EQUAL(mode < 2 ? NUMFORGE_BUDGET_MEMORY : NUMFORGE_BUDGET_TIME, numforge_budget_failure());
+        TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_MEMORY, numforge_budget_failure());
         TEST_ASSERT_FALSE(numforge_budget_begin(5000, SIZE_MAX, SIZE_MAX)); numforge_budget_end();
         equals(samples[0], "-1/3");
     }
+    BigRational *output = rational("13/17"); bool deadline_completed = false;
+    for (size_t check = 1; check < 8192; ++check) {
+        TEST_ASSERT_TRUE(numforge_budget_begin(5000, SIZE_MAX, SIZE_MAX));
+        numforge_test_budget_expire_after(check);
+        BigRationalStatus status = numforge_statistics_covariance(output, x, x, 3, true);
+        NumForgeBudgetFailure failure = numforge_budget_failure(); numforge_budget_end();
+        if (failure == NUMFORGE_BUDGET_TIME) {
+            TEST_ASSERT_EQUAL(BIGRATIONAL_OUT_OF_MEMORY, status); equals(output, "13/17");
+        } else {
+            TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_OK, failure); TEST_ASSERT_EQUAL(BIGRATIONAL_OK, status);
+            equals(output, "1/4"); deadline_completed = true;
+        }
+        equals(samples[0], "-1/3");
+        if (deadline_completed) break;
+    }
+    bigrational_destroy(output); TEST_ASSERT_TRUE(deadline_completed);
     TEST_ASSERT_EQUAL(BIGRATIONAL_OK, numforge_statistics_covariance(samples[0], x, x, 3, true)); equals(samples[0], "1/4");
 }
 int main(void)

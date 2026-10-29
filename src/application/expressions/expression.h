@@ -61,6 +61,9 @@ void application_expression_destroy(ApplicationExpression *expression);
  * All points share one budget, inherited if the caller already owns a scope.
  * A graph/solver operation spanning preparation/multiple batches must install
  * its outer budget first. This API never modifies session state or the inputs. */
+/* Parameter-independent expressions reuse the first result within each batch;
+ * every returned value remains independently owned. No values persist between
+ * batches, and graph phase capture keeps its ordinary per-sample checks. */
 CalculatorStatus application_expression_sample(ApplicationExpression *expression,
     const CalculatorValue *arguments, size_t count,
     ApplicationExpressionSample **result, CalculatorError *error);

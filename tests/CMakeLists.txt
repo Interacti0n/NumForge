@@ -60,6 +60,7 @@ numforge_add_unit_test(bigint_property_tests numforge core/test_bigint_propertie
 numforge_add_unit_test(bigdecimal_tests numforge core/test_bigdecimal.c)
 
 numforge_add_unit_test(bigrational_tests numforge core/test_bigrational.c)
+target_compile_definitions(bigrational_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)
 
 numforge_add_unit_test(bigcomplex_tests numforge core/test_bigcomplex.c --numeric-only)
 target_compile_definitions(bigcomplex_tests PRIVATE NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING)

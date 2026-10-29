@@ -3,6 +3,7 @@
 #include "src/core/bigdecimal/bigdecimal_internal.h"
 #include "src/runtime/numforge_alloc.h"
 #include "src/core/storage.h"
+#include "src/runtime/instrumentation/decimal_profile.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -126,44 +127,46 @@ static void rational_commit(BigRational *destination, BigRational *temporary)
     bigrational_destroy(temporary);
 }
 
+/* Private, already reduced parts stay detached until both are ready. Moving
+ * them cannot fail, including when destination aliases either input. */
+static BigRationalStatus commit_parts(BigRational *result, BigInt *top, BigInt *bottom)
+{
+    if (bigint_is_zero(top)) {
+        BigIntStatus status = bigint_set_uint64(bottom, 1U);
+        if (status != BIGINT_OK) return rational_from_integer_status(status);
+    } else if (bottom->is_negative) {
+        top->is_negative = !top->is_negative;
+        bottom->is_negative = false;
+    }
+    if (!numforge_budget_check()) return BIGRATIONAL_OUT_OF_MEMORY;
+    bigint_commit(result->numerator, top);
+    bigint_commit(result->denominator, bottom);
+    return BIGRATIONAL_OK;
+}
+
+static BigIntStatus divide_factor(BigInt *out, const BigInt *value, const BigInt *factor)
+{
+    return bigint_is_one(factor) ? bigint_copy(out, value) : bigint_div(out, value, factor);
+}
+
 BigRationalStatus bigrational_copy(BigRational *result, const BigRational *value)
 {
-    BigRational *temporary;
-    BigRationalStatus status;
     if (result == NULL || value == NULL)
     {
         return BIGRATIONAL_NULL_ARGUMENT;
     }
-    if (result == value)
-    {
-        return BIGRATIONAL_OK;
-    }
-    temporary = bigrational_create();
-    if (temporary == NULL)
-    {
-        return BIGRATIONAL_OUT_OF_MEMORY;
-    }
-    status = rational_from_integer_status(bigint_copy(temporary->numerator, value->numerator));
-    if (status == BIGRATIONAL_OK)
-    {
-        status = rational_from_integer_status(bigint_copy(temporary->denominator, value->denominator));
-    }
-    if (status == BIGRATIONAL_OK)
-    {
-        rational_commit(result, temporary);
-    }
-    else
-    {
-        bigrational_destroy(temporary);
-    }
+    if (!numforge_budget_check()) return BIGRATIONAL_OUT_OF_MEMORY;
+    if (result == value) return BIGRATIONAL_OK;
+    BigInt top = {0}, bottom = {0};
+    BigRationalStatus status = rational_from_integer_status(bigint_copy(&top, value->numerator));
+    if (status == BIGRATIONAL_OK) status = rational_from_integer_status(bigint_copy(&bottom, value->denominator));
+    if (status == BIGRATIONAL_OK) status = commit_parts(result, &top, &bottom);
+    free(top.limbs); free(bottom.limbs);
     return status;
 }
 
 BigRationalStatus bigrational_set_fraction(BigRational *result, const BigInt *numerator, const BigInt *denominator)
 {
-    BigRational *temporary;
-    BigInt *factor;
-    BigRationalStatus status;
     if (result == NULL || numerator == NULL || denominator == NULL)
     {
         return BIGRATIONAL_NULL_ARGUMENT;
@@ -172,40 +175,19 @@ BigRationalStatus bigrational_set_fraction(BigRational *result, const BigInt *nu
     {
         return BIGRATIONAL_DIVISION_BY_ZERO;
     }
-    temporary = bigrational_create();
-    factor = bigint_create();
-    if (temporary == NULL || factor == NULL)
-    {
-        bigrational_destroy(temporary);
-        bigint_destroy(factor);
-        return BIGRATIONAL_OUT_OF_MEMORY;
+    if (!numforge_budget_check()) return BIGRATIONAL_OUT_OF_MEMORY;
+    BigInt top = {0}, bottom = {0}, factor = {0};
+    BigRationalStatus status = BIGRATIONAL_OK;
+    if (bigint_is_one(denominator)) {
+        status = rational_from_integer_status(bigint_copy(&top, numerator));
+        if (status == BIGRATIONAL_OK) status = rational_from_integer_status(bigint_copy(&bottom, denominator));
+    } else if (!bigint_is_zero(numerator)) {
+        status = rational_from_integer_status(bigint_gcd(&factor, numerator, denominator));
+        if (status == BIGRATIONAL_OK) status = rational_from_integer_status(divide_factor(&top, numerator, &factor));
+        if (status == BIGRATIONAL_OK) status = rational_from_integer_status(divide_factor(&bottom, denominator, &factor));
     }
-    status = rational_from_integer_status(bigint_gcd(factor, numerator, denominator));
-    if (status == BIGRATIONAL_OK && !bigint_is_zero(numerator))
-    {
-        status = rational_from_integer_status(bigint_div(temporary->numerator, numerator, factor));
-        if (status == BIGRATIONAL_OK)
-        {
-            status = rational_from_integer_status(bigint_div(temporary->denominator, denominator, factor));
-        }
-        if (status == BIGRATIONAL_OK && bigint_is_negative(temporary->denominator))
-        {
-            status = rational_from_integer_status(bigint_negate(temporary->numerator, temporary->numerator));
-            if (status == BIGRATIONAL_OK)
-            {
-                status = rational_from_integer_status(bigint_abs(temporary->denominator, temporary->denominator));
-            }
-        }
-    }
-    bigint_destroy(factor);
-    if (status == BIGRATIONAL_OK)
-    {
-        rational_commit(result, temporary);
-    }
-    else
-    {
-        bigrational_destroy(temporary);
-    }
+    if (status == BIGRATIONAL_OK) status = commit_parts(result, &top, &bottom);
+    free(top.limbs); free(bottom.limbs); free(factor.limbs);
     return status;
 }
 
@@ -378,76 +360,61 @@ BigRationalStatus bigrational_to_bigdecimal(BigDecimal *result, const BigRationa
 
 BigRationalStatus bigrational_compare(int *comparison, const BigRational *a, const BigRational *b)
 {
-    BigInt *g = NULL, *left = NULL, *right = NULL, *factor = NULL;
+    BigInt g = {0}, left = {0}, right = {0}, factor = {0};
     BigRationalStatus status = BIGRATIONAL_OUT_OF_MEMORY;
     if (comparison == NULL || a == NULL || b == NULL)
     {
         return BIGRATIONAL_NULL_ARGUMENT;
     }
-    g = bigint_create();
-    left = bigint_create();
-    right = bigint_create();
-    factor = bigint_create();
-    if (g == NULL || left == NULL || right == NULL || factor == NULL)
-    {
-        goto done;
+    if (!numforge_budget_check()) return BIGRATIONAL_OUT_OF_MEMORY;
+    if (a == b || bigint_compare(a->denominator, b->denominator) == 0) {
+        *comparison = bigint_compare(a->numerator, b->numerator);
+        return BIGRATIONAL_OK;
     }
-    status = rational_from_integer_status(bigint_gcd(g, a->denominator, b->denominator));
+    if (bigint_is_zero(a->numerator) || bigint_is_zero(b->numerator) ||
+        bigint_is_negative(a->numerator) != bigint_is_negative(b->numerator)) {
+        *comparison = bigint_compare(a->numerator, b->numerator);
+        return BIGRATIONAL_OK;
+    }
+    status = rational_from_integer_status(bigint_gcd(&g, a->denominator, b->denominator));
     if (status == BIGRATIONAL_OK)
     {
-        status = rational_from_integer_status(bigint_div(factor, b->denominator, g));
-    }
-    if (status == BIGRATIONAL_OK)
-    {
-        status = rational_from_integer_status(bigint_mul(left, a->numerator, factor));
-    }
-    if (status == BIGRATIONAL_OK)
-    {
-        status = rational_from_integer_status(bigint_div(factor, a->denominator, g));
+        status = rational_from_integer_status(divide_factor(&factor, b->denominator, &g));
     }
     if (status == BIGRATIONAL_OK)
     {
-        status = rational_from_integer_status(bigint_mul(right, b->numerator, factor));
+        status = rational_from_integer_status(bigint_mul(&left, a->numerator, &factor));
     }
     if (status == BIGRATIONAL_OK)
     {
-        *comparison = bigint_compare(left, right);
+        status = rational_from_integer_status(divide_factor(&factor, a->denominator, &g));
     }
-done:
-    bigint_destroy(g);
-    bigint_destroy(left);
-    bigint_destroy(right);
-    bigint_destroy(factor);
+    if (status == BIGRATIONAL_OK)
+    {
+        status = rational_from_integer_status(bigint_mul(&right, b->numerator, &factor));
+    }
+    if (status == BIGRATIONAL_OK)
+    {
+        *comparison = bigint_compare(&left, &right);
+    }
+    free(g.limbs); free(left.limbs); free(right.limbs); free(factor.limbs);
     return status;
 }
 
 static BigRationalStatus rational_unary(BigRational *result, const BigRational *value, bool negate)
 {
-    BigRational *temporary;
-    BigRationalStatus status;
     if (result == NULL || value == NULL)
     {
         return BIGRATIONAL_NULL_ARGUMENT;
     }
-    temporary = bigrational_create();
-    if (temporary == NULL)
-    {
-        return BIGRATIONAL_OUT_OF_MEMORY;
+    BigInt top = {0}, bottom = {0};
+    BigRationalStatus status = rational_from_integer_status(bigint_copy(&top, value->numerator));
+    if (status == BIGRATIONAL_OK) status = rational_from_integer_status(bigint_copy(&bottom, value->denominator));
+    if (status == BIGRATIONAL_OK) {
+        top.is_negative = top.size && (negate ? !top.is_negative : false);
+        status = commit_parts(result, &top, &bottom);
     }
-    status = bigrational_copy(temporary, value);
-    if (status == BIGRATIONAL_OK)
-    {
-        status = rational_from_integer_status(negate ? bigint_negate(temporary->numerator, temporary->numerator)
-                                                     : bigint_abs(temporary->numerator, temporary->numerator));
-    }
-    if (status == BIGRATIONAL_OK)
-    {
-        rational_commit(result, temporary);
-    }
-    else
-    {
-        bigrational_destroy(temporary);
-    }
+    free(top.limbs); free(bottom.limbs);
     return status;
 }
 
@@ -463,62 +430,34 @@ BigRationalStatus bigrational_abs(BigRational *result, const BigRational *value)
 
 static BigRationalStatus rational_sum(BigRational *result, const BigRational *a, const BigRational *b, bool subtract)
 {
-    BigInt *g = NULL, *left = NULL, *right = NULL, *u = NULL, *v = NULL, *numerator = NULL, *denominator = NULL;
-    BigRationalStatus status = BIGRATIONAL_OUT_OF_MEMORY;
-    if (result == NULL || a == NULL || b == NULL)
-    {
-        return BIGRATIONAL_NULL_ARGUMENT;
+    if (!result || !a || !b) return BIGRATIONAL_NULL_ARGUMENT;
+    if (!numforge_budget_check()) return BIGRATIONAL_OUT_OF_MEMORY;
+    if (bigint_is_zero(b->numerator)) return bigrational_copy(result, a);
+    if (bigint_is_zero(a->numerator)) return subtract ? bigrational_negate(result, b) : bigrational_copy(result, b);
+    BigInt g = {0}, left = {0}, right = {0}, u = {0}, v = {0}, top = {0}, bottom = {0};
+    BigRationalStatus status;
+    if (bigint_compare(a->denominator, b->denominator) == 0) {
+        status = rational_from_integer_status(subtract ? bigint_sub(&top, a->numerator, b->numerator) :
+            bigint_add(&top, a->numerator, b->numerator));
+        if (status == BIGRATIONAL_OK) status = bigrational_set_fraction(result, &top, a->denominator);
+    } else {
+        status = rational_from_integer_status(bigint_gcd(&g, a->denominator, b->denominator));
+        if (status == BIGRATIONAL_OK) status = rational_from_integer_status(divide_factor(&u, b->denominator, &g));
+        if (status == BIGRATIONAL_OK) status = rational_from_integer_status(divide_factor(&v, a->denominator, &g));
+        if (status == BIGRATIONAL_OK) status = rational_from_integer_status(bigint_mul(&left, a->numerator, &u));
+        if (status == BIGRATIONAL_OK) status = rational_from_integer_status(bigint_mul(&right, b->numerator, &v));
+        if (status == BIGRATIONAL_OK) status = rational_from_integer_status(subtract ? bigint_sub(&top, &left, &right) : bigint_add(&top, &left, &right));
+        /* For reduced a/b and c/d, the only possible remaining common factor
+         * of a*(d/g)+c*(b/g) and b*(d/g) divides g=gcd(b,d).
+         * Reduce by gcd(top,g), rather than GCD with the full product. */
+        if (status == BIGRATIONAL_OK && !bigint_is_one(&g)) status = rational_from_integer_status(bigint_gcd(&g, &top, &g));
+        if (status == BIGRATIONAL_OK) status = rational_from_integer_status(divide_factor(&top, &top, &g));
+        if (status == BIGRATIONAL_OK) status = rational_from_integer_status(divide_factor(&right, b->denominator, &g));
+        if (status == BIGRATIONAL_OK) status = rational_from_integer_status(bigint_mul(&bottom, &v, &right));
+        if (status == BIGRATIONAL_OK) status = commit_parts(result, &top, &bottom);
     }
-    g = bigint_create();
-    left = bigint_create();
-    right = bigint_create();
-    u = bigint_create();
-    v = bigint_create();
-    numerator = bigint_create();
-    denominator = bigint_create();
-    if (g == NULL || left == NULL || right == NULL || u == NULL || v == NULL || numerator == NULL ||
-        denominator == NULL)
-    {
-        goto done;
-    }
-    status = rational_from_integer_status(bigint_gcd(g, a->denominator, b->denominator));
-    if (status == BIGRATIONAL_OK)
-    {
-        status = rational_from_integer_status(bigint_div(u, b->denominator, g));
-    }
-    if (status == BIGRATIONAL_OK)
-    {
-        status = rational_from_integer_status(bigint_div(v, a->denominator, g));
-    }
-    if (status == BIGRATIONAL_OK)
-    {
-        status = rational_from_integer_status(bigint_mul(left, a->numerator, u));
-    }
-    if (status == BIGRATIONAL_OK)
-    {
-        status = rational_from_integer_status(bigint_mul(right, b->numerator, v));
-    }
-    if (status == BIGRATIONAL_OK)
-    {
-        status = rational_from_integer_status(subtract ? bigint_sub(numerator, left, right)
-                                                       : bigint_add(numerator, left, right));
-    }
-    if (status == BIGRATIONAL_OK)
-    {
-        status = rational_from_integer_status(bigint_mul(denominator, a->denominator, u));
-    }
-    if (status == BIGRATIONAL_OK)
-    {
-        status = bigrational_set_fraction(result, numerator, denominator);
-    }
-done:
-    bigint_destroy(g);
-    bigint_destroy(left);
-    bigint_destroy(right);
-    bigint_destroy(u);
-    bigint_destroy(v);
-    bigint_destroy(numerator);
-    bigint_destroy(denominator);
+    free(g.limbs); free(left.limbs); free(right.limbs); free(u.limbs); free(v.limbs);
+    free(top.limbs); free(bottom.limbs);
     return status;
 }
 
@@ -534,8 +473,7 @@ BigRationalStatus bigrational_sub(BigRational *result, const BigRational *a, con
 
 static BigRationalStatus rational_product(BigRational *result, const BigRational *a, const BigRational *b, bool divide)
 {
-    BigInt *g1 = NULL, *g2 = NULL, *p = NULL, *q = NULL, *u = NULL, *v = NULL;
-    BigInt *numerator = NULL, *denominator = NULL;
+    BigInt g1 = {0}, g2 = {0}, p = {0}, q = {0}, u = {0}, v = {0}, numerator = {0}, denominator = {0};
     const BigInt *top = divide ? b->denominator : b->numerator;
     const BigInt *bottom = divide ? b->numerator : b->denominator;
     BigRationalStatus status = BIGRATIONAL_OUT_OF_MEMORY;
@@ -543,61 +481,50 @@ static BigRationalStatus rational_product(BigRational *result, const BigRational
     {
         return BIGRATIONAL_DIVISION_BY_ZERO;
     }
-    g1 = bigint_create();
-    g2 = bigint_create();
-    p = bigint_create();
-    q = bigint_create();
-    u = bigint_create();
-    v = bigint_create();
-    numerator = bigint_create();
-    denominator = bigint_create();
-    if (g1 == NULL || g2 == NULL || p == NULL || q == NULL || u == NULL || v == NULL || numerator == NULL ||
-        denominator == NULL)
-    {
+    if (!numforge_budget_check()) return BIGRATIONAL_OUT_OF_MEMORY;
+    if (bigint_is_zero(a->numerator) || (!divide && bigint_is_zero(b->numerator))) {
+        status = commit_parts(result, &numerator, &denominator);
         goto done;
     }
-    status = rational_from_integer_status(bigint_gcd(g1, a->numerator, bottom));
+    if (bigint_is_one(b->numerator) && bigint_is_one(b->denominator)) return bigrational_copy(result, a);
+    if (!divide && bigint_is_one(a->numerator) && bigint_is_one(a->denominator)) return bigrational_copy(result, b);
+    status = rational_from_integer_status(bigint_gcd(&g1, a->numerator, bottom));
     if (status == BIGRATIONAL_OK)
     {
-        status = rational_from_integer_status(bigint_gcd(g2, top, a->denominator));
+        status = rational_from_integer_status(bigint_gcd(&g2, top, a->denominator));
     }
     if (status == BIGRATIONAL_OK)
     {
-        status = rational_from_integer_status(bigint_div(p, a->numerator, g1));
+        status = rational_from_integer_status(divide_factor(&p, a->numerator, &g1));
     }
     if (status == BIGRATIONAL_OK)
     {
-        status = rational_from_integer_status(bigint_div(q, top, g2));
+        status = rational_from_integer_status(divide_factor(&q, top, &g2));
     }
     if (status == BIGRATIONAL_OK)
     {
-        status = rational_from_integer_status(bigint_div(u, a->denominator, g2));
+        status = rational_from_integer_status(divide_factor(&u, a->denominator, &g2));
     }
     if (status == BIGRATIONAL_OK)
     {
-        status = rational_from_integer_status(bigint_div(v, bottom, g1));
+        status = rational_from_integer_status(divide_factor(&v, bottom, &g1));
     }
     if (status == BIGRATIONAL_OK)
     {
-        status = rational_from_integer_status(bigint_mul(numerator, p, q));
+        status = rational_from_integer_status(bigint_mul(&numerator, &p, &q));
     }
     if (status == BIGRATIONAL_OK)
     {
-        status = rational_from_integer_status(bigint_mul(denominator, u, v));
+        status = rational_from_integer_status(bigint_mul(&denominator, &u, &v));
     }
     if (status == BIGRATIONAL_OK)
     {
-        status = bigrational_set_fraction(result, numerator, denominator);
+        /* Cross-cancellation of canonical inputs already proves coprimality. */
+        status = commit_parts(result, &numerator, &denominator);
     }
 done:
-    bigint_destroy(g1);
-    bigint_destroy(g2);
-    bigint_destroy(p);
-    bigint_destroy(q);
-    bigint_destroy(u);
-    bigint_destroy(v);
-    bigint_destroy(numerator);
-    bigint_destroy(denominator);
+    free(g1.limbs); free(g2.limbs); free(p.limbs); free(q.limbs); free(u.limbs); free(v.limbs);
+    free(numerator.limbs); free(denominator.limbs);
     return status;
 }
 

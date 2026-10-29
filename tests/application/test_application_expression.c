@@ -442,9 +442,53 @@ static void test_step_metadata_overflow_is_explicit(void)
     TEST_ASSERT_TRUE(samples[0].phase_unknown);TEST_ASSERT_EQUAL(64U,samples[0].phase_count);
     for(size_t i=0;i<64U;++i)TEST_ASSERT_EQUAL(-2,application_expression_graph_peak_offset(prepared,i));
 }
+static void test_constant_batches_own_typed_values_and_domain_errors(void)
+{
+    assign(1U, true, "y=1/3");
+    prepare("y+1/3"); argument(0U, "0"); argument(1U, "1+i"); argument(2U, "qty(2;\"m\")");
+    sample(3U);
+    for (size_t i = 0; i < 3; ++i) text(i, "2/3");
+    TEST_ASSERT_NOT_EQUAL(samples[0].value.number, samples[1].value.number);
+    TEST_ASSERT_NOT_EQUAL(samples[0].value.rational, samples[1].value.rational);
+    calculator_value_destroy(&samples[0].value); text(1U, "2/3");
+    application_expression_samples_destroy(samples, sample_count); samples = NULL; sample_count = 0U;
+    calculator_session_destroy(&session);
+    sample(3U); text(2U, "2/3");
+    application_expression_samples_destroy(samples, sample_count); samples = NULL; sample_count = 0U;
+    application_expression_destroy(prepared); prepared = NULL;
+    prepare("1/0"); sample(3U);
+    for (size_t i = 0; i < 3; ++i) {
+        TEST_ASSERT_EQUAL(CALCULATOR_DIVISION_BY_ZERO, samples[i].error.status);
+        TEST_ASSERT_EQUAL_UINT64(samples[0].error.offset, samples[i].error.offset);
+        TEST_ASSERT_NULL(samples[i].value.number);
+    }
+}
+
+static void test_constant_batch_copy_failures_are_atomic(void)
+{
+    prepare("1/3"); argument(0U, "0"); argument(1U, "1"); sample(2U);
+    bool completed = false;
+    for (size_t failure = 1; failure < 512; ++failure) {
+        ApplicationExpressionSample *attempt = samples; CalculatorError error;
+        numforge_test_allocator_begin(failure);
+        CalculatorStatus status = application_expression_sample(prepared, arguments, 2U, &attempt, &error);
+        bool failed = numforge_test_allocator_did_fail();
+        numforge_test_allocator_end();
+        if (!failed) {
+            TEST_ASSERT_EQUAL(CALCULATOR_OK, status);
+            application_expression_samples_destroy(attempt, 2U); completed = true; break;
+        }
+        TEST_ASSERT_EQUAL(CALCULATOR_OUT_OF_MEMORY, status);
+        TEST_ASSERT_EQUAL_PTR(samples, attempt); text(0U, "1/3"); text(1U, "1/3");
+    }
+    TEST_ASSERT_TRUE(completed);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_constant_batches_own_typed_values_and_domain_errors);
+    RUN_TEST(test_constant_batch_copy_failures_are_atomic);
     RUN_TEST(test_step_metadata_overflow_is_explicit);
     RUN_TEST(test_screen_exp_tails_are_bounded_and_never_reused_as_exact_zeros);
     RUN_TEST(test_forward_derivatives_and_unavailable_slopes);

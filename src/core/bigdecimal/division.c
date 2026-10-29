@@ -72,6 +72,21 @@ BigDecimalStatus bigdecimal_round_significant(
 // prime factors are two and five. Scales do not affect this property. Detect
 // termination before selecting a precision; never silently fall back to
 // rounding after an allocation failure or cancellation.
+static BigDecimalStatus remove_binary_factors(BigInt *denominator, int64_t *count)
+{
+    size_t limb = 0;
+    while (!denominator->limbs[limb]) {
+        if (!(limb & 255U) && !numforge_budget_check()) return BIGDECIMAL_OUT_OF_MEMORY;
+        ++limb; /* The positive denominator is nonzero and normalized. */
+    }
+    size_t bits = limb * BIGINT_LIMB_BITS;
+    uint64_t low = denominator->limbs[limb];
+    while (!(low & 1U)) { ++bits; low >>= 1U; }
+    if ((uint64_t)bits > (uint64_t)INT64_MAX) return BIGDECIMAL_SCALE_OVERFLOW;
+    *count = (int64_t)bits;
+    return bits ? bigdecimal_from_bigint_status(bigint_shift_right(denominator, denominator, bits)) : BIGDECIMAL_OK;
+}
+
 BigDecimalStatus bigdecimal_div_exact_or_significant(
     BigDecimal *result,
     const BigDecimal *a,
@@ -131,9 +146,15 @@ BigDecimalStatus bigdecimal_div_exact_or_significant(
         status = bigdecimal_from_bigint_status(bigint_abs(denominator, denominator));
     }
 
-    for (size_t index = 0; index < 2U && status == BIGDECIMAL_OK; index++)
+    if (status == BIGDECIMAL_OK) status = remove_binary_factors(denominator, &counts[0]);
+    /* Strip 5^27 in one limb division before the at-most-26 scalar tail.
+     * Powers of two are removed in one shift, avoiding a division/allocation
+     * for every binary digit of an exact finite decimal. */
+    for (size_t pass = 0; pass < 2U && status == BIGDECIMAL_OK; ++pass)
     {
-        status = bigdecimal_from_bigint_status(bigint_set_string(factor, index == 0 ? "2" : "5"));
+        int64_t step = pass == 0 ? 27 : 1;
+        status = bigdecimal_from_bigint_status(bigint_set_uint64(factor,
+            pass == 0 ? UINT64_C(7450580596923828125) : UINT64_C(5)));
         while (status == BIGDECIMAL_OK && !bigint_is_one(denominator))
         {
             if (!numforge_budget_check())
@@ -149,14 +170,14 @@ BigDecimalStatus bigdecimal_div_exact_or_significant(
                 break;
             }
 
-            if (counts[index] == INT64_MAX)
+            if (counts[1] > INT64_MAX - step)
             {
                 status = BIGDECIMAL_SCALE_OVERFLOW;
                 break;
             }
 
-            counts[index]++;
-            status = bigdecimal_from_bigint_status(bigint_copy(denominator, quotient));
+            counts[1] += step;
+            BigInt swap = *denominator; *denominator = *quotient; *quotient = swap;
         }
     }
 

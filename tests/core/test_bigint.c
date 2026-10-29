@@ -2284,9 +2284,32 @@ static void test_base_conversion_contract(void)
     bigint_destroy(value);bigint_destroy(parsed);
 }
 
+static void test_gcd_power_of_two_boundaries_and_aliases(void)
+{
+    const size_t shifts[] = {0, 1, 63, 64, 65, 127, 128, 1000, 4096};
+    for (size_t i = 0; i < sizeof(shifts)/sizeof(shifts[0]); ++i)
+        for (size_t j = 0; j < sizeof(shifts)/sizeof(shifts[0]); ++j)
+            for (int sign = 0; sign < 3; ++sign) for (int alias = 0; alias < 3; ++alias) {
+                BigInt *a = bigint_create(), *b = bigint_create(), *expected = bigint_create(), *separate = bigint_create();
+                TEST_ASSERT_NOT_NULL(a); TEST_ASSERT_NOT_NULL(b); TEST_ASSERT_NOT_NULL(expected); TEST_ASSERT_NOT_NULL(separate);
+                TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(a, sign == 0 ? "3" : sign == 1 ? "-3" : "0"));
+                TEST_ASSERT_EQUAL(BIGINT_OK, bigint_shift_left(a, a, shifts[i]));
+                TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(b, "-1"));
+                TEST_ASSERT_EQUAL(BIGINT_OK, bigint_shift_left(b, b, shifts[j]));
+                TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(expected, "1"));
+                size_t power = sign == 2 || shifts[j] < shifts[i] ? shifts[j] : shifts[i];
+                TEST_ASSERT_EQUAL(BIGINT_OK, bigint_shift_left(expected, expected, power));
+                BigInt *out = alias == 1 ? a : alias == 2 ? b : separate;
+                TEST_ASSERT_EQUAL(BIGINT_OK, bigint_gcd(out, a, b));
+                TEST_ASSERT_EQUAL_INT(0, bigint_compare(expected, out));
+                bigint_destroy(a); bigint_destroy(b); bigint_destroy(expected); bigint_destroy(separate);
+            }
+}
+
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_gcd_power_of_two_boundaries_and_aliases);
     RUN_TEST(test_base_conversion_contract);
 
     /* Status */

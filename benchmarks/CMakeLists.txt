@@ -12,6 +12,7 @@ function(numforge_benchmark target layer source)
 endfunction()
 
 numforge_benchmark(bigint_arithmetic_benchmark numforge core/bigint_arithmetic_benchmark.c core/karatsuba_experiment.c)
+numforge_benchmark(bigrational_benchmark numforge core/bigrational_benchmark.c)
 numforge_benchmark(decimal_math_benchmark numforge core/decimal_math_benchmark.c)
 numforge_benchmark(decimal_format_benchmark numforge core/decimal_format_benchmark.c)
 numforge_benchmark(logarithm_agm_benchmark numforge core/logarithm_agm_benchmark.c)
@@ -52,6 +53,9 @@ if(BUILD_TESTING)
         add_test(NAME ${name} COMMAND ${ARGN})
         set_tests_properties(${name} PROPERTIES TIMEOUT ${timeout})
     endfunction()
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
+    numforge_benchmark_check(bigrational_benchmark_smoke 180 "${Python3_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/check_bigrational_benchmark.py" $<TARGET_FILE:bigrational_benchmark>)
     foreach(target IN ITEMS numerical_benchmark numerical_scan_benchmark
             matrix_benchmark statistics_benchmark polynomial_benchmark)
         numforge_benchmark_check(${target}_smoke 120 ${target})
