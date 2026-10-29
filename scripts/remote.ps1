@@ -134,7 +134,9 @@ function Start-Backend($path, $arguments, $url) {
     } catch {
         # This invocation created the process; cleanup must also work if its
         # module path never became readable during startup.
-        if (-not $process.HasExited) { $process.Kill(); [void]$process.WaitForExit(8000) }
+        # An immediate exit can also race PriorityClass/Get-Identity above.
+        if ($process.HasExited) { throw 'NumForge exited during startup; inspect its stderr log.' }
+        $process.Kill(); [void]$process.WaitForExit(8000)
         throw
     }
 }
