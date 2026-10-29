@@ -30,8 +30,9 @@ interface coverage; published downloads may lag source.
    [Local storage foundation](../guides/ACCOUNTS_STORAGE.md), migrations and
    backup/restore checks exist. Next: private login/logout, then saved preferences
    and named workspaces. A [Compose deployment](../guides/CONTAINERS.md) and CI
-   integration check are prepared; the Windows Docker/WSL runtime still needs
-   installation and a local full-stack check. Current calculator sessions remain
+   integration check are prepared. Docker Desktop/WSL are installed on the preview
+   PC; a required Windows reboot and local full-stack check remain pending.
+   Current calculator sessions remain
    anonymous/memory-only.
 5. Add subsequent mathematics through one owning module and the
    [feature checklist](FEATURE_CHECKLIST.md). Push/publication require their
