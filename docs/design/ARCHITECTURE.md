@@ -13,6 +13,7 @@ One C17 implementation owns each mathematical operation. Installed
 | `src/engine/` | Public contexts/handles, parser, typed evaluator, values and formatting |
 | `src/application/` | Sessions, client stores, conversions, graph/equation adapters |
 | `apps/cli/`, `apps/web/` | CLI, HTTP/server and embedded SK/EN browser assets |
+| `apps/accounts/` | Optional Django/PostgreSQL identity storage; no mathematical implementation |
 | `bindings/python/` | CPython adapters over public C APIs |
 | `include/numforge/` | Installed declarations, ownership/error contracts |
 | `tests/`, `benchmarks/`, `examples/` | Regressions, opt-in measurements, consumers |

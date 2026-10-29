@@ -27,7 +27,9 @@ interface coverage; published downloads may lag source.
    usability findings without replacing mathematical algorithms.
 4. **Next selected feature: PostgreSQL accounts and saved work.** Follow the
    [account proposal](../design/APPLICATION_DESIGN.md#proposed-accounts-and-saved-work).
-   Backend implementation is pending; current sessions are anonymous/memory-only.
+   [Local storage foundation](../guides/ACCOUNTS_STORAGE.md), migrations and
+   backup/restore checks exist. Next: private login/logout, then saved preferences
+   and named workspaces. Current calculator sessions remain anonymous/memory-only.
 5. Add subsequent mathematics through one owning module and the
    [feature checklist](FEATURE_CHECKLIST.md). Push/publication require their
    own authorization.

@@ -15,6 +15,7 @@ tests/
   fixtures/          frozen independent references and their generators
   oracles/           independent reference drivers/checkers
   browser/, python/  adapter and user-interface suites
+  accounts/          optional real-PostgreSQL storage/restore checks
   package_consumer/  installed C/C++ consumers
   fuzz/              fuzz targets, replay and dictionary
 ```

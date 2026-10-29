@@ -4,6 +4,7 @@
 
 # Reversible local cleanup snapshots (never publish)
 /.local-backups/
+/.local/
 /.codex-remote-attachments/
 
 # CMake build trees

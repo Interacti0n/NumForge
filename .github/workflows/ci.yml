@@ -14,6 +14,34 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  accounts-storage:
+    name: Optional PostgreSQL storage
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Install optional database dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends --yes postgresql libpq-dev
+          python -m pip install -r apps/accounts/requirements.txt
+          echo "NF_POSTGRES_BIN=$(pg_config --bindir)" >> "$GITHUB_ENV"
+      - name: Verify migrations, restricted roles and backup restoration
+        run: |
+          python scripts/accounts_db.py init
+          python tests/accounts/check_database.py
+      - name: Stop local test database
+        if: always()
+        run: |
+          if test -f .local/accounts/data/PG_VERSION; then
+            python scripts/accounts_db.py stop
+          fi
+
   bigint-benchmark-smoke:
     name: Numeric benchmark checks (${{ matrix.os }})
     runs-on: ${{ matrix.os }}

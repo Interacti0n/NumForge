@@ -67,6 +67,7 @@ nav:
   - Develop NumForge:
       - Contributing: CONTRIBUTING.md
       - Architecture: docs/design/ARCHITECTURE.md
+      - Optional account storage: docs/guides/ACCOUNTS_STORAGE.md
       - Feature checklist: docs/project/FEATURE_CHECKLIST.md
       - Testing:
           - Start here: docs/TESTING.md

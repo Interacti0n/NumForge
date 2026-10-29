@@ -1,6 +1,8 @@
 # Application and calculation boundaries
 
-Current sessions use memory only; accounts/database are not implemented.
+Current calculator sessions use memory only. Optional
+[account storage](../guides/ACCOUNTS_STORAGE.md) has a local PostgreSQL foundation,
+identity/session migrations and restore checks; account HTTP/UI is not implemented.
 Numeric APIs and the public engine remain independently installable.
 [Architecture](ARCHITECTURE.md) owns source/target boundaries.
 
@@ -25,8 +27,8 @@ paginated; full reads never silently round exact values.
 
 ## Proposed accounts and saved work
 
-**Proposal, not implementation.** Use optional Django authentication/sessions/
-CSRF/migrations with PostgreSQL, choosing supported versions when implemented.
+**Account behavior below remains proposed.** The optional storage foundation uses
+Django 5.2 LTS authentication/session tables and migrations with PostgreSQL.
 Math stays in C. The guest executable/CLI/library work without Python or a DB.
 Start isolated, with one HTTPS origin/gateway; DB/internal ports stay private.
 Redis, queues and paid hosting are not initial requirements.
@@ -66,8 +68,9 @@ without truncation. These are proposed defaults, not current guarantees.
 
 ### Implementation order and completion gates
 
-1. Local PostgreSQL/service, migrations, least-privilege credentials outside Git,
-   tested backup/restore.
+1. Local PostgreSQL, migrations, separate runtime/migration credentials outside
+   Git and tested backup/restore exist. Automatic DB startup, backup scheduling
+   and deployment integration remain pending.
 2. Private pilot login/logout, remembered sessions, expiry/revocation, CSRF and
    login-attempt limits; framework password handling with measured Argon2id.
 3. Defaults/named inputs, guest import, autosave, quotas/conflicts; verify backend/
