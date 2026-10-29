@@ -119,8 +119,7 @@ async function withServer(work) {
             catch {await delay(20);}
         }
         assert.ok(ready, 'Dedicated server did not start');
-        if (process.platform === 'win32') await promisify(execFile)('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
-            `(Get-Process -Id ${server.pid} -ErrorAction Stop).PriorityClass='BelowNormal'`], {windowsHide:true, timeout:5000});
+        if (process.platform === 'win32') os.setPriority(server.pid, os.constants.priority.PRIORITY_BELOW_NORMAL);
         return await work(server.pid);
     } finally {
         if (server.exitCode === null && !spawnError) {
