@@ -180,11 +180,25 @@ static BigDecimalStatus div_exact_or_significant(
         bigint_abs(denominator, b->coefficient) : bigint_div(denominator, b->coefficient, &common));
     if (status == BIGDECIMAL_OK) denominator->is_negative = false;
 
-    if (status == BIGDECIMAL_OK) status = remove_binary_factors(denominator, &counts[0]);
+    if (status == BIGDECIMAL_OK && reduced && !(denominator->limbs[0] & 1U)) {
+        /* Raw rational parts may contain a large common power of ten in the
+         * denominator. Strip it once, with the existing bounded inverse-divide
+         * workspace, instead of separately peeling all its twos and fives. */
+        uint64_t tens = 0;
+        status = bigdecimal_from_bigint_status(bigint_strip_decimal_zeros(denominator, &tens));
+        if (status == BIGDECIMAL_OK && tens > (uint64_t)INT64_MAX) status = BIGDECIMAL_SCALE_OVERFLOW;
+        if (status == BIGDECIMAL_OK) counts[0] = counts[1] = (int64_t)tens;
+    }
+    if (status == BIGDECIMAL_OK) {
+        int64_t binary = 0;
+        status = remove_binary_factors(denominator, &binary);
+        if (status == BIGDECIMAL_OK && counts[0] > INT64_MAX - binary) status = BIGDECIMAL_SCALE_OVERFLOW;
+        if (status == BIGDECIMAL_OK) counts[0] += binary;
+    }
     /* Strip 5^27 in one limb division before the at-most-26 scalar tail.
      * Powers of two are removed in one shift, avoiding a division/allocation
      * for every binary digit of an exact finite decimal. */
-    for (size_t pass = 0; pass < 2U && status == BIGDECIMAL_OK; ++pass)
+    for (size_t pass = 0; pass < 2U && status == BIGDECIMAL_OK && !bigint_is_one(denominator); ++pass)
     {
         int64_t step = pass == 0 ? 27 : 1;
         status = bigdecimal_from_bigint_status(bigint_set_uint64(factor,

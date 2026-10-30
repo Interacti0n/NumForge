@@ -2021,7 +2021,7 @@ static void test_series_sum_owners_preserve_alias_on_every_failure(void)
 static void test_finite_and_recurring_conversion_paths_are_atomic(void)
 {
     const char *cases[][3] = {{"1","2","129"},{"-7","5","93"},{"30","7","1"},
-        {"1000","1","1"},{"0","5","1"},{"-1","6","1"}};
+        {"1000","1","1"},{"0","5","1"},{"-1","6","1"},{"1","10","64"},{"-3","10","512"}};
     for (size_t c = 0; c < sizeof(cases)/sizeof(cases[0]); ++c) {
         BigInt *top = test_integer(cases[c][0]), *bottom = test_integer(cases[c][1]);
         BigInt *exponent = test_integer(cases[c][2]);

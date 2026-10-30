@@ -70,6 +70,15 @@ expected canonical text. Operations are add/sub/mul/div/compare and convert0..5
 arithmetic destination aliases; `--memory` additionally checks complete teardown.
 Profile clocks and live tracking are excluded from ordinary speed samples.
 
+`numerical_benchmark --profile` writes separate integer-operation counts/time
+and exclusive phase diagnostics to stderr; its ordinary stdout schema is
+unchanged. Keep that run separate from speed recordings. Optional
+`--allocation-limit-mib N` applies a cumulative requested-byte budget per case,
+including the subsequent value/residual validation. The default remains
+unrestricted cumulative traffic. The CTest `numerical_benchmark_bounded_precision`
+checks the 1000-place exact-rational callback with a 64 MiB budget; it is a
+resource/correctness check, not a timing threshold or a process-RAM guarantee.
+
 `numeric_root_benchmark --hybrid` compares all three private methods;
 `--compare` compares bisection/Brent, `--quick` uses precision 34 once and
 `--adversarial` exercises the vanishing-jump rejection. Verify complete CSV with
