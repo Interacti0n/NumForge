@@ -21,8 +21,9 @@ preserving browser Origin checks. The existing preview on 8766 is unaffected.
 | `setup` | One-shot role/schema provisioning and migrations before accounts start |
 | `accounts` | Private Django/Gunicorn service with runtime credentials only |
 
-Accounts currently have no public routes; gateway/TLS and login integration are
-the next step. This is a local deployment foundation, not public account hosting.
+The private [login/logout API](ACCOUNTS_STORAGE.md#private-pilot-authentication)
+exists; gateway/TLS and browser integration are the next step. This is a local
+deployment foundation, not public account hosting.
 Keep the host binding on loopback until HTTPS/origin configuration is explicit.
 `web` has no dependency on the DB or accounts. Its default native binding remains
 127.0.0.1; explicit `--bind 0.0.0.0` enables container networking.

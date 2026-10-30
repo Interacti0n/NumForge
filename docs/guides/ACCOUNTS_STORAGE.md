@@ -1,8 +1,8 @@
 # Optional account database
 
 Local development foundation only: Django 5.2 LTS, Psycopg 3 and PostgreSQL 14+.
-The custom identity and framework auth/session tables have migrations. There are
-no public account routes, login UI, saved workspaces or C-session bridge yet.
+Identity, session and login-throttle tables have migrations. Private login/logout
+API tests pass; there is no public gateway, login UI, workspace storage or C-session bridge yet.
 CMake, the mathematical libraries and the existing guest web need none of these.
 For the separate container deployment, see [Docker Compose](CONTAINERS.md).
 
@@ -66,6 +66,36 @@ client tools. Keep backup/config copies protected on a separate device: a dump
 alone does not include cluster roles, passwords or the Django signing key.
 These are manual local backups, without automatic scheduling/retention yet.
 
-Next: private login/logout, CSRF/login throttling and measured Argon2id, then
-owner-scoped preferences/workspaces. See the
+## Private pilot authentication
+
+Routes exist only in the private Django service; do not publish them before the
+HTTPS gateway/host and trusted-proxy policy are implemented. No public registration.
+
+| Route | Contract |
+| --- | --- |
+| `GET /api/account/session` | Own `{user: {id, username}}` or `user: null`, plus masked `csrf_token` |
+| `POST /api/account/login` | JSON `username`, `password`, optional boolean `remember`; returns own user and rotated token |
+| `POST /api/account/logout` | Revokes current session; returns null user and a new CSRF token |
+
+POST requires the CSRF cookie plus `X-CSRFToken` and a same-origin HTTPS request.
+Session/CSRF cookies are Secure/HttpOnly/SameSite=Lax; responses prohibit caching.
+Passwords use Django Argon2id (100 MiB, 2 passes, parallelism 8); a 7-sample local
+check measured about 58 ms hashing/60 ms verifying, not a concurrency capacity claim.
+Default login is browser-session-only with 12-hour server expiry; remembered login
+lasts 14 days. Password changes/deactivation invalidate authentication on subsequent
+requests. Other-device management remains pending.
+
+All well-formed attempts share a PostgreSQL limit of 10 per source IP/5 minutes,
+including successes, across workers and restarts. No forwarded IP header is trusted;
+a future gateway must resolve that policy before multiple public clients are routed.
+Errors: 400 malformed JSON/fields, 401 generic invalid credentials (including inactive
+users), 403 CSRF/origin, 405 method, 413 oversized body, 415 content type, 429 with
+`Retry-After`. Limit: 4 KiB JSON, username 150 characters, password 1024 characters.
+
+Provision a regular user interactively with `docker compose exec accounts python
+manage.py createpilotuser NAME` (or the native `manage.py` with `app.json`). Passwords
+are prompted twice, validated and never passed as CLI arguments. Expired sessions
+need periodic `manage.py clearsessions`; scheduling is still pending.
+
+Next: HTTPS gateway/login UI, then owner-scoped preferences/workspaces. See the
 [account design](../design/APPLICATION_DESIGN.md#proposed-accounts-and-saved-work).

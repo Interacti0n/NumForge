@@ -85,7 +85,9 @@ if __name__ == "__main__":
                 sys.path.insert(0, str(ROOT / "apps/accounts"))
                 import django
                 django.setup()
-                result = unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromTestCase(DatabaseChecks))
+                from test_auth import AuthChecks
+                suite = unittest.TestSuite(unittest.defaultTestLoader.loadTestsFromTestCase(case) for case in (DatabaseChecks, AuthChecks))
+                result = unittest.TextTestRunner(verbosity=2).run(suite)
                 from django.db import connections
                 connections.close_all()
                 if not result.wasSuccessful():

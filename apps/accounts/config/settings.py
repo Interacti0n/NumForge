@@ -1,4 +1,4 @@
-"""Private database foundation. No public account routes are enabled yet."""
+"""Private account service; publishing requires an explicit HTTPS gateway."""
 import json
 import os
 from pathlib import Path
@@ -43,6 +43,23 @@ SESSION_COOKIE_SECURE = True
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SECURE = True
+CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_NAME = "numforge_csrf"
+CSRF_FAILURE_VIEW = "identity.views.csrf_failure"
+SESSION_COOKIE_AGE = 12 * 60 * 60
+DATA_UPLOAD_MAX_MEMORY_SIZE = 4096
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.Argon2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher",
+]
+AUTH_PASSWORD_VALIDATORS = [
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", "OPTIONS": {"min_length": 12}},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+]
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_SSL_REDIRECT = True
 SECURE_HSTS_SECONDS = 0  # Set only at the eventual HTTPS gateway deployment.

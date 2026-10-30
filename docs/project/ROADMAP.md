@@ -28,8 +28,9 @@ interface coverage; published downloads may lag source.
 4. **Next selected feature: PostgreSQL accounts and saved work.** Follow the
    [account proposal](../design/APPLICATION_DESIGN.md#proposed-accounts-and-saved-work).
    [Local storage foundation](../guides/ACCOUNTS_STORAGE.md), migrations and
-   backup/restore checks exist. Next: private login/logout, then saved preferences
-   and named workspaces. A [Compose deployment](../guides/CONTAINERS.md) and CI
+   backup/restore checks and private login/logout API exist. Next: HTTPS gateway
+   and login UI, then saved preferences and named workspaces. A
+   [Compose deployment](../guides/CONTAINERS.md) and CI
    integration check exist. Docker Desktop/WSL are installed and the local
    full-stack check passed on the preview PC; recovery after the pending Windows
    reboot remains unverified. Current calculator sessions remain anonymous/memory-only.
