@@ -90,6 +90,80 @@ smaller budget. Raw evidence is under ignored `build/performance-round3/`:
 `final-metadata.json`, `final-summary.json`, `followup-summary.json` and their
 selected CSVs. The earlier complete report remains in Git at `a424589`.
 
+## Full-width limb multiplication
+
+30 October 2026 follow-up, baseline checkout `8b71856` (including the canonical
+rational changes in `6d21fcb`), optimized `04ac1e1`. The private limb product is
+now inline in its callers. GCC/Clang targets advertising a 128-bit integer use that type; MSVC x64
+uses `_umul128`. Other targets retain the previous four-product, 32-bit
+decomposition. This removes repeated decomposition and external calls inside
+classical, symmetric and Karatsuba multiplication, scalar multiplication and
+division estimation. Dispatch thresholds, precision and allocation policy stay
+unchanged. The measurements below combine native multiplication and inlining;
+they do not isolate the contribution of either change.
+
+Windows x64, Ryzen 7 7435HS, GCC 16.2 `-O3 -DNDEBUG` and MSVC 19.51
+`/O2 /Ob2 /DNDEBUG`, Release with allocation statistics and failure hooks on
+both sides. Seven immediate fresh-process pairs per direct fixture and per
+complete root/matrix corpus, order reversed on even pairs. Direct entries are
+medians of process medians, each using seven calibrated 5-ms samples; complete
+Python integer references are checked outside timing. Profiles and live-memory
+probes are separate. No own concurrent build/test/benchmark, no affinity or
+frequency lock; unrelated host activity remains uncontrolled.
+
+| Operation | GCC before / after µs | MSVC before / after µs |
+| --- | ---: | ---: |
+| Distinct 16-limb multiplication | 1.023 / 0.457 | 1.118 / 0.437 |
+| Distinct 64-limb multiplication | 16.869 / 5.779 | 15.720 / 5.460 |
+| Distinct 128-limb multiplication | 29.851 / 12.678 | 34.359 / 16.109 |
+| Distinct 256-limb multiplication | 89.741 / 36.626 | 105.933 / 49.463 |
+| Same-object 64-limb square, separate output | 8.367 / 3.878 | 8.873 / 3.570 |
+| `5^3324` | 11.532 / 5.686 | 12.618 / 5.277 |
+| Unequal 104-by-242-limb multiplication | 88.839 / 31.418 | 93.235 / 31.981 |
+
+The complete public callback search for `sqrt(2)` uses exact rational
+intermediates and retains the independent Newton/residual checks from the
+[rational baseline](RATIONAL.md#complete-public-root-search). Medians across
+seven processes:
+
+| Absolute places | GCC before / after ms | MSVC before / after ms |
+| ---: | ---: | ---: |
+| 12 | 0.2223 / 0.1904 | 0.1641 / 0.1579 |
+| 100 | 2.3764 / 1.6881 | 1.8572 / 1.7313 |
+| 1000 | 160.5453 / 89.1109 | 172.2898 / 86.1703 |
+
+The 1000-place search is 1.80× faster with GCC and 2.00× with MSVC in these
+recordings. Its process ranges are 158.36–172.39 / 79.18–91.84 ms and
+159.17–201.76 / 80.64–104.03 ms respectively. Smaller search ranges overlap;
+their median ratios alone do not establish a reliable speedup. Every version
+uses 3324 iterations, 3327 evaluations, 225,161 allocation calls and 54,918,875
+cumulative requested bytes at 1000 places. Separate 64-MiB-budget runs succeed,
+including independent verification. Cumulative bytes are not resident memory.
+
+The matrix corpus remains a useful control: ordinary 16×16 fractional
+multiplication is 2.678 / 2.750 ms with GCC and 2.762 / 2.677 ms with MSVC,
+with overlapping ranges. This change does not establish a further general
+small-matrix speedup. All root, direct and matrix allocation counts/bytes match
+their baseline; direct tracked live/peak payload also matches. These are local
+arithmetic measurements, not browser, concurrent server or deployment capacity.
+
+Verification on the final code passes all 118 GCC benchmark-build tests and
+all 85 ordinary MSVC tests. Each compiler also verifies 1,399 full Node BigInt
+references, 1,252 independent power/square references and 23,614 Python
+Fraction/Decimal cases, including aliases, corrupt-reference rejection and
+tracked-payload teardown. The native and forced-portable primitive tests each
+check 45,380 boundary/random products against independent base-256 convolution.
+A separate GCC build forces portable multiplication throughout the library;
+six relevant core/failure suites and all three complete reference corpora pass
+there too. Local verification covers Windows x64, without new Linux/ARM or
+browser performance claims.
+
+Raw recordings are under ignored `build/performance-limb/`: `metadata.json`,
+`summary.json`, compiler-prefixed CSVs, separate profile/budget probes and
+verification logs. Metadata preserves binary/source/fixture hashes and exact
+compiler settings. The previous rational and square tables describe their own
+earlier revisions and must not be compared across runs to infer another gain.
+
 ## Allocation reuse
 
 MSVC 19.51, medians of three fresh serial processes. GCD baseline `1b19e2c`,

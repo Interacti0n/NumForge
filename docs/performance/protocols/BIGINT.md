@@ -28,6 +28,14 @@ requires an empty output directory and selects only the BigInt suite with
 Full BigInt recording defaults to a 120-second timeout per isolated case;
 `--case-timeout-ms` overrides it. Quick runs keep the 15-second default.
 
+For a complete correctness-only pass without timing calibration, generate the
+full fixtures and run `bigint_arithmetic_benchmark build/bigint-cases.tsv
+--validate`. Native full-width limb multiplication and its portable fallback
+also have separate CTest targets, `limb_multiplication_tests` and
+`limb_multiplication_portable_tests`, using an independent byte-convolution
+reference. The [paired limb-product follow-up](../baselines/ARITHMETIC.md#full-width-limb-multiplication)
+records whole-root effects as well as direct products.
+
 `calculator_benchmark --factorial-only` separately measures parse, scalar
 evaluation and scientific/auto formatting for 10000!, 20000!, 50000! and
 100000!, one iteration per case, checking independently derived output text.
