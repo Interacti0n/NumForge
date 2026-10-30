@@ -1,201 +1,160 @@
-# Rational roots, powers and symmetric squares — 30 October 2026
+# Canonical rational arithmetic — 30 October 2026
 
 Windows x64, Ryzen 7 7435HS (16 logical CPUs), approximately 32 GiB RAM,
-GCC 16.2 Release (`-O3 -DNDEBUG`). Numeric baseline `bfc785e`, checkout
-`1387815`; optimized implementation `c68f675`. This comparison measures
-additional gains over the previous rational/conversion optimizations. Their
-complete report remains in Git at `1387815`; their raw evidence remains under
-`build/performance-round2/` and `build/performance-20261030/`.
+GCC 16.2 Release (`-O3 -DNDEBUG`). Numeric baseline `c68f675`, checkout
+`a424589`; optimized implementation `6d21fcb`. Both builds enable allocation
+statistics and test failure hooks, without sanitizers or coverage. No own
+build/test/other benchmark ran alongside the selected speed recordings. There
+is no affinity or frequency lock; unrelated host activity is uncontrolled.
+These are local observations, not portable promises or CI speed thresholds.
 
-Both builds enable allocation statistics and test failure hooks, without
-sanitizers or coverage. Live-payload and operation-profile probes run separately
-from speed measurements. The retained before rational, numerical and decimal
-math binaries have the exact hashes recorded for the previous pass's after
-binaries. There is no affinity or frequency lock; unrelated host activity is
-uncontrolled. No build, test or other benchmark from this review ran alongside
-the selected timing recordings. Timings are local observations, not portable
-promises or CI speed thresholds.
+The before numeric archive was saved before changing the core; rebuilding only
+the new square/selfdiv benchmark selectors left its hash unchanged. The before
+root binary is byte-identical to the previous pass's verified after binary.
+Metadata records source, fixture, archive and executable hashes. Earlier power
+and square decisions now belong to [arithmetic evidence](ARITHMETIC.md#symmetric-squares-and-powers);
+the previous complete report remains in Git at `a424589`.
 
-## Changes and safety boundaries
+## Changes and exactness
 
-- Binary exponentiation now consumes the leading one by copying the base, then
-  scans remaining bits from most to least significant. Set bits multiply by the
-  original base rather than a growing power of it. A single-limb base uses the
-  private scalar multiplier on the owned accumulator.
-- Multiplication of the same input object at **16–127 limbs** uses a symmetric
-  square: accumulate off-diagonal products once, double the triangle once, then
-  add diagonal products. It requires `n*(n+1)/2` full limb products instead of
-  `n*n`, using only the ordinary result buffer. Distinct input objects retain
-  general multiplication even if their values compare equal.
-- Smaller squares keep the classical kernel because setup cost offsets the
-  saving. Larger squares retain the existing budget-aware Karatsuba entry.
-  Trial measurements with a four-limb entry did not justify that smaller cutoff.
-- Outputs commit only after success. Both output/input aliases, the single
-  object used for base/exponent/output, signs, zero and multi-limb exponent
-  parity retain their contracts. Allocation/deadline failures do not retry or
-  publish partial accumulators.
+All public rational inputs are canonical: reduced numerator/denominator with a
+positive denominator. This permits exact algebraic shortcuts:
 
-No global cache, public API, precision, rounding, root tolerances, iteration
-policy, worker count or application resource default changed.
+- For `x/d * y/d`, both numerators are coprime to `d`, so the product is already
+  reduced. Multiply the original numerators and square the denominator directly,
+  avoiding two cross-GCDs and four divided copies. A same-object square also
+  exposes identical integer operands to the existing symmetric-square kernel.
+- For `(x/d)/(y/d)`, the common denominator cancels; reduce only `x/y`.
+  A nonzero value divided by itself is exactly one. Zero-divisor rejection stays
+  before the shortcut, including `0/0` and output/input aliases.
+- Adding/subtracting an integer preserves coprimality:
+  `gcd(x +/- k*d,d) = gcd(x,d) = 1`. Build that numerator and copy the denominator
+  directly, including integer translation in either operand order. Two integer
+  operands commit their already-owned sum/difference without a redundant copy.
+
+Owned results remain detached until both parts succeed and the final budget
+check passes. Aliases, signs, canonical zero, rounding, precision, tolerances,
+iteration policy and application resource defaults are unchanged. No global
+scratch, shared cache or public API was added. The same-input selectors are
+benchmark adapters over the existing multiplication/division APIs.
+
+## Direct arithmetic
+
+Seven immediate fresh-process pairs per fixture, reversing order on even pairs;
+five calibrated 2-ms samples per process. Table entries are medians of process
+medians. Fixture construction, full canonical text/reference checks and aliases
+are outside timing. Parameters identify generator shapes rather than every
+component's exact bit length.
+
+| Fixture | Before / after microseconds | Before / after allocation calls | Before / after requested bytes |
+| --- | ---: | ---: | ---: |
+| Integer multiplication, 256 parameter | 0.584 / 0.190 | 8 / 2 | 168 / 64 |
+| Equal-denominator multiplication, 1024 parameter | 3.542 / 1.827 | 18 / 2 | 3,104 / 528 |
+| Same-object square, 1024 parameter | 3.548 / 1.409 | 18 / 2 | 3,104 / 528 |
+| Equal-denominator division, 1024 parameter | 1.377 / 0.811 | 15 / 8 | 2,488 / 1,800 |
+| Same-object division, 1024 parameter | 0.930 / 0.161 | 12 / 2 | 1,216 / 16 |
+| Fraction plus one, 1024 parameter | 0.609 / 0.289 | 7 / 3 | 816 / 520 |
+| Fraction minus one, 1024 parameter | 0.699 / 0.390 | 8 / 4 | 944 / 648 |
+
+These selected operations improve by about 1.7–5.8 times. This is not a uniform
+arithmetic speedup: coprime general multiplication retained 18 calls/3624 bytes
+and changed from 3.650 to 3.805 microseconds with overlapping ranges. General
+division, cancellation and equal-denominator sums serve as retained controls.
+
+At the 8192-bit boundary, multiplication initially measured 40.772/44.361
+microseconds; seven focused follow-up pairs measured 40.404/38.638 microseconds,
+with overlapping ranges and median paired speed ratio 1.025. No reliable timing
+gain or slowdown is established there. Calls/traffic still fall from 10/17792
+to 4/11632. Large same-object division improves from 1.259 to 0.159 microseconds
+and from 10/4168 calls/bytes to 2/16. Preserve these distinctions rather than
+extrapolating the small-operand speed ratios to every size.
 
 ## Complete public root search
 
-Seven immediate before/after fresh-process pairs, reversing order on even
-pairs, using `numerical_benchmark --high-precision`. This is the exact-rational
-callback for `x*x-2` on `[0,2]`, not the direct decimal `sqrt` operation.
-Working precision is absolute places plus 20; width/residual tolerances are
-`1E-places`. Independent Newton sqrt and residual validation run outside
-timing. Iterations/evaluations remain 42/45, 335/338 and 3324/3327.
+Seven immediate before/after fresh-process pairs of
+`numerical_benchmark --high-precision`, reversing order on even pairs. The exact
+rational callback is `x*x-2` on `[0,2]`, with working precision equal to absolute
+places plus 20 and width/residual tolerances `1E-places`. Independent Newton sqrt
+and residual validation remain outside timing. Iterations/evaluations are
+unchanged at 42/45, 335/338 and 3324/3327.
 
 | Absolute places | Before median ms | After median ms | Before / after allocation calls | Before / after requested bytes |
 | ---: | ---: | ---: | ---: | ---: |
-| 12 | 0.3599 | 0.3210 | 2,693 / 2,581 | 34,955 / 33,139 |
-| 100 | 4.2477 | 4.1444 | 26,079 / 24,444 | 853,139 / 804,627 |
-| 1000 | 409.3764 | 345.3135 | 280,508 / 258,430 | 64,827,091 / 61,883,283 |
+| 12 | 0.2318 | 0.2498 | 2,581 / 2,132 | 33,139 / 28,635 |
+| 100 | 2.3641 | 2.1685 | 24,444 / 21,065 | 804,627 / 714,315 |
+| 1000 | 186.5920 | 176.2033 | 258,430 / 225,161 | 61,883,283 / 54,918,875 |
 
-The 1000-place median takes **15.6% less time** (1.19 times faster), with 7.9%
-fewer allocation calls and 4.5% less requested traffic. Before runs span
-392.8–463.9 ms; after runs span 307.6–373.8 ms. All seven pairs improve.
-The 12/100-place ranges overlap and do not establish reliable speed gains.
+The 1000-place median is about 5.6% shorter, but timing ranges overlap
+(174.91–197.43 ms before, 172.05–214.04 ms after). The earlier exploratory
+product-only screen suggested a larger gain; it is not the selected final
+comparison. This evidence does not establish a large whole-root speedup.
 
-Host speed differed from the previous pass, whose after median was about
-202 ms. That old recording must not be compared directly with this pass's
-345 ms: the matched before binary now measures about 409 ms. Use the paired
-comparison above, not absolute timings from different sessions.
+The resource saving is deterministic: 12.9% fewer allocation calls and 11.3%
+less requested traffic at 1000 places. Requested bytes are cumulative, not
+peak/live memory or RSS. Both versions pass separate 64 MiB cumulative-budget
+runs, including independent validation inside the budget; the after solve
+alone requests about 52.4 MiB. The 120-second harness deadline and 8 MiB
+single-allocation cap remain unchanged. Separate profiles record GCD calls
+falling from 33,232 to 23,253; their clocks are excluded from the speed table.
 
-Requested bytes are cumulative traffic, not peak/live memory or RSS. Separate
-64 MiB cumulative-budget runs succeed on both before and after versions,
-including independent validation inside the same budget. The after solve alone
-requests 59.0 MiB; validation is outside that counter snapshot but inside the
-budget. The harness retains a 120-second deadline and 8 MiB single-allocation
-cap. This fixture does not establish success for arbitrary callbacks.
+## Exact modules and graph observations
 
-## Symmetric square
+The larger end-to-end gain is in exact matrix multiplication: seven matched
+pairs of the existing `(I+J)/11` fixture show about 2.1 times faster 8x8 and
+1.7 times faster 16x16 multiplication, with every entry verified independently.
+The [module baseline](MODULES.md#canonical-rational-follow-up)
+owns those timings, allocation counts, matching-link method and limits. Other
+matrix operations and polynomial solving show smaller or negligible changes.
 
-Seven immediate pairs per selected case, alternating order, seven calibrated
-5-ms samples per process. Table entries are medians of process medians.
-Every complete result is checked against an independent Python integer
-reference outside timing. Inputs are deterministic random negative values,
-with one object used for both operands and output (`alias_all`).
-
-| Input limbs | Before microseconds | After microseconds | Before / after allocation calls | Requested bytes, either version |
-| ---: | ---: | ---: | ---: | ---: |
-| 16 | 1.098 | 0.802 | 1 / 1 | 256 |
-| 32 | 3.813 | 2.441 | 1 / 1 | 512 |
-| 64 | 15.921 | 9.186 | 1 / 1 | 1,024 |
-| 127 | 64.715 | 33.469 | 1 / 1 | 2,032 |
-
-The selected square medians improve by about 1.4–1.9 times without extra
-workspace. Initial whole-corpus recordings also suggested large slowdowns at
-128/129 limbs, where dispatch is unchanged. Immediate per-case follow-ups
-reduced those before/after median ratios to 1.02/0.95; a 15-limb control was
-0.96. These controls and the initial recordings are retained. They show why
-the broad corpus alone is unsuitable for small timing claims and do not
-establish that every unchanged path has identical latency.
-
-## Powers and conversion
-
-Five immediate pairs per power fixture, reversing order on even pairs, seven
-calibrated samples per process. Complete references and aliases are checked
-outside timing. Base sizes identify generator parameters.
-
-| Power | Before microseconds | After microseconds | Before / after allocation calls | Before / after requested bytes |
-| --- | ---: | ---: | ---: | ---: |
-| `5^1023` | 6.116 | 3.934 | 21 / 10 | 1,120 / 696 |
-| `5^3324` | 36.720 | 19.161 | 21 / 12 | 2,896 / 2,040 |
-| `10^4095` | 108.268 | 52.252 | 25 / 12 | 5,344 / 3,512 |
-| `UINT64_MAX^65` | 10.678 | 7.453 | 10 / 8 | 1,560 / 2,040 |
-| 256-bit base, exponent 31 | 32.278 | 17.125 | 11 / 9 | 2,832 / 3,488 |
-| 4096-bit base, exponent 17 | 924.750 | 926.617 | 11 / 9 | 52,912 / 52,384 |
-
-The improvements are workload-specific. Accumulator growth and different
-intermediate sizes can increase cumulative requested bytes. For
-`UINT64_MAX^65`, the warmed destination also retains more capacity: total
-tracked peak payload rises from 1584 to 2064 bytes. For the 256-bit-base row,
-peak payload changes from 3016 to 2984 bytes despite higher traffic. Fewer
-calls or lower peak payload do not imply less cumulative traffic or success
-under every smaller budget.
-
-Five paired conversion runs show dyadic 1024-parameter HALF_EVEN conversion
-changing from 5.926 to 5.559 microseconds, with 18 to 15 calls and 1792 to 1456
-requested bytes. This modest timing change has overlapping ranges. Mixed
-terminating, recurring and integer conversion rows provide no convincing
-additional speedup. They retain exact finite digits and six rounding modes.
-
-## Representative decimal functions
-
-Three immediate pairs per case, five timing samples per row, frozen independent
-mpmath references, HALF_EVEN. Profile/memory probes are excluded. Precision
-denotes significant decimal digits.
-
-| Fixture | Precision | Before median ms | After median ms |
-| --- | ---: | ---: | ---: |
-| Ordinary logarithm | 1000 | 29.623 | 32.570 |
-| Ordinary logarithm | 2000 | 83.101 | 81.962 |
-| Ordinary exponential | 2000 | 158.235 | 156.811 |
-| Ordinary sine | 2000 | 65.279 | 65.375 |
-| Ordinary square root | 2000 | 0.677 | 0.688 |
-
-The 1000-digit logarithm initially appears slower. Seven further immediate pairs
-give overlapping ranges: 31.55–36.67 ms before and 31.25–35.04 ms after. Four of
-seven pairs improve; the median paired speed ratio is 1.01, spanning 0.92–1.08.
-A repeatable slowdown was not established. These results support no general
-additional decimal-function speedup. Separate profiles identify multiplication
-and exponentiation as remaining major costs in the root fixture.
+The existing 14-case graph corpus checks the exact 129-point stage against fast
+samples and independent libm references, with all original error checks active.
+Three initial pairs and seven follow-up pairs show mixed timings. Wide sine
+initially measured 7.413/8.958 ms; follow-up medians were 8.128/8.755 ms, with
+overlapping ranges (7.43–10.38 / 7.40–12.54 ms). The cancellation fixture's
+follow-up was 0.728/0.657 ms. These measurements establish no general graph or
+browser-frame speedup; no browser timing was recorded in this arithmetic pass.
 
 ## Verification and reproduction
 
-- Full native suites passed: **116/116 GCC**, **83/83 MSVC**, with a separate
-  successful rerun of the final instrumented allocation-failure suite.
-- **1252 independent Python integer references** validate powers, negative
-  bases, carry patterns, identical/distinct operands, aliases and limb/exponent
-  boundaries on both GCC and MSVC. The benchmark's separate live-ledger pass
-  requires complete teardown. Native radix-identity tests independently check
-  `(B^n-1)^2 = B^(2n)-2*B^n+1` around both dispatch boundaries.
-- **11,604 Fraction/Decimal references** pass on both compilers, including
-  arithmetic aliases, six rounding modes, corrupt-reference rejection and zero
-  tracked live payload after teardown. The existing numeric/division/complex
-  oracles also pass; numeric oracle coverage remains 16,800 cases.
-- New allocation/deadline injection walks every actual failure point in small-
-  and multi-limb-base powers and the 16/127-limb square paths. It checks aliases,
-  unchanged inputs/outputs, resource failure reasons and, in instrumented
-  builds, unchanged live payload on failure.
-- The existing CI benchmark smoke now includes random/maximal/sparse/alternating
-  squares at 15/16/127/128 limbs and small-base exponent boundaries 63/64/65.
-  The 1000-place 64 MiB resource guard remains enabled; no timing threshold was
-  added.
+- Full final instrumented GCC CTest suite: **116/116 passed**. Full ordinary
+  MSVC Release suite: **83/83 passed**, including existing independent numeric,
+  division and complex oracles and graph/HTTP contracts.
+- **23,614 independent Fraction/Decimal references** pass on both compilers,
+  including both arithmetic destination aliases, true same-object squares and
+  divisions, six conversion rounding modes, corrupt-reference rejection and
+  zero tracked live payload after teardown. The generator retains 1000 original
+  random pairs plus 750 structured same-denominator/integer-translation pairs,
+  and exact boundaries around 16/128-limb square dispatch through 8193 bits.
+- The native integer reference grid now checks 2916 small fraction pairs over
+  denominators 1–6 and numerators -4–4. Allocation/deadline injection exhausts
+  actual failure points through equal-denominator signs, integer translations,
+  both ordinary aliases and 1024/8192-bit same-object products/divisions.
+  Independent radix identities construct the expected large squares. Failures
+  preserve inputs/outputs and, in instrumented builds, tracked live payload.
 
 ```sh
 cmake --preset benchmarks -DPython3_EXECUTABLE=/path/to/python3
 cmake --build --preset benchmarks
-node benchmarks/tools/bigint_cases.js build/bigint-cases.tsv --quick
-BINARY_DIR/bigint_arithmetic_benchmark build/bigint-cases.tsv --validate
 python benchmarks/tools/check_bigrational_benchmark.py BINARY_DIR/bigrational_benchmark --random 1000
 BINARY_DIR/numerical_benchmark --high-precision
 BINARY_DIR/numerical_benchmark --high-precision --allocation-limit-mib 64
-BINARY_DIR/numerical_benchmark --high-precision --profile
+BINARY_DIR/matrix_benchmark
+BINARY_DIR/polynomial_benchmark
 ctest --test-dir BINARY_DIR --output-on-failure
 ```
 
-Use `.exe` and configuration subdirectories where applicable. Omit `--quick`
-from fixture generation for the full integer corpus. Keep profile and live
-tracking passes separate from speed recordings.
+Use `.exe` and configuration subdirectories where applicable. Compare the same
+harness against old numeric sources with matching compiler/instrumentation
+settings; keep profile/live/resource probes separate from timing.
 
-Raw evidence remains under ignored `build/performance-round3/`:
-`final-metadata.json` records source/binary/fixture hashes and settings;
-`final-summary.json` aggregates selected root, power, conversion and math
-recordings. `followup-summary.json` and `followup-*.csv` contain the immediate
-square/logarithm follow-ups used above. `final-profile-*` and `final-bounded-*`
-are separate diagnostics. `powers.tsv`, `final-validation-*.csv` and
-`validate-msvc.csv` retain exact integer checks; `check-rational-*.log` and
-`ctest-*-final*.log` retain verification outcomes. Exploratory `square-trial-*`
-and the earlier power-only runs are not the selected speed comparison.
+Raw evidence remains under ignored `build/performance-products/`.
+`final-metadata.json` and `final-summary.json` identify selected root/direct/graph
+recordings; `followup-summary.json` retains the large-multiply/graph follow-up.
+`modules-selected-metadata.json`, `modules-selected-summary.json` and matching
+CSVs own the module comparison. `screen-*` and the initial module link experiment
+are exploratory, not selected results. Final test logs are
+`ctest-gcc-final.log`, `ctest-msvc-final.log` and `check-{gcc,msvc}.log`.
 
-## Browser and server limits
-
-This arithmetic-only pass does not rerun browser tests or change server
-scheduling. Earlier browser evidence is retained in Git at `033eb5b` and
-`1387815`. All-worker saturation can still cause fast requests to receive 503
-responses; arithmetic improvements alone do not establish admission fairness
-or overload isolation. The [benchmark tool index](../../../benchmarks/README.md)
-documents the separate server diagnostic.
+This pass leaves HTTP scheduling unchanged. All-worker saturation remains a
+separate limit; the [server baseline](SERVER.md) documents receive isolation and
+its compute-saturation control.

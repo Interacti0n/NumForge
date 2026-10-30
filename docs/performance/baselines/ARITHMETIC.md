@@ -47,6 +47,49 @@ optional arena exceeds the caller's budget. Real allocation/deadline failures
 do not retry; destinations remain unchanged. Factorial's later split workspace
 and budget admission are documented [separately](FACTORIAL.md).
 
+## Symmetric squares and powers
+
+30 October 2026, GCC 16.2 Release (`-O3 -DNDEBUG`), allocation statistics and
+failure hooks enabled in both versions. Numeric baseline `bfc785e`, optimized
+`c68f675`; these precede the later rational shortcuts. Seven immediate
+fresh-process pairs per selected square, alternating order, seven calibrated
+5-ms samples per process; medians of process medians, full Python integer
+references checked outside timing. No affinity/frequency lock or concurrent
+own build/test/benchmark. Input is one negative random object used for both
+operands and output.
+
+| Input limbs | Before / after microseconds | Requested bytes, either version |
+| ---: | ---: | ---: |
+| 16 | 1.098 / 0.802 | 256 |
+| 32 | 3.813 / 2.441 | 512 |
+| 64 | 15.921 / 9.186 | 1,024 |
+| 127 | 64.715 / 33.469 | 2,032 |
+
+Each square makes one allocation, with no scratch arena. The selected kernel
+accumulates the off-diagonal triangle, doubles once and adds the diagonal.
+The 16–127-limb entry avoids setup cost for smaller operands; larger values
+retain Karatsuba. Whole-corpus apparent slowdowns at unchanged 128/129-limb
+dispatch were not reproduced in immediate per-case follow-ups (before/after
+median ratios 1.02/0.95; the 15-limb control was 0.96).
+
+Five immediate pairs per power fixture, seven calibrated samples per process,
+complete exact references, record left-to-right exponentiation with scalar
+set-bit products for single-limb bases:
+
+| Power | Before / after microseconds | Before / after requested bytes |
+| --- | ---: | ---: |
+| `5^3324` | 36.720 / 19.161 | 2,896 / 2,040 |
+| `10^4095` | 108.268 / 52.252 | 5,344 / 3,512 |
+| `UINT64_MAX^65` | 10.678 / 7.453 | 1,560 / 2,040 |
+| 4096-bit base, exponent 17 | 924.750 / 926.617 | 52,912 / 52,384 |
+
+Gains depend on the workload. Accumulator growth can increase traffic and
+warmed output capacity: the `UINT64_MAX^65` total tracked peak rises from 1584
+to 2064 bytes. Fewer calls do not imply less traffic or success under every
+smaller budget. Raw evidence is under ignored `build/performance-round3/`:
+`final-metadata.json`, `final-summary.json`, `followup-summary.json` and their
+selected CSVs. The earlier complete report remains in Git at `a424589`.
+
 ## Allocation reuse
 
 MSVC 19.51, medians of three fresh serial processes. GCD baseline `1b19e2c`,

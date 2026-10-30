@@ -20,10 +20,10 @@ promise for the current checkout, another machine or concurrent server users.
 | --- | --- | --- |
 | [Server load](baselines/SERVER.md) | 21–30 October 2026 | Worker bursts, bounded HTTP receipt, session isolation, sustained memory and overload/recovery |
 | [Arithmetic](baselines/ARITHMETIC.md) | October 2026 | Selected division, multiplication, reuse, complex composition and formatting comparisons |
-| [Rational arithmetic](baselines/RATIONAL.md) | 30 October 2026 | Powers, symmetric squares, paired high-precision roots and bounded-allocation regression coverage |
+| [Rational arithmetic](baselines/RATIONAL.md) | 30 October 2026 | Canonical products, integer translation, paired high-precision roots and allocation/failure coverage |
 | [Factorial](baselines/FACTORIAL.md) | 12 October 2026 | Final split workspace, admission boundaries and complete checked outputs |
 | [Logarithm](baselines/LOGARITHM.md) | 11 October 2026 | Production interval algorithm, enclosure rationale and paired timings |
-| [Exact modules](baselines/MODULES.md) | 19–20 October 2026 | Polynomial, matrix/system, statistics and covariance fixtures/results |
+| [Exact modules](baselines/MODULES.md) | 19–30 October 2026 | Polynomial, matrix/system, statistics and covariance evidence, including matched rational matrix gains |
 | [Sampling](baselines/SAMPLING.md) | 19 October 2026 | Extracted grids, scheduling, classification, phase anchors and HTTP parity |
 | [Public roots](baselines/ROOTS.md) | 19 October 2026 | Callback bisection and bounded scan, including expensive stress limits |
 | [Equation experiments](baselines/ROOT_EXPERIMENTS.md) | 18–19 October 2026 | Domain safeguards, discovery costs and why interpolation stays private |

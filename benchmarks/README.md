@@ -65,8 +65,11 @@ references, rejects corrupted references and runs a separate live-payload probe.
 `--record` saves three serial processes (five calibrated samples per row), a
 separate `--profile` pass and revision/patch/compiler/executable metadata. Direct
 use takes a seven-column TSV: case, operation, numerator/denominator of each input,
-expected canonical text. Operations are add/sub/mul/div/compare and convert0..5
-(17 significant digits, exact terminating results retained). `--validate` checks
+expected canonical text. Operations are add/sub/mul/div/compare, square/selfdiv
+and convert0..5. The square/selfdiv selectors use one input object twice;
+validation checks separate and aliased outputs. Dividing zero by itself is
+checked as a domain error in native tests. Conversion requests use
+17 significant digits, with exact terminating results retained. `--validate` checks
 arithmetic destination aliases; `--memory` additionally checks complete teardown.
 Profile clocks and live tracking are excluded from ordinary speed samples.
 

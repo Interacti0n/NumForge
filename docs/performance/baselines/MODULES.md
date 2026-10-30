@@ -1,8 +1,10 @@
 # Exact module baselines
 
-Historical Windows x64/GCC 16.2/C17 Release, 19–20 October 2026, warnings as errors
-and allocation instrumentation. These are shared-machine baselines, not speedups,
-Python/HTTP timings or portable capacity claims.
+Windows x64/GCC 16.2/C17 Release with warnings as errors and allocation
+instrumentation. The 19–20 October 2026 tables are historical shared-machine
+baselines; the 30 October follow-up records matched rational-optimization
+comparisons. These are local observations, not Python/HTTP timings or portable
+capacity claims.
 
 ```sh
 cmake -S . -B build/module-bench -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DNUMFORGE_BUILD_APPS=OFF -DNUMFORGE_BUILD_BENCHMARKS=ON -DNUMFORGE_WARNINGS_AS_ERRORS=ON
@@ -135,3 +137,84 @@ This measures the composed implementation, not a specialized moments algorithm.
 | ordinary large | 1024 | 40.471–43.737 | 439,917 | 8,096,912 |
 | offset 10^1000 | 128 | 5.798–6.800 | 56,173 | 2,513,360 |
 | spread 10^-1000 | 128 | 23.458–26.384 | 66,308 | 13,833,568 |
+
+## Canonical rational follow-up
+
+30 October 2026, Windows x64, Ryzen 7 7435HS, GCC 16.2 Release `-O3 -DNDEBUG`, allocation
+statistics and failure hooks enabled in both versions. Numeric baseline
+`c68f675`, optimized `6d21fcb`. The [rational baseline](RATIONAL.md) explains the
+exact common-denominator and integer-translation shortcuts and their verification.
+
+Seven immediate fresh-process pairs per complete module corpus, reversing order
+on even pairs; tables show medians of process means (three calls/matrix row,
+ten calls/polynomial row). Inputs, references, verification and destruction are
+outside timing. No own build/test/other benchmark ran alongside recording;
+no affinity/frequency lock, unrelated host activity uncontrolled.
+
+The before executable uses the exact current benchmark/clock objects and CMake
+Release/system-link libraries against the archived unchanged `c68f675` numeric
+library. The after executable uses the new library. Archive/executable hashes
+and matching-link details are recorded; the earlier link experiment with
+different system-library arguments is not selected evidence.
+
+### Structured exact matrices
+
+The existing fixtures are dense `A=(I+J)/d`, with `d=11` for the table below.
+Every product entry is checked against `A*A=((n+2)J+I)/d^2`; determinant, solve,
+rank and general-solution descriptors retain their independent scalar checks.
+The full corpus also includes 2x2, 1001-digit denominators and consistent/
+inconsistent rectangular systems. All **1008 timed matrix operations** across
+both versions' selected processes completed and verified.
+
+| Operation / shape | Before / after median ms | Before / after allocation calls | Before / after requested bytes |
+| --- | ---: | ---: | ---: |
+| multiply, 8x8 | 1.114 / 0.538 | 7,223 / 4,151 | 73,720 / 49,144 |
+| determinant, 8x8 | 0.415 / 0.462 | 3,886 / 3,690 | 41,656 / 39,640 |
+| solve, 8x8 | 0.560 / 0.502 | 4,926 / 4,656 | 52,144 / 49,408 |
+| solve_general, 8x8 | 0.593 / 0.531 | 4,932 / 4,662 | 52,352 / 49,616 |
+| multiply, 16x16 | 7.590 / 4.517 | 59,930 / 35,354 | 597,544 / 400,936 |
+| determinant, 16x16 | 4.178 / 3.698 | 31,182 / 30,384 | 317,912 / 309,704 |
+| solve, 16x16 | 4.736 / 4.340 | 35,900 / 34,948 | 363,656 / 353,944 |
+| solve_general, 16x16 | 4.098 / 4.061 | 35,906 / 34,954 | 363,928 / 354,216 |
+
+8x8 multiplication is about **2.07 times faster**: process means span
+0.727–1.392 ms before and 0.467–0.683 ms after. 16x16 is about **1.68 times
+faster**: 6.742–8.490 / 4.177–5.328 ms. The 16x16 product makes 41.0% fewer
+allocation calls and requests 32.9% fewer bytes. Bytes are cumulative traffic,
+not peak/live memory or RSS. Other operations show smaller changes and mostly
+overlapping timing ranges; do not infer faster arbitrary matrix algorithms.
+
+These structured common-denominator fixtures are especially suited to the
+shortcut. They do not establish gains for arbitrary denominator growth, sparse
+systems, ill-conditioned approximate problems, Python/HTTP or browser rendering.
+The original per-call budget remains 5 seconds / 128 MiB cumulative / 2 MiB
+single allocation, with no relaxed output checks or precision changes.
+
+### Polynomial control
+
+The four existing polynomial cases retain Vieta/root-descriptor checks outside
+timing and their original 5-second / 64-MiB / 512-KiB scopes. All 560 timed
+solves across selected processes verify successfully.
+
+| Case | Before / after median ms | Before / after allocation calls |
+| --- | ---: | ---: |
+| rational | 0.01729 / 0.01663 | 161 / 120 |
+| irrational | 0.00855 / 0.00762 | 107 / 90 |
+| complex | 0.01067 / 0.00916 | 134 / 111 |
+| large-coefficients | 0.25414 / 0.24602 | 172 / 149 |
+
+The short polynomial timings have overlapping ranges; they establish no broad
+polynomial speedup. Fewer allocation calls and lower traffic are recorded
+separately in the raw data.
+
+Full native suites pass 116/116 GCC and 83/83 MSVC, and 23,614 independent
+Fraction/Decimal references pass on both compilers. No timing threshold was
+added. Reproduce with the existing `matrix_benchmark` and
+`polynomial_benchmark` executables and the matching-build method above.
+
+Selected raw evidence is under ignored `build/performance-products/`:
+`modules-selected-{matrix,polynomial}_benchmark-{before,after}-*.csv`,
+`modules-selected-metadata.json` and `modules-selected-summary.json`.
+Earlier `final-{matrix,polynomial}_benchmark-*` link-experiment records remain
+exploratory. Settings and absolute times from different sessions must not be
+combined into one speedup claim.
