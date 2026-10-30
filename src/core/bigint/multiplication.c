@@ -21,12 +21,8 @@ BigIntStatus bigint_square_school(BigInt *out, const BigInt *a)
         for (size_t j = i + 1U; j < a->size; ++j)
         {
             if (!(j & 255U) && !numforge_budget_check()) goto cancelled;
-            uint64_t hi, lo;
-            bigint_multiply_u64_u64(a->limbs[i], a->limbs[j], &hi, &lo);
-            uint64_t sum = temporary.limbs[i + j] + lo, c1 = sum < lo;
-            uint64_t next = sum + carry, c2 = next < sum;
-            temporary.limbs[i + j] = next;
-            carry = hi + c1 + c2;
+            carry = bigint_multiply_accumulate_u64(a->limbs[i], a->limbs[j],
+                temporary.limbs[i + j], carry, &temporary.limbs[i + j]);
         }
         temporary.limbs[i + a->size] = carry;
     }
@@ -108,12 +104,7 @@ static BigIntStatus school(uint64_t *out, const uint64_t *a, size_t na,
         for (size_t j = 0U; j < na; ++j)
         {
             if (j && !(j & 255U) && !numforge_budget_check()) return BIGINT_OUT_OF_MEMORY;
-            uint64_t hi, lo;
-            bigint_multiply_u64_u64(a[j], b[i], &hi, &lo);
-            uint64_t sum = out[i + j] + lo, c1 = sum < lo;
-            uint64_t next = sum + carry, c2 = next < sum;
-            out[i + j] = next;
-            carry = hi + c1 + c2;
+            carry = bigint_multiply_accumulate_u64(a[j], b[i], out[i + j], carry, &out[i + j]);
         }
         out[i + na] = carry;
     }

@@ -205,23 +205,8 @@ BigIntStatus bigint_mul( /*Multiply two BigInts (a*b)*/
 
         for (size_t j = 0; j < a->size; j++)
         {
-            uint64_t high;
-            uint64_t low;
-
-            bigint_multiply_u64_u64(a->limbs[j], b->limbs[i], &high, &low);
-
-            uint64_t sum = product[i + j] + low;
-            uint64_t overflow1 = (sum < low);
-
-            uint64_t sum2 = sum + carry;
-            uint64_t overflow2 = (sum2 < sum);
-
-            product[i + j] = sum2;
-
-            // high can be at most UINT64_MAX-1 (achieved only when both
-            // operands are UINT64_MAX, which forces low=1 and pins overflow2
-            // to 0), so this sum never overflows a uint64_t.
-            carry = high + overflow1 + overflow2;
+            carry = bigint_multiply_accumulate_u64(a->limbs[j], b->limbs[i],
+                product[i + j], carry, &product[i + j]);
         }
 
         product[i + a->size] = carry;
