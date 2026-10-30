@@ -2,7 +2,8 @@
 
 Local development foundation only: Django 5.2 LTS, Psycopg 3 and PostgreSQL 14+.
 Identity, session and login-throttle tables have migrations. Private login/logout
-API tests pass; there is no public gateway, login UI, workspace storage or C-session bridge yet.
+API and SK/EN form tests pass through an optional HTTPS gateway. Workspace storage
+and the authenticated C-session bridge remain pending.
 CMake, the mathematical libraries and the existing guest web need none of these.
 For the separate container deployment, see [Docker Compose](CONTAINERS.md).
 
@@ -68,8 +69,9 @@ These are manual local backups, without automatic scheduling/retention yet.
 
 ## Private pilot authentication
 
-Routes exist only in the private Django service; do not publish them before the
-HTTPS gateway/host and trusted-proxy policy are implemented. No public registration.
+The private Django service is reached through the optional
+[HTTPS gateway](CONTAINERS.md#https-account-pilot); its shared token authenticates
+forwarded scheme/client address. No public registration.
 
 | Route | Contract |
 | --- | --- |
@@ -86,8 +88,8 @@ lasts 14 days. Password changes/deactivation invalidate authentication on subseq
 requests. Other-device management remains pending.
 
 All well-formed attempts share a PostgreSQL limit of 10 per source IP/5 minutes,
-including successes, across workers and restarts. No forwarded IP header is trusted;
-a future gateway must resolve that policy before multiple public clients are routed.
+including successes, across workers and restarts. Only token-authenticated gateway
+requests may supply a client address; arbitrary forwarding headers remain untrusted.
 Errors: 400 malformed JSON/fields, 401 generic invalid credentials (including inactive
 users), 403 CSRF/origin, 405 method, 413 oversized body, 415 content type, 429 with
 `Retry-After`. Limit: 4 KiB JSON, username 150 characters, password 1024 characters.
@@ -97,5 +99,5 @@ manage.py createpilotuser NAME` (or the native `manage.py` with `app.json`). Pas
 are prompted twice, validated and never passed as CLI arguments. Expired sessions
 need periodic `manage.py clearsessions`; scheduling is still pending.
 
-Next: HTTPS gateway/login UI, then owner-scoped preferences/workspaces. See the
+Next: owner-scoped preferences/workspaces and device management. See the
 [account design](../design/APPLICATION_DESIGN.md#proposed-accounts-and-saved-work).

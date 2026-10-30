@@ -21,9 +21,8 @@ preserving browser Origin checks. The existing preview on 8766 is unaffected.
 | `setup` | One-shot role/schema provisioning and migrations before accounts start |
 | `accounts` | Private Django/Gunicorn service with runtime credentials only |
 
-The private [login/logout API](ACCOUNTS_STORAGE.md#private-pilot-authentication)
-exists; gateway/TLS and browser integration are the next step. This is a local
-deployment foundation, not public account hosting.
+The [login/logout API](ACCOUNTS_STORAGE.md#private-pilot-authentication) and SK/EN
+form have an optional HTTPS gateway; public registration remains unavailable.
 Keep the host binding on loopback until HTTPS/origin configuration is explicit.
 `web` has no dependency on the DB or accounts. Its default native binding remains
 127.0.0.1; explicit `--bind 0.0.0.0` enables container networking.
@@ -64,7 +63,34 @@ On a Linux server, use the same Compose setup, restored data/configuration and a
 separately configured HTTPS gateway. Review capacity, updates and backup retention
 before public hosting; image builds do not imply tested ARM deployment.
 
-CI builds the stack, checks browser-Origin calculations, persisted identities,
-backup/restore and calculations with DB stopped. For a disposable local check,
+## HTTPS account pilot
+
+```sh
+python scripts/compose.py gateway-init
+docker compose -f compose.yaml -f compose.accounts.yaml up --build --wait
+```
+
+Open **https://localhost:18878/login?lang=sk** (`NUMFORGE_GATEWAY_PORT` overrides
+the port). Caddy's local CA stays in `gateway-data`; no host trust store is changed.
+Local browsers need that CA explicitly trusted, or use a verified HTTPS tunnel.
+Export its public root with `docker compose -f compose.yaml -f compose.accounts.yaml
+cp gateway:/data/caddy/pki/authorities/local/root.crt .local/compose/gateway-root.crt`.
+Never export its private key. Tunnel origin TLS must verify this root and use
+`localhost` as its origin server name/Host; do not disable certificate verification.
+
+For a Cloudflare HTTPS tunnel, set `NF_ACCOUNT_PUBLIC_ORIGIN` to its exact HTTPS
+origin before recreating `gateway`/`accounts`. The gateway checks browser Origin,
+redirects edge HTTP to HTTPS and supplies a private gateway token plus authoritative
+client address. Cloudflare overwrites `Cf-Connecting-IP` at its edge; the origin
+port must remain loopback/private. Other proxies need their own explicit address
+policy. Do not expose this loopback preview config directly to a public network.
+
+The login form uses secure cookies, clears password fields, checks sessions after
+reload/tab changes and keeps failed network operations recoverable. It stores no
+credentials in browser storage. Native guest `/login` retains an explanatory fallback.
+
+CI builds the stack, checks real TLS/cookies/CSRF, SK/EN desktop/mobile login,
+cross-tab logout, persisted identities, backup/restore and calculations with DB stopped.
+For a disposable local check,
 set `COMPOSE_PROJECT_NAME=numforge-test-local`, then run
 `python tests/containers/check_stack.py`. It removes that project's volumes.

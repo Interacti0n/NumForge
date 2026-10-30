@@ -1,0 +1,43 @@
+# Optional HTTPS front door; compose.yaml remains independently usable.
+services:
+  gateway:
+    image: caddy:2.11.7-alpine
+    entrypoint: [/bin/sh, -c]
+    command:
+      - 'export NF_GATEWAY_TOKEN="$$(cat /run/secrets/gateway_token)"; exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile'
+    environment:
+      NUMFORGE_PORT: ${NUMFORGE_PORT:-18876}
+      NF_ACCOUNT_PUBLIC_ORIGIN: ${NF_ACCOUNT_PUBLIC_ORIGIN:-https://localhost:18878}
+      NF_LOCAL_ORIGIN: https://localhost:${NUMFORGE_GATEWAY_PORT:-18878}
+    ports: ["127.0.0.1:${NUMFORGE_GATEWAY_PORT:-18878}:8443"]
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - gateway-data:/data
+      - gateway-config:/config
+    secrets: [gateway_token]
+    depends_on:
+      web: {condition: service_healthy}
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    # The upstream Caddy executable carries this file capability.
+    cap_add: [NET_BIND_SERVICE]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD-SHELL, 'wget -q --no-check-certificate -O /dev/null https://localhost:8443/']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  accounts:
+    environment:
+      NF_GATEWAY_TOKEN_FILE: /run/secrets/gateway_token
+      NF_ACCOUNT_PUBLIC_ORIGIN: ${NF_ACCOUNT_PUBLIC_ORIGIN:-}
+      NF_LOCAL_ORIGIN: https://localhost:${NUMFORGE_GATEWAY_PORT:-18878}
+    secrets: [gateway_token]
+
+secrets:
+  gateway_token: {file: .local/compose/gateway-token}
+volumes:
+  gateway-data:
+  gateway-config:

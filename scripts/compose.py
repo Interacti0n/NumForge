@@ -13,7 +13,15 @@ STATE = ROOT / ".local/compose"
 
 def docker(*arguments, **kwargs):
     options = {"creationflags": subprocess.CREATE_NO_WINDOW} if os.name == "nt" else {}
-    return subprocess.run(["docker", "compose", *arguments], cwd=ROOT, check=True, **options, **kwargs)
+    if not kwargs.get("capture_output"):
+        kwargs.setdefault("stdout", subprocess.PIPE)
+        kwargs.setdefault("stderr", subprocess.PIPE)
+    result = subprocess.run(["docker", "compose", *arguments], cwd=ROOT, **options, **kwargs)
+    for output in (result.stdout, result.stderr):
+        if output:
+            print(output.decode("utf-8", errors="replace") if isinstance(output, bytes) else output, flush=True)
+    result.check_returncode()
+    return result
 
 
 def init():
@@ -41,6 +49,17 @@ def init():
             (STATE / "admin-password").write_text(config["password"], encoding="utf-8")
             (STATE / "admin-password").chmod(0o644)
     print("Private Compose configuration created; existing native database is unchanged.")
+    gateway_init()
+
+
+def gateway_init():
+    if not (STATE / "app.json").is_file():
+        raise ValueError("Initialize private Compose credentials first.")
+    path = STATE / "gateway-token"
+    if not path.exists():
+        with path.open("x", encoding="utf-8") as output:
+            output.write(secrets.token_urlsafe(48))
+        path.chmod(0o644)
 
 
 def backup(path):
@@ -69,11 +88,13 @@ def verify(path):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("init", "backup", "verify-backup"))
+    parser.add_argument("action", choices=("init", "gateway-init", "backup", "verify-backup"))
     parser.add_argument("--file", type=Path)
     args = parser.parse_args()
     if args.action == "init":
         init()
+    elif args.action == "gateway-init":
+        gateway_init()
     elif args.action == "backup":
         backup(args.file or STATE / "backups" / datetime.now(timezone.utc).strftime("accounts-%Y%m%dT%H%M%S-%fZ.dump"))
     elif args.file:

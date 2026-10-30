@@ -34,7 +34,7 @@ try:
     compose.docker("exec", "-T", "accounts", "python", input=
         "import sys, django\ndjango.setup()\n" + auth_checks +
         "\nresult=unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromTestCase(AuthChecks))\n"
-        "sys.exit(0 if result.wasSuccessful() else 1)\n", text=True)
+        "sys.exit(0 if result.wasSuccessful() else 1)\n", encoding="utf-8")
     account_code("from django.contrib.auth import get_user_model; "
                  "u=get_user_model().objects.create_user(username='container-check',password='test-only'); "
                  "assert u.check_password('test-only'); "
@@ -58,6 +58,8 @@ try:
     compose.docker("up", "--wait", "--wait-timeout", "180")
     calculate()
     print("Compose build/start, persisted identity, restore and DB-independent calculation passed.")
+    import check_gateway
+    check_gateway.run()
 finally:
     compose.docker("logs", "--no-color", "--tail", "60")
     compose.docker("down", "--volumes", "--remove-orphans")

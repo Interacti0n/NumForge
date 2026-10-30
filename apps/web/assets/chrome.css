@@ -29,6 +29,7 @@
 }
 
 /* Shared task shelves and empty results use the same panel language. */
+.header-actions .account-link { display:inline-flex; align-items:center; justify-content:center; width:80px; min-height:38px; flex:0 0 80px; padding:7px 10px; border:1px solid var(--border-soft); border-radius:9px; color:var(--accent); background:var(--surface-input); font-size:.8rem; white-space:nowrap; text-decoration:none; }
 .workbench-panel-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; }
 .workbench-panel-heading h1,.workbench-panel-heading h2 { margin:0; font-size:1.1rem; }
 .workbench-panel-heading > p { margin:0; color:var(--accent); font:1rem var(--font-math); }
@@ -184,7 +185,7 @@ body::before
     display: grid;
     order: 4;
     flex: 0 0 auto;
-    grid-template-columns: auto;
+    grid-template-columns: auto auto;
     align-items: center;
     gap: 8px;
     padding-left: 20px;
@@ -206,7 +207,7 @@ body::before
     .brand-text small { display: none; }
     .primary-nav a { padding-inline: 6px; font-size: .8rem; }
     .header-guide { flex-basis: 108px; font-size: .75rem; gap: 5px; }
-    .header-actions { grid-template-columns: auto; gap: 5px; padding-left: 12px; }
+    .header-actions { grid-template-columns: auto auto; gap: 5px; padding-left: 12px; }
     .language-switch a { padding-inline: 6px; font-size: .7rem; }
 }
 

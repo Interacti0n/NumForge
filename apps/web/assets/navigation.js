@@ -85,14 +85,14 @@ function setupUpcoming()
     const language = document.documentElement.lang;
     const messages = {
         sk: {
-            login: ['Prihlásenie', 'Prihlasovanie zatiaľ nie je dostupné.',
-                'Čo bude ďalej', 'Po zavedení účtov sa tu bude dať bezpečne prihlásiť a pracovať s vlastným priestorom.', '→', 'Registrácia', '/register?lang=sk'],
+            login: ['Prihlásenie', 'Na tejto adrese zatiaľ nie je dostupné prihlasovanie.',
+                'Pokračuj bez účtu', 'Na výpočty účet nepotrebuješ. Prihlásenie je dostupné na HTTPS adrese súkromného pilotu.', '→', 'Kalkulačka', '/?lang=sk'],
             register: ['Vytvoriť účet', 'Registráciu pripravujeme spolu s vlastným priestorom používateľa.',
                 'Čo bude ďalej', 'Pred spustením určíme, aké údaje účet potrebuje a ako sa budú bezpečne uchovávať.', '+', 'Prihlásiť sa', '/login?lang=sk']
         },
         en: {
-            login: ['Sign in', 'Sign-in is not available yet.',
-                'What comes next', 'Once accounts are available, you will be able to sign in securely and use your own workspace.', '→', 'Create account', '/register?lang=en'],
+            login: ['Sign in', 'Sign-in is not available at this address yet.',
+                'Continue without an account', 'Calculations do not require an account. Sign-in is available at the private pilot HTTPS address.', '→', 'Calculator', '/?lang=en'],
             register: ['Create an account', 'Registration is planned alongside a personal workspace.',
                 'What comes next', 'Before launch, we will decide what information an account needs and how it is stored securely.', '+', 'Sign in', '/login?lang=en']
         }

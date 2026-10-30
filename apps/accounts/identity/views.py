@@ -3,12 +3,14 @@ from datetime import timedelta
 import ipaddress
 import json
 import math
+from pathlib import Path
 
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.contrib.auth import get_user_model
 from django.core.exceptions import RequestDataTooBig
 from django.db import transaction
-from django.http import JsonResponse
+from django.http import JsonResponse, FileResponse
+from django.shortcuts import render
 from django.middleware.csrf import get_token, rotate_token
 from django.utils import timezone
 from django.utils.crypto import salted_hmac
@@ -20,6 +22,40 @@ from .models import LoginThrottle
 
 LOGIN_LIMIT = 10
 LOGIN_WINDOW = timedelta(minutes=5)
+
+COPY = {
+    "sk": dict(title="Tvoj účet", lead="Prihlás sa do súkromného pilotu NumForge.", username="Používateľské meno",
+        password="Heslo", show="Zobraziť heslo", remember="Zapamätať na 14 dní", signin="Prihlásiť sa", signout="Odhlásiť sa",
+        checking="Overujem prihlásenie…", pending="Pracujem…", signed="Prihlásený účet", retry="Skúsiť znova",
+        invalid="Meno alebo heslo nie je správne.", csrf="Platnosť formulára sa zmenila. Skús to znova.",
+        limited="Príliš veľa pokusov. Skús to znova o chvíľu.", offline="Spojenie sa nepodarilo. Over stav účtu znova.",
+        secure="Prihlasovanie vyžaduje HTTPS.", guest="Kalkulačku môžeš používať aj bez účtu.",
+        pilot="Účty v tomto pilote zakladá správca. Verejná registrácia ešte nie je dostupná.",
+        scope="Prihlásenie je pripravené. Synchronizácia nastavení, histórie a pracovných priestorov pribudne neskôr.",
+        calc="Kalkulačka", graphs="Grafy", equations="Rovnice", matrices="Matice", units="Jednotky", guide="Návod / API", account="Účet"),
+    "en": dict(title="Your account", lead="Sign in to the private NumForge pilot.", username="Username",
+        password="Password", show="Show password", remember="Remember for 14 days", signin="Sign in", signout="Sign out",
+        checking="Checking your session…", pending="Working…", signed="Signed-in account", retry="Try again",
+        invalid="The username or password is incorrect.", csrf="The form has changed. Please try again.",
+        limited="Too many attempts. Please try again later.", offline="Could not connect. Check your account status again.",
+        secure="Sign-in requires HTTPS.", guest="You can use the calculator without an account.",
+        pilot="An administrator creates pilot accounts. Public registration is not available yet.",
+        scope="Sign-in is ready. Settings, history and workspace synchronization will follow later.",
+        calc="Calculator", graphs="Graphs", equations="Equations", matrices="Matrices", units="Units", guide="Guide / API", account="Account"),
+}
+
+
+@never_cache
+@require_GET
+def login_page(request):
+    language = "en" if request.GET.get("lang") == "en" else "sk"
+    return render(request, "identity/account.html", {"lang": language, "copy": COPY[language]})
+
+
+@require_GET
+def ui_asset(request, name):
+    return FileResponse((Path(__file__).parent / "ui" / name).open("rb"),
+                        content_type="text/javascript" if name.endswith(".js") else "text/css")
 
 
 def current_user(request):

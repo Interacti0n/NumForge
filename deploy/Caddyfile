@@ -1,0 +1,34 @@
+{
+	admin off
+	auto_https disable_redirects
+	skip_install_trust
+}
+https://localhost:8443 {
+	tls internal
+	@bad_origin expression `{http.request.header.Origin} != "" && {http.request.header.Origin} != "{$NF_ACCOUNT_PUBLIC_ORIGIN}" && {http.request.header.Origin} != "{$NF_LOCAL_ORIGIN}"`
+	# Cloudflare overwrites this header at the edge. Local TLS has no such header.
+	@edge_http header X-Forwarded-Proto http
+	@edge header Cf-Connecting-IP *
+	@account path /api/account/* /login
+	route {
+		respond @bad_origin 403
+		redir @edge_http {$NF_ACCOUNT_PUBLIC_ORIGIN}{uri} 308
+		request_header X-Numforge-Client-IP {remote_host}
+		request_header @edge X-Numforge-Client-IP {http.request.header.Cf-Connecting-Ip}
+		handle @account {
+			reverse_proxy accounts:8000 {
+				header_up Host localhost
+				header_up X-Forwarded-Proto https
+				header_up X-Numforge-Gateway {$NF_GATEWAY_TOKEN}
+			}
+		}
+		handle {
+			reverse_proxy web:{$NUMFORGE_PORT} {
+				# Original browser Origin was checked above; C receives its loopback origin.
+				header_up Origin http://localhost:{$NUMFORGE_PORT}
+				header_up -Cookie
+				header_up -X-Numforge-Gateway
+			}
+		}
+	}
+}

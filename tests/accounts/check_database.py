@@ -46,8 +46,12 @@ class DatabaseChecks(unittest.TestCase):
         from django.test import Client
 
         client = Client(HTTP_HOST="localhost")
-        for path in ("/", "/login", "/register", "/admin/"):
+        for path in ("/", "/register", "/admin/"):
             self.assertEqual(client.get(path, secure=True).status_code, 404)
+        for language in ("sk", "en"):
+            response = client.get("/login?lang="+language, secure=True)
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(f'<html lang="{language}">', response.content.decode())
 
 
 if __name__ == "__main__":

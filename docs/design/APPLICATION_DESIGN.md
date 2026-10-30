@@ -2,8 +2,8 @@
 
 Current calculator sessions use memory only. Optional
 [account storage](../guides/ACCOUNTS_STORAGE.md) has a local PostgreSQL foundation,
-identity/session migrations, private login/logout API and restore checks; public
-gateway/UI is not implemented.
+identity/session migrations, login/logout API, optional HTTPS gateway, SK/EN form
+and restore checks. Public registration and saved work remain pending.
 Numeric APIs and the public engine remain independently installable.
 [Architecture](ARCHITECTURE.md) owns source/target boundaries.
 
@@ -73,8 +73,9 @@ without truncation. These are proposed defaults, not current guarantees.
    Git and tested backup/restore exist. Automatic DB startup, backup scheduling
    and deployment integration remain pending.
 2. Private pilot API has login/logout, remembered sessions, expiry, CSRF and
-   database-backed attempt limits, with measured Argon2id. HTTPS gateway/host and
-   trusted-proxy configuration plus the login UI remain pending.
+   database-backed attempt limits, with measured Argon2id. The optional HTTPS
+   gateway authenticates forwarded metadata; SK/EN UI is integrated. Other-device
+   management and public registration/recovery remain pending.
 3. Defaults/named inputs, guest import, autosave, quotas/conflicts; verify backend/
    DB restart, second-browser restore and two-user isolation.
 4. Device management/export/deletion/recovery. Test mail verification/reset before

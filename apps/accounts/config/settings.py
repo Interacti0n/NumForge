@@ -2,6 +2,7 @@
 import json
 import os
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from django.core.exceptions import ImproperlyConfigured
 
@@ -27,12 +28,14 @@ if len(SECRET_KEY) < 50:
 DEBUG = False
 ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 ROOT_URLCONF = "config.urls"
+TEMPLATES = [{"BACKEND": "django.template.backends.django.DjangoTemplates", "APP_DIRS": True}]
 INSTALLED_APPS = ["django.contrib.auth", "django.contrib.contenttypes", "django.contrib.sessions", "identity"]
 AUTH_USER_MODEL = "identity.User"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 USE_TZ = True
 TIME_ZONE = "UTC"
 MIDDLEWARE = [
+    "identity.gateway.GatewayMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -63,3 +66,16 @@ AUTH_PASSWORD_VALIDATORS = [
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_SSL_REDIRECT = True
 SECURE_HSTS_SECONDS = 0  # Set only at the eventual HTTPS gateway deployment.
+GATEWAY_TOKEN = Path(os.environ["NF_GATEWAY_TOKEN_FILE"]).read_text().strip() if os.environ.get("NF_GATEWAY_TOKEN_FILE") else None
+if GATEWAY_TOKEN is not None:
+    if len(GATEWAY_TOKEN) < 40:
+        raise ImproperlyConfigured("Gateway token is too short.")
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+CSRF_TRUSTED_ORIGINS = []
+for public_origin in (os.environ.get("NF_ACCOUNT_PUBLIC_ORIGIN", ""), os.environ.get("NF_LOCAL_ORIGIN", "")):
+    if not public_origin:
+        continue
+    origin = urlsplit(public_origin)
+    if origin.scheme != "https" or not origin.hostname or origin.username or origin.password or origin.path or origin.query or origin.fragment or "*" in public_origin:
+        raise ImproperlyConfigured("Use one exact HTTPS account origin without a path.")
+    CSRF_TRUSTED_ORIGINS.append(public_origin)

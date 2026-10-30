@@ -20,6 +20,7 @@ jobs:
     timeout-minutes: 15
     env:
       COMPOSE_PROJECT_NAME: numforge-test-ci
+      NUMFORGE_CHECK_ACCOUNT_BROWSER: '1'
     steps:
       - uses: actions/checkout@v7
         with:
@@ -27,6 +28,10 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
+      - name: Prepare account browser checks
+        run: |
+          npm ci --prefix tests/browser
+          node tests/browser/node_modules/@playwright/test/cli.js install --with-deps chromium
       - name: Build and verify disposable application stack
         run: |
           python tests/containers/test_compose_helpers.py

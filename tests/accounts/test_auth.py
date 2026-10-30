@@ -7,7 +7,7 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.contrib.sessions.models import Session
 from django.db import connections
-from django.test import Client, RequestFactory
+from django.test import Client, RequestFactory, override_settings
 from django.utils import timezone
 
 from identity.models import LoginThrottle
@@ -130,3 +130,13 @@ class AuthChecks(unittest.TestCase):
         self.assertEqual(self.client.get("/api/account/login", secure=True).status_code, 405)
         self.assertEqual(self.client.get("/api/account/logout", secure=True).status_code, 405)
         self.assertEqual(self.client.get("/api/account/session").status_code, 301)
+
+    @override_settings(GATEWAY_TOKEN="x"*48, SECURE_PROXY_SSL_HEADER=("HTTP_X_FORWARDED_PROTO", "https"))
+    def test_gateway_authenticates_forwarded_scheme_and_client(self):
+        self.assertEqual(self.client.get("/api/account/session", HTTP_X_FORWARDED_PROTO="https").status_code, 403)
+        headers = dict(HTTP_X_NUMFORGE_GATEWAY="x"*48, HTTP_X_FORWARDED_PROTO="https", HTTP_X_NUMFORGE_CLIENT_IP="192.0.2.4")
+        self.assertEqual(self.client.get("/api/account/session", **headers).status_code, 200)
+        headers["HTTP_X_NUMFORGE_CLIENT_IP"] = "invalid"
+        self.assertEqual(self.client.get("/api/account/session", **headers).status_code, 403)
+        headers["HTTP_X_NUMFORGE_GATEWAY"] = "é"
+        self.assertEqual(self.client.get("/api/account/session", **headers).status_code, 403)
