@@ -145,7 +145,9 @@ Production uses budget-aware Karatsuba, bounded factorial trees and the
 16–127-limb symmetric square. Selected
 [arithmetic comparisons](../baselines/ARITHMETIC.md#karatsuba) and the
 [final factorial baseline](../baselines/FACTORIAL.md) record their decisions and
-resource boundaries. Older schoolbook-only and pre-admission factorial timings
+resource boundaries. The [power and square follow-up](../baselines/RATIONAL.md)
+records the symmetric-square entry and its effect on public rational roots.
+Older schoolbook-only and pre-admission factorial timings
 are superseded and remain in Git history. Private square/tree adapters support
 controlled comparisons; public operation signatures remain unchanged.
 

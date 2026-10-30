@@ -20,7 +20,7 @@ promise for the current checkout, another machine or concurrent server users.
 | --- | --- | --- |
 | [Server load](baselines/SERVER.md) | 21–22 October 2026 | Serial/worker 10/30/60-client bursts, session isolation, sustained memory and overload/recovery |
 | [Arithmetic](baselines/ARITHMETIC.md) | October 2026 | Selected division, multiplication, reuse, complex composition and formatting comparisons |
-| [Rational arithmetic](baselines/RATIONAL.md) | 30 October 2026 | Exact conversion/comparison, paired high-precision roots and a bounded-allocation regression guard |
+| [Rational arithmetic](baselines/RATIONAL.md) | 30 October 2026 | Powers, symmetric squares, paired high-precision roots and bounded-allocation regression coverage |
 | [Factorial](baselines/FACTORIAL.md) | 12 October 2026 | Final split workspace, admission boundaries and complete checked outputs |
 | [Logarithm](baselines/LOGARITHM.md) | 11 October 2026 | Production interval algorithm, enclosure rationale and paired timings |
 | [Exact modules](baselines/MODULES.md) | 19–20 October 2026 | Polynomial, matrix/system, statistics and covariance fixtures/results |
