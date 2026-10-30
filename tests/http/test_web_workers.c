@@ -35,7 +35,7 @@ static pthread_t stop_thread;
 #endif
 static TestFlag release_compute, stop_finished;
 static bool stop_started;
-static struct { NumForgeSocket server, peer; } connections[NUMFORGE_WEB_MAX_QUEUE + 2U];
+static struct { NumForgeSocket server, peer; } connections[NUMFORGE_WEB_MAX_PENDING + 2U];
 static const char request_tail[] = "ET /missing HTTP/1.1\r\nHost: localhost\r\n\r\n";
 static const char calculate[] = "POST /api/evaluate HTTP/1.1\r\nHost: localhost\r\nContent-Length: 3\r\n\r\n2+2";
 
@@ -236,16 +236,18 @@ static void test_full_ingress_preserves_rejected_socket_ownership_and_recovers(v
 {
     pool = numforge_web_workers_start(1, 2, 8765, NULL); TEST_ASSERT_NOT_NULL(pool);
     submit(0, "G", numforge_monotonic_ms()); submit(1, "G", numforge_monotonic_ms());
-    TEST_ASSERT_TRUE(await_state(2, 0, 2));
+    submit(2, "G", numforge_monotonic_ms());
+    TEST_ASSERT_TRUE(await_state(3, 0, 3));
     TEST_ASSERT_TRUE(connect_pair(3)); send_text(3, calculate);
     TEST_ASSERT_FALSE(numforge_web_workers_submit(pool, connections[3].server, numforge_monotonic_ms()));
     numforge_reject_connection(connections[3].server); numforge_close_socket(connections[3].server);
     connections[3].server = NUMFORGE_INVALID_SOCKET;
     expect_response(3, "HTTP/1.1 503 Service Unavailable", "\"code\":\"server_busy\"");
-    TEST_ASSERT_TRUE(await_state(2, 0, 2));
-    send_text(0, request_tail); send_text(1, request_tail);
+    TEST_ASSERT_TRUE(await_state(3, 0, 3));
+    send_text(0, request_tail); send_text(1, request_tail); send_text(2, request_tail);
     expect_response(0, "HTTP/1.1 404 Not Found", "Not found");
     expect_response(1, "HTTP/1.1 404 Not Found", "Not found");
+    expect_response(2, "HTTP/1.1 404 Not Found", "Not found");
     TEST_ASSERT_TRUE(await_state(0, 0, 0));
     submit(4, calculate, numforge_monotonic_ms()); expect_response(4, "HTTP/1.1 200 OK", "\"result\":\"4\"");
 }
@@ -327,14 +329,16 @@ static void test_fragmented_body_and_peer_eof_release_their_slots(void)
 }
 static void test_maximum_ingress_and_select_capacity(void)
 {
-    pool = numforge_web_workers_start(4, NUMFORGE_WEB_MAX_QUEUE, 8765, NULL); TEST_ASSERT_NOT_NULL(pool);
-    for (size_t i = 0U; i < NUMFORGE_WEB_MAX_QUEUE; ++i) submit(i, "G", numforge_monotonic_ms());
-    TEST_ASSERT_TRUE(await_state(NUMFORGE_WEB_MAX_QUEUE, 0, NUMFORGE_WEB_MAX_QUEUE));
-    send_text(0, request_tail); expect_response(0, "HTTP/1.1 404 Not Found", "Not found");
-    TEST_ASSERT_TRUE(await_state(NUMFORGE_WEB_MAX_QUEUE - 1U, 0, NUMFORGE_WEB_MAX_QUEUE - 1U));
-    submit(NUMFORGE_WEB_MAX_QUEUE, calculate, numforge_monotonic_ms());
-    expect_response(NUMFORGE_WEB_MAX_QUEUE, "HTTP/1.1 200 OK", "\"result\":\"4\"");
-    TEST_ASSERT_TRUE(await_state(NUMFORGE_WEB_MAX_QUEUE - 1U, 0, NUMFORGE_WEB_MAX_QUEUE - 1U));
+    pool = numforge_web_workers_start(NUMFORGE_WEB_MAX_WORKERS, NUMFORGE_WEB_MAX_QUEUE, 8765, NULL); TEST_ASSERT_NOT_NULL(pool);
+    for (size_t i = 0U; i < NUMFORGE_WEB_MAX_PENDING; ++i) submit(i, "G", numforge_monotonic_ms());
+    TEST_ASSERT_TRUE(await_state(NUMFORGE_WEB_MAX_PENDING, 0, NUMFORGE_WEB_MAX_PENDING));
+    /* Last slot is beyond Winsock's first fd_set batch. */
+    send_text(NUMFORGE_WEB_MAX_PENDING - 1U, request_tail);
+    expect_response(NUMFORGE_WEB_MAX_PENDING - 1U, "HTTP/1.1 404 Not Found", "Not found");
+    TEST_ASSERT_TRUE(await_state(NUMFORGE_WEB_MAX_PENDING - 1U, 0, NUMFORGE_WEB_MAX_PENDING - 1U));
+    submit(NUMFORGE_WEB_MAX_PENDING, calculate, numforge_monotonic_ms());
+    expect_response(NUMFORGE_WEB_MAX_PENDING, "HTTP/1.1 200 OK", "\"result\":\"4\"");
+    TEST_ASSERT_TRUE(await_state(NUMFORGE_WEB_MAX_PENDING - 1U, 0, NUMFORGE_WEB_MAX_PENDING - 1U));
 }
 int main(void)
 {

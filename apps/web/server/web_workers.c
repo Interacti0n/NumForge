@@ -32,7 +32,7 @@ struct NumForgeWebWorkers {
     pthread_cond_t changed, incoming;
     pthread_t threads[NUMFORGE_WEB_MAX_WORKERS], receiver;
 #endif
-    size_t queue[NUMFORGE_WEB_MAX_QUEUE];
+    size_t queue[NUMFORGE_WEB_MAX_PENDING];
     size_t head, count, reading, active, started, capacity;
     bool stopping, receiver_started;
     uint16_t port;
@@ -92,7 +92,26 @@ static bool receive_retryable(void)
 #endif
 }
 
-/* Only this thread reads incomplete connections. A slot stays READING until
+/* One nonblocking read/probe: 0 needs more bytes, 200 is a complete frame,
+ * otherwise a framing error. The caller exclusively owns this descriptor. */
+static int receive_frame(WebConnection *connection, const NumForgeWebWorkers *workers)
+{
+    size_t room = sizeof(connection->request) - connection->used - 1U;
+    if (!room) return 413;
+    int received = recv(connection->socket, connection->request + connection->used, (int)room, 0);
+    if (received < 0 && receive_retryable()) return 0;
+    if (received <= 0) return 400;
+    connection->used += (size_t)received;
+    NumForgeHttpStatus status = numforge_http_probe_with_origin(connection->request,
+        connection->used, sizeof(connection->request), workers->port, workers->origin, &connection->frame);
+    if (status == NUMFORGE_HTTP_MORE) return 0;
+    if (status != NUMFORGE_HTTP_READY) return status == NUMFORGE_HTTP_LARGE ? 413 : 400;
+    connection->request[connection->frame.length] = '\0';
+    return 200;
+}
+
+/* Only this thread reads slots published as READING. Submission may consume
+ * one initial buffered chunk before publishing. A slot stays READING until
  * its complete frame is published under the lock, or its socket is detached.
  * Workers copy READY slots before making them EMPTY. Stop joins this receiver
  * before touching its slots. No socket operation holds the pool lock. */
@@ -104,10 +123,8 @@ static void *receive_connections(void *argument)
 {
     NumForgeWebWorkers *workers = argument;
     for (;;) {
-        size_t slots[NUMFORGE_WEB_MAX_QUEUE], count = 0U;
-        fd_set ready;
-        NumForgeSocket largest = 0;
-        FD_ZERO(&ready);
+        size_t slots[NUMFORGE_WEB_MAX_PENDING], count = 0U;
+        int readable[NUMFORGE_WEB_MAX_PENDING] = {0};
         lock_workers(workers);
         while (!workers->reading && !workers->stopping) {
 #ifdef _WIN32
@@ -120,21 +137,35 @@ static void *receive_connections(void *argument)
         for (size_t i = 0U; i < workers->capacity; ++i) {
             if (workers->connections[i].state != CONNECTION_READING) continue;
             slots[count++] = i;
-            NumForgeSocket socket = workers->connections[i].socket;
-            FD_SET(socket, &ready);
-            if (socket > largest) largest = socket;
         }
         unlock_workers(workers);
         /* A new submission wakes an idle receiver. During partial requests,
          * bound time to notice additional sockets without an extra wake socket. */
-        struct timeval timeout = {0, 10000L};
+        /* Winsock's default fd_set holds 64 sockets, while admission can hold
+         * 16 workers + 64 queued inputs. Bound each set explicitly; only the
+         * first batch waits, so extra batches do not extend the poll interval. */
+        const size_t batch_limit = FD_SETSIZE < NUMFORGE_WEB_MAX_PENDING ? FD_SETSIZE : NUMFORGE_WEB_MAX_PENDING;
+        for (size_t offset = 0U; offset < count; offset += batch_limit) {
+            size_t end = count - offset < batch_limit ? count : offset + batch_limit;
+            fd_set ready;
+            NumForgeSocket largest = 0;
+            FD_ZERO(&ready);
+            for (size_t i = offset; i < end; ++i) {
+                NumForgeSocket socket = workers->connections[slots[i]].socket;
+                FD_SET(socket, &ready);
+                if (socket > largest) largest = socket;
+            }
+            struct timeval timeout = {0, offset ? 0L : 10000L};
 #ifdef _WIN32
-        (void)largest;
-        int selected = select(0, &ready, NULL, NULL, &timeout);
+            (void)largest;
+            int selected = select(0, &ready, NULL, NULL, &timeout);
 #else
-        int selected = select(largest + 1, &ready, NULL, NULL, &timeout);
+            int selected = select(largest + 1, &ready, NULL, NULL, &timeout);
 #endif
-        if (selected < 0 && receive_retryable()) continue;
+            if (selected < 0 && receive_retryable()) continue;
+            for (size_t i = offset; i < end; ++i)
+                readable[i] = selected < 0 ? -1 : selected && FD_ISSET(workers->connections[slots[i]].socket, &ready) ? 1 : 0;
+        }
         for (size_t i = 0U; i < count; ++i) {
             size_t slot = slots[i];
             WebConnection *connection = &workers->connections[slot];
@@ -142,29 +173,19 @@ static void *receive_connections(void *argument)
             int error = 0;
             uint64_t now = numforge_monotonic_ms();
             if (deadline_elapsed(connection->accepted_ms, now, NUMFORGE_WEB_REQUEST_TIMEOUT_MS)) error = 408;
-            else if (selected < 0) error = 400;
-            else if (selected && FD_ISSET(socket, &ready)) {
-                size_t room = sizeof(connection->request) - connection->used - 1U;
-                int received = room ? recv(socket, connection->request + connection->used, (int)room, 0) : 0;
-                if (received < 0 && receive_retryable()) continue;
-                if (received <= 0) error = room ? 400 : 413;
-                else {
-                    connection->used += (size_t)received;
-                    NumForgeHttpStatus status = numforge_http_probe_with_origin(connection->request,
-                        connection->used, sizeof(connection->request), workers->port, workers->origin, &connection->frame);
-                    if (status == NUMFORGE_HTTP_MORE) continue;
-                    if (status != NUMFORGE_HTTP_READY) error = status == NUMFORGE_HTTP_LARGE ? 413 : 400;
-                    else {
-                        connection->request[connection->frame.length] = '\0';
-                        lock_workers(workers);
-                        connection->queued_ms = numforge_monotonic_ms();
-                        connection->state = CONNECTION_READY;
-                        --workers->reading;
-                        workers->queue[(workers->head + workers->count) % workers->capacity] = slot;
-                        ++workers->count;
-                        notify_worker(workers);
-                        unlock_workers(workers);
-                    }
+            else if (readable[i] < 0) error = 400;
+            else if (readable[i]) {
+                int status = receive_frame(connection, workers);
+                if (status >= 400) error = status;
+                else if (status == 200) {
+                    lock_workers(workers);
+                    connection->queued_ms = numforge_monotonic_ms();
+                    connection->state = CONNECTION_READY;
+                    --workers->reading;
+                    workers->queue[(workers->head + workers->count) % workers->capacity] = slot;
+                    ++workers->count;
+                    notify_worker(workers);
+                    unlock_workers(workers);
                 }
             }
             if (error) {
@@ -226,9 +247,10 @@ NumForgeWebWorkers *numforge_web_workers_start_handler(unsigned int count,
     unsigned int capacity, uint16_t port, const char *origin, NumForgeWebRequestHandler handler)
 {
     if (!count || count > NUMFORGE_WEB_MAX_WORKERS || !capacity || capacity > NUMFORGE_WEB_MAX_QUEUE || !handler) return NULL;
-    NumForgeWebWorkers *workers = calloc(1U, sizeof(*workers) + capacity * sizeof(WebConnection));
+    size_t slots = (size_t)capacity + count;
+    NumForgeWebWorkers *workers = calloc(1U, sizeof(*workers) + slots * sizeof(WebConnection));
     if (!workers) return NULL;
-    workers->capacity = capacity; workers->port = port; workers->origin = origin;
+    workers->capacity = slots; workers->port = port; workers->origin = origin;
     workers->handler = handler;
 #ifdef _WIN32
     InitializeSRWLock(&workers->lock);
@@ -272,23 +294,44 @@ bool numforge_web_workers_submit(NumForgeWebWorkers *workers, NumForgeSocket soc
     if (socket < 0 || socket >= FD_SETSIZE) return false;
 #endif
     lock_workers(workers);
-    bool accepted = !workers->stopping && workers->count + workers->reading < workers->capacity;
+    bool accepted = !workers->stopping && workers->count + workers->reading + workers->active < workers->capacity;
+    unlock_workers(workers);
+    if (!accepted) return false;
+    /* Already-buffered requests bypass the receiver's poll interval. Reading
+     * once never waits for a peer and keeps all framing outside the pool lock.
+     * A final admission check also supports simultaneous submitters. */
+    WebConnection incoming = {0};
+    incoming.socket = socket; incoming.accepted_ms = accepted_ms;
+    int status = deadline_elapsed(accepted_ms, numforge_monotonic_ms(), NUMFORGE_WEB_REQUEST_TIMEOUT_MS) ?
+        408 : receive_frame(&incoming, workers);
+    lock_workers(workers);
+    accepted = !workers->stopping && workers->count + workers->reading + workers->active < workers->capacity;
     if (accepted) {
-        size_t slot = 0U;
-        while (workers->connections[slot].state != CONNECTION_EMPTY) ++slot;
-        WebConnection *connection = &workers->connections[slot];
-        connection->socket = socket; connection->accepted_ms = accepted_ms; connection->used = 0U;
-        connection->state = CONNECTION_READING; ++workers->reading;
-        notify_receiver(workers);
+        if (status < 400) {
+            size_t slot = 0U;
+            while (workers->connections[slot].state != CONNECTION_EMPTY) ++slot;
+            workers->connections[slot] = incoming;
+            WebConnection *connection = &workers->connections[slot];
+            if (status == 200) {
+                connection->state = CONNECTION_READY; connection->queued_ms = numforge_monotonic_ms();
+                workers->queue[(workers->head + workers->count) % workers->capacity] = slot;
+                ++workers->count; notify_worker(workers);
+            } else {
+                connection->state = CONNECTION_READING; ++workers->reading; notify_receiver(workers);
+            }
+        }
     }
     unlock_workers(workers);
+    if (accepted && status >= 400) {
+        numforge_reject_request(socket, status); numforge_close_socket(socket);
+    }
     return accepted;
 }
 
 void numforge_web_workers_expire(NumForgeWebWorkers *workers, uint64_t now)
 {
     if (!workers) return;
-    NumForgeSocket expired[NUMFORGE_WEB_MAX_QUEUE];
+    NumForgeSocket expired[NUMFORGE_WEB_MAX_PENDING];
     size_t count = 0U;
     lock_workers(workers);
     /* Completion order may differ from acceptance order. The original receive

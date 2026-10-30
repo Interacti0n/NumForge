@@ -67,7 +67,7 @@ async function run(publicOrigin, overload = false, binding = null) {
                 const fast=await request(base+'/api/evaluate',{method:'POST',body:'2+2'});
                 assert.equal(fast.status,200,'Incomplete input leaves the compute worker available');
                 assert.equal(JSON.parse(fast.body).result,'4');
-                await hold(); await delay(50);
+                await hold(); await hold(); await delay(50);
                 const responses = await Promise.all(Array.from({length: 4}, () =>
                     request(base + '/api/evaluate', {method: 'POST', body: '2+2'}).catch(error => {
                         // Immediate overload closure can race an unread TCP body.

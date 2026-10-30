@@ -11,14 +11,15 @@
 #define NUMFORGE_WEB_MAX_WORKERS 16U
 #define NUMFORGE_WEB_DEFAULT_QUEUE 32U
 #define NUMFORGE_WEB_MAX_QUEUE 64U
+#define NUMFORGE_WEB_MAX_PENDING (NUMFORGE_WEB_MAX_QUEUE + NUMFORGE_WEB_MAX_WORKERS)
 #define NUMFORGE_WEB_QUEUE_TIMEOUT_MS 1000U
 #define NUMFORGE_WEB_REQUEST_TIMEOUT_MS 2000U
 
 typedef struct NumForgeWebWorkers NumForgeWebWorkers;
 
-/* Fixed compute threads plus one nonblocking receiver, and capacity shared by
- * incomplete frames and ready jobs. Input buffers are allocated once (8 KiB
- * plus frame metadata per slot).
+/* Fixed compute threads plus one nonblocking receiver. The original bound of
+ * workers + capacity covers incomplete frames, ready jobs and active compute
+ * together. Input buffers are allocated once (8 KiB plus metadata per slot).
  * A slot releases when a compute worker takes its owned frame snapshot.
  * Origin remains borrowed until
  * stop returns. Live-allocation tracking must stay disabled in request threads:
@@ -32,8 +33,9 @@ NumForgeWebWorkers *numforge_web_workers_start(unsigned int workers,
 typedef void (*NumForgeWebRequestHandler)(NumForgeSocket, char *, const NumForgeHttpFrame *);
 NumForgeWebWorkers *numforge_web_workers_start_handler(unsigned int workers,
     unsigned int capacity, uint16_t port, const char *origin, NumForgeWebRequestHandler handler);
-/* Nonblocking admission of a configured nonblocking socket. Success transfers
- * ownership; on failure the caller must reject/close it. accepted_ms is monotonic. */
+/* Nonblocking admission of a configured nonblocking socket. May consume one
+ * buffered chunk. Success transfers ownership; on failure the caller must
+ * reject/close it. accepted_ms is monotonic. */
 bool numforge_web_workers_submit(NumForgeWebWorkers *workers, NumForgeSocket socket, uint64_t accepted_ms);
 /* Acceptor calls at least every 100 ms, including while all workers are busy.
  * Ready queue expires after 1 s or the original 2-s receive/admission deadline,
