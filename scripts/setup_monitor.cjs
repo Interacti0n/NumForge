@@ -10,7 +10,8 @@ const call = (name, ...args) => new Promise((resolve, reject) => {
         else resolve(result);
     });
 });
-socket.once('connect', async () => {
+// Kuma awaits its database-backed greeting before registering the request handlers.
+socket.once('info', async () => {
     try {
         if (await call('needSetup')) await call('setup', config.username, config.password);
         await call('login', { username: config.username, password: config.password });

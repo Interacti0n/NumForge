@@ -21,6 +21,13 @@ preserving browser Origin checks. The existing preview on 8766 is unaffected.
 | `setup` | One-shot role/schema provisioning and migrations before accounts start |
 | `accounts` | Private Django/Gunicorn service with runtime credentials only |
 
+`deploy/gateway.Dockerfile` keeps the Caddy release while updating its Go/TLS
+dependencies. `deploy/postgres.Dockerfile` rebuilds upstream gosu with the patched
+Go toolchain; the PostgreSQL version/data format stays unchanged. The optional
+monitor image updates OS packages, runs as `node` with a read-only root and omits
+its unused Go healthcheck, built-in tunnel and global npm. Node performs its HTTP
+healthcheck; application dependencies remain upstream-owned.
+
 The [login/logout API](ACCOUNTS_STORAGE.md#private-pilot-authentication) and SK/EN
 form have an optional HTTPS gateway; public registration remains unavailable.
 Keep the host binding on loopback until HTTPS/origin configuration is explicit.
@@ -104,6 +111,9 @@ credentials in browser storage. Native guest `/login` retains an explanatory fal
 
 CI builds the stack, checks real TLS/cookies/CSRF, SK/EN desktop/mobile login,
 cross-tab logout, persisted identities, backup/restore and calculations with DB stopped.
+It also checks monitor failure detection/persistence, gates listed-fix HIGH/CRITICAL
+gateway/DB findings and uploads reports. Remaining upstream monitor findings are
+reported separately; keeping its admin endpoint on loopback is essential.
 For a disposable local check,
 set `COMPOSE_PROJECT_NAME=numforge-test-local`, then run
 `python tests/containers/check_stack.py`. It removes that project's volumes.

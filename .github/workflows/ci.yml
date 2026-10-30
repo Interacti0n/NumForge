@@ -17,7 +17,7 @@ jobs:
   containers:
     name: Docker Compose integration
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     env:
       COMPOSE_PROJECT_NAME: numforge-test-ci
       NUMFORGE_CHECK_ACCOUNT_BROWSER: '1'
@@ -38,6 +38,18 @@ jobs:
           python tests/containers/test_ops_backup.py
           python tests/containers/test_pilot.py
           python tests/containers/check_stack.py
+          python tests/containers/check_monitor.py
+      - name: Check fixable gateway and database vulnerabilities
+        run: python scripts/scan_images.py numforge-test-ci-gateway numforge-test-ci-db --fail-on-fixable
+      - name: Report remaining upstream monitor vulnerabilities
+        run: python scripts/scan_images.py numforge-test-ci-uptime
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: container-security-reports
+          path: build/security/*.json
+          if-no-files-found: ignore
+          retention-days: 7
 
   accounts-storage:
     name: Optional PostgreSQL storage

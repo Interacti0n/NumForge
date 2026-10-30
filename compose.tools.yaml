@@ -3,7 +3,9 @@ services:
   db:
     ports: ["127.0.0.1:55433:5432"]
   uptime:
-    image: louislam/uptime-kuma:2.5.8-slim
+    build:
+      context: .
+      dockerfile: deploy/monitor.Dockerfile
     environment:
       UPTIME_KUMA_DB_TYPE: sqlite
     ports: ["127.0.0.1:18880:3001"]
@@ -11,6 +13,9 @@ services:
       - uptime-data:/app/data
       - ./scripts/setup_monitor.cjs:/opt/setup_monitor.cjs:ro
     restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
 volumes:
   uptime-data:

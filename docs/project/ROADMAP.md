@@ -6,12 +6,11 @@ Completed foundations are not repeated as tasks here.
 
 ## Execution order and completion gates
 
-1. **Close stage 5: reliable pilot operation.** Automate Docker/pilot-tunnel
-   startup and recovery, including changed tunnel origin and public HTTPS health.
-   Schedule protected backups, off-PC copies, restore drills and expired-session
-   cleanup. Verify a real Windows reboot/login and representative mixed load on
-   the complete C/Django/PostgreSQL stack. Existing C-server measurements do not
-   certify this stack. Host responsiveness and resource limits need that evidence.
+1. **Close stage 5: reliable pilot operation.** Verify a real Windows reboot/login
+   and representative mixed load on the complete C/Django/PostgreSQL stack.
+   Preserve the backup recovery key separately and address remaining upstream
+   security findings. Existing C-server measurements do not certify this stack;
+   host responsiveness and resource limits need full-stack evidence.
 2. **Account-scoped preferences.** Persist language/precision/notation/rounding/
    angle defaults, validate ownership and revisions, explicitly import guest data
    and clear account state on logout. Gate: restart/second-browser persistence,

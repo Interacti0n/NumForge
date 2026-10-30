@@ -114,7 +114,7 @@ def backup():
     bundle.unlink(missing_ok=True)
     execute(["git", "-C", ROOT, "bundle", "create", bundle, "--all"])
     bundle.replace(source / "source.bundle")
-    credentials = ["admin.json", "migrate.json", "app.json", "admin-password", "gateway-token", "pilot.env", "pilot-build.yaml"]
+    credentials = ["admin.json", "migrate.json", "app.json", "admin-password", "gateway-token", "pilot.env", "pilot-build.yaml", "pilot-runtime.json"]
     for name in credentials:
         path = ROOT / ".local/compose" / name
         if path.is_file():
