@@ -31,6 +31,7 @@ enabled with `BUILD_TESTING=ON`; they are useful correctness checks, not old log
 | Executable | What it measures | Details |
 | --- | --- | --- |
 | `bigint_arithmetic_benchmark` | Exact arithmetic, dense operand sizes, aliases, factorials and threshold comparisons | [BigInt protocol](../docs/performance/protocols/BIGINT.md) |
+| `bigrational_benchmark` | Reduced fractions, operand shapes, decimal conversions in all six rounding modes, aliases and GCD/division/multiplication probes | Python `tools/check_bigrational_benchmark.py EXECUTABLE [--record NEW_DIRECTORY] [--random N]` |
 | `decimal_math_benchmark` | Decimal arithmetic/functions; `--quick`, `--case NAME`, `--validate`, `--timing-only` | [Decimal protocol](../docs/performance/protocols/DECIMAL.md) |
 | `decimal_format_benchmark` | Full/prefix output conversion and rounding; `--quick` | [Formatting protocol](../docs/performance/protocols/APPLICATION.md) |
 | `logarithm_agm_benchmark` | Series/public dispatch, bounded interval implementation and private fixed-guard comparison | [Logarithm decision](../docs/performance/baselines/LOGARITHM.md) |
@@ -59,6 +60,16 @@ projection. Their different timing scopes are intentional. Keep the independent
 `tools/check_*` validators and frozen `references/` inputs; do not replace them
 with comparisons against the implementation's own output.
 
+The rational checker requires Python 3, generates independent `Fraction`/`Decimal`
+references, rejects corrupted references and runs a separate live-payload probe.
+`--record` saves three serial processes (five calibrated samples per row), a
+separate `--profile` pass and revision/patch/compiler/executable metadata. Direct
+use takes a seven-column TSV: case, operation, numerator/denominator of each input,
+expected canonical text. Operations are add/sub/mul/div/compare and convert0..5
+(17 significant digits, exact terminating results retained). `--validate` checks
+arithmetic destination aliases; `--memory` additionally checks complete teardown.
+Profile clocks and live tracking are excluded from ordinary speed samples.
+
 `numeric_root_benchmark --hybrid` compares all three private methods;
 `--compare` compares bisection/Brent, `--quick` uses precision 34 once and
 `--adversarial` exercises the vanishing-jump rejection. Verify complete CSV with
@@ -79,12 +90,25 @@ HTTP/session scenarios, with `--quick` for fixture validation. See the
 [load protocol](../docs/performance/protocols/APPLICATION.md#multi-client-load).
 `--sustained` adds three-minute state/memory runs and controlled overload/recovery;
 `--sustained --quick` checks those fixtures in seconds.
+`--arrival-load` schedules 80 light additions at fixed 25-ms intervals independently
+of response completion, alongside two single heavy factorial requests. Set
+`NUMFORGE_QUEUE_BENCH_HEAVY_CLIENTS=0..16`, `NUMFORGE_QUEUE_BENCH_LIGHT_REQUESTS=1..256`
+and `NUMFORGE_QUEUE_BENCH_ARRIVAL_MS=1..1000` to change the workload; worker and queue
+settings retain `NUMFORGE_QUEUE_BENCH_WORKERS`/`NUMFORGE_QUEUE_BENCH_CAPACITY`.
+`--arrival-load --quick` validates the fixtures with small factorials. The output
+separates successful-response percentiles, all-response percentiles, driver
+scheduling lag, failures and recovery. This mode uses an owned loopback server.
+`--mixed-heavy` also accepts the heavy-client environment setting (default two).
 Explicit `--sustained --remote-state STATE.json` reuses the fixtures for five-minute
 HTTPS preview checks without restarting its backend/tunnel; see the same protocol.
 `application/benchmark_graph_audit.cjs` owns independent HTTP curve/domain/dense
 checks and supports matching `--before` comparisons. `benchmark_graph_multi.cjs`
 measures browser interaction, `benchmark_graph_stress.cjs` measures sustained cache
 lifetime, and `benchmark_graph_budget.cjs` checks heavy graph queue/abort recovery.
+The multi-curve tool records visibility toggles for both versions when supported;
+cache misses after pan/zoom are measured outcomes. Controlled cache-hit assertions
+remain in `tests/browser/graph-visibility.spec.js`. Recordings are checkpointed
+after each completed scene and retain a failure/partial status if interrupted.
 Default modes launch and close their own loopback servers. Browser tools use dependencies
 from `tests/browser`; mobile emulation does not establish physical-device behavior.
 

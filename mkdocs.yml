@@ -96,6 +96,7 @@ nav:
           - Recorded baselines:
               - Serial server: docs/performance/baselines/SERVER.md
               - Arithmetic: docs/performance/baselines/ARITHMETIC.md
+              - Rational arithmetic: docs/performance/baselines/RATIONAL.md
               - Factorial: docs/performance/baselines/FACTORIAL.md
               - Logarithm: docs/performance/baselines/LOGARITHM.md
               - Exact modules: docs/performance/baselines/MODULES.md

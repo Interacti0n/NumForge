@@ -57,18 +57,28 @@ async function run(browser,base,version,profile,scenario,repeat){
   await page.locator('#graph-plot').scrollIntoViewIfNeeded();let box=await page.locator('#graph-plot').boundingBox(),x=box.x+box.width*.5,y=box.y+box.height*.5;
   await begin('pan');await page.mouse.move(x,y);await page.mouse.down();for(let i=1;i<=8;i++){await page.mouse.move(x+box.width*.012*i,y);await page.evaluate(()=>new Promise(requestAnimationFrame));}await page.mouse.up();await finish();
   await begin('zoom');for(let i=0;i<6;i++){await page.locator('#graph-plot').dispatchEvent('wheel',{deltaY:-100,clientX:x,clientY:y});await page.evaluate(()=>new Promise(requestAnimationFrame));}await finish();
-  if(version==='after'){
+  if(await page.locator('#graph-legend button').count()){
    await begin('toggle');const id=await rows.nth(suite==='precision'?3:1).getAttribute('data-curve');await page.locator(`#graph-legend button[data-curve="${id}"]`).click();await page.waitForFunction(id=>!document.querySelector(`path.graph-line[data-curve="${id}"]`),id);await page.locator(`#graph-legend button[data-curve="${id}"]`).click();await page.waitForFunction(id=>!!document.querySelector(`path.graph-line[data-curve="${id}"]`),id);const visible=await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>resolve(performance.now()-window.bench.origin))));await finish(visible);
-   if(phases.toggle.requests!==0)throw Error('Warm visibility toggle made a graph request');
+   // After pan/zoom, a bounded cache may have evicted a curve or retained
+   // unresolved ranges. Record actual reuse; this scenario cannot promise a
+   // cache hit. graph-visibility.spec.js owns the controlled no-request check.
+   phases.toggle.without_plot_request=phases.toggle.requests===0;
+   // Some precision curves can lie entirely outside the current camera; the
+   // selected curve's restored path was awaited above. Preserve all counts.
+   if(phases.toggle.errors.length)throw Error(version+': visibility toggle reported a curve error');
   }
   const heap=await cdp.send('Runtime.getHeapUsage');const row={version,profile:profile.name,scenario:scenario.name,repeat,functions:scenario.functions,js_heap_used_bytes:heap.usedSize,js_heap_total_bytes:heap.totalSize,phases};process.stdout.write(JSON.stringify({version,profile:profile.name,scenario:scenario.name,repeat,first_frame_ms:phases.initial.first_visible_frame_ms,initial_curves:phases.initial.rendered_functions,initial_unresolved:phases.initial.visible_unresolved_functions,zoom_requests:phases.zoom.requests,toggle_requests:phases.toggle?.requests,errors:phases.initial.errors})+'\n');return row;
  }finally{await context.close();}
 }
+const rows=[];
+async function save(complete,error){
+ await fs.mkdir(path.dirname(output),{recursive:true});await fs.writeFile(output,JSON.stringify({generated:new Date().toISOString(),before:path.resolve(before),after:path.resolve(after),repeats,suite,complete,...(error?{error}:{}),note:'Headless Chromium on this PC; mobile viewport is not a physical phone. Settling includes a fixed 350ms quiet interval. Frame times include tool interaction overhead. Heap is sampled without forcing GC and includes the whole page. Cache weight is a conservative response estimate, not heap usage. Post-zoom visibility cache misses are measured outcomes; controlled cache-hit correctness is tested separately.',rows},null,2)+'\n');
+}
 (async()=>{
- const rows=[],browser=await chromium.launch();
+ const browser=await chromium.launch();
  try{for(const [version,executable,port] of [['before',before,19491],['after',after,19492]]){
   const owned=await server(executable,port);
-  try{for(const profile of [{name:'desktop',viewport:{width:1280,height:900}},{name:'mobile-layout',viewport:{width:390,height:844}}])for(const scenario of scenarios)for(let repeat=1;repeat<=repeats;repeat++)rows.push(await run(browser,owned.url,version,profile,scenario,repeat));}finally{await owned.close();}
+  try{for(const profile of [{name:'desktop',viewport:{width:1280,height:900}},{name:'mobile-layout',viewport:{width:390,height:844}}])for(const scenario of scenarios)for(let repeat=1;repeat<=repeats;repeat++){rows.push(await run(browser,owned.url,version,profile,scenario,repeat));await save(false);}}finally{await owned.close();}
  }}finally{await browser.close();}
- await fs.mkdir(path.dirname(output),{recursive:true});await fs.writeFile(output,JSON.stringify({generated:new Date().toISOString(),before:path.resolve(before),after:path.resolve(after),repeats,suite,note:'Headless Chromium on this PC; mobile viewport is not a physical phone. Settling includes a fixed 350ms quiet interval. Frame times include tool interaction overhead. Heap is sampled without forcing GC and includes the whole page. Cache weight is a conservative response estimate, not heap usage.',rows},null,2)+'\n');
-})().catch(error=>{process.stderr.write(error.stack+'\n');process.exitCode=1;});
+ await save(true);
+})().catch(async error=>{await save(false,String(error.stack||error));process.stderr.write(error.stack+'\n');process.exitCode=1;});

@@ -245,7 +245,9 @@ expensive workloads. `numerical_tests` covers references, exact zeros, continuit
 precision instability, invalid options/callbacks, limits, allocation failures,
 inherited budgets and 1000-place accuracy. Existing application tests preserve
 domain-hole, discontinuity and scanning regressions. The
-[checked baseline](../performance/baselines/ROOTS.md#single-root) records costs, not a speedup.
+[initial baseline](../performance/baselines/ROOTS.md#single-root) records costs;
+the later [rational/conversion comparison](../performance/baselines/RATIONAL.md#complete-public-root-search)
+records a matching optimization measurement without changing the search policy.
 
 `numerical_scan_tests` adds ordered exact/approximate roots, domain evidence,
 rounded zeros, rational contacts, positive minima, 1000-digit offsets/tiny scales,

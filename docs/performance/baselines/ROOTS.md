@@ -4,6 +4,8 @@ These observations measure standalone public C callbacks, independently of the
 expression engine and HTTP adapters. They establish initial baselines rather
 than an extraction speedup. See the [root API](../../reference/ROOT_API.md) for
 current contracts and [private comparisons](ROOT_EXPERIMENTS.md) for research.
+The [30 October rational/conversion comparison](RATIONAL.md#complete-public-root-search)
+records later improvements to the same public callback workload.
 
 ## Single root
 With a Release benchmark build:

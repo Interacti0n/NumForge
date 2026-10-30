@@ -105,7 +105,9 @@ def main():
             (directory / "validation.csv").write_text(validated.stdout, encoding="ascii")
             cache = executable.parent / "CMakeCache.txt"
             compiler = [line for line in cache.read_text(encoding="utf8").splitlines()
-                        if line.startswith(("CMAKE_C_COMPILER:", "CMAKE_BUILD_TYPE:", "CMAKE_C_FLAGS:", "CMAKE_C_FLAGS_RELEASE:"))] if cache.exists() else []
+                        if line.startswith(("CMAKE_C_COMPILER:", "CMAKE_BUILD_TYPE:", "CMAKE_C_FLAGS:", "CMAKE_C_FLAGS_RELEASE:",
+                                            "BUILD_TESTING:", "NUMFORGE_ENABLE_SANITIZERS:", "NUMFORGE_ENABLE_COVERAGE:",
+                                            "NUMFORGE_BUILD_BENCHMARKS:"))] if cache.exists() else []
             metadata = {"recorded_at": datetime.now(timezone.utc).isoformat(),
                         "revision": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
                         "platform": platform.platform(), "processor": platform.processor(),

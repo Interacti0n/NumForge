@@ -225,3 +225,60 @@ Retain 4/64 and BelowNormal for the preview. More clients are plausible when
 most requests are short; this test covers only two simultaneous heavy clients,
 not 60 factorials. There is no process RAM or hard CPU cap. Reassess if workloads
 or concurrency change rather than raising budgets based on this burst alone.
+
+## Fixed arrivals with all workers occupied — 30 October 2026
+
+Windows x64, Ryzen 7 7435HS, GCC 16.2 Release, ordinary uninstrumented backend
+containing numeric implementation `3845eca`, BelowNormal process priority. This
+is a separate workload from the historical six-turn and sustained profiles.
+Each row starts a fresh owned loopback server. Heavy clients each submit one
+uncached `246000!`; 80 independent `2+2` requests then arrive on a fixed 25-ms
+schedule, starting 100 ms later. Subsequent light sends do not wait for earlier
+responses. Driver scheduling lag is recorded (maximum 14.5–16.3 ms here).
+
+One diagnostic repetition per setting, queue capacity 64 unless stated:
+
+| Workers | Heavy clients | Verified / all requests | Verified light / 80 | Successful-light p95 / p99, ms |
+| ---: | ---: | ---: | ---: | ---: |
+| 2 | 0 | 80/80 | 80 | 2.53 / 4.04 |
+| 2 | 2 | 35/82 | 33 | 944.51 / 974.65 |
+| 4 | 0 | 80/80 | 80 | 2.82 / 3.33 |
+| 4 | 2 | 82/82 | 80 | 2.80 / 3.80 |
+| 4 | 4 | 32/84 | 28 | 949.43 / 964.39 |
+| 4 | 8 | 33/88 | 29 | 957.98 / 989.14 |
+| 8 | 4 | 84/84 | 80 | 2.48 / 3.51 |
+| 8 | 8 | 23/88 | 15 | 978.94 / 978.94 |
+
+All returned mathematical successes were verified, including every accepted
+factorial. With queue 64, every unsuccessful request was `503 server_busy`;
+there were no verification errors or transport failures. Percentiles in the
+table exclude rejected requests; the raw output also retains all-response
+percentiles and error counts. Neither a low refusal latency nor the percentile
+of the surviving subset establishes service capacity.
+
+At four workers/four heavy clients, queue 32 yielded 27/84 verified requests,
+including 23/80 light requests, 45 busy responses and 12 connection resets.
+Queue 64 removed resets in this observation but did not remove worker
+saturation or bounded queue-wait rejection. All 13 settings (2/4/8 workers,
+0/2/4/8 heavy clients, plus that queue-32 case) recovered correctly without
+restart: fresh `2+2` recovery was 1.75–2.61 ms. Fresh-process peak resident memory
+across the matrix was 8.18–33.75 MiB; this is not a sustained-memory result.
+
+Eight workers can preserve light response time with four simultaneous expensive
+requests on this host; eight expensive requests can occupy them all again.
+Default workers, budgets and queue policy remain unchanged. A host-specific
+increase does not solve arbitrary heavy-load admission, and this single short
+matrix does not replace the sustained profile or deployment measurements.
+
+```powershell
+$env:NUMFORGE_QUEUE_BENCH_WORKERS = '4'
+$env:NUMFORGE_QUEUE_BENCH_CAPACITY = '64'
+$env:NUMFORGE_QUEUE_BENCH_HEAVY_CLIENTS = '4'
+node benchmarks/application/http_queue_benchmark.js BINARY_DIR/numforge_web.exe --arrival-load
+```
+
+The default is 80 light requests at 25 ms; `NUMFORGE_QUEUE_BENCH_LIGHT_REQUESTS`
+and `NUMFORGE_QUEUE_BENCH_ARRIVAL_MS` configure those bounds. CI validates the
+mode through `--arrival-load --quick` using small independently checked
+factorials. Raw settings, executable hashes, hardware, outcomes and memory/CPU
+observations are retained in ignored `build/performance-20261030/http-arrival-*.jsonl`.

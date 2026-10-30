@@ -16,9 +16,10 @@ const args = process.argv.slice(3), remoteIndex = args.indexOf('--remote-state')
 const remotePath = remoteIndex < 0 ? null : args.splice(remoteIndex, 2)[1];
 const load = args.includes('--load'), quick = args.includes('--quick'), sustained = args.includes('--sustained');
 const heavy = args.includes('--mixed-heavy');
-if (!executable || args.some(arg => !['--load', '--sustained', '--quick', '--mixed-heavy'].includes(arg)) ||
-    new Set(args).size !== args.length || Number(load)+Number(sustained)+Number(heavy)>1 || quick && !load && !sustained || remoteIndex >= 0 && (!remotePath || !sustained && !heavy))
-    throw Error('Usage: node benchmarks/application/http_queue_benchmark.js server-executable [--load|--sustained|--mixed-heavy] [--quick] [--remote-state state.json]');
+const arrival = args.includes('--arrival-load');
+if (!executable || args.some(arg => !['--load', '--sustained', '--quick', '--mixed-heavy', '--arrival-load'].includes(arg)) ||
+    new Set(args).size !== args.length || Number(load)+Number(sustained)+Number(heavy)+Number(arrival)>1 || quick && !load && !sustained && !arrival || remoteIndex >= 0 && (!remotePath || !sustained && !heavy))
+    throw Error('Usage: node benchmarks/application/http_queue_benchmark.js server-executable [--load|--sustained|--mixed-heavy|--arrival-load] [--quick] [--remote-state state.json]');
 const remoteState = remotePath ? JSON.parse(fs.readFileSync(remotePath, 'utf8').replace(/^\uFEFF/, '')) : null;
 if (remoteState) {
     assert.equal(process.platform, 'win32', 'Remote-state metrics require the Windows preview helper');
@@ -33,6 +34,12 @@ const queueCapacity = Number(process.env.NUMFORGE_QUEUE_BENCH_CAPACITY || 32);
 assert.ok(Number.isInteger(queueCapacity) && queueCapacity >= 1 && queueCapacity <= 64);
 const workers = Number(process.env.NUMFORGE_QUEUE_BENCH_WORKERS || 4);
 assert.ok(Number.isInteger(workers) && workers >= 1 && workers <= 16);
+const heavyClients = Number(process.env.NUMFORGE_QUEUE_BENCH_HEAVY_CLIENTS ?? 2);
+assert.ok(Number.isInteger(heavyClients) && heavyClients >= 0 && heavyClients <= 16);
+const lightRequests = Number(process.env.NUMFORGE_QUEUE_BENCH_LIGHT_REQUESTS || (quick ? 8 : 80));
+const arrivalMs = Number(process.env.NUMFORGE_QUEUE_BENCH_ARRIVAL_MS || 25);
+assert.ok(Number.isInteger(lightRequests) && lightRequests >= 1 && lightRequests <= 256);
+assert.ok(Number.isInteger(arrivalMs) && arrivalMs >= 1 && arrivalMs <= 1000);
 let port;
 let clientNamespace;
 const remoteSessions = new Map();
@@ -153,10 +160,13 @@ function summary(records, elapsed) {
     const percentile = p => durations.length ? durations[Math.ceil(p * durations.length) - 1] : null;
     const errors = {};
     for (const record of records) if (record.error) errors[record.error] = (errors[record.error] || 0) + 1;
-    return {requests: records.length, ok: records.filter(record => !record.error).length,
+    const verified = records.filter(record => !record.error).map(record => record.ms).sort((a,b)=>a-b);
+    const verifiedPercentile = p => verified.length ? verified[Math.ceil(p * verified.length)-1] : null;
+    return {requests: records.length, ok: verified.length,
         elapsed_ms: elapsed, completed_per_second: records.length * 1000 / elapsed,
         verified_per_second: records.filter(record => !record.error).length * 1000 / elapsed,
-        latency_ms: {p50: percentile(.5), p95: percentile(.95), p99: percentile(.99), max: durations.at(-1) ?? null}, errors};
+        latency_ms: {p50: percentile(.5), p95: percentile(.95), p99: percentile(.99), max: durations.at(-1) ?? null},
+        verified_latency_ms: {p50: verifiedPercentile(.5), p95: verifiedPercentile(.95), p99: verifiedPercentile(.99), max: verified.at(-1) ?? null}, errors};
 }
 async function measured(records, operation, call, validate) {
     const begin = performance.now();
@@ -281,7 +291,7 @@ async function heavySample(clients) {
         const records=[], initial=await processMemory(pid), begin=performance.now();
         await Promise.all(Array.from({length:clients},async(_,index)=>{
             for(let turn=0;turn<2;turn++) {
-                if(index<2) await measured(records,'factorial246000',()=>request(`246000!+${turn}*0`,clientId(index),{revision:String(turn+1)}),
+                if(index<heavyClients) await measured(records,'factorial246000',()=>request(`246000!+${turn}*0`,clientId(index),{revision:String(turn+1)}),
                     data=>assert.equal(data.result,'4.8792926407E+1219336'));
                 else await mixedOperation(records,index+turn,clientId(index),{revision:String(turn+1)});
             }
@@ -292,11 +302,41 @@ async function heavySample(clients) {
         const byOperation={};
         for(const operation of new Set(records.map(r=>r.operation)))
             byOperation[operation]=summary(records.filter(r=>r.operation===operation),elapsed);
-        console.log(JSON.stringify({scenario:'mixed_heavy',clients,turns:2,heavy_clients:2,...summary(records,elapsed),
+        console.log(JSON.stringify({scenario:'mixed_heavy',clients,turns:2,heavy_clients:Math.min(clients,heavyClients),...summary(records,elapsed),
             by_operation:byOperation,initial_memory:initial,...final,
             server_cpu_delta_seconds:final.server_cpu_seconds-initial.server_cpu_seconds,
             recovery:true,recovery_ms:recovery.ms}));
         assert.ok(records.every(r=>!r.error || /^http:503:server_busy$/.test(r.error)), 'Unexpected mixed-heavy failure');
+    });
+}
+
+// Fixed arrival times are independent of response completion. Report driver
+// scheduling lag separately, and retain all refusals/timeouts in the record.
+async function arrivalSample() {
+    return withServer(async pid => {
+        const records = [], lags = [], initial = await processMemory(pid), begin = performance.now();
+        const jobs = Array.from({length: heavyClients}, (_, index) => measured(records,
+            quick ? 'factorial1000' : 'factorial246000', () => request(quick ? '1000!' : '246000!',clientId(index)),
+            data => assert.equal(data.result,quick ? '4.0238726008E+2567' : '4.8792926407E+1219336')));
+        for(let i=0;i<lightRequests;i++) {
+            const target = begin + 100 + i*arrivalMs;
+            await delay(Math.max(0,target-performance.now()));
+            const lag = Math.max(0,performance.now()-target); lags.push(lag);
+            jobs.push(measured(records,'light_add',()=>request('2+2',clientId(heavyClients+i)),
+                data=>assert.equal(data.result,'4')));
+        }
+        await Promise.all(jobs);
+        const elapsed = performance.now()-begin, final = await processMemory(pid);
+        const recovery = await request('2+2',clientId(heavyClients+lightRequests));
+        assert.equal(recovery.status,200); assert.equal(recovery.data.ok,true); assert.equal(recovery.data.result,'4');
+        console.log(JSON.stringify({scenario:'arrival_load',heavy_clients:heavyClients,light_requests:lightRequests,
+            arrival_interval_ms:arrivalMs,scheduled_light_per_second:1000/arrivalMs,
+            driver_max_scheduling_lag_ms:Math.max(...lags),...summary(records,elapsed),
+            by_operation:Object.fromEntries([...new Set(records.map(r=>r.operation))].map(op=>
+                [op,summary(records.filter(r=>r.operation===op),elapsed)])),initial_memory:initial,...final,
+            server_cpu_delta_seconds:final.server_cpu_seconds-initial.server_cpu_seconds,
+            recovery:true,recovery_ms:recovery.ms}));
+        if (quick) assert.ok(records.every(record=>!record.error),'Quick arrival fixtures must all complete correctly');
     });
 }
 async function sessionSample(clients, repetition) {
@@ -429,7 +469,7 @@ async function overloadSample() {
     });
 }
 (async () => {
-    if (load || sustained || heavy) {
+    if (load || sustained || heavy || arrival) {
         let revision = 'unavailable', dirty = [];
         try {
             const root = path.resolve(__dirname, '../..');
@@ -444,6 +484,10 @@ async function overloadSample() {
             queue_capacity: remoteState ? remoteState.QueueCapacity : queueCapacity,
             memory_scope: 'process_resident_and_peak_when_available', ...(remoteState ? {remote_state: path.resolve(remotePath),
                 url: remoteState.Url, server: remoteState.Server, tunnel: remoteState.Tunnel} : {})}));
+        if (arrival) {
+            await arrivalSample();
+            return;
+        }
         if (heavy) {
             for(const clients of [10,30,60]) await heavySample(clients);
             if(!remoteState) await overloadSample();
