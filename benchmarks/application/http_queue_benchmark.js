@@ -17,9 +17,10 @@ const remotePath = remoteIndex < 0 ? null : args.splice(remoteIndex, 2)[1];
 const load = args.includes('--load'), quick = args.includes('--quick'), sustained = args.includes('--sustained');
 const heavy = args.includes('--mixed-heavy');
 const arrival = args.includes('--arrival-load');
-if (!executable || args.some(arg => !['--load', '--sustained', '--quick', '--mixed-heavy', '--arrival-load'].includes(arg)) ||
-    new Set(args).size !== args.length || Number(load)+Number(sustained)+Number(heavy)+Number(arrival)>1 || quick && !load && !sustained && !arrival || remoteIndex >= 0 && (!remotePath || !sustained && !heavy))
-    throw Error('Usage: node benchmarks/application/http_queue_benchmark.js server-executable [--load|--sustained|--mixed-heavy|--arrival-load] [--quick] [--remote-state state.json]');
+const slowClients = args.includes('--slow-clients');
+if (!executable || args.some(arg => !['--load', '--sustained', '--quick', '--mixed-heavy', '--arrival-load', '--slow-clients'].includes(arg)) ||
+    new Set(args).size !== args.length || Number(load)+Number(sustained)+Number(heavy)+Number(arrival)+Number(slowClients)>1 || quick && !load && !sustained && !arrival && !slowClients || remoteIndex >= 0 && (!remotePath || !sustained && !heavy))
+    throw Error('Usage: node benchmarks/application/http_queue_benchmark.js server-executable [--load|--sustained|--mixed-heavy|--arrival-load|--slow-clients] [--quick] [--remote-state state.json]');
 const remoteState = remotePath ? JSON.parse(fs.readFileSync(remotePath, 'utf8').replace(/^\uFEFF/, '')) : null;
 if (remoteState) {
     assert.equal(process.platform, 'win32', 'Remote-state metrics require the Windows preview helper');
@@ -339,6 +340,42 @@ async function arrivalSample() {
         if (quick) assert.ok(records.every(record=>!record.error),'Quick arrival fixtures must all complete correctly');
     });
 }
+
+// Incomplete peers use finite slots but must not occupy computation workers.
+// Keep light arrivals independent of response completion, including failures.
+async function slowClientSample() {
+    return withServer(async pid => {
+        const initial = await processMemory(pid), holders = [], records = [], lags = [];
+        try {
+            await Promise.all(Array.from({length: workers}, () => new Promise((resolve, reject) => {
+                const socket = net.connect({host:'127.0.0.1',port}); holders.push(socket);
+                socket.on('error', reject); socket.on('data', () => {});
+                socket.once('connect', () => { socket.write('G'); resolve(); });
+            })));
+            await delay(100);
+            const begin = performance.now(), jobs = [];
+            for (let i=0;i<lightRequests;i++) {
+                const target=begin+i*arrivalMs;
+                await delay(Math.max(0,target-performance.now()));
+                lags.push(Math.max(0,performance.now()-target));
+                jobs.push(measured(records,'light_add',()=>request('2+2',clientId(i)),
+                    data=>assert.equal(data.result,'4')));
+            }
+            await Promise.all(jobs);
+            const elapsed=performance.now()-begin, final=await processMemory(pid);
+            holders.forEach(socket=>socket.destroy());
+            await delay(50);
+            const recovery=await request('2+2','f'.repeat(32));
+            assert.equal(recovery.status,200); assert.equal(recovery.data.result,'4');
+            console.log(JSON.stringify({scenario:'slow_clients',incomplete_connections:workers,
+                arrival_interval_ms:arrivalMs,driver_max_scheduling_lag_ms:Math.max(...lags),
+                ...summary(records,elapsed),initial_memory:initial,...final,recovery:true,recovery_ms:recovery.ms}));
+            assert.ok(records.every(r=>!r.error || r.error==='http:503:server_busy' ||
+                /^transport:(ECONNRESET|EPIPE)$/.test(r.error)),'Unexpected slow-client outcome');
+            if (quick) assert.equal(records.length,lightRequests);
+        } finally { holders.forEach(socket=>socket.destroy()); }
+    });
+}
 async function sessionSample(clients, repetition) {
     return withServer(async pid => {
         // Serial setup intentionally separates capacity eviction from transport load.
@@ -446,9 +483,9 @@ async function overloadSample() {
     return withServer(async pid => {
         const holders = [];
         try {
-            await Promise.all(Array.from({length: 4}, () => new Promise((resolve, reject) => {
+            await Promise.all(Array.from({length: workers + queueCapacity}, () => new Promise((resolve, reject) => {
                 const socket = net.connect({host: '127.0.0.1', port}); holders.push(socket);
-                socket.once('error', reject);
+                socket.on('error', reject); socket.on('data', () => {});
                 socket.once('connect', () => { socket.write('G'); resolve(); });
             })));
             await delay(100);
@@ -456,20 +493,20 @@ async function overloadSample() {
             await Promise.all(Array.from({length: 60}, (_, i) => measured(records, 'overload',
                 () => request('2+2', clientId(i)), data => assert.equal(data.result, '4'))));
             const result = summary(records, performance.now() - begin);
-            assert.ok(result.requests > result.ok, 'Held workers must cause observable rejection');
+            assert.ok(result.requests > result.ok, 'Saturated admission must cause observable rejection');
             assert.ok(records.every(record => !record.error || record.error === 'http:503:server_busy' ||
                 /^transport:(ECONNRESET|EPIPE)$/.test(record.error)), 'Unexpected overload outcome');
             holders.forEach(socket => socket.destroy());
             await delay(250);
             const recovery = await request('2+2', 'f'.repeat(32));
             assert.equal(recovery.status, 200); assert.equal(recovery.data.result, '4');
-            console.log(JSON.stringify({scenario: 'overload', clients: 60, incomplete_connections: 4,
+            console.log(JSON.stringify({scenario: 'overload', clients: 60, incomplete_connections: workers + queueCapacity,
                 ...result, recovery: true, recovery_ms: recovery.ms, ...await processMemory(pid)}));
         } finally { holders.forEach(socket => socket.destroy()); }
     });
 }
 (async () => {
-    if (load || sustained || heavy || arrival) {
+    if (load || sustained || heavy || arrival || slowClients) {
         let revision = 'unavailable', dirty = [];
         try {
             const root = path.resolve(__dirname, '../..');
@@ -488,6 +525,7 @@ async function overloadSample() {
             await arrivalSample();
             return;
         }
+        if (slowClients) { await slowClientSample(); await overloadSample(); return; }
         if (heavy) {
             for(const clients of [10,30,60]) await heavySample(clients);
             if(!remoteState) await overloadSample();

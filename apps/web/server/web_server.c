@@ -225,9 +225,7 @@ static bool numforge_read_request(
     NumForgeSocket socket,
     char *buffer,
     size_t capacity,
-    size_t *length,
-    bool *has_content_length,
-    bool *origin_allowed,
+    NumForgeHttpFrame *frame,
     uint16_t port,
     const char *public_origin,
     int *http_error,
@@ -239,15 +237,11 @@ static bool numforge_read_request(
 
     for (;;)
     {
-        NumForgeHttpFrame frame;
-        NumForgeHttpStatus status = numforge_http_probe_with_origin(buffer, used, capacity, port, public_origin, &frame);
+        NumForgeHttpStatus status = numforge_http_probe_with_origin(buffer, used, capacity, port, public_origin, frame);
 
         if (status == NUMFORGE_HTTP_READY)
         {
-            *length = frame.length;
-            *has_content_length = frame.has_content_length;
-            *origin_allowed = frame.origin_allowed;
-            buffer[*length] = '\0';
+            buffer[frame->length] = '\0';
 
             return true;
         }
@@ -886,6 +880,29 @@ static void numforge_handle_conversion(NumForgeSocket socket, const char *target
     free(response);
 }
 
+static void numforge_request_error(int status, const char **reason, const char **body)
+{
+    *reason = status == 413 ? "Payload Too Large" : status == 408 ? "Request Timeout" : "Bad Request";
+    *body = status == 413 ? "{\"ok\":false,\"error\":\"request exceeds 4096 bytes\",\"status\":\"value too large\",\"column\":1}" :
+        status == 408 ? "{\"ok\":false,\"error\":\"request timeout\"}" :
+        "{\"ok\":false,\"error\":\"Bad request\",\"status\":\"invalid argument\",\"column\":1}";
+}
+
+void numforge_reject_request(NumForgeSocket socket, int status)
+{
+    const char *reason, *body;
+    numforge_request_error(status, &reason, &body);
+    char response[384], discarded[NUMFORGE_WEB_REQUEST_CAPACITY];
+    int length = snprintf(response, sizeof(response),
+        "HTTP/1.1 %d %s\r\nContent-Type: application/json; charset=utf-8\r\n"
+        "Content-Length: %zu\r\nConnection: close\r\nCache-Control: no-store\r\n\r\n%s",
+        status, reason, strlen(body), body);
+    /* Only drain bytes already available; framing errors must never stall the
+     * receiver. Like admission rejection, sending is deliberately best effort. */
+    (void)recv(socket, discarded, sizeof(discarded), 0);
+    if (length > 0 && (size_t)length < sizeof(response)) (void)send(socket, response, length, 0);
+}
+
 void numforge_handle_connection_before(
     NumForgeSocket socket,
     uint16_t port,
@@ -894,43 +911,20 @@ void numforge_handle_connection_before(
 )
 {
     char request[NUMFORGE_WEB_REQUEST_CAPACITY];
-    char method[16];
-    char target[512];
-    char client[33];
-    uint64_t revision;
-    const char *action;
-    const char *body;
-    size_t length;
-    size_t body_length = 0U;
-    int64_t output_scale;
-    CalculatorAngleUnit angle_unit;
-    CalculatorNotation notation;
-    BigComplexForm complex_form;
-    bool english;
-    bool has_content_length;
-    bool origin_allowed;
+    NumForgeHttpFrame frame;
     int http_error = 400;
 
     if (!numforge_read_request(socket,
                                request,
                                sizeof(request),
-                               &length,
-                               &has_content_length,
-                               &origin_allowed,
+                               &frame,
                                port,
                                public_origin,
                                &http_error,
-                               read_deadline) ||
-        !numforge_request_target(request, method, sizeof(method), target, sizeof(target)))
+                               read_deadline))
     {
-        const char *reason =
-            http_error == 413 ? "Payload Too Large" : (http_error == 408 ? "Request Timeout" : "Bad Request");
-        const char *body_text =
-            http_error == 413
-                ? "{\"ok\":false,\"error\":\"request exceeds 4096 bytes\",\"status\":\"value too large\",\"column\":1}"
-                : (http_error == 408
-                       ? "{\"ok\":false,\"error\":\"request timeout\"}"
-                       : "{\"ok\":false,\"error\":\"Bad request\",\"status\":\"invalid argument\",\"column\":1}");
+        const char *reason, *body_text;
+        numforge_request_error(http_error, &reason, &body_text);
         numforge_send_response(socket, http_error, reason, "application/json; charset=utf-8", body_text);
 
         if (http_error == 413)
@@ -957,6 +951,21 @@ void numforge_handle_connection_before(
         return;
     }
 
+    numforge_handle_framed_connection(socket, request, &frame);
+}
+
+void numforge_handle_framed_connection(NumForgeSocket socket, char *request, const NumForgeHttpFrame *frame)
+{
+    char target[512], client[33];
+    const char *method = frame->method, *action, *body;
+    uint64_t revision;
+    size_t length = frame->length, body_length = 0U;
+    int64_t output_scale;
+    CalculatorAngleUnit angle_unit;
+    CalculatorNotation notation;
+    BigComplexForm complex_form;
+    bool english, has_content_length = frame->has_content_length, origin_allowed = frame->origin_allowed;
+    memcpy(target, frame->target, sizeof(target));
     body = numforge_find_header_end(request);
 
     if (body != NULL)

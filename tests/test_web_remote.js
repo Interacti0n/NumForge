@@ -32,7 +32,7 @@ async function run(publicOrigin, overload = false, binding = null) {
     await new Promise(resolve => reservation.close(resolve));
     const args = ['--port', String(port), '--no-browser'];
     if (binding) args.push('--bind', binding);
-    if (overload) args.push('--workers', '1', '--queue-capacity', '1');
+    if (overload) args.push('--workers', '1', '--queue-capacity', '2');
     if (publicOrigin) args.push('--origin', publicOrigin);
     const child = spawn(executable, args, { windowsHide: true, stdio: 'ignore' });
     const exited = new Promise(resolve => child.once('exit', resolve));
@@ -47,24 +47,45 @@ async function run(publicOrigin, overload = false, binding = null) {
         }
         assert.ok(ready, 'Server started');
         if (overload) {
-            const slow = net.createConnection({host: '127.0.0.1', port});
-            slow.on('error', () => {}); slow.resume();
+            const holders = [];
+            async function hold() {
+                const socket = net.createConnection({host:'127.0.0.1',port});
+                socket.setTimeout(4000,()=>socket.destroy(Error('Partial response timeout')));
+                let text='';
+                const response=new Promise((resolve,reject)=>{
+                    socket.on('data',chunk=>{text+=chunk; if(text.length>8192) reject(Error('Oversized timeout reply'));});
+                    socket.once('end',()=>resolve(text)); socket.on('error',reject);
+                });
+                // Observe rejection immediately, even before this holder is awaited.
+                response.catch(()=>{}); holders.push({socket,response});
+                await new Promise((resolve,reject)=>{socket.once('connect',resolve);socket.once('error',reject);});
+                socket.write('G');
+            }
             try {
-                await new Promise((resolve, reject) => {slow.once('connect', resolve); slow.once('error', reject);});
-                slow.write('G');
+                await hold();
                 await delay(50);
+                const fast=await request(base+'/api/evaluate',{method:'POST',body:'2+2'});
+                assert.equal(fast.status,200,'Incomplete input leaves the compute worker available');
+                assert.equal(JSON.parse(fast.body).result,'4');
+                await hold(); await delay(50);
                 const responses = await Promise.all(Array.from({length: 4}, () =>
                     request(base + '/api/evaluate', {method: 'POST', body: '2+2'}).catch(error => {
                         // Immediate overload closure can race an unread TCP body.
                         assert.ok(['ECONNRESET', 'EPIPE'].includes(error.code), error.code); return null;
                     })));
-                assert.ok(responses.some(Boolean), 'At least the queued request receives an expiry reply');
                 for (const response of responses) {
                     if (!response) continue;
-                    assert.equal(response.status, 503, 'Queue expires without waiting for the occupied worker');
+                    assert.equal(response.status, 503, 'Full ingress rejects without waiting for a free slot');
                     assert.equal(JSON.parse(response.body).code, 'server_busy');
                 }
-            } finally {slow.destroy();}
+                // Partial sockets expire independently of compute availability.
+                // Full-admission replies above may all race unread TCP bodies.
+                const timeouts=await Promise.all(holders.map(holder=>holder.response));
+                for (const reply of timeouts) {
+                    assert.match(reply,/^HTTP\/1\.1 408 Request Timeout\r\n/);
+                    assert.match(reply,/"error":"request timeout"/);
+                }
+            } finally {holders.forEach(holder=>holder.socket.destroy());}
             let recovered = false;
             for (let attempt = 0; attempt < 30; ++attempt) {
                 const response = await request(base + '/api/evaluate', {method: 'POST', body: '2+2'});
