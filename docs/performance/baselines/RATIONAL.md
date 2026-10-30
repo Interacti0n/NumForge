@@ -1,164 +1,186 @@
-# Rational arithmetic and repeated sampling — 30 October 2026
+# Rational arithmetic, conversion and comparison — 30 October 2026
 
 Windows x64, Ryzen 7 7435HS (16 logical CPUs), approximately 32 GiB RAM,
-GCC 16.2 Release (`-O3 -DNDEBUG`). Numeric source baseline `69abc00`; optimized
-implementation `3845eca`. Matching benchmark harnesses were used against both
-versions. No CPU affinity or frequency lock. Timings below are local observations,
-not portable performance promises or CI thresholds.
-Both numeric builds enable allocation counters and test failure hooks; live
-tracking and profile clocks run only in separate diagnostic passes. The initial
-direct recording with unmatched test-hook settings was superseded before the
-tables below were selected. Recorder metadata now includes those build switches.
+GCC 16.2 Release (`-O3 -DNDEBUG`). This comparison starts at numeric source
+`033eb5b`, after the first rational optimization pass, and ends at `bfc785e`
+(including `1b9df30`). It measures additional gains over that already optimized
+implementation. Public precision, rounding, root tolerances, iteration policy
+and application resource defaults are unchanged.
+
+Both builds enable allocation counters and test failure hooks; neither uses
+sanitizers or coverage. Profile clocks and live-payload tracking run separately
+from timing. The retained before rational binary is byte-identical to the
+verified first-pass binary. The before numerical binary adds only the current
+diagnostic/limit CLI harness against the unchanged numeric library. Metadata
+records executable hashes, source identities and compiler settings.
 
 ## Changes and safety boundaries
 
-- Rational arithmetic uses detached stack descriptors for temporary integers.
-  Their owned limb buffers move to the destination only after success; there is
-  no process-wide scratch pool. Equal denominators, zero and unit operands avoid
-  general arithmetic. Cross-cancelled products are already reduced; sums need
-  only reduce against the common denominator factor.
-- GCD with a power-of-two magnitude uses the exact trailing-bit identity. Signs,
-  zero, aliases and cancellation still follow the ordinary public contract.
-- Exact-first decimal division removes factors of two with one bit shift, and
-  factors of five in blocks of 27 plus a scalar tail. It retains every digit of
-  terminating quotients, including when the requested significant precision is
-  smaller. Recurring quotients retain all six rounding modes.
-- Prepared expressions that do not reference their parameter evaluate once per
-  sample batch. Returned typed values are independently owned copies. Snapshot
-  binding, random-call rejection, domain errors and graph-phase checks remain
-  active. Parameter-dependent subtrees are not folded or approximated.
-
-Public bisection, interpolation policy, tolerances, precision and application
-resource defaults were not changed.
+- Decimal comparison uses conservative integer bounds on coefficient digit counts
+  to prove disjoint decimal exponents. Overlapping bounds fall back to exact digit
+  counts and coefficient alignment. It no longer serializes operands to decimal
+  strings. Sign, equality and extreme scales remain exact.
+- A terminating reduced fraction with denominator `2^a * 5^b` constructs its
+  coefficient directly as `n * 2^(t-a) * 5^(t-b)`, where `t = max(a,b)`, instead
+  of performing general long division. Common powers of ten are removed first
+  with the existing bounded-workspace decimal factor routine. This avoids a
+  temporary-memory regression for mixed denominators.
+- Rational-to-decimal conversion borrows canonical numerator/denominator
+  descriptors and avoids copying them merely to repeat normalization and GCD.
+  Owned temporaries still commit only after success. Finite results retain all
+  their digits; recurring results retain all six rounding modes.
+- Integer exponentiation moves its final owned accumulator into the output
+  instead of copying it. Aliases, allocation failures and deadline checks retain
+  their public behavior.
 
 ## Complete public root search
 
 Three alternating before/after fresh-process runs of
 `numerical_benchmark --high-precision`, with no other build/test/benchmark from
-this review running alongside them. This is the exact-rational callback for
-`x*x-2` on `[0,2]`, not the direct decimal `sqrt` operation. Independent Newton
-sqrt and original residual checks run outside timing. Iterations/evaluations
-are unchanged: 42/45, 335/338 and 3324/3327 respectively.
+this review running alongside them. There is no affinity or frequency lock;
+unrelated host activity is not controlled. Initial grouped runs showed host
+speed drift and are excluded from the selected comparison.
+
+This is the exact-rational callback for `x*x-2` on `[0,2]`, not the direct decimal
+`sqrt` operation. Working precision is absolute places plus 20, with width and
+residual tolerances of `1E-places`. Independent Newton sqrt and original
+residual checks run outside timing. Iterations/evaluations are unchanged:
+42/45, 335/338 and 3324/3327 respectively.
 
 | Absolute places | Before median ms | After median ms | Before / after allocation calls | Before / after requested bytes |
 | ---: | ---: | ---: | ---: | ---: |
-| 12 | 1.3643 | 0.7985 | 11,705 / 4,059 | 202,371 / 71,571 |
-| 100 | 66.5103 | 7.3807 | 199,435 / 36,069 | 8,034,623 / 1,757,607 |
-| 1000 | 22,832.7797 | 2,392.3473 | 11,940,195 / 373,794 | 4,708,937,497 / 139,837,913 |
+| 12 | 0.2685 | 0.2361 | 4,059 / 2,693 | 71,571 / 34,955 |
+| 100 | 4.1264 | 2.5340 | 36,069 / 26,079 | 1,757,607 / 853,139 |
+| 1000 | 1,340.2893 | 202.4467 | 373,794 / 280,508 | 139,837,913 / 64,827,091 |
 
-The 1000-place median is approximately 9.5 times faster, with 96.9% fewer
-allocation requests and 97.0% less requested traffic. Requested bytes are
-cumulative, not peak/live memory or RSS. This stress uses the harness's
-120-second budget, unlimited cumulative requests and 8 MiB single-allocation
-cap; it does not establish success under smaller application budgets.
+The 1000-place solve is approximately **6.6 times faster**, with 25.0% fewer
+allocation calls and 53.6% less requested traffic. Its three before timings
+span 1305.9–1363.3 ms; after timings span 199.8–214.8 ms. The 100-place median
+improves by about 1.6 times. The short 12-place after runs span 0.1853–0.5564 ms,
+so that row does not establish a reliable small-case speedup.
 
-## Direct arithmetic and conversion
+Requested bytes are cumulative traffic, not peak/live memory or RSS. Separate
+`--allocation-limit-mib 64` runs now succeed at all three precisions, including
+the independent validation inside the same budget. The before implementation
+stops at 1000 places after 67,109,021 requested bytes with allocation-budget
+failure. The reported after solve traffic is 61.8 MiB; validation is outside
+that counter snapshot but still inside the enforced 64 MiB budget. The harness
+retains a 120-second deadline and 8 MiB single-allocation cap. This result does
+not establish success for arbitrary callbacks or application workloads.
 
-Medians of three process medians, five calibrated samples per row. Fixture
-construction, full text checks and alias checks are outside timing. Each row
-uses the same canonical operands in both versions; bits identify the generator
-parameter rather than a promise that every component has that exact bit count.
+## Direct conversion
 
-| Fixture | Before / after microseconds | Before / after allocation calls |
-| --- | ---: | ---: |
-| Equal-denominator addition, 1024 bits | 3.659 / 2.608 | 29 / 9 |
-| Coprime multiplication, 1024 bits | 11.422 / 6.827 | 39 / 18 |
-| Cross-cancelling multiplication, 1024 bits | 2.524 / 1.418 | 30 / 12 |
-| Integer addition, 256 bits | 2.290 / 0.354 | 26 / 3 |
-| Dyadic conversion, 1024 parameter, HALF_EVEN | 282.337 / 24.055 | 1068 / 37 |
-| Power-of-five conversion, 1024 parameter, HALF_EVEN | 547.600 / 138.360 | 1069 / 104 |
+Medians of three process medians, five calibrated samples per row, with the
+versions interleaved and order reversed in the middle repetition. Fixture
+construction, complete text checks and alias checks are outside timing. The
+same canonical operands are used in both versions; the bit labels identify
+generator parameters rather than every component's exact bit count. All rows
+below use HALF_EVEN conversion.
 
-Separate profile passes record GCD, division and multiplication counts/time;
-their clocks are excluded from speed recordings. Several short conversion rows
-initially appeared 24–59% slower in the broad corpus. Seven alternating focused
-processes per version, covering all five flagged rows plus six negative recurring
-rounding modes, produced before/after speed ratios of 0.99–1.13. No repeatable
-slowdown was established. Retain those noisy observations instead of claiming
-every row improves.
+| Fixture | Before / after microseconds | Before / after allocation calls | Before / after requested bytes |
+| --- | ---: | ---: | ---: |
+| Dyadic, 1024 parameter | 16.029 / 6.960 | 37 / 18 | 5,379 / 1,792 |
+| Power of five, 1024 parameter | 105.795 / 16.386 | 104 / 73 | 16,834 / 9,960 |
+| Mixed terminating, 1024 parameter | 37.411 / 36.922 | 28 / 9 | 1,718 / 952 |
+| Coprime recurring, 1024 parameter | 4.927 / 3.671 | 43 / 28 | 3,082 / 1,610 |
+| Integer, 256 parameter | 1.106 / 0.165 | 22 / 3 | 600 / 112 |
 
-## Repeated expression samples
+The mixed-denominator row demonstrates less allocation traffic with essentially
+unchanged timing. The broad corpus initially flagged 15 very short arithmetic
+rows as 20–50% slower. A focused follow-up used seven alternating processes per
+version and ten repeated rows per case (70 row medians per version). All 15
+before/after speed ratios were 0.972–1.094; the dyadic positive control remained
+2.69 times faster. Those initial slowdowns were not reproduced. This evidence
+does not mean every arithmetic operation improves.
 
-The exact 129-point stage in `graph_fast_benchmark 3` compares typed samples
-outside timing with independent numerical references. For a parameter-independent
-horizontal `ln(2)` curve, median time changed from 21.852 to 0.732 ms; `1/3`
-changed from 2.549 to 0.654 ms. This combines batch-local reuse with arithmetic
-improvements, not a speedup for arbitrary variable-dependent functions. The
-wide-sine and million-range-sine rows were nearly unchanged; these observations
-do not support a claim that every graph or browser frame is faster.
+## Representative decimal functions
 
-## Browser observations
+Three alternating processes per version, five timing samples per row, frozen
+independent mpmath references, HALF_EVEN. Instrumented profile/memory probes are
+excluded from these timings. Precision denotes significant decimal digits.
 
-Ordinary uninstrumented GCC Release servers were measured in headless Chromium
-at 1280x900 and 390x844, three repetitions of mixed, dense/pole and precision
-camera scenes for each source version (36 completed scenes). Initial-frame
-medians in milliseconds include interaction/scheduling overhead:
+| Fixture | Precision | Before median ms | After median ms |
+| --- | ---: | ---: | ---: |
+| Ordinary logarithm | 1000 | 29.770 | 27.535 |
+| Ordinary logarithm | 2000 | 79.119 | 80.558 |
+| Ordinary exponential | 2000 | 149.246 | 148.729 |
+| Ordinary sine | 2000 | 70.739 | 61.465 |
+| Ordinary square root | 2000 | 0.665 | 0.659 |
 
-| Scene | Desktop before / after | Mobile-layout before / after |
-| --- | ---: | ---: |
-| Mixed four functions | 203.9 / 202.7 | 143.2 / 170.7 |
-| Dense functions and poles | 192.1 / 194.7 | 190.7 / 191.9 |
-| Precision hyperbolic camera | 414.8 / 329.5 | 247.2 / 277.4 |
+The largest additional benefit is in repeated rational conversion and
+comparison during root search. These representative functions show smaller or
+negligible changes, including a slightly slower 2000-digit logarithm median.
+The measurements do not support a general claim that all decimal math is faster.
+Separate operation/phase profiles now identify multiplication and exponentiation
+as the remaining major costs in the high-precision root fixture.
 
-No initial curve errors were reported. These observations move in both
-directions and do not establish a general UI speedup. The harness runs versions
-in order and does not lock frequency; mobile layout is desktop emulation, not a
-physical phone. Initial-frame and complete settling/quiet-interval timings are
-different scopes. Detailed frame/input/request/cache/heap observations remain
-in `browser-multi.json` and `browser-precision.json`.
+## Verification
 
-The old diagnostic incorrectly assumed every post-zoom visibility toggle was
-a cache hit. The original server reproduced that failure: bounded caches and
-unresolved ranges can require work after camera changes. The tool now measures
-toggles in both versions, records hits/misses and checkpoints partial/failing
-runs. A trial requirement that every curve retain a visible path also failed
-on the original precision-camera scene; the camera can put curves off-screen.
-Selected-curve restoration and curve errors remain checked. The failed
-reproduction and partial recordings are retained; controlled no-request cache
-reuse remains a dedicated browser regression rather than a blanket benchmark
-assumption.
+- Full final MSVC Release CTest run: **83/83 passed**. Full instrumented GCC
+  Release run: **116/116 passed**, including allocation/deadline suites, numeric,
+  division and complex oracles, graph/HTTP regressions and benchmark checks.
+- The Python `Fraction`/`Decimal` checker validated **11,604 independent
+  references** on each compiler, with 1000 deterministic random operand pairs,
+  both arithmetic aliases, six conversion rounding modes, corrupt-reference
+  rejection and zero tracked live payload after teardown. Exact finite text is
+  checked in full. Fixed cases cover powers of two/five around
+  0/1/26/27/28/63/64/65/127/128/129.
+- Decimal comparison gained **1776 exact independent ordering cases**, including
+  signed digit-position references, binary/decimal boundaries, aligned values
+  and extreme scales. The numeric oracle now has 16,800 cases with zero failures;
+  its existing 16 bounded directed-rounding transcendental cases retain their
+  original one-ulp policy. New comparisons require exact agreement.
+- Allocation and deadline injection walks every actual failure point through
+  finite/recurring conversion, large powers of five, dyadic and integer paths,
+  mixed denominators including `1/10^64` and `-3/10^512`, and decimal comparison.
+  Failure paths preserve inputs/output and release tracked temporaries.
+- CI now runs `numerical_benchmark_bounded_precision`: the verified 1000-place
+  solve under the 64 MiB cumulative allocation cap, with a 120-second timeout.
+  This is a correctness/resource guard, not a speed threshold.
 
-Selected regressions passed: 29 Chromium checks for camera/precision,
-reconciliation, release scenes and controlled visibility reuse, plus 26 Firefox
-and WebKit checks for precision/release scenes. Missing matching Firefox/WebKit
-test binaries were installed under ignored `build/` before the successful rerun.
-No physical-phone measurement was available.
+## Browser and server limits
 
-## Verification and reproduction
+This pass does not change browser code or server scheduling. Earlier evidence
+at `033eb5b` remains historical: constant expression batches benefited from
+batch-local reuse, while browser initial-frame measurements moved in both
+directions. Its 55 selected Chromium/Firefox/WebKit checks were not rerun in
+this arithmetic-only pass. The earlier complete report is retained in Git at
+`033eb5b`; raw browser/graph recordings remain under
+`build/performance-20261030/`.
 
-The new Python checker validated 11,362 independent `Fraction`/`Decimal` results
-in both versions: fixed operand shapes plus 1000 deterministic random pairs,
-arithmetic aliases, six conversion rounding modes, corrupt-reference rejection
-and a separate zero-live-payload teardown pass. Exact finite text is checked in
-full, rather than through floating-point projections.
+The fixed-arrival server experiment still applies: occupying every worker with
+expensive requests can cause fast requests to receive 503 responses. Queued
+items are sockets; workers parse requests and evaluate expressions. Admission
+based on expression cost therefore needs a distinct parsed-computation stage.
+Faster arithmetic alone does not establish fairness or overload isolation, and
+increasing worker count only moves the saturation point. See the
+[benchmark tool index](../../../benchmarks/README.md) for the server diagnostic.
 
-Native tests cover power-of-two boundaries at 0/1/63/64/65/127/128/1000/4096 bits,
-both GCD input aliases and signs/zero. Rational allocation and deadline tests
-exercise each actual failure point on canonical fast/general paths. Constant
-batches check snapshot lifetime, independent ownership, domain errors and atomic
-copy failures. The statistics and general-linear-system deadline tests now walk
-every actual checkpoint to completion; their former fixed late indices became
-obsolete when the operations required fewer checks.
-
-MSVC Release: 83/83 CTest checks passed. Instrumented GCC Release: 113/115 passed
-initially; after strengthening those two deadline fixtures, both passed on
-rerun, completing the 115-check set. This includes the existing independent
-numeric/division/complex oracles, allocation suites and benchmark checks.
+## Reproduction and retained evidence
 
 ```sh
 cmake --preset benchmarks -DPython3_EXECUTABLE=/path/to/python3
 cmake --build --preset benchmarks
 python benchmarks/tools/check_bigrational_benchmark.py BINARY_DIR/bigrational_benchmark --random 1000 --record build/rational-recording
 BINARY_DIR/numerical_benchmark --high-precision
-BINARY_DIR/graph_fast_benchmark 3
+BINARY_DIR/numerical_benchmark --high-precision --allocation-limit-mib 64
+BINARY_DIR/numerical_benchmark --high-precision --profile
+ctest --test-dir BINARY_DIR -R numerical_benchmark_bounded_precision --output-on-failure
 ```
 
-Use `.exe` and configuration subdirectories where applicable. To compare old
-numeric sources, compile the same current benchmark harness against their
-snapshot, and identify that snapshot separately from the driver checkout.
+Use `.exe` and configuration subdirectories where applicable. Keep `--profile`
+separate from timing recordings; its CSV diagnostics go to stderr. Compare old
+numeric sources using the same benchmark harness and build switches, identifying
+numeric and driver revisions separately.
 
-Raw recordings, binaries, patches, the original source archive and metadata
-remain under ignored `build/performance-20261030/`. `rational-verified-before/`
-and `rational-verified-after/` contain the direct recordings; `paired-roots-*` contains
-the alternating root runs; `graph-verified-before.csv` and `graph-verified-after.csv`
-contain the complete native graph rows. `followup-*` retains the noisy-row
-follow-up. Browser and server observations are separate timing scopes.
+Raw recordings and binaries remain under ignored `build/performance-round2/`.
+`metadata.json` records selected sources, flags, hashes and measurement scope;
+`summary.json` aggregates selected timings. Root recordings are
+`paired-final-{before,after}-*.csv`; direct conversion recordings are
+`paired-rational-{before,after}-*.csv`; representative math recordings are
+`paired-math-{before,after}-*.csv`. `followup-*` retains the short-row regression
+investigation. `bounded-outcomes.json`, `bounded-before.err` and
+`bounded-after.csv` retain resource-limit outcomes. `roots-profile-*` and
+`roots-final-profile*` are separate diagnostic passes. Final native test logs
+are `ctest-gcc-final.log` and `ctest-msvc-final.log`. These local timings are
+observations, not portable performance promises or CI speed thresholds.
