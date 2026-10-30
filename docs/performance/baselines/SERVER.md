@@ -426,3 +426,40 @@ Raw evidence remains under ignored `build/performance-ingress/`.
 recordings are exploratory and retained, not the selected comparison.
 `ctest-{gcc,msvc}-handoff.log`, `browser-chromium.log` and `browser-final.log`
 retain final native and browser verification. No CI speed threshold was added.
+
+## Mixed Docker pilot — 30 October 2026
+
+Exact deployed C/Django/PostgreSQL/Caddy/Kuma images, cloned into fresh private
+resources; [protocol](../protocols/APPLICATION.md#full-application-stack).
+One loopback TLS run on this 16-thread/32-GiB Windows PC, with desktop/live pilot
+activity and a colocated driver. Image IDs and driver hash are in ignored
+`build/mixed-stack-full-20261030/results.json`; raw CPU/RAM and a fuller summary
+are alongside it. This is not latest-source C performance or internet capacity.
+
+44,781 fixture responses passed validation, including 10 expected shared-IP 429s;
+no unexpected status, transport, mathematical, identity/client-state or replay failures.
+Seven separate public health probes passed. Initial login bursts used distinct
+simulated edge IPs; a shared IP correctly admitted only 10/20 attempts.
+
+| Clients | Heavy jobs | Active seconds | Small math p95 ms | Account session p95 ms | Login burst p95 ms | Sampled stack MiB |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 10 | 0 | 20.3 | 5.5 | 32.6 | 622 | 281 |
+| 10 | 2 | 20.1 | 4.4 | 33.7 | 626 | 322 |
+| 30 | 0 | 20.3 | 4.5 | 34.7 | 1797 | 453 |
+| 30 | 2 | 20.3 | 6.5 | 259.7 | 1795 | 380 |
+| 60 | 0 | 20.5 | 4.3 | 670.0 | 3540 | 409 |
+| 60 | 2 | 20.5 | 4.3 | 382.3 | 3419 | 492 |
+| 30 | 2 | 120.3 | 4.5 | 39.3 | 1761 | 387 |
+
+The final row is the sustained phase. Memory is a rolling sampled sum of five
+containers, excluding inactive file cache and VM/driver overhead. It is not an
+exact peak. Host free memory stayed above 6.5 GiB; the user reported no noticeable
+PC slowdown. During the sustained phase, per-service median memory remained
+within about 1 MiB between its initial/final 20-second windows. This short run
+does not establish long-term stability.
+
+At 60 clients, session reads and concurrent login bursts queue noticeably.
+Compare persistent/healthy DB connections and bounded authentication concurrency
+before changing worker counts; no production limits or login policy were changed.
+Client-state checks are not authenticated C-session authorization; that binding
+remains separate planned work.

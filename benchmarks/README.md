@@ -96,6 +96,13 @@ probes separate from speed recordings.
 
 ## HTTP and browser work
 
+`application/mixed_stack_benchmark.cjs --output build/NEW_RECORDING` clones the
+configured deployed Docker pilot into fresh secrets, volumes, networks and ports.
+It checks login/session/logout alongside 1000-place square roots, client-scoped C state
+and concurrent factorials at 10/30/60 clients, then runs a 120-second mixed phase.
+`--quick` checks the harness; [full-stack scope](../docs/performance/protocols/APPLICATION.md#full-application-stack)
+explains IP simulation, resource sampling and recording limits.
+
 `application/http_benchmark.js` measures calculator HTTP phases;
 `http_queue_benchmark.js` observes queue waiting; `--load` adds bounded 10/30/60-client
 HTTP/session scenarios, with `--quick` for fixture validation. See the

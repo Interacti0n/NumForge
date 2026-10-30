@@ -329,3 +329,38 @@ The selected [paired comparison](../baselines/ARITHMETIC.md#bounded-prefix-forma
 records the interval-prefix optimization, fallback policy and unchanged full-output
 path. Initial pre-optimization recordings remain in Git history. Use the same
 compiler, fixture and timing scope when comparing a fresh build.
+
+## Full application stack
+
+```sh
+node benchmarks/application/mixed_stack_benchmark.cjs --output build/NEW_RECORDING --live-probes
+```
+
+Requires the configured Docker pilot and host Python/Node. It pins the running
+images, creates fresh credentials/data/network/loopback ports and removes only
+its generated `numforge-test-mixed-*` project. No image builds or production DB
+writes occur. TLS uses the fixture gateway's actual CA; each client reuses its
+HTTPS connection. Record image IDs separately from the driver's repository HEAD.
+
+Defaults: 10/30/60 clients, 250-ms think time, 20 seconds each with zero/two
+concurrent `100000!` clients, then 120 seconds at 30 clients plus two heavy jobs.
+`--seconds 2..60`, `--sustain-seconds 0..300`, `--python PATH` change those scopes;
+`--quick` uses two clients and short fixtures, establishing harness correctness.
+Login/relogin, user identity, logout-cookie replay, private C values, 1000-place
+sqrt and factorial projections are verified. Python Decimal/math provide separate
+mathematical references prepared outside measurement.
+
+Distinct client IPs are simulated through the trusted edge header only inside
+the fixture. A separate shared-IP burst expects 10 successes and the remaining
+429 responses under the unchanged login policy; it is not a capacity failure.
+Each sustained client logs in again once, avoiding an artificial per-IP flood.
+
+`results.json` separates verified latency percentiles from errors, phases and DB
+counters. `containers.json` samples Docker CPU/memory; `host.json` includes the
+colocated driver, desktop and live pilot. These are sampled peaks, not exact
+allocation/high-water measurements. Linux Docker CLI memory subtracts inactive
+file cache ([Docker definition](https://docs.docker.com/reference/cli/docker/container/stats/)).
+`--live-probes` adds a read-only public health request after each phase; its
+network latency is separate. Recordings contain disposable credentials under
+`private/`; share only the result/metric files. A short local run cannot certify
+internet capacity, long-term stability or responsiveness on another machine.
