@@ -56,7 +56,22 @@ function sameIdentity(actual, expected) {
     assert.deepEqual({...actual, StartTime: canonicalTime(actual.StartTime)},
         {...expected, StartTime: canonicalTime(expected.StartTime)});
 }
-const live = id => {try {process.kill(id, 0); return true;} catch {return false;}};
+// Windows can reuse a stopped process's PID before the next assertion. Match
+// the recorded executable and start time, as the production helper does.
+async function recordedAlive(entry) {
+    assert.ok(Number.isSafeInteger(entry.Id) && entry.Id > 0);
+    const script = `$ErrorActionPreference='Stop'; $p=Get-Process -Id ${entry.Id} -ErrorAction SilentlyContinue; ` +
+        `if ($p -and -not $p.HasExited) { try { ` +
+        `$identity=@{Path=$p.Path;StartTime=$p.StartTime.ToUniversalTime().ToString('o')}; ` +
+        `if (-not $p.HasExited) { $identity | ConvertTo-Json -Compress } ` +
+        `} catch { if (-not $p.HasExited) { throw } } }; exit 0`;
+    const {stdout} = await runFile(powershell, ['-NoProfile', '-NonInteractive', '-Command', script],
+        {windowsHide: true, timeout: 10000});
+    if (!stdout.trim()) return false;
+    const actual = JSON.parse(stdout.replace(/^\uFEFF/, ''));
+    return actual.Path !== null && path.resolve(actual.Path).toLowerCase() === path.resolve(entry.Path).toLowerCase() &&
+        canonicalTime(actual.StartTime) === canonicalTime(entry.StartTime);
+}
 (async () => {
     const reservation = net.createServer();
     await new Promise(resolve => reservation.listen(0, '127.0.0.1', resolve));
@@ -156,7 +171,7 @@ const live = id => {try {process.kill(id, 0); return true;} catch {return false;
             try {
                 assert.equal((await status()).ServerAlive, false);
                 await call('Stop');
-                assert.equal(live(saved.Server.Id), true); assert.equal(live(saved.Tunnel.Id), true);
+                assert.equal(await recordedAlive(saved.Server), true); assert.equal(await recordedAlive(saved.Tunnel), true);
             } finally {writeState(saved);}
         }
         process.kill(saved.Server.Id);
@@ -175,10 +190,10 @@ const live = id => {try {process.kill(id, 0); return true;} catch {return false;
         await call('Ensure', ['-ServerPath', candidate, '-CloudflaredPath', tunnel]);
         const renewed = state(); assert.equal((await status()).State, 'Ready');
         assert.notEqual(renewed.Tunnel.Id, saved.Tunnel.Id); assert.notEqual(renewed.Url, saved.Url);
-        assert.equal(live(saved.Server.Id), false, 'Old-origin backend was replaced');
+        assert.equal(await recordedAlive(saved.Server), false, 'Old-origin backend was replaced');
         saved = renewed;
         await call('Stop');
-        assert.equal(live(saved.Server.Id), false); assert.equal(live(saved.Tunnel.Id), false);
+        assert.equal(await recordedAlive(saved.Server), false); assert.equal(await recordedAlive(saved.Tunnel), false);
         assert.equal((await status()).State, 'NotRecorded');
         await call('Stop');
         await call('Ensure', ['-ServerPath', candidate, '-CloudflaredPath', tunnel, '-Workers', '2', '-QueueCapacity', '8']);
