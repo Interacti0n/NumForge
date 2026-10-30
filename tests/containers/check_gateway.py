@@ -63,6 +63,12 @@ def run():
     assert status == 200 and data["user"]["username"] == "container-check"
     session = next(cookie for cookie in jar if cookie.name == "numforge_account")
     assert session.secure and session.has_nonstandard_attr("HttpOnly")
+    account_started = compose.docker("exec", "-T", "accounts", "cat", "/proc/1/stat").stdout.split()[21]
+    compose.docker("restart", "db")
+    compose.docker("up", "--no-deps", "--wait", "--wait-timeout", "180", "db")
+    assert compose.docker("exec", "-T", "accounts", "cat", "/proc/1/stat").stdout.split()[21] == account_started
+    status, after_restart = request("/api/account/session")
+    assert status == 200 and after_restart["user"] == data["user"]
     replay = http.cookiejar.CookieJar()
     for cookie in jar:
         replay.set_cookie(copy.copy(cookie))
@@ -71,4 +77,4 @@ def run():
     if os.environ.get("NUMFORGE_CHECK_ACCOUNT_BROWSER") == "1":
         subprocess.run(["node", str(compose.ROOT / "tests/containers/account-ui.cjs")], check=True,
                        env=os.environ | {"NF_UI_BASE_URL":base})
-    print("Verified TLS chain, SK/EN page, gateway Origin checks, secure login/logout and cookie replay rejection.")
+    print("Verified TLS, SK/EN, CSRF, secure login/logout, first session request after DB restart and cookie replay rejection.")

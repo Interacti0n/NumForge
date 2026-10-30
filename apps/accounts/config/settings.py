@@ -16,7 +16,8 @@ try:
         "PASSWORD": config["password"],
         "HOST": config["host"],
         "PORT": config["port"],
-        "CONN_MAX_AGE": 0,
+        "CONN_MAX_AGE": 60,
+        "CONN_HEALTH_CHECKS": True,
         "OPTIONS": {"connect_timeout": 5},
     }}
 except (KeyError, ValueError, OSError) as error:

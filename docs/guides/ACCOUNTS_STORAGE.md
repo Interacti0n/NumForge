@@ -87,6 +87,10 @@ Default login is browser-session-only with 12-hour server expiry; remembered log
 lasts 14 days. Password changes/deactivation invalidate authentication on subsequent
 requests. Other-device management remains pending.
 
+The WSGI service reuses each thread's PostgreSQL connection; requests replace
+connections older than 60 seconds and check their health before DB access. Recovery
+does not require restarting accounts; an outage still fails account operations.
+
 All well-formed attempts share a PostgreSQL limit of 10 per source IP/5 minutes,
 including successes, across workers and restarts. Only token-authenticated gateway
 requests may supply a client address; arbitrary forwarding headers remain untrusted.
@@ -97,7 +101,8 @@ users), 403 CSRF/origin, 405 method, 413 oversized body, 415 content type, 429 w
 Provision a regular user interactively with `docker compose exec accounts python
 manage.py createpilotuser NAME` (or the native `manage.py` with `app.json`). Passwords
 are prompted twice, validated and never passed as CLI arguments. Expired sessions
-need periodic `manage.py clearsessions`; scheduling is still pending.
+need periodic `manage.py clearsessions`; the [pilot supervisor](CONTAINERS.md#https-account-pilot)
+runs it daily.
 
 Next: owner-scoped preferences/workspaces and device management. See the
 [account design](../design/APPLICATION_DESIGN.md#proposed-accounts-and-saved-work).

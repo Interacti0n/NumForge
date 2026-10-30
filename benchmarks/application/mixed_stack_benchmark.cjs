@@ -137,12 +137,12 @@ class Client {
 }
 
 async function main(args) {
-    if (args.includes('--help')) return console.log('node benchmarks/application/mixed_stack_benchmark.cjs [--quick] [--seconds 2..60] [--sustain-seconds 0..300] [--python PATH] [--output NEW_BUILD_DIRECTORY] [--live-probes]');
+    if (args.includes('--help')) return console.log('node benchmarks/application/mixed_stack_benchmark.cjs [--quick] [--clients 1..60] [--accounts-image LOCAL_IMAGE] [--seconds 2..60] [--sustain-seconds 0..300] [--python PATH] [--output NEW_BUILD_DIRECTORY] [--live-probes]');
     const seen = new Set();
     for (let i = 0; i < args.length; i++) {
         const flag = args[i];
         assert.ok(!seen.has(flag), 'Repeated option: ' + flag); seen.add(flag);
-        if (['--seconds', '--sustain-seconds', '--python', '--output'].includes(flag)) assert.ok(args[++i] && !args[i].startsWith('--'), 'Missing option value');
+        if (['--seconds', '--sustain-seconds', '--clients', '--accounts-image', '--python', '--output'].includes(flag)) assert.ok(args[++i] && !args[i].startsWith('--'), 'Missing option value');
         else assert.ok(['--quick', '--live-probes'].includes(flag), 'Unknown option: ' + flag);
     }
     const quick = args.includes('--quick'), liveProbes = args.includes('--live-probes');
@@ -151,6 +151,9 @@ async function main(args) {
     const sustained = Number(option('--sustain-seconds', quick ? '0' : '120'));
     assert.ok(Number.isInteger(duration) && duration >= 2 && duration <= 60);
     assert.ok(Number.isInteger(sustained) && sustained >= 0 && sustained <= 300);
+    const count = Number(option('--clients', quick ? '2' : '60'));
+    assert.ok(Number.isInteger(count) && count >= 1 && count <= 60);
+    const levels = args.includes('--clients') || quick ? [count] : [10, 30, 60];
     const python = option('--python', process.platform === 'win32' ? path.join(ROOT, '.local/accounts/venv/Scripts/python.exe') : 'python3');
     const output = path.resolve(option('--output', path.join(ROOT, 'build/mixed-stack-' + Date.now())));
     assert.ok(output.startsWith(path.join(ROOT, 'build') + path.sep), 'Record only under build/');
@@ -167,9 +170,11 @@ async function main(args) {
         const live = JSON.parse(docker(['inspect', 'numforge-' + name + '-1']))[0];
         assert.equal(live.Config.Labels['com.docker.compose.project'], 'numforge');
         const tag = `${project}-${name}:fixture`;
-        docker(['tag', live.Image, tag]);
+        const selected = name === 'accounts' && args.includes('--accounts-image') ?
+            JSON.parse(docker(['image', 'inspect', option('--accounts-image')]))[0].Id : live.Image;
+        docker(['tag', selected, tag]);
         images[name] = tag;
-        metadata[name] = {image: live.Image, configured_image: live.Config.Image};
+        metadata[name] = {image: selected, deployed_image: live.Image, configured_image: live.Config.Image};
     }
     images.setup = images.accounts;
     const secrets = path.join(output, 'private');
@@ -206,7 +211,7 @@ print(json.dumps({'sqrt':root,'factorial':fact}))`]));
         profile_sha256: crypto.createHash('sha256').update(JSON.stringify(source)).digest('hex'),
         docker: {version: engine.ServerVersion, cpus: engine.NCPU, memory_bytes: engine.MemTotal},
         platform: {os: os.platform(), release: os.release(), cpus: os.cpus().length, memory_bytes: os.totalmem(), node: process.version},
-        duration_seconds: duration, sustained_seconds: sustained, think_ms: quick ? 50 : 250, heavy_expression: `${quick ? 1000 : 100000}!`,
+        client_levels: levels, duration_seconds: duration, sustained_seconds: sustained, think_ms: quick ? 50 : 250, heavy_expression: `${quick ? 1000 : 100000}!`,
         scope: 'Loopback TLS; distinct IPs simulated at the trusted Cloudflare edge header; fresh data. Colocated driver/production/desktop activity remains in host metrics.', phases: rows};
     try {
         compose(['config', '--quiet']);
@@ -216,7 +221,7 @@ print(json.dumps({'sqrt':root,'factorial':fact}))`]));
         const ca = fs.readFileSync(caFile), base = 'https://localhost:18884';
         const make = ip => {const client = new Client(base, ca, ip); clients.push(client); return client;};
         const password = crypto.randomBytes(24).toString('base64url');
-        const maximum = quick ? 12 : 60;
+        const maximum = Math.max(quick ? 12 : 20, ...levels, sustained ? 30 : 0);
         const seed = `import json,django\ndjango.setup()\nfrom django.contrib.auth import get_user_model\nu=get_user_model()\nusers=[u.objects.create_user(username='load-'+str(i),password=${JSON.stringify(password)}) for i in range(${maximum})]\nprint(json.dumps([x.pk for x in users]))`;
         const userIDs = JSON.parse(docker(['exec', '-i', `${project}-accounts-1`, 'python', '-'], {input: seed}).toString());
         const monitor = {username: 'load-monitor', password: crypto.randomBytes(24).toString('base64url'), monitors: [
@@ -225,7 +230,7 @@ print(json.dumps({'sqrt':root,'factorial':fact}))`]));
             {name: 'Load fixture PostgreSQL', type: 'port', hostname: 'db', port: 5432}]};
         docker(['exec', '-i', `${project}-uptime-1`, 'node', '/opt/setup_monitor.cjs'], {input: JSON.stringify(monitor)});
         const dbStats = () => JSON.parse(docker(['exec', `${project}-db-1`, 'psql', '-U', 'nf_local_admin', '-d', 'numforge_accounts', '-At', '-c',
-            "SELECT json_build_object('commits',xact_commit,'rollbacks',xact_rollback,'connections',numbackends,'inserted',tup_inserted,'updated',tup_updated,'deleted',tup_deleted) FROM pg_stat_database WHERE datname='numforge_accounts'"]).toString());
+            "SELECT json_build_object('commits',xact_commit,'rollbacks',xact_rollback,'connections',numbackends,'sessions',sessions,'inserted',tup_inserted,'updated',tup_updated,'deleted',tup_deleted) FROM pg_stat_database WHERE datname='numforge_accounts'"]).toString());
         const containers = ['web', 'accounts', 'db', 'gateway', 'uptime'].map(name => `${project}-${name}-1`);
         stats = spawn('docker', ['stats', '--format', '{{json .}}', ...containers], {env: environment, windowsHide: true});
         readline.createInterface({input: stats.stdout}).on('line', line => {
@@ -261,7 +266,7 @@ print(json.dumps({'sqrt':root,'factorial':fact}))`]));
         }
         preflight.close();
         let actorSerial = 0;
-        const scenarios = (quick ? [2] : [10, 30, 60]).flatMap(count => [0, quick ? 1 : 2].map(heavyCount => ({count, heavyCount, seconds: duration})));
+        const scenarios = levels.flatMap(count => [0, quick ? 1 : 2].map(heavyCount => ({count, heavyCount, seconds: duration})));
         if (sustained) scenarios.push({count: 30, heavyCount: 2, seconds: sustained, sustained: true});
         for (const scenario of scenarios) {
             const {count, heavyCount, seconds} = scenario;

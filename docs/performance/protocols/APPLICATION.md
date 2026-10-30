@@ -346,6 +346,8 @@ Defaults: 10/30/60 clients, 250-ms think time, 20 seconds each with zero/two
 concurrent `100000!` clients, then 120 seconds at 30 clients plus two heavy jobs.
 `--seconds 2..60`, `--sustain-seconds 0..300`, `--python PATH` change those scopes;
 `--quick` uses two clients and short fixtures, establishing harness correctness.
+Use `--clients 1..60` for one client level and `--accounts-image LOCAL_IMAGE` for
+an isolated candidate comparison; all other images remain pinned to deployment.
 Login/relogin, user identity, logout-cookie replay, private C values, 1000-place
 sqrt and factorial projections are verified. Python Decimal/math provide separate
 mathematical references prepared outside measurement.

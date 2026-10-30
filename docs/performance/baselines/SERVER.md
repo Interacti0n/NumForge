@@ -458,8 +458,34 @@ PC slowdown. During the sustained phase, per-service median memory remained
 within about 1 MiB between its initial/final 20-second windows. This short run
 does not establish long-term stability.
 
-At 60 clients, session reads and concurrent login bursts queue noticeably.
-Compare persistent/healthy DB connections and bounded authentication concurrency
-before changing worker counts; no production limits or login policy were changed.
+At 60 clients, session reads and concurrent login bursts queue noticeably,
+motivating the connection comparison below. No production limits or login policy
+were changed in this initial recording.
 Client-state checks are not authenticated C-session authorization; that binding
 remains separate planned work.
+
+### Persistent account connections
+
+The same deployed images were compared with only Django connection reuse changed:
+zero lifetime versus 60 seconds with per-request health checks. Gunicorn remained
+one worker/two threads; Argon2 and login limits were unchanged. Three serial pairs
+ran in A/B, B/A, A/B order, with fresh data, 60 clients, 250-ms think time and
+10 active seconds per phase. Median **run p95**, including queued relogins:
+
+| Heavy jobs | Account session before/after ms | Login burst before/after ms |
+| ---: | ---: | ---: |
+| 0 | 4541 / 1305 | 5572 / 3767 |
+| 2 | 2945 / 1283 | 5266 / 3803 |
+
+Desktop contention caused wide variation: session p95 without heavy jobs ranged
+2000–5747 ms before and 439–2056 ms after. Each short phase opened 652–970 DB
+connections before versus two after. The final pair added 75 seconds at 30+2:
+session p50/p95 fell from 60/126 to 16/37 ms, with 6908 versus eight new connections,
+including connection expiry. Login bursts still queue; this is not instant login
+or an internet capacity guarantee.
+
+All 54,569 fixture responses verified, including 60 expected shared-IP 429s;
+14 separate public probes passed. TLS/browser/identity checks, logout replay,
+full-row restore and the first authenticated request after DB restart passed.
+Raw runs, pinned images, driver hash and summary: ignored
+`build/accounts-connections-20261030/{A1,B1,B2,A2,A3,B3}/` and `summary.json`.
