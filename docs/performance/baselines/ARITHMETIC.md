@@ -164,6 +164,110 @@ verification logs. Metadata preserves binary/source/fixture hashes and exact
 compiler settings. The previous rational and square tables describe their own
 earlier revisions and must not be compared across runs to infer another gain.
 
+## Multiply-add carry chains
+
+31 October 2026, baseline `58d5643`, optimized `82d4d37`, following the
+full-width limb change above.
+Classical products, Karatsuba leaves and the off-diagonal square triangle now
+share an exact `a*b + addend + carry` primitive. GCC/Clang use unsigned 128-bit
+arithmetic; MSVC x64 uses multiplication and two explicit add/carry chains.
+The portable C path retains the original decomposition and overflow arithmetic.
+Even four `UINT64_MAX` inputs sum to at most `2^128-1`; no high bit is discarded.
+There is no new allocation, CPU-feature requirement or installed API. Dispatch
+thresholds, scratch/admission plans, precision and cancellation checkpoints are
+unchanged.
+
+Windows x64, Ryzen 7 7435HS; GCC 16.2 `-O3 -DNDEBUG` and MSVC 19.51
+`/O2 /Ob2 /DNDEBUG`, allocation statistics/failure hooks enabled in both versions.
+Seven immediate fresh-process pairs per direct fixture and per complete
+factorial/root corpus; reverse order on even pairs. Direct entries below are
+medians of seven process medians, each using seven calibrated 5-ms samples.
+Independent complete references are checked outside timing; live-memory probes
+are separate. No own concurrent build/test/other benchmark, affinity or
+frequency lock. Unrelated host activity and frequency changes are uncontrolled.
+
+| Operation/input limbs | GCC before / after µs | MSVC before / after µs |
+| --- | ---: | ---: |
+| Distinct 32-limb product | 1.562 / 1.021 | 2.703 / 2.180 |
+| Distinct 64-limb product | 5.772 / 3.475 | 9.563 / 8.645 |
+| Distinct 128-limb product | 12.929 / 12.913 | 32.263 / 25.945 |
+| Distinct 256-limb product | 42.265 / 38.952 | 96.552 / 82.126 |
+| Distinct 1024-limb product | 755.986 / 692.837 | 915.517 / 841.450 |
+| Distinct 4096-limb product | 6127.900 / 6693.100 | 9081.600 / 6971.400 |
+| Unequal 104-by-242-limb product | 63.005 / 40.399 | 38.997 / 30.083 |
+| Same-object 64-limb square, separate output | 6.733 / 5.671 | 6.439 / 6.022 |
+| `5^3324` | 10.295 / 8.011 | 5.417 / 5.436 |
+
+The 32/64-limb GCC product ranges do not overlap (1.449–1.771 /
+0.899–1.186 µs and 5.581–6.151 / 3.267–3.866 µs). MSVC 32/128-limb ranges
+also separate. Other rows are noisier: GCC 128/4096-limb paired median speedups
+are 0.962/0.984; MSVC square and power controls are approximately 1.005/1.010.
+Retain these apparent slowdowns/flat results rather than inferring a universal
+improvement from selected medians.
+
+### Complete calculations
+
+The public callback search for `sqrt(2)` keeps exact rational intermediates and
+independent Newton/residual validation. A second seven-pair root corpus follows
+the first recording; no binaries/settings changed between batches.
+
+| Compiler | First batch before / after ms, 1000 places | Follow-up before / after ms | Median paired speedup, first / follow-up |
+| --- | ---: | ---: | ---: |
+| GCC | 95.358 / 78.232 | 125.116 / 90.280 | 1.219 / 1.269 |
+| MSVC | 164.083 / 151.769 | 103.467 / 99.075 | 1.113 / 1.026 |
+
+These are process medians, while the last column is the median of each
+immediate before/after pair's ratio. They are different statistics. Host drift
+is visible even in the unchanged baseline; do not compare absolute times
+across batches. The GCC paired ratios correspond to about 18–21% shorter time.
+MSVC's smaller, variable root effect and overlapping ranges do not establish
+a stable magnitude. Low-precision root controls also overlap and can look
+slower; every recording remains in the raw data.
+
+All 1000-place searches use 3324 iterations, 3327 evaluations, 225,161
+allocation calls and 54,918,875 cumulative requested bytes. Separate runs
+within the 64-MiB allocation budget pass, including independent validation.
+Direct allocation counts/bytes and tracked live/peak payload are identical.
+Factorial parse/evaluate/format allocation counts/bytes also match.
+
+The existing calculator factorial diagnostic validates complete scientific
+output. Its evaluation medians are 117.769 / 115.677 ms (GCC) and
+235.657 / 226.432 ms (MSVC) for `100000!`; `50000!` is 33.822 / 31.735 and
+65.037 / 62.452 ms. Ranges overlap, and paired median speedups are only
+1.014/1.026 for `100000!`. No substantial factorial speedup is claimed.
+
+### Validation and rejected experiments
+
+All 118 GCC benchmark-build tests and 85 ordinary MSVC tests pass. Both
+compilers additionally verify 1,399 full Node BigInt references, 1,252 independent
+power/square references and 23,614 Python Fraction/Decimal cases. A complete
+forced-portable multiplication build passes the same reference corpora and
+eight selected core/failure suites. The native/portable primitive targets each
+check 45,380 plain products plus 36,864 accumulated products, using independent
+base-256 convolution; accumulated cases include the full 8-by-8-by-8-by-8
+boundary grid and 32,768 deterministic random quadruples.
+
+Linux Release builds successfully. Linux AddressSanitizer/UndefinedBehaviorSanitizer
+checks with leak detection pass 133 BigInt tests, seven property tests and both
+three-test primitive variants. The final diagnostic uses explicit non-PIE
+executables. An initial PIE sanitizer invocation hung with repeated
+`DEADLYSIGNAL` messages and no source report; isolated plain, UBSan, ASan PIE and
+ASan non-PIE repetitions passed. The initial failure/retry records are retained;
+the final clean run does not diagnose that initial hang. No browser/WAN or
+deployment performance claim is added by this arithmetic-only change.
+
+Threshold exploration did not justify changing the existing dispatch. A
+separate trial grouping inner-loop budget checks preserved checkpoint positions
+but gave small/variable complete-calculation results; it was not retained.
+Those preliminary recordings are not the selected carry-chain comparison.
+
+Raw ignored directory: `build/performance-crossover/`. Selected files are
+`madd-metadata.json`, `madd-data.json`, `madd-summary.json`, `madd-*.csv` and
+`followup-summary.json`/`followup-*.csv`; separate bounded, compiler, native,
+reference and Linux diagnostic logs accompany them. Metadata preserves binary
+and source hashes. `exploration-*` and `candidate-*` belong to the rejected
+threshold/chunk investigations, not the final change.
+
 ## Allocation reuse
 
 MSVC 19.51, medians of three fresh serial processes. GCD baseline `1b19e2c`,

@@ -156,6 +156,9 @@ Production uses budget-aware Karatsuba, bounded factorial trees and the
 resource boundaries. The [power and square follow-up](../baselines/ARITHMETIC.md#symmetric-squares-and-powers)
 records the symmetric-square entry; [rational arithmetic](../baselines/RATIONAL.md)
 records composition into public roots and exact modules.
+The [multiply-add carry follow-up](../baselines/ARITHMETIC.md#multiply-add-carry-chains)
+records the shared full-width accumulator, independent carry-boundary checks
+and measured differences between direct products and complete calculations.
 Older schoolbook-only and pre-admission factorial timings
 are superseded and remain in Git history. Private square/tree adapters support
 controlled comparisons; public operation signatures remain unchanged.
