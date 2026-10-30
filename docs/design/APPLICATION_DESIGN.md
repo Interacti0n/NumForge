@@ -67,23 +67,19 @@ Proposed pilot caps: 100 workspaces/25 MiB per user, 1 MiB/workspace and
 200 KiB/history entry, retaining stricter tool limits. Reject oversized values
 without truncation. These are proposed defaults, not current guarantees.
 
-### Implementation order and completion gates
+### Remaining completion gates
 
-1. Local PostgreSQL, migrations, separate runtime/migration credentials outside
-   Git and tested backup/restore exist. Automatic DB startup, backup scheduling
-   and deployment integration remain pending.
-2. Private pilot API has login/logout, remembered sessions, expiry, CSRF and
-   database-backed attempt limits, with measured Argon2id. The optional HTTPS
-   gateway authenticates forwarded metadata; SK/EN UI is integrated. Other-device
-   management and public registration/recovery remain pending.
-3. Defaults/named inputs, guest import, autosave, quotas/conflicts; verify backend/
+1. Automate pilot startup/tunnel recovery, public health checks, protected backup
+   scheduling/retention and expired-session cleanup; verify a real host reboot.
+2. Defaults/named inputs, guest import, autosave, quotas/conflicts; verify backend/
    DB restart, second-browser restore and two-user isolation.
-4. Device management/export/deletion/recovery. Test mail verification/reset before
+3. Device management/export/deletion/recovery. Test mail verification/reset before
    public registration; private users can be manually provisioned.
-5. Typed C restore plus authenticated execution bridge; then optional saved
+4. Typed C restore plus authenticated execution bridge; then optional saved
    history/variables/ans.
-6. Verify revoked sessions, cross-user access, sign-out/cache isolation, lost
-   writes, outages, migration rollback, recovery and mixed load before deployment.
+5. Extend existing authentication/restore checks to saved data: revoked sessions,
+   cross-user access, logout caches, lost writes, outages and migration recovery.
+   Measure mixed load on the complete deployed stack.
 
 Use Secure/HttpOnly/SameSite cookies with server expiry, never browser-stored
 credentials. A changed tunnel origin requires signing in again, not losing DB

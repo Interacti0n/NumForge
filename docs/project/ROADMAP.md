@@ -1,42 +1,44 @@
-# Current scope and roadmap
+# Development priorities
 
-Development order, not a delivery calendar. [API index](../API.md) owns current
-availability; [architecture](../design/ARCHITECTURE.md) owns module boundaries.
-
-## Available in the current source
-
-Standalone numeric types, a public expression engine, exact linear/quadratic
-solving, rational matrices/general systems, statistics/regression, grids/sampling,
-bounded roots and finite-interval integration. C/C++ and experimental Python
-share C kernels. The SK/EN application adds calculator sessions, units/currencies,
-graphs with files/image export, equations and a matrix editor.
-
-Typed math needs no web/session/database. See the [API index](../API.md) for exact
-interface coverage; published downloads may lag source.
+Open work in recommended order, not a delivery calendar. Current capabilities
+belong to the [API index](../API.md), boundaries to [architecture](../design/ARCHITECTURE.md).
+Completed foundations are not repeated as tasks here.
 
 ## Execution order and completion gates
 
-1. **Stages 1–4 complete:** modular structure, documentation/testing workflow,
-   C/Python integration and equation/graph/package foundations.
-2. **Stage 5 open: operating validation on the Windows preview PC.** Workers,
-   bounded queues, session quotas/expiry, hidden recovery, package restart/rollback
-   and [local/HTTPS load checks](../performance/baselines/SERVER.md) exist. The
-   4-worker/64-slot BelowNormal profile has no hard CPU/RAM cap. Real reboot/login
-   validation remains deferred; do not mark this stage complete before it passes.
-3. **Review the unified UI** on actual desktop/mobile devices; fix concrete
-   usability findings without replacing mathematical algorithms.
-4. **Next selected feature: PostgreSQL accounts and saved work.** Follow the
-   [account proposal](../design/APPLICATION_DESIGN.md#proposed-accounts-and-saved-work).
-   [Local storage foundation](../guides/ACCOUNTS_STORAGE.md), migrations and
-   backup/restore checks, private login/logout API, HTTPS gateway and SK/EN UI exist.
-   Next: owner-scoped saved preferences and named workspaces. A
-   [Compose deployment](../guides/CONTAINERS.md) and CI
-   integration check exist. Docker Desktop/WSL are installed and the local
-   full-stack check passed on the preview PC; recovery after the pending Windows
-   reboot remains unverified. Current calculator sessions remain anonymous/memory-only.
-5. Add subsequent mathematics through one owning module and the
-   [feature checklist](FEATURE_CHECKLIST.md). Push/publication require their
-   own authorization.
+1. **Close stage 5: reliable pilot operation.** Automate Docker/pilot-tunnel
+   startup and recovery, including changed tunnel origin and public HTTPS health.
+   Schedule protected backups, off-PC copies, restore drills and expired-session
+   cleanup. Verify a real Windows reboot/login and representative mixed load on
+   the complete C/Django/PostgreSQL stack. Existing C-server measurements do not
+   certify this stack. Host responsiveness and resource limits need that evidence.
+2. **Account-scoped preferences.** Persist language/precision/notation/rounding/
+   angle defaults, validate ownership and revisions, explicitly import guest data
+   and clear account state on logout. Gate: restart/second-browser persistence,
+   two-user isolation and concurrent-tab checks.
+3. **Named workspaces.** Save inputs/settings first: create/load/rename/duplicate/
+   delete with schema versions and quotas, restoring without calculation. Then
+   optional autosave with offline recovery and conflict handling. Gate: different
+   devices, forbidden IDs, limits and failed/concurrent writes.
+4. **Account lifecycle.** Profile/password controls, device revocation, export/
+   deletion and backup-retention policy. Public registration follows tested email
+   verification/reset and reauthentication for sensitive changes.
+5. **Typed calculation restore.** Bind private C sessions to authenticated owners,
+   then add bounded transactional value/context import. Never replay expressions
+   or random calls to reconstruct state. Gate: exact values, cross-user denial
+   and unchanged state on malformed/oversized/failed import.
+
+[Account contracts](../guides/ACCOUNTS_STORAGE.md) ·
+[Storage design](../design/APPLICATION_DESIGN.md#proposed-accounts-and-saved-work) ·
+[Compose operation](../guides/CONTAINERS.md).
+
+## Checks alongside development
+
+Finish outstanding numerical/regression/CI changes with independent references
+and comparable measurements. Validate touch keyboard, copying, login and graph
+gestures on physical devices; browser viewport emulation does not close that gate.
+After an explicitly requested push, verify CI for that exact revision, including
+account/container jobs. Older green CI does not validate newer local work.
 
 [Concurrency ownership](../design/ARCHITECTURE.md#concurrent-server-prerequisites) ·
 [Operating limits](../guides/HOSTING.md#capacity-and-state) ·
