@@ -60,6 +60,8 @@ if(BUILD_TESTING)
             matrix_benchmark statistics_benchmark polynomial_benchmark)
         numforge_benchmark_check(${target}_smoke 120 ${target})
     endforeach()
+    numforge_benchmark_check(numerical_benchmark_bounded_precision 120 numerical_benchmark
+        --high-precision --allocation-limit-mib 64)
     foreach(kernel IN ITEMS grid refinement curve phase integral)
         numforge_benchmark_check(numerical_sampling_${kernel}_smoke 120 numerical_sampling_benchmark ${kernel})
     endforeach()

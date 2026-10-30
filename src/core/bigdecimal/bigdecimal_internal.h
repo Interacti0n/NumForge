@@ -87,6 +87,11 @@ BigDecimalStatus bigdecimal_round_significant(
     int64_t digits,
     BigDecimalRoundingMode rounding
 );
+/* Borrowed raw integer coefficients, including trailing zeros. The positive
+ * denominator and numerator must already be coprime. Output is normalized and
+ * atomic; terminating fractions retain their complete exact decimal text. */
+BigDecimalStatus bigdecimal_from_reduced_fraction(BigDecimal *result, const BigInt *numerator,
+    const BigInt *denominator, int64_t digits, BigDecimalRoundingMode rounding);
 
 /* Per-call owned workspace: zero-initialize, clear once after the series.
  * Inputs/outputs must not refer to workspace fields. Output may alias input;

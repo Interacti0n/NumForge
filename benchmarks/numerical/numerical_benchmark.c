@@ -1,11 +1,12 @@
 #include "examples/sdk/numerical_function.h"
 #include "benchmarks/common/benchmark_clock.h"
 #include "src/runtime/numforge_alloc.h"
+#include "src/runtime/instrumentation/decimal_profile.h"
 #include <numforge/runtime.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-static int run_case(size_t digits)
+static int run_case(size_t digits, bool profile, size_t allocation_limit)
 {
     NumericalFunction f = {0}; NumForgeRoot *root = NULL;
     BigRational *lower = bigrational_create(), *width = bigrational_create();
@@ -21,14 +22,30 @@ static int run_case(size_t digits)
     options.x_tolerance = width; options.residual_tolerance = tolerance;
     /* Cumulative requested bytes can exceed live memory substantially at 1000
      * places; report that traffic instead of imposing the application's cap. */
-    budget = numforge_budget_begin(120000, SIZE_MAX, 8U*1024U*1024U);
+    budget = numforge_budget_begin(120000, allocation_limit, 8U*1024U*1024U);
     if (!budget) goto done;
-    numforge_alloc_stats_reset(); double start = benchmark_seconds();
+    numforge_alloc_stats_reset();
+    if (profile) numforge_decimal_profile_reset();
+    double start = benchmark_seconds();
     NumForgeNumericalStatus status = numforge_root_solve(&root, numerical_function_evaluate,
         numerical_function_domain, &f, lower, f.two, &options);
     double stop = benchmark_seconds();
+    if (profile) {
+        numforge_decimal_profile_stop();
+        const char *names[] = {"add","sub","mul","div","mod","pow","gcd","divmod"};
+        for (int i = 0; i < NUMFORGE_DECIMAL_OPERATIONS; ++i)
+            fprintf(stderr,"profile,%zu,%s,%zu,%.3f\n",digits,names[i],
+                numforge_decimal_operation_calls((NumForgeDecimalOperation)i),
+                numforge_decimal_operation_seconds((NumForgeDecimalOperation)i)*1e9);
+        for (int i = 0; i < NUMFORGE_DECIMAL_PHASES; ++i)
+            fprintf(stderr,"phase,%zu,%d,%.3f\n",digits,i,numforge_decimal_profile_seconds((NumForgeDecimalPhase)i)*1e9);
+        if (!numforge_decimal_profile_complete()) goto done;
+    }
     size_t calls = numforge_alloc_stats_calls(), bytes = numforge_alloc_stats_bytes();
-    if (status != NUMFORGE_NUMERICAL_OK || numforge_root_kind(root) != NUMFORGE_ROOT_FOUND || start < 0 || stop < start) goto done;
+    if (status != NUMFORGE_NUMERICAL_OK || numforge_root_kind(root) != NUMFORGE_ROOT_FOUND || start < 0 || stop < start) {
+        fprintf(stderr,"root_stop,%zu,status=%d,budget=%d,requested_bytes=%zu\n",digits,(int)status,(int)numforge_budget_failure(),bytes);
+        goto done;
+    }
     /* Independent Newton sqrt implementation and original residual, outside timing. */
     if (bigdecimal_set_string(expected, "2") != BIGDECIMAL_OK ||
         bigdecimal_sqrt(expected, expected, (int64_t)digits + 10, BIGDECIMAL_ROUND_HALF_EVEN) != BIGDECIMAL_OK ||
@@ -46,7 +63,18 @@ done:
 }
 int main(int argc, char **argv)
 {
+    bool high = false, profile = false;
+    size_t limit = SIZE_MAX;
+    for (int i = 1; i < argc; ++i) {
+        if (!strcmp(argv[i],"--high-precision")) high = true;
+        else if (!strcmp(argv[i],"--profile")) profile = true;
+        else if (!strcmp(argv[i],"--allocation-limit-mib") && i+1 < argc) {
+            char *end; unsigned long mib = strtoul(argv[++i], &end, 10);
+            if (!mib || mib > 1024 || *end) return 2;
+            limit = (size_t)mib * 1048576U;
+        } else return 2;
+    }
     puts("case,absolute_digits,elapsed_ms,iterations,evaluations,allocations,requested_bytes,verification");
-    if (run_case(12) || run_case(100)) return 1;
-    return argc > 1 && strcmp(argv[1], "--high-precision") == 0 ? run_case(1000) : 0;
+    if (run_case(12, profile, limit) || run_case(100, profile, limit)) return 1;
+    return high ? run_case(1000, profile, limit) : 0;
 }

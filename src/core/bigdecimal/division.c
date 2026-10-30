@@ -87,12 +87,52 @@ static BigDecimalStatus remove_binary_factors(BigInt *denominator, int64_t *coun
     return bits ? bigdecimal_from_bigint_status(bigint_shift_right(denominator, denominator, bits)) : BIGDECIMAL_OK;
 }
 
-BigDecimalStatus bigdecimal_div_exact_or_significant(
+/* Produce n/(2^a*5^b) as n*2^(t-a)*5^(t-b), scale t=max(a,b).
+ * The coefficient is private; failures may discard it without publishing any
+ * part of the result. Small powers use a single-limb multiply. */
+static BigDecimalStatus finite_coefficient(BigDecimal *temporary, const BigInt *numerator,
+    const BigInt *denominator, const BigInt *common, const int64_t counts[2], bool reduced)
+{
+    int64_t target = counts[0] > counts[1] ? counts[0] : counts[1];
+    uint64_t twos = (uint64_t)(target - counts[0]), fives = (uint64_t)(target - counts[1]);
+#if SIZE_MAX < UINT64_MAX
+    if (twos > SIZE_MAX) return BIGDECIMAL_VALUE_TOO_LARGE;
+#endif
+    BigDecimalStatus status = bigdecimal_from_bigint_status(reduced || bigint_is_one(common) ?
+        bigint_copy(temporary->coefficient, numerator) : bigint_div(temporary->coefficient, numerator, common));
+    if (status == BIGDECIMAL_OK && bigint_is_negative(denominator))
+        temporary->coefficient->is_negative = !temporary->coefficient->is_negative;
+    if (status == BIGDECIMAL_OK && fives) {
+        if (fives <= 27U) {
+            uint64_t multiplier = 1;
+            for (uint64_t i = 0; i < fives; ++i) multiplier *= 5U;
+            status = bigdecimal_from_bigint_status(bigint_multiply_by_uint64(temporary->coefficient, multiplier));
+        } else {
+            BigInt base, exponent, power = {0}; uint64_t base_storage, exponent_storage;
+            (void)bigint_wrap_uint64(&base, &base_storage, 5U);
+            (void)bigint_wrap_uint64(&exponent, &exponent_storage, fives);
+            status = bigdecimal_from_bigint_status(bigint_pow(&power, &base, &exponent));
+            if (status == BIGDECIMAL_OK) status = bigdecimal_from_bigint_status(
+                bigint_mul(temporary->coefficient, temporary->coefficient, &power));
+            free(power.limbs);
+        }
+    }
+    if (status == BIGDECIMAL_OK && twos)
+        status = bigdecimal_from_bigint_status(bigint_shift_left(temporary->coefficient, temporary->coefficient, (size_t)twos));
+    if (status == BIGDECIMAL_OK) {
+        temporary->scale = target;
+        status = bigdecimal_normalize(temporary);
+    }
+    return status;
+}
+
+static BigDecimalStatus div_exact_or_significant(
     BigDecimal *result,
     const BigDecimal *a,
     const BigDecimal *b,
     int64_t digits,
-    BigDecimalRoundingMode rounding
+    BigDecimalRoundingMode rounding,
+    bool reduced
 )
 {
     BigInt *denominator;
@@ -100,6 +140,7 @@ BigDecimalStatus bigdecimal_div_exact_or_significant(
     BigInt *quotient;
     BigInt *remainder;
     BigDecimal *temporary = NULL;
+    BigInt common = {0};
     BigDecimalStatus status;
     int64_t counts[2] = { 0, 0 };
     bool finite = false;
@@ -133,18 +174,11 @@ BigDecimalStatus bigdecimal_div_exact_or_significant(
         status = BIGDECIMAL_OUT_OF_MEMORY;
         goto cleanup;
     }
-    status = bigdecimal_from_bigint_status(
-        bigint_gcd(factor, a->coefficient, b->coefficient));
-
-    if (status == BIGDECIMAL_OK)
-    {
-        status = bigdecimal_from_bigint_status(bigint_div(denominator, b->coefficient, factor));
-    }
-
-    if (status == BIGDECIMAL_OK)
-    {
-        status = bigdecimal_from_bigint_status(bigint_abs(denominator, denominator));
-    }
+    status = reduced ? BIGDECIMAL_OK : bigdecimal_from_bigint_status(
+        bigint_gcd(&common, a->coefficient, b->coefficient));
+    if (status == BIGDECIMAL_OK) status = bigdecimal_from_bigint_status(reduced || bigint_is_one(&common) ?
+        bigint_abs(denominator, b->coefficient) : bigint_div(denominator, b->coefficient, &common));
+    if (status == BIGDECIMAL_OK) denominator->is_negative = false;
 
     if (status == BIGDECIMAL_OK) status = remove_binary_factors(denominator, &counts[0]);
     /* Strip 5^27 in one limb division before the at-most-26 scalar tail.
@@ -190,10 +224,7 @@ BigDecimalStatus bigdecimal_div_exact_or_significant(
 
     if (finite)
     {
-        BigDecimal numerator = { a->coefficient, 0 };
-        BigDecimal divisor = { b->coefficient, 0 };
         int64_t scale;
-        int64_t target = counts[0] > counts[1] ? counts[0] : counts[1];
 
         temporary = bigdecimal_create();
 
@@ -203,7 +234,7 @@ BigDecimalStatus bigdecimal_div_exact_or_significant(
             goto cleanup;
         }
 
-        status = bigdecimal_div(temporary, &numerator, &divisor, target, rounding);
+        status = finite_coefficient(temporary, a->coefficient, b->coefficient, &common, counts, reduced);
 
         // Normalize coefficient division before combining extreme scales.
         if (status == BIGDECIMAL_OK)
@@ -225,6 +256,7 @@ BigDecimalStatus bigdecimal_div_exact_or_significant(
     }
 
 cleanup:
+    free(common.limbs);
     bigint_destroy(denominator);
     bigint_destroy(factor);
     bigint_destroy(quotient);
@@ -232,6 +264,7 @@ cleanup:
 
     if (status == BIGDECIMAL_OK && finite)
     {
+        if (!numforge_budget_check()) { bigdecimal_destroy(temporary); return BIGDECIMAL_OUT_OF_MEMORY; }
         bigdecimal_commit(result, temporary);
         return BIGDECIMAL_OK;
     }
@@ -244,6 +277,42 @@ cleanup:
     }
 
     return bigdecimal_div_significant(result, a, b, digits, rounding);
+}
+
+BigDecimalStatus bigdecimal_div_exact_or_significant(BigDecimal *result,
+    const BigDecimal *a, const BigDecimal *b, int64_t digits, BigDecimalRoundingMode rounding)
+{
+    return div_exact_or_significant(result, a, b, digits, rounding, false);
+}
+
+BigDecimalStatus bigdecimal_from_reduced_fraction(BigDecimal *result, const BigInt *numerator,
+    const BigInt *denominator, int64_t digits, BigDecimalRoundingMode rounding)
+{
+    if (!result || !numerator || !denominator) return BIGDECIMAL_NULL_ARGUMENT;
+    if (digits < 1 || !bigdecimal_valid_rounding(rounding)) return BIGDECIMAL_INVALID_ARGUMENT;
+    if (bigint_is_one(denominator)) return bigdecimal_from_bigint(result, numerator);
+    size_t power;
+    if (bigint_power_of_two_shift(denominator, &power)) {
+#if SIZE_MAX > INT64_MAX
+        if (power > INT64_MAX) return BIGDECIMAL_SCALE_OVERFLOW;
+#endif
+        int64_t counts[2] = {(int64_t)power, 0};
+        BigInt common = {0};
+        BigDecimal *temporary = bigdecimal_create();
+        if (!temporary) return BIGDECIMAL_OUT_OF_MEMORY;
+        BigDecimalStatus status = finite_coefficient(temporary, numerator, denominator, &common, counts, true);
+        if (status == BIGDECIMAL_OK && !numforge_budget_check()) status = BIGDECIMAL_OUT_OF_MEMORY;
+        if (status == BIGDECIMAL_OK) bigdecimal_commit(result, temporary);
+        else bigdecimal_destroy(temporary);
+        return status;
+    }
+    if (!numforge_budget_check()) return BIGDECIMAL_OUT_OF_MEMORY;
+    /* Borrow raw integer coefficients at scale zero. This private division
+     * stage explicitly accepts trailing decimal zeros; it normalizes only its
+     * owned output. Inputs are canonical rational parts: positive denominator
+     * and gcd(numerator,denominator)=1. No coefficient copy/normalization/GCD. */
+    BigDecimal a = {(BigInt *)numerator, 0}, b = {(BigInt *)denominator, 0};
+    return div_exact_or_significant(result, &a, &b, digits, rounding, true);
 }
 
 // The destination is a fresh private magnitude. Multiply decimal chunks

@@ -31,6 +31,12 @@ def fixtures(random_count=0):
             ("finite_mixed", Fraction(n + 1, 2**(bits+3) * 5**(bits-1)), Fraction(1, 7)),
         ):
             pairs.append((f"{shape}_{bits}", a, b))
+    # Scalar 5^27 versus multi-limb 5^28, binary limb boundaries, and the
+    # integer shortcut. Both orientations exercise the exact finite converter.
+    for power in (0, 1, 26, 27, 28, 63, 64, 65, 127, 128, 129):
+        a, b = Fraction(7, 2**power), Fraction(-11, 5**power)
+        pairs.append((f"binary_boundary_{power}", a, b))
+        pairs.append((f"five_boundary_{power}", b, a))
     rng = random.Random(20261030)
     for i in range(random_count):
         bits = rng.choice((8, 64, 255, 1024))

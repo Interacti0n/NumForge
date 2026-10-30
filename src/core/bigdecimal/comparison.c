@@ -17,10 +17,6 @@ BigDecimalStatus bigdecimal_compare(
     const BigDecimal *b
 )
 {
-    char *a_text;
-    char *b_text;
-    const char *a_digits;
-    const char *b_digits;
     size_t a_length;
     size_t b_length;
     bool a_negative;
@@ -67,42 +63,45 @@ BigDecimalStatus bigdecimal_compare(
         return BIGDECIMAL_OK;
     }
 
-    a_text = bigint_to_string(a->coefficient);
-    b_text = bigint_to_string(b->coefficient);
-    if (a_text == NULL || b_text == NULL)
-    {
-        free(a_text);
-        free(b_text);
-        return BIGDECIMAL_OUT_OF_MEMORY;
+    size_t a_low = 0, a_high = 0, b_low = 0, b_high = 0;
+    BigDecimalStatus status = bigdecimal_from_bigint_status(bigint_decimal_digit_bounds(a->coefficient, &a_low, &a_high));
+    if (status == BIGDECIMAL_OK) status = bigdecimal_from_bigint_status(bigint_decimal_digit_bounds(b->coefficient, &b_low, &b_high));
+    if (status != BIGDECIMAL_OK) return status;
+    /* Prove disjoint exponent intervals before asking for exact digit counts.
+     * This is integer arithmetic, including scale extremes; no float estimate
+     * or textual prefix decides the comparison. */
+    if (bigdecimal_compare_exponents(bigdecimal_decimal_exponent(a_low, a->scale),
+                                    bigdecimal_decimal_exponent(b_high, b->scale)) > 0)
+        magnitude_comparison = 1;
+    else if (bigdecimal_compare_exponents(bigdecimal_decimal_exponent(a_high, a->scale),
+                                         bigdecimal_decimal_exponent(b_low, b->scale)) < 0)
+        magnitude_comparison = -1;
+    if (magnitude_comparison) {
+        *comparison = a_negative ? -magnitude_comparison : magnitude_comparison;
+        return BIGDECIMAL_OK;
     }
-
-    a_digits = a_text + (a_negative ? 1 : 0);
-    b_digits = b_text + (b_negative ? 1 : 0);
-    a_length = strlen(a_digits);
-    b_length = strlen(b_digits);
+    a_length = a_low; b_length = b_low;
+    if (a_low != a_high) status = bigdecimal_from_bigint_status(bigint_decimal_digits(a->coefficient, &a_length));
+    if (status == BIGDECIMAL_OK && b_low != b_high) status = bigdecimal_from_bigint_status(bigint_decimal_digits(b->coefficient, &b_length));
+    if (status != BIGDECIMAL_OK) return status;
     a_exponent = bigdecimal_decimal_exponent(a_length, a->scale);
     b_exponent = bigdecimal_decimal_exponent(b_length, b->scale);
     magnitude_comparison = bigdecimal_compare_exponents(a_exponent, b_exponent);
 
     if (magnitude_comparison == 0)
     {
-        size_t longest = a_length > b_length ? a_length : b_length;
-
-        for (size_t index = 0; index < longest; index++)
-        {
-            char a_digit = index < a_length ? a_digits[index] : '0';
-            char b_digit = index < b_length ? b_digits[index] : '0';
-
-            if (a_digit != b_digit)
-            {
-                magnitude_comparison = a_digit < b_digit ? -1 : 1;
-                break;
-            }
-        }
+        BigInt aligned = {0};
+        if (a_length < b_length) {
+            status = bigdecimal_align_coefficient_digits(&aligned, a->coefficient, b_length - a_length);
+            if (status == BIGDECIMAL_OK) magnitude_comparison = bigint_compare_abs(&aligned, b->coefficient);
+        } else if (b_length < a_length) {
+            status = bigdecimal_align_coefficient_digits(&aligned, b->coefficient, a_length - b_length);
+            if (status == BIGDECIMAL_OK) magnitude_comparison = bigint_compare_abs(a->coefficient, &aligned);
+        } else magnitude_comparison = bigint_compare_abs(a->coefficient, b->coefficient);
+        free(aligned.limbs);
+        if (status != BIGDECIMAL_OK) return status;
     }
 
-    free(a_text);
-    free(b_text);
     *comparison = a_negative ? -magnitude_comparison : magnitude_comparison;
     return BIGDECIMAL_OK;
 }

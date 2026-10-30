@@ -325,8 +325,6 @@ BigRationalStatus bigrational_to_string(const BigRational *value, char **result)
 BigRationalStatus bigrational_to_bigdecimal(BigDecimal *result, const BigRational *value, int64_t digits,
                                             BigDecimalRoundingMode rounding)
 {
-    BigDecimal *numerator, *denominator;
-    BigRationalStatus status;
     if (result == NULL || value == NULL)
     {
         return BIGRATIONAL_NULL_ARGUMENT;
@@ -335,27 +333,8 @@ BigRationalStatus bigrational_to_bigdecimal(BigDecimal *result, const BigRationa
     {
         return BIGRATIONAL_INVALID_ARGUMENT;
     }
-    numerator = bigdecimal_create();
-    denominator = bigdecimal_create();
-    if (numerator == NULL || denominator == NULL)
-    {
-        bigdecimal_destroy(numerator);
-        bigdecimal_destroy(denominator);
-        return BIGRATIONAL_OUT_OF_MEMORY;
-    }
-    status = rational_from_decimal_status(bigdecimal_from_bigint(numerator, value->numerator));
-    if (status == BIGRATIONAL_OK)
-    {
-        status = rational_from_decimal_status(bigdecimal_from_bigint(denominator, value->denominator));
-    }
-    if (status == BIGRATIONAL_OK)
-    {
-        status = rational_from_decimal_status(
-            bigdecimal_div_exact_or_significant(result, numerator, denominator, digits, rounding));
-    }
-    bigdecimal_destroy(numerator);
-    bigdecimal_destroy(denominator);
-    return status;
+    return rational_from_decimal_status(bigdecimal_from_reduced_fraction(
+        result, value->numerator, value->denominator, digits, rounding));
 }
 
 BigRationalStatus bigrational_compare(int *comparison, const BigRational *a, const BigRational *b)

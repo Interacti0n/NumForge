@@ -13,7 +13,7 @@
  * ownership and budget conventions.
  */
 
-static bool power_of_two_shift(const BigInt *value, size_t *shift)
+bool bigint_power_of_two_shift(const BigInt *value, size_t *shift)
 {
     if (!value->size) return false;
     uint64_t high = value->limbs[value->size - 1U];
@@ -68,8 +68,8 @@ BigIntStatus bigint_gcd( /*Greatest common divisor for BigInts (gcd(a,b)) via th
     if (!numforge_budget_check()) return BIGINT_OUT_OF_MEMORY;
 
     size_t power;
-    if (power_of_two_shift(a, &power)) return gcd_power_of_two(result, b, power);
-    if (power_of_two_shift(b, &power)) return gcd_power_of_two(result, a, power);
+    if (bigint_power_of_two_shift(a, &power)) return gcd_power_of_two(result, b, power);
+    if (bigint_power_of_two_shift(b, &power)) return gcd_power_of_two(result, a, power);
     if (!numforge_budget_check()) return BIGINT_OUT_OF_MEMORY;
 
     BigInt x;

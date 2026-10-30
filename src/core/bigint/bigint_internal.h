@@ -36,6 +36,12 @@ struct BigInt
  * inverse division in 27-zero blocks if scratch fits; scalar tails/fallback
  * retain blocks up to 19. Failure may partially reduce a private temporary. */
 BigIntStatus bigint_strip_decimal_zeros(BigInt *value, uint64_t *removed);
+/* Conservative decimal digit bounds, exact for single limbs. They permit
+ * exponent comparisons without conversion or an ambiguous exact digit count. */
+BigIntStatus bigint_decimal_digit_bounds(const BigInt *value, size_t *lower, size_t *upper);
+/* Magnitude predicate. False also propagates a sticky budget failure; callers
+ * must check the enclosing budget before choosing a general fallback. */
+bool bigint_power_of_two_shift(const BigInt *value, size_t *shift);
 BigIntStatus bigint_strip_decimal_zeros_classic(BigInt *value, uint64_t *removed);
 BigIntStatus bigint_strip_decimal_zeros_inverse(BigInt *value, uint64_t *removed, unsigned block);
 

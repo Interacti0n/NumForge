@@ -9,29 +9,35 @@
 #include <string.h>
 
 
+BigIntStatus bigint_decimal_digit_bounds(const BigInt *value, size_t *lower, size_t *upper)
+{
+    if (!value || !lower || !upper) return BIGINT_NULL_ARGUMENT;
+    if (!numforge_budget_check()) return BIGINT_OUT_OF_MEMORY;
+    if (value->size <= 1U) {
+        uint64_t leading = value->size ? value->limbs[0] : 0U;
+        size_t count = 1;
+        while (leading >= 10U) { leading /= 10U; ++count; }
+        *lower = *upper = count;
+        return BIGINT_OK;
+    }
+    size_t bits = bigint_bit_length(value);
+    /* Strict rational bounds on log10(2), split to avoid size_t overflow. */
+    *lower = ((bits - 1U) / 100000U) * 30102U
+           + (((bits - 1U) % 100000U) * 30102U) / 100000U + 1U;
+    *upper = (bits / 100000U) * 30103U
+           + ((bits % 100000U) * 30103U + 99999U) / 100000U;
+    return BIGINT_OK;
+}
+
 BigIntStatus bigint_decimal_digits(const BigInt *value, size_t *digits)
 {
-    size_t bits, lower, upper, count = 0U;
+    size_t lower, upper, count = 0U;
     uint64_t leading;
     BigInt scratch = { NULL, 0U, 0U, false };
     BigIntStatus status;
     if (value == NULL || digits == NULL) return BIGINT_NULL_ARGUMENT;
-    if (!numforge_budget_check()) return BIGINT_OUT_OF_MEMORY;
-    if (value->size <= 1U)
-    {
-        leading = value->size == 0U ? 0U : value->limbs[0];
-        count = 1U;
-        while (leading >= 10U) { leading /= 10U; count++; }
-        *digits = count;
-        return BIGINT_OK;
-    }
-    bits = bigint_bit_length(value);
-    // 0.30102 < log10(2) < 0.30103. Split the products to avoid
-    // overflow even on 32-bit targets. Matching bounds prove the count.
-    lower = ((bits - 1U) / 100000U) * 30102U
-          + (((bits - 1U) % 100000U) * 30102U) / 100000U + 1U;
-    upper = (bits / 100000U) * 30103U
-          + ((bits % 100000U) * 30103U + 99999U) / 100000U;
+    status = bigint_decimal_digit_bounds(value, &lower, &upper);
+    if (status != BIGINT_OK) return status;
     if (lower == upper)
     {
         *digits = lower;

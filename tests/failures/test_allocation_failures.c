@@ -2018,6 +2018,86 @@ static void test_series_sum_owners_preserve_alias_on_every_failure(void)
     }
 }
 
+static void test_finite_and_recurring_conversion_paths_are_atomic(void)
+{
+    const char *cases[][3] = {{"1","2","129"},{"-7","5","93"},{"30","7","1"},
+        {"1000","1","1"},{"0","5","1"},{"-1","6","1"}};
+    for (size_t c = 0; c < sizeof(cases)/sizeof(cases[0]); ++c) {
+        BigInt *top = test_integer(cases[c][0]), *bottom = test_integer(cases[c][1]);
+        BigInt *exponent = test_integer(cases[c][2]);
+        BigRational *input = bigrational_create(); BigDecimal *expected_value = bigdecimal_create();
+        char *expected = NULL;
+        TEST_ASSERT_NOT_NULL(input); TEST_ASSERT_NOT_NULL(expected_value);
+        TEST_ASSERT_EQUAL(BIGINT_OK, bigint_pow(bottom, bottom, exponent));
+        TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_set_fraction(input, top, bottom));
+        /* Numerical references are independently checked by Fraction/Decimal;
+         * this ordinary result is only the baseline for fault preservation. */
+        TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_to_bigdecimal(expected_value, input, 17, BIGDECIMAL_ROUND_FLOOR));
+        TEST_ASSERT_EQUAL(BIGDECIMAL_OK, bigdecimal_to_string(expected_value, &expected));
+        for (int deadline = 0; deadline < 2; ++deadline) {
+            bool completed = false;
+            for (size_t index = 1; index < 2048; ++index) {
+                BigDecimal *output = test_decimal("9.5");
+                TEST_ASSERT_TRUE(numforge_budget_begin(60000, SIZE_MAX, SIZE_MAX));
+                numforge_test_allocator_begin(deadline ? 0 : index);
+                if (deadline) numforge_test_budget_expire_after(index);
+                BigRationalStatus status = bigrational_to_bigdecimal(output, input, 17, BIGDECIMAL_ROUND_FLOOR);
+                bool failed = deadline ? numforge_budget_failure() == NUMFORGE_BUDGET_TIME : numforge_test_allocator_did_fail();
+                numforge_budget_end(); numforge_test_allocator_end();
+                if (failed) {
+                    TEST_ASSERT_EQUAL(BIGRATIONAL_OUT_OF_MEMORY, status); test_assert_decimal("9.5", output);
+                } else {
+                    TEST_ASSERT_EQUAL(BIGRATIONAL_OK, status); test_assert_decimal(expected, output); completed = true;
+                }
+                bigdecimal_destroy(output);
+                if (completed) break;
+            }
+            TEST_ASSERT_TRUE(completed);
+        }
+        free(expected); bigdecimal_destroy(expected_value); bigrational_destroy(input);
+        bigint_destroy(top); bigint_destroy(bottom); bigint_destroy(exponent);
+    }
+}
+
+static void test_decimal_comparison_bounds_and_alignment_are_atomic(void)
+{
+    const struct { const char *a, *b; int expected; } cases[] = {
+        {"10000000000000000000000000000000000001E-37","1",1},
+        {"9999999999999999999999999999999999999E-37","1",-1},
+        {"1E-1000000","1E1000000",-1},
+        {"-10000000000000000000000000000000000001E-37","-1",-1}
+    };
+    for (size_t c = 0; c < sizeof(cases)/sizeof(cases[0]); ++c) {
+        BigDecimal *a = test_decimal(cases[c].a), *b = test_decimal(cases[c].b);
+        BigInt *saved_a = bigint_create(), *saved_b = bigint_create();
+        int64_t a_scale = a->scale, b_scale = b->scale;
+        TEST_ASSERT_NOT_NULL(saved_a); TEST_ASSERT_NOT_NULL(saved_b);
+        TEST_ASSERT_EQUAL(BIGINT_OK, bigint_copy(saved_a, a->coefficient));
+        TEST_ASSERT_EQUAL(BIGINT_OK, bigint_copy(saved_b, b->coefficient));
+        for (int deadline = 0; deadline < 2; ++deadline) {
+            bool completed = false;
+            for (size_t index = 1; index < 2048; ++index) {
+                int comparison = 73;
+                TEST_ASSERT_TRUE(numforge_budget_begin(60000, SIZE_MAX, SIZE_MAX));
+                numforge_test_allocator_begin(deadline ? 0 : index);
+                if (deadline) numforge_test_budget_expire_after(index);
+                BigDecimalStatus status = bigdecimal_compare(&comparison, a, b);
+                bool failed = deadline ? numforge_budget_failure() == NUMFORGE_BUDGET_TIME : numforge_test_allocator_did_fail();
+                numforge_budget_end(); numforge_test_allocator_end();
+                if (failed) { TEST_ASSERT_EQUAL(BIGDECIMAL_OUT_OF_MEMORY, status); TEST_ASSERT_EQUAL_INT(73, comparison); }
+                else { TEST_ASSERT_EQUAL(BIGDECIMAL_OK, status); TEST_ASSERT_EQUAL_INT(cases[c].expected, comparison); completed = true; }
+                if (completed) break;
+            }
+            TEST_ASSERT_TRUE(completed);
+        }
+        TEST_ASSERT_EQUAL_INT64(a_scale, a->scale); TEST_ASSERT_EQUAL_INT64(b_scale, b->scale);
+        TEST_ASSERT_EQUAL_INT(0, bigint_compare(saved_a, a->coefficient));
+        TEST_ASSERT_EQUAL_INT(0, bigint_compare(saved_b, b->coefficient));
+        bigint_destroy(saved_a); bigint_destroy(saved_b);
+        bigdecimal_destroy(a); bigdecimal_destroy(b);
+    }
+}
+
 static void test_equal_scale_comparison_without_allocations(void)
 {
     static const struct { const char *a, *b; int expected; } cases[] = {
@@ -2677,6 +2757,8 @@ int main(void)
     RUN_TEST(test_decimal_workspace_scale_boundaries_and_invalid_arguments);
     RUN_TEST(test_decimal_borrowed_coefficients_every_failure);
     RUN_TEST(test_equal_scale_comparison_without_allocations);
+    RUN_TEST(test_finite_and_recurring_conversion_paths_are_atomic);
+    RUN_TEST(test_decimal_comparison_bounds_and_alignment_are_atomic);
     RUN_TEST(test_decimal_digit_count_preserves_output_on_every_failure);
     RUN_TEST(test_sin_cos_pair_atomic_on_every_failure);
     RUN_TEST(test_sinh_cosh_pair_atomic_on_every_failure);

@@ -107,7 +107,16 @@ int main(void)
             if (!status) status = bigdecimal_set_string(db, b);
             if (!status)
             {
-                if (!strcmp(op, "dfmt")) status = bigdecimal_format(da, scale, (BigDecimalRoundingMode)rounding, &text);
+                if (!strcmp(op, "dcmp")) {
+                    int comparison = 0;
+                    status = bigdecimal_compare(&comparison, da, db);
+                    if (!status) {
+                        text = malloc(4U);
+                        if (text) (void)snprintf(text, 4U, "%d", (comparison > 0) - (comparison < 0));
+                        else status = BIGDECIMAL_OUT_OF_MEMORY;
+                    }
+                }
+                else if (!strcmp(op, "dfmt")) status = bigdecimal_format(da, scale, (BigDecimalRoundingMode)rounding, &text);
                 else if (!strcmp(op, "dadd")) status = bigdecimal_add(dr, da, db);
                 else if (!strcmp(op, "dsub")) status = bigdecimal_sub(dr, da, db);
                 else if (!strcmp(op, "dmul")) status = bigdecimal_mul(dr, da, db);
@@ -139,7 +148,7 @@ int main(void)
                 else if (!strcmp(op, "atanh")) status = bigdecimal_atanh(dr, da, scale, (BigDecimalRoundingMode)rounding);
                 else status = 99;
             }
-            if (!status && strcmp(op, "dfmt")) status = bigdecimal_to_string(dr, &text);
+            if (!status && strcmp(op, "dfmt") && strcmp(op, "dcmp")) status = bigdecimal_to_string(dr, &text);
         }
         if (status || !text) printf("ERROR %d\n", status);
         else puts(text);

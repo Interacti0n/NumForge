@@ -31,6 +31,42 @@ function round(n,d,mode) {
 const cases=[];
 function add(op,a,b,s,m,expected){cases.push({input:`${op} ${a} ${b} ${s} ${m}`,expected:String(expected)});}
 
+// Exact decimal ordering without constructing enormous powers of ten. The
+// reference compares signed digit positions and right-padded integer strings;
+// it is independent of C's bit bounds and coefficient alignment.
+function compareDecimal(a,ea,b,eb) {
+  if(a===0n||b===0n||(a<0n)!==(b<0n))return a<b?-1:a>b?1:0;
+  const left=abs(a).toString(),right=abs(b).toString();
+  const lp=BigInt(left.length)+BigInt(ea),rp=BigInt(right.length)+BigInt(eb);
+  let order=lp<rp?-1:lp>rp?1:0;
+  if(!order){const n=Math.max(left.length,right.length),l=left.padEnd(n,'0'),r=right.padEnd(n,'0');order=l<r?-1:l>r?1:0;}
+  return a<0n?-order:order;
+}
+function compareCase(a,ea,b,eb){add('dcmp',`${a}E${ea}`,`${b}E${eb}`,0,0,compareDecimal(a,ea,b,eb));}
+const seedBeforeComparison=seed;
+for(const digits of [1,18,19,20,38,39,64,100,500,2000,4096]) {
+  const n=pow(digits);
+  for(const sign of [1n,-1n]) for(const [a,ea,b,eb] of [
+    [n-1n,-digits,1n,0],[n+1n,-digits,1n,0],
+    [n*10n-1n,-digits,n,-digits+1],[n*10n+1n,-digits,n,-digits+1],
+    [n+1n,-digits,n+3n,-digits],[n+1n,-digits,n*10n+10n,-digits-1]]) {
+    compareCase(sign*a,ea,sign*b,eb);compareCase(sign*b,eb,sign*a,ea);
+  }
+}
+for(let i=0;i<1500;i++) {
+  const a=integer(),b=integer();
+  const ea=i%3===0?-abs(a).toString().length:rnd(401)-200;
+  const eb=i%3===0?-abs(b).toString().length:rnd(401)-200;
+  compareCase(a,ea,b,eb);
+}
+for(const exponent of [9223372036854775807n,-9223372036854775807n])
+  for(const sign of [1n,-1n]) {
+    compareCase(sign*10000000000000000001n,exponent,sign,exponent);
+    compareCase(sign*99999999999999999999n,exponent- (exponent>0n?1n:0n),sign,exponent);
+    compareCase(0n,0,sign,exponent);
+  }
+seed=seedBeforeComparison;
+
 // Exact magnitude length at decimal/binary boundaries, including both signs.
 for (const k of [...Array.from({length:256}, (_, i) => i + 1), 500, 2000, 10000, 19000]) {
   for (const n of [pow(k)-1n, pow(k), pow(k)+1n]) for (const sign of [1n,-1n])

@@ -409,13 +409,10 @@ BigIntStatus bigint_pow( /*Exponentiation for BigInts (base^exponent) via binary
 
     if (status == BIGINT_OK)
     {
-        status = bigint_copy(result, &accumulator);
-    }
-
-    if (status == BIGINT_OK)
-    {
-        result->is_negative = result_is_negative;
-        bigint_normalize(result);
+        accumulator.is_negative = result_is_negative;
+        bigint_normalize(&accumulator);
+        if (!numforge_budget_check()) status = BIGINT_OUT_OF_MEMORY;
+        else bigint_commit(result, &accumulator);
     }
 
     free(accumulator.limbs);
