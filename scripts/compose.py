@@ -24,17 +24,21 @@ def docker(*arguments, **kwargs):
     return result
 
 
-def init():
-    STATE.mkdir(parents=True, exist_ok=True)
-    if any((STATE / name).exists() for name in ("admin.json", "migrate.json", "app.json", "admin-password")):
-        raise ValueError("Compose credentials already exist; refusing to replace them.")
+def private_directory(path):
+    path.mkdir(parents=True, exist_ok=True)
     if os.name == "nt":
         identity = subprocess.check_output(["whoami"], text=True).strip()
-        subprocess.run(["icacls", str(STATE), "/inheritance:r", "/grant:r", f"{identity}:(OI)(CI)F",
+        subprocess.run(["icacls", str(path), "/inheritance:r", "/grant:r", f"{identity}:(OI)(CI)F",
                         "*S-1-5-18:(OI)(CI)F", "*S-1-5-32-544:(OI)(CI)F"], check=True,
                        stdout=subprocess.DEVNULL, creationflags=subprocess.CREATE_NO_WINDOW)
     else:
-        STATE.chmod(0o700)
+        path.chmod(0o700)
+
+
+def init():
+    if any((STATE / name).exists() for name in ("admin.json", "migrate.json", "app.json", "admin-password")):
+        raise ValueError("Compose credentials already exist; refusing to replace them.")
+    private_directory(STATE)
     shared = {"host": "db", "port": 5432, "secret_key": secrets.token_urlsafe(64)}
     for name, user, database in (("admin", "nf_local_admin", "postgres"),
                                   ("migrate", "nf_migrate", "numforge_accounts"),

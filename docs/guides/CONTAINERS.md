@@ -94,3 +94,50 @@ cross-tab logout, persisted identities, backup/restore and calculations with DB 
 For a disposable local check,
 set `COMPOSE_PROJECT_NAME=numforge-test-local`, then run
 `python tests/containers/check_stack.py`. It removes that project's volumes.
+
+## Local operations tools
+
+Optional tools remain outside the mathematical engine:
+
+| Tool | Local use |
+| --- | --- |
+| Restic | Encrypted logical DB dump, committed Git history and private pilot configuration |
+| Uptime Kuma | `http://127.0.0.1:18880`; public login/session/calculation, direct C engine, DB and backup freshness |
+| DBeaver Community | `scripts/dbeaver.ps1`; isolated workspace, PostgreSQL on loopback `55433`, read-only `nf_inspect` role |
+| sccache | Optional CMake compiler launcher; Ninja/Make builds only, no application runtime dependency |
+| Trivy | Local image vulnerability reports, with no Docker socket mounted into the scanner |
+
+The configured PC keeps binaries under `.local/tools/`, private credentials under
+`.local/ops/` and extends `COMPOSE_FILE` with `compose.tools.yaml`. Kuma needs its
+private `monitor-admin.json` before starting; `scripts/setup_monitor.cjs` provisions
+its configured monitors inside the container. Do not publish its admin port.
+This monitor cannot report a whole-PC outage while that same PC is off.
+
+```sh
+python scripts/ops_backup.py run
+python scripts/ops_backup.py check
+python scripts/ops_db.py
+python scripts/scan_images.py numforge-web numforge-accounts --fail-on-fixable
+```
+
+Backup initialization is one-time: install Restic in `.local/tools/bin/`, then
+`python scripts/ops_backup.py init --repository PATH`. The pilot environment is
+read from `.local/compose/pilot.env`. Every run restores the exact snapshot,
+compares file hashes and restores the dump into a disposable database before
+retaining 7 daily, 4 weekly and 6 monthly snapshots. An absent disk fails closed.
+The Windows daily task runs at 19:00 when the user is logged in; it requires Docker
+and the external disk. `backup.log` and `backup-status.json` record local results.
+The GUI launcher prevents console flashes; task result `0` confirms success.
+
+Preserve `.local/ops/restic.password` separately from both PC and backup disk.
+Without it, encrypted snapshots cannot be recovered. Git bundles contain committed
+history, including unpushed commits; uncommitted edits and runtime build snapshots
+are outside this backup. On a new machine, restore configuration/source, provision
+database roles (including `nf_inspect` if present), then restore the logical dump.
+Never restore over live data as a verification step.
+
+For compilation caching, set `CMAKE_C_COMPILER_LAUNCHER` to `sccache` during a
+Ninja/Make configure; keep `SCCACHE_DIR` outside disposable build trees. This PC's
+ignored `cached-apps` user preset does that. Trivy reports go to `build/security/`;
+`--fail-on-fixable` fails on HIGH/CRITICAL findings with a listed fix. This is a
+triage aid, not proof of exploitability or an all-clear for unpatched findings.

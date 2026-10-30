@@ -35,6 +35,7 @@ jobs:
       - name: Build and verify disposable application stack
         run: |
           python tests/containers/test_compose_helpers.py
+          python tests/containers/test_ops_backup.py
           python tests/containers/check_stack.py
 
   accounts-storage:
