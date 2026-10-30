@@ -9,9 +9,13 @@ from pathlib import Path
 import platform
 import random
 import subprocess
+import sys
 import tempfile
 from datetime import datetime, timezone
 
+# Dispatch-boundary references include complete squares of 8193-bit parts.
+if hasattr(sys, "set_int_max_str_digits"):
+    sys.set_int_max_str_digits(100000)
 
 def fixtures(random_count=0):
     pairs = []
@@ -37,15 +41,31 @@ def fixtures(random_count=0):
         a, b = Fraction(7, 2**power), Fraction(-11, 5**power)
         pairs.append((f"binary_boundary_{power}", a, b))
         pairs.append((f"five_boundary_{power}", b, a))
+    for bits in (959, 960, 961, 1023, 1024, 1025, 8127, 8128, 8129, 8191, 8192, 8193):
+        n = 2**bits
+        pairs.append((f"equal_boundary_{bits}", Fraction(1-n, n), Fraction(n-3, n)))
     rng = random.Random(20261030)
     for i in range(random_count):
         bits = rng.choice((8, 64, 255, 1024))
         a = Fraction(rng.getrandbits(bits) * rng.choice((-1, 1)), rng.getrandbits(bits) or 1)
         b = Fraction(rng.getrandbits(bits) * rng.choice((-1, 1)), rng.getrandbits(bits) or 1)
         pairs.append((f"random_{i}", a, b))
+    # Canonical equal denominators and integer translation in both orders.
+    # Keep this seed separate so established random fixtures are unchanged.
+    common_rng = random.Random(2026103017)
+    for i in range(random_count // 4):
+        bits = common_rng.choice((8, 64, 255, 1024))
+        denominator = 2**bits
+        a = Fraction((common_rng.getrandbits(bits) | 1) * common_rng.choice((-1, 1)), denominator)
+        b = Fraction((common_rng.getrandbits(bits) | 1) * common_rng.choice((-1, 1)), denominator)
+        integer = Fraction(common_rng.getrandbits(bits) * common_rng.choice((-1, 1)))
+        pairs.extend(((f"random_equal_{i}", a, b), (f"random_translate_{i}", a, integer),
+                      (f"random_translate_reverse_{i}", integer, a)))
     for name, a, b in pairs:
-        operations = {"add": a + b, "sub": a - b, "mul": a * b,
+        operations = {"add": a + b, "sub": a - b, "mul": a * b, "square": a * a,
                       "compare": (a > b) - (a < b)}
+        if a:
+            operations["selfdiv"] = Fraction(1)
         if b:
             operations["div"] = a / b
         for mode, rounding in enumerate((ROUND_DOWN, ROUND_UP, ROUND_FLOOR, ROUND_CEILING, ROUND_HALF_UP, ROUND_HALF_EVEN)):

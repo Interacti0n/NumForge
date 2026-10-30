@@ -415,7 +415,24 @@ static BigRationalStatus rational_sum(BigRational *result, const BigRational *a,
     if (bigint_is_zero(a->numerator)) return subtract ? bigrational_negate(result, b) : bigrational_copy(result, b);
     BigInt g = {0}, left = {0}, right = {0}, u = {0}, v = {0}, top = {0}, bottom = {0};
     BigRationalStatus status;
-    if (bigint_compare(a->denominator, b->denominator) == 0) {
+    bool a_integer = bigint_is_one(a->denominator), b_integer = bigint_is_one(b->denominator);
+    if (a_integer || b_integer) {
+        const BigInt *l = a->numerator, *r = b->numerator;
+        const BigInt *denominator = a_integer ? b->denominator : a->denominator;
+        status = BIGRATIONAL_OK;
+        if (!a_integer) {
+            status = rational_from_integer_status(bigint_mul(&right, b->numerator, a->denominator));
+            r = &right;
+        } else if (!b_integer) {
+            status = rational_from_integer_status(bigint_mul(&left, a->numerator, b->denominator));
+            l = &left;
+        }
+        if (status == BIGRATIONAL_OK) status = rational_from_integer_status(subtract ? bigint_sub(&top, l, r) : bigint_add(&top, l, r));
+        if (status == BIGRATIONAL_OK) status = rational_from_integer_status(bigint_copy(&bottom, denominator));
+        /* gcd(x +/- k*d,d) = gcd(x,d) = 1 for a canonical fraction x/d.
+         * Integer translation cannot introduce a denominator factor. */
+        if (status == BIGRATIONAL_OK) status = commit_parts(result, &top, &bottom);
+    } else if (bigint_compare(a->denominator, b->denominator) == 0) {
         status = rational_from_integer_status(subtract ? bigint_sub(&top, a->numerator, b->numerator) :
             bigint_add(&top, a->numerator, b->numerator));
         if (status == BIGRATIONAL_OK) status = bigrational_set_fraction(result, &top, a->denominator);
@@ -467,6 +484,27 @@ static BigRationalStatus rational_product(BigRational *result, const BigRational
     }
     if (bigint_is_one(b->numerator) && bigint_is_one(b->denominator)) return bigrational_copy(result, a);
     if (!divide && bigint_is_one(a->numerator) && bigint_is_one(a->denominator)) return bigrational_copy(result, b);
+    if (a == b || bigint_compare(a->denominator, b->denominator) == 0) {
+        if (!divide) {
+            /* Canonical x/d and y/d have numerators coprime to d. Their
+             * product is already reduced, including the same-object square. */
+            status = rational_from_integer_status(bigint_mul(&numerator, a->numerator, b->numerator));
+            if (status == BIGRATIONAL_OK)
+                status = rational_from_integer_status(bigint_mul(&denominator, a->denominator, a->denominator));
+        } else if (a == b || bigint_compare(a->numerator, b->numerator) == 0) {
+            /* Zero divisors were rejected above. Keep both owned outputs
+             * detached until commit even when result aliases either input. */
+            status = rational_from_integer_status(bigint_set_uint64(&numerator, 1U));
+            if (status == BIGRATIONAL_OK) status = rational_from_integer_status(bigint_set_uint64(&denominator, 1U));
+        } else {
+            /* The common denominators cancel completely; only x/y needs GCD. */
+            status = rational_from_integer_status(bigint_gcd(&g1, a->numerator, b->numerator));
+            if (status == BIGRATIONAL_OK) status = rational_from_integer_status(divide_factor(&numerator, a->numerator, &g1));
+            if (status == BIGRATIONAL_OK) status = rational_from_integer_status(divide_factor(&denominator, b->numerator, &g1));
+        }
+        if (status == BIGRATIONAL_OK) status = commit_parts(result, &numerator, &denominator);
+        goto done;
+    }
     status = rational_from_integer_status(bigint_gcd(&g1, a->numerator, bottom));
     if (status == BIGRATIONAL_OK)
     {

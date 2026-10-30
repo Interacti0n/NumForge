@@ -148,6 +148,9 @@ static void test_domains_preserve_outputs(void)
     TEST_ASSERT_NOT_NULL(decimal);
     TEST_ASSERT_EQUAL(BIGRATIONAL_DIVISION_BY_ZERO, bigrational_set_fraction(value, top, bottom));
     TEST_ASSERT_EQUAL(BIGRATIONAL_DIVISION_BY_ZERO, bigrational_div(value, value, zero));
+    TEST_ASSERT_EQUAL(BIGRATIONAL_DIVISION_BY_ZERO, bigrational_div(value, zero, zero));
+    TEST_ASSERT_EQUAL(BIGRATIONAL_DIVISION_BY_ZERO, bigrational_div(zero, zero, zero));
+    test_assert_fraction("0", zero);
     TEST_ASSERT_EQUAL(BIGRATIONAL_NULL_ARGUMENT, bigrational_compare(&comparison, value, NULL));
     TEST_ASSERT_EQUAL_INT(42, comparison);
     TEST_ASSERT_EQUAL(BIGRATIONAL_INVALID_ARGUMENT,
@@ -203,6 +206,7 @@ static void assert_reference_fraction(long long numerator, long long denominator
 
 static void test_small_integer_reference_grid(void)
 {
+    for (long long da = 1; da <= 6; ++da) for (long long db = 1; db <= 6; ++db)
     for (long long numerator_a = -4; numerator_a <= 4; numerator_a++)
     {
         for (long long numerator_b = -4; numerator_b <= 4; numerator_b++)
@@ -211,12 +215,17 @@ static void test_small_integer_reference_grid(void)
             BigRational *b = test_fraction("1", "3");
             BigRational *out = bigrational_create();
             BigInt *top_a = bigint_create(), *top_b = bigint_create();
-            BigInt *denom_a = test_integer("2"), *denom_b = test_integer("3");
+            BigInt *denom_a = bigint_create(), *denom_b = bigint_create();
             char text[32];
             int comparison = 0;
             TEST_ASSERT_NOT_NULL(out);
             TEST_ASSERT_NOT_NULL(top_a);
             TEST_ASSERT_NOT_NULL(top_b);
+            TEST_ASSERT_NOT_NULL(denom_a); TEST_ASSERT_NOT_NULL(denom_b);
+            (void)snprintf(text, sizeof(text), "%lld", da);
+            TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(denom_a, text));
+            (void)snprintf(text, sizeof(text), "%lld", db);
+            TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(denom_b, text));
             (void)snprintf(text, sizeof(text), "%lld", numerator_a);
             TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(top_a, text));
             (void)snprintf(text, sizeof(text), "%lld", numerator_b);
@@ -224,18 +233,18 @@ static void test_small_integer_reference_grid(void)
             TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_set_fraction(a, top_a, denom_a));
             TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_set_fraction(b, top_b, denom_b));
             TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_add(out, a, b));
-            assert_reference_fraction(3 * numerator_a + 2 * numerator_b, 6, out);
+            assert_reference_fraction(db * numerator_a + da * numerator_b, da * db, out);
             TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_sub(out, a, b));
-            assert_reference_fraction(3 * numerator_a - 2 * numerator_b, 6, out);
+            assert_reference_fraction(db * numerator_a - da * numerator_b, da * db, out);
             TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_mul(out, a, b));
-            assert_reference_fraction(numerator_a * numerator_b, 6, out);
+            assert_reference_fraction(numerator_a * numerator_b, da * db, out);
             if (numerator_b != 0)
             {
                 TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_div(out, a, b));
-                assert_reference_fraction(3 * numerator_a, 2 * numerator_b, out);
+                assert_reference_fraction(db * numerator_a, da * numerator_b, out);
             }
             TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_compare(&comparison, a, b));
-            TEST_ASSERT_EQUAL_INT((3 * numerator_a > 2 * numerator_b) - (3 * numerator_a < 2 * numerator_b),
+            TEST_ASSERT_EQUAL_INT((db * numerator_a > da * numerator_b) - (db * numerator_a < da * numerator_b),
                                   comparison);
             bigint_destroy(top_a);
             bigint_destroy(top_b);
@@ -260,7 +269,13 @@ static void test_optimized_paths_preserve_outputs_on_faults(void)
         {"7","8","1","1","15/8","-1/8","7/8","7/8"},
         {"2","3","-9","10","-7/30","47/30","-3/5","-20/27"},
         {"1","6","1","10","4/15","1/15","1/60","5/3"},
-        {"1","6","1","15","7/30","1/10","1/90","5/2"}
+        {"1","6","1","15","7/30","1/10","1/90","5/2"},
+        {"-2","5","3","5","1/5","-1","-6/25","-2/3"},
+        {"2","5","-3","5","-1/5","1","-6/25","-2/3"},
+        {"-2","5","-3","5","-1","1/5","6/25","2/3"},
+        {"-7","1","2","5","-33/5","-37/5","-14/5","-35/2"},
+        {"2","5","-7","1","-33/5","37/5","-14/5","-2/35"},
+        {"-7","1","-7","1","-14","0","49","1"}
     };
     for (size_t c = 0; c < sizeof(cases)/sizeof(cases[0]); ++c)
         for (size_t op = 0; op < 4; ++op) for (int alias = 0; alias < 3; ++alias)
@@ -294,6 +309,75 @@ static void test_optimized_paths_preserve_outputs_on_faults(void)
             }
 }
 
+static void test_large_self_products_preserve_outputs_on_faults(void)
+{
+#ifdef NUMFORGE_ENABLE_ALLOC_STATS
+    TEST_ASSERT_TRUE(numforge_alloc_stats_track(true));
+#endif
+    const size_t bits[] = {1024U, 8192U};
+    for (size_t b = 0U; b < sizeof(bits)/sizeof(bits[0]); ++b) {
+        BigInt *one = test_integer("1"), *n = test_integer("1"), *d = test_integer("1");
+        BigInt *square_n = test_integer("1"), *square_d = test_integer("1"), *correction = test_integer("1");
+        BigRational *input = bigrational_create(), *square = bigrational_create();
+        char *input_text = NULL, *square_text = NULL;
+        TEST_ASSERT_NOT_NULL(input); TEST_ASSERT_NOT_NULL(square);
+        TEST_ASSERT_EQUAL(BIGINT_OK, bigint_shift_left(d, d, bits[b]));
+        TEST_ASSERT_EQUAL(BIGINT_OK, bigint_sub(n, d, one));
+        TEST_ASSERT_EQUAL(BIGINT_OK, bigint_negate(n, n));
+        TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_set_fraction(input, n, d));
+        /* Independent square identity: (2^k-1)^2=2^(2k)-2^(k+1)+1. */
+        TEST_ASSERT_EQUAL(BIGINT_OK, bigint_shift_left(square_d, square_d, 2U*bits[b]));
+        TEST_ASSERT_EQUAL(BIGINT_OK, bigint_shift_left(correction, correction, bits[b]+1U));
+        TEST_ASSERT_EQUAL(BIGINT_OK, bigint_sub(square_n, square_d, correction));
+        TEST_ASSERT_EQUAL(BIGINT_OK, bigint_add(square_n, square_n, one));
+        TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_set_fraction(square, square_n, square_d));
+        TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_to_string(input, &input_text));
+        TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_to_string(square, &square_text));
+        for (unsigned divide = 0U; divide < 2U; ++divide) for (unsigned alias = 0U; alias < 2U; ++alias)
+        for (unsigned deadline = 0U; deadline < 2U; ++deadline) {
+            bool completed = false;
+            for (size_t index = 1U; index < 4096U; ++index) {
+                BigRational *a = bigrational_create(), *separate = test_fraction("13", "17");
+                TEST_ASSERT_NOT_NULL(a);
+                TEST_ASSERT_EQUAL(BIGRATIONAL_OK, bigrational_copy(a, input));
+                BigRational *out = alias ? a : separate;
+#ifdef NUMFORGE_ENABLE_ALLOC_STATS
+                size_t baseline = numforge_alloc_stats_live();
+#endif
+                TEST_ASSERT_TRUE(numforge_budget_begin(60000U, SIZE_MAX, SIZE_MAX));
+                numforge_test_allocator_begin(deadline ? 0U : index);
+                if (deadline) numforge_test_budget_expire_after(index);
+                BigRationalStatus status = divide ? bigrational_div(out, a, a) : bigrational_mul(out, a, a);
+                bool failed = deadline ? numforge_budget_failure() == NUMFORGE_BUDGET_TIME : numforge_test_allocator_did_fail();
+                numforge_budget_end(); numforge_test_allocator_end();
+                if (failed) {
+                    TEST_ASSERT_EQUAL(BIGRATIONAL_OUT_OF_MEMORY, status);
+#ifdef NUMFORGE_ENABLE_ALLOC_STATS
+                    TEST_ASSERT_EQUAL_UINT64(baseline, numforge_alloc_stats_live());
+#endif
+                    test_assert_fraction(input_text, a); test_assert_fraction("13/17", separate);
+                } else {
+                    TEST_ASSERT_EQUAL(BIGRATIONAL_OK, status);
+                    test_assert_fraction(divide ? "1" : square_text, out);
+                    if (!alias) test_assert_fraction(input_text, a);
+                    completed = true;
+                }
+                bigrational_destroy(a); bigrational_destroy(separate);
+                if (completed) break;
+            }
+            TEST_ASSERT_TRUE(completed);
+        }
+        free(input_text); free(square_text); bigrational_destroy(input); bigrational_destroy(square);
+        bigint_destroy(one); bigint_destroy(n); bigint_destroy(d); bigint_destroy(square_n);
+        bigint_destroy(square_d); bigint_destroy(correction);
+    }
+#ifdef NUMFORGE_ENABLE_ALLOC_STATS
+    TEST_ASSERT_EQUAL_UINT64(0U, numforge_alloc_stats_live());
+    TEST_ASSERT_TRUE(numforge_alloc_stats_complete());
+    TEST_ASSERT_TRUE(numforge_alloc_stats_track(false));
+#endif
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -303,5 +387,6 @@ int main(void)
     RUN_TEST(test_domains_preserve_outputs);
     RUN_TEST(test_small_integer_reference_grid);
     RUN_TEST(test_optimized_paths_preserve_outputs_on_faults);
+    RUN_TEST(test_large_self_products_preserve_outputs_on_faults);
     return UNITY_END();
 }

@@ -24,7 +24,9 @@ static int execute(Case *c, BigRational *out)
     if (!strcmp(c->operation, "add")) return bigrational_add(out, c->a, c->b);
     if (!strcmp(c->operation, "sub")) return bigrational_sub(out, c->a, c->b);
     if (!strcmp(c->operation, "mul")) return bigrational_mul(out, c->a, c->b);
+    if (!strcmp(c->operation, "square")) return bigrational_mul(out, c->a, c->a);
     if (!strcmp(c->operation, "div")) return bigrational_div(out, c->a, c->b);
+    if (!strcmp(c->operation, "selfdiv")) return bigrational_div(out, c->a, c->a);
     if (!strcmp(c->operation, "compare")) return bigrational_compare(&c->comparison, c->a, c->b);
     return BIGRATIONAL_INVALID_ARGUMENT;
 }
