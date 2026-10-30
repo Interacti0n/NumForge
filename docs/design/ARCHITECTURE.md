@@ -84,7 +84,8 @@ symbolic integration to Symbolic. Shared operations retain one owner.
 
 ## Concurrent server prerequisites
 
-The server has fixed workers and a bounded FIFO socket queue. Capacity evidence
+The server has fixed compute workers, a bounded receive stage and a FIFO of
+complete HTTP frames. Capacity evidence
 and configuration belong to [Hosting](../guides/HOSTING.md#capacity-and-state).
 
 `ApplicationClientLease` is zero-initialized, non-copyable and thread-owned.
@@ -109,11 +110,22 @@ Thread-local live-allocation tracking is disabled in web workers because values
 can be freed by another worker; fault injection stays in isolated tests. Use OS
 memory diagnostics for load. Opt-in serial tracing is not a concurrent profile.
 
-`web_main.c` owns admission/signals; `web_workers.c` owns threads/socket slots.
-Queue waiting consumes the original receive deadline. Admission expiry/rejection
-never waits for peer I/O; dequeued sockets belong to one worker through close.
-Shutdown stops admission, discards queued sockets, joins workers, then destroys
-state. Scheduling/policy/socket tests cover these boundaries.
+`web_main.c` owns admission/signals; `web_workers.c` owns the receiver, workers
+and frame buffers. Submission attempts one nonblocking read outside the pool
+lock: an already-complete request goes straight to the ready queue, while one
+receiver multiplexes incomplete inputs. The shared bound is workers plus queue
+capacity across incomplete, ready and active connections; idle worker headroom
+is preserved. Each admission slot has an 8-KiB input buffer plus metadata.
+
+Ready jobs expire after one second, or the original two-second receive/admission
+deadline if earlier. Completion order can differ from acceptance order, so expiry
+checks the whole ready queue. Admission expiry/rejection never waits for peer
+I/O. A worker copies an owned frame snapshot before releasing its input slot;
+the socket remains its responsibility through evaluation, send and close.
+Shutdown stops admission, joins the receiver, discards incomplete/ready inputs,
+joins compute owners, then destroys state. Deterministic handler barriers test
+expiry and shutdown independently of arithmetic speed. CPU-heavy calculations
+and slow response readers can still occupy all compute workers.
 
 ## Application behavior
 

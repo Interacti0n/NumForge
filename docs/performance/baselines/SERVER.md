@@ -282,3 +282,147 @@ and `NUMFORGE_QUEUE_BENCH_ARRIVAL_MS` configure those bounds. CI validates the
 mode through `--arrival-load --quick` using small independently checked
 factorials. Raw settings, executable hashes, hardware, outcomes and memory/CPU
 observations are retained in ignored `build/performance-20261030/http-arrival-*.jsonl`.
+
+## Bounded request receipt — 30 October 2026
+
+Normal Windows x64 MSVC 19.51 Release (`/O2 /Ob2 /DNDEBUG`), same Ryzen 7
+7435HS host, four compute workers and unchanged numeric core `c68f675`.
+Server baseline checkout `3cb89db`; final implementation `991cda7` (including
+`a7da9ce`). Both executables have allocation statistics off and the same
+test-enabled failure hooks. Metadata retains their exact executable hashes.
+Driver and server share the host; server priority is BelowNormal. No own
+build/test/other benchmark ran alongside these recordings. There is no affinity
+or frequency lock. These are local observations, not deployment guarantees.
+
+### Change and resource boundaries
+
+An incomplete HTTP request previously occupied a compute worker while reading.
+One receiver now multiplexes incomplete inputs; workers take complete bounded
+HTTP frames. Admission attempts one nonblocking read outside the pool lock and
+can hand off an already-buffered frame immediately. Remaining fragments use the
+receiver's 10-ms poll, subject to OS scheduling granularity. Framing/origin/body
+rules and calculation budgets are unchanged.
+
+The shared admission bound remains **workers + queue reserve** across incomplete,
+ready and active connections: 36 with defaults, at most 80. This preserves idle
+worker headroom; an initial implementation that counted only the queue reserve
+reduced 60-client burst admission and was corrected before selecting these
+results. Buffers are preallocated: 8 KiB plus frame metadata per admission slot,
+up to 640 KiB of input payload at the maximum configuration. There is one extra
+I/O thread, plus worker-owned frame snapshots; this is not a hard RSS bound.
+Windows readiness sets are explicitly batched to support all 80 slots.
+
+Incomplete input retains its two-second acceptance deadline. A complete queued
+frame expires after one second or that original deadline, whichever is earlier.
+Expiry scans all ready entries because completion order can differ from
+acceptance order. No peer I/O or calculation holds the pool lock. Shutdown joins
+the receiver, rejects incomplete/ready inputs, then joins active compute owners
+before freeing buffers and sessions.
+
+### Four incomplete inputs and fixed light arrivals
+
+Three interleaved fresh-server before/after pairs, reversing order in the middle
+pair. `--slow-clients` opens four incomplete `G` requests, then sends 80 independent
+`2+2` requests at 25-ms intervals after a 100-ms settle. OS memory sampling is
+before the holders open. Every successful result must equal exactly `4`.
+
+| Version | Verified responses in each run | All-response p95 range, ms | Successful-only p95 range, ms |
+| --- | --- | ---: | ---: |
+| Before | 36/80, 36/80, 36/80 | 1014.74–1027.92 | 812.13–850.30 |
+| After | 80/80, 80/80, 80/80 | 17.05–17.41 | 17.05–17.41 |
+
+All 240 after requests completed correctly without rejection. Each before run
+verified 36/80; its other 44 requests were 503 `server_busy` or connection resets.
+Both success and failure latency are retained, rather than reporting only fast
+refusals. Driver maximum scheduling lag was 15.09–15.30 ms before and
+14.49–14.88 ms after, separately from request latency. The visible roughly
+16-ms after floor is consistent with Windows polling/scheduling granularity;
+this does not establish a universal millisecond bound.
+
+End-of-scenario resident memory was 8.273–8.277 MiB before and
+8.559–8.562 MiB after, roughly 0.29 MiB more for this small workload.
+Process memory includes runtime, retained caches, thread stacks and OS effects;
+these short runs do not prove leak freedom or long-term memory behavior.
+
+### Ordinary mixed requests and bounded admission
+
+Three fresh-server repetitions per client count and setting using the existing
+six-turn mathematical workload. This recording groups complete baseline runs
+by version; unlike the slow-input comparison it does not interleave individual
+cases. All returned successes pass full value/graph checks. Timings move in both
+directions, including higher after p95 values in some queue-32 bursts; the
+evidence does not establish a general mixed-request speedup.
+
+| Queue reserve | Clients | Before verified per repetition | After verified per repetition | Successful-only p95 range before / after, ms |
+| ---: | ---: | --- | --- | ---: |
+| 32 | 10 | 60/60, 60/60, 60/60 | 60/60, 60/60, 60/60 | 10.57–14.01 / 11.78–15.09 |
+| 32 | 30 | 180/180, 180/180, 180/180 | 180/180, 180/180, 180/180 | 28.61–31.47 / 28.18–41.72 |
+| 32 | 60 | 252/360, 247/360, 243/360 | 253/360, 252/360, 252/360 | 60.19–69.06 / 61.28–80.05 |
+| 64 | 10 | 60/60, 60/60, 60/60 | 60/60, 60/60, 60/60 | 11.27–16.01 / 11.52–17.54 |
+| 64 | 30 | 180/180, 180/180, 180/180 | 180/180, 180/180, 180/180 | 31.86–36.29 / 28.75–41.91 |
+| 64 | 60 | 360/360, 360/360, 360/360 | 360/360, 360/360, 360/360 | 60.68–73.68 / 57.28–65.47 |
+
+Serial session prechecks retained all requested values in every scenario.
+At 60 clients, simultaneous session reads were 36/60 per run with reserve 32
+and 60/60 with reserve 64 in both versions. These default-reserve burst failures
+are transport/admission limits, not lost session state. The 64-slot setting
+completes all 360 mixed requests and all 60 reads in each repetition, without
+changing compute worker count or defaults.
+
+The separate full-admission fixture now opens workers plus reserve incomplete
+connections (36 at defaults), then attempts 60 light requests. All 60 were
+rejected in each of three runs on both versions, here as connection resets
+racing unread request bodies. Best-effort 503 is also an allowed overload
+outcome. Every run recovered without restart; after recovery was 1.50–2.22 ms.
+Rejecting a saturated pool is not successful throughput, and four incomplete
+inputs are no longer an adequate saturation fixture.
+
+### Compute saturation remains separate
+
+One fixed-arrival check per version starts four independently verified
+`246000!` calculations plus 80 light additions, with four workers/reserve 32.
+All four factorials succeeded in both versions. Light successes were 33/80
+before and 34/80 after; all-response light p95 was 1014.43/1011.39 ms. Both
+recovered correctly. This receive-stage change **does not isolate arbitrary
+expensive calculations** or clients that stop reading large responses. They
+can still occupy all workers until the existing computation/send deadlines.
+
+### Verification and retained evidence
+
+Full final ordinary Release CTest suites passed **83/83 MSVC** and **83/83 GCC**.
+Native scheduling tests use controlled handler barriers, not hardware-dependent
+factorials, to check ready-queue expiry behind a busy worker, expiry behind a
+younger head, socket ownership and shutdown joining. Other cases cover partial
+bodies, EOF, unchanged acceptance deadlines, capacity/recovery and 80 simultaneous
+partial inputs including completion beyond Windows' first readiness batch.
+The real-server origin/session test checks a free worker under partial input,
+full admission, independent 408 replies and recovery. Its old queued-socket
+assumption was replaced with these explicit contracts.
+
+The preliminary receiver build passed 102 selected Chromium regressions for
+calculator, session API, release graph scenes and visibility/cache reuse. After
+the final capacity/handoff refinement, all 22 graph/session/visibility checks
+were repeated successfully. These are correctness checks, not UI latency
+measurements or physical-phone results. No Linux, WAN or deployed proxy capacity
+was measured in this comparison.
+
+```sh
+node benchmarks/application/http_queue_benchmark.js SERVER --slow-clients
+node benchmarks/application/http_queue_benchmark.js SERVER --load
+node benchmarks/application/http_queue_benchmark.js SERVER --arrival-load
+```
+
+Set `NUMFORGE_QUEUE_BENCH_WORKERS`, `NUMFORGE_QUEUE_BENCH_CAPACITY` and the
+documented arrival/heavy-client variables for each scope; do not combine
+different settings into one capacity claim. `--slow-clients --quick` uses eight
+light requests. Keep correctness suites, allocation tracing and speed recording
+separate.
+
+Raw evidence remains under ignored `build/performance-ingress/`.
+`final-metadata.json` records sources, compiler settings, hashes and scope;
+`final-summary.json` preserves scenario rows. Selected files are
+`final-paired-slow-{before,after}-*.jsonl`, `final-mixed-*.jsonl` and
+`final-compute-saturated-*.jsonl`. The initial unprefixed/mismatched-capacity
+recordings are exploratory and retained, not the selected comparison.
+`ctest-{gcc,msvc}-handoff.log`, `browser-chromium.log` and `browser-final.log`
+retain final native and browser verification. No CI speed threshold was added.

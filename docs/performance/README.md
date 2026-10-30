@@ -18,7 +18,7 @@ promise for the current checkout, another machine or concurrent server users.
 
 | Record | Recorded dates | Purpose |
 | --- | --- | --- |
-| [Server load](baselines/SERVER.md) | 21–22 October 2026 | Serial/worker 10/30/60-client bursts, session isolation, sustained memory and overload/recovery |
+| [Server load](baselines/SERVER.md) | 21–30 October 2026 | Worker bursts, bounded HTTP receipt, session isolation, sustained memory and overload/recovery |
 | [Arithmetic](baselines/ARITHMETIC.md) | October 2026 | Selected division, multiplication, reuse, complex composition and formatting comparisons |
 | [Rational arithmetic](baselines/RATIONAL.md) | 30 October 2026 | Powers, symmetric squares, paired high-precision roots and bounded-allocation regression coverage |
 | [Factorial](baselines/FACTORIAL.md) | 12 October 2026 | Final split workspace, admission boundaries and complete checked outputs |

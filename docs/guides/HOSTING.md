@@ -113,17 +113,26 @@ proxy, host limits and rollback; keep a known previous archive.
 
 | Resource | Policy |
 | --- | --- |
-| Workers / socket queue | Defaults 4/32; `--workers 1–16`, `--queue-capacity 1–64` |
-| Queue wait | One second; acceptor checks every 100 ms, even while workers are busy |
-| Read / send deadlines | Two seconds each; read begins at acceptance and includes queue time |
+| Compute workers / queue reserve | Defaults 4/32; `--workers 1–16`, `--queue-capacity 1–64`; total admitted connections cannot exceed their sum |
+| Incomplete inputs | One receiver; preallocated 8-KiB buffer plus metadata per admission slot |
+| Ready queue wait | One second after framing; acceptor checks every 100 ms even while compute workers are busy |
+| Receive/admission / send deadlines | Two seconds each; ready queueing also consumes the original receive/admission deadline |
 | Session / legacy-cache pools | 64 slots each; 30-minute idle expiry after reservation release |
 | Retained requested heap | 8 MiB per ID across pools, 128 MiB/store |
 
-Queue entries hold sockets/timestamps, not parsed bodies. Full/expired admission
-gets best-effort 503 `server_busy`/Retry-After:1 or a transport reset. One request
-per connection; OS listen backlog is separately requested as 64. Signal shutdown
-stops admission, discards queued work, joins active requests and frees sessions;
-force-stop bypasses cleanup.
+Admission shares capacity between incomplete inputs, complete queued frames and
+active compute owners. The acceptor tries one nonblocking read; complete frames
+go directly to compute workers, while a dedicated receiver handles partial
+inputs. Workers never wait for the rest of an HTTP request. The receiver polls
+at 10-ms intervals when partial inputs remain, subject to OS scheduling.
+
+Full/expired ready admission gets best-effort 503 `server_busy`/Retry-After:1 or
+a transport reset. Incomplete inputs time out with best-effort HTTP 408.
+One request per connection; OS listen backlog is separately requested as 64.
+Signal shutdown joins the receiver, discards incomplete/ready work, joins active
+requests and frees sessions; force-stop bypasses cleanup. All-worker CPU
+saturation and clients that do not read responses remain bounded by the existing
+calculation/send deadlines, rather than isolated by this receive stage.
 
 Readers/writers/waiters pin state. Reuse empty/expired slots then unpinned FIFO;
 all pinned returns `session_busy`. Expired/released IDs remain tombstones until

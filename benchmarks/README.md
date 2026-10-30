@@ -107,6 +107,11 @@ settings retain `NUMFORGE_QUEUE_BENCH_WORKERS`/`NUMFORGE_QUEUE_BENCH_CAPACITY`.
 `--arrival-load --quick` validates the fixtures with small factorials. The output
 separates successful-response percentiles, all-response percentiles, driver
 scheduling lag, failures and recovery. This mode uses an owned loopback server.
+`--slow-clients` replaces the factorial jobs with one incomplete HTTP input per
+compute worker and the same fixed light arrivals, then checks full-admission
+overload and recovery. `--slow-clients --quick` uses eight light requests. OS
+memory sampling happens before the input holders open; all successes are checked
+as exact `2+2=4`. This tests receive isolation, separately from compute saturation.
 `--mixed-heavy` also accepts the heavy-client environment setting (default two).
 Explicit `--sustained --remote-state STATE.json` reuses the fixtures for five-minute
 HTTPS preview checks without restarting its backend/tunnel; see the same protocol.

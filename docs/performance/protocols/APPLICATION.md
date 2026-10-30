@@ -221,14 +221,42 @@ driver affect results. The initial sample is before load, final checks/recovery
 are after it, and sample timestamps are recorded. RSS trends are observations,
 not allocation-ledger leak proofs or a hard process-memory guarantee.
 
-Finally, four incomplete HTTP connections hold the workers while 60 requests
-exercise bounded admission/queue expiry. Overload may return HTTP 503
+Finally, workers plus queue-capacity incomplete HTTP connections saturate total
+admission while 60 requests exercise bounded rejection. This is 36 holders for
+the defaults, not an assumption that incomplete input occupies compute workers.
+Overload may return HTTP 503
 `server_busy`, or ECONNRESET/EPIPE if closure races an unread request body.
 The driver releases its connections and requires a correct fresh 2+2 response.
 Unexpected outcomes and any sustained-workload failure make this mode fail;
 expected overload rejections are reported separately. This does not test
 graceful shutdown: Windows child termination is forced, and POSIX SIGTERM may
 drain only within the driver's eight-second cleanup grace period.
+
+### Fixed-arrival input and compute diagnostics
+
+```sh
+node benchmarks/application/http_queue_benchmark.js SERVER --slow-clients
+node benchmarks/application/http_queue_benchmark.js SERVER --arrival-load
+```
+
+`--slow-clients` opens one incomplete `G` request per configured compute worker,
+then schedules 80 independent `2+2` arrivals at 25-ms intervals after a 100-ms
+settle. The initial OS memory query is before opening holders, so its overhead
+does not consume their two-second receive deadlines. The output retains all
+statuses/resets, successful-only and all-response percentiles, driver scheduling
+lag, OS memory and recovery. It then runs the separate full-admission overload
+fixture above. `--quick` reduces the light-request count to eight; it checks the
+fixtures, not deployment capacity.
+
+`--arrival-load` instead starts two `246000!` requests alongside the same light
+arrivals; `--quick` uses independently verified `1000!` outputs. Set
+`NUMFORGE_QUEUE_BENCH_HEAVY_CLIENTS=0..16` to test compute saturation explicitly.
+Both modes support `NUMFORGE_QUEUE_BENCH_LIGHT_REQUESTS=1..256` and
+`NUMFORGE_QUEUE_BENCH_ARRIVAL_MS=1..1000`, plus the existing workers/queue
+settings. Request generation does not wait for prior replies. Do not confuse
+input isolation with CPU admission fairness, nor successful-only latency with
+the latency of all attempted requests. Keep timing runs separate from builds,
+tests and allocation tracing.
 
 ### Sustained Windows preview through HTTPS
 
