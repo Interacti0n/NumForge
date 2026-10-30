@@ -548,6 +548,46 @@ static bool numforge_parse_cache_options(char *target, char client[33], uint64_t
     return true;
 }
 
+bool numforge_web_request_is_interactive(const char *request, const NumForgeHttpFrame *frame)
+{
+    if (!request || !frame || strcmp(frame->method, "POST") || !frame->has_content_length ||
+        !frame->origin_allowed || frame->header_length >= frame->length ||
+        frame->length >= NUMFORGE_WEB_REQUEST_CAPACITY) return false;
+    size_t length = frame->length - frame->header_length;
+    if (length > NUMFORGE_WEB_INTERACTIVE_INPUT_BYTES) return false;
+    char target[sizeof(frame->target)], client[33];
+    const char *action;
+    uint64_t revision;
+    int64_t precision;
+    CalculatorAngleUnit angle;
+    CalculatorNotation notation;
+    BigComplexForm form;
+    memcpy(target, frame->target, sizeof(target));
+    if (!numforge_is_evaluation_target(target) || !numforge_parse_session_action(target, &action) ||
+        !numforge_parse_cache_options(target, client, &revision) ||
+        !numforge_parse_evaluation_options(target, &precision, &angle, &notation, &form) ||
+        precision < 0 || precision > NUMFORGE_WEB_INTERACTIVE_PRECISION ||
+        form != BIGCOMPLEX_FORM_CARTESIAN ||
+        (action && (!*client || (strcmp(action, "preview") && strcmp(action, "commit"))))) return false;
+    /* A sum/product/quotient of these literals has bounded numerator and
+     * denominator growth. In particular exclude powers, factorials, exponents,
+     * functions, variables/ans, assignments, random calls and unit syntax.
+     * Invalid expressions in this small alphabet remain ordinary parse errors;
+     * classification does not substitute for the calculator parser. */
+    size_t digits = 0U, operators = 0U;
+    const char *body = request + frame->header_length;
+    for (size_t i = 0U; i < length; ++i) {
+        char c = body[i];
+        if (c >= '0' && c <= '9') {
+            if (++digits > NUMFORGE_WEB_INTERACTIVE_DIGITS) return false;
+        } else if (c == '+' || c == '-' || c == '*' || c == '/') {
+            if (++operators > NUMFORGE_WEB_INTERACTIVE_OPERATORS) return false;
+        } else if (c != '.' && c != '(' && c != ')' && c != ' ' && c != '\t' && c != '\r' && c != '\n')
+            return false;
+    }
+    return digits != 0U;
+}
+
 static char *numforge_math_copy_text(const char *display)
 {
     static const char marker[] = " × 10^";

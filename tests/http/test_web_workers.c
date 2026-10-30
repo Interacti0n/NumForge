@@ -5,6 +5,7 @@
 #include "apps/web/server/web_server.h"
 #include <numforge/runtime.h>
 #include <unity.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #ifdef _WIN32
@@ -33,11 +34,13 @@ static bool flag_get(TestFlag *flag) { return atomic_load(flag); }
 static void flag_set(TestFlag *flag, bool value) { atomic_store(flag, value); }
 static pthread_t stop_thread;
 #endif
-static TestFlag release_compute, stop_finished;
+static TestFlag release_compute, release_interactive, stop_finished;
 static bool stop_started;
 static struct { NumForgeSocket server, peer; } connections[NUMFORGE_WEB_MAX_PENDING + 2U];
 static const char request_tail[] = "ET /missing HTTP/1.1\r\nHost: localhost\r\n\r\n";
 static const char calculate[] = "POST /api/evaluate HTTP/1.1\r\nHost: localhost\r\nContent-Length: 3\r\n\r\n2+2";
+static const char ordinary[] = "GET /missing HTTP/1.1\r\nHost: localhost\r\n\r\n";
+static const char blocked_interactive[] = "POST /api/evaluate HTTP/1.1\r\nHost: localhost\r\nContent-Length: 3\r\n\r\n7+7";
 
 static void pause_thread(void)
 {
@@ -53,6 +56,8 @@ static void controlled_handler(NumForgeSocket socket, char *request, const NumFo
 {
     if (!strcmp(frame->target, "/blocked"))
         while (!flag_get(&release_compute)) pause_thread();
+    if (!strcmp(request + frame->header_length, "7+7"))
+        while (!flag_get(&release_interactive)) pause_thread();
     numforge_handle_framed_connection(socket, request, frame);
 }
 #ifdef _WIN32
@@ -170,7 +175,7 @@ static bool await_counts(size_t pending, size_t active)
 }
 void setUp(void)
 {
-    flag_set(&release_compute, false); flag_set(&stop_finished, false);
+    flag_set(&release_compute, false); flag_set(&release_interactive, false); flag_set(&stop_finished, false);
     for (size_t i = 0U; i < sizeof(connections)/sizeof(connections[0]); ++i) connections[i].server = connections[i].peer = NUMFORGE_INVALID_SOCKET;
 #ifdef _WIN32
     WSADATA data; TEST_ASSERT_EQUAL_INT(0, WSAStartup(MAKEWORD(2, 2), &data));
@@ -181,6 +186,7 @@ void setUp(void)
 void tearDown(void)
 {
     flag_set(&release_compute, true);
+    flag_set(&release_interactive, true);
     join_stopper();
     numforge_web_workers_stop(pool); pool = NULL;
     for (size_t i = 0U; i < sizeof(connections)/sizeof(connections[0]); ++i) {
@@ -255,7 +261,7 @@ static void test_ready_queue_expiry_does_not_need_a_free_compute_worker(void)
 {
     pool = numforge_web_workers_start_handler(1, 2, 8765, NULL, controlled_handler); TEST_ASSERT_NOT_NULL(pool);
     submit(0, blocked, numforge_monotonic_ms()); TEST_ASSERT_TRUE(await_state(0, 1, 0));
-    submit(1, calculate, numforge_monotonic_ms()); submit(2, calculate, numforge_monotonic_ms());
+    submit(1, ordinary, numforge_monotonic_ms()); submit(2, ordinary, numforge_monotonic_ms());
     TEST_ASSERT_TRUE(await_state(2, 1, 0));
     uint64_t now = numforge_monotonic_ms();
     numforge_web_workers_expire(pool, now);
@@ -271,7 +277,7 @@ static void test_original_deadline_can_expire_behind_a_younger_queue_head(void)
     pool = numforge_web_workers_start_handler(1, 3, 8765, NULL, controlled_handler); TEST_ASSERT_NOT_NULL(pool);
     submit(0, blocked, numforge_monotonic_ms()); TEST_ASSERT_TRUE(await_state(0, 1, 0));
     submit(1, "G", numforge_monotonic_ms() - 1500U);
-    submit(2, calculate, numforge_monotonic_ms());
+    submit(2, ordinary, numforge_monotonic_ms());
     TEST_ASSERT_TRUE(await_state(2, 1, 1));
     send_text(1, request_tail); TEST_ASSERT_TRUE(await_state(2, 1, 0));
     numforge_web_workers_expire(pool, numforge_monotonic_ms() + 600U);
@@ -285,7 +291,7 @@ static void test_shutdown_discards_partial_and_ready_jobs_and_joins_compute(void
 {
     pool = numforge_web_workers_start_handler(1, 2, 8765, NULL, controlled_handler); TEST_ASSERT_NOT_NULL(pool);
     submit(0, blocked, numforge_monotonic_ms()); TEST_ASSERT_TRUE(await_state(0, 1, 0));
-    submit(1, "G", numforge_monotonic_ms()); submit(2, calculate, numforge_monotonic_ms());
+    submit(1, "G", numforge_monotonic_ms()); submit(2, ordinary, numforge_monotonic_ms());
     TEST_ASSERT_TRUE(await_state(2, 1, 1));
 #ifdef _WIN32
     stop_thread = (HANDLE)_beginthreadex(NULL, 0, stop_pool, pool, 0, NULL);
@@ -327,6 +333,125 @@ static void test_fragmented_body_and_peer_eof_release_their_slots(void)
     expect_response(2, "HTTP/1.1 400 Bad Request", "Bad request");
     TEST_ASSERT_TRUE(await_state(0, 0, 0));
 }
+static void test_interactive_worker_bypasses_general_jobs_across_ring_wrap(void)
+{
+    pool = numforge_web_workers_start_handler(1, 3, 8765, NULL, controlled_handler); TEST_ASSERT_NOT_NULL(pool);
+    /* Advance the queue head so the eligible job wraps behind the general one. */
+    for (size_t i = 0; i < 2U; ++i) {
+        submit(i, ordinary, numforge_monotonic_ms());
+        expect_response(i, "HTTP/1.1 404 Not Found", "Not found");
+        TEST_ASSERT_TRUE(await_state(0, 0, 0));
+        numforge_close_socket(connections[i].peer); connections[i].peer = NUMFORGE_INVALID_SOCKET;
+    }
+    submit(0, blocked, numforge_monotonic_ms()); TEST_ASSERT_TRUE(await_state(0, 1, 0));
+    submit(1, ordinary, numforge_monotonic_ms()); TEST_ASSERT_TRUE(await_state(1, 1, 0));
+    submit(2, calculate, numforge_monotonic_ms());
+    expect_response(2, "HTTP/1.1 200 OK", "\"result\":\"4\"");
+    TEST_ASSERT_TRUE(await_state(1, 1, 0));
+    numforge_close_socket(connections[2].peer); connections[2].peer = NUMFORGE_INVALID_SOCKET;
+    submit(2, "POST /api/evaluate HTTP/1.1\r\nHost: localhost\r\nContent-Length: 3\r\n\r\n1/0", numforge_monotonic_ms());
+    expect_response(2, "HTTP/1.1 400 Bad Request", "\"ok\":false");
+    TEST_ASSERT_TRUE(await_state(1, 1, 0));
+    finish_compute(0);
+    expect_response(1, "HTTP/1.1 404 Not Found", "Not found");
+    TEST_ASSERT_TRUE(await_state(0, 0, 0));
+}
+
+static void test_interactive_worker_with_maximum_general_saturation(void)
+{
+    pool = numforge_web_workers_start_handler(NUMFORGE_WEB_MAX_WORKERS, NUMFORGE_WEB_MAX_QUEUE,
+        8765, NULL, controlled_handler); TEST_ASSERT_NOT_NULL(pool);
+    for (size_t i = 0; i < NUMFORGE_WEB_MAX_WORKERS; ++i) submit(i, blocked, numforge_monotonic_ms());
+    TEST_ASSERT_TRUE(await_state(0, NUMFORGE_WEB_MAX_WORKERS, 0));
+    submit(NUMFORGE_WEB_MAX_WORKERS, calculate, numforge_monotonic_ms());
+    expect_response(NUMFORGE_WEB_MAX_WORKERS, "HTTP/1.1 200 OK", "\"result\":\"4\"");
+    TEST_ASSERT_TRUE(await_state(0, NUMFORGE_WEB_MAX_WORKERS, 0));
+    finish_compute(0);
+    for (size_t i = 1; i < NUMFORGE_WEB_MAX_WORKERS; ++i) expect_response(i, "HTTP/1.1 404 Not Found", "Not found");
+    TEST_ASSERT_TRUE(await_state(0, 0, 0));
+}
+
+static void test_interactive_owner_shares_admission_and_shutdown_bounds(void)
+{
+    pool = numforge_web_workers_start_handler(1, 3, 8765, NULL, controlled_handler); TEST_ASSERT_NOT_NULL(pool);
+    submit(0, blocked, numforge_monotonic_ms()); TEST_ASSERT_TRUE(await_state(0, 1, 0));
+    submit(1, blocked_interactive, numforge_monotonic_ms()); TEST_ASSERT_TRUE(await_state(0, 2, 0));
+    submit(2, "G", numforge_monotonic_ms()); submit(3, calculate, numforge_monotonic_ms());
+    TEST_ASSERT_TRUE(await_state(2, 2, 1));
+    numforge_web_workers_expire(pool, numforge_monotonic_ms() + NUMFORGE_WEB_QUEUE_TIMEOUT_MS);
+    expect_response(3, "HTTP/1.1 503 Service Unavailable", "server_busy");
+    TEST_ASSERT_TRUE(await_state(1, 2, 1));
+    numforge_close_socket(connections[3].peer); connections[3].peer = NUMFORGE_INVALID_SOCKET;
+    submit(3, calculate, numforge_monotonic_ms()); TEST_ASSERT_TRUE(await_state(2, 2, 1));
+    TEST_ASSERT_TRUE(connect_pair(4)); send_text(4, calculate);
+    TEST_ASSERT_FALSE(numforge_web_workers_submit(pool, connections[4].server, numforge_monotonic_ms()));
+    numforge_reject_connection(connections[4].server); numforge_close_socket(connections[4].server);
+    connections[4].server = NUMFORGE_INVALID_SOCKET;
+    expect_response(4, "HTTP/1.1 503 Service Unavailable", "server_busy");
+#ifdef _WIN32
+    stop_thread = (HANDLE)_beginthreadex(NULL, 0, stop_pool, pool, 0, NULL); TEST_ASSERT_NOT_NULL(stop_thread);
+#else
+    TEST_ASSERT_EQUAL_INT(0, pthread_create(&stop_thread, NULL, stop_pool, pool));
+#endif
+    stop_started = true; pool = NULL;
+    expect_response(2, "HTTP/1.1 503 Service Unavailable", "server_busy");
+    expect_response(3, "HTTP/1.1 503 Service Unavailable", "server_busy");
+    finish_compute(0);
+    TEST_ASSERT_FALSE(flag_get(&stop_finished));
+    flag_set(&release_interactive, true);
+    expect_response(1, "HTTP/1.1 200 OK", "\"result\":\"14\"");
+    join_stopper(); TEST_ASSERT_TRUE(flag_get(&stop_finished));
+}
+
+static bool classified(const char *target, const char *body)
+{
+    char request[NUMFORGE_WEB_REQUEST_CAPACITY]; NumForgeHttpFrame frame;
+    int length = snprintf(request, sizeof(request), "POST %s HTTP/1.1\r\nHost: localhost\r\nContent-Length: %zu\r\n\r\n%s",
+        target, strlen(body), body);
+    TEST_ASSERT_TRUE(length > 0 && (size_t)length < sizeof(request));
+    TEST_ASSERT_EQUAL(NUMFORGE_HTTP_READY, numforge_http_probe(request, (size_t)length, sizeof(request), 8765, &frame));
+    return numforge_web_request_is_interactive(request, &frame);
+}
+
+static void test_interactive_classification_preserves_general_fallback(void)
+{
+    const char *short_inputs[] = {"2+2", "(2.5-1)/(-3*4)", "2(3+4)", "1/0", "2**3", ".1 + .2", "1\n+\t2"};
+    const char *general_inputs[] = {"", "   ", "246000!", "2^999999", "1e999999999", "ans+1",
+        "x+1", "x=1", "pi", "sin(1)", "rand()", "2 cm", "1;2", "2%3"};
+    for (size_t i = 0; i < sizeof(short_inputs)/sizeof(short_inputs[0]); ++i)
+        TEST_ASSERT_TRUE(classified("/api/evaluate", short_inputs[i]));
+    for (size_t i = 0; i < sizeof(general_inputs)/sizeof(general_inputs[0]); ++i)
+        TEST_ASSERT_FALSE(classified("/api/evaluate", general_inputs[i]));
+    TEST_ASSERT_TRUE(classified("/api/evaluate?precision=100&angle=deg&notation=fraction", "1/3"));
+    TEST_ASSERT_TRUE(classified("/api/evaluate?precision=10&client=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&revision=1&action=preview", "2+2"));
+    TEST_ASSERT_TRUE(classified("/api/evaluate?precision=10&client=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&revision=2&action=commit", "2+2"));
+    const char *general_targets[] = {"/api/graph", "/api/evaluate?precision=101", "/api/evaluate?precision=full",
+        "/api/evaluate?precision=10&form=trig", "/api/evaluate?precision=10&form=exp",
+        "/api/evaluate?precision=10&angle=bad", "/api/evaluate?precision=10&action=preview",
+        "/api/evaluate?precision=10&client=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&revision=1&action=start",
+        "/api/evaluate?precision=10&client=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&revision=1&action=delete-variable"};
+    for (size_t i = 0; i < sizeof(general_targets)/sizeof(general_targets[0]); ++i)
+        TEST_ASSERT_FALSE(classified(general_targets[i], "2+2"));
+    char body[NUMFORGE_WEB_INTERACTIVE_INPUT_BYTES + 2U];
+    memset(body, ' ', sizeof(body)); body[0] = '1'; body[NUMFORGE_WEB_INTERACTIVE_INPUT_BYTES] = '\0';
+    TEST_ASSERT_TRUE(classified("/api/evaluate", body));
+    body[NUMFORGE_WEB_INTERACTIVE_INPUT_BYTES] = ' '; body[NUMFORGE_WEB_INTERACTIVE_INPUT_BYTES + 1U] = '\0';
+    TEST_ASSERT_FALSE(classified("/api/evaluate", body));
+    memset(body, '1', NUMFORGE_WEB_INTERACTIVE_DIGITS + 1U); body[NUMFORGE_WEB_INTERACTIVE_DIGITS] = '\0';
+    TEST_ASSERT_TRUE(classified("/api/evaluate", body));
+    body[NUMFORGE_WEB_INTERACTIVE_DIGITS] = '1'; body[NUMFORGE_WEB_INTERACTIVE_DIGITS + 1U] = '\0';
+    TEST_ASSERT_FALSE(classified("/api/evaluate", body));
+    memset(body, '+', NUMFORGE_WEB_INTERACTIVE_OPERATORS + 1U); body[NUMFORGE_WEB_INTERACTIVE_OPERATORS] = '1';
+    body[NUMFORGE_WEB_INTERACTIVE_OPERATORS + 1U] = '\0'; TEST_ASSERT_TRUE(classified("/api/evaluate", body));
+    body[NUMFORGE_WEB_INTERACTIVE_OPERATORS] = '+'; body[NUMFORGE_WEB_INTERACTIVE_OPERATORS + 1U] = '1';
+    body[NUMFORGE_WEB_INTERACTIVE_OPERATORS + 2U] = '\0'; TEST_ASSERT_FALSE(classified("/api/evaluate", body));
+    NumForgeHttpFrame frame;
+    TEST_ASSERT_EQUAL(NUMFORGE_HTTP_READY, numforge_http_probe(calculate, strlen(calculate), NUMFORGE_WEB_REQUEST_CAPACITY, 8765, &frame));
+    frame.origin_allowed = false; TEST_ASSERT_FALSE(numforge_web_request_is_interactive(calculate, &frame));
+    frame.origin_allowed = true; memcpy(frame.method, "GET", 4U); TEST_ASSERT_FALSE(numforge_web_request_is_interactive(calculate, &frame));
+    TEST_ASSERT_FALSE(numforge_web_request_is_interactive(NULL, &frame));
+}
+
 static void test_maximum_ingress_and_select_capacity(void)
 {
     pool = numforge_web_workers_start(NUMFORGE_WEB_MAX_WORKERS, NUMFORGE_WEB_MAX_QUEUE, 8765, NULL); TEST_ASSERT_NOT_NULL(pool);
@@ -344,6 +469,10 @@ int main(void)
 {
     UNITY_BEGIN();
     RUN_TEST(test_configuration_and_empty_shutdown);
+    RUN_TEST(test_interactive_classification_preserves_general_fallback);
+    RUN_TEST(test_interactive_worker_bypasses_general_jobs_across_ring_wrap);
+    RUN_TEST(test_interactive_worker_with_maximum_general_saturation);
+    RUN_TEST(test_interactive_owner_shares_admission_and_shutdown_bounds);
     RUN_TEST(test_partial_request_does_not_occupy_the_only_compute_worker);
     RUN_TEST(test_full_ingress_preserves_rejected_socket_ownership_and_recovers);
     RUN_TEST(test_ready_queue_expiry_does_not_need_a_free_compute_worker);

@@ -17,7 +17,10 @@
 
 typedef struct NumForgeWebWorkers NumForgeWebWorkers;
 
-/* Fixed compute threads plus one nonblocking receiver. The original bound of
+/* Fixed general compute threads, one bounded-literal worker and one
+ * nonblocking receiver. General workers retain FIFO service; the extra worker
+ * may bypass general jobs only for requests classified by the server as
+ * bounded literal arithmetic. Session leases/deadlines still apply. The original bound of
  * workers + capacity covers incomplete frames, ready jobs and active compute
  * together. Input buffers are allocated once (8 KiB plus metadata per slot).
  * A slot releases when a compute worker takes its owned frame snapshot.
@@ -41,7 +44,7 @@ bool numforge_web_workers_submit(NumForgeWebWorkers *workers, NumForgeSocket soc
  * Ready queue expires after 1 s or the original 2-s receive/admission deadline,
  * whichever comes first. Receiver expires incomplete frames independently. */
 void numforge_web_workers_expire(NumForgeWebWorkers *workers, uint64_t now);
-/* Incomplete + ready snapshots; active counts compute owners only.
+/* Incomplete + ready snapshots; active counts both kinds of compute owner.
  * Diagnostics/tests, not an admission guarantee. */
 size_t numforge_web_workers_pending(NumForgeWebWorkers *workers, size_t *active, size_t *receiving);
 /* Stop admission, join the receiver, reject/close incomplete/queued sockets,

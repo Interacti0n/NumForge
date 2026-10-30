@@ -37,9 +37,14 @@ const workers = Number(process.env.NUMFORGE_QUEUE_BENCH_WORKERS || 4);
 assert.ok(Number.isInteger(workers) && workers >= 1 && workers <= 16);
 const heavyClients = Number(process.env.NUMFORGE_QUEUE_BENCH_HEAVY_CLIENTS ?? 2);
 assert.ok(Number.isInteger(heavyClients) && heavyClients >= 0 && heavyClients <= 16);
-const lightRequests = Number(process.env.NUMFORGE_QUEUE_BENCH_LIGHT_REQUESTS || (quick ? 8 : 80));
+const arrivalAction = process.env.NUMFORGE_QUEUE_BENCH_ACTION || 'legacy';
+const arrivalLightKind = process.env.NUMFORGE_QUEUE_BENCH_LIGHT_KIND || 'literal';
+assert.ok(['legacy', 'preview', 'commit'].includes(arrivalAction));
+assert.ok(['literal', 'power', 'function', 'precision'].includes(arrivalLightKind));
+const lightRequests = Number(process.env.NUMFORGE_QUEUE_BENCH_LIGHT_REQUESTS || (quick ? 8 : arrivalAction === 'legacy' ? 80 : 60));
 const arrivalMs = Number(process.env.NUMFORGE_QUEUE_BENCH_ARRIVAL_MS || 25);
 assert.ok(Number.isInteger(lightRequests) && lightRequests >= 1 && lightRequests <= 256);
+assert.ok(!arrival || arrivalAction === 'legacy' || lightRequests <= 64, 'Session arrivals need distinct clients within the 64-session bound');
 assert.ok(Number.isInteger(arrivalMs) && arrivalMs >= 1 && arrivalMs <= 1000);
 let port;
 let clientNamespace;
@@ -315,7 +320,16 @@ async function heavySample(clients) {
 // scheduling lag separately, and retain all refusals/timeouts in the record.
 async function arrivalSample() {
     return withServer(async pid => {
-        const records = [], lags = [], initial = await processMemory(pid), begin = performance.now();
+        const records = [], lags = [], successfulLight = new Set();
+        if (arrivalAction !== 'legacy')
+            for (let i=0;i<lightRequests;i++) {
+                const response = await request('',clientId(heavyClients+i),{action:'start'});
+                assert.equal(response.status,200); assert.equal(response.data.ok,true);
+            }
+        const expression = arrivalLightKind === 'power' ? '2^2' : arrivalLightKind === 'function' ? 'sin(0)' : '2+2';
+        const expected = arrivalLightKind === 'function' ? '0' : '4';
+        const operation = arrivalLightKind === 'literal' ? 'light_add' : 'light_'+arrivalLightKind;
+        const initial = await processMemory(pid), begin = performance.now();
         const jobs = Array.from({length: heavyClients}, (_, index) => measured(records,
             quick ? 'factorial1000' : 'factorial246000', () => request(quick ? '1000!' : '246000!',clientId(index)),
             data => assert.equal(data.result,quick ? '4.0238726008E+2567' : '4.8792926407E+1219336')));
@@ -323,20 +337,43 @@ async function arrivalSample() {
             const target = begin + 100 + i*arrivalMs;
             await delay(Math.max(0,target-performance.now()));
             const lag = Math.max(0,performance.now()-target); lags.push(lag);
-            jobs.push(measured(records,'light_add',()=>request('2+2',clientId(heavyClients+i)),
-                data=>assert.equal(data.result,'4')));
+            const options = {...(arrivalAction === 'legacy' ? {} : {action:arrivalAction,revision:'2'}),
+                ...(arrivalLightKind === 'precision' ? {precision:'101'} : {})};
+            jobs.push(measured(records,operation,()=>request(expression,clientId(heavyClients+i),options),
+                data=>{assert.equal(data.result,expected);successfulLight.add(i);}));
         }
         await Promise.all(jobs);
         const elapsed = performance.now()-begin, final = await processMemory(pid);
         const recovery = await request('2+2',clientId(heavyClients+lightRequests));
         assert.equal(recovery.status,200); assert.equal(recovery.data.ok,true); assert.equal(recovery.data.result,'4');
         console.log(JSON.stringify({scenario:'arrival_load',heavy_clients:heavyClients,light_requests:lightRequests,
+            light_action:arrivalAction,light_kind:arrivalLightKind,
             arrival_interval_ms:arrivalMs,scheduled_light_per_second:1000/arrivalMs,
             driver_max_scheduling_lag_ms:Math.max(...lags),...summary(records,elapsed),
             by_operation:Object.fromEntries([...new Set(records.map(r=>r.operation))].map(op=>
                 [op,summary(records.filter(r=>r.operation===op),elapsed)])),initial_memory:initial,...final,
             server_cpu_delta_seconds:final.server_cpu_seconds-initial.server_cpu_seconds,
             recovery:true,recovery_ms:recovery.ms}));
+        if (arrivalAction !== 'legacy') {
+            for (let i=0;i<lightRequests;i++) {
+                const client = clientId(heavyClients+i), response = await exchange('/api/session?' + new URLSearchParams({client}));
+                assert.equal(response.status,200); assert.equal(response.data.ok,true);
+                assert.ok(['0','2'].includes(response.data.revision));
+                if (successfulLight.has(i)) assert.equal(response.data.revision,'2');
+                const committed = arrivalAction === 'commit' && response.data.revision === '2';
+                assert.equal(response.data.history_count,committed ? 1 : 0);
+                assert.equal(response.data.ans_available,committed);
+                if (committed) {
+                    const replay = await request(expression,client,{action:'commit',revision:'2',
+                        ...(arrivalLightKind === 'precision' ? {precision:'101'} : {})});
+                    assert.equal(replay.status,200); assert.equal(replay.data.result,expected);
+                    const after = await exchange('/api/session?' + new URLSearchParams({client}));
+                    assert.equal(after.data.history_count,1); assert.equal(after.data.revision,'2');
+                }
+            }
+            console.log(JSON.stringify({scenario:'arrival_sessions',action:arrivalAction,clients:lightRequests,
+                successful:successfulLight.size,state_verified:true,replay_verified:arrivalAction === 'commit'}));
+        }
         if (quick) assert.ok(records.every(record=>!record.error),'Quick arrival fixtures must all complete correctly');
     });
 }
@@ -519,6 +556,7 @@ async function overloadSample() {
             cpu: os.cpus()[0]?.model, logical_cpus: os.cpus().length, host_memory_bytes: os.totalmem(),
             request_deadline_ms: 15000, connection_reuse: false, workers: remoteState ? remoteState.Workers : workers,
             queue_capacity: remoteState ? remoteState.QueueCapacity : queueCapacity,
+            ...(arrival ? {light_action:arrivalAction,light_kind:arrivalLightKind} : {}),
             memory_scope: 'process_resident_and_peak_when_available', ...(remoteState ? {remote_state: path.resolve(remotePath),
                 url: remoteState.Url, server: remoteState.Server, tunnel: remoteState.Tunnel} : {})}));
         if (arrival) {

@@ -316,7 +316,8 @@ int main(
         printf("Trusted public browser origin: %s (requires a reverse proxy or tunnel)\n", public_origin);
     }
     puts("Press Ctrl+C to stop the local server.");
-    printf("Workers: %u; queued connections: %u\n", benchmark_serial ? 1U : worker_count, benchmark_serial ? 0U : queue_capacity);
+    printf("Workers: %u general; %u bounded-literal; queued reserve: %u\n",
+        benchmark_serial ? 1U : worker_count, benchmark_serial ? 0U : 1U, benchmark_serial ? 0U : queue_capacity);
     numforge_open_browser(port, open_browser);
 
     int result = 0;

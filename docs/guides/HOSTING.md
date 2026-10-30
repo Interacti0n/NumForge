@@ -113,7 +113,8 @@ proxy, host limits and rollback; keep a known previous archive.
 
 | Resource | Policy |
 | --- | --- |
-| Compute workers / queue reserve | Defaults 4/32; `--workers 1–16`, `--queue-capacity 1–64`; total admitted connections cannot exceed their sum |
+| General compute workers / queue reserve | Defaults 4/32; `--workers 1–16`, `--queue-capacity 1–64`; total admitted connections cannot exceed their sum, including the literal reserve's active owner |
+| Literal arithmetic reserve | One extra worker for bounded numeric expressions; does not increase concurrent general calculations or total admission |
 | Incomplete inputs | One receiver; preallocated 8-KiB buffer plus metadata per admission slot |
 | Ready queue wait | One second after framing; acceptor checks every 100 ms even while compute workers are busy |
 | Receive/admission / send deadlines | Two seconds each; ready queueing also consumes the original receive/admission deadline |
@@ -126,13 +127,24 @@ go directly to compute workers, while a dedicated receiver handles partial
 inputs. Workers never wait for the rest of an HTTP request. The receiver polls
 at 10-ms intervals when partial inputs remain, subject to OS scheduling.
 
+The extra worker can bypass queued general work for literal decimal arithmetic
+using `+ - * / ( )`, at most 192 ASCII body bytes, 96 digits, 32 operators and
+0–100 output places with Cartesian form. Legacy evaluations and live
+preview/commit requests are eligible; the normal handler still owns validation,
+revision checks, leases, arithmetic and formatting. Powers, exponent notation,
+factorials, functions, variables/ans, assignments, units, random calls and other
+settings continue through general workers. These are scheduling bounds, not new
+API input/precision limits. Both kinds of owner share the original admission
+bound and queue deadlines. There is one extra thread and its stack/storage.
+
 Full/expired ready admission gets best-effort 503 `server_busy`/Retry-After:1 or
 a transport reset. Incomplete inputs time out with best-effort HTTP 408.
 One request per connection; OS listen backlog is separately requested as 64.
 Signal shutdown joins the receiver, discards incomplete/ready work, joins active
-requests and frees sessions; force-stop bypasses cleanup. All-worker CPU
-saturation and clients that do not read responses remain bounded by the existing
-calculation/send deadlines, rather than isolated by this receive stage.
+requests (including the literal reserve) and frees sessions; force-stop bypasses
+cleanup. The reserve helps eligible arithmetic while general workers compute;
+it is not universal isolation from CPU saturation, same-client lease waits or
+clients that do not read responses. Existing calculation/send deadlines remain.
 
 Readers/writers/waiters pin state. Reuse empty/expired slots then unpinned FIFO;
 all pinned returns `session_busy`. Expired/released IDs remain tombstones until

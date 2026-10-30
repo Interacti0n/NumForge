@@ -84,7 +84,8 @@ symbolic integration to Symbolic. Shared operations retain one owner.
 
 ## Concurrent server prerequisites
 
-The server has fixed compute workers, a bounded receive stage and a FIFO of
+The server has fixed general compute workers, one additional worker reserved
+for bounded literal arithmetic, a bounded receive stage and a queue of
 complete HTTP frames. Capacity evidence
 and configuration belong to [Hosting](../guides/HOSTING.md#capacity-and-state).
 
@@ -113,9 +114,22 @@ memory diagnostics for load. Opt-in serial tracing is not a concurrent profile.
 `web_main.c` owns admission/signals; `web_workers.c` owns the receiver, workers
 and frame buffers. Submission attempts one nonblocking read outside the pool
 lock: an already-complete request goes straight to the ready queue, while one
-receiver multiplexes incomplete inputs. The shared bound is workers plus queue
-capacity across incomplete, ready and active connections; idle worker headroom
+receiver multiplexes incomplete inputs. The shared bound is configured general
+workers plus queue capacity across incomplete, ready and active connections,
+including the reserved worker; idle general-worker headroom
 is preserved. Each admission slot has an 8-KiB input buffer plus metadata.
+
+General workers take the queue head. The extra worker may take the first
+eligible job later in the queue, preserving the relative order of all remaining
+jobs. Eligibility is a pure framing-time hint: at most 192 ASCII body bytes,
+96 literal digits, 32 arithmetic operators, 0–100 output places and Cartesian
+form. Only literal decimal arithmetic with `+ - * / ( )` is eligible; exponent
+notation, powers, factorials, functions, variables/ans, assignments, units and
+random calls stay with general workers. The normal parser/handler still runs
+once, with unchanged validation, arithmetic, budgets and session leases. Other
+valid requests keep their existing general-worker behavior and precision range.
+Scheduling does not establish HTTP arrival order; revision checks reject stale
+work. Same-client lease contention can still occupy a worker for up to 250 ms.
 
 Ready jobs expire after one second, or the original two-second receive/admission
 deadline if earlier. Completion order can differ from acceptance order, so expiry
@@ -125,7 +139,9 @@ the socket remains its responsibility through evaluation, send and close.
 Shutdown stops admission, joins the receiver, discards incomplete/ready inputs,
 joins compute owners, then destroys state. Deterministic handler barriers test
 expiry and shutdown independently of arithmetic speed. CPU-heavy calculations
-and slow response readers can still occupy all compute workers.
+can occupy every general worker; the literal reserve does not isolate arbitrary
+functions, busy sessions or slow response readers. The reserved worker shares
+admission/deadline/shutdown ownership and never executes ineligible jobs.
 
 ## Application behavior
 

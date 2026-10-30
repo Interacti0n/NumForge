@@ -18,23 +18,30 @@ typedef struct WebConnection {
     uint64_t accepted_ms, queued_ms;
     size_t used;
     ConnectionState state;
+    bool interactive;
     NumForgeHttpFrame frame;
     char request[NUMFORGE_WEB_REQUEST_CAPACITY];
 } WebConnection;
 
+typedef struct WebWorkerStart {
+    NumForgeWebWorkers *workers;
+    bool interactive_only;
+} WebWorkerStart;
+
 struct NumForgeWebWorkers {
 #ifdef _WIN32
     SRWLOCK lock;
-    CONDITION_VARIABLE changed, incoming;
-    HANDLE threads[NUMFORGE_WEB_MAX_WORKERS], receiver;
+    CONDITION_VARIABLE changed, incoming, interactive_changed;
+    HANDLE threads[NUMFORGE_WEB_MAX_WORKERS], receiver, interactive_thread;
 #else
     pthread_mutex_t lock;
-    pthread_cond_t changed, incoming;
-    pthread_t threads[NUMFORGE_WEB_MAX_WORKERS], receiver;
+    pthread_cond_t changed, incoming, interactive_changed;
+    pthread_t threads[NUMFORGE_WEB_MAX_WORKERS], receiver, interactive_thread;
 #endif
     size_t queue[NUMFORGE_WEB_MAX_PENDING];
     size_t head, count, reading, active, started, capacity;
-    bool stopping, receiver_started;
+    bool stopping, receiver_started, interactive_started;
+    WebWorkerStart runners[NUMFORGE_WEB_MAX_WORKERS + 1U];
     uint16_t port;
     const char *origin;
     NumForgeWebRequestHandler handler;
@@ -57,12 +64,14 @@ static void unlock_workers(NumForgeWebWorkers *workers)
     if (pthread_mutex_unlock(&workers->lock) != 0) abort();
 #endif
 }
-static void notify_worker(NumForgeWebWorkers *workers)
+static void notify_worker(NumForgeWebWorkers *workers, bool interactive)
 {
 #ifdef _WIN32
     WakeConditionVariable(&workers->changed);
+    if (interactive) WakeConditionVariable(&workers->interactive_changed);
 #else
     if (pthread_cond_signal(&workers->changed) != 0) abort();
+    if (interactive && pthread_cond_signal(&workers->interactive_changed) != 0) abort();
 #endif
 }
 static void notify_receiver(NumForgeWebWorkers *workers)
@@ -107,6 +116,7 @@ static int receive_frame(WebConnection *connection, const NumForgeWebWorkers *wo
     if (status == NUMFORGE_HTTP_MORE) return 0;
     if (status != NUMFORGE_HTTP_READY) return status == NUMFORGE_HTTP_LARGE ? 413 : 400;
     connection->request[connection->frame.length] = '\0';
+    connection->interactive = numforge_web_request_is_interactive(connection->request, &connection->frame);
     return 200;
 }
 
@@ -184,7 +194,7 @@ static void *receive_connections(void *argument)
                     --workers->reading;
                     workers->queue[(workers->head + workers->count) % workers->capacity] = slot;
                     ++workers->count;
-                    notify_worker(workers);
+                    notify_worker(workers, connection->interactive);
                     unlock_workers(workers);
                 }
             }
@@ -201,27 +211,44 @@ static void *receive_connections(void *argument)
     return 0;
 }
 
+/* General workers retain FIFO order. The extra worker can remove only the
+ * first eligible job; all other jobs keep their relative order and deadlines.
+ * Both kinds of active owner consume the original shared admission bound. */
+static size_t ready_position(const NumForgeWebWorkers *workers, bool interactive_only)
+{
+    if (!interactive_only) return workers->count ? 0U : SIZE_MAX;
+    for (size_t i = 0U; i < workers->count; ++i)
+        if (workers->connections[workers->queue[(workers->head + i) % workers->capacity]].interactive) return i;
+    return SIZE_MAX;
+}
+
 #ifdef _WIN32
 static unsigned int __stdcall serve_connections(void *argument)
 #else
 static void *serve_connections(void *argument)
 #endif
 {
-    NumForgeWebWorkers *workers = argument;
+    const WebWorkerStart *runner = argument;
+    NumForgeWebWorkers *workers = runner->workers;
     for (;;) {
         lock_workers(workers);
-        while (!workers->count && !workers->stopping) {
+        size_t position;
+        while ((position = ready_position(workers, runner->interactive_only)) == SIZE_MAX && !workers->stopping) {
 #ifdef _WIN32
-            if (!SleepConditionVariableSRW(&workers->changed, &workers->lock, INFINITE, 0)) abort();
+            if (!SleepConditionVariableSRW(runner->interactive_only ? &workers->interactive_changed : &workers->changed,
+                &workers->lock, INFINITE, 0)) abort();
 #else
-            if (pthread_cond_wait(&workers->changed, &workers->lock) != 0) abort();
+            if (pthread_cond_wait(runner->interactive_only ? &workers->interactive_changed : &workers->changed,
+                &workers->lock) != 0) abort();
 #endif
         }
         if (workers->stopping) { unlock_workers(workers); break; }
-        size_t slot = workers->queue[workers->head];
+        size_t slot = workers->queue[(workers->head + position) % workers->capacity];
         WebConnection connection = workers->connections[slot];
         workers->connections[slot].state = CONNECTION_EMPTY;
-        workers->head = (workers->head + 1U) % workers->capacity;
+        if (!position) workers->head = (workers->head + 1U) % workers->capacity;
+        else for (size_t i = position; i + 1U < workers->count; ++i)
+            workers->queue[(workers->head + i) % workers->capacity] = workers->queue[(workers->head + i + 1U) % workers->capacity];
         --workers->count; ++workers->active;
         unlock_workers(workers);
 
@@ -256,6 +283,7 @@ NumForgeWebWorkers *numforge_web_workers_start_handler(unsigned int count,
     InitializeSRWLock(&workers->lock);
     InitializeConditionVariable(&workers->changed);
     InitializeConditionVariable(&workers->incoming);
+    InitializeConditionVariable(&workers->interactive_changed);
 #else
     if (pthread_mutex_init(&workers->lock, NULL) != 0) { free(workers); return NULL; }
     if (pthread_cond_init(&workers->changed, NULL) != 0) {
@@ -265,16 +293,32 @@ NumForgeWebWorkers *numforge_web_workers_start_handler(unsigned int count,
         (void)pthread_cond_destroy(&workers->changed);
         (void)pthread_mutex_destroy(&workers->lock); free(workers); return NULL;
     }
+    if (pthread_cond_init(&workers->interactive_changed, NULL) != 0) {
+        (void)pthread_cond_destroy(&workers->incoming);
+        (void)pthread_cond_destroy(&workers->changed);
+        (void)pthread_mutex_destroy(&workers->lock); free(workers); return NULL;
+    }
 #endif
     for (; workers->started < count; ++workers->started) {
+        workers->runners[workers->started].workers = workers;
 #ifdef _WIN32
-        workers->threads[workers->started] = (HANDLE)_beginthreadex(NULL, 0, serve_connections, workers, 0, NULL);
+        workers->threads[workers->started] = (HANDLE)_beginthreadex(NULL, 0, serve_connections, &workers->runners[workers->started], 0, NULL);
         if (!workers->threads[workers->started]) break;
 #else
-        if (pthread_create(&workers->threads[workers->started], NULL, serve_connections, workers) != 0) break;
+        if (pthread_create(&workers->threads[workers->started], NULL, serve_connections, &workers->runners[workers->started]) != 0) break;
 #endif
     }
     if (workers->started == count) {
+        WebWorkerStart *runner = &workers->runners[NUMFORGE_WEB_MAX_WORKERS];
+        runner->workers = workers; runner->interactive_only = true;
+#ifdef _WIN32
+        workers->interactive_thread = (HANDLE)_beginthreadex(NULL, 0, serve_connections, runner, 0, NULL);
+        workers->interactive_started = workers->interactive_thread != NULL;
+#else
+        workers->interactive_started = pthread_create(&workers->interactive_thread, NULL, serve_connections, runner) == 0;
+#endif
+    }
+    if (workers->interactive_started) {
 #ifdef _WIN32
         workers->receiver = (HANDLE)_beginthreadex(NULL, 0, receive_connections, workers, 0, NULL);
         workers->receiver_started = workers->receiver != NULL;
@@ -315,7 +359,7 @@ bool numforge_web_workers_submit(NumForgeWebWorkers *workers, NumForgeSocket soc
             if (status == 200) {
                 connection->state = CONNECTION_READY; connection->queued_ms = numforge_monotonic_ms();
                 workers->queue[(workers->head + workers->count) % workers->capacity] = slot;
-                ++workers->count; notify_worker(workers);
+                ++workers->count; notify_worker(workers, connection->interactive);
             } else {
                 connection->state = CONNECTION_READING; ++workers->reading; notify_receiver(workers);
             }
@@ -369,8 +413,10 @@ void numforge_web_workers_stop(NumForgeWebWorkers *workers)
     workers->stopping = true;
 #ifdef _WIN32
     WakeAllConditionVariable(&workers->changed); WakeAllConditionVariable(&workers->incoming);
+    WakeAllConditionVariable(&workers->interactive_changed);
 #else
-    if (pthread_cond_broadcast(&workers->changed) != 0 || pthread_cond_broadcast(&workers->incoming) != 0) abort();
+    if (pthread_cond_broadcast(&workers->changed) != 0 || pthread_cond_broadcast(&workers->incoming) != 0 ||
+        pthread_cond_broadcast(&workers->interactive_changed) != 0) abort();
 #endif
     unlock_workers(workers);
     /* Join the sole reader before detaching its buffers/sockets. Active workers
@@ -394,8 +440,16 @@ void numforge_web_workers_stop(NumForgeWebWorkers *workers)
         if (pthread_join(workers->threads[i], NULL) != 0) abort();
 #endif
     }
+    if (workers->interactive_started) {
+#ifdef _WIN32
+        if (WaitForSingleObject(workers->interactive_thread, INFINITE) != WAIT_OBJECT_0 || !CloseHandle(workers->interactive_thread)) abort();
+#else
+        if (pthread_join(workers->interactive_thread, NULL) != 0) abort();
+#endif
+    }
 #ifndef _WIN32
     if (pthread_cond_destroy(&workers->incoming) != 0 || pthread_cond_destroy(&workers->changed) != 0 ||
+        pthread_cond_destroy(&workers->interactive_changed) != 0 ||
         pthread_mutex_destroy(&workers->lock) != 0) abort();
 #endif
     free(workers);
