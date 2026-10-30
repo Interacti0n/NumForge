@@ -428,40 +428,6 @@ BigIntStatus bigint_add_uint64( /*Add a uint64_t to a BigInt (magnitude only - c
     return BIGINT_OK;
 }
 
-void bigint_multiply_u64_u64( /*Multiply two uint64_t values and return the high and low parts of the result*/
-    uint64_t a,
-    uint64_t b,
-    uint64_t *high,
-    uint64_t *low
-)
-{
-    uint64_t a0 = (uint32_t)a;
-    uint64_t a1 = a >> 32;
-
-    uint64_t b0 = (uint32_t)b;
-    uint64_t b1 = b >> 32;
-
-    uint64_t p00 = a0 * b0;
-    uint64_t p01 = a0 * b1;
-    uint64_t p10 = a1 * b0;
-    uint64_t p11 = a1 * b1;
-
-    uint64_t middle =
-        (p00 >> 32) +
-        (uint32_t)p01 +
-        (uint32_t)p10;
-
-    *low =
-        (p00 & 0xFFFFFFFFULL) |
-        (middle << 32);
-
-    *high =
-        p11 +
-        (p01 >> 32) +
-        (p10 >> 32) +
-        (middle >> 32);
-}
-
 BigIntStatus bigint_multiply_by_uint64( /*Multiply a BigInt by a uint64_t (magnitude only - caller manages sign)*/
     BigInt *value,
     uint64_t multiplier

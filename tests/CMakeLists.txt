@@ -57,6 +57,11 @@ endif()
 
 numforge_add_unit_test(bigint_property_tests numforge core/test_bigint_properties.c)
 
+numforge_add_unit_test(limb_multiplication_tests numforge core/test_limb_multiplication.c)
+numforge_add_unit_test(limb_multiplication_portable_tests numforge core/test_limb_multiplication.c)
+target_compile_definitions(limb_multiplication_portable_tests PRIVATE
+    NUMFORGE_ENABLE_ALLOC_FAILURE_TESTING NUMFORGE_TEST_PORTABLE_MULTIPLICATION)
+
 numforge_add_unit_test(bigdecimal_tests numforge core/test_bigdecimal.c)
 
 numforge_add_unit_test(bigrational_tests numforge core/test_bigrational.c)

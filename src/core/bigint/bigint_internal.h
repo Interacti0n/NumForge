@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <numforge/bigint.h>
+#include "src/core/bigint/limb_multiply.h"
 
 #define BIGINT_LIMB_BITS 64U
 #define BIGINT_MAX_LIMBS (SIZE_MAX / BIGINT_LIMB_BITS)
@@ -59,7 +60,6 @@ uint64_t bigint_divide_by_uint64(BigInt *value, uint64_t divisor);
 int bigint_compare_abs(const BigInt *a, const BigInt *b);
 BigIntStatus bigint_add_abs(BigInt *result, const BigInt *a, const BigInt *b);
 BigIntStatus bigint_subtract_abs(BigInt *result, const BigInt *a, const BigInt *b);
-void bigint_multiply_u64_u64(uint64_t a, uint64_t b, uint64_t *high, uint64_t *low);
 /* Atomic symmetric schoolbook square, with one result buffer and no scratch. */
 BigIntStatus bigint_square_school(BigInt *out, const BigInt *a);
 /* Private atomic Karatsuba kernel; threshold is a recursive leaf cutoff.
