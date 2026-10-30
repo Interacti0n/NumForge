@@ -168,7 +168,8 @@ static BigIntStatus operate(const Case *c, BigInt *out, BigInt *rem, BigInt *a, 
         free(temporary.limbs);
         return status;
     }
-    if (!strcmp(c->op, "mul")) return bigint_mul(out, a, !strcmp(c->mode, "alias_all") ? a : b);
+    if (!strcmp(c->op, "mul")) return bigint_mul(out, a,
+        !strcmp(c->mode, "alias_all") || !strcmp(c->mode, "same_input") ? a : b);
     if (!strncmp(c->op, "karatsuba", 9U))
     {
         const char *suffix = c->op + 9U;

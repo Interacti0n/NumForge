@@ -60,6 +60,8 @@ int bigint_compare_abs(const BigInt *a, const BigInt *b);
 BigIntStatus bigint_add_abs(BigInt *result, const BigInt *a, const BigInt *b);
 BigIntStatus bigint_subtract_abs(BigInt *result, const BigInt *a, const BigInt *b);
 void bigint_multiply_u64_u64(uint64_t a, uint64_t b, uint64_t *high, uint64_t *low);
+/* Atomic symmetric schoolbook square, with one result buffer and no scratch. */
+BigIntStatus bigint_square_school(BigInt *out, const BigInt *a);
 /* Private atomic Karatsuba kernel; threshold is a recursive leaf cutoff.
  * Dispatch checks optional workspace against the active resource budget. */
 BigIntStatus bigint_mul_karatsuba(BigInt *out, const BigInt *a, const BigInt *b, size_t threshold);

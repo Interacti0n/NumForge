@@ -170,6 +170,11 @@ BigIntStatus bigint_mul( /*Multiply two BigInts (a*b)*/
         bigint_karatsuba_fits(a->size, b->size, 32U))
         return bigint_mul_karatsuba(result, a, b, 32U);
 
+    /* The linear setup outweighs symmetry for small values. Larger squares
+     * keep the existing budget-aware Karatsuba dispatch above. */
+    if (a == b && a->size >= 16U && a->size < 128U)
+        return bigint_square_school(result, a);
+
     size_t result_size;
 
     if (bigint_size_add(a->size, b->size, &result_size) != BIGINT_OK ||
@@ -373,37 +378,30 @@ BigIntStatus bigint_pow( /*Exponentiation for BigInts (base^exponent) via binary
 
     bool result_is_negative = base->is_negative && bigint_get_bit(exponent, 0) != 0;
 
-    BigInt accumulator;
-    accumulator.limbs = NULL;
-    accumulator.size = 0;
-    accumulator.capacity = 0;
-    accumulator.is_negative = false;
-
-    BigInt base_power;
-    base_power.limbs = NULL;
-    base_power.size = 0;
-    base_power.capacity = 0;
-    base_power.is_negative = false;
-
-    BigIntStatus status = bigint_set_uint64(&accumulator, 1);
-
-    if (status == BIGINT_OK)
-    {
-        status = bigint_abs(&base_power, base);
-    }
-
+    BigInt accumulator = {0};
+    BigInt magnitude = *base;
+    magnitude.is_negative = false;
+    BigIntStatus status = bigint_abs(&accumulator, base);
     size_t bits = bigint_bit_length(exponent);
 
-    for (size_t i = 0; status == BIGINT_OK && i < bits; i++)
+    /* Consume the leading one by copying base, then scan downward. Each set
+     * bit multiplies by the original base rather than a growing base^(2^i).
+     * In particular powers of a single limb never need a general product for
+     * those bits. Only the private accumulator can change before commit. */
+    for (size_t i = bits - 1U; status == BIGINT_OK && i > 0U;)
     {
-        if (bigint_get_bit(exponent, i))
+        --i;
+        if (!numforge_budget_check())
         {
-            status = bigint_mul(&accumulator, &accumulator, &base_power);
+            status = BIGINT_OUT_OF_MEMORY;
+            break;
         }
-
-        if (status == BIGINT_OK && i + 1 < bits)
+        status = bigint_mul(&accumulator, &accumulator, &accumulator);
+        if (status == BIGINT_OK && bigint_get_bit(exponent, i))
         {
-            status = bigint_mul(&base_power, &base_power, &base_power);
+            status = magnitude.size == 1U ?
+                bigint_multiply_by_uint64(&accumulator, magnitude.limbs[0]) :
+                bigint_mul(&accumulator, &accumulator, &magnitude);
         }
     }
 
@@ -416,7 +414,5 @@ BigIntStatus bigint_pow( /*Exponentiation for BigInts (base^exponent) via binary
     }
 
     free(accumulator.limbs);
-    free(base_power.limbs);
-
     return status;
 }

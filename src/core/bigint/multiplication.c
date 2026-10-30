@@ -3,6 +3,66 @@
 #include <stdlib.h>
 #include <string.h>
 
+BigIntStatus bigint_square_school(BigInt *out, const BigInt *a)
+{
+    size_t length;
+    if (bigint_size_mul(a->size, 2U, &length) != BIGINT_OK || length > BIGINT_MAX_LIMBS)
+        return BIGINT_VALUE_TOO_LARGE;
+    BigInt temporary = {0};
+    temporary.limbs = numforge_calloc(length, sizeof(uint64_t));
+    if (!temporary.limbs) return BIGINT_OUT_OF_MEMORY;
+    /* First accumulate only i<j. Each row's carry goes in a previously unused
+     * word. Doubling this triangle and adding the diagonal gives a^2 with
+     * n*(n+1)/2 full products, without per-product carry propagation loops. */
+    for (size_t i = 0U; i < a->size; ++i)
+    {
+        if (!numforge_budget_check()) goto cancelled;
+        uint64_t carry = 0U;
+        for (size_t j = i + 1U; j < a->size; ++j)
+        {
+            if (!(j & 255U) && !numforge_budget_check()) goto cancelled;
+            uint64_t hi, lo;
+            bigint_multiply_u64_u64(a->limbs[i], a->limbs[j], &hi, &lo);
+            uint64_t sum = temporary.limbs[i + j] + lo, c1 = sum < lo;
+            uint64_t next = sum + carry, c2 = next < sum;
+            temporary.limbs[i + j] = next;
+            carry = hi + c1 + c2;
+        }
+        temporary.limbs[i + a->size] = carry;
+    }
+    uint64_t carry = 0U;
+    for (size_t i = 0U; i < length; ++i)
+    {
+        if (!(i & 255U) && !numforge_budget_check()) goto cancelled;
+        uint64_t word = temporary.limbs[i];
+        temporary.limbs[i] = (word << 1U) | carry;
+        carry = word >> 63U;
+    }
+    carry = 0U;
+    for (size_t i = 0U; i < a->size; ++i)
+    {
+        if (!(i & 255U) && !numforge_budget_check()) goto cancelled;
+        uint64_t hi, lo;
+        bigint_multiply_u64_u64(a->limbs[i], a->limbs[i], &hi, &lo);
+        uint64_t sum = temporary.limbs[2U*i] + lo, c1 = sum < lo;
+        uint64_t next = sum + carry, c2 = next < sum;
+        temporary.limbs[2U*i] = next;
+        carry = c1 | c2;
+        sum = temporary.limbs[2U*i + 1U] + hi; c1 = sum < hi;
+        next = sum + carry; c2 = next < sum;
+        temporary.limbs[2U*i + 1U] = next;
+        carry = c1 | c2;
+    }
+    if (!numforge_budget_check()) goto cancelled;
+    temporary.size = temporary.capacity = length;
+    bigint_normalize(&temporary);
+    bigint_commit(out, &temporary);
+    return BIGINT_OK;
+cancelled:
+    free(temporary.limbs);
+    return BIGINT_OUT_OF_MEMORY;
+}
+
 /* Magnitudes only. All recursive destinations are disjoint from inputs.
  * z1=(a0+a1)(b0+b1)-z0-z2; z0 and z2 go directly into the final buffer.
  * Frame-local sums/cross product are arena slices, reused by child calls. */

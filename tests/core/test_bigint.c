@@ -2306,9 +2306,56 @@ static void test_gcd_power_of_two_boundaries_and_aliases(void)
             }
 }
 
+static void test_symmetric_square_radix_boundaries(void)
+{
+    /* (B^n-1)^2 = B^(2n)-2*B^n+1, independently of multiplication. */
+    const size_t limbs[] = {15U, 16U, 17U, 63U, 64U, 65U, 127U, 128U, 129U};
+    for (size_t i = 0U; i < sizeof(limbs)/sizeof(limbs[0]); ++i)
+    {
+        BigInt *one = test_integer("1"), *input = test_integer("1"), *copy = bigint_create();
+        BigInt *expected = test_integer("1"), *correction = test_integer("1"), *out = test_integer("-7");
+        TEST_ASSERT_NOT_NULL(copy);
+        TEST_ASSERT_EQUAL(BIGINT_OK, bigint_shift_left(input, input, limbs[i] * 64U));
+        TEST_ASSERT_EQUAL(BIGINT_OK, bigint_sub(input, input, one));
+        TEST_ASSERT_EQUAL(BIGINT_OK, bigint_negate(input, input));
+        TEST_ASSERT_EQUAL(BIGINT_OK, bigint_copy(copy, input));
+        TEST_ASSERT_EQUAL(BIGINT_OK, bigint_shift_left(expected, expected, limbs[i] * 128U));
+        TEST_ASSERT_EQUAL(BIGINT_OK, bigint_shift_left(correction, correction, limbs[i] * 64U + 1U));
+        TEST_ASSERT_EQUAL(BIGINT_OK, bigint_sub(expected, expected, correction));
+        TEST_ASSERT_EQUAL(BIGINT_OK, bigint_add(expected, expected, one));
+        TEST_ASSERT_EQUAL(BIGINT_OK, bigint_mul(out, input, input));
+        TEST_ASSERT_EQUAL_INT(0, bigint_compare(expected, out));
+        TEST_ASSERT_EQUAL(BIGINT_OK, bigint_mul(out, input, copy));
+        TEST_ASSERT_EQUAL_INT(0, bigint_compare(expected, out));
+        TEST_ASSERT_EQUAL(BIGINT_OK, bigint_mul(input, input, input));
+        TEST_ASSERT_EQUAL_INT(0, bigint_compare(expected, input));
+        bigint_destroy(one); bigint_destroy(input); bigint_destroy(copy);
+        bigint_destroy(expected); bigint_destroy(correction); bigint_destroy(out);
+    }
+}
+
+static void test_power_multi_limb_exponent_aliases(void)
+{
+    const char *bases[] = {"0", "1", "-1"};
+    const char *exponents[] = {"18446744073709551616", "18446744073709551617"};
+    for (size_t i = 0U; i < 3U; ++i) for (size_t j = 0U; j < 2U; ++j)
+    for (unsigned alias = 0U; alias < 3U; ++alias)
+    {
+        BigInt *base = test_integer(bases[i]), *exponent = test_integer(exponents[j]), *separate = test_integer("77");
+        BigInt *out = alias == 1U ? base : alias == 2U ? exponent : separate;
+        TEST_ASSERT_EQUAL(BIGINT_OK, bigint_pow(out, base, exponent));
+        test_assert_integer(out, i == 0U ? "0" : i == 2U && j == 1U ? "-1" : "1");
+        if (out != base) test_assert_integer(base, bases[i]);
+        if (out != exponent) test_assert_integer(exponent, exponents[j]);
+        bigint_destroy(base); bigint_destroy(exponent); bigint_destroy(separate);
+    }
+}
+
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_symmetric_square_radix_boundaries);
+    RUN_TEST(test_power_multi_limb_exponent_aliases);
     RUN_TEST(test_gcd_power_of_two_boundaries_and_aliases);
     RUN_TEST(test_base_conversion_contract);
 

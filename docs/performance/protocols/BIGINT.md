@@ -55,12 +55,15 @@ does not run them inside the measured process.
   separate output, aliases to either input and a single object for both inputs
   and output. Compare fresh and warmed output payloads, and measure input copies
   separately.
-- Squaring: generic multiplication with identical inputs versus a private
-  symmetric schoolbook square. The experiment computes diagonal terms once and
-  off-diagonal products once, then adds each off-diagonal term twice with explicit
-  carry propagation. Random, maximal, sparse, alternating, zero, sign and alias
-  cases have exact references. This is a simple experimental kernel, not a
-  production recommendation.
+- Squaring: distinct equal operands are the general-multiplication control;
+  `same_input` passes the same input pointer with a separate output and
+  `alias_all` also aliases the output. Production uses a symmetric schoolbook
+  kernel for identical pointers at 16–127 limbs; larger values retain Karatsuba
+  dispatch. Boundary fixtures exercise 15/16/17 and 127/128/129 limbs with random,
+  maximal, sparse and alternating patterns. The private `square` experiment
+  remains a separate comparison: it adds each off-diagonal product twice with
+  explicit carry propagation. Production instead accumulates the triangle,
+  doubles once and adds the diagonal, using only the result buffer.
 - Factorial: 0, 1, 20, 100, 500, 1000, 5000, 10000, 20000, 50000, 100000,
   100001 and 150000. Compare the public
   implementation, which multiplies by a small integer in place, against a private
@@ -70,8 +73,12 @@ does not run them inside the measured process.
   the harness's 1 MiB record buffer. Inputs/references are parsed before
   timing; decimal conversion and calculator/HTTP budgets are not measured.
 - Powers: 1, 4, 16 and 64-limb bases with exponents 0, 1, 2, 3, 16, 17 and 64.
-  Compare public binary exponentiation with an experimental equivalent using the
-  private square. Include zero, unit, negative bases and aliases.
+  Public binary exponentiation consumes bits from the most significant end;
+  set bits multiply by the original base, using a scalar limb operation when
+  possible. Compare against an experiment using the private square. Include
+  zero, unit, negative bases, aliases to either input, and small bases 5/10 and
+  `UINT64_MAX` around exponent boundaries through 3324. The quick CI corpus
+  retains 63/64/65; native tests also cover multi-limb exponent parity.
 - Division, modulo and GCD: 1–64-limb base operands (constructed exact/residual
   dividends reach 96 limbs); one-limb, similar-sized and unequal
   divisors; smaller dividend; exact and residual divisions; all sign combinations.
@@ -134,12 +141,13 @@ hardware/compiler/settings and avoid other builds/tests while recording.
 
 ## Algorithm decisions
 
-Production uses budget-aware Karatsuba and bounded factorial trees. Selected
+Production uses budget-aware Karatsuba, bounded factorial trees and the
+16–127-limb symmetric square. Selected
 [arithmetic comparisons](../baselines/ARITHMETIC.md#karatsuba) and the
 [final factorial baseline](../baselines/FACTORIAL.md) record their decisions and
 resource boundaries. Older schoolbook-only and pre-admission factorial timings
 are superseded and remain in Git history. Private square/tree adapters support
-controlled comparisons; they do not change the public API.
+controlled comparisons; public operation signatures remain unchanged.
 
 CI smoke checks validate exact references and failure contracts without imposing
 latency thresholds. A small smoke corpus does not establish a universal crossover.

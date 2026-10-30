@@ -109,6 +109,18 @@ function makeCases(quick, factorialOnly = false) {
     }
     for (const a of [0n, 1n, -1n, -7n]) for (const exponent of [0n, 1n, 2n, 17n])
         for (const op of ['pow', 'pow_square']) add(`edge-${op}-${a}-${exponent}`, op, 'alias_a', a, exponent);
+    // Production symmetric-square boundaries and carry patterns. Distinct but
+    // equal inputs remain a general-multiplication control for each fixture.
+    for (const n of quick ? [15, 16, 127, 128] : [15, 16, 17, 31, 32, 33, 63, 64, 65, 126, 127, 128, 129])
+        for (const pattern of ['random', 'max', 'sparse', 'alternating']) {
+            const a = -random(n, pattern);
+            for (const mode of ['reuse', 'same_input', 'alias_all'])
+                add(`square-production-${pattern}-${n}-${mode}`, 'mul', mode, a, a);
+        }
+    for (const a of [5n, 10n, (1n << 64n) - 1n])
+        for (const exponent of quick ? [63n, 64n, 65n] : [26n, 27n, 28n, 63n, 64n, 65n, 127n, 128n, 129n, 1023n, 1024n, 1025n, 3324n])
+            for (const mode of ['reuse', 'alias_a', 'alias_b'])
+                add(`pow-small-${a}-${exponent}-${mode}`, 'pow', mode, a, exponent);
     return rows;
 }
 module.exports = { makeCases };

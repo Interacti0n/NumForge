@@ -2651,6 +2651,92 @@ static void test_production_agm_cancellation_preserves_destination(void)
     }
 }
 
+static void assert_power_or_square_faults(const BigInt *input, const BigInt *exponent, bool same)
+{
+    BigInt expected = {0};
+    TEST_ASSERT_EQUAL(BIGINT_OK, exponent ? bigint_pow(&expected, input, same ? input : exponent) :
+        bigint_mul(&expected, input, input));
+    for (unsigned alias = 0U; alias < (same ? 2U : 3U); ++alias)
+    for (unsigned kind = 0U; kind < 2U; ++kind)
+    {
+        bool completed = false;
+        for (size_t fail = 1U; fail <= ALLOCATION_TEST_MAX_FAILURE_INDEX; ++fail)
+        {
+            BigInt a = {0}, b = {0}, result = {0};
+            TEST_ASSERT_EQUAL(BIGINT_OK, bigint_copy(&a, input));
+            if (exponent) TEST_ASSERT_EQUAL(BIGINT_OK, bigint_copy(&b, exponent));
+            TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_uint64(&result, 77U));
+            BigInt *out = alias == 1U ? &a : alias == 2U ? &b : &result;
+#ifdef NUMFORGE_ENABLE_ALLOC_STATS
+            size_t baseline = numforge_alloc_stats_live();
+#endif
+            TEST_ASSERT_TRUE(numforge_budget_begin(UINT64_MAX, SIZE_MAX, SIZE_MAX));
+            numforge_test_allocator_begin(kind == 0U ? fail : 0U);
+            if (kind == 1U) numforge_test_budget_expire_after(fail);
+            BigIntStatus status = exponent ? bigint_pow(out, &a, same ? &a : &b) : bigint_mul(out, &a, &a);
+            bool injected = numforge_test_allocator_did_fail();
+            NumForgeBudgetFailure reason = numforge_budget_failure();
+            numforge_test_allocator_end();
+            numforge_budget_end();
+            if (status == BIGINT_OK)
+            {
+                TEST_ASSERT_EQUAL_INT(0, bigint_compare(out, &expected));
+                TEST_ASSERT_FALSE(injected);
+                TEST_ASSERT_EQUAL(NUMFORGE_BUDGET_OK, reason);
+                if (out != &a) TEST_ASSERT_EQUAL_INT(0, bigint_compare(&a, input));
+                if (exponent && out != &b) TEST_ASSERT_EQUAL_INT(0, bigint_compare(&b, exponent));
+                completed = true;
+            }
+            else
+            {
+                TEST_ASSERT_EQUAL(BIGINT_OUT_OF_MEMORY, status);
+                TEST_ASSERT_TRUE(kind == 0U ? injected : reason == NUMFORGE_BUDGET_TIME);
+                TEST_ASSERT_EQUAL_INT(0, bigint_compare(&a, input));
+                if (exponent) TEST_ASSERT_EQUAL_INT(0, bigint_compare(&b, exponent));
+                TEST_ASSERT_EQUAL_UINT64(1U, result.size);
+                TEST_ASSERT_EQUAL_UINT64(77U, result.limbs[0]);
+                TEST_ASSERT_FALSE(result.is_negative);
+#ifdef NUMFORGE_ENABLE_ALLOC_STATS
+                TEST_ASSERT_EQUAL_UINT64(baseline, numforge_alloc_stats_live());
+#endif
+            }
+            free(a.limbs); free(b.limbs); free(result.limbs);
+            if (completed) break;
+        }
+        TEST_ASSERT_TRUE(completed);
+    }
+    free(expected.limbs);
+}
+
+static void test_power_and_symmetric_square_faults(void)
+{
+#ifdef NUMFORGE_ENABLE_ALLOC_STATS
+    TEST_ASSERT_TRUE(numforge_alloc_stats_track(true));
+#endif
+    BigInt input = {0}, exponent = {0};
+    const char *bases[] = {"-5", "18446744073709551615", "18446744073709551617", "5"};
+    const uint64_t exponents[] = {1023U, 65U, 31U, 5U};
+    for (size_t i = 0U; i < 4U; ++i)
+    {
+        TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_string(&input, bases[i]));
+        TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_uint64(&exponent, exponents[i]));
+        assert_power_or_square_faults(&input, &exponent, i == 3U);
+    }
+    for (size_t limbs = 16U; limbs <= 127U; limbs += 111U)
+    {
+        TEST_ASSERT_EQUAL(BIGINT_OK, bigint_set_uint64(&input, 1U));
+        TEST_ASSERT_EQUAL(BIGINT_OK, bigint_shift_left(&input, &input, limbs * 64U));
+        TEST_ASSERT_EQUAL(BIGINT_OK, bigint_sub(&input, &input, &exponent));
+        assert_power_or_square_faults(&input, NULL, true);
+    }
+    free(input.limbs); free(exponent.limbs);
+#ifdef NUMFORGE_ENABLE_ALLOC_STATS
+    TEST_ASSERT_EQUAL_UINT64(0U, numforge_alloc_stats_live());
+    TEST_ASSERT_TRUE(numforge_alloc_stats_complete());
+    TEST_ASSERT_TRUE(numforge_alloc_stats_track(false));
+#endif
+}
+
 /* Independent radix identity: (B^128-1)^2=B^256-2*B^128+1,
  * B=2^64. This exercises the production entry boundary without a second
  * multiplication implementation supplying the expected value. */
@@ -2723,6 +2809,7 @@ static void test_karatsuba_dispatch_alias_failures_and_budget_fallback(void)
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_power_and_symmetric_square_faults);
     RUN_TEST(test_convert_every_allocation_failure);
     RUN_TEST(test_base_conversion_and_prefix_failure_safety);
     RUN_TEST(test_application_budget_is_cumulative_and_scoped);
