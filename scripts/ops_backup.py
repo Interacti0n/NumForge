@@ -13,6 +13,7 @@ import tempfile
 import urllib.request
 
 import compose
+from compose import load_pilot_environment as load_environment
 
 ROOT = compose.ROOT
 STATE = ROOT / ".local/ops"
@@ -68,17 +69,6 @@ def initialize(repository):
     restic(settings, "init")
     (STATE / "backup.json").write_text(json.dumps(settings, indent=2), encoding="utf-8")
     print("Encrypted repository initialized. Preserve the recovery password separately.")
-
-
-def load_environment():
-    for line in (ROOT / ".local/compose/pilot.env").read_text(encoding="utf-8-sig").splitlines():
-        if line and not line.startswith("#"):
-            name, value = line.split("=", 1)
-            if name in {"COMPOSE_FILE", "COMPOSE_PROJECT_NAME", "NUMFORGE_PORT", "NUMFORGE_GATEWAY_PORT", "NF_ACCOUNT_PUBLIC_ORIGIN"}:
-                os.environ[name] = value
-    if os.name == "nt":
-        docker_bin = Path(os.environ["LOCALAPPDATA"]) / "Programs/DockerDesktop/resources/bin"
-        os.environ["PATH"] = str(docker_bin) + os.pathsep + os.environ["PATH"]
 
 
 def verify_database(dump):

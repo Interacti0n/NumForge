@@ -35,6 +35,17 @@ def private_directory(path):
         path.chmod(0o700)
 
 
+def load_pilot_environment():
+    for line in (STATE / "pilot.env").read_text(encoding="utf-8-sig").splitlines():
+        if line and not line.startswith("#"):
+            name, value = line.split("=", 1)
+            if name in {"COMPOSE_FILE", "COMPOSE_PROJECT_NAME", "NUMFORGE_PORT", "NUMFORGE_GATEWAY_PORT", "NF_ACCOUNT_PUBLIC_ORIGIN"}:
+                os.environ[name] = value
+    if os.name == "nt":
+        docker_bin = Path(os.environ["LOCALAPPDATA"]) / "Programs/DockerDesktop/resources/bin"
+        os.environ["PATH"] = str(docker_bin) + os.pathsep + os.environ["PATH"]
+
+
 def init():
     if any((STATE / name).exists() for name in ("admin.json", "migrate.json", "app.json", "admin-password")):
         raise ValueError("Compose credentials already exist; refusing to replace them.")

@@ -78,6 +78,19 @@ cp gateway:/data/caddy/pki/authorities/local/root.crt .local/compose/gateway-roo
 Never export its private key. Tunnel origin TLS must verify this root and use
 `localhost` as its origin server name/Host; do not disable certificate verification.
 
+On the configured Windows PC, `scripts/pilot.ps1 -Action EnableStartup` installs
+hidden logon/minute recovery checks; `-Action Status` shows the last verified URL.
+`-Action DisableStartup` removes checks and leaves the running tunnel alone.
+The helper needs `.local/compose/pilot.env`, the Python path in
+`.local/ops/backup-runner.json` and `.local/tools/bin/cloudflared.exe`.
+It starts Docker Desktop when needed, restores containers without rebuilding,
+preserves a live tunnel and creates a replacement after process exit. A replacement
+Quick Tunnel changes the hostname: Origin/CSRF and Kuma follow the exact new URL;
+users sign in again on that hostname. The CA remains verified. Current state is in
+`.local/compose/pilot-status.json` and `pilot-url.txt`; failures retry next minute.
+Daily `manage.py clearsessions` removes expired database sessions and preserves
+active sessions. Real Windows reboot/login verification remains a separate test.
+
 For a Cloudflare HTTPS tunnel, set `NF_ACCOUNT_PUBLIC_ORIGIN` to its exact HTTPS
 origin before recreating `gateway`/`accounts`. The gateway checks browser Origin,
 redirects edge HTTP to HTTPS and supplies a private gateway token plus authoritative
@@ -108,9 +121,9 @@ Optional tools remain outside the mathematical engine:
 | Trivy | Local image vulnerability reports, with no Docker socket mounted into the scanner |
 
 The configured PC keeps binaries under `.local/tools/`, private credentials under
-`.local/ops/` and extends `COMPOSE_FILE` with `compose.tools.yaml`. Kuma needs its
-private `monitor-admin.json` before starting; `scripts/setup_monitor.cjs` provisions
-its configured monitors inside the container. Do not publish its admin port.
+`.local/ops/` and extends `COMPOSE_FILE` with `compose.tools.yaml`. Provisioning
+passes private `monitor-admin.json` through stdin to `scripts/setup_monitor.cjs`
+inside Kuma; the credential file is not mounted there. Do not publish its admin port.
 This monitor cannot report a whole-PC outage while that same PC is off.
 
 ```sh

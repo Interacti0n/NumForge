@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.contrib.sessions.models import Session
+from django.core.management import call_command
 from django.db import connections
 from django.test import Client, RequestFactory, override_settings
 from django.utils import timezone
@@ -80,6 +81,16 @@ class AuthChecks(unittest.TestCase):
         self.other.is_active = False
         self.other.save()
         self.assertEqual(self.post(data={"username": self.other.username, "password": "changed-password-for-tests"}).status_code, 401)
+
+    def test_cleanup_removes_only_expired_sessions(self):
+        self.assertEqual(self.post().status_code, 200)
+        active_key = self.client.cookies["numforge_account"].value
+        Session.objects.create(session_key="expired-cleanup-fixture", session_data="",
+            expire_date=timezone.now()-timedelta(days=1))
+        call_command("clearsessions", verbosity=0)
+        self.assertFalse(Session.objects.filter(session_key="expired-cleanup-fixture").exists())
+        self.assertTrue(Session.objects.filter(session_key=active_key).exists())
+        self.assertEqual(self.client.get("/api/account/session", secure=True).json()["user"]["id"], self.user.pk)
 
     def test_generic_errors_and_bounded_input(self):
         errors = [self.post(data={"username": username, "password": "wrong"}) for username in (self.user.username, "missing")]

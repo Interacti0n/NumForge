@@ -1,7 +1,7 @@
-// Run inside the pinned Kuma container; credentials stay in its read-only secret file.
+// Provision inside Kuma; credentials arrive via stdin, never command arguments.
 const fs = require('node:fs');
 const { io } = require('/app/node_modules/socket.io-client');
-const config = JSON.parse(fs.readFileSync('/run/secrets/monitor-admin.json', 'utf8'));
+const config = JSON.parse(fs.readFileSync(0, 'utf8'));
 const socket = io('http://127.0.0.1:3001', { transports: ['websocket'], reconnection: false });
 const timer = setTimeout(() => { console.error('Monitor setup timed out'); process.exit(1); }, 60000);
 const call = (name, ...args) => new Promise((resolve, reject) => {

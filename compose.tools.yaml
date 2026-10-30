@@ -10,7 +10,6 @@ services:
     volumes:
       - uptime-data:/app/data
       - ./scripts/setup_monitor.cjs:/opt/setup_monitor.cjs:ro
-      - ./.local/ops/monitor-admin.json:/run/secrets/monitor-admin.json:ro
     restart: unless-stopped
     security_opt: [no-new-privileges:true]
 volumes:
