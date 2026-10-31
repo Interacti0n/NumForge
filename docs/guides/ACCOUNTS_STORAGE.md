@@ -133,8 +133,10 @@ Saved defaults apply when opening the calculator; edits in its toolbar remain
 local to that task. Restoring defaults does not evaluate an expression. An explicit
 URL `lang` overrides the saved language. Guest defaults stay separate in local
 storage and are imported only by **Use guest settings**, followed by **Save**.
-Account defaults stay in memory; sign-out/account changes reset the controls to
-guest defaults. Conflicts/offline saves retain the account form's draft; loading
+Account defaults never replace shared guest preferences. Local task snapshots
+still retain calculation context; their account-derived controls are skipped on
+restore. Sign-out/account changes reset the controls to guest defaults.
+Conflicts/offline saves retain the account form's draft; loading
 the saved version explicitly discards it. Calculations/history are not synced.
 
 Next: owner-scoped workspaces and device management. See the
