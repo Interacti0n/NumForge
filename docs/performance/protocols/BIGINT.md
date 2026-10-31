@@ -159,6 +159,8 @@ records composition into public roots and exact modules.
 The [multiply-add carry follow-up](../baselines/ARITHMETIC.md#multiply-add-carry-chains)
 records the shared full-width accumulator, independent carry-boundary checks
 and measured differences between direct products and complete calculations.
+The [two-word normalization follow-up](../baselines/ARITHMETIC.md#two-word-zero-normalization)
+records exact inverse-division pairing, full factorial timings and small controls.
 Older schoolbook-only and pre-admission factorial timings
 are superseded and remain in Git history. Private square/tree adapters support
 controlled comparisons; public operation signatures remain unchanged.

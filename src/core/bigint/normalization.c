@@ -37,19 +37,44 @@ BigIntStatus bigint_strip_decimal_zeros_inverse(BigInt *value, uint64_t *removed
     uint64_t divisor = 1U, inverse = 1U;
     for (unsigned i = 0U; i < block; ++i) divisor *= 5U;
     for (unsigned i = 0U; i < 6U; ++i) inverse *= 2U - divisor * inverse;
+    /* Lift the inverse to two words: divisor*(inverse + inverse_high*2^64)
+     * == 1 (mod 2^128). Computing two quotient words together shortens the
+     * serial multiply/carry dependency without a wider integer type. */
+    uint64_t inverse_high, unused;
+    bigint_multiply_u64_u64(inverse, divisor, &inverse_high, &unused);
+    inverse_high = (0U - inverse_high) * inverse;
     BigIntStatus status = BIGINT_OK;
     while (value->size && !(value->limbs[0] & mask))
     {
         uint64_t carry = 0U;
-        for (size_t i = 0U; i < value->size; ++i)
+        size_t i = 0U;
+        for (; i + 1U < value->size; i += 2U)
         {
             if (!(i & 255U) && !numforge_budget_check())
             { status = BIGINT_OUT_OF_MEMORY; break; }
+            uint64_t word0 = (value->limbs[i] >> block) |
+                (value->limbs[i + 1U] << (64U - block));
+            uint64_t word1 = value->limbs[i + 1U] >> block;
+            if (i + 2U < value->size) word1 |= value->limbs[i + 2U] << (64U - block);
+            uint64_t x0 = word0 - carry, borrow = word0 < carry;
+            uint64_t q0, high;
+            bigint_multiply_u64_u64(x0, inverse, &high, &q0);
+            /* Q = (word0 + word1*2^64 - carry) * inverse (mod 2^128).
+             * Recover the outgoing carry with the original scalar identity. */
+            uint64_t q1 = high + x0 * inverse_high + (word1 - borrow) * inverse;
+            bigint_multiply_u64_u64(q0, divisor, &high, &unused);
+            uint64_t next = high + borrow;
+            bigint_multiply_u64_u64(q1, divisor, &high, &unused);
+            carry = high + (word1 < next);
+            trial.limbs[i] = q0;
+            trial.limbs[i + 1U] = q1;
+        }
+        if (status == BIGINT_OK && i < value->size)
+        {
+            if (!(i & 255U) && !numforge_budget_check()) status = BIGINT_OUT_OF_MEMORY;
             uint64_t word = value->limbs[i] >> block;
-            if (i + 1U < value->size) word |= value->limbs[i + 1U] << (64U - block);
-            uint64_t quotient = (word - carry) * inverse, high, low;
-            bigint_multiply_u64_u64(quotient, divisor, &high, &low);
-            (void)low;
+            uint64_t quotient = (word - carry) * inverse, high;
+            bigint_multiply_u64_u64(quotient, divisor, &high, &unused);
             trial.limbs[i] = quotient;
             carry = high + (word < carry);
         }

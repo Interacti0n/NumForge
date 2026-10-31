@@ -56,6 +56,7 @@ if(CMAKE_SIZEOF_VOID_P EQUAL 4)
 endif()
 
 numforge_add_unit_test(bigint_property_tests numforge core/test_bigint_properties.c)
+numforge_add_unit_test(zero_normalization_tests numforge core/test_zero_normalization.c)
 
 numforge_add_unit_test(limb_multiplication_tests numforge core/test_limb_multiplication.c)
 numforge_add_unit_test(limb_multiplication_portable_tests numforge core/test_limb_multiplication.c)

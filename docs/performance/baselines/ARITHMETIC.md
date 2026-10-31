@@ -268,6 +268,80 @@ reference and Linux diagnostic logs accompany them. Metadata preserves binary
 and source hashes. `exploration-*` and `candidate-*` belong to the rejected
 threshold/chunk investigations, not the final change.
 
+## Two-word zero normalization
+
+31 October 2026, baseline `24e4d24`. Large decimal coefficients already remove
+zeros through exact inverse division in 27-zero blocks. Each trial now computes
+two quotient limbs using the inverse modulo `2^128`, then recovers the outgoing
+carry with the original scalar identity. This shortens the serial multiplication
+dependency. All operations use the existing unsigned full-width product helper;
+the portable implementation also works without a 128-bit integer type.
+The single scratch buffer, allocation preflight/fallback, 128-limb dispatch,
+scalar tail, signs, precision and every-256-limb cancellation checks are retained.
+
+A separate single-run phase profile attributes 540.7 of 1015.0 ms (GCC) and
+580.5 of 1156.5 ms (MSVC) to normalization of `246000!`. These profiled runs
+identify work; they are not the unprofiled timing baseline below.
+
+Windows x64/Ryzen 7 7435HS, GCC 16.2 Release `-O3 -DNDEBUG` and MSVC 19.51
+Release `/O2 /Ob2 /DNDEBUG`, allocation counters/failure hooks enabled in both
+versions. Seven immediate fresh-process pairs per case, order reversed on even
+pairs; the follow-up repeats `246000!` and adds controls/direct probes. No own
+concurrent build, test or other benchmark. Host activity/frequency remain
+uncontrolled; no affinity/frequency lock. Complete scientific output at ten
+places is checked independently outside timing, with a matching 30-second
+diagnostic deadline and the unchanged application allocation limits.
+
+| Complete calculator request | GCC before / after ms | MSVC before / after ms |
+| --- | ---: | ---: |
+| `100000!` | 180.048 / 166.777 | 209.894 / 190.730 |
+| `246000!`, first batch | 986.401 / 899.054 | 1129.069 / 987.452 |
+| `246000!`, follow-up | 993.749 / 897.397 | 1173.471 / 984.282 |
+| `10000!`, control | 2.663 / 2.718 | 3.074 / 2.964 |
+
+Entries are medians of seven process durations, not the median paired ratio.
+For `246000!`, median immediate-pair speedups are 1.095/1.098 (GCC) and
+1.157/1.179 (MSVC), corresponding to about 9% and 14–15% shorter paired times.
+The ratios of the displayed medians give about 9–10% and 13–16% shorter time.
+`100000!` requests retain 9195 allocations/4,602,403 requested bytes;
+`246000!` retains 17,310/13,581,463. These are cumulative allocation traffic,
+not resident memory.
+
+The direct `strip27` adapter over `100000!`, including its owned input copy,
+changes from 82.716 to 67.322 ms (GCC) and 84.187 to 65.929 ms (MSVC): roughly
+19%/22% shorter time. Each process uses seven calibrated samples and a separate
+live-payload probe. Both versions request two allocations/451,736 bytes and
+retain the same 451,744-byte baseline/final payload and 903,480-byte peak.
+A 65,536-bit base with 1000 decimal zeros changes 188.193/156.481 microseconds
+(GCC) and 178.625/143.886 (MSVC). Controls remain mixed: with zero zeros the
+same adapter records 4.015/4.120 and 5.239/5.618 microseconds; with 27 zeros,
+14.907/15.098 and 15.335/14.551. The 1000-place root control records
+115.954/115.010 ms and 136.221/128.337 ms, with overlapping ranges. These
+controls do not establish a general arithmetic speedup.
+
+Validation uses an isolated `24e4d24` source snapshot plus only this change and
+its tests, avoiding concurrent account/frontend work. All 119 GCC benchmark
+tests pass. All 86 MSVC tests pass after creating the snapshot's missing `build/`
+parent and rerunning the remote-helper test; the initial environment failure is
+preserved. Each native compiler and the forced-portable library verifies 2520
+complete Python-integer coefficient/count references, including signs and
+aliases, and exhaustive allocation/deadline interruption of the factorial
+normalization adapter. The new CI unit suite checks 5780 independent factor
+valuation cases across 19/27-zero blocks, odd/even lengths and the 256-limb
+checkpoint. Each native compiler additionally passes 23,614 Fraction/Decimal
+references. Linux GCC 12.2 ASan/UBSan/leak checks pass that new suite, 26 decimal
+tests and seven rational tests for both native and forced-portable libraries,
+using non-PIE executables. The initial Linux diagnostic omitted required test
+hooks; the corrected complete run is retained. Linux/portable performance was
+not measured.
+
+Raw ignored directory: `build/performance-normalization/`, including
+`pair-data.json`, `followup-data.json`, `summary.json`, `metadata.json`, exact
+fixtures, compiler/test/oracle logs and Linux diagnostics. An exploratory
+deferred-shift normalization variant was not retained; its results are not the
+two-word comparison. An intentionally stopped validation including the unchanged
+slow classic adapter is separate from the complete 2520-case candidate checks.
+
 ## Allocation reuse
 
 MSVC 19.51, medians of three fresh serial processes. GCD baseline `1b19e2c`,
