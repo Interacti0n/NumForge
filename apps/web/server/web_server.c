@@ -1137,6 +1137,10 @@ void numforge_handle_framed_connection(NumForgeSocket socket, char *request, con
     {
         numforge_send_response(socket, 200, "OK", "text/javascript; charset=utf-8", (const char *)NUMFORGE_NAVIGATION_JS);
     }
+    else if (strcmp(method, "GET") == 0 && strcmp(target, "/assets/preferences.js") == 0)
+    {
+        numforge_send_response(socket, 200, "OK", "text/javascript; charset=utf-8", (const char *)NUMFORGE_PREFERENCES_JS);
+    }
     else if (strcmp(method, "GET") == 0 && strcmp(target, "/assets/logo.png") == 0)
     {
         numforge_send_bytes_response(socket, 200, "OK", "image/png",

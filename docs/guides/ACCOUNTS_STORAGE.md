@@ -78,6 +78,8 @@ forwarded scheme/client address. No public registration.
 | `GET /api/account/session` | Own `{user: {id, username}}` or `user: null`, plus masked `csrf_token` |
 | `POST /api/account/login` | JSON `username`, `password`, optional boolean `remember`; returns own user and rotated token |
 | `POST /api/account/logout` | Revokes current session; returns null user and a new CSRF token |
+| `GET /api/account/preferences` | Own `{user, values, revision}`; unsaved defaults have revision 0 |
+| `POST /api/account/preferences` | Saves complete `values` with `user_id` and `expected_revision`; returns the next revision |
 
 POST requires the CSRF cookie plus `X-CSRFToken` and a same-origin HTTPS request.
 Session/CSRF cookies are Secure/HttpOnly/SameSite=Lax; responses prohibit caching.
@@ -104,5 +106,36 @@ are prompted twice, validated and never passed as CLI arguments. Expired session
 need periodic `manage.py clearsessions`; the [pilot supervisor](CONTAINERS.md#https-account-pilot)
 runs it daily.
 
-Next: owner-scoped preferences/workspaces and device management. See the
+### Account defaults
+
+The account screen explicitly saves language (`sk/en`), precision mode
+(`auto/custom/full`), decimal places (integer 0–10000), notation
+(`auto/plain/scientific/math/fraction`), angle (`rad/deg`) and complex form
+(`cartesian/trig/exp`). `rounding` is currently fixed to `half_even`, matching
+the web evaluator. Every save supplies all seven fields; unknown fields fail.
+
+Preferences require authentication (401), HTTPS/CSRF and JSON within 4 KiB.
+Ownership comes from the session; `user_id` only guards against an account switch.
+An old revision returns 409 `revision_conflict` with the current own values;
+an account mismatch returns 409 `account_changed` without another user's data.
+The owner row lock also serializes simultaneous first saves.
+
+Example save body (use the CSRF token/cookie from `/api/account/session`):
+
+```json
+{"user_id":7,"expected_revision":0,"values":{
+  "language":"sk","precision_mode":"custom","precision":100,
+  "notation":"math","angle":"rad","rounding":"half_even","complex_form":"cartesian"
+}}
+```
+
+Saved defaults apply when opening the calculator; edits in its toolbar remain
+local to that task. Restoring defaults does not evaluate an expression. An explicit
+URL `lang` overrides the saved language. Guest defaults stay separate in local
+storage and are imported only by **Use guest settings**, followed by **Save**.
+Account defaults stay in memory; sign-out/account changes reset the controls to
+guest defaults. Conflicts/offline saves retain the account form's draft; loading
+the saved version explicitly discards it. Calculations/history are not synced.
+
+Next: owner-scoped workspaces and device management. See the
 [account design](../design/APPLICATION_DESIGN.md#proposed-accounts-and-saved-work).

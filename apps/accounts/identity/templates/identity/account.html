@@ -29,7 +29,23 @@
         <label class="account-check"><input id="account-remember" type="checkbox">{{ copy.remember }}</label>
         <button class="btn-primary" type="submit">{{ copy.signin }}</button>
       </form>
-      <div id="account-signed" hidden><h2>{{ copy.signed }}</h2><strong id="account-name"></strong><p>{{ copy.scope }}</p><button class="btn-secondary" id="account-logout" type="button">{{ copy.signout }}</button></div>
+      <div id="account-signed" hidden><h2>{{ copy.signed }}</h2><strong id="account-name"></strong><p>{{ copy.scope }}</p>
+        <form id="preferences-form" hidden>
+          <h3>{{ copy.defaults }}</h3>
+          <div class="preferences-grid">
+            <label>{{ copy.language }}<select name="language"><option value="sk">Slovenčina</option><option value="en">English</option></select></label>
+            <label>{{ copy.precision }}<select name="precision_mode"><option value="auto">{{ copy.auto }}</option><option value="full">{{ copy.full }}</option><option value="custom">{{ copy.custom }}</option></select></label>
+            <label id="preferences-places">{{ copy.places }}<input name="precision" type="number" min="0" max="10000" step="1" value="10" required></label>
+            <label>{{ copy.notation }}<select name="notation"><option value="auto">Auto</option><option value="plain">{{ copy.plain }}</option><option value="scientific">{{ copy.scientific }}</option><option value="math">{{ copy.mathematical }}</option><option value="fraction">{{ copy.fraction }}</option></select></label>
+            <label>{{ copy.angle }}<select name="angle"><option value="rad">RAD</option><option value="deg">DEG</option></select></label>
+            <label>{{ copy.complex }}<select name="complex_form"><option value="cartesian">{{ copy.cartesian }}</option><option value="trig">{{ copy.trig }}</option><option value="exp">{{ copy.exponential }}</option></select></label>
+          </div>
+          <small>{{ copy.rounding }}</small>
+          <p id="preferences-status" role="status" aria-live="polite"></p>
+          <div class="preferences-actions"><button class="btn-primary" type="submit">{{ copy.save }}</button><button class="btn-secondary" id="preferences-import" type="button">{{ copy.import_guest }}</button><button class="btn-secondary" id="preferences-reload" type="button" hidden>{{ copy.reload }}</button></div>
+        </form>
+        <button class="btn-secondary" id="account-logout" type="button">{{ copy.signout }}</button>
+      </div>
       <button class="btn-secondary" id="account-retry" type="button" hidden>{{ copy.retry }}</button>
       <p class="account-note">{{ copy.pilot }}</p>
     </section>
@@ -37,5 +53,5 @@
   <footer class="page-footer"><span>NumForge · Private pilot</span><nav class="footer-links" aria-label="NumForge"><a class="login-link" href="/login?lang={{ lang }}">{{ copy.account }}</a><a class="register-link" href="/register?lang={{ lang }}">{% if lang == 'sk' %}Registrácia · pripravujeme{% else %}Registration · planned{% endif %}</a><a href="/LICENSE" data-license>MIT License</a><a href="https://github.com/Interacti0n/NumForge" target="_blank" rel="noopener noreferrer">GitHub</a></nav></footer>
 </div>
 {{ copy|json_script:"account-copy" }}
-<script src="/assets/navigation.js"></script><script src="/api/account/ui.js"></script>
+<script src="/assets/preferences.js"></script><script src="/assets/navigation.js"></script><script src="/api/account/ui.js"></script>
 </body></html>

@@ -1,13 +1,11 @@
 """Private JSON authentication. Mathematical sessions are intentionally separate."""
 from datetime import timedelta
 import ipaddress
-import json
 import math
 from pathlib import Path
 
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.contrib.auth import get_user_model
-from django.core.exceptions import RequestDataTooBig
 from django.db import transaction
 from django.http import JsonResponse, FileResponse
 from django.shortcuts import render
@@ -19,6 +17,7 @@ from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.debug import sensitive_variables
 
 from .models import LoginThrottle
+from .json_api import read_object
 
 LOGIN_LIMIT = 10
 LOGIN_WINDOW = timedelta(minutes=5)
@@ -31,7 +30,15 @@ COPY = {
         limited="Príliš veľa pokusov. Skús to znova o chvíľu.", offline="Spojenie sa nepodarilo. Over stav účtu znova.",
         secure="Prihlasovanie vyžaduje HTTPS.", guest="Kalkulačku môžeš používať aj bez účtu.",
         pilot="Účty v tomto pilote zakladá správca. Verejná registrácia ešte nie je dostupná.",
-        scope="Prihlásenie je pripravené. Synchronizácia nastavení, histórie a pracovných priestorov pribudne neskôr.",
+        scope="Predvolené nastavenia sa načítajú aj na inom zariadení. Výpočty a história zatiaľ zostávajú v prehliadači.",
+        defaults="Predvolené nastavenia", language="Jazyk", precision="Presnosť", places="Desatinné miesta",
+        auto="Auto · 10 miest", full="Plný výpis", custom="Vlastná", notation="Zápis", plain="Bežný",
+        scientific="Vedecký", mathematical="Matematický", fraction="Zlomok", angle="Uhol",
+        complex="Komplexný zápis", cartesian="Bežný · a + bi", trig="Trigonometrický", exponential="Exponenciálny",
+        rounding="Zaokrúhľovanie: half-even", save="Uložiť nastavenia", import_guest="Prevziať nastavenia hosťa",
+        saved="Nastavenia sú uložené.", unsaved="Neuložené zmeny", saving="Ukladám…",
+        conflict="Uložená verzia sa zmenila. Tvoje úpravy zostali vo formulári.", reload="Načítať uložené",
+        import_note="Prevzaté nastavenia hosťa. Potvrď ich uložením.", invalid_settings="Skontroluj nastavenia a počet miest (0–10 000).",
         calc="Kalkulačka", graphs="Grafy", equations="Rovnice", matrices="Matice", units="Jednotky", guide="Návod / API", account="Účet"),
     "en": dict(title="Your account", lead="Sign in to the private NumForge pilot.", username="Username",
         password="Password", show="Show password", remember="Remember for 14 days", signin="Sign in", signout="Sign out",
@@ -40,7 +47,15 @@ COPY = {
         limited="Too many attempts. Please try again later.", offline="Could not connect. Check your account status again.",
         secure="Sign-in requires HTTPS.", guest="You can use the calculator without an account.",
         pilot="An administrator creates pilot accounts. Public registration is not available yet.",
-        scope="Sign-in is ready. Settings, history and workspace synchronization will follow later.",
+        scope="Defaults load on your other devices. Calculations and history still stay in the browser.",
+        defaults="Default settings", language="Language", precision="Precision", places="Decimal places",
+        auto="Auto · 10 places", full="Full output", custom="Custom", notation="Notation", plain="Plain",
+        scientific="Scientific", mathematical="Mathematical", fraction="Fraction", angle="Angle",
+        complex="Complex form", cartesian="Cartesian · a + bi", trig="Trigonometric", exponential="Exponential",
+        rounding="Rounding: half-even", save="Save settings", import_guest="Use guest settings",
+        saved="Settings saved.", unsaved="Unsaved changes", saving="Saving…",
+        conflict="The saved version changed. Your edits are still in the form.", reload="Load saved settings",
+        import_note="Guest settings copied. Save to confirm.", invalid_settings="Check settings and decimal places (0–10,000).",
         calc="Calculator", graphs="Graphs", equations="Equations", matrices="Matrices", units="Units", guide="Guide / API", account="Account"),
 }
 
@@ -98,17 +113,10 @@ def admit_login(request):
 @require_POST
 @sensitive_variables("data")
 def login(request):
-    if request.content_type != "application/json":
-        return JsonResponse({"error": "json_required"}, status=415)
-    try:
-        if len(request.body) > 4096:
-            raise RequestDataTooBig()
-        data = json.loads(request.body)
-    except RequestDataTooBig:
-        return JsonResponse({"error": "request_too_large"}, status=413)
-    except (ValueError, UnicodeDecodeError, RecursionError):
-        return JsonResponse({"error": "invalid_request"}, status=400)
-    if (not isinstance(data, dict) or set(data) - {"username", "password", "remember"}
+    data, error = read_object(request)
+    if error is not None:
+        return error
+    if (set(data) - {"username", "password", "remember"}
             or not isinstance(data.get("username"), str) or not 1 <= len(data["username"]) <= 150
             or not isinstance(data.get("password"), str) or not 1 <= len(data["password"]) <= 1024
             or not isinstance(data.get("remember", False), bool)):

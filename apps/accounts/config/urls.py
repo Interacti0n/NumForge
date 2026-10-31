@@ -1,5 +1,6 @@
 from django.urls import path
 from identity import views
+from identity.preferences import preferences
 
 urlpatterns = [
     path("login", views.login_page),
@@ -8,4 +9,5 @@ urlpatterns = [
     path("api/account/session", views.session),
     path("api/account/login", views.login),
     path("api/account/logout", views.logout),
+    path("api/account/preferences", preferences),
 ]

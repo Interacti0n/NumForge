@@ -28,6 +28,7 @@ paginated; full reads never silently round exact values.
 
 ## Proposed accounts and saved work
 
+Account defaults are available through [account preferences](../guides/ACCOUNTS_STORAGE.md#account-defaults).
 **Saved-work behavior below remains proposed.** The optional storage foundation uses
 Django 5.2 LTS authentication/session tables and migrations with PostgreSQL.
 Math stays in C. The guest executable/CLI/library work without Python or a DB.

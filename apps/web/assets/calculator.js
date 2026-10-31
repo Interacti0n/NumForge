@@ -45,6 +45,7 @@ function setResultStatus(state, approximate = null)
     document.querySelector('#result-examples').hidden = !!state || !!expression.value.trim();
 }
 let angleUnit = 'rad';
+let restoredGuestSettings = false;
 const mobileSettings = window.matchMedia('(max-width: 600px), (max-width: 960px) and (max-height: 500px) and (orientation: landscape)');
 const settingsOverview = document.querySelector('#settings-overview');
 function updateSettingsOverview()
@@ -193,7 +194,8 @@ function selectAngleUnit(unit, recalculate)
         button.classList.toggle('active', selected);
         button.setAttribute('aria-pressed', selected ? 'true' : 'false');
     });
-    try { localStorage.setItem('numforge-angle-unit', angleUnit); } catch (_) {}
+    if (!window.numforgePreferences)
+        try { localStorage.setItem('numforge-angle-unit', angleUnit); } catch (_) {}
     if (recalculate) scheduleCalculation();
 }
 
@@ -1072,6 +1074,7 @@ function saveNavigationState()
         sessionStorage.setItem('numforge-navigation-state', JSON.stringify({
             client: cacheClient, revision: generation, started: sessionStarted,
             pending: pendingCommit, expression: expression.value,
+            settingsOwner: window.numforgePreferences?.user?.id || null,
             precision: precision.value, mode: precisionMode.value,
             notation: notationMode.value, complexForm: complexForm.value, angle: angleUnit,
             result: result.dataset.rawResult ?? result.textContent, resultCopy, resultApprox: resultApproxValue, resultState, resultApproximate,
@@ -1110,11 +1113,14 @@ try
             sessionStarted = state.started === true;
             if (sessionStarted) sessionReady = Promise.resolve();
             expression.value = state.expression;
-            precision.value = state.precision;
-            precisionMode.value = state.mode;
-            notationMode.value = state.notation;
-            complexForm.value = ['cartesian','trig','exp'].includes(state.complexForm) ? state.complexForm : 'cartesian';
-            selectAngleUnit(state.angle, false);
+            if (!state.settingsOwner) {
+                restoredGuestSettings = true;
+                precision.value = state.precision;
+                precisionMode.value = state.mode;
+                notationMode.value = state.notation;
+                complexForm.value = ['cartesian','trig','exp'].includes(state.complexForm) ? state.complexForm : 'cartesian';
+                selectAngleUnit(state.angle, false);
+            }
             updatePrecisionMode();
             updateExpressionOverflow();
             selectSessionTab(state.sessionTab === 'variables' ? 'variables' : 'history');
@@ -1165,8 +1171,21 @@ window.addEventListener?.('focus', () => {
     if (sessionStarted && !commitInFlight && !variableDeletionInFlight)
         refreshSession().catch(error => { variableStatus.textContent = error.message; });
 }, {signal: lifecycle.signal});
+const unmountPreferences = window.numforgePreferences?.mount({
+    preserveGuest: restoredGuestSettings,
+    read: () => ({language:document.documentElement.lang, precision_mode:precisionMode.value,
+        precision:Number(precision.value), notation:notationMode.value, angle:angleUnit,
+        rounding:'half_even', complex_form:complexForm.value}),
+    apply: values => {
+        clearTimeout(autoTimer);
+        precisionMode.value = values.precision_mode; precision.value = String(values.precision);
+        notationMode.value = values.notation; complexForm.value = values.complex_form;
+        selectAngleUnit(values.angle, false); updatePrecisionMode(); updateSettingsOverview();
+    }
+});
 return () => {
     lifecycle.abort();
+    unmountPreferences?.();
     controller?.abort();
     clearTimeout(autoTimer);
     clearTimeout(copyTimer);

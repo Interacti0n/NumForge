@@ -90,7 +90,8 @@ if __name__ == "__main__":
                 import django
                 django.setup()
                 from test_auth import AuthChecks
-                suite = unittest.TestSuite(unittest.defaultTestLoader.loadTestsFromTestCase(case) for case in (DatabaseChecks, AuthChecks))
+                from test_preferences import PreferencesChecks
+                suite = unittest.TestSuite(unittest.defaultTestLoader.loadTestsFromTestCase(case) for case in (DatabaseChecks, AuthChecks, PreferencesChecks))
                 result = unittest.TextTestRunner(verbosity=2).run(suite)
                 from django.db import connections
                 connections.close_all()
