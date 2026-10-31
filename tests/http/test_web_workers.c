@@ -287,6 +287,26 @@ static void test_original_deadline_can_expire_behind_a_younger_queue_head(void)
     expect_response(2, "HTTP/1.1 503 Service Unavailable", "server_busy");
     finish_compute(0);
 }
+static void test_expiry_snapshot_does_not_reject_newer_ready_frames(void)
+{
+    pool = numforge_web_workers_start_handler(1, 3, 8765, NULL, controlled_handler); TEST_ASSERT_NOT_NULL(pool);
+    submit(0, blocked, numforge_monotonic_ms()); TEST_ASSERT_TRUE(await_state(0, 1, 0));
+    /* The acceptor samples time before entering the pool lock. Model a
+     * receiver/submitter publishing frames after that sample while compute
+     * remains blocked, rather than relying on a probabilistic thread race. */
+    uint64_t snapshot = numforge_monotonic_ms();
+    while (numforge_monotonic_ms() == snapshot) pause_thread();
+    submit(1, ordinary, numforge_monotonic_ms());
+    submit(2, "G", numforge_monotonic_ms()); TEST_ASSERT_TRUE(await_state(2, 1, 1));
+    send_text(2, request_tail); TEST_ASSERT_TRUE(await_state(2, 1, 0));
+    numforge_web_workers_expire(pool, snapshot);
+    TEST_ASSERT_TRUE(await_state(2, 1, 0));
+    numforge_web_workers_expire(pool, numforge_monotonic_ms() + NUMFORGE_WEB_QUEUE_TIMEOUT_MS);
+    TEST_ASSERT_TRUE(await_state(0, 1, 0));
+    expect_response(1, "HTTP/1.1 503 Service Unavailable", "server_busy");
+    expect_response(2, "HTTP/1.1 503 Service Unavailable", "server_busy");
+    finish_compute(0);
+}
 static void test_shutdown_discards_partial_and_ready_jobs_and_joins_compute(void)
 {
     pool = numforge_web_workers_start_handler(1, 2, 8765, NULL, controlled_handler); TEST_ASSERT_NOT_NULL(pool);
@@ -477,6 +497,7 @@ int main(void)
     RUN_TEST(test_full_ingress_preserves_rejected_socket_ownership_and_recovers);
     RUN_TEST(test_ready_queue_expiry_does_not_need_a_free_compute_worker);
     RUN_TEST(test_original_deadline_can_expire_behind_a_younger_queue_head);
+    RUN_TEST(test_expiry_snapshot_does_not_reject_newer_ready_frames);
     RUN_TEST(test_shutdown_discards_partial_and_ready_jobs_and_joins_compute);
     RUN_TEST(test_receive_deadline_is_not_restarted_by_partial_bytes);
     RUN_TEST(test_fragmented_body_and_peer_eof_release_their_slots);

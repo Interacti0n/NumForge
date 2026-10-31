@@ -384,7 +384,10 @@ void numforge_web_workers_expire(NumForgeWebWorkers *workers, uint64_t now)
     for (size_t i = 0U; i < workers->count; ++i) {
         size_t slot = workers->queue[(workers->head + i) % workers->capacity];
         WebConnection *connection = &workers->connections[slot];
-        if (connection_expired(connection, now)) {
+        /* The acceptor sampled now before taking this lock. A receiver or
+         * submitter can have published a newer frame meanwhile; that is not
+         * a backwards clock or an expired request. */
+        if (connection->queued_ms <= now && connection_expired(connection, now)) {
             expired[count++] = connection->socket; connection->state = CONNECTION_EMPTY;
         } else workers->queue[(workers->head + kept++) % workers->capacity] = slot;
     }

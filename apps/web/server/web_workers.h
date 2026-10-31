@@ -42,7 +42,8 @@ NumForgeWebWorkers *numforge_web_workers_start_handler(unsigned int workers,
 bool numforge_web_workers_submit(NumForgeWebWorkers *workers, NumForgeSocket socket, uint64_t accepted_ms);
 /* Acceptor calls at least every 100 ms, including while all workers are busy.
  * Ready queue expires after 1 s or the original 2-s receive/admission deadline,
- * whichever comes first. Receiver expires incomplete frames independently. */
+ * whichever comes first. now may precede a concurrent queue publication; such
+ * newer entries remain eligible. Receiver expires incomplete frames independently. */
 void numforge_web_workers_expire(NumForgeWebWorkers *workers, uint64_t now);
 /* Incomplete + ready snapshots; active counts both kinds of compute owner.
  * Diagnostics/tests, not an admission guarantee. */
