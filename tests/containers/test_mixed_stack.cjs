@@ -19,6 +19,17 @@ assert.notEqual(profile.secrets.app.file, source.secrets.app.file);
 assert.equal(profile.services.db.ports.length, 0);
 assert.equal(profile.services.gateway.ports[0].host_ip, '127.0.0.1');
 for (const service of Object.values(profile.services)) {assert.equal(service.restart, 'no'); assert.ok(!service.build);}
+const separate = isolate(source, project, path.resolve('build/fixture-private'), images, 19883);
+assert.equal(separate.services.web.ports[0].published, '19883');
+assert.equal(separate.services.gateway.ports[0].published, '19884');
+assert.equal(separate.services.uptime.ports[0].published, '19886');
+for (const name of ['accounts', 'gateway']) {
+    assert.equal(separate.services[name].environment.NF_ACCOUNT_PUBLIC_ORIGIN, 'https://localhost:19884');
+    assert.equal(separate.services[name].environment.NF_LOCAL_ORIGIN, 'https://localhost:19884');
+}
+assert.deepEqual(source, original);
+for (const port of [0, 1023, 65533, 19883.5, NaN])
+    assert.throws(() => isolate(source, project, '/tmp', images, port));
 assert.throws(() => isolate(source, 'numforge', '/tmp', images));
 source.volumes.data.external = true;
 assert.throws(() => isolate(source, project, '/tmp', images)); delete source.volumes.data.external;

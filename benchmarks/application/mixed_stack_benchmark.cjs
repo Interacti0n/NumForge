@@ -13,8 +13,9 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const secretFiles = {admin: 'admin.json', migrate: 'migrate.json', app: 'app.json',
     admin_password: 'admin-password', gateway_token: 'gateway-token'};
 
-function isolate(source, project, secrets, images) {
+function isolate(source, project, secrets, images, basePort = 18883) {
     assert.match(project, /^numforge-test-mixed-[a-f0-9-]+$/);
+    assert.ok(Number.isInteger(basePort) && basePort >= 1024 && basePort <= 65532, 'Invalid fixture port base');
     const profile = structuredClone(source);
     profile.name = project;
     for (const [key, volume] of Object.entries(profile.volumes)) {
@@ -43,11 +44,11 @@ function isolate(source, project, secrets, images) {
         }
     }
     const published = (target, port) => [{host_ip: '127.0.0.1', target, published: String(port), protocol: 'tcp'}];
-    profile.services.web.ports = published(18876, 18883);
-    profile.services.gateway.ports = published(8443, 18884);
-    profile.services.uptime.ports = published(3001, 18886);
+    profile.services.web.ports = published(18876, basePort);
+    profile.services.gateway.ports = published(8443, basePort + 1);
+    profile.services.uptime.ports = published(3001, basePort + 3);
     for (const name of ['accounts', 'gateway']) Object.assign(profile.services[name].environment,
-        {NF_ACCOUNT_PUBLIC_ORIGIN: 'https://localhost:18884', NF_LOCAL_ORIGIN: 'https://localhost:18884'});
+        {NF_ACCOUNT_PUBLIC_ORIGIN: `https://localhost:${basePort + 1}`, NF_LOCAL_ORIGIN: `https://localhost:${basePort + 1}`});
     return profile;
 }
 
@@ -137,12 +138,12 @@ class Client {
 }
 
 async function main(args) {
-    if (args.includes('--help')) return console.log('node benchmarks/application/mixed_stack_benchmark.cjs [--quick] [--clients 1..60] [--accounts-image LOCAL_IMAGE] [--seconds 2..60] [--sustain-seconds 0..300] [--python PATH] [--output NEW_BUILD_DIRECTORY] [--live-probes]');
+    if (args.includes('--help')) return console.log('node benchmarks/application/mixed_stack_benchmark.cjs [--quick] [--clients 1..60] [--web-image LOCAL_IMAGE] [--accounts-image LOCAL_IMAGE] [--port-base 1024..65532] [--seconds 2..60] [--sustain-seconds 0..300] [--python PATH] [--output NEW_BUILD_DIRECTORY] [--live-probes]');
     const seen = new Set();
     for (let i = 0; i < args.length; i++) {
         const flag = args[i];
         assert.ok(!seen.has(flag), 'Repeated option: ' + flag); seen.add(flag);
-        if (['--seconds', '--sustain-seconds', '--clients', '--accounts-image', '--python', '--output'].includes(flag)) assert.ok(args[++i] && !args[i].startsWith('--'), 'Missing option value');
+        if (['--seconds', '--sustain-seconds', '--clients', '--web-image', '--accounts-image', '--port-base', '--python', '--output'].includes(flag)) assert.ok(args[++i] && !args[i].startsWith('--'), 'Missing option value');
         else assert.ok(['--quick', '--live-probes'].includes(flag), 'Unknown option: ' + flag);
     }
     const quick = args.includes('--quick'), liveProbes = args.includes('--live-probes');
@@ -154,12 +155,14 @@ async function main(args) {
     const count = Number(option('--clients', quick ? '2' : '60'));
     assert.ok(Number.isInteger(count) && count >= 1 && count <= 60);
     const levels = args.includes('--clients') || quick ? [count] : [10, 30, 60];
+    const basePort = Number(option('--port-base', '18883'));
+    assert.ok(Number.isInteger(basePort) && basePort >= 1024 && basePort <= 65532, 'Invalid fixture port base');
     const python = option('--python', process.platform === 'win32' ? path.join(ROOT, '.local/accounts/venv/Scripts/python.exe') : 'python3');
     const output = path.resolve(option('--output', path.join(ROOT, 'build/mixed-stack-' + Date.now())));
     assert.ok(output.startsWith(path.join(ROOT, 'build') + path.sep), 'Record only under build/');
     fs.mkdirSync(output); // Existing recordings and secrets are never overwritten.
     const project = 'numforge-test-mixed-' + crypto.randomBytes(6).toString('hex');
-    const environment = {...process.env, COMPOSE_PROJECT_NAME: project, NF_ACCOUNT_PUBLIC_ORIGIN: 'https://localhost:18884'};
+    const environment = {...process.env, COMPOSE_PROJECT_NAME: project, NF_ACCOUNT_PUBLIC_ORIGIN: `https://localhost:${basePort + 1}`};
     delete environment.COMPOSE_FILE;
     const command = (program, argv, options = {}) => execFileSync(program, argv, {cwd: ROOT, env: environment, windowsHide: true, ...options});
     const docker = (argv, options) => command('docker', argv, options);
@@ -170,8 +173,8 @@ async function main(args) {
         const live = JSON.parse(docker(['inspect', 'numforge-' + name + '-1']))[0];
         assert.equal(live.Config.Labels['com.docker.compose.project'], 'numforge');
         const tag = `${project}-${name}:fixture`;
-        const selected = name === 'accounts' && args.includes('--accounts-image') ?
-            JSON.parse(docker(['image', 'inspect', option('--accounts-image')]))[0].Id : live.Image;
+        const override = ['web', 'accounts'].includes(name) ? option('--' + name + '-image') : undefined;
+        const selected = override ? JSON.parse(docker(['image', 'inspect', override]))[0].Id : live.Image;
         docker(['tag', selected, tag]);
         images[name] = tag;
         metadata[name] = {image: selected, deployed_image: live.Image, configured_image: live.Config.Image};
@@ -180,7 +183,7 @@ async function main(args) {
     const secrets = path.join(output, 'private');
     command(python, ['-c', "import sys;from pathlib import Path;sys.path.insert(0,'scripts');import compose;compose.STATE=Path(sys.argv[1]);compose.init()", secrets]);
     const config = path.join(output, 'compose.json');
-    fs.writeFileSync(config, JSON.stringify(isolate(source, project, secrets, images), null, 2));
+    fs.writeFileSync(config, JSON.stringify(isolate(source, project, secrets, images, basePort), null, 2));
     const compose = argv => docker(['compose', '--project-directory', ROOT, '-f', config, ...argv], {stdio: 'inherit'});
     const cases = JSON.parse(command(python, ['-c', `import decimal,json,math
 with decimal.localcontext() as c:
@@ -212,13 +215,14 @@ print(json.dumps({'sqrt':root,'factorial':fact}))`]));
         docker: {version: engine.ServerVersion, cpus: engine.NCPU, memory_bytes: engine.MemTotal},
         platform: {os: os.platform(), release: os.release(), cpus: os.cpus().length, memory_bytes: os.totalmem(), node: process.version},
         client_levels: levels, duration_seconds: duration, sustained_seconds: sustained, think_ms: quick ? 50 : 250, heavy_expression: `${quick ? 1000 : 100000}!`,
+        ports: {web: basePort, gateway: basePort + 1, uptime: basePort + 3},
         scope: 'Loopback TLS; distinct IPs simulated at the trusted Cloudflare edge header; fresh data. Colocated driver/production/desktop activity remains in host metrics.', phases: rows};
     try {
         compose(['config', '--quiet']);
         compose(['up', '--no-build', '--wait', '--wait-timeout', '180']);
         const caFile = path.join(output, 'gateway-root.crt');
         compose(['cp', 'gateway:/data/caddy/pki/authorities/local/root.crt', caFile]);
-        const ca = fs.readFileSync(caFile), base = 'https://localhost:18884';
+        const ca = fs.readFileSync(caFile), base = `https://localhost:${basePort + 1}`;
         const make = ip => {const client = new Client(base, ca, ip); clients.push(client); return client;};
         const password = crypto.randomBytes(24).toString('base64url');
         const maximum = Math.max(quick ? 12 : 20, ...levels, sustained ? 30 : 0);
