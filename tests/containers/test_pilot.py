@@ -7,6 +7,7 @@ import sys
 import tempfile
 from types import SimpleNamespace
 import unittest
+from urllib.error import URLError
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -88,6 +89,60 @@ class PilotChecks(unittest.TestCase):
                 entry = pilot.tunnel()
             self.assertEqual(entry["Url"], "https://replacement.trycloudflare.com")
             self.assertEqual(pilot.read_json(pilot.STATE / "pilot-tunnel.json"), entry)
+
+    def test_retired_tunnel_requires_our_process_and_current_server_rejection(self):
+        entry = {"Id":42,"Path":str(ROOT / ".local/tools/bin/cloudflared.exe"),"StartTime":"fixture",
+                 "Url":"https://retired.trycloudflare.com","Origin":"https://localhost:18878"}
+        with tempfile.TemporaryDirectory(dir=ROOT / "build") as temporary, \
+             patch.object(pilot,"STATE",Path(temporary)), patch.dict(os.environ,NUMFORGE_GATEWAY_PORT="18878",SystemRoot="C:/Windows"), \
+             patch.object(pilot,"owned",return_value=True) as owned, patch.object(pilot,"execute") as execute:
+            log = pilot.STATE / "pilot-cloudflared.log"
+            self.assertFalse(pilot.retire_missing_tunnel(entry))
+            for text in ("", "connection timeout", "Unauthorized: Tunnel not found\nRegistered tunnel connection"):
+                log.write_text(text)
+                self.assertFalse(pilot.retire_missing_tunnel(entry))
+            log.write_text("Registered tunnel connection\nUnauthorized: Tunnel not found")
+            for change in ({"Path":"unrelated.exe"},{"Origin":"https://localhost:9999"},{"Url":"https://foreign.example"}):
+                self.assertFalse(pilot.retire_missing_tunnel(entry | change))
+            owned.return_value = False
+            self.assertFalse(pilot.retire_missing_tunnel(entry))
+            execute.assert_not_called()
+            owned.return_value = True
+            self.assertTrue(pilot.retire_missing_tunnel(entry))
+            self.assertIn("StartTime",execute.call_args.args[0][-1])
+            self.assertIn("Stop-Process -InputObject",execute.call_args.args[0][-1])
+
+    def test_public_failure_rotates_only_an_explicitly_retired_tunnel(self):
+        old,new = {"Url":"https://old.trycloudflare.com"},{"Url":"https://new.trycloudflare.com"}
+        for retired in (False,True):
+            with self.subTest(retired=retired), tempfile.TemporaryDirectory(dir=ROOT / "build") as temporary, \
+                 patch.object(pilot,"STATE",Path(temporary)), patch.dict(os.environ,NUMFORGE_GATEWAY_PORT="18878"), \
+                 patch.object(pilot.compose,"load_pilot_environment"), patch.object(pilot,"execute"), \
+                 patch.object(pilot.ssl,"create_default_context"), patch.object(pilot,"cleanup"), \
+                 patch.object(pilot,"tunnel",side_effect=[old,new]) as tunnel, patch.object(pilot,"sync_origin") as sync, \
+                 patch.object(pilot,"retire_missing_tunnel",return_value=retired), \
+                 patch.object(pilot,"check",side_effect=[None,URLError("DNS failed"),None]):
+                pilot.save_json(pilot.STATE / "pilot-status.json",{"configured_origin":old["Url"]})
+                if retired:
+                    pilot.ensure()
+                    self.assertEqual(tunnel.call_count,2)
+                    sync.assert_called_once_with(new["Url"])
+                    self.assertEqual(pilot.read_json(pilot.STATE / "pilot-status.json")["url"],new["Url"])
+                else:
+                    with self.assertRaises(URLError):pilot.ensure()
+                    tunnel.assert_called_once();sync.assert_not_called()
+
+    def test_healthy_public_check_never_retires_a_tunnel(self):
+        entry = {"Url":"https://healthy.trycloudflare.com"}
+        with tempfile.TemporaryDirectory(dir=ROOT / "build") as temporary, \
+             patch.object(pilot,"STATE",Path(temporary)), patch.dict(os.environ,NUMFORGE_GATEWAY_PORT="18878"), \
+             patch.object(pilot.compose,"load_pilot_environment"), patch.object(pilot,"execute"), \
+             patch.object(pilot.ssl,"create_default_context"), patch.object(pilot,"cleanup"), \
+             patch.object(pilot,"tunnel",return_value=entry), patch.object(pilot,"check"), \
+             patch.object(pilot,"retire_missing_tunnel") as retire:
+            pilot.save_json(pilot.STATE / "pilot-status.json",{"configured_origin":entry["Url"]})
+            pilot.ensure()
+            retire.assert_not_called()
 
 
 if __name__ == "__main__":

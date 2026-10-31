@@ -127,6 +127,33 @@ def tunnel():
     raise RuntimeError("Quick Tunnel URL not ready; recovery will retry")
 
 
+def retire_missing_tunnel(entry):
+    """Retire only our process after Cloudflare explicitly rejects its tunnel."""
+    expected = ROOT / ".local/tools/bin/cloudflared.exe"
+    if (Path(entry.get("Path", "")).resolve() != expected.resolve()
+            or not QUICK_ORIGIN.fullmatch(entry.get("Url", ""))
+            or entry.get("Origin") != "https://localhost:" + os.environ["NUMFORGE_GATEWAY_PORT"]
+            or not owned(entry)):
+        return False
+    try:
+        with (STATE / "pilot-cloudflared.log").open("rb") as log:
+            log.seek(max(0, log.seek(0, 2) - 32768))
+            tail = log.read().decode("utf-8", errors="replace")
+    except OSError:
+        return False
+    missing = tail.rfind("Unauthorized: Tunnel not found")
+    if missing < 0 or missing < tail.rfind("Registered tunnel connection"):
+        return False
+    quote = lambda text: "'" + text.replace("'", "''") + "'"
+    script = (f"$p=Get-Process -Id {int(entry['Id'])} -ErrorAction Stop; "
+              f"if($p.Path -cne {quote(entry['Path'])} -or "
+              f"$p.StartTime.ToUniversalTime().ToString('o') -cne {quote(entry['StartTime'])})"
+              "{throw 'Tunnel identity changed'}; Stop-Process -InputObject $p -ErrorAction Stop")
+    shell = Path(os.environ["SystemRoot"]) / "System32/WindowsPowerShell/v1.0/powershell.exe"
+    execute([shell, "-NoProfile", "-NonInteractive", "-Command", script])
+    return True
+
+
 def ensure():
     compose.load_pilot_environment()
     try:
@@ -146,7 +173,14 @@ def ensure():
     status_path = STATE / "pilot-status.json"
     if read_json(status_path).get("configured_origin") != entry["Url"]:
         sync_origin(entry["Url"])
-    check(entry["Url"])
+    try:
+        check(entry["Url"])
+    except OSError:
+        if not retire_missing_tunnel(entry):
+            raise
+        entry = tunnel()
+        sync_origin(entry["Url"])
+        check(entry["Url"])
     cleanup()
     save_json(status_path, {"ok": True, "url": entry["Url"], "configured_origin": entry["Url"],
         "last_checked": datetime.now(timezone.utc).isoformat()})

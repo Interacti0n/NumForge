@@ -91,7 +91,10 @@ hidden logon/minute recovery checks; `-Action Status` shows the last verified UR
 The helper needs `.local/compose/pilot.env`, the Python path in
 `.local/ops/backup-runner.json` and `.local/tools/bin/cloudflared.exe`.
 It starts Docker Desktop when needed, restores containers without rebuilding,
-preserves a live tunnel and creates a replacement after process exit. A replacement
+preserves a live tunnel and creates a replacement after process exit. If public
+checks fail and Cloudflare explicitly reports `Unauthorized: Tunnel not found`,
+it retires only the process with the verified executable/creation time and retries.
+Ordinary network failures leave the process alone. A replacement
 Quick Tunnel changes the hostname: Origin/CSRF and Kuma follow the exact new URL;
 users sign in again on that hostname. The CA remains verified. Current state is in
 `.local/compose/pilot-status.json` and `pilot-url.txt`; failures retry next minute.
