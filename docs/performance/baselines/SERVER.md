@@ -489,3 +489,154 @@ All 54,569 fixture responses verified, including 60 expected shared-IP 429s;
 full-row restore and the first authenticated request after DB restart passed.
 Raw runs, pinned images, driver hash and summary: ignored
 `build/accounts-connections-20261030/{A1,B1,B2,A2,A3,B3}/` and `summary.json`.
+
+## Candidate qualification — 1 November 2026
+
+The candidate is exact source `0036cbf`, incorporating the arithmetic changes
+through `31860f8` and a queue-expiry correction found during this qualification.
+The Windows portable package and its old/new/restart/rollback rehearsal are
+recorded in [release packaging](../../project/RELEASE_PACKAGING.md#restart-and-rollback-rehearsal).
+The Docker web uses GCC 12.2 Release, without benchmark instrumentation. Accounts
+use the previously tested `31860f8` image; account sources are unchanged by the
+candidate's worker/harness commits. PostgreSQL, gateway and monitor images remain
+the captured pilot versions.
+
+During preparation, another task deployed account preferences to the live pilot.
+Comparisons therefore explicitly pin the **former** pilot images captured at the
+start, rather than silently changing the baseline to that new deployment.
+Canonical effective fixture settings compare equal before/after that rollout.
+Selected web IDs start `9b26c5bc88da` / `733aa0787a65`; account IDs start
+`352758dd8284` / `9cf68d9fca82`. Complete IDs, source/driver hashes and settings
+are retained in the raw records. These checks use fresh disposable data, not a
+copy of the pilot's account database.
+
+### Queue-expiry regression and fix
+
+The initial `31860f8` full mixed-load run failed qualification: three session-start
+requests received `503 server_busy` in the 10-client/two-heavy phase. Those
+uncreated sessions then produced 57 failed commits and 57 failed value reads.
+These 117 failed validations are not 117 independent initial admission faults.
+The recording remains under `build/pilot-candidate-20261101-31860f8/full-candidate/`.
+It is a failed diagnostic, not a selected speed comparison; a diagnostic test
+build also overlapped its final phase.
+
+The acceptor samples monotonic time before entering the queue lock. A concurrent
+receiver/submitter can publish a ready frame with a later timestamp before that
+lock is acquired. The sweep previously interpreted that newer timestamp as a
+backwards clock and immediately rejected the frame. `0036cbf` skips entries newer
+than the sweep's snapshot; the one-second ready deadline, original two-second
+admission deadline, bounded capacity and worker-side expiry remain unchanged.
+
+A deterministic regression blocks compute, publishes both buffered and fragmented
+requests after an older time sample, then applies that sample to the queue. It
+fails on the original code and passes after the correction; a subsequent real
+deadline still rejects both queued requests. The seven selected server/client
+suites pass in both Windows GCC and MSVC, including actual HTTP-server checks.
+All 14 worker cases also pass on Linux with ASan/UBSan and leak detection using
+non-PIE executables. The MSVC client suites were relinked against the final
+libraries before the final run.
+
+### Upgrade and restore contracts
+
+The fixed images pass old → candidate → old → candidate on disposable volumes.
+Migration `identity.0003_preferences` preserves the account and its existing TLS
+login cookie. Full-row backup/restore compares all ten old tables, then all eleven
+candidate tables, including saved preference values/revisions; source databases
+remain unchanged by verification. The old application remains usable against
+the additive migrated schema, and preference values survive reapplying the
+candidate. This is application rollback, not destructive schema reversal.
+
+The existing integration suite additionally passes all 15 account/preference
+backend checks, runtime-role restrictions, service/DB restart, TLS, SK/EN,
+CSRF, cookie replay rejection and Chromium account/preferences flows. Browser
+checks cover second-browser restore, explicit guest import, concurrent revision
+conflicts, offline retry, account switching and delayed-response isolation.
+The first authenticated request after DB restart succeeds without restarting
+the account process.
+
+Initial fixture-adapter failures are retained separately: another task occupied
+the default test ports; a remapped direct HTTP test used the wrong Origin port;
+and direct Django Client checks initially inherited the network service's signed
+gateway requirement. Final fixtures use independent ports, consistent direct
+listener/Origin settings and the intended unit-process context. Real HTTPS and
+browser checks retain the gateway guard. No production security rule was relaxed.
+
+### Fixed-candidate mixed load
+
+The complete candidate fixture uses 10/30/60 clients, a 250-ms think time and
+20 active seconds at each level with zero/two continuously repeated `100000!`
+jobs. It then runs 120 seconds at 30 clients plus two heavy jobs. Every client
+relogs once; login bursts, C session starts/commits/reads, 1000-place sqrt,
+small calculations and logout-cookie replay are checked. Python Decimal/math
+references are prepared outside measurement. Gunicorn remains one worker/two
+threads, with the same Argon2 and login policy; C remains four general workers,
+the bounded arithmetic reserve and queue reserve 64.
+
+All **56,097 fixture responses** verify, including ten expected shared-IP 429s.
+There are no unexpected HTTP, transport, value, session/revision or replay
+failures. Seven separate public health probes pass. Results use local TLS on
+loopback; simulated distinct edge IPs exist only in the private fixture.
+
+| Clients | Heavy jobs | Active seconds | Small math p95 ms | Account session p95 ms | Login burst p95 ms | Factorial p95 ms | Sampled stack MiB |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 10 | 0 | 20.2 | 4.92 | 16.74 | 604 | — | 266 |
+| 10 | 2 | 20.3 | 4.76 | 15.15 | 591 | 166.87 | 454 |
+| 30 | 0 | 20.2 | 4.42 | 20.16 | 1722 | — | 420 |
+| 30 | 2 | 20.3 | 4.66 | 28.01 | 1642 | 181.49 | 482 |
+| 60 | 0 | 20.3 | 4.10 | 40.90 | 3243 | — | 387 |
+| 60 | 2 | 20.3 | 4.42 | 70.87 | 3279 | 200.27 | 425 |
+| 30 | 2 | 120.3 | 4.69 | 14.90 | 1691 | 182.90 | 384 |
+
+Memory is the rolling sampled sum of five containers after all five service
+samples are present in a phase, not an exact simultaneous peak. Docker CLI
+inactive file cache and host/VM/driver overhead are excluded. Host free memory
+stays above 6.8 GiB. Desktop, live-pilot and colocated-driver contention remain
+in timings/host measurements; no own build, test or other benchmark overlaps
+the selected fixed-candidate recordings. This short run does not prove long-term
+stability, another host's capacity or internet latency. Login bursts still queue.
+
+The complete record is under ignored
+`build/pilot-candidate-20261101-0036cbf/full-candidate/`; sibling upgrade,
+functional, compiler, sanitizer and package logs establish the candidate's
+other gates. These isolated restores do not verify Windows reboot/login,
+physical-phone behavior, external Restic recovery or authenticated C-session
+ownership. None of these steps replaces or publishes a running pilot.
+
+### Matched former-pilot comparison
+
+Separate fixtures run three immediate pairs in A/B, B/A, A/B order: 60 clients,
+ten active seconds each with zero/two heavy jobs, no sustained phase. A pins the
+captured former-pilot web/account IDs; B pins the fixed candidate. All other
+images/settings are identical. Each fixture starts with fresh data and repeats
+the mathematical, login, shared-IP-limit and replay checks. The table contains
+**medians of three run p95 values**, not pooled request percentiles.
+
+| Heavy jobs | Operation | Former pilot p95 ms | Candidate p95 ms |
+| ---: | --- | ---: | ---: |
+| 0 | Small calculation | 5.45 | 4.80 |
+| 0 | Account session | 219.33 | 237.13 |
+| 0 | Login burst | 3310.18 | 3323.24 |
+| 0 | 1000-place sqrt | 4.95 | 5.30 |
+| 2 | Small calculation | 4.66 | 4.77 |
+| 2 | Account session | 481.15 | 603.47 |
+| 2 | Login burst | 3353.10 | 3329.84 |
+| 2 | 1000-place sqrt | 6.01 | 5.71 |
+| 2 | `100000!` | 399.20 | 210.53 |
+
+Factorial run p95 ranges separate: 396.85–429.92 / 200.85–218.87 ms. The ratio
+of the displayed medians is 1.896, about 47% shorter time for that operation
+under this workload. This compares the combined retained changes against the
+former images, not the isolated effect of the expiry guard. Small operations
+move in both directions. Account-session tails with heavy jobs range
+429.20–1161.97 / 376.67–700.71 ms; the worse candidate median is retained, with
+overlapping ranges and no account-session speedup claim. Midpoint relogin bursts
+affect these short-phase tails; do not compare their p95 directly with the
+20/120-second candidate phases above. Login bursts still take about 3.3 seconds
+at 60 clients; password policy and worker counts were not tuned here.
+
+The six focused fixtures verify 37,128 responses with zero unexpected errors.
+Together with the full candidate they verify **93,225 responses**, including
+70 expected 429s, and 19 separate public health probes. All seven selected
+fixtures pass resource collection and validation. Raw siblings `A1`, `B1`, `B2`,
+`A2`, `A3`, `B3`, `load-plan.json` and `summary.json` retain pair order, every
+run's values, identities, settings and sampled host/container resources.

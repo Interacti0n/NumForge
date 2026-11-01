@@ -201,6 +201,24 @@ with four workers/64 queue slots and the quick sustained/overload fixtures.
 Files and log: `build/deployment-347dd8d/`. This is a development artifact;
 target-host proxy/supervision/resource-limit verification remains open.
 
+Local Windows candidate rehearsal on 1 November 2026 passed for `0036cbf`,
+using the verified extracted `724c083` package as the previous version. The
+previous ZIP checksum and extracted executable bytes were checked before the
+four-phase sequence. Both applications use MSVC 19.51 x64 Release with the static
+runtime, tests/benchmarks disabled and embedded current assets. The candidate's
+only DLL imports are ordinary Windows system libraries.
+
+The development archive is
+`build/pilot-candidate-20261101-0036cbf/windows-package/NumForge-2.4.0-dev.0036cbf-win-x64.zip`;
+SHA-256: `79f64770a1c1f94938010e1a9f7824b8c73f0d5642f8a6afab1f3b64ad457e29`.
+`windows-package.log` records old/candidate/restarted-candidate/old checks on
+one unused loopback port, including CLI, assets, calculator and matrix/currency
+smoke checks. This prepares a local candidate; it does not publish a release,
+replace the pilot or validate Windows reboot/login recovery. The earlier
+`31860f8` archive passed packaging smoke but failed mixed-load qualification;
+`0036cbf` includes the independently reproduced queue-expiry race fix. Keep the
+earlier package and failed load recording as diagnostics, not a release candidate.
+
 Reference: [manual workflow runs](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow),
 [release events](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#release),
 [release uploads](https://cli.github.com/manual/gh_release_upload), and
