@@ -640,3 +640,32 @@ Together with the full candidate they verify **93,225 responses**, including
 fixtures pass resource collection and validation. Raw siblings `A1`, `B1`, `B2`,
 `A2`, `A3`, `B3`, `load-plan.json` and `summary.json` retain pair order, every
 run's values, identities, settings and sampled host/container resources.
+
+### Pilot deployment after qualification
+
+On 1 November 2026, after explicit approval, the pilot's web service was switched
+from `numforge-web:preferences-bdf5a39` to `numforge-web:expiry-0036cbf`, using the
+exact qualified image
+`sha256:733aa0787a6588add01c3f44077aa2da1950577fd7236800dcdfa4d935f27ab0`.
+Accounts, PostgreSQL, gateway and monitoring retained their container identities;
+there was no database migration. The existing tunnel and public URL were retained.
+The supervisor's operation lock serialized the change, and the previous image
+and runtime profile remain available for rollback. Restarting C cleared its
+temporary calculation sessions; persisted accounts/preferences were retained.
+
+Both before and after deployment, the configured external Restic repository
+received an encrypted backup of the logical account database, private operating
+configuration and committed Git history. Each backup passed byte-for-byte restore,
+database restore and repository checks; an additional restore compared all eleven
+tables and their rows with the unchanged source. Both restore points were retained
+at completion. These two runs supplemented the usual retention policy with the
+last ten snapshots to preserve the same-day pre-deployment point.
+
+Local and public HTTPS checks passed bootstrap/guest-session checks, five mathematical
+references (including 1000-place sqrt and `100000!`), candidate asset comparisons
+and foreign-Origin rejection. All five services were healthy and all six monitors,
+including verified backup, were up. A subsequent standard supervisor Ensure check
+retained the deployed image, other container identities and public URL. Ignored evidence is in
+`build/web-deploy-0036cbf-20261101/`: `deployment.json`, pre/post backup records,
+`monitoring.json`, the retained runtime profile and execution log. This deployment
+does not establish a Windows reboot/login test or an independently stored recovery key.
