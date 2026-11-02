@@ -205,4 +205,31 @@ and reapply sequence, including authentication, monitor and push behavior,
 preserved account/configuration/history hashes and runtime protections. Raw image
 identities, layer-matched scan reports, scanner database times and test logs are
 under ignored `build/security-20261102/`. Qualification alone does not update a
-running pilot or establish Windows reboot behavior.
+running pilot or establish Windows reboot behavior. The default CI invocation
+(building the recipe without image overrides) also passed its restart,
+authentication, push and stored-state checks; both fixture projects were removed.
+
+The qualified candidate was subsequently deployed to the existing pilot as
+`numforge-uptime:security-20261102`, exact image
+`sha256:9359229938718f815d88001e70e48cca2d306f3a76042c57d5e838c15d88197d`.
+Only the monitor container was replaced under the supervisor's operation lock.
+Web/accounts/DB/gateway container identities and the then-current tunnel URL
+remained unchanged. Existing users, complete monitor settings and the retained
+heartbeat history matched the consistent pre-upgrade SQLite copy; six monitors
+reported up, with fresh checks from the new process for non-push monitors.
+The loopback-only admin binding and runtime protections were checked again.
+A subsequent standard supervisor Ensure run preserved the new monitor image,
+the remaining service identities and the public URL; all six monitors stayed up.
+
+Before and after the change, the existing external encrypted repository received
+the standard account/configuration/Git backup plus a separately tagged consistent
+monitor database snapshot. Both standard backups passed byte-for-byte restore,
+repository checks and comparison of all eleven account tables/rows with the
+unchanged source. Both monitor snapshots passed byte comparison and SQLite
+integrity/stored-state verification after restore. All four restore points were
+retained at completion; these standard runs also kept the last ten snapshots to
+preserve their same-day pre-upgrade point. Monitor snapshots are point-in-time
+upgrade backups; the daily job does not refresh the monitor SQLite database.
+Failed preparation attempts are retained in the evidence folder; they stopped
+before service replacement. Deployment/backup/final-check records and execution
+logs are in `build/security-20261102/`; private database copies stay in `.local/ops`.
