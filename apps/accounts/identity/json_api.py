@@ -5,11 +5,11 @@ from django.core.exceptions import RequestDataTooBig
 from django.http import JsonResponse
 
 
-def read_object(request):
+def read_object(request, maximum=4096):
     if request.content_type != "application/json":
         return None, JsonResponse({"error": "json_required"}, status=415)
     try:
-        if len(request.body) > 4096:
+        if len(request.body) > maximum:
             raise RequestDataTooBig()
         data = json.loads(request.body)
     except RequestDataTooBig:

@@ -1,3 +1,5 @@
+import uuid
+
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
@@ -22,3 +24,16 @@ class Preferences(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, primary_key=True)
     values = models.JSONField(default=preference_defaults)
     revision = models.PositiveBigIntegerField(default=0)
+
+
+class Workspace(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    name = models.CharField(max_length=80)
+    data = models.JSONField()
+    size = models.PositiveIntegerField()
+    revision = models.PositiveBigIntegerField(default=1)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["user", "-updated_at"], name="workspace_owner_updated")]

@@ -34,9 +34,10 @@ try:
     calculate()
     auth_checks = (ROOT / "tests/accounts/test_auth.py").read_text(encoding="utf-8")
     preference_checks = (ROOT / "tests/accounts/test_preferences.py").read_text(encoding="utf-8")
+    workspace_checks = (ROOT / "tests/accounts/test_workspaces.py").read_text(encoding="utf-8")
     compose.docker("exec", "-T", "accounts", "python", input=
-        "import sys, django\ndjango.setup()\n" + auth_checks + "\n" + preference_checks +
-        "\nresult=unittest.TextTestRunner(verbosity=2).run(unittest.TestSuite(unittest.defaultTestLoader.loadTestsFromTestCase(c) for c in (AuthChecks,PreferencesChecks)))\n"
+        "import sys, django\ndjango.setup()\n" + auth_checks + "\n" + preference_checks + "\n" + workspace_checks +
+        "\nresult=unittest.TextTestRunner(verbosity=2).run(unittest.TestSuite(unittest.defaultTestLoader.loadTestsFromTestCase(c) for c in (AuthChecks,PreferencesChecks,WorkspaceChecks)))\n"
         "sys.exit(0 if result.wasSuccessful() else 1)\n", encoding="utf-8")
     account_code("from django.contrib.auth import get_user_model; "
                  "u=get_user_model().objects.create_user(username='container-check',password='test-only'); "
@@ -44,6 +45,9 @@ try:
                  "from identity.models import Preferences,preference_defaults; "
                  "Preferences.objects.create(user=get_user_model().objects.get(username='preferences-alice'), "
                  "values=preference_defaults()|{'precision':20},revision=1); "
+                 "from identity.models import Workspace; "
+                 "Workspace.objects.create(user=u,name='Container persisted',size=1,data={'version':1,'tool':'calculator',"
+                 "'inputs':{'expression':'12345678901234567890','settings':preference_defaults()}}); "
                  "assert u.check_password('test-only'); "
                  "from django.db import connection; c=connection.cursor(); "
                  "c.execute('SELECT rolsuper,rolcreatedb,rolcreaterole FROM pg_roles WHERE rolname=current_user'); "
@@ -56,6 +60,8 @@ try:
                  "assert get_user_model().objects.get(username='container-check').check_password('test-only'); "
                  "from identity.models import Preferences; p=Preferences.objects.get(user__username='preferences-alice'); "
                  "assert p.revision==1 and p.values['precision'] in (20,21); "
+                 "from identity.models import Workspace; "
+                 "assert Workspace.objects.get(user__username='container-check').data['inputs']['expression']=='12345678901234567890'; "
                  "from identity.views import admit_login; from django.test import RequestFactory; "
                  "assert admit_login(RequestFactory().post('/',REMOTE_ADDR='192.0.2.8'))>0")
     archive = compose.STATE / f"backups/container-check-{secrets.token_hex(6)}.dump"

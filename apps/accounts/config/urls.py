@@ -1,6 +1,7 @@
 from django.urls import path
 from identity import views
 from identity.preferences import preferences
+from identity.workspaces import workspaces
 
 urlpatterns = [
     path("login", views.login_page),
@@ -10,4 +11,6 @@ urlpatterns = [
     path("api/account/login", views.login),
     path("api/account/logout", views.logout),
     path("api/account/preferences", preferences),
+    path("api/account/workspaces", workspaces),
+    path("api/account/workspaces/<uuid:workspace_id>", workspaces),
 ]

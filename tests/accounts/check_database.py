@@ -91,7 +91,8 @@ if __name__ == "__main__":
                 django.setup()
                 from test_auth import AuthChecks
                 from test_preferences import PreferencesChecks
-                suite = unittest.TestSuite(unittest.defaultTestLoader.loadTestsFromTestCase(case) for case in (DatabaseChecks, AuthChecks, PreferencesChecks))
+                from test_workspaces import WorkspaceChecks
+                suite = unittest.TestSuite(unittest.defaultTestLoader.loadTestsFromTestCase(case) for case in (DatabaseChecks, AuthChecks, PreferencesChecks, WorkspaceChecks))
                 result = unittest.TextTestRunner(verbosity=2).run(suite)
                 from django.db import connections
                 connections.close_all()

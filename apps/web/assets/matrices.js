@@ -231,7 +231,10 @@ function initMatrices() {
         label:s=>({title:operation.querySelector(`option[value="${s.operation}"]`).textContent,detail:`A ${s.a.length}×${s.a[0].length}: ${s.a[0].join(' · ')}${['multiply','solve','solve_general'].includes(s.operation)?` | B ${s.b.length}×${s.b[0].length}: ${s.b[0].join(' · ')}`:''}`}),
         restore:s=>{invalidate();state=s;operation.value=s.operation;render('a');render('b');mode();save();document.querySelector('#matrix-a input').focus();}
     });
-    return ()=>{++generation;request?.abort();lifecycle.abort();save();};
+    const unmountWorkspace=window.numforgeWorkspaces?.mount({kind:'matrices',read:()=>state,valid:validState,
+        apply:s=>{invalidate();state=s;operation.value=s.operation;render('a');render('b');mode();save();}
+    });
+    return ()=>{unmountWorkspace?.();++generation;request?.abort();lifecycle.abort();save();};
 }
 window.numforgeInitMatrices=initMatrices;
 window.numforgeDisposeMatrices=initMatrices();

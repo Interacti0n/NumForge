@@ -52,7 +52,7 @@ CSRF_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_NAME = "numforge_csrf"
 CSRF_FAILURE_VIEW = "identity.views.csrf_failure"
 SESSION_COOKIE_AGE = 12 * 60 * 60
-DATA_UPLOAD_MAX_MEMORY_SIZE = 4096
+DATA_UPLOAD_MAX_MEMORY_SIZE = 128000  # Endpoint parsers enforce their smaller limits.
 PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.Argon2PasswordHasher",
     "django.contrib.auth.hashers.PBKDF2PasswordHasher",

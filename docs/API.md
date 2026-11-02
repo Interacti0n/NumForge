@@ -31,7 +31,7 @@ Numeric/module calls link `NumForge::numforge`; expressions add
 | Matrix HTTP | [Matrix editor/API](reference/MATRIX_API.md#web-editor-and-http) |
 | Graphs | [Uniform](reference/GRAPH_HTTP_API.md), [adaptive](reference/ADAPTIVE_GRAPH_HTTP_API.md), [screen](reference/SCREEN_GRAPH_HTTP_API.md), [verification](reference/GRAPH_ANALYSIS_HTTP_API.md) |
 | Interface availability/gaps | [Coverage](reference/WEB_API_PARITY.md) |
-| Private accounts and defaults | [Account API](guides/ACCOUNTS_STORAGE.md#private-pilot-authentication) |
+| Private accounts, defaults and saved inputs | [Account API](guides/ACCOUNTS_STORAGE.md#private-pilot-authentication) |
 
 ## Values and sessions
 

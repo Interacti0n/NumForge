@@ -86,6 +86,14 @@
     window.numforgePreferences = {
         get user() { return state.user; },
         guest: () => ({...guest}), refresh, save, announce: () => channel?.postMessage('changed'),
+        async workspace(route = '', data) {
+            if (!state.known || !state.user) throw Object.assign(Error('authentication_required'), {status:401});
+            const owner = state.user.id, current = sequence;
+            const reply = await request('workspaces' + route, data ? {...data,user_id:owner} : undefined, state.csrf_token);
+            if (current !== sequence || state.user?.id !== owner || reply.user_id !== owner) throw Error('account_changed');
+            return reply;
+        },
+        protectDraft() { edited = true; },
         subscribe(listener) { listeners.add(listener); listener(state); return () => listeners.delete(listener); },
         mount(next) {
             tool = next; edited = Boolean(next.preserveGuest && !state.user);

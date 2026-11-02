@@ -28,8 +28,9 @@ paginated; full reads never silently round exact values.
 
 ## Proposed accounts and saved work
 
-Account defaults are available through [account preferences](../guides/ACCOUNTS_STORAGE.md#account-defaults).
-**Saved-work behavior below remains proposed.** The optional storage foundation uses
+Account defaults and manual named input workspaces are implemented through the
+[account API](../guides/ACCOUNTS_STORAGE.md#named-workspaces). Autosave, device
+management and runtime-state restoration below remain proposed. Optional storage uses
 Django 5.2 LTS authentication/session tables and migrations with PostgreSQL.
 Math stays in C. The guest executable/CLI/library work without Python or a DB.
 Start isolated, with one HTTPS origin/gateway; DB/internal ports stay private.
@@ -64,16 +65,16 @@ calls to reconstruct values. Inputs/settings can ship first. Bind private C
 execution/session access to authenticated owners before restoring runtime state;
 anonymous client IDs and Origin checks are not authorization.
 
-Proposed pilot caps: 100 workspaces/25 MiB per user, 1 MiB/workspace and
-200 KiB/history entry, retaining stricter tool limits. Reject oversized values
-without truncation. These are proposed defaults, not current guarantees.
+Current workspace caps: 100 tasks, 1,000,000 data bytes/account and 100,000/task,
+with stricter tool limits. Saved runtime history is not implemented. Reject
+oversized values without truncation.
 
 ### Remaining completion gates
 
 1. Automate pilot startup/tunnel recovery, public health checks, protected backup
    scheduling/retention and expired-session cleanup; verify a real host reboot.
-2. Defaults/named inputs, guest import, autosave, quotas/conflicts; verify backend/
-   DB restart, second-browser restore and two-user isolation.
+2. Add optional autosave to manual saved inputs with visible saving/offline states;
+   preserve quota/conflict checks, restart recovery and two-user isolation.
 3. Device management/export/deletion/recovery. Test mail verification/reset before
    public registration; private users can be manually provisioned.
 4. Typed C restore plus authenticated execution bridge; then optional saved

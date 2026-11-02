@@ -46,6 +46,8 @@ function setResultStatus(state, approximate = null)
 }
 let angleUnit = 'rad';
 let restoredGuestSettings = false;
+let awaitingWorkspaceCalculation = false;
+let restoredWorkspaceSettings = null;
 const mobileSettings = window.matchMedia('(max-width: 600px), (max-width: 960px) and (max-height: 500px) and (orientation: landscape)');
 const settingsOverview = document.querySelector('#settings-overview');
 function updateSettingsOverview()
@@ -234,6 +236,7 @@ function responseError(data)
 // Wait for editing to stop before spending server time on a preview.
 function scheduleCalculation(delay = 2000)
 {
+    awaitingWorkspaceCalculation = false;
     updateExpressionOverflow();
     invalidate();
     if (!expression.value.trim())
@@ -975,6 +978,7 @@ complexForm.addEventListener('change', () => scheduleCalculation());
 async function calculate(commit)
 {
     if (lifecycleInFlight || pendingReset || variableDeletionInFlight || pendingVariableDeletion || commitInFlight || (!commit && pendingCommit)) return;
+    awaitingWorkspaceCalculation = false;
     invalidate();
     if (!expression.value.trim() && !pendingCommit) return;
     const id = generation;
@@ -1074,6 +1078,7 @@ function saveNavigationState()
         sessionStorage.setItem('numforge-navigation-state', JSON.stringify({
             client: cacheClient, revision: generation, started: sessionStarted,
             pending: pendingCommit, expression: expression.value,
+            awaitingWorkspaceCalculation,
             settingsOwner: window.numforgePreferences?.user?.id || null,
             precision: precision.value, mode: precisionMode.value,
             notation: notationMode.value, complexForm: complexForm.value, angle: angleUnit,
@@ -1113,6 +1118,12 @@ try
             sessionStarted = state.started === true;
             if (sessionStarted) sessionReady = Promise.resolve();
             expression.value = state.expression;
+            awaitingWorkspaceCalculation = state.awaitingWorkspaceCalculation === true;
+            if (awaitingWorkspaceCalculation && Number.isSafeInteger(state.settingsOwner) &&
+                /^\d{1,5}$/.test(state.precision) && Number(state.precision) <= 10000)
+                restoredWorkspaceSettings = {owner:state.settingsOwner, values:{language:document.documentElement.lang,
+                    precision_mode:state.mode,precision:Number(state.precision),notation:state.notation,angle:state.angle,
+                    complex_form:['cartesian','trig','exp'].includes(state.complexForm)?state.complexForm:'cartesian',rounding:'half_even'}};
             if (!state.settingsOwner) {
                 restoredGuestSettings = true;
                 precision.value = state.precision;
@@ -1158,7 +1169,7 @@ try
                 pendingCommit = state.pending;
                 calculate(true);
             }
-            else if (expression.value.trim()) scheduleCalculation();
+            else if (expression.value.trim() && !awaitingWorkspaceCalculation) scheduleCalculation();
         }
     }
 }
@@ -1171,21 +1182,41 @@ window.addEventListener?.('focus', () => {
     if (sessionStarted && !commitInFlight && !variableDeletionInFlight)
         refreshSession().catch(error => { variableStatus.textContent = error.message; });
 }, {signal: lifecycle.signal});
+const readDefaults = () => ({language:document.documentElement.lang, precision_mode:precisionMode.value,
+    precision:Number(precision.value), notation:notationMode.value, angle:angleUnit,
+    rounding:'half_even', complex_form:complexForm.value});
+const applyDefaults = values => {
+    clearTimeout(autoTimer);
+    precisionMode.value = values.precision_mode; precision.value = String(values.precision);
+    notationMode.value = values.notation; complexForm.value = values.complex_form;
+    selectAngleUnit(values.angle, false); updatePrecisionMode(); updateSettingsOverview();
+};
 const unmountPreferences = window.numforgePreferences?.mount({
-    preserveGuest: restoredGuestSettings,
-    read: () => ({language:document.documentElement.lang, precision_mode:precisionMode.value,
-        precision:Number(precision.value), notation:notationMode.value, angle:angleUnit,
-        rounding:'half_even', complex_form:complexForm.value}),
-    apply: values => {
-        clearTimeout(autoTimer);
-        precisionMode.value = values.precision_mode; precision.value = String(values.precision);
-        notationMode.value = values.notation; complexForm.value = values.complex_form;
-        selectAngleUnit(values.angle, false); updatePrecisionMode(); updateSettingsOverview();
+    preserveGuest:restoredGuestSettings, read:readDefaults, apply:applyDefaults
+});
+// A loaded task keeps its own controls across navigation only after its owner is verified.
+const unsubscribeWorkspaceRestore = window.numforgePreferences?.subscribe(state => {
+    if (!restoredWorkspaceSettings || !state.known) return;
+    const saved = restoredWorkspaceSettings; restoredWorkspaceSettings = null;
+    if (state.user?.id === saved.owner && awaitingWorkspaceCalculation) {
+        window.numforgePreferences.protectDraft(); applyDefaults(saved.values);
+    }
+});
+const unmountWorkspace = window.numforgeWorkspaces?.mount({kind:'calculator',
+    read:()=>({expression:expression.value,settings:{...readDefaults(),precision:precisionMode.value==='custom'&&!/^\d+$/.test(precision.value)?null:Number(precision.value)}}),
+    valid:s=>typeof s?.expression==='string'&&new TextEncoder().encode(s.expression).length<=4096&&
+        s.settings&&['auto','full','custom'].includes(s.settings.precision_mode)&&Number.isInteger(s.settings.precision)&&s.settings.precision>=0&&s.settings.precision<=10000&&
+        ['auto','plain','scientific','math','fraction'].includes(s.settings.notation)&&['cartesian','trig','exp'].includes(s.settings.complex_form)&&['rad','deg'].includes(s.settings.angle),
+    apply:s=>{
+        if(commitInFlight||pendingCommit||lifecycleInFlight||pendingReset||variableDeletionInFlight||pendingVariableDeletion)throw Error('calculation_pending');
+        invalidate();expression.value=s.expression;awaitingWorkspaceCalculation=true;applyDefaults(s.settings);updateExpressionOverflow();saveNavigationState();
     }
 });
 return () => {
     lifecycle.abort();
     unmountPreferences?.();
+    unmountWorkspace?.();
+    unsubscribeWorkspaceRestore?.();
     controller?.abort();
     clearTimeout(autoTimer);
     clearTimeout(copyTimer);

@@ -79,4 +79,6 @@ def run():
                        env=os.environ | {"NF_UI_BASE_URL":base})
         subprocess.run(["node", str(compose.ROOT / "tests/containers/preferences-ui.cjs")], check=True,
                        env=os.environ | {"NF_UI_BASE_URL":base})
+        subprocess.run(["node", str(compose.ROOT / "tests/containers/workspaces-ui.cjs")], check=True,
+                       env=os.environ | {"NF_UI_BASE_URL":base})
     print("Verified TLS, SK/EN, CSRF, secure login/logout, first session request after DB restart and cookie replay rejection.")

@@ -373,7 +373,11 @@ function initEquations() {
         label:s=>({title:s.mode==='coefficients'?s.inputs.map((v,i)=>'abc'[i]+' = '+v).join(' · '):s.expression,detail:mode.querySelector(`option[value="${s.mode}"]`).textContent+(isNumeric(s.mode)?' · '+s.precision+' · ['+s.bounds.join(', ')+']':'')}),
         restore:s=>{mode.value=s.mode;inputs.forEach((input,i)=>input.value=s.inputs[i]);expression.value=s.expression;bounds.forEach((input,i)=>input.value=s.bounds[i]);precision.value=s.precision;syncMode();edit();(s.mode==='coefficients'?inputs[0]:expression).focus();}
     });
-    return () => { save(); cancel(); lifecycle.abort(); };
+    const unmountWorkspace=window.numforgeWorkspaces?.mount({kind:'solve',read:inputState,
+        valid:s=>s&&['expression','coefficients','numeric','numeric_scan'].includes(s.mode)&&Array.isArray(s.inputs)&&s.inputs.length===3&&s.inputs.every(v=>cleanText(v,4096))&&cleanText(s.expression,4096)&&Array.isArray(s.bounds)&&s.bounds.length===2&&s.bounds.every(v=>cleanText(v,47))&&/^\d{1,3}$/.test(s.precision)&&Number(s.precision)>=16&&Number(s.precision)<=100,
+        apply:s=>{mode.value=s.mode;inputs.forEach((input,i)=>input.value=s.inputs[i]);expression.value=s.expression;bounds.forEach((input,i)=>input.value=s.bounds[i]);precision.value=s.precision;syncMode();edit();}
+    });
+    return () => { unmountWorkspace?.();save(); cancel(); lifecycle.abort(); };
 }
 window.numforgeInitEquations = initEquations;
 window.numforgeDisposeEquations = initEquations();

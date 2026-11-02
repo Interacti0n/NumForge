@@ -337,3 +337,21 @@ dialog::backdrop { background: var(--backdrop); backdrop-filter: blur(5px); }
     .field select, .field input, .angle-switch, #copy-result, #expand-result, .graph-view-controls button { min-height: 44px; }
     .angle-switch button { min-height: 36px; }
 }
+.account-workspaces-tool-heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+.graph-controls > .account-workspaces-tool-heading { flex-shrink:0; margin-bottom:12px; }
+.graph-controls > .account-workspaces-tool-heading h1 { margin:0; }
+.account-workspaces-button { padding:7px 10px; border:1px solid var(--border); border-radius:8px; background:var(--surface-raised); color:var(--text); font:inherit; font-size:.75rem; cursor:pointer; flex-shrink:0; }
+.account-workspaces-dialog { width:min(560px,calc(100vw - 32px)); max-height:calc(100dvh - 32px); box-sizing:border-box; overflow:auto; padding:22px; border:1px solid var(--border); border-radius:18px; background:var(--surface,#151a2b); color:var(--text); }
+.account-workspaces-dialog::backdrop { background:#050713bb; backdrop-filter:blur(5px); }
+.account-workspaces-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.account-workspaces-heading h2 { margin:0; font-size:1.2rem; }
+.account-workspaces-dialog p { font-size:.82rem; line-height:1.6; overflow-wrap:anywhere; }
+.account-workspaces-dialog label { display:grid; gap:6px; margin:14px 0; font-size:.82rem; }
+.account-workspaces-dialog input,.account-workspaces-dialog select { width:100%; min-width:0; box-sizing:border-box; background:var(--surface-raised,#20263a); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:10px; font:inherit; }
+.account-workspaces-dialog option { padding:6px; white-space:normal; overflow-wrap:anywhere; }
+.account-workspaces-actions { display:flex; flex-wrap:wrap; gap:8px; }
+.account-workspaces-dialog button { min-height:40px; padding:8px 12px; border:1px solid var(--border); border-radius:8px; background:var(--surface-raised,#20263a); color:var(--text); cursor:pointer; }
+.account-workspaces-dialog button:disabled { opacity:.45; cursor:default; }
+.account-workspaces-dialog [data-action=create] { border-color:var(--mint); }
+.account-workspaces-dialog .error { color:var(--danger); }
+@media(pointer:coarse) { .account-workspaces-dialog button,.account-workspaces-button { min-height:44px; } }

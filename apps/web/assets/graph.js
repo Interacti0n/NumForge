@@ -1178,7 +1178,13 @@ function initGraph() {
     const resume=curves.filter((c,i)=>!workspaceAwaitingPlot&&!restoredResults[i]&&restored?.version===2&&restoredCurves[i]?.plotted===true&&c.state().visible);
     if(resume.length){++foregroundBatches;Promise.all(resume.map(c=>c.plot(null,true))).finally(()=>{--foregroundBatches;pump();save();});}
     else save();
-    return ()=>{save();initGraph.retained={key:JSON.stringify(settings()),size:dimensions(),curves:curves.map(c=>c.retain()),verifications:verificationCache};disposed=true;leaveExpanded(false);colorDialog.close();libraryDialog.close();document.body.classList.remove('graph-library-open');curves.forEach(c=>c.dispose());clearTimeout(viewportTimer);if(drawFrame!==null)cancelAnimationFrame(drawFrame);if(inspectionFrame!==null)cancelAnimationFrame(inspectionFrame);clearInspection();inspectionLayer.remove();pointers.clear();resize.disconnect();lifecycle.abort();};
+    const accountGraph=s=>({view:{x:s.view.x.map(Number),y:s.view.y.map(Number)},curves:s.curves});
+    const unmountWorkspace=window.numforgeWorkspaces?.mount({kind:'graph',
+        read:()=>{const s=settings();return {view:{x:s.view.x.map(String),y:s.view.y.map(String)},curves:s.curves.map(c=>({expression:c.expression,color:c.color,visible:c.visible}))};},
+        valid:s=>s&&Array.isArray(s.view?.x)&&Array.isArray(s.view?.y)&&files.valid(accountGraph(s)),
+        apply:s=>applyWorkspace(accountGraph(s))
+    });
+    return ()=>{unmountWorkspace?.();save();initGraph.retained={key:JSON.stringify(settings()),size:dimensions(),curves:curves.map(c=>c.retain()),verifications:verificationCache};disposed=true;leaveExpanded(false);colorDialog.close();libraryDialog.close();document.body.classList.remove('graph-library-open');curves.forEach(c=>c.dispose());clearTimeout(viewportTimer);if(drawFrame!==null)cancelAnimationFrame(drawFrame);if(inspectionFrame!==null)cancelAnimationFrame(inspectionFrame);clearInspection();inspectionLayer.remove();pointers.clear();resize.disconnect();lifecycle.abort();};
 
 }
 window.numforgeInitGraph=initGraph;

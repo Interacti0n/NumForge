@@ -15,6 +15,7 @@ HTML structure, labels, guide part keys and section IDs aligned.
 | `graph.js`, `graph.css` | Up to four curve caches, camera, request queue, editor and expanded plot. |
 | `graph-files.js` | Bounded workspace-file validation and standalone SVG/PNG capture; no sampling mathematics. |
 | `input-history.js` | Bounded input-only recents shared by equations/matrices; restoration never calculates. |
+| `preferences.js`, `workspaces.js` | Optional account defaults and manual named input saves; owner/generation guards, no calculation on load. |
 | `equations.js`, `units.js`, `matrices.js` and their styles | C/HTTP adapters, result presentation and same-tab state for each tool. |
 
 Mathematics and typed values belong to C. JavaScript validates/projects coordinates

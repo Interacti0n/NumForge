@@ -80,6 +80,8 @@ forwarded scheme/client address. No public registration.
 | `POST /api/account/logout` | Revokes current session; returns null user and a new CSRF token |
 | `GET /api/account/preferences` | Own `{user, values, revision}`; unsaved defaults have revision 0 |
 | `POST /api/account/preferences` | Saves complete `values` with `user_id` and `expected_revision`; returns the next revision |
+| `GET/POST /api/account/workspaces` | Lists own metadata / creates a named input-only workspace |
+| `GET/POST /api/account/workspaces/{uuid}` | Reads own workspace / updates, renames, duplicates or deletes it |
 
 POST requires the CSRF cookie plus `X-CSRFToken` and a same-origin HTTPS request.
 Session/CSRF cookies are Secure/HttpOnly/SameSite=Lax; responses prohibit caching.
@@ -139,5 +141,43 @@ restore. Sign-out/account changes reset the controls to guest defaults.
 Conflicts/offline saves retain the account form's draft; loading
 the saved version explicitly discards it. Calculations/history are not synced.
 
-Next: owner-scoped workspaces and device management. See the
+### Named workspaces
+
+**Account tasks** in the calculator, graphs, equations and matrices opens manual
+save/load/rename/duplicate/delete. Guest work is uploaded only by **Save as new**;
+opening restores inputs/settings without calculating. Results, C variables/ans
+and history remain outside saved workspaces. Autosave is not implemented.
+
+All responses are private/no-store; writes require the session CSRF token.
+Create: `{user_id, name, data}`. Detail POST: `{user_id, action,
+expected_revision}` plus `data` for `update`, or `name` for `rename`/`duplicate`;
+`delete` has no extra fields. Unknown fields fail. A read/write returns
+`{user_id, id, name, tool, revision, updated_at, data}`; delete returns
+`{user_id, deleted}`. Lists return `{user_id, items, limits}` without input data.
+
+`data` is `{version:1, tool, inputs}`:
+
+| Tool | Inputs |
+| --- | --- |
+| `calculator` | `expression` (4096 UTF-8 bytes), `settings` (the seven account-default fields) |
+| `graph` | `view:{x:[min,max],y:[min,max]}` as finite coordinate strings, 1–4 `curves:[{expression,color,visible}]`; six-digit hex colors |
+| `solve` | `mode`, three coefficient `inputs`, `expression`, two `bounds`, `precision` (text 16–100); existing equation modes |
+| `matrices` | `operation`, `a`, `b`; rectangular 1–8 × 1–8 text cells, up to 64 UTF-8 bytes/cell |
+
+Mathematical inputs stay strings, including unfinished fields; storage does not
+validate their mathematical meaning. Graph coordinate strings describe the
+existing approximate view. Names: 1–80 characters after trimming. Server limits:
+100 workspaces, 100,000 bytes of compact UTF-8 JSON/workspace, 1,000,000 total data
+bytes/account; request body at most 128,000 bytes. Limits never truncate data.
+Owner locking serializes quotas and revisions, including concurrent creation.
+
+Errors: 400 invalid schema/name, 401 unauthenticated, 403 CSRF, 404 missing or
+foreign UUID, 409 `account_changed`/`revision_conflict`/`quota_exceeded`, 413 size,
+415 content type. Create/duplicate return 201; updates begin at revision 1 and
+require the current revision. Failed saves/conflicts retain the working input;
+refresh/open or save a separate copy explicitly. A lost response may follow a
+committed save: refresh the list before retrying. Account changes discard cached
+names and ignore delayed responses. Newer input edits also invalidate delayed loads.
+
+Next: optional autosave and device management. See the
 [account design](../design/APPLICATION_DESIGN.md#proposed-accounts-and-saved-work).

@@ -10,6 +10,8 @@ set(NUMFORGE_WEB_ASSETS
     apps/web/assets/api.css
     apps/web/assets/chrome.css
     apps/web/assets/navigation.js
+    apps/web/assets/preferences.js
+    apps/web/assets/workspaces.js
     apps/web/assets/input-history.js
     apps/web/assets/result-display.js
     apps/web/assets/calculator.js
