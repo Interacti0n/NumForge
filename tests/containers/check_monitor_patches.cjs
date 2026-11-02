@@ -43,9 +43,40 @@ if (fs.existsSync('/opt/numforge/monitor-patches.json') || process.env.NUMFORGE_
         assert.throws(() => guards.prepare(f.root, f.manifest, f.snapshot), /Upstream version changed/);
         assert.deepEqual(fs.readFileSync(path.join(f.root, 'package.json')), before);
     });
+    test('source adaptation rejects changed upstream code before modifying files', t => {
+        const f = fixture(t);
+        const file = path.join(f.root, 'server/monitor-types/grpc.js');
+        fs.mkdirSync(path.dirname(file), {recursive: true});
+        fs.writeFileSync(file, 'unchanged fixture source');
+        f.manifest.sourcePatches = [{path: 'server/monitor-types/grpc.js', beforeHash: 'unexpected'}];
+        assert.throws(() => guards.prepare(f.root, f.manifest, f.snapshot), /Upstream source changed/);
+        assert.equal(fs.readFileSync(file, 'utf8'), 'unchanged fixture source');
+    });
     test('guard rejects a consumer range that excludes the patch', t => {
         const f = fixture(t);
         write(path.join(f.root, 'package.json'), {version: '2.5.9', dependencies: {'body-parser': '1.20.8'}});
+        assert.throws(() => guards.prepare(f.root, f.manifest, f.snapshot), /Unsupported range/);
+    });
+    test('explicit direct migration is exact and stays in the same stable major', t => {
+        const f = fixture(t);
+        write(path.join(f.root, 'package.json'), {version: '2.5.9', dependencies: {'body-parser': '1.20.8'}});
+        f.manifest.overrides = {};
+        f.manifest.directMigrations = [{name: 'body-parser', fromRange: '1.20.8', version: '1.20.9'}];
+        guards.prepare(f.root, f.manifest, f.snapshot);
+        f.install();
+        guards.verify(f.root, f.manifest, f.snapshot);
+        assert.equal(JSON.parse(fs.readFileSync(path.join(f.root, 'package.json'))).dependencies['body-parser'], '1.20.9');
+    });
+    test('explicit migration rejects a major jump before changing files', t => {
+        const f = fixture(t);
+        f.manifest.packages[0].version = '2.0.0';
+        f.manifest.directMigrations = [{name: 'body-parser', fromRange: '~1.20.5', version: '2.0.0'}];
+        assert.throws(() => guards.prepare(f.root, f.manifest, f.snapshot), /same stable major|within a stable major/);
+    });
+    test('direct migration cannot bypass another consumer range', t => {
+        const f = fixture(t);
+        write(path.join(f.root, 'node_modules/other/package.json'), {name: 'other', version: '1.0.0', dependencies: {'body-parser': '1.20.8'}});
+        f.manifest.directMigrations = [{name: 'body-parser', fromRange: '~1.20.5', version: '1.20.9'}];
         assert.throws(() => guards.prepare(f.root, f.manifest, f.snapshot), /Unsupported range/);
     });
     test('guard rejects a different archive integrity', t => {

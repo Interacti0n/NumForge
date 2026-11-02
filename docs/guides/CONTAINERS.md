@@ -236,7 +236,7 @@ logs are in `build/security-20261102/`; private database copies stay in `.local/
 
 ### Targeted monitor dependency patches
 
-The subsequent recipe applies three exact patch versions through npm overrides:
+The first targeted recipe applied three exact patch versions through npm overrides:
 
 | Dependency | Upstream installed | Patched | Scope |
 | --- | --- | --- | --- |
@@ -300,3 +300,48 @@ repository checks and comparison of all eleven account tables/rows passed.
 All four restore points were retained at completion using the same retention
 supplement as the preceding update. Source commit: `3b8bd67`; deployment, backup
 and final-check evidence is in `build/security-patches-20261102/`.
+
+### Protobuf monitor compatibility migration
+
+The next candidate pins `protobufjs` 7.6.6, from the supported 7.x release line.
+This deliberately changes Kuma's direct `~7.2.6` requirement to exact `7.6.6`;
+it is a tested minor migration, beyond the previous patch-only changes. Other
+installed consumers must still accept the new version under their original ranges.
+The build guard requires an exact original direct range, the pinned registry
+integrity and the same stable major, and rejects unrelated package changes.
+The new protobuf release removes its `@protobufjs/inquire` dependency; removal is
+permitted only after checking its old version/integrity and that no installed
+package still requires it.
+
+Compatibility testing found that schemas must be fully resolved before use to
+retain packed repeated-number encoding. The pinned Kuma gRPC adapter therefore
+calls `root.resolveAll()` immediately after parsing the schema. The recipe verifies
+the complete upstream source SHA256, exactly one replacement and the resulting
+SHA256. Unexpected upstream source changes fail the build. This is the only
+monitor application source adaptation; no other service or monitor type is changed.
+
+Nineteen checks cover the existing patch regressions, explicit-migration guards,
+source-change rejection, shared protobuf/proto-loader resolution, independent wire
+bytes for int64/packed/oneof values, schema-default code injection, malformed-option
+termination and real Kuma gRPC success/keyword failure/RPC error. The old image
+executes the benign marker from a crafted bytes-default descriptor; the candidate
+prevents it. A remaining decoder limitation is recorded: truncated native Buffer
+string fields can clamp without error, while bytes fields and Uint8Array input
+reject the corresponding truncation. This is not a general strict-frame validator.
+
+Primary references: [protobuf 7.6.6 release](https://github.com/protobufjs/protobuf.js/releases/tag/protobufjs-v7.6.6),
+[supported release lines](https://github.com/protobufjs/protobuf.js/security),
+[schema-default advisory](https://github.com/protobufjs/protobuf.js/security/advisories/GHSA-66ff-xgx4-vchm),
+[schema resolution API](https://protobufjs.github.io/protobuf.js/Root.html#resolveAll).
+Evidence is under ignored `build/security-protobuf-20261102/`, including the
+unadapted compatibility diagnostics, final red/green tests and matched image scans.
+
+Matched Trivy 0.76.1 scans with the same database report **32 → 26 fixable
+HIGH/CRITICAL records**, removing five HIGH and one CRITICAL protobuf finding,
+with none added. All HIGH/CRITICAL records including unfixed findings move from
+103/7 to 98/6. Remaining fixable records are other Node dependencies; gateway/DB
+images were not rescanned for this change. Both final scan DiffID lists match
+the qualified images. The frozen-image fixture passed previous → candidate →
+previous → candidate with the stored account/configuration/history hashes
+unchanged; both candidate stages passed all nineteen checks. Authenticated setup,
+keyword up/down, push down/up and non-root/read-only/capability protections passed.

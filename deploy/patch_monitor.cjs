@@ -30,12 +30,43 @@ function resolvePackage(root, parent, name) {
     throw new Error(`Cannot resolve ${name} from ${parent}`);
 }
 
+function configuredPackage(original, manifest, semver) {
+    const configured = structuredClone(original);
+    const seen = new Set();
+    for (const migration of manifest.directMigrations || []) {
+        assert(!seen.has(migration.name), `Duplicate direct migration: ${migration.name}`);
+        seen.add(migration.name);
+        const patch = manifest.packages.find(p => p.name === migration.name);
+        assert(patch && patch.before === `node_modules/${migration.name}` && patch.after === patch.before,
+            `Direct migration must identify a pinned root package: ${migration.name}`);
+        assert.equal(original.dependencies?.[migration.name], migration.fromRange, `Upstream direct range changed: ${migration.name}`);
+        assert.equal(migration.version, patch.version, 'Direct migration must use the pinned exact version');
+        assert(semver.valid(patch.version) && semver.major(patch.from) > 0 && semver.major(patch.from) === semver.major(patch.version),
+            `Direct migration must stay within a stable major: ${migration.name}`);
+        configured.dependencies[migration.name] = patch.version;
+    }
+    configured.overrides = { ...original.overrides, ...manifest.overrides };
+    return configured;
+}
+
 function prepare(root, manifest, snapshot) {
     const packageFile = path.join(root, 'package.json');
     const original = read(packageFile);
     assert.equal(original.version, manifest.upstreamVersion, 'Upstream version changed; requalify patches');
     const semver = require(path.join(root, 'node_modules/semver'));
+    const configured = configuredPackage(original, manifest, semver);
+    for (const patch of manifest.sourcePatches || []) {
+        assert.equal(hash(path.join(root, patch.path)), patch.beforeHash, `Upstream source changed: ${patch.path}`);
+    }
     const before = inventory(root);
+    for (const pruned of manifest.prunedDependencies || []) {
+        assert.equal(before[pruned.path]?.version, pruned.version);
+        assert.equal(before[pruned.path]?.integrity, pruned.integrity);
+        const owner = manifest.packages.find(p => p.name === pruned.removedBy);
+        assert(owner, `Pruned dependency has no migrated owner: ${pruned.name}`);
+        assert(read(path.join(root, owner.before, 'package.json')).dependencies?.[pruned.name],
+            `Pruned package is not an old owner dependency: ${pruned.name}`);
+    }
     const lock = read(path.join(root, 'package-lock.json'));
     const omissions = {};
     for (const location of manifest.keepAbsent) {
@@ -48,7 +79,8 @@ function prepare(root, manifest, snapshot) {
         let consumers = 0;
         for (const location of ['', ...Object.keys(before)]) {
             const parent = read(path.join(root, location, 'package.json'));
-            const range = { ...parent.dependencies, ...parent.optionalDependencies }[patch.name];
+            const consumer = location === '' ? configured : parent;
+            const range = { ...consumer.dependencies, ...consumer.optionalDependencies }[patch.name];
             if (!range || resolvePackage(root, location, patch.name) !== patch.before) continue;
             assert(semver.satisfies(patch.version, range), `Unsupported range ${range}: ${location} -> ${patch.name}`);
             consumers++;
@@ -59,8 +91,7 @@ function prepare(root, manifest, snapshot) {
         assert(!Object.hasOwn(original.overrides || {}, key), `Upstream override changed: ${key}`);
     }
     fs.writeFileSync(snapshot, JSON.stringify({ before, original, omissions }));
-    original.overrides = { ...original.overrides, ...manifest.overrides };
-    fs.writeFileSync(packageFile, JSON.stringify(original, null, 2) + '\n');
+    fs.writeFileSync(packageFile, JSON.stringify(configured, null, 2) + '\n');
 }
 
 function verify(root, manifest, snapshot) {
@@ -86,8 +117,17 @@ function verify(root, manifest, snapshot) {
     fs.writeFileSync(hiddenFile, JSON.stringify(hidden, null, 2) + '\n');
     const after = inventory(root);
     const current = read(path.join(root, 'package.json'));
-    assert.deepEqual(current, { ...original, overrides: { ...original.overrides, ...manifest.overrides } });
+    const semver = require(path.join(root, 'node_modules/semver'));
+    assert.deepEqual(current, configuredPackage(original, manifest, semver));
     const allowed = new Set(manifest.packages.flatMap(p => [p.before, p.after]));
+    for (const pruned of manifest.prunedDependencies || []) {
+        allowed.add(pruned.path);
+        assert(!after[pruned.path], `Unused upstream dependency remains: ${pruned.name}`);
+        for (const location of ['', ...Object.keys(after)]) {
+            const parent = read(path.join(root, location, 'package.json'));
+            assert(!parent.dependencies?.[pruned.name], `Removed package still required: ${location} -> ${pruned.name}`);
+        }
+    }
     for (const location of new Set([...Object.keys(before), ...Object.keys(after)])) {
         if (!allowed.has(location)) assert.deepEqual(after[location], before[location], `Unrelated package changed: ${location}`);
     }
@@ -98,7 +138,6 @@ function verify(root, manifest, snapshot) {
             `https://registry.npmjs.org/${patch.name}/-/${patch.name}-${patch.version}.tgz`);
         if (patch.before !== patch.after) assert(!after[patch.before], `Old package remains: ${patch.before}`);
     }
-    const semver = require(path.join(root, 'node_modules/semver'));
     for (const patch of manifest.packages) {
         const actual = read(path.join(root, patch.after, 'package.json'));
         for (const [name, range] of Object.entries(actual.dependencies || {})) {
@@ -106,7 +145,17 @@ function verify(root, manifest, snapshot) {
             assert(semver.satisfies(after[resolved]?.version, range), `Unsatisfied patch dependency: ${patch.name} -> ${name}`);
         }
     }
-    console.log('Only the three qualified patch packages changed; versions, archive integrity and dependency ranges verified.');
+    for (const patch of manifest.sourcePatches || []) {
+        const file = path.resolve(root, patch.path);
+        assert(file.startsWith(path.join(root, 'server') + path.sep));
+        assert.equal(hash(file), patch.beforeHash, `Upstream source changed: ${patch.path}`);
+        const source = fs.readFileSync(file, 'utf8');
+        assert.equal(source.split(patch.before).length, 2, `Source patch must match once: ${patch.path}`);
+        const changed = source.replace(patch.before, patch.after);
+        assert.equal(crypto.createHash('sha256').update(changed).digest('hex'), patch.afterHash);
+        fs.writeFileSync(file, changed);
+    }
+    console.log(`The ${manifest.packages.length} qualified packages, archive integrity, consumer ranges and pinned source adaptations verified.`);
 }
 
 if (require.main === module) {

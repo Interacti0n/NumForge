@@ -1,12 +1,44 @@
 {
   "upstreamVersion": "2.5.9",
-  "keepAbsent": ["node_modules/buildcheck", "node_modules/cpu-features", "node_modules/nan"],
+  "directMigrations": [
+    {
+      "name": "protobufjs",
+      "fromRange": "~7.2.6",
+      "version": "7.6.6"
+    }
+  ],
+  "prunedDependencies": [
+    {
+      "name": "@protobufjs/inquire",
+      "path": "node_modules/@protobufjs/inquire",
+      "version": "1.1.2",
+      "integrity": "sha512-pa0vFRuws4wkvaXKK1uXZMAwAX4/t8ANaJo45iw/oQHNQ9q5xUzwgFmVJGXiga2BeN+zpX7Vf9vmsiIa2J+MUw==",
+      "removedBy": "protobufjs"
+    }
+  ],
+  "keepAbsent": [
+    "node_modules/buildcheck",
+    "node_modules/cpu-features",
+    "node_modules/nan"
+  ],
   "overrides": {
     "body-parser": "1.20.9",
     "follow-redirects": "1.16.2",
-    "redbean-node": { "glob": { "minimatch": "9.0.9" } }
+    "redbean-node": {
+      "glob": {
+        "minimatch": "9.0.9"
+      }
+    }
   },
   "packages": [
+    {
+      "name": "protobufjs",
+      "from": "7.2.6",
+      "version": "7.6.6",
+      "before": "node_modules/protobufjs",
+      "after": "node_modules/protobufjs",
+      "integrity": "sha512-dYDWdjSl5RNb7SgPxGQcRU+GtvP7s2fpkrY0r432PcOIaZ0/rBcxEZnQN67iJhFuQiVw754JDoPruPCNdGsbjg=="
+    },
     {
       "name": "body-parser",
       "from": "1.20.8",
@@ -30,6 +62,15 @@
       "before": "node_modules/minimatch",
       "after": "node_modules/redbean-node/node_modules/minimatch",
       "integrity": "sha512-OBwBN9AL4dqmETlpS2zasx+vTeWclWzkblfZk7KTA5j3jeOONz/tRCnZomUyvNg83wL5Zv9Ss6HMJXAgL8R2Yg=="
+    }
+  ],
+  "sourcePatches": [
+    {
+      "path": "server/monitor-types/grpc.js",
+      "beforeHash": "687b259f15608e3d3fcce43630522f7deecfdd4c031ebe764b550ca21845f875",
+      "afterHash": "847eab374045a775d5d3b72c9f639bb66cf357034e66195867e010e8bb5bf13b",
+      "before": "        const protocObject = protojs.parse(protobufData);",
+      "after": "        const protocObject = protojs.parse(protobufData);\n        protocObject.root.resolveAll();"
     }
   ]
 }
