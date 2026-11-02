@@ -345,3 +345,23 @@ the qualified images. The frozen-image fixture passed previous → candidate →
 previous → candidate with the stored account/configuration/history hashes
 unchanged; both candidate stages passed all nineteen checks. Authenticated setup,
 keyword up/down, push down/up and non-root/read-only/capability protections passed.
+
+The qualified image was deployed as `numforge-uptime:protobuf-20261102`, exact
+ID `sha256:f2c2fdc96236dfe477d12444ce214c1719aa534686732ad9153562f23fa8ffc5`,
+from source commit `3dc69e7`. Only the monitor container changed under the
+supervisor lock; web/accounts/PostgreSQL/gateway identities and the current
+tunnel URL were retained. The live protobuf version, patch receipt and adapted
+gRPC source SHA256 matched the candidate. Stored users, full monitor settings
+and retained heartbeat history matched the pre-change copy; all six monitors
+were up with fresh non-push checks. Local/public HTTPS and runtime protections passed.
+
+Pre/post account/configuration/Git and separately tagged consistent monitor
+backups to the existing external encrypted repository passed byte comparison,
+SQLite integrity/stored-state checks, repository checks and restoration/comparison
+of all eleven account tables/rows. All four restore points were retained at
+completion with the existing same-day retention supplement. Deployment/backup
+records and logs are in `build/security-protobuf-20261102/`.
+A later standard supervisor Ensure check preserved the qualified monitor,
+application container identities and URL. All five services were healthy and
+all six monitors were up; the isolated test project's containers, volume and
+network were verified removed. These checks do not establish Windows reboot behavior.
