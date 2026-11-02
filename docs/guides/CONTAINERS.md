@@ -279,3 +279,24 @@ The frozen-image lifecycle fixture also passed upstream → patched → upstream
 patched with stored user/configuration/history hashes unchanged, authenticated
 provisioning, keyword up/down, push down/up and runtime protections. Both patched
 stages ran the nine dependency regressions successfully.
+
+The qualified image was then deployed as `numforge-uptime:patches-20261102`,
+exact ID `sha256:f72e4f2e625725adc3d972e6b0665a065e697365e6221ffab7d9750ea757068b`.
+Only monitoring was recreated under the supervisor lock. The web, accounts,
+PostgreSQL and gateway retained their container identities; the current public
+URL/tunnel stayed unchanged. Complete stored user/monitor settings and retained
+heartbeat history matched the pre-change copy. Six monitors were up, with fresh
+non-push heartbeats from the new process; local/public HTTPS checks and all
+runtime protections passed. The deployed patch receipt matched the tested manifest.
+A subsequent standard supervisor Ensure check preserved the patched image,
+the other service identities and URL; all five services were healthy and all six
+monitors remained up. The owned test project's containers, volume and network
+were verified removed.
+
+Both before and after promotion, the existing external encrypted repository
+received a standard account/configuration/Git backup and a separately tagged
+consistent monitor snapshot. Restored bytes, SQLite integrity/stored state,
+repository checks and comparison of all eleven account tables/rows passed.
+All four restore points were retained at completion using the same retention
+supplement as the preceding update. Source commit: `3b8bd67`; deployment, backup
+and final-check evidence is in `build/security-patches-20261102/`.
