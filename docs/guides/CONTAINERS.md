@@ -182,8 +182,8 @@ triage aid, not proof of exploitability or an all-clear for unpatched findings.
 
 The monitor recipe uses the official Kuma 2.5.9-slim image pinned by digest,
 retaining OS upgrades, UID 1000, the Node healthcheck and removal of unused
-healthcheck/cloudflared/npm executables. No application dependency overrides or
-finding suppressions are used. The [upstream release](https://github.com/louislam/uptime-kuma/releases/tag/2.5.9)
+healthcheck/cloudflared/npm executables. The initial 2.5.9 update used no application
+dependency overrides or finding suppressions. The [upstream release](https://github.com/louislam/uptime-kuma/releases/tag/2.5.9)
 also fixes RSS cache poisoning and refreshes dependencies.
 
 Trivy 0.76.1 with the same database updated at 13:15 UTC on 2 November compares:
@@ -233,3 +233,49 @@ upgrade backups; the daily job does not refresh the monitor SQLite database.
 Failed preparation attempts are retained in the evidence folder; they stopped
 before service replacement. Deployment/backup/final-check records and execution
 logs are in `build/security-20261102/`; private database copies stay in `.local/ops`.
+
+### Targeted monitor dependency patches
+
+The subsequent recipe applies three exact patch versions through npm overrides:
+
+| Dependency | Upstream installed | Patched | Scope |
+| --- | --- | --- | --- |
+| body-parser | 1.20.8 | 1.20.9 | Express parser |
+| follow-redirects | 1.16.1 | 1.16.2 | Axios redirect handling |
+| minimatch | 9.0.3 | 9.0.9 | Only `redbean-node → glob` |
+
+`deploy/monitor-patches.json` pins the versions and registry archive integrity.
+The build guard checks every installed consumer of each replaced package against
+its declared range, rejects an unexpected upstream version and verifies the final
+installed versions, integrity and dependency closure. npm updates its lockfiles
+with lifecycle scripts disabled. Unrelated installed package versions, integrity
+and package metadata must remain unchanged. Three optional native build helpers
+that npm reinstalls are checked against the unchanged upstream lock, then omitted
+again exactly as in the base image. This preserves the supplied native bindings.
+Other minimatch major versions retain their original consumers and versions;
+a global minimatch override was rejected during preparation.
+
+The same Trivy database used for both images reports **37 → 32 fixable
+HIGH/CRITICAL records**, all remaining records in Node dependencies. All HIGH
+records fall from 108 to 103; all CRITICAL remain seven, including unfixed records.
+The five removed findings are the body-parser compressed-body crash,
+follow-redirects finding and three minimatch ReDoS records. No new fixable
+HIGH/CRITICAL record appears; no ignore list or VEX suppression is used.
+Sources: [body-parser advisory](https://github.com/advisories/GHSA-27r3-jxmh-p828),
+[follow-redirects release](https://github.com/follow-redirects/follow-redirects/releases/tag/v1.16.2),
+[minimatch advisories](https://github.com/isaacs/minimatch/security/advisories).
+
+Nine regression checks cover rejected build mutations, parser success/error/size
+limits, a compressed trailing-byte process crash, redirect behavior/loop limits,
+glob matching and the documented repeated-wildcard/nested-extglob cases. The old
+image fails the crash and adversarial-glob checks; the patched image passes.
+The two-second glob deadline is a test guard, not a runtime CPU bound for arbitrary
+patterns. An exploratory alternating-literal/wildcard pattern still times out on
+the patched library; the update does not establish a general ReDoS-free contract.
+The ordinary monitor fixture runs these checks on patched images in CI as well.
+Evidence: ignored `build/security-patches-20261102/`, including raw scan JSON,
+red/green logs, build guard output and image identities.
+The frozen-image lifecycle fixture also passed upstream → patched → upstream →
+patched with stored user/configuration/history hashes unchanged, authenticated
+provisioning, keyword up/down, push down/up and runtime protections. Both patched
+stages ran the nine dependency regressions successfully.

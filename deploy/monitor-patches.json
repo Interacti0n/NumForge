@@ -1,0 +1,35 @@
+{
+  "upstreamVersion": "2.5.9",
+  "keepAbsent": ["node_modules/buildcheck", "node_modules/cpu-features", "node_modules/nan"],
+  "overrides": {
+    "body-parser": "1.20.9",
+    "follow-redirects": "1.16.2",
+    "redbean-node": { "glob": { "minimatch": "9.0.9" } }
+  },
+  "packages": [
+    {
+      "name": "body-parser",
+      "from": "1.20.8",
+      "version": "1.20.9",
+      "before": "node_modules/body-parser",
+      "after": "node_modules/body-parser",
+      "integrity": "sha512-FISIQxV5u91Y9gvuFq3q/tA/qTqLJn3AhRcEvyozyhJTh5OBFFtv827AdHU7Rbyct4r+Ba1/99oFa1Y3yuFsdw=="
+    },
+    {
+      "name": "follow-redirects",
+      "from": "1.16.1",
+      "version": "1.16.2",
+      "before": "node_modules/follow-redirects",
+      "after": "node_modules/follow-redirects",
+      "integrity": "sha512-/kVP2U8z596Ia0gwFrwyIeo74ta5aVmSeU1FfAUMAmcEP5EP7zydmag3SLiN64NaRKef3lxsq7i/g7ltJQDGow=="
+    },
+    {
+      "name": "minimatch",
+      "from": "9.0.3",
+      "version": "9.0.9",
+      "before": "node_modules/minimatch",
+      "after": "node_modules/redbean-node/node_modules/minimatch",
+      "integrity": "sha512-OBwBN9AL4dqmETlpS2zasx+vTeWclWzkblfZk7KTA5j3jeOONz/tRCnZomUyvNg83wL5Zv9Ss6HMJXAgL8R2Yg=="
+    }
+  ]
+}

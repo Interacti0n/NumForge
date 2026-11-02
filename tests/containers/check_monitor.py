@@ -63,6 +63,12 @@ def run():
             # Reauthenticating after every change also verifies persisted credentials.
             compose.docker("exec", "-T", "uptime", "node", "/opt/setup_monitor.cjs", input=json.dumps(config), encoding="utf-8")
 
+        def patch_checks():
+            guards = (ROOT / "deploy/patch_monitor.cjs").read_text(encoding="utf-8")
+            checks = (ROOT / "tests/containers/check_monitor_patches.cjs").read_text(encoding="utf-8")
+            bootstrap = "const Module=require('node:module');const guard=new Module('/tmp/nf-guards.cjs');guard.filename='/tmp/nf-guards.cjs';guard._compile(" + json.dumps(guards) + ",guard.filename);globalThis.monitorPatchGuards=guard.exports;\n"
+            compose.docker("exec", "-T", "uptime", "node", "-", input=bootstrap + checks, encoding="utf-8")
+
         def snapshot(history_limit=None):
             # Hash private fixture rows instead of logging password hashes/tokens.
             program = '''const S=require('@louislam/sqlite3'),crypto=require('node:crypto');
@@ -81,6 +87,7 @@ console.log(JSON.stringify({digest,history_limit:history.at(-1)?.id??0}));db.clo
             compose.docker("up", "--no-build" if image else "--build", "--no-deps", "--wait", "--wait-timeout", "120", "uptime")
             check_image(previous_image or image)
             provision()
+            patch_checks()
             # Read-only SQLite queries expose no credentials or real user data.
             verify = '''const sqlite=require('@louislam/sqlite3');const db=new sqlite.Database('data/kuma.db',sqlite.OPEN_READONLY);
 let tries=0;function check(){db.all("select m.name,h.status from monitor m left join heartbeat h on h.id=(select max(id) from heartbeat where monitor_id=m.id)",(err,rows)=>{
@@ -102,6 +109,7 @@ else if(++tries<20)setTimeout(check,1000);else{db.close();process.exitCode=1;}})
                     select_image(selected)
                     compose.docker("up", "--no-build", "--no-deps", "--wait", "--wait-timeout", "120", "uptime")
                     check_image(selected)
+                    patch_checks()
                     # Check stored monitor identities/history before provisioning.
                     compose.docker("exec", "-T", "uptime", "node", "-e", verify)
                     assert snapshot(stored["history_limit"]) == stored, "Stored identities/config/history changed during upgrade or rollback"
