@@ -121,6 +121,16 @@ For a disposable local check,
 set `COMPOSE_PROJECT_NAME=numforge-test-local`, then run
 `python tests/containers/check_stack.py`. It removes that project's volumes.
 
+`python tests/containers/check_monitor.py` separately verifies authenticated
+provisioning, a working/failing keyword monitor, push down/up transitions and
+retention of stored account/configuration/history across restart. It checks the
+non-root, read-only, dropped-capability runtime protections. The default isolated
+port is 18886; `NUMFORGE_TEST_MONITOR_PORT` overrides it. To test frozen images,
+set `NUMFORGE_TEST_MONITOR_IMAGE`; also set `NUMFORGE_TEST_MONITOR_BASE_IMAGE`
+to exercise old → candidate → old → candidate on the same disposable volume.
+Selected images must already exist locally. Use a unique `numforge-test-` project;
+the helper removes that project's containers and volumes when finished.
+
 ## Local operations tools
 
 Optional tools remain outside the mathematical engine:
@@ -167,3 +177,32 @@ Ninja/Make configure; keep `SCCACHE_DIR` outside disposable build trees. This PC
 ignored `cached-apps` user preset does that. Trivy reports go to `build/security/`;
 `--fail-on-fixable` fails on HIGH/CRITICAL findings with a listed fix. This is a
 triage aid, not proof of exploitability or an all-clear for unpatched findings.
+
+### Monitor security verification — 2 November 2026
+
+The monitor recipe uses the official Kuma 2.5.9-slim image pinned by digest,
+retaining OS upgrades, UID 1000, the Node healthcheck and removal of unused
+healthcheck/cloudflared/npm executables. No application dependency overrides or
+finding suppressions are used. The [upstream release](https://github.com/louislam/uptime-kuma/releases/tag/2.5.9)
+also fixes RSS cache poisoning and refreshes dependencies.
+
+Trivy 0.76.1 with the same database updated at 13:15 UTC on 2 November compares:
+
+| Hardened monitor image | Fixable HIGH/CRITICAL records | All HIGH / CRITICAL records |
+| --- | ---: | ---: |
+| Previous Kuma 2.5.8 | 40 | 111 / 7 |
+| Candidate Kuma 2.5.9 | 37 | 108 / 7 |
+
+Three `undici` records disappear; no new fixable HIGH/CRITICAL records appear.
+The historical count of 39 used an older vulnerability database. All 37 remaining
+fixable records are Node dependencies; this update does not resolve them or the
+unfixed OS records. Counts are package findings, not unique CVEs or proven exploits.
+Keep the admin endpoint on loopback; absence of a configured feature is not a
+blanket exemption. Gateway/PostgreSQL were not rescanned for this monitor change.
+
+The frozen old/candidate images passed the isolated restart, upgrade, rollback
+and reapply sequence, including authentication, monitor and push behavior,
+preserved account/configuration/history hashes and runtime protections. Raw image
+identities, layer-matched scan reports, scanner database times and test logs are
+under ignored `build/security-20261102/`. Qualification alone does not update a
+running pilot or establish Windows reboot behavior.
