@@ -63,6 +63,17 @@
   ],
   "addedDependencies": [
     {
+      "name": "@azure/msal-common",
+      "path": "node_modules/@azure/msal-node/node_modules/@azure/msal-common",
+      "version": "16.15.0",
+      "integrity": "sha512-lwdLb1B9Q5nEhPLVIKe78XH5wFMN15fCiDkY7ylPDSWZuWcD93G3jpJajrKhO3CQld8SLKz0sHiOi24mxdvtsg==",
+      "addedBy": "@azure/msal-node",
+      "replaces": {
+        "version": "16.13.0",
+        "integrity": "sha512-rOAy0KUcyBbdwVJ+f3uPpthXatFLLZN+/KWAsTLzk1aB23Xl9DRmmXYwSvBFOZyXj4jUQQ5FKxxRkhAFW1fOow=="
+      }
+    },
+    {
       "name": "package-json-from-dist",
       "path": "node_modules/package-json-from-dist",
       "version": "1.0.1",
@@ -143,6 +154,10 @@
     "node_modules/nan"
   ],
   "overrides": {
+    "@azure/msal-node": {
+      ".": "7.1.2",
+      "@azure/msal-common": "16.15.0"
+    },
     "@js-sdsl/ordered-map": "4.4.2",
     "body-parser": "1.20.9",
     "follow-redirects": "1.16.2",
@@ -183,6 +198,14 @@
     }
   },
   "packages": [
+    {
+      "name": "@azure/msal-node",
+      "from": "5.6.0",
+      "version": "7.1.2",
+      "before": "node_modules/@azure/msal-node",
+      "after": "node_modules/@azure/msal-node",
+      "integrity": "sha512-52hKQLGpEQzwNufIXG1SPVU+wQ3RIe7Rp2+g+VdAmZojCAZ6yCdGEffzQEQ6RnBZGBEs40nl14rWBmfJpCoHsg=="
+    },
     {
       "name": "tar",
       "from": "6.2.1",
@@ -321,6 +344,19 @@
     }
   ],
   "consumerMigrations": [
+    {
+      "consumer": "node_modules/@azure/identity",
+      "consumerVersion": "4.13.1",
+      "consumerIntegrity": "sha512-5C/2WD5Vb1lHnZS16dNQRPMjN6oV/Upba+C9nBIs15PmOi6A3ZGs4Lr2u60zw4S04gi+u3cEXiqTVP7M4Pz3kw==",
+      "name": "@azure/msal-node",
+      "fromRange": "^5.1.0",
+      "version": "7.1.2",
+      "compatibility": "consumer-major-upgrade",
+      "dependencyMigration": {
+        "from": {"@azure/msal-common": "16.13.0", "jsonwebtoken": "^9.0.0"},
+        "to": {"@azure/msal-common": "16.15.0", "jsonwebtoken": "^9.0.0"}
+      }
+    },
     {
       "consumer": "node_modules/redbean-node",
       "consumerVersion": "0.3.3",

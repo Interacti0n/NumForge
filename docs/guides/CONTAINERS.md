@@ -1043,3 +1043,73 @@ Primary references: [tar 7.5.22](https://github.com/isaacs/node-tar/releases/tag
 [upstream extraction guidance](https://github.com/isaacs/node-tar#readme).
 Evidence is under ignored `build/security-tar-20261103/`. This candidate and the
 preceding glob/Nodemailer candidates have not been promoted to the running pilot.
+
+### MSAL Node consumer-major migration — qualified candidate
+
+The final candidate in this fixable-HIGH/CRITICAL series pins `@azure/msal-node`
+**7.1.2**, replacing 5.6.0 under Azure Identity 4.13.1. Its original `^5.1.0`
+consumer range, version and SHA512 are checked explicitly. The Node-owned
+`@azure/msal-common` changes from 16.13.0 to exact 16.15.0 at the same nested
+location, with old/new archive identities pinned. Browser MSAL 5.25.1 retains
+its separate common 16.14.2; Azure Identity's metadata remains unchanged.
+No new direct Kuma dependency or application source patch is introduced.
+
+The new explicit `consumer-major-upgrade` policy permits a forward move between
+stable positive majors without inventing a direct Kuma dependency. Exact old
+and target dependency declarations are recorded in `dependencyMigration` and
+verified. npm reifies the existing tree; the consumer lock-refresh deletion path
+is skipped. Optional dependencies, unsupported versions, other consumer ranges,
+owner-local replacement identities, archive pins and unrelated installed metadata
+remain guarded. Ten new guard checks cover accepted isolation, missing/changed
+maps, same-major/downgrade/prerelease attempts, an unqualified second consumer and
+unexpected optional dependencies before/after installation.
+
+Eleven MSAL checks cover pinned resolution, rejected confidential-client
+instance-aware configuration and `instance_aware` URL parameters, ordinary
+authorization URL state/nonce/PKCE, state-mismatch rejection, code redemption and
+client-credential caching. A scoped superclass interceptor checks the security
+boundary: only original request code/nonce and observed response state reach
+shared token acquisition, while response-controlled routing/metadata are removed
+without mutating the caller's object. This isolates the regression without
+claiming an end-to-end exploit against the deployed monitor.
+
+Separate tests exercise real MSAL acquisition and the existing Azure Identity
+`ClientSecretCredential` and `UsernamePasswordCredential` APIs with an injected
+network adapter. It accepts only the fixture's trusted authority/token paths and
+returns dummy metadata, tokens and JWT claims. It never contacts Microsoft or
+an attacker endpoint. Tokens/signatures are test data, not cryptographic or live
+tenant validation. The checked SQL secret/password paths do not qualify every
+Azure credential, broker or interactive flow; v6/v7 interactive-loopback API
+changes still require separate review if such a feature is enabled.
+
+The candidate passes **184 checks**. The preceding tar image passes 179 and fails
+five: the pin, instance-aware configuration, both instance-aware URL values and
+the payload-boundary check. The code-redemption/cache and Azure Identity fixture
+flows pass on both images. Standalone comparisons run without network or host
+mounts; no external login, notification, tenant or credential is used.
+
+Matched Trivy 0.76.1 scans on 3 November use the database updated 2 November at
+13:15:56 UTC. Fixable HIGH/CRITICAL records fall **1 → 0**, removing the scanner's
+HIGH CVE-2026-109461 record with none added. The upstream advisory rates it
+moderate; scanner records are not unique vulnerabilities or proof of a deployed
+exploit. All HIGH/CRITICAL including unfixed findings move from 74/5 to 73/5;
+these remaining records have no listed fix in this database. No ignore/VEX
+suppression is used. Both report DiffID lists match the frozen images; gateway/DB
+images were not rescanned. Candidate: `numforge-uptime:candidate-msal-20261103`,
+exact ID `sha256:0650f0ed652303207246c4799dae5bf552d14d0526ec43930765e34154aa7990`.
+
+The previous → candidate → previous → candidate fixture preserves stored
+users/configuration/history digests, authenticated login, keyword/push up/down
+and runtime protections. Both candidate stages pass all 184 checks. Its owned
+containers, volume and network were verified absent after cleanup. The monitor's
+CI scan now uses `--fail-on-fixable`, matching the gateway/DB policy: a future
+HIGH/CRITICAL record with a listed fix fails the job. This is a scanner gate,
+not an all-clear for unfixed findings. A pushed revision's CI and real Windows
+reboot/login remain separate verification steps; no production promotion occurred.
+
+Primary references: [MSAL Node 7.1.2](https://github.com/AzureAD/microsoft-authentication-library-for-js/releases/tag/msal-node-v7.1.2),
+[upstream advisory](https://github.com/AzureAD/microsoft-authentication-library-for-js/security/advisories/GHSA-xcx6-jx8p-x3h5),
+[security change](https://github.com/AzureAD/microsoft-authentication-library-for-js/pull/8901),
+[major changes](https://github.com/AzureAD/microsoft-authentication-library-for-js/blob/dev/lib/msal-node/CHANGELOG.md).
+Evidence is under ignored `build/security-msal-20261103/`. MSAL and the preceding
+glob/Nodemailer/tar candidates have not been promoted to the running pilot.

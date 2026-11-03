@@ -111,6 +111,13 @@ function prepare(root, manifest, snapshot) {
         if (migration.compatibility === undefined) {
             assert(semver.major(patch.from) > 0 && semver.major(patch.from) === semver.major(patch.version),
                 'Consumer migration must identify a pin within the same stable major');
+        } else if (migration.compatibility === 'consumer-major-upgrade') {
+            assert(semver.valid(patch.from) && semver.valid(patch.version) &&
+                !semver.prerelease(patch.from) && !semver.prerelease(patch.version) &&
+                semver.major(patch.from) > 0 && semver.major(patch.version) > semver.major(patch.from),
+                'Consumer major migration must move forward between stable majors');
+            assert(migration.dependencyMigration && !migration.dependencyRefresh,
+                'Consumer-only major migration requires explicit dependency maps and npm reification');
         } else {
             assert.equal(migration.compatibility, 'stable-major-upgrade', 'Unknown consumer compatibility policy');
             assert(manifest.directMigrations?.some(m => m.name === patch.name && m.version === patch.version &&
@@ -122,7 +129,12 @@ function prepare(root, manifest, snapshot) {
         assert(target.startsWith(path.join(root, 'node_modules') + path.sep));
         assert(fs.lstatSync(target).isDirectory() && !fs.lstatSync(target).isSymbolicLink());
         const leaf = read(path.join(target, 'package.json'));
-        if (migration.compatibility === 'stable-major-upgrade') {
+        if (migration.compatibility === 'consumer-major-upgrade') {
+            assert.deepEqual(leaf.dependencies, migration.dependencyMigration.from, 'Upstream migrated dependencies changed');
+            assert(!Object.keys(leaf.optionalDependencies || {}).length, 'Consumer major migration cannot change optional dependencies');
+            assert(migration.dependencyMigration.to && typeof migration.dependencyMigration.to === 'object' &&
+                !Array.isArray(migration.dependencyMigration.to), 'Consumer major migration requires an exact target dependency map');
+        } else if (migration.compatibility === 'stable-major-upgrade') {
             // npm reifies this explicitly qualified root migration itself. Do
             // not remove its nested packages through the consumer lock refresh.
         } else if (migration.dependencyRefresh) {
@@ -171,8 +183,9 @@ function prepare(root, manifest, snapshot) {
         assert(!additions.has(added.path), `Duplicate added dependency: ${added.name}`);
         additions.add(added.path);
         if (added.replaces) {
-            assert(added.path === ownerPath && manifest.directMigrations?.some(m =>
-                m.name === added.addedBy && m.compatibility === 'stable-major-upgrade'),
+            assert(added.path === ownerPath && (manifest.directMigrations?.some(m =>
+                m.name === added.addedBy && m.compatibility === 'stable-major-upgrade') ||
+                manifest.consumerMigrations?.some(m => m.name === added.addedBy && m.compatibility === 'consumer-major-upgrade')),
                 'Replacement requires an owner-local dependency of an explicit major migration');
             assert.equal(before[added.path]?.version, added.replaces.version, 'Replaced dependency version changed');
             assert.equal(before[added.path]?.integrity, added.replaces.integrity, 'Replaced dependency integrity changed');
@@ -193,7 +206,7 @@ function prepare(root, manifest, snapshot) {
         }
         const rootOwner = migrationRoot(manifest, added.addedBy);
         assert(manifest.directMigrations?.some(m => m.name === rootOwner) ||
-            manifest.consumerMigrations?.some(m => m.name === rootOwner && m.dependencyRefresh),
+            manifest.consumerMigrations?.some(m => m.name === rootOwner && (m.dependencyRefresh || m.compatibility === 'consumer-major-upgrade')),
             `Added dependency must belong to an explicit migration: ${added.name}`);
         const ownerOverrides = manifest.overrides[added.addedBy] ?? manifest.overrides[`${added.addedBy}@${owner.version}`];
         const override = added.path === rootPath ? manifest.overrides[added.name] : ownerOverrides?.[added.name];
@@ -239,7 +252,7 @@ function prepare(root, manifest, snapshot) {
     // its registry archive; never unlock the rest of the dependency tree.
     const refreshed = new Set();
     for (const migration of manifest.consumerMigrations || []) {
-        if (migration.compatibility === 'stable-major-upgrade') continue;
+        if (['stable-major-upgrade', 'consumer-major-upgrade'].includes(migration.compatibility)) continue;
         const patch = manifest.packages.find(p => p.name === migration.name);
         if (refreshed.has(patch.before)) continue;
         refreshed.add(patch.before);
@@ -289,6 +302,11 @@ function verify(root, manifest, snapshot) {
     for (const migration of manifest.consumerMigrations || []) {
         assert.deepEqual(after[migration.consumer], before[migration.consumer], 'Migrated consumer metadata changed');
         const patch = manifest.packages.find(p => p.name === migration.name);
+        if (migration.compatibility === 'consumer-major-upgrade') {
+            const actual = read(path.join(root, patch.after, 'package.json'));
+            assert.deepEqual(actual.dependencies, migration.dependencyMigration.to, 'Migrated target dependencies changed');
+            assert(!Object.keys(actual.optionalDependencies || {}).length, 'Migrated optional dependencies changed');
+        }
         if (migration.dependencyRefresh) {
             const actual = read(path.join(root, patch.after, 'package.json'));
             assert.deepEqual(actual.dependencies, migration.dependencyRefresh.to, 'Refreshed target dependencies changed');

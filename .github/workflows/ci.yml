@@ -42,8 +42,8 @@ jobs:
           python tests/containers/check_monitor.py
       - name: Check fixable gateway and database vulnerabilities
         run: python scripts/scan_images.py numforge-test-ci-gateway numforge-test-ci-db --fail-on-fixable
-      - name: Report remaining upstream monitor vulnerabilities
-        run: python scripts/scan_images.py numforge-test-ci-uptime
+      - name: Check fixable monitor vulnerabilities
+        run: python scripts/scan_images.py numforge-test-ci-uptime --fail-on-fixable
       - uses: actions/upload-artifact@v7
         if: always()
         with:
