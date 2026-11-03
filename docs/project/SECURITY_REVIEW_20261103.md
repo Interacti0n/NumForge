@@ -7,6 +7,13 @@ persisted upgrade/rollback/reapply fixture. Three fixable MEDIUM scanner records
 remain in this candidate. The other four running service images have 18 records
 with listed fixes, all MEDIUM, LOW or UNKNOWN. These findings remain open.
 
+The native engine has since been rebuilt and deployed as SQLite **3.54.1** with
+211 passing checks and verified rollback/restore. See the
+[native rebuild and promotion](../guides/CONTAINERS.md#native-sqlite-source-rebuild).
+The scanner still does not identify this embedded engine separately; explicit
+native provenance/runtime checks now cover it. Debian SQLite findings and the
+archived binding's support status remain open.
+
 At the start of this audit, the pilot used the earlier Axios monitor image, with
 **15 fixable HIGH/CRITICAL records**. The qualified review image was subsequently
 deployed after explicit approval, with **zero fixable HIGH/CRITICAL records** in
@@ -239,8 +246,10 @@ services were healthy and all six monitors remained up.
 For these exact old/new images, the matched reports show fixable HIGH/CRITICAL
 **15 → 0**, fixable MEDIUM **25 → 3** and fixable LOW **2 → 0**. The unchanged
 database still reports 73 HIGH and five CRITICAL OS records without a listed fix.
-The native SQLite coverage gap and remaining glob/minimatch/other-image findings
-above remain open. No other service update, push or reboot was performed.
+At this promotion, the native SQLite coverage gap and remaining glob/minimatch/
+other-image findings above remained open. A subsequent native source rebuild
+and promotion is linked near the top of this report. No other service update,
+push or reboot was performed.
 Promotion evidence is under ignored `build/security-review-deploy-20261103/`:
 `DEPLOYMENT.md`, `direct-upgrade.log`, `deployment.json`, `pre-backup.json`,
 `post-backup.json`, `live-package-pins.json`, `deployment-scan-comparison.json`

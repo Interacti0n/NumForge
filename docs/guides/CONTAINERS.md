@@ -1219,8 +1219,42 @@ Candidate: `numforge-uptime:candidate-sqlite-20261103`, exact ID
 Native binary SHA256:
 `2e1420fc0890d9948cc275ba9c9493e5aa662355698175d466921612071be4d6`.
 Qualification evidence is under ignored `build/security-sqlite-20261103/`.
-This qualification alone does not change the running review image.
+The existing candidate was subsequently promoted without rebuilding, as recorded
+below.
 
 Primary references: [SQLite 3.54.1 source and published checksums](https://www.sqlite.org/download.html),
 [release source identity](https://www.sqlite.org/releaselog/3_54_1.html),
 [original affected SQLite range](https://security-tracker.debian.org/tracker/CVE-2025-7458).
+
+### Native SQLite promotion
+
+On **3 November 2026 at 11:40:12 UTC**, the qualified image above was deployed
+as `numforge-uptime:sqlite-20261103`, from source commit `93e7bdd`, continuing
+the approved monitor-only backup/deployment workflow. The old review image and
+runtime profile remain available for rollback. Only uptime was recreated under
+the supervisor operation lock; effective configuration differed only by its
+image. Other service container IDs and the owned tunnel identity/URL stayed
+unchanged.
+
+Live verification confirmed SQLite **3.54.1**, the pinned source ID, binary
+SHA256, official archive SHA3, source configuration hash and receipt, along with
+all previous package/source pins and runtime protections. Stored users, complete
+monitor settings and retained heartbeat history matched the consistent pre-change
+copy. Local pinned-TLS and public HTTPS calculation/session checks passed; all
+six monitors were up with fresh non-push checks.
+
+The existing external encrypted repository received standard account/configuration/
+Git and separate consistent monitor SQLite snapshots before and after replacement.
+Both pairs passed byte-for-byte restore, SQLite integrity/stored-state checks,
+repository checks and all eleven account table/row comparisons. All four restore
+points were retained at completion. Daily standard retention may later rotate
+standard points; monitor SQLite still needs its separate snapshots.
+
+A subsequent normal supervisor Ensure preserved the selected image, native
+engine, other service identities and URL; all five services were healthy and all
+six monitors up. Both isolated fixture projects were verified absent. Records
+are under ignored `build/security-sqlite-deploy-20261103/`, including
+`deployment.json`, `live-native-engine.json`, pre/post backup records and
+`final-check.json`. No other service update, push or reboot was performed.
+The archived Node binding's support status, Debian SQLite/other OS records and
+the remaining glob/minimatch findings are still separate open work.
