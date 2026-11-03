@@ -7,8 +7,10 @@ persisted upgrade/rollback/reapply fixture. Three fixable MEDIUM scanner records
 remain in this candidate. The other four running service images have 18 records
 with listed fixes, all MEDIUM, LOW or UNKNOWN. These findings remain open.
 
-The running pilot still uses the earlier Axios monitor image, with **15 fixable
-HIGH/CRITICAL records**. The later qualified candidates have not been deployed.
+At the start of this audit, the pilot used the earlier Axios monitor image, with
+**15 fixable HIGH/CRITICAL records**. The qualified review image was subsequently
+deployed after explicit approval, with **zero fixable HIGH/CRITICAL records** in
+the matched scan. The promotion and retained risks are recorded below.
 This report is an audit of the container dependency work, not an assertion that
 the application, operating system or deployment is free of vulnerabilities.
 
@@ -31,7 +33,7 @@ exploitability; an absent fix does not establish safety.
 | Running accounts | 2 | 36 | 121 | 106 | 9 | 5 MEDIUM, 1 LOW, 1 UNKNOWN |
 | Running PostgreSQL | 3 | 46 | 172 | 168 | 13 | 3 MEDIUM, 2 UNKNOWN |
 | Running gateway | 0 | 1 | 3 | 0 | 3 | 1 MEDIUM, 2 UNKNOWN |
-| Running monitor, Axios image | 6 | 87 | 235 | 194 | 22 | 1 CRITICAL, 14 HIGH, 25 MEDIUM, 2 LOW |
+| Monitor before promotion, Axios image | 6 | 87 | 235 | 194 | 22 | 1 CRITICAL, 14 HIGH, 25 MEDIUM, 2 LOW |
 | Previous MSAL monitor candidate | 5 | 73 | 217 | 193 | 22 | 7 MEDIUM, 1 LOW |
 | New review monitor candidate | 5 | 73 | 213 | 192 | 22 | 3 MEDIUM |
 
@@ -43,7 +45,7 @@ Exact image IDs at inspection:
 | Accounts | `numforge-accounts:preferences-bdf5a39` | `76a1149080c28e0975f8a2de47be8d96156294c11f054b12ed13aa8cef5b1061` |
 | PostgreSQL | `numforge-postgres:security-20261030` | `fd90150e2c2c46df35abfed797337bac797127ab0ab54a63dde95f36a54d1170` |
 | Gateway | `numforge-gateway:security-20261030` | `5b357e6a0a9b89b6546224d79c063a551ff7583d92173293128f7639a9833a86` |
-| Running monitor | `numforge-uptime:axios-20261103` | `9f06bd0d806cd2261571de48c465d19ea8677f122de37a938d15f5b7d6755307` |
+| Monitor before promotion | `numforge-uptime:axios-20261103` | `9f06bd0d806cd2261571de48c465d19ea8677f122de37a938d15f5b7d6755307` |
 | MSAL candidate | `numforge-uptime:candidate-msal-20261103` | `0650f0ed652303207246c4799dae5bf552d14d0526ec43930765e34154aa7990` |
 | Review candidate | `numforge-uptime:candidate-review-20261103` | `7db293cb9d838a0a200a6bd3f08a4f66fdfc9b88aad9e3ffe33c39217e2f63c8` |
 
@@ -188,7 +190,57 @@ not fail on MEDIUM/LOW/UNKNOWN or unfixed records. Keep the all-severity report
 in reviews. An unchanged scan result also cannot certify native libraries,
 every optional notification/database feature, supply-chain provenance, Windows
 reboot behavior or a future deployment. No production promotion or push took
-place during this review.
+place during the initial audit; the subsequent authorized promotion follows.
+
+## Qualified monitor promotion
+
+After explicit approval of the monitor replacement and the sensitive backup
+payload/destination, the existing review image was promoted on **3 November 2026
+at 11:07:52 UTC** as `numforge-uptime:review-20261103`, from source commit
+`6752d74`. Its exact image ID remains
+`sha256:7db293cb9d838a0a200a6bd3f08a4f66fdfc9b88aad9e3ffe33c39217e2f63c8`.
+There was no rebuild. The previous Axios image and runtime profile remain
+available for rollback.
+
+A further isolated rehearsal exercised the direct Axios → review → Axios →
+review sequence, preserving users/configuration/history hashes and authenticated
+keyword/push behavior. Both review stages passed all 198 checks; the old image
+passed its 139 applicable checks. Its containers, volume and network were
+verified absent after cleanup.
+
+Under the supervisor operation lock, only the uptime image in the runtime
+profile changed; the effective Compose services differed only by that image.
+Only uptime was recreated. Web/accounts/PostgreSQL/gateway container IDs and
+the owned tunnel identity/URL remained unchanged. The live package receipt,
+all patched/added package versions and lock integrity values, previous dependency
+sharing and adapted source hashes matched the qualified source. Stored users,
+complete monitor settings and retained heartbeat history matched the consistent
+pre-change SQLite copy. Non-root/read-only/capability protections and the
+loopback-only admin binding passed.
+
+Before and after replacement, standard account/configuration/committed-source
+backups and separately tagged consistent monitor SQLite snapshots went to the
+existing external encrypted repository. Both pairs passed byte-for-byte restore,
+SQLite integrity/stored-state checks, repository checks and comparison of all
+eleven account tables and their rows with the unchanged source. All four restore
+points were retained at completion. Daily standard retention can later rotate
+standard points; the daily job does not refresh monitor SQLite.
+
+Local pinned-TLS and public HTTPS calculation/session checks passed. Six monitors
+were up with fresh non-push checks. A subsequent normal supervisor Ensure
+preserved the new image, other service identities and public URL; all five
+services were healthy and all six monitors remained up.
+
+For these exact old/new images, the matched reports show fixable HIGH/CRITICAL
+**15 → 0**, fixable MEDIUM **25 → 3** and fixable LOW **2 → 0**. The unchanged
+database still reports 73 HIGH and five CRITICAL OS records without a listed fix.
+The native SQLite coverage gap and remaining glob/minimatch/other-image findings
+above remain open. No other service update, push or reboot was performed.
+Promotion evidence is under ignored `build/security-review-deploy-20261103/`:
+`DEPLOYMENT.md`, `direct-upgrade.log`, `deployment.json`, `pre-backup.json`,
+`post-backup.json`, `live-package-pins.json`, `deployment-scan-comparison.json`
+and `final-check.json`. Private SQLite copies remain in the protected operations
+directory, outside these public records.
 
 ## Evidence
 

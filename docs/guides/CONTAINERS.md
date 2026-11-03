@@ -1127,5 +1127,32 @@ remove four MEDIUM and one LOW record, with no added fixable findings. Three
 fixable MEDIUM records remain; the absence of fixable HIGH/CRITICAL records is
 not an all-clear. Candidate: `numforge-uptime:candidate-review-20261103`, exact ID
 `sha256:7db293cb9d838a0a200a6bd3f08a4f66fdfc9b88aad9e3ffe33c39217e2f63c8`.
-The running Axios monitor still has 15 fixable HIGH/CRITICAL records. No candidate
-promotion or push occurred as part of this review.
+At qualification, the running Axios monitor still had 15 fixable HIGH/CRITICAL
+records. The review image was subsequently promoted after explicit approval.
+
+### Review candidate promotion — 3 November 2026
+
+The existing qualified image above was deployed as
+`numforge-uptime:review-20261103`, from source commit `6752d74`, without rebuilding.
+A further direct Axios → review → Axios → review isolated rehearsal passed,
+including 198 checks in both candidate stages. Under the supervisor operation
+lock, only uptime was recreated. The other four service container IDs, owned
+tunnel/URL, stored users/monitor settings and retained heartbeat history matched
+the pre-change state. Live package pins, receipt/source hashes, dependency
+sharing, loopback binding and runtime protections passed.
+
+Before and after replacement, standard account/configuration/Git backups and
+separate consistent monitor SQLite snapshots in the existing external encrypted
+repository passed byte-for-byte restore, SQLite integrity/stored-state checks,
+repository checks and all eleven account table/row comparisons. All four restore
+points were retained at completion. Monitor SQLite is not refreshed by the daily
+job; standard retention can later rotate standard points.
+
+Pinned local TLS and public HTTPS calculation/session checks passed. A normal
+supervisor Ensure preserved the new image, other services and URL; all five
+services were healthy and all six monitors up. The isolated rehearsal's
+containers, volume and network were absent. Matched scan reports for the exact
+deployed images show fixable HIGH/CRITICAL **15 → 0**, while three fixable MEDIUM
+and the unfixed OS/native SQLite concerns remain open in the linked review.
+Records are under ignored `build/security-review-deploy-20261103/`. No other
+service update, push or Windows reboot test occurred.
