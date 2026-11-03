@@ -2,7 +2,9 @@
 
 Subsequent [four-image maintenance](SECURITY_MAINTENANCE_20261103.md) removes
 all 19 other-image records with listed fixes in matched scans using the newer
-3 November database. The original 18-record inventory below remains a dated
+3 November database. The exact images have since been
+[deployed with verified recovery](SECURITY_MAINTENANCE_20261103.md#promotion).
+The original 18-record inventory below remains a dated
 audit snapshot. The separate monitor fixes and its remaining disputed legacy
 minimatch record are recorded below and in the container guide.
 

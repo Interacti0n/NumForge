@@ -1399,3 +1399,14 @@ records, deployment result, live package/native receipts, pre/post backup
 records and final check. No push or reboot was performed. The disputed legacy
 minimatch record, archived binding support and other-image/OS findings remain
 open as described above.
+
+### Other service dependency maintenance
+
+The [four-image maintenance record](../project/SECURITY_MAINTENANCE_20261103.md)
+documents the subsequent removal of 19 fixable records across web/accounts/
+PostgreSQL/gateway, exact deployed artifacts, isolated tests and verified pre/post
+backup restores. The maintenance preserves the deployed application files and
+eleven-table account schema; newer workspace functionality remains a separate
+deployment decision. After normal supervisor Ensure, all five services were
+healthy and all six monitors up. Unfixed OS findings, the archived SQLite binding
+and the disputed legacy minimatch record remain visible.

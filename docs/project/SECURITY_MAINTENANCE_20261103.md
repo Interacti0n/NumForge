@@ -1,6 +1,6 @@
 # Container dependency maintenance — 3 November 2026
 
-The four non-monitor maintenance candidates remove **19 records with listed
+The four deployed non-monitor maintenance images remove **19 records with listed
 fixes: 11 MEDIUM, one LOW and seven UNKNOWN**. Each has zero remaining records
 with a listed fix, at any severity, and no added fixable record. The monitor's
 separately recorded disputed legacy minimatch finding remains. Unfixed findings
@@ -109,6 +109,58 @@ final fixture results and qualified source hashes. Initial fixture setup put
 gateway enforcement before direct Django client tests; that attempt failed and
 was retained separately. The corrected sequence tests the direct API before
 enabling the HTTPS gateway. No production database is used in these fixtures.
+
+## Promotion
+
+On **3 November 2026 at 15:38:48 UTC**, the exact four maintenance images in
+the table above were deployed as `numforge-web:maintenance-20261103`,
+`numforge-accounts:maintenance-20261103`,
+`numforge-postgres:maintenance-20261103` and
+`numforge-gateway:maintenance-20261103`, from maintenance source commit
+`efcb67d`. Preserved application artifacts still come from the frozen deployed
+images, rather than the newer workspace source at HEAD. There was no rebuild
+between qualification and promotion.
+
+Under the supervisor operation lock, effective Compose service definitions
+changed only image selections for web/accounts/db/gateway and the matching
+accounts setup image. No workspace migration was run. PostgreSQL remained 18.6;
+all eleven account tables and their complete rows matched the pre-change
+read-only aggregate hashes. The application role correctly cannot read the
+migration ledger; the complete comparison used the existing local administrative
+connection in a read-only transaction, without granting additional permissions.
+Web/calculator binaries and all account source files matched their original
+hashes. The existing monitor container/image, SQLite 3.54.1 engine, stored
+settings/history, gateway CA, named volumes and public tunnel identity/URL were
+preserved. Non-root/read-only/capability bounds and gateway init/PID bounds
+were retained. Local pinned-TLS and public calculation/session checks passed.
+
+The first rollout automatically reverted after a gateway mount assertion.
+Original images and the exact saved runtime profile were verified restored and
+healthy before retry. The successful attempt validates every mount descriptor
+by destination; all final before/after descriptors matched, including order.
+The first mismatch's descriptors were not retained, so its precise cause is
+unconfirmed. Its log and rollback evidence remain available. The successful
+attempt and later supervisor check independently verify the final mounts and
+runtime protections.
+
+Before and after the successful replacement, standard account/configuration/
+committed-Git backups and separate consistent monitor SQLite snapshots went
+to the existing external encrypted repository. Both pairs passed byte-for-byte
+restore, all eleven account table/row comparisons, SQLite integrity/stored-state
+verification and repository checks. All four restore points were retained at
+completion. Standard daily retention can later rotate standard points; the
+monitor's SQLite snapshots remain a separate operation.
+
+A normal supervisor Ensure then preserved the selected images, original account
+data/schema, monitor and URL. All **five services were healthy and six monitors
+up**. Forty actual HTTPS probes and subsequent process inspection found no
+retained gateway zombies. Both fixture projects were verified absent, and all
+four running images matched their scanned artifacts. No push or reboot was
+performed. Deployment evidence is under
+`build/security-stack-20261103/deployment/`: before/rollback records,
+`mount-validation.json`, pre/post backup records, `deployment.json` and
+`final-check.json`. Sensitive database copies remain in the protected operations
+directory.
 
 ## Follow-up decisions
 
