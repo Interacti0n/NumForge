@@ -80,6 +80,7 @@ def run():
             checks += "\n(()=>{\n" + (ROOT / "tests/containers/check_monitor_msal.cjs").read_text(encoding="utf-8") + "\n})();"
             checks += "\n(()=>{\n" + (ROOT / "tests/containers/check_monitor_lower.cjs").read_text(encoding="utf-8") + "\n})();"
             checks += "\n(()=>{\n" + (ROOT / "tests/containers/check_monitor_sqlite.cjs").read_text(encoding="utf-8") + "\n})();"
+            checks += "\n(()=>{\n" + (ROOT / "tests/containers/check_monitor_glob14.cjs").read_text(encoding="utf-8") + "\n})();"
             bootstrap = "const Module=require('node:module');const guard=new Module('/tmp/nf-guards.cjs');guard.filename='/tmp/nf-guards.cjs';guard._compile(" + json.dumps(guards) + ",guard.filename);globalThis.monitorPatchGuards=guard.exports;\n"
             bootstrap += "const nativeGuard=new Module('/tmp/nf-sqlite.cjs');nativeGuard.filename='/tmp/nf-sqlite.cjs';nativeGuard._compile(" + json.dumps(sqlite_guards) + ",nativeGuard.filename);globalThis.monitorSqliteGuards=nativeGuard.exports;\n"
             compose.docker("exec", "-T", "uptime", "node", "-", input=bootstrap + checks, encoding="utf-8")

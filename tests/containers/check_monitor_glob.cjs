@@ -14,6 +14,7 @@ if (manifest.consumerMigrations?.some(p => p.name === 'glob') || process.env.NUM
     const glob = ownerRequire('glob');
     const globFile = ownerRequire.resolve('glob/package.json');
     const globRequire = createRequire(globFile);
+    const modern = globRequire('./package.json').version === '14.0.2';
     const cli = path.join(path.dirname(globFile), 'dist/esm/bin.mjs');
 
     function directory(t) {
@@ -30,11 +31,11 @@ if (manifest.consumerMigrations?.some(p => p.name === 'glob') || process.env.NUM
     }
 
     test('RedBean glob is pinned while legacy root glob and owner stay unchanged', () => {
-        assert.equal(globRequire('./package.json').version, '10.5.0');
+        assert.equal(globRequire('./package.json').version, modern ? '14.0.2' : '10.5.0');
         assert.equal(appRequire('glob/package.json').version, '7.2.3');
         assert.equal(ownerRequire('redbean-node/package.json').version, '0.3.3');
-        assert.equal(globRequire('minimatch/package.json').version, '9.0.9');
-        assert.equal(globRequire('package-json-from-dist/package.json').version, '1.0.1');
+        assert.equal(globRequire('minimatch/package.json').version, modern ? '11.0.1' : '9.0.9');
+        if (!modern) assert.equal(globRequire('package-json-from-dist/package.json').version, '1.0.1');
     });
     test('sync, async, stream and iterator glob APIs preserve recursive matching', async t => {
         const root = directory(t);
@@ -53,6 +54,7 @@ if (manifest.consumerMigrations?.some(p => p.name === 'glob') || process.env.NUM
         assert.deepEqual(glob.globSync('absent/**/*.js', options), []);
         assert(glob.globSync('model/**/*.js', {...options, dot: true}).includes('model/.hidden.js'));
     });
+    if (!modern) {
     for (const shell of ['/bin/sh', '/bin/unknown-shell']) {
         test('CLI default command treats shell syntax as literal filenames: ' + shell, t => {
             const root = directory(t);
@@ -92,6 +94,12 @@ if (manifest.consumerMigrations?.some(p => p.name === 'glob') || process.env.NUM
         assert.deepEqual(command(root, ['--version']), ['10.5.0']);
         assert.deepEqual(command(root, ['absent-*']), []);
     });
+    } else {
+        test('glob 14 has no removed CLI entrypoint or command launcher', () => {
+            assert.equal(globRequire('./package.json').bin, undefined);
+            assert(!fs.existsSync(cli));
+        });
+    }
 } else {
     console.log('Original glob consumer: migration checks deferred to the qualified candidate.');
 }

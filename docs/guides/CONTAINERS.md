@@ -1291,3 +1291,75 @@ restart records, Linux process state, fixture output, repair result and final
 check. The initial test/scan attempts failed before running their payloads and
 are not regression results. The scanner failure is preserved as
 `build/security-glob14-20261103/resource-exhaustion-scan.log`.
+
+### Glob 14 and minimatch 11 qualification
+
+The RedBean-owned branch changes glob **10.5.0 → 14.0.2** and minimatch
+**9.0.9 → 11.0.1**. RedBean 0.3.3 uses `glob.glob.sync` for model discovery;
+its original package identity, range and dependency map are checked before the
+explicit major migration. The separate root glob 7.2.3/minimatch 3.1.5 branch
+retains its callable callback and synchronous APIs.
+
+The manifest pins every replacement archive with SHA512, adds seven exact
+helpers and explicitly prunes 23 original dependency locations, including the
+removed CLI branch. The earlier package-json-from-dist addition is no longer
+needed. Nested overrides apply to the RedBean consumer. Guard checks require
+the declared ownership chain, original resolution and dependency kind, reject
+cycles or unrelated consumers, and preserve unrelated package metadata.
+
+The published glob 14.0.2 default CJS and ESM `index.min.js` files still embed
+an older minimatch optimizer. Merely installing external minimatch 11.0.1 does
+not replace that embedded code. Two small, exact-hash source adaptations route
+the default entries to the package's unbundled `index.js` implementations
+(also exposed as `glob/raw`). The original archive identity and each input and
+output hash are checked; adaptations cannot escape their pinned package or
+follow a symlink. All 16 named exports are preserved. A separate unadapted
+14.0.2/11.0.1 control fails the default/raw identity and default-constructor
+pattern-budget checks, demonstrating why the adaptations are required.
+
+The candidate passes **230 checks**. Forced checks on the preceding SQLite
+image pass 228 of 234 and fail six: modern pins, default/raw identity, two
+optimizer budgets, the default constructor budget and promise-walk cancellation.
+The old stream and pre-aborted cases already pass. Thirteen new guard cases
+cover the migration and installed-source constraints. Runtime checks cover
+explicit optimizer budgets of 8 and 32, stopping filesystem reads after promise
+and stream cancellation, zero reads for an already-aborted signal, actual
+RedBean JS/CommonJS/default-export discovery with Unicode filenames, and the
+legacy callable branch. Existing recursive sync/async/stream/iterator checks
+remain. Glob 14 removes its CLI; five old CLI checks are replaced by an explicit
+absence check. Pattern-expansion bounds are not a general CPU/memory sandbox.
+
+The old → new → old → new fixture preserves user/configuration/history hashes,
+authenticated login, keyword/push up/down, restart persistence and runtime
+protections. Candidate stages each pass 230 checks; old stages pass 224
+applicable checks. A separate clean-volume fixture also passes all 230 checks,
+initial provisioning and restart/persistence. SQLite remains the qualified
+3.54.1 engine with the same native binary hash. Owned fixture resources are
+removed after testing.
+
+Matched Trivy 0.76.1 scans use the database updated **3 November 2026 at
+13:13:42 UTC**. Fixable MEDIUM records fall **3 → 1**, removing glob
+CVE-2026-118773 and modern minimatch CVE-2026-118764. No fixable record is
+added; fixable HIGH/CRITICAL remains zero. Candidate totals are five CRITICAL,
+75 HIGH, 212 MEDIUM, 192 LOW and 19 UNKNOWN. These counts use a newer database
+than the earlier native SQLite scan; the matched baseline has 214 MEDIUM and
+otherwise identical totals. OS records without listed fixes remain open.
+
+The remaining fixable MEDIUM record is the broad minimatch advisory against
+legacy 3.1.5. Its affected-range attribution remains disputed: the optimizer
+described by the publisher is absent from that branch. The record is retained
+without an ignore/VEX suppression; replacing its callable API requires separate
+consumer qualification. Archived SQLite binding support and the earlier
+other-image findings also remain open.
+
+Candidate: `numforge-uptime:candidate-glob14-20261103`, exact ID
+`sha256:f28912e836c93a98d43b4a84d4611ed0e16b434d9f3e8e2044a6e0667ae5e84e`.
+Evidence is under ignored `build/security-glob14-20261103/`: verified published
+sources, negative control, build, red/green and lifecycle logs, matched reports,
+scanner metadata, source hashes and native receipt.
+
+Primary references: [glob 14.0.2 release](https://github.com/isaacs/node-glob/releases/tag/v14.0.2),
+[glob cancellation advisory](https://github.com/isaacs/node-glob/security/advisories/GHSA-3g3m-2fjr-6pw4),
+[minimatch 11.0.1 release](https://github.com/isaacs/minimatch/releases/tag/v11.0.1),
+[publisher optimizer advisory](https://github.com/isaacs/minimatch/security/advisories/GHSA-g3hv-75wg-m249),
+[broader database range](https://github.com/advisories/GHSA-g3hv-75wg-m249).

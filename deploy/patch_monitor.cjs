@@ -18,12 +18,60 @@ function dependencyOwner(manifest, name) {
 
 function migrationRoot(manifest, name) {
     const seen = new Set();
-    while (!manifest.packages.some(p => p.name === name)) {
+    for (;;) {
         assert(!seen.has(name), 'Added dependency ownership cycle');
         seen.add(name);
-        name = dependencyOwner(manifest, name).addedBy;
+        const owner = dependencyOwner(manifest, name);
+        if (!owner.ownedBy && !owner.addedBy) return name;
+        name = owner.ownedBy || owner.addedBy;
     }
-    return name;
+}
+
+function scopedDependency(manifest, added) {
+    const names = [], seen = new Set();
+    let name = added.addedBy;
+    for (;;) {
+        assert(!seen.has(name), 'Added dependency ownership cycle'); seen.add(name); names.unshift(name);
+        const owner = dependencyOwner(manifest, name);
+        if (!owner.ownedBy && !owner.addedBy) break;
+        name = owner.ownedBy || owner.addedBy;
+    }
+    const migration = manifest.consumerMigrations?.find(m => m.name === name && m.compatibility === 'consumer-major-upgrade');
+    assert(migration && migration.consumer === `node_modules/${added.scope}`, 'Scoped dependency must belong to its qualified consumer');
+    let overrides = manifest.overrides[added.scope];
+    for (const key of names) overrides = overrides?.[key];
+    return {path: `${migration.consumer}/node_modules/${added.name}`, override: overrides?.[added.name]};
+}
+
+function prunedOwner(manifest, name) {
+    const seen = new Set(); let owner;
+    for (;;) {
+        assert(!seen.has(name), 'Pruned dependency ownership cycle'); seen.add(name);
+        const pinned = manifest.packages.find(p => p.name === name);
+        if (pinned) return owner || pinned;
+        const matches = (manifest.prunedDependencies || []).filter(p => p.name === name);
+        assert.equal(matches.length, 1, 'Pruned dependency has no unique migrated owner: ' + name);
+        owner ||= {...matches[0], before: matches[0].path};
+        name = matches[0].removedBy;
+    }
+}
+
+function sourcePatchFile(root, manifest, patch) {
+    const file = path.resolve(root, patch.path);
+    if (patch.stage === 'installed') {
+        const owner = manifest.packages.find(p => p.name === patch.owner?.name);
+        assert(owner && owner.after === patch.owner.path && owner.version === patch.owner.version &&
+            owner.integrity === patch.owner.integrity, 'Installed source adaptation requires an exact pinned package');
+        const directory = path.resolve(root, owner.after);
+        assert(directory.startsWith(path.join(root, 'node_modules') + path.sep) && file.startsWith(directory + path.sep),
+            'Installed source adaptation escapes its pinned package');
+        assert(typeof patch.replacement === 'string' && patch.replacement.length < 4096 &&
+            !Object.hasOwn(patch, 'before') && !Object.hasOwn(patch, 'after'), 'Installed source adaptation requires one bounded replacement');
+    } else {
+        assert.equal(patch.stage, undefined, 'Unknown source adaptation stage');
+        assert(file.startsWith(path.join(root, 'server') + path.sep));
+    }
+    return file;
 }
 
 function inventory(root) {
@@ -95,7 +143,8 @@ function prepare(root, manifest, snapshot) {
     const semver = require(path.join(root, 'node_modules/semver'));
     const configured = configuredPackage(original, manifest, semver);
     for (const patch of manifest.sourcePatches || []) {
-        assert.equal(hash(path.join(root, patch.path)), patch.beforeHash, `Upstream source changed: ${patch.path}`);
+        const file = sourcePatchFile(root, manifest, patch);
+        if (patch.stage !== 'installed') assert.equal(hash(file), patch.beforeHash, `Upstream source changed: ${patch.path}`);
     }
     const before = inventory(root);
     const consumerKeys = new Set();
@@ -179,7 +228,8 @@ function prepare(root, manifest, snapshot) {
         const owner = dependencyOwner(manifest, added.addedBy);
         const rootPath = `node_modules/${added.name}`;
         const ownerPath = owner && `${owner.after}/node_modules/${added.name}`;
-        assert(added.path === rootPath || added.path === ownerPath, 'Added dependency must use its exact root or owner path');
+        const scoped = added.scope ? scopedDependency(manifest, added) : undefined;
+        assert(added.path === rootPath || added.path === ownerPath || added.path === scoped?.path, 'Added dependency must use its exact root or owner path');
         assert(!additions.has(added.path), `Duplicate added dependency: ${added.name}`);
         additions.add(added.path);
         if (added.replaces) {
@@ -209,17 +259,19 @@ function prepare(root, manifest, snapshot) {
             manifest.consumerMigrations?.some(m => m.name === rootOwner && (m.dependencyRefresh || m.compatibility === 'consumer-major-upgrade')),
             `Added dependency must belong to an explicit migration: ${added.name}`);
         const ownerOverrides = manifest.overrides[added.addedBy] ?? manifest.overrides[`${added.addedBy}@${owner.version}`];
-        const override = added.path === rootPath ? manifest.overrides[added.name] : ownerOverrides?.[added.name];
+        const override = scoped ? scoped.override : added.path === rootPath ? manifest.overrides[added.name] : ownerOverrides?.[added.name];
         const pin = typeof override === 'object' ? override['.'] : override;
         assert.equal(pin, added.version, 'Added dependency must be pinned exactly');
     }
     for (const pruned of manifest.prunedDependencies || []) {
         assert.equal(before[pruned.path]?.version, pruned.version);
         assert.equal(before[pruned.path]?.integrity, pruned.integrity);
-        const owner = manifest.packages.find(p => p.name === pruned.removedBy);
-        assert(owner, `Pruned dependency has no migrated owner: ${pruned.name}`);
-        assert(read(path.join(root, owner.before, 'package.json')).dependencies?.[pruned.name],
+        const owner = prunedOwner(manifest, pruned.removedBy);
+        const kind = pruned.dependencyKind || 'dependencies';
+        assert(['dependencies', 'optionalDependencies'].includes(kind), 'Unknown pruned dependency kind');
+        assert(read(path.join(root, owner.before, 'package.json'))[kind]?.[pruned.name],
             `Pruned package is not an old owner dependency: ${pruned.name}`);
+        assert.equal(resolvePackage(root, owner.before, pruned.name), pruned.path, 'Unexpected pruned dependency resolution');
     }
     const lock = read(path.join(root, 'package-lock.json'));
     const omissions = {};
@@ -230,13 +282,23 @@ function prepare(root, manifest, snapshot) {
     }
     for (const patch of manifest.packages) {
         assert.equal(before[patch.before]?.version, patch.from, `Unexpected base: ${patch.name}`);
+        const owner = patch.ownedBy && manifest.packages.find(p => p.name === patch.ownedBy);
+        const policy = owner && manifest.consumerMigrations?.find(m => m.name === owner.name && m.compatibility === 'consumer-major-upgrade');
+        if (patch.ownedBy) {
+            assert(policy?.dependencyMigration?.from[patch.name] && policy.dependencyMigration.to[patch.name], 'Owned pin requires a qualified owner dependency migration');
+            assert.equal(resolvePackage(root, owner.before, patch.name), patch.before, 'Unexpected owned pin resolution');
+        }
         let consumers = 0;
         for (const location of ['', ...Object.keys(before)]) {
             const parent = read(path.join(root, location, 'package.json'));
             const consumer = location === '' ? configured : parent;
             const originalRange = { ...consumer.dependencies, ...consumer.optionalDependencies }[patch.name];
             if (!originalRange || resolvePackage(root, location, patch.name) !== patch.before) continue;
-            const range = consumerRange(manifest, location, patch.name, originalRange);
+            let range = consumerRange(manifest, location, patch.name, originalRange);
+            if (owner?.before === location) {
+                assert.equal(originalRange, policy.dependencyMigration.from[patch.name], 'Owned pin original range changed');
+                range = policy.dependencyMigration.to[patch.name];
+            }
             assert(semver.satisfies(patch.version, range), `Unsupported range ${range}: ${location} -> ${patch.name}`);
             consumers++;
         }
@@ -375,12 +437,12 @@ function verify(root, manifest, snapshot) {
         }
     }
     for (const patch of manifest.sourcePatches || []) {
-        const file = path.resolve(root, patch.path);
-        assert(file.startsWith(path.join(root, 'server') + path.sep));
+        const file = sourcePatchFile(root, manifest, patch);
+        assert.equal(fs.realpathSync(file), file, 'Source adaptation cannot follow symlinks');
         assert.equal(hash(file), patch.beforeHash, `Upstream source changed: ${patch.path}`);
         const source = fs.readFileSync(file, 'utf8');
-        assert.equal(source.split(patch.before).length, 2, `Source patch must match once: ${patch.path}`);
-        const changed = source.replace(patch.before, patch.after);
+        if (patch.stage !== 'installed') assert.equal(source.split(patch.before).length, 2, `Source patch must match once: ${patch.path}`);
+        const changed = patch.stage === 'installed' ? patch.replacement : source.replace(patch.before, patch.after);
         assert.equal(crypto.createHash('sha256').update(changed).digest('hex'), patch.afterHash);
         fs.writeFileSync(file, changed);
     }

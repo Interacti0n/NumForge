@@ -14,6 +14,15 @@ The scanner still does not identify this embedded engine separately; explicit
 native provenance/runtime checks now cover it. Debian SQLite findings and the
 archived binding's support status remain open.
 
+A subsequent [glob/minimatch qualification](../guides/CONTAINERS.md#glob-14-and-minimatch-11-qualification)
+passes 230 checks and the persisted upgrade/rollback/reapply and clean-volume
+fixtures. Matched scans with the newer 3 November database remove two further
+MEDIUM records, leaving one disputed legacy minimatch record and zero fixable
+HIGH/CRITICAL. The earlier inventory tables below retain their original dates
+and counts. The [gateway process fix](../guides/CONTAINERS.md#gateway-https-probe-process-reaping)
+also addresses accumulated orphaned HTTPS probe processes found during resumed
+qualification.
+
 At the start of this audit, the pilot used the earlier Axios monitor image, with
 **15 fixable HIGH/CRITICAL records**. The qualified review image was subsequently
 deployed after explicit approval, with **zero fixable HIGH/CRITICAL records** in
