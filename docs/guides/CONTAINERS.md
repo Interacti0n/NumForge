@@ -1156,3 +1156,71 @@ deployed images show fixable HIGH/CRITICAL **15 → 0**, while three fixable MED
 and the unfixed OS/native SQLite concerns remain open in the linked review.
 Records are under ignored `build/security-review-deploy-20261103/`. No other
 service update, push or Windows reboot test occurred.
+
+### Native SQLite source rebuild
+
+The native module now has a qualified SQLite **3.41.1 → 3.54.1** engine rebuild.
+The archived `@louislam/sqlite3` package has no newer release; its original
+15.1.6 JavaScript/C++ binding sources and npm metadata remain unchanged. This
+is a custom engine rebuild recorded separately from npm archive integrity,
+not a new release of that package or a resolution of its archived support status.
+The [audit snapshot](../project/SECURITY_REVIEW_20261103.md#native-sqlite-requires-separate-work)
+explains why upgrading Debian's separate SQLite library does not update this module.
+
+`deploy/monitor-sqlite.json` pins the official SQLite source archive, its
+SHA3-256 and the published SHA3-256 of `sqlite3.c`, source ID, original binding
+source-tree hash, original native/archive/configuration hashes and the exact
+configuration change. Unexpected original sources/binaries fail before rebuild.
+The verified replacement source is selected through the existing GYP recipe;
+only its default source version changes. The old native binary is removed
+before compilation, so verification cannot silently load the old engine.
+
+A separate build stage uses the pinned Kuma image's Node 22.23.4 headers and
+Node-API 6, GCC 12.2.0 and a network-disabled source compilation. Build tools stay
+in that stage. The final image receives the rebuilt binary, updated source
+archive/configuration and `/opt/numforge/monitor-sqlite.json` provenance receipt.
+The old archive is removed from the merged runtime filesystem. The wrapper hash,
+real engine version/source ID, native binary hash, compile features and linkage
+are checked; the binary does not dynamically link Debian's `libsqlite3`.
+The current qualification covers Linux amd64 only; other architectures or a
+different Node runtime require explicit requalification.
+
+FTS3/4/5, RTree, dbstat, math/JSON functionality and thread safety remain enabled.
+Column/expression/variable limits are preserved; function-argument, page-count
+and mmap limits are explicitly held at the original values despite newer
+SQLite defaults. These are compatibility bounds, not a general SQL sandbox.
+The archived binding/compiler emitted upstream unused-variable/fallthrough
+warnings; the completed build and logs retain those warnings.
+
+The candidate passes **211 checks**. The old review image passes 210 and fails
+the forced engine-identity assertion. Four new guard cases reject changed
+binding sources, old archive/binary identities and a corrupt replacement download
+before old files are replaced. Nine native checks cover provenance, compile
+options, bound Unicode/blob/null values and callbacks, transactions/foreign keys,
+WAL snapshot reads, feature queries, consistent export/read-only restore and
+real Knex 2/3 schema changes and transactional rollback.
+
+The old → new → old → new monitor fixture preserves user/configuration/history
+hashes, authenticated login, keyword/push up/down and runtime protections. Both
+candidate stages pass all 211 checks; old stages pass 202 applicable checks.
+A separate fresh candidate data volume also passes all 211 checks, provisioning,
+restart and persistence. Both owned fixture projects' resources are removed.
+
+Matched Trivy 0.76.1 scans on 3 November, database updated 2 November at
+13:15:56 UTC, retain zero fixable HIGH/CRITICAL and three fixable MEDIUM records.
+All severity counts remain 73 HIGH, five CRITICAL, 213 MEDIUM, 192 LOW and
+22 UNKNOWN. No fixable record is added or removed. The scanner's npm inventory
+does not separately identify the embedded engine; this fix is established by
+native runtime/source verification, not a lower scanner count. Debian SQLite
+and the other unfixed OS findings remain separate open work.
+
+Candidate: `numforge-uptime:candidate-sqlite-20261103`, exact ID
+`sha256:8ee85bf8d8ea33225d916c248bfa6e14e57b2c94fac4ca052cc083beb3a91690`.
+Native binary SHA256:
+`2e1420fc0890d9948cc275ba9c9493e5aa662355698175d466921612071be4d6`.
+Qualification evidence is under ignored `build/security-sqlite-20261103/`.
+This qualification alone does not change the running review image.
+
+Primary references: [SQLite 3.54.1 source and published checksums](https://www.sqlite.org/download.html),
+[release source identity](https://www.sqlite.org/releaselog/3_54_1.html),
+[original affected SQLite range](https://security-tracker.debian.org/tracker/CVE-2025-7458).

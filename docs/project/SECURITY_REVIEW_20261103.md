@@ -115,6 +115,11 @@ scanner would not establish compatibility.
 
 ### Native SQLite requires separate work
 
+This is the original audit snapshot. A subsequent
+[qualified source rebuild](../guides/CONTAINERS.md#native-sqlite-source-rebuild)
+updates the candidate's native engine to 3.54.1 and records its provenance and
+compatibility checks separately; deployment status is recorded with that rebuild.
+
 The real Node module `@louislam/sqlite3` **15.1.6** reports SQLite **3.41.1**,
 source ID `2023-03-10 12:13:52 20399f3eda5ec249d147ba9e48da6e87f969d7966a9a896764ca437ff7e737ff`.
 Its loaded `node_sqlite3.node` does not link to the Debian `libsqlite3` according

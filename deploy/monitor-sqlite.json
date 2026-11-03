@@ -1,0 +1,34 @@
+{
+  "bindingVersion": "15.1.6",
+  "node": "v22.23.4",
+  "arch": "x64",
+  "binary": "lib/binding/napi-v6-linux-x64/node_sqlite3.node",
+  "wrapperSha256": "f1fa89ce0981a9542b722f789b138e00b04af1cc1bd88168157984978ce5d8d1",
+  "beforeSha256": {
+    "deps/common-sqlite.gypi": "a6ec673f792a3d66bd99902ab0aea5c327011c322308d51e74c9ff228829c512",
+    "deps/sqlite-autoconf-3410100.tar.gz": "4dadfbeab9f8e16c695d4fbbc51c16b2f77fb97ff4c1c3d139919dfc038c9e33",
+    "lib/binding/napi-v6-linux-x64/node_sqlite3.node": "ce5bc9a83efc5fba7282ef055e42236a7169974b7ff483bc915ac34d71572e7a"
+  },
+  "version": "3.54.1",
+  "archiveVersion": "3540100",
+  "url": "https://www.sqlite.org/2026/sqlite-autoconf-3540100.tar.gz",
+  "archiveSha3": "b6ced585c750916b1052667239a12c25a7ff34e7f06e1e6e01ecb0427657d9c4",
+  "amalgamationSha3": "e2b869d3003b33c942b7dd7063604fbc53553e1b66609570df39b9b7b558ee81",
+  "sourceId": "2026-10-16 14:45:20 555e07ef33f69a0957d24d8e555b702464a131d6f1607f4c3c1e4551e8e6ca76",
+  "gypSha256": "e024d54da3b7415208409aea48f9ed56942a528c749b0d98fe5689d2cd4a12df",
+  "requiredOptions": [
+    "THREADSAFE=1",
+    "ENABLE_FTS3",
+    "ENABLE_FTS4",
+    "ENABLE_FTS5",
+    "ENABLE_RTREE",
+    "ENABLE_DBSTAT_VTAB",
+    "ENABLE_MATH_FUNCTIONS",
+    "MAX_COLUMN=2000",
+    "MAX_EXPR_DEPTH=1000",
+    "MAX_FUNCTION_ARG=127",
+    "MAX_PAGE_COUNT=1073741823",
+    "MAX_MMAP_SIZE=0x7fff0000",
+    "MAX_VARIABLE_NUMBER=32766"
+  ]
+}
