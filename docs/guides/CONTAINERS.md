@@ -443,7 +443,7 @@ project remained. This does not establish Windows reboot/login behavior.
 
 ### gRPC transport compatibility migration
 
-The next recipe migrates Kuma's exact original `@grpc/grpc-js ~1.8.22` range to
+The current recipe migrates Kuma's exact original `@grpc/grpc-js ~1.8.22` range to
 `1.13.7`. This stable maintenance release contains the malformed-message fixes
 and subsequent error-detail fixes while retaining the existing proto-loader
 0.7.15 and protobuf 7.6.6. The newer 1.14 branch requires proto-loader 0.8.
@@ -497,3 +497,27 @@ preserves its stored user/configuration/history digest, authenticated login,
 keyword/push up/down behavior and runtime protections. Both candidate stages
 pass all 39 checks. The earlier 38-check run is retained separately; the final
 run includes the added error-detail regression. Gateway/DB were not rescanned.
+
+The qualified image was deployed on 3 November 2026 as
+`numforge-uptime:grpc-20261103`, exact ID
+`sha256:adf06bb1c3b44c8979c8dfc94783132ce4cd7d06b2d575848a4f83c7460bbf82`,
+from source commit `3f09cbc`. Only monitoring was recreated under the supervisor
+lock. Web/accounts/PostgreSQL/gateway retained their container identities; the
+owned public tunnel and URL stayed unchanged. The live gRPC/proto-loader/
+ordered-map/Liquid/protobuf versions, full patch receipt and adapted gRPC source
+hash matched the qualified candidate. Full stored users/monitor settings and
+retained heartbeat history matched the pre-change copy. Six monitors were up
+with fresh non-push heartbeats; local/public HTTPS and runtime protections passed.
+
+Before and after this promotion, standard account/configuration/Git backups and
+separately tagged consistent monitor snapshots in the existing external encrypted
+repository passed byte-for-byte restoration, SQLite integrity/stored-state checks,
+repository checks and comparison of all eleven account tables/rows. All four
+restore points were retained at completion with the existing same-day retention
+supplement. Daily standard retention may later rotate standard snapshots; the
+daily job still does not refresh monitor SQLite. Deployment and backup records
+are in `build/security-grpc-20261103/`.
+A subsequent normal supervisor Ensure check preserved the new monitor image,
+all other service identities and the public URL. All five services were healthy,
+all six monitors were up and the owned fixture's containers, volume and network
+were verified absent. Windows reboot/login remains unverified.
