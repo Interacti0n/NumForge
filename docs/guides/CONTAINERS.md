@@ -1258,3 +1258,36 @@ are under ignored `build/security-sqlite-deploy-20261103/`, including
 `final-check.json`. No other service update, push or reboot was performed.
 The archived Node binding's support status, Debian SQLite/other OS records and
 the remaining glob/minimatch findings are still separate open work.
+
+### Gateway HTTPS probe process reaping
+
+On 3 November, resumed qualification found Docker unable to start new processes
+and all five service healthchecks failing. Gateway usage reached **16,096 PIDs**.
+Restarting only the gateway released the exhausted slots and restored healthy
+checks while preserving all container identities. Subsequent `/proc` inspection
+confirmed repeated zombie `ssl_client` children adopted by Caddy as PID 1 after
+BusyBox's HTTPS wget probe. Docker's top output did not show those zombies;
+container `/proc` and cgroup counts supplied the diagnostic evidence.
+
+The gateway now uses `init: true` and `pids_limit: 256`, in both canonical Compose
+configuration and the saved pilot runtime profile. The init process reaps orphaned
+children; the PID bound contains a future leak. This changes runtime settings,
+not the Caddy image. The existing CA, data/configuration volumes and public URL
+were retained; other service container identities stayed unchanged.
+[Docker Compose init/PID settings](https://docs.docker.com/reference/compose-file/services/#init).
+
+An isolated gateway using the same image and TLS probe passed **40 HTTPS probes**
+without retained zombies. The first live attempt rolled back after a failed
+validation; the completed attempt passed the same 40-probe check, pinned local
+TLS/public calculation/session checks and CA fingerprint comparison. All five
+services were healthy. A subsequent normal supervisor Ensure preserved the
+settings, identities and URL; `/proc` still showed no zombies. The isolated
+container was removed. `check_gateway.py` now repeats the configuration and
+40-probe regression in the disposable stack check. This bounded check does not
+establish a multi-day soak or a gateway load-capacity guarantee.
+
+Evidence is under ignored `build/gateway-process-recovery-20261103/`: before/
+restart records, Linux process state, fixture output, repair result and final
+check. The initial test/scan attempts failed before running their payloads and
+are not regression results. The scanner failure is preserved as
+`build/security-glob14-20261103/resource-exhaustion-scan.log`.

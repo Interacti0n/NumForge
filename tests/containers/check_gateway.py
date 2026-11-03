@@ -5,10 +5,34 @@ import json
 import os
 import ssl
 import subprocess
+import time
 import urllib.error
 import urllib.request
 
 import compose
+
+
+def verify_process_reaping():
+    """Exercise the actual HTTPS probe; orphaned ssl_client children must be reaped."""
+    if not os.environ.get("COMPOSE_PROJECT_NAME", "").startswith("numforge-test-"):
+        raise RuntimeError("Gateway process checks require a disposable test project.")
+    container = compose.docker("ps", "-q", "gateway").stdout.decode().strip()
+    configuration = json.loads(subprocess.check_output(["docker", "inspect", container]))[0]
+    assert configuration["HostConfig"]["Init"] is True
+    assert configuration["HostConfig"]["PidsLimit"] == 256
+    probe = ('i=0; while [ "$i" -lt 40 ]; do '
+             'wget -T 3 -q --no-check-certificate -O /dev/null https://localhost:8443/ || exit; '
+             'i=$((i+1)); done')
+    compose.docker("exec", "-T", "gateway", "/bin/sh", "-c", probe)
+    for _ in range(20):
+        output = compose.docker("exec", "-T", "gateway", "ps", "-o", "pid,ppid,stat,comm").stdout.decode()
+        zombies = [line for line in output.splitlines()[1:]
+                   if len(line.split()) >= 4 and line.split()[2].startswith("Z")]
+        if not zombies:
+            break
+        time.sleep(0.1)
+    assert not zombies, "Gateway retained zombie processes after HTTPS checks: " + repr(zombies)
+    print("Verified gateway init, PID bound and 40 HTTPS checks without retained zombies.")
 
 
 def run():
@@ -23,6 +47,7 @@ def run():
     compose.docker("run", "--rm", "--no-deps", "--entrypoint", "/bin/sh", "gateway", "-c",
                    'NF_GATEWAY_TOKEN=$(cat /run/secrets/gateway_token); export NF_GATEWAY_TOKEN; exec caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile')
     compose.docker("up", "--no-build", "--wait", "--wait-timeout", "180", "gateway", "accounts")
+    verify_process_reaping()
     root = compose.STATE / f"{project}-root.crt"
     compose.docker("cp", "gateway:/data/caddy/pki/authorities/local/root.crt", str(root))
     context = ssl.create_default_context(cafile=str(root))
