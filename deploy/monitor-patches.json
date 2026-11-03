@@ -2,6 +2,12 @@
   "upstreamVersion": "2.5.9",
   "directMigrations": [
     {
+      "name": "axios",
+      "fromRange": "~0.32.0",
+      "version": "0.34.0",
+      "compatibility": "legacy-0.x"
+    },
+    {
       "name": "mysql2",
       "fromRange": "~3.11.5",
       "version": "3.23.1"
@@ -87,6 +93,14 @@
     }
   },
   "packages": [
+    {
+      "name": "axios",
+      "from": "0.32.0",
+      "version": "0.34.0",
+      "before": "node_modules/axios",
+      "after": "node_modules/axios",
+      "integrity": "sha512-CkOmqy7BaT4VC9+wRUmSM3LVwCkKK3UYc7koEqIHWRpOTJypwdNctaVOgnOjhHP3599Ubq2K8KqYwfC7c8NdPQ=="
+    },
     {
       "name": "lodash",
       "from": "4.17.23",

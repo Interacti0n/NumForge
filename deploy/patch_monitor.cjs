@@ -42,8 +42,15 @@ function configuredPackage(original, manifest, semver) {
             `Direct migration must identify a pinned root package: ${migration.name}`);
         assert.equal(original.dependencies?.[migration.name], migration.fromRange, `Upstream direct range changed: ${migration.name}`);
         assert.equal(migration.version, patch.version, 'Direct migration must use the pinned exact version');
-        assert(semver.valid(patch.version) && semver.major(patch.from) > 0 && semver.major(patch.from) === semver.major(patch.version),
-            `Direct migration must stay within a stable major: ${migration.name}`);
+        if (migration.compatibility === undefined) {
+            assert(semver.valid(patch.version) && semver.major(patch.from) > 0 && semver.major(patch.from) === semver.major(patch.version),
+                `Direct migration must stay within a stable major: ${migration.name}`);
+        } else {
+            assert.equal(migration.compatibility, 'legacy-0.x', 'Unknown direct compatibility policy');
+            assert(semver.valid(patch.from) && semver.valid(patch.version) &&
+                semver.major(patch.from) === 0 && semver.major(patch.version) === 0 && semver.gt(patch.version, patch.from),
+                `Explicit legacy migration must move forward within 0.x: ${migration.name}`);
+        }
         configured.dependencies[migration.name] = patch.version;
     }
     configured.overrides = { ...original.overrides, ...manifest.overrides };

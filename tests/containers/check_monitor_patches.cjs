@@ -80,6 +80,48 @@ if (fs.existsSync('/opt/numforge/monitor-patches.json') || process.env.NUMFORGE_
         assert.throws(() => guards.prepare(f.root, f.manifest, f.snapshot), /Unsupported range/);
     });
 
+    function legacyFixture(t, compatibility = 'legacy-0.x', version = '0.34.0') {
+        const f = fixture(t);
+        write(path.join(f.root, 'package.json'), {version: '2.5.9', dependencies: {'body-parser': '~0.32.0'}});
+        write(path.join(f.root, 'node_modules/body-parser/package.json'), {name: 'body-parser', version: '0.32.0'});
+        f.lock.packages['node_modules/body-parser'].version = '0.32.0';
+        write(path.join(f.root, 'package-lock.json'), f.lock);
+        f.manifest.overrides = {};
+        Object.assign(f.manifest.packages[0], {from: '0.32.0', version});
+        f.manifest.directMigrations = [{name: 'body-parser', fromRange: '~0.32.0', version, compatibility}];
+        return f;
+    }
+    test('qualified legacy migration installs and verifies an exact forward 0.x pin', t => {
+        const f = legacyFixture(t);
+        guards.prepare(f.root, f.manifest, f.snapshot);
+        write(path.join(f.root, 'node_modules/body-parser/package.json'), {name: 'body-parser', version: '0.34.0'});
+        f.lock.packages['node_modules/body-parser'] = {version: '0.34.0', integrity: 'expected', resolved: 'https://registry.npmjs.org/body-parser/-/body-parser-0.34.0.tgz'};
+        write(path.join(f.root, 'package-lock.json'), f.lock);
+        guards.verify(f.root, f.manifest, f.snapshot);
+        assert.equal(JSON.parse(fs.readFileSync(path.join(f.root, 'package.json'))).dependencies['body-parser'], '0.34.0');
+    });
+    for (const [label, policy, version, message] of [
+        ['implicit 0.x migration', undefined, '0.34.0', /stable major/],
+        ['legacy jump to 1.x', 'legacy-0.x', '1.0.0', /forward within 0.x/],
+        ['legacy downgrade', 'legacy-0.x', '0.31.0', /forward within 0.x/],
+        ['unchanged legacy version', 'legacy-0.x', '0.32.0', /forward within 0.x/],
+        ['unknown compatibility policy', 'unreviewed', '0.34.0', /Unknown direct compatibility/],
+    ]) {
+        test('guard rejects ' + label + ' before writing', t => {
+            const f = legacyFixture(t, policy, version);
+            // Undefined must remain undefined rather than use the fixture default.
+            f.manifest.directMigrations[0].compatibility = policy;
+            const before = fs.readFileSync(path.join(f.root, 'package.json'));
+            assert.throws(() => guards.prepare(f.root, f.manifest, f.snapshot), message);
+            assert.deepEqual(fs.readFileSync(path.join(f.root, 'package.json')), before);
+        });
+    }
+    test('legacy qualification cannot bypass a separate consumer version range', t => {
+        const f = legacyFixture(t);
+        write(path.join(f.root, 'node_modules/other/package.json'), {name: 'other', version: '1.0.0', dependencies: {'body-parser': '~0.32.0'}});
+        assert.throws(() => guards.prepare(f.root, f.manifest, f.snapshot), /Unsupported range/);
+    });
+
     function consumerFixture(t) {
         const f = fixture(t);
         write(path.join(f.root, 'node_modules/other/package.json'), {name: 'other', version: '1.0.0', dependencies: {'body-parser': '1.20.8'}});

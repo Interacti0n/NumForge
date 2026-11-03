@@ -758,3 +758,56 @@ A later normal supervisor Ensure check preserved the new image, other service
 identities and public URL. All five services were healthy and all six monitors
 were up; the owned test containers, volume and network were verified absent.
 Windows reboot/login remains unverified.
+
+### Axios legacy compatibility migration
+
+The next qualified monitor keeps Kuma 2.5.9 and migrates its direct Axios
+dependency from 0.32.0 (`~0.32.0`) to exact **0.34.0**. This is an explicit
+compatibility migration within the maintained legacy 0.x line, where a minor
+change can break behavior. It does not select Axios 1.x. The manifest pins the
+registry archive SHA512. The build guard requires an explicit `legacy-0.x`
+policy, a forward 0.x version and the original direct range; the normal stable
+major policy remains the default. Unrelated consumer ranges and installed
+package metadata still must match. No new dependency is introduced; the existing
+follow-redirects 1.16.2 pin remains. Development-only wait-on retains its own
+Axios declaration in the lock and remains absent from the production image.
+
+Seven additional guard checks cover the exact accepted pin, implicit 0.x
+migration, a jump to 1.x, downgrade, unchanged version, unknown policy and a
+separate incompatible consumer. Fifteen Axios checks exercise inherited form
+visitor/depth/options, async and sync interceptor proxy isolation, default
+methods, NO_PROXY IPv4 CIDR routing, explicit proxies, JSON/Unicode/Basic auth,
+headers, redirects, timeout, cancellation and decompressed response limits.
+The actual Kuma Webhook provider sends JSON, GET parameters, multipart and
+custom Liquid bodies only to disposable loopback fixtures, and preserves HTTP
+error/malformed-header handling. No external notification is sent.
+
+The candidate passes **98 checks**. The baseline passes 92 and fails six,
+including the version assertion, inherited visitor/depth, both interceptor
+proxy cases and CIDR bypass. Pollution probes use isolated child processes,
+dummy credentials and bounded local servers. The proxy cases demonstrate the
+read-side gadget conditional on existing same-process prototype pollution;
+they do not prove an attacker can introduce pollution into Kuma. The runtime
+compatibility checks cover Kuma's own scalar header use; arbitrary third-party
+header objects, all notification providers and a general resource bound are
+not qualified. Axios 0.34.0 also tightens accepted header values and introduces
+CIDR NO_PROXY semantics; callers should review these when changing proxy/header
+configuration. Previous template/parser/resource limitations remain.
+
+Primary references: [Axios 0.34.0 changes](https://github.com/axios/axios/releases/tag/v0.34.0),
+[inherited form options advisory](https://github.com/axios/axios/security/advisories/GHSA-x97p-jq2g-jp4f),
+[interceptor proxy advisory](https://github.com/axios/axios/security/advisories/GHSA-gcfj-64vw-6mp9).
+Raw evidence is under ignored `build/security-axios-20261103/`.
+
+Matched Trivy 0.76.1 scans on 3 November, using the database updated 2 November
+at 13:15:56 UTC, report **17 → 15 fixable HIGH/CRITICAL records**. HIGH
+CVE-2026-101909 and CVE-2026-67320 and seven MEDIUM records are removed; no
+fixable HIGH/CRITICAL record is added. All HIGH/CRITICAL including unfixed
+findings move from 89/6 to 87/6. Scan DiffIDs match both frozen images.
+Gateway/PostgreSQL images were not rescanned; these are security and behavior
+checks, not web performance benchmarks.
+
+The previous → candidate → previous → candidate fixture preserves stored
+users/configuration/history digests, authenticated login, keyword/push up/down
+and runtime protections. Both candidate stages pass all 98 checks. The owned
+fixture containers, volume and network are removed afterward.
