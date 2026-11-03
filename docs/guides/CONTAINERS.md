@@ -687,7 +687,7 @@ volume) were verified absent. Windows reboot/login remains unverified.
 
 ### Nested Lodash consumer compatibility migration
 
-The next recipe updates only redbean-node's nested Lodash 4.17.23 to exact 4.18.1.
+The current recipe updates only redbean-node's nested Lodash 4.17.23 to exact 4.18.1.
 The root Lodash was already 4.18.1 and remains unchanged. RedBean 0.3.3 declares
 `~4.17.21`; its exact scoped override is therefore an explicit, tested consumer
 minor migration. Root Knex 3.1.0 and nested Knex 2.4.2 retain their versions.
@@ -735,3 +735,26 @@ move from 90/6 to 89/6. Both scan DiffID lists match the frozen images. The prev
 history hashes, authenticated login, keyword/push up/down and runtime protections.
 Both candidate stages pass all 76 checks. Its containers, volume and network are
 removed afterward. The gateway/PostgreSQL images were not rescanned.
+
+The qualified image was deployed on 3 November 2026 as
+`numforge-uptime:lodash-20261103`, exact ID
+`sha256:f0e3c7b565a5f875ab5d6ad8d26d8106705cb13b80c52a07a223e105f84762ac`,
+from source commit `52bf9ba`. Only monitoring was recreated under the supervisor
+lock. Web/accounts/PostgreSQL/gateway container identities and the owned public
+tunnel/URL stayed unchanged. Both live Lodash versions, owner/Knex versions, all
+previous pins/sharing, receipt and gRPC source hash matched the candidate. Full
+stored users/monitor settings and retained heartbeat history matched the pre-change
+copy. Six monitors were up with fresh non-push checks; local/public HTTPS and
+runtime protections passed.
+
+Before and after promotion, standard account/configuration/Git backups and
+separately tagged consistent monitor snapshots in the existing external encrypted
+repository passed byte-for-byte restore, SQLite integrity/stored-state checks,
+repository checks and comparison of all eleven account tables/rows. Four restore
+points were retained at completion with the existing retention supplement. Daily
+standard retention may later rotate standard snapshots; the daily job still does
+not refresh monitor SQLite. Records are in `build/security-lodash-20261103/`.
+A later normal supervisor Ensure check preserved the new image, other service
+identities and public URL. All five services were healthy and all six monitors
+were up; the owned test containers, volume and network were verified absent.
+Windows reboot/login remains unverified.
