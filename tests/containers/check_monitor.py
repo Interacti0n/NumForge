@@ -73,6 +73,7 @@ def run():
             checks += "\n(()=>{\n" + (ROOT / "tests/containers/check_monitor_mysql.cjs").read_text(encoding="utf-8") + "\n})();"
             checks += "\n(()=>{\n" + (ROOT / "tests/containers/check_monitor_lodash.cjs").read_text(encoding="utf-8") + "\n})();"
             checks += "\n(()=>{\n" + (ROOT / "tests/containers/check_monitor_axios.cjs").read_text(encoding="utf-8") + "\n})();"
+            checks += "\n(()=>{\n" + (ROOT / "tests/containers/check_monitor_glob.cjs").read_text(encoding="utf-8") + "\n})();"
             bootstrap = "const Module=require('node:module');const guard=new Module('/tmp/nf-guards.cjs');guard.filename='/tmp/nf-guards.cjs';guard._compile(" + json.dumps(guards) + ",guard.filename);globalThis.monitorPatchGuards=guard.exports;\n"
             compose.docker("exec", "-T", "uptime", "node", "-", input=bootstrap + checks, encoding="utf-8")
 

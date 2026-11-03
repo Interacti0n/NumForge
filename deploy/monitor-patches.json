@@ -51,6 +51,13 @@
   ],
   "addedDependencies": [
     {
+      "name": "package-json-from-dist",
+      "path": "node_modules/package-json-from-dist",
+      "version": "1.0.1",
+      "integrity": "sha512-UEZIS3/by4OC8vL3P2dTXRETpebLI2NiI5vIrjaD/5UtrkFX/tNbwjTSRAGC/+7CAo2pIcBaRgWmcBBHcsaCIw==",
+      "addedBy": "glob"
+    },
+    {
       "name": "@js-sdsl/ordered-map",
       "path": "node_modules/@js-sdsl/ordered-map",
       "version": "4.4.2",
@@ -83,16 +90,26 @@
     "follow-redirects": "1.16.2",
     "redbean-node": {
       "glob": {
+        ".": "10.5.0",
         "minimatch": "9.0.9"
       },
       "lodash": "4.18.1"
     },
+    "package-json-from-dist": "1.0.1",
     "sql-escaper": "1.5.1",
     "mysql2": {
       "iconv-lite": "0.7.2"
     }
   },
   "packages": [
+    {
+      "name": "glob",
+      "from": "10.3.16",
+      "version": "10.5.0",
+      "before": "node_modules/redbean-node/node_modules/glob",
+      "after": "node_modules/redbean-node/node_modules/glob",
+      "integrity": "sha512-DfXN8DfhJ7NH3Oe7cFmu3NCu1wKbkReJ8TorzSAFbSKrlNaQSKfIzqYqVY8zlbs2NLBbWpRiU52GX2PbaBVNkg=="
+    },
     {
       "name": "axios",
       "from": "0.32.0",
@@ -207,6 +224,31 @@
     }
   ],
   "consumerMigrations": [
+    {
+      "consumer": "node_modules/redbean-node",
+      "consumerVersion": "0.3.3",
+      "consumerIntegrity": "sha512-0J59/QlShdWs1h0lsFHRfb8NwjvgIYTQKwYrvq6FykRmeX1cG2u8AgHEIRVBrm56mtKLRASVy/8ykk6fSntLdw==",
+      "name": "glob",
+      "fromRange": "~10.3.0",
+      "version": "10.5.0",
+      "dependencyRefresh": {
+        "from": {
+          "foreground-child": "^3.1.0",
+          "jackspeak": "^3.1.2",
+          "minimatch": "^9.0.1",
+          "minipass": "^7.0.4",
+          "path-scurry": "^1.11.0"
+        },
+        "to": {
+          "foreground-child": "^3.1.0",
+          "jackspeak": "^3.1.2",
+          "minimatch": "^9.0.4",
+          "minipass": "^7.1.2",
+          "path-scurry": "^1.11.1",
+          "package-json-from-dist": "^1.0.0"
+        }
+      }
+    },
     {
       "consumer": "node_modules/redbean-node",
       "consumerVersion": "0.3.3",

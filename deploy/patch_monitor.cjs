@@ -90,12 +90,21 @@ function prepare(root, manifest, snapshot) {
         assert(target.startsWith(path.join(root, 'node_modules') + path.sep));
         assert(fs.lstatSync(target).isDirectory() && !fs.lstatSync(target).isSymbolicLink());
         const leaf = read(path.join(target, 'package.json'));
-        assert(!Object.keys({...leaf.dependencies, ...leaf.optionalDependencies}).length,
-            'Consumer lock refresh is limited to leaf packages');
+        if (migration.dependencyRefresh) {
+            assert.deepEqual(leaf.dependencies, migration.dependencyRefresh.from, 'Upstream refreshed dependencies changed');
+            assert(!Object.keys(leaf.optionalDependencies || {}).length, 'Dependency refresh cannot change optional dependencies');
+            assert(!fs.existsSync(path.join(target, 'node_modules')), 'Dependency refresh cannot remove nested packages');
+            assert(migration.dependencyRefresh.to && typeof migration.dependencyRefresh.to === 'object' &&
+                !Array.isArray(migration.dependencyRefresh.to), 'Dependency refresh requires an exact target dependency map');
+        } else {
+            assert(!Object.keys({...leaf.dependencies, ...leaf.optionalDependencies}).length,
+                'Consumer lock refresh is limited to leaf packages');
+        }
         const parent = read(path.join(root, migration.consumer, 'package.json'));
         assert.equal(parent.dependencies?.[migration.name], migration.fromRange, 'Upstream consumer range changed');
         assert.equal(resolvePackage(root, migration.consumer, migration.name), patch.before, 'Unexpected consumer resolution');
-        const pin = manifest.overrides[parent.name]?.[migration.name] ?? manifest.overrides[migration.name];
+        const override = manifest.overrides[parent.name]?.[migration.name] ?? manifest.overrides[migration.name];
+        const pin = typeof override === 'object' ? override['.'] : override;
         assert.equal(pin, migration.version, 'Consumer migration requires an exact override');
     }
     const deduplicated = {};
@@ -127,7 +136,9 @@ function prepare(root, manifest, snapshot) {
         assert(!additions.has(added.path), `Duplicate added dependency: ${added.name}`);
         additions.add(added.path);
         assert(!before[added.path] && !fs.existsSync(path.join(root, added.path)), `Added dependency already exists: ${added.name}`);
-        assert(manifest.directMigrations?.some(m => m.name === added.addedBy), `Added dependency must belong to a direct migration: ${added.name}`);
+        assert(manifest.directMigrations?.some(m => m.name === added.addedBy) ||
+            manifest.consumerMigrations?.some(m => m.name === added.addedBy && m.dependencyRefresh),
+            `Added dependency must belong to an explicit migration: ${added.name}`);
         const pin = added.path === rootPath ? manifest.overrides[added.name] : manifest.overrides[added.addedBy]?.[added.name];
         assert.equal(pin, added.version, 'Added dependency must be pinned exactly');
     }
@@ -166,7 +177,7 @@ function prepare(root, manifest, snapshot) {
     fs.writeFileSync(snapshot, JSON.stringify({ before, original, omissions, deduplicated }));
     fs.writeFileSync(packageFile, JSON.stringify(configured, null, 2) + '\n');
     // npm can retain a previously locked nested version after adding a scoped
-    // override. Seed only the explicitly qualified leaf pin and reify it from
+    // override. Seed only the explicitly qualified pin and reify it from
     // its registry archive; never unlock the rest of the dependency tree.
     const refreshed = new Set();
     for (const migration of manifest.consumerMigrations || []) {
@@ -177,6 +188,7 @@ function prepare(root, manifest, snapshot) {
         assert.equal(hash(path.join(target, 'package.json')), before[patch.before].packageHash);
         lock.packages[patch.before] = {...lock.packages[patch.before], version: patch.version,
             resolved: archiveUrl(patch), integrity: patch.integrity};
+        if (migration.dependencyRefresh) lock.packages[patch.before].dependencies = migration.dependencyRefresh.to;
         fs.rmSync(target, {recursive: true});
     }
     if (refreshed.size) {
@@ -218,6 +230,11 @@ function verify(root, manifest, snapshot) {
     for (const migration of manifest.consumerMigrations || []) {
         assert.deepEqual(after[migration.consumer], before[migration.consumer], 'Migrated consumer metadata changed');
         const patch = manifest.packages.find(p => p.name === migration.name);
+        if (migration.dependencyRefresh) {
+            const actual = read(path.join(root, patch.after, 'package.json'));
+            assert.deepEqual(actual.dependencies, migration.dependencyRefresh.to, 'Refreshed target dependencies changed');
+            assert(!Object.keys(actual.optionalDependencies || {}).length, 'Refreshed optional dependencies changed');
+        }
         assert.equal(resolvePackage(root, migration.consumer, migration.name), patch.after, 'Migrated consumer resolution changed');
         const range = read(path.join(root, migration.consumer, 'package.json')).dependencies?.[migration.name];
         assert.equal(consumerRange(manifest, migration.consumer, migration.name, range), patch.version);

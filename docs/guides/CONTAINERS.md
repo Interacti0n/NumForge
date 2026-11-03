@@ -601,6 +601,7 @@ identities and public URL. All five services were healthy and all six monitors
 were up; the owned test containers, volume and network were verified absent.
 Windows reboot/login remains unverified.
 
+
 ### MySQL authentication and packet compatibility migration
 
 The current recipe changes Kuma's direct `mysql2 ~3.11.5` range to exact 3.23.1.
@@ -832,3 +833,60 @@ Records are in `build/security-axios-20261103/`. A later normal supervisor Ensur
 preserved the new image, other service identities and public URL. All five
 services were healthy and all six monitors up. Owned test containers, volume
 and network were verified absent. Windows reboot/login remains unverified.
+
+### Glob CLI compatibility migration — qualified candidate
+
+The next recipe migrates only RedBean's nested `glob` from 10.3.16 to exact
+**10.5.0**, explicitly qualifying its original `~10.3.0` consumer range. Root
+glob 7.2.3, RedBean 0.3.3 and the existing minimatch 9.0.9 pin remain unchanged.
+The sole new installed dependency, `package-json-from-dist` 1.0.1, is pinned
+with registry SHA512, as is glob itself. This selects the first fixed release
+within the existing major, not a claim that the deprecated 10.x line is supported
+or free of other findings.
+
+Unlike the earlier leaf-only consumer migration, glob changes runtime dependency
+ranges. An explicit `dependencyRefresh` records both exact maps. Preparation
+rejects unexpected upstream ranges, optional dependencies and any nested
+`node_modules` directory before refreshing the one locked package. Verification
+requires the target package's actual dependency map, pinned archives, installed
+dependency closure and unchanged unrelated installed metadata. The RedBean
+package itself is not modified. Normal consumer refreshes remain leaf-only.
+
+Six new guard checks cover the accepted refresh, changed upstream/target ranges,
+nested-package preservation, optional dependencies and unsatisfied dependencies.
+Seven glob checks cover sync/async/stream/iterator matching, ignored and hidden
+files, braces, recursion and empty results, plus CLI version and argument handling.
+Benign substitution, backtick and semicolon filenames are passed literally by
+the candidate, with both known and unknown `SHELL` settings. Separate checks
+preserve whitespace, quotes and Unicode argument boundaries and known-shell
+command text. Standalone red/green probes run without network or host mounts in
+disposable containers, using only temporary marker files.
+
+The candidate passes **111 checks**. The previous Axios image passes 105 and
+fails six; both default-command cases create the benign substitution marker,
+demonstrating the old CLI's shell interpretation. The upstream advisory applies
+to the CLI's `-c`/`--cmd` behavior, not the core glob library API. These checks
+do not establish a remote execution path in Kuma or a general pattern CPU bound.
+The explicit unsafe `--shell` escape hatch remains an upstream limitation;
+no new use of it is introduced. Earlier parser/template/resource limits remain.
+
+Matched Trivy 0.76.1 scans on 3 November use the database updated 2 November at
+13:15:56 UTC. Fixable HIGH/CRITICAL records fall **15 → 14**, removing HIGH
+CVE-2025-64756 with none added. All HIGH/CRITICAL including unfixed findings move
+from 87/6 to 86/6. Both reports' DiffIDs match the frozen images; gateway/DB
+images were not rescanned. The candidate image is
+`numforge-uptime:candidate-glob-20261103`, exact ID
+`sha256:5a23b502b30fe0643f4a517db7226bc1f75b1ebbeecbe7ff94543e357a0f130f`.
+
+The previous → candidate → previous → candidate fixture preserves stored
+users/configuration/history digests, authenticated login, keyword/push up/down
+and runtime protections. Both candidate stages pass all 111 checks. The owned
+fixture's containers, volume and network were verified absent after cleanup.
+This qualification does not establish Windows reboot/login behavior.
+
+Primary references: [glob CLI advisory](https://github.com/isaacs/node-glob/security/advisories/GHSA-5j98-mcp5-4vw2),
+[glob 10.5.0 release](https://github.com/isaacs/node-glob/releases/tag/v10.5.0),
+[CLI argument handling](https://github.com/isaacs/node-glob/blob/v10.5.0/src/bin.mts).
+Raw build, red/green, lifecycle and scan evidence is under ignored
+`build/security-glob-20261103/`. This candidate has not been promoted to the
+running pilot; the deployed monitor remains the preceding Axios image.

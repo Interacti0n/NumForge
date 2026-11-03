@@ -164,6 +164,56 @@ if (fs.existsSync('/opt/numforge/monitor-patches.json') || process.env.NUMFORGE_
         write(path.join(f.root, 'node_modules/body-parser/package.json'), {name: 'body-parser', version: '1.20.8', dependencies: {other: '^1.0.0'}});
         assert.throws(() => guards.prepare(f.root, f.manifest, f.snapshot), /limited to leaf packages/);
     });
+    function refreshFixture(t) {
+        const f = consumerFixture(t);
+        f.migration.dependencyRefresh = {from: {other: '^1.0.0'}, to: {other: '~1.0.0'}};
+        write(path.join(f.root, 'node_modules/body-parser/package.json'), {name: 'body-parser', version: '1.20.8', dependencies: {other: '^1.0.0'}});
+        function install() {
+            f.install();
+            write(path.join(f.root, 'node_modules/body-parser/package.json'), {name: 'body-parser', version: '1.20.9', dependencies: {other: '~1.0.0'}});
+        }
+        return {...f, install};
+    }
+    test('explicit dependency refresh seeds exact target ranges and verifies installed closure', t => {
+        const f = refreshFixture(t);
+        guards.prepare(f.root, f.manifest, f.snapshot);
+        assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.root, 'package-lock.json'))).packages['node_modules/body-parser'].dependencies, {other: '~1.0.0'});
+        f.install();
+        guards.verify(f.root, f.manifest, f.snapshot);
+    });
+    test('dependency refresh rejects changed upstream ranges before writing', t => {
+        const f = refreshFixture(t);
+        f.migration.dependencyRefresh.from.other = '^2.0.0';
+        const before = fs.readFileSync(path.join(f.root, 'package.json'));
+        assert.throws(() => guards.prepare(f.root, f.manifest, f.snapshot), /Upstream refreshed dependencies changed/);
+        assert.deepEqual(fs.readFileSync(path.join(f.root, 'package.json')), before);
+    });
+    test('dependency refresh cannot delete a nested installed package', t => {
+        const f = refreshFixture(t);
+        write(path.join(f.root, 'node_modules/body-parser/node_modules/keep/package.json'), {name: 'keep', version: '1.0.0'});
+        assert.throws(() => guards.prepare(f.root, f.manifest, f.snapshot), /cannot remove nested packages/);
+        assert(fs.existsSync(path.join(f.root, 'node_modules/body-parser/node_modules/keep/package.json')));
+    });
+    test('dependency refresh rejects optional upstream dependencies', t => {
+        const f = refreshFixture(t);
+        write(path.join(f.root, 'node_modules/body-parser/package.json'), {name: 'body-parser', version: '1.20.8', dependencies: {other: '^1.0.0'}, optionalDependencies: {other: '^1.0.0'}});
+        assert.throws(() => guards.prepare(f.root, f.manifest, f.snapshot), /cannot change optional dependencies/);
+    });
+    test('dependency refresh rejects target metadata outside the exact manifest', t => {
+        const f = refreshFixture(t);
+        guards.prepare(f.root, f.manifest, f.snapshot);
+        f.install();
+        write(path.join(f.root, 'node_modules/body-parser/package.json'), {name: 'body-parser', version: '1.20.9', dependencies: {other: '^1.0.0'}});
+        assert.throws(() => guards.verify(f.root, f.manifest, f.snapshot), /Refreshed target dependencies changed/);
+    });
+    test('dependency refresh still rejects unsatisfied installed dependencies', t => {
+        const f = refreshFixture(t);
+        f.migration.dependencyRefresh.to.other = '^2.0.0';
+        guards.prepare(f.root, f.manifest, f.snapshot);
+        f.install();
+        write(path.join(f.root, 'node_modules/body-parser/package.json'), {name: 'body-parser', version: '1.20.9', dependencies: {other: '^2.0.0'}});
+        assert.throws(() => guards.verify(f.root, f.manifest, f.snapshot), /Unsatisfied patch dependency/);
+    });
     test('consumer migration cannot bypass a different consumer range', t => {
         const f = consumerFixture(t);
         write(path.join(f.root, 'node_modules/third/package.json'), {name: 'third', version: '1.0.0', dependencies: {'body-parser': '1.20.8'}});
