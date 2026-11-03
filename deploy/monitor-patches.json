@@ -2,6 +2,11 @@
   "upstreamVersion": "2.5.9",
   "directMigrations": [
     {
+      "name": "qs",
+      "fromRange": "~6.14.2",
+      "version": "6.16.1"
+    },
+    {
       "name": "tar",
       "fromRange": "~6.2.1",
       "version": "7.5.22",
@@ -154,6 +159,8 @@
     "node_modules/nan"
   ],
   "overrides": {
+    "qs": "6.16.1",
+    "@tootallnate/once": "2.0.1",
     "@azure/msal-node": {
       ".": "7.1.2",
       "@azure/msal-common": "16.15.0"
@@ -198,6 +205,22 @@
     }
   },
   "packages": [
+    {
+      "name": "qs",
+      "from": "6.14.2",
+      "version": "6.16.1",
+      "before": "node_modules/qs",
+      "after": "node_modules/qs",
+      "integrity": "sha512-5Px6J7rfHBAGUhNQ3es4YzcOdBBw0SDcVtThJml4RdnKw4tKs2epA0kPZ+K8X+WiHktT93RHVcQ/3ym5aTCgtg=="
+    },
+    {
+      "name": "@tootallnate/once",
+      "from": "1.1.2",
+      "version": "2.0.1",
+      "before": "node_modules/@tootallnate/once",
+      "after": "node_modules/@tootallnate/once",
+      "integrity": "sha512-HqmEUIGRJ5fSXchkVgR5F7qn48bDBzv0kWj/Kfu5e6uci4UlEeng4331LnBkWffb++Ei3FOVLxo8JJWMFBDMeQ=="
+    },
     {
       "name": "@azure/msal-node",
       "from": "5.6.0",
@@ -322,6 +345,20 @@
   ],
   "deduplicatedDependencies": [
     {
+      "name": "qs",
+      "from": "node_modules/body-parser/node_modules/qs",
+      "to": "node_modules/qs",
+      "version": "6.16.1",
+      "integrity": "sha512-5Px6J7rfHBAGUhNQ3es4YzcOdBBw0SDcVtThJml4RdnKw4tKs2epA0kPZ+K8X+WiHktT93RHVcQ/3ym5aTCgtg=="
+    },
+    {
+      "name": "qs",
+      "from": "node_modules/express/node_modules/qs",
+      "to": "node_modules/qs",
+      "version": "6.16.1",
+      "integrity": "sha512-5Px6J7rfHBAGUhNQ3es4YzcOdBBw0SDcVtThJml4RdnKw4tKs2epA0kPZ+K8X+WiHktT93RHVcQ/3ym5aTCgtg=="
+    },
+    {
       "name": "ws",
       "from": "node_modules/engine.io-client/node_modules/ws",
       "to": "node_modules/ws",
@@ -344,6 +381,16 @@
     }
   ],
   "consumerMigrations": [
+    {
+      "consumer": "node_modules/make-fetch-happen/node_modules/http-proxy-agent",
+      "consumerVersion": "4.0.1",
+      "consumerIntegrity": "sha512-k0zdNgqWTGA6aeIRVpvfVob4fL52dTfaehylg0Y4UvSySvOq/Y+BOyPrgpUrA7HylqvU8vIZGsRuXmspskV0Tg==",
+      "name": "@tootallnate/once",
+      "fromRange": "1",
+      "version": "2.0.1",
+      "compatibility": "consumer-major-upgrade",
+      "dependencyMigration": {"from": {}, "to": {}}
+    },
     {
       "consumer": "node_modules/@azure/identity",
       "consumerVersion": "4.13.1",

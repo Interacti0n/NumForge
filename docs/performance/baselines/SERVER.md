@@ -427,7 +427,7 @@ recordings are exploratory and retained, not the selected comparison.
 `ctest-{gcc,msvc}-handoff.log`, `browser-chromium.log` and `browser-final.log`
 retain final native and browser verification. No CI speed threshold was added.
 
-## Mixed Docker pilot — 30 October 2026
+## Mixed Docker pilot (30 October 2026)
 
 Exact deployed C/Django/PostgreSQL/Caddy/Kuma images, cloned into fresh private
 resources; [protocol](../protocols/APPLICATION.md#full-application-stack).

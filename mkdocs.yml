@@ -69,6 +69,7 @@ nav:
       - Architecture: docs/design/ARCHITECTURE.md
       - Optional account storage: docs/guides/ACCOUNTS_STORAGE.md
       - Docker Compose: docs/guides/CONTAINERS.md
+      - Container security review (2026-11-03): docs/project/SECURITY_REVIEW_20261103.md
       - Feature checklist: docs/project/FEATURE_CHECKLIST.md
       - Testing:
           - Start here: docs/TESTING.md

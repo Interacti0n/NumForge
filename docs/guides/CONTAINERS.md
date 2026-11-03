@@ -1113,3 +1113,19 @@ Primary references: [MSAL Node 7.1.2](https://github.com/AzureAD/microsoft-authe
 [major changes](https://github.com/AzureAD/microsoft-authentication-library-for-js/blob/dev/lib/msal-node/CHANGELOG.md).
 Evidence is under ignored `build/security-msal-20261103/`. MSAL and the preceding
 glob/Nodemailer/tar candidates have not been promoted to the running pilot.
+
+### Extended MEDIUM/LOW review — qualified candidate
+
+The [3 November security review](../project/SECURITY_REVIEW_20261103.md) records
+the all-severity scans of all five running images, the new monitor candidate,
+bounded glob/minimatch probes, vendor triage and a native SQLite coverage gap.
+It also lists the remaining fixes in web/accounts/PostgreSQL/gateway images.
+
+The new candidate pins qs **6.16.1** and @tootallnate/once **2.0.1**, passes
+**198 checks** and the persisted upgrade/rollback/reapply fixture. Matched scans
+remove four MEDIUM and one LOW record, with no added fixable findings. Three
+fixable MEDIUM records remain; the absence of fixable HIGH/CRITICAL records is
+not an all-clear. Candidate: `numforge-uptime:candidate-review-20261103`, exact ID
+`sha256:7db293cb9d838a0a200a6bd3f08a4f66fdfc9b88aad9e3ffe33c39217e2f63c8`.
+The running Axios monitor still has 15 fixable HIGH/CRITICAL records. No candidate
+promotion or push occurred as part of this review.

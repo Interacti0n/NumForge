@@ -130,7 +130,7 @@ function prepare(root, manifest, snapshot) {
         assert(fs.lstatSync(target).isDirectory() && !fs.lstatSync(target).isSymbolicLink());
         const leaf = read(path.join(target, 'package.json'));
         if (migration.compatibility === 'consumer-major-upgrade') {
-            assert.deepEqual(leaf.dependencies, migration.dependencyMigration.from, 'Upstream migrated dependencies changed');
+            assert.deepEqual(leaf.dependencies || {}, migration.dependencyMigration.from, 'Upstream migrated dependencies changed');
             assert(!Object.keys(leaf.optionalDependencies || {}).length, 'Consumer major migration cannot change optional dependencies');
             assert(migration.dependencyMigration.to && typeof migration.dependencyMigration.to === 'object' &&
                 !Array.isArray(migration.dependencyMigration.to), 'Consumer major migration requires an exact target dependency map');
@@ -304,7 +304,7 @@ function verify(root, manifest, snapshot) {
         const patch = manifest.packages.find(p => p.name === migration.name);
         if (migration.compatibility === 'consumer-major-upgrade') {
             const actual = read(path.join(root, patch.after, 'package.json'));
-            assert.deepEqual(actual.dependencies, migration.dependencyMigration.to, 'Migrated target dependencies changed');
+            assert.deepEqual(actual.dependencies || {}, migration.dependencyMigration.to, 'Migrated target dependencies changed');
             assert(!Object.keys(actual.optionalDependencies || {}).length, 'Migrated optional dependencies changed');
         }
         if (migration.dependencyRefresh) {

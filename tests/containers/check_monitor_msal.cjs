@@ -35,6 +35,19 @@ function fixture(t) {
     return {root, config, migration, snapshot, pkg, lock, install};
 }
 if (guards && fs.existsSync(receipt)) {
+    test('consumer-only leaf migration accepts explicit empty dependency maps', t => {
+        const f = fixture(t);
+        f.pkg('node_modules/msal', 'msal', '5.6.0', 'old'); f.lock();
+        f.migration.dependencyMigration = {from: {}, to: {}}; f.config.addedDependencies = [];
+        guards.prepare(f.root, f.config, f.snapshot);
+        f.pkg('node_modules/msal', 'msal', '7.1.2', 'new'); f.lock();
+        guards.verify(f.root, f.config, f.snapshot);
+    });
+    test('consumer-only leaf migration still rejects a missing old dependency map', t => {
+        const f = fixture(t); f.pkg('node_modules/msal', 'msal', '5.6.0', 'old'); f.lock();
+        f.migration.dependencyMigration = {to: {}};
+        assert.throws(() => guards.prepare(f.root, f.config, f.snapshot), /Upstream migrated dependencies changed/);
+    });
     test('consumer-only major upgrade reifies its owned helper and preserves the shared branch', t => {
         const f = fixture(t); guards.prepare(f.root, f.config, f.snapshot);
         assert(fs.existsSync(path.join(f.root, 'node_modules/msal/node_modules/common/package.json')));
