@@ -761,7 +761,7 @@ Windows reboot/login remains unverified.
 
 ### Axios legacy compatibility migration
 
-The next qualified monitor keeps Kuma 2.5.9 and migrates its direct Axios
+The current qualified monitor keeps Kuma 2.5.9 and migrates its direct Axios
 dependency from 0.32.0 (`~0.32.0`) to exact **0.34.0**. This is an explicit
 compatibility migration within the maintained legacy 0.x line, where a minor
 change can break behavior. It does not select Axios 1.x. The manifest pins the
@@ -811,3 +811,24 @@ The previous → candidate → previous → candidate fixture preserves stored
 users/configuration/history digests, authenticated login, keyword/push up/down
 and runtime protections. Both candidate stages pass all 98 checks. The owned
 fixture containers, volume and network are removed afterward.
+
+The qualified image was deployed on 3 November 2026 as
+`numforge-uptime:axios-20261103`, exact ID
+`sha256:9f06bd0d806cd2261571de48c465d19ea8677f122de37a938d15f5b7d6755307`, from source commit `8f85960`. Only monitoring was recreated under
+the supervisor lock. Web/accounts/PostgreSQL/gateway container identities and
+the owned tunnel/URL stayed unchanged. Live Axios 0.34.0, follow-redirects,
+production omission of wait-on, its unchanged locked range, all previous pins,
+receipt and gRPC source hash matched. Stored users/monitor settings and retained
+heartbeat history matched the pre-change copy. Six monitors were up with fresh
+non-push checks; local/public HTTPS and runtime protections passed.
+
+Before and after promotion, standard account/configuration/Git backups and
+separately tagged consistent monitor SQLite snapshots in the existing external
+encrypted repository passed byte-for-byte restore, SQLite integrity/stored-state
+checks, repository checks and comparison of all eleven account tables/rows.
+Four restore points were retained at completion. Daily standard retention may
+later rotate standard points; monitor SQLite is not refreshed by the daily job.
+Records are in `build/security-axios-20261103/`. A later normal supervisor Ensure
+preserved the new image, other service identities and public URL. All five
+services were healthy and all six monitors up. Owned test containers, volume
+and network were verified absent. Windows reboot/login remains unverified.
