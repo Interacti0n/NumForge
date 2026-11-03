@@ -2,6 +2,11 @@
   "upstreamVersion": "2.5.9",
   "directMigrations": [
     {
+      "name": "@grpc/grpc-js",
+      "fromRange": "~1.8.22",
+      "version": "1.13.7"
+    },
+    {
       "name": "protobufjs",
       "fromRange": "~7.2.6",
       "version": "7.6.6"
@@ -21,12 +26,22 @@
       "removedBy": "protobufjs"
     }
   ],
+  "addedDependencies": [
+    {
+      "name": "@js-sdsl/ordered-map",
+      "path": "node_modules/@js-sdsl/ordered-map",
+      "version": "4.4.2",
+      "integrity": "sha512-iUKgm52T8HOE/makSxjqoWhe95ZJA1/G1sYsGev2JDKUSS14KAgg1LHb+Ba+IPow0xflbnSkOsZcO08C7w1gYw==",
+      "addedBy": "@grpc/grpc-js"
+    }
+  ],
   "keepAbsent": [
     "node_modules/buildcheck",
     "node_modules/cpu-features",
     "node_modules/nan"
   ],
   "overrides": {
+    "@js-sdsl/ordered-map": "4.4.2",
     "body-parser": "1.20.9",
     "follow-redirects": "1.16.2",
     "redbean-node": {
@@ -36,6 +51,14 @@
     }
   },
   "packages": [
+    {
+      "name": "@grpc/grpc-js",
+      "from": "1.8.22",
+      "version": "1.13.7",
+      "before": "node_modules/@grpc/grpc-js",
+      "after": "node_modules/@grpc/grpc-js",
+      "integrity": "sha512-Q6KuzM6QCvNbVWOxf9gHCedUUByhVWsfg6QTN/Jk0KJooG5WfJC3HkHDiVGjCmQFo6mhovEX+8B4phpIOaCr/A=="
+    },
     {
       "name": "liquidjs",
       "from": "10.26.0",

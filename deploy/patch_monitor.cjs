@@ -6,6 +6,7 @@ const crypto = require('node:crypto');
 
 const read = file => JSON.parse(fs.readFileSync(file, 'utf8'));
 const hash = file => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+const archiveUrl = entry => `https://registry.npmjs.org/${entry.name}/-/${entry.name.split('/').at(-1)}-${entry.version}.tgz`;
 
 function inventory(root) {
     const lock = read(path.join(root, 'package-lock.json'));
@@ -59,6 +60,15 @@ function prepare(root, manifest, snapshot) {
         assert.equal(hash(path.join(root, patch.path)), patch.beforeHash, `Upstream source changed: ${patch.path}`);
     }
     const before = inventory(root);
+    const additions = new Set();
+    for (const added of manifest.addedDependencies || []) {
+        assert.equal(added.path, `node_modules/${added.name}`, 'Added dependency must use its exact root path');
+        assert(!additions.has(added.path), `Duplicate added dependency: ${added.name}`);
+        additions.add(added.path);
+        assert(!before[added.path] && !fs.existsSync(path.join(root, added.path)), `Added dependency already exists: ${added.name}`);
+        assert(manifest.directMigrations?.some(m => m.name === added.addedBy), `Added dependency must belong to a direct migration: ${added.name}`);
+        assert.equal(manifest.overrides[added.name], added.version, 'Added dependency must be pinned exactly');
+    }
     for (const pruned of manifest.prunedDependencies || []) {
         assert.equal(before[pruned.path]?.version, pruned.version);
         assert.equal(before[pruned.path]?.integrity, pruned.integrity);
@@ -120,6 +130,17 @@ function verify(root, manifest, snapshot) {
     const semver = require(path.join(root, 'node_modules/semver'));
     assert.deepEqual(current, configuredPackage(original, manifest, semver));
     const allowed = new Set(manifest.packages.flatMap(p => [p.before, p.after]));
+    for (const added of manifest.addedDependencies || []) {
+        allowed.add(added.path);
+        assert(!before[added.path], `Added dependency already existed: ${added.name}`);
+        assert.equal(after[added.path]?.version, added.version, `Added dependency not installed: ${added.name}`);
+        assert.equal(after[added.path].integrity, added.integrity, `Unexpected archive integrity: ${added.name}`);
+        assert.equal(lock.packages[added.path].resolved, archiveUrl(added));
+        const owner = manifest.packages.find(p => p.name === added.addedBy);
+        const range = read(path.join(root, owner.after, 'package.json')).dependencies?.[added.name];
+        assert(range && semver.satisfies(added.version, range), `Added dependency not required by migrated owner: ${added.name}`);
+        assert.equal(resolvePackage(root, owner.after, added.name), added.path);
+    }
     for (const pruned of manifest.prunedDependencies || []) {
         allowed.add(pruned.path);
         assert(!after[pruned.path], `Unused upstream dependency remains: ${pruned.name}`);
@@ -134,11 +155,10 @@ function verify(root, manifest, snapshot) {
     for (const patch of manifest.packages) {
         assert.equal(after[patch.after]?.version, patch.version, `Patch not installed: ${patch.name}`);
         assert.equal(after[patch.after].integrity, patch.integrity, `Unexpected archive integrity: ${patch.name}`);
-        assert.equal(lock.packages[patch.after].resolved,
-            `https://registry.npmjs.org/${patch.name}/-/${patch.name}-${patch.version}.tgz`);
+        assert.equal(lock.packages[patch.after].resolved, archiveUrl(patch));
         if (patch.before !== patch.after) assert(!after[patch.before], `Old package remains: ${patch.before}`);
     }
-    for (const patch of manifest.packages) {
+    for (const patch of [...manifest.packages, ...(manifest.addedDependencies || []).map(p => ({...p, after: p.path}))]) {
         const actual = read(path.join(root, patch.after, 'package.json'));
         for (const [name, range] of Object.entries(actual.dependencies || {})) {
             const resolved = resolvePackage(root, patch.after, name);

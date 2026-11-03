@@ -440,3 +440,60 @@ A subsequent normal supervisor Ensure check preserved the new monitor image,
 the other service identities and the public URL. All five services were healthy,
 all six monitors were up and no containers/volumes/networks from the owned test
 project remained. This does not establish Windows reboot/login behavior.
+
+### gRPC transport compatibility migration
+
+The next recipe migrates Kuma's exact original `@grpc/grpc-js ~1.8.22` range to
+`1.13.7`. This stable maintenance release contains the malformed-message fixes
+and subsequent error-detail fixes while retaining the existing proto-loader
+0.7.15 and protobuf 7.6.6. The newer 1.14 branch requires proto-loader 0.8.
+The only added runtime package is exact `@js-sdsl/ordered-map` 4.4.2, required by
+the migrated gRPC package. Both registry archives are pinned by SHA512.
+
+The build guard now handles scoped registry archive URLs correctly. An added
+dependency must be absent at its exact root path before installation, be pinned
+exactly, belong to an explicitly migrated owner, satisfy that owner's new range
+and resolve from it to the permitted path. Its archive URL/integrity/version and
+dependency closure are verified. All unlisted installed additions/removals or
+package changes remain rejected. Five new guard regressions exercise accepted
+scoped additions and rejected pre-existing, unneeded, tampered or unlisted ones.
+Existing nested consumers and the previous optional omissions remain unchanged.
+
+Thirty-nine checks include eight new gRPC regressions and the five new guards.
+Four bounded child processes send invalid gzip/deflate frames to a real client
+and server: each old process crashes on an unhandled decompressor error; the new
+runtime reports INTERNAL and stays alive. After a malformed request, a valid
+request still succeeds. Further tests cover receive-size limits, deadlines,
+handler exceptions without private error-detail disclosure, successful requests
+after rejection, and TLS with trusted certificates versus untrusted/missing
+client certificates or an untrusted server root. Certificates are generated only
+inside the disposable container. The previous real Kuma gRPC/wire-byte tests,
+Liquid tests and parser/redirect/glob regressions remain in the same suite.
+
+The TLS test verifies transport certificate enforcement; it does not reproduce
+the optional-client `getAuthContext` advisory. That public server API is absent
+from the qualified 1.13 runtime. Scanner removal of an advisory is not a claim
+that every configuration described by it has been exercised. The pilot uses
+Kuma's client monitor, not an exposed gRPC server; server-side regressions cover
+the supplied library without adding a service to the pilot. Previous Liquid,
+glob and protobuf limitations still apply. This is not a web speed benchmark.
+
+Primary references: [gRPC 1.13.5 fixes](https://github.com/grpc/grpc-node/releases/tag/%40grpc%2Fgrpc-js%401.13.5),
+[gRPC 1.13.7 maintenance fix](https://github.com/grpc/grpc-node/releases/tag/%40grpc%2Fgrpc-js%401.13.7),
+[compressed-message advisory](https://github.com/grpc/grpc-node/security/advisories/GHSA-99f4-grh7-6pcq),
+[HTTP/2 stream advisory](https://github.com/grpc/grpc-node/security/advisories/GHSA-5375-pq7m-f5r2),
+[optional-certificate advisory](https://github.com/grpc/grpc-node/security/advisories/GHSA-m9gg-hp2v-232j),
+[error-detail advisory](https://github.com/grpc/grpc-node/security/advisories/GHSA-f596-whhp-79r4).
+Raw evidence is under ignored `build/security-grpc-20261103/`, including registry
+metadata, the upstream security diff, exact image scans and regression logs.
+
+Matched Trivy 0.76.1 scans, using the database updated 2 November 2026 at
+13:15:56 UTC, report **23 → 20 fixable HIGH/CRITICAL records**. The three removed
+HIGH records are CVE-2026-101916, CVE-2026-48068 and CVE-2026-48069; none are added.
+All HIGH/CRITICAL records including unfixed findings move from 95/6 to 92/6.
+The error-detail LOW record is also removed. Both scan DiffID lists match the
+frozen images. The final previous → candidate → previous → candidate fixture
+preserves its stored user/configuration/history digest, authenticated login,
+keyword/push up/down behavior and runtime protections. Both candidate stages
+pass all 39 checks. The earlier 38-check run is retained separately; the final
+run includes the added error-detail regression. Gateway/DB were not rescanned.

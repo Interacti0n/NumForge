@@ -95,6 +95,61 @@ if (fs.existsSync('/opt/numforge/monitor-patches.json') || process.env.NUMFORGE_
         assert.throws(() => guards.verify(f.root, f.manifest, f.snapshot), /Unrelated package changed/);
     });
 
+    function additionFixture(t) {
+        const f = fixture(t);
+        f.manifest.directMigrations = [{name: 'body-parser', fromRange: '~1.20.5', version: '1.20.9'}];
+        const added = {name: '@scope/helper', path: 'node_modules/@scope/helper', version: '4.4.2', integrity: 'helper-integrity', addedBy: 'body-parser'};
+        f.manifest.addedDependencies = [added];
+        f.manifest.overrides[added.name] = added.version;
+        function install() {
+            f.install();
+            write(path.join(f.root, 'node_modules/body-parser/package.json'), {name: 'body-parser', version: '1.20.9', dependencies: {'@scope/helper': '^4.4.2'}});
+            write(path.join(f.root, added.path, 'package.json'), {name: added.name, version: added.version});
+            f.lock.packages[added.path] = {version: added.version, integrity: added.integrity, resolved: 'https://registry.npmjs.org/@scope/helper/-/helper-4.4.2.tgz'};
+            write(path.join(f.root, 'package-lock.json'), f.lock);
+        }
+        return {...f, added, install};
+    }
+
+    test('guard permits only the pinned scoped addition required by a migrated owner', t => {
+        const f = additionFixture(t);
+        guards.prepare(f.root, f.manifest, f.snapshot);
+        f.install();
+        guards.verify(f.root, f.manifest, f.snapshot);
+    });
+    test('guard rejects an already present added dependency before writing', t => {
+        const f = additionFixture(t);
+        write(path.join(f.root, f.added.path, 'package.json'), {version: '4.4.2'});
+        assert.throws(() => guards.prepare(f.root, f.manifest, f.snapshot), /already exists/);
+    });
+    test('guard rejects an addition not required by its migrated owner', t => {
+        const f = additionFixture(t);
+        guards.prepare(f.root, f.manifest, f.snapshot);
+        f.install();
+        write(path.join(f.root, 'node_modules/body-parser/package.json'), {name: 'body-parser', version: '1.20.9'});
+        assert.throws(() => guards.verify(f.root, f.manifest, f.snapshot), /not required by migrated owner/);
+    });
+    test('guard rejects a changed scoped archive URL or integrity', t => {
+        const f = additionFixture(t);
+        guards.prepare(f.root, f.manifest, f.snapshot);
+        f.install();
+        f.lock.packages[f.added.path].resolved = 'https://example.invalid/helper.tgz';
+        write(path.join(f.root, 'package-lock.json'), f.lock);
+        assert.throws(() => guards.verify(f.root, f.manifest, f.snapshot), /registry.npmjs.org/);
+        f.lock.packages[f.added.path].integrity = 'tampered';
+        write(path.join(f.root, 'package-lock.json'), f.lock);
+        assert.throws(() => guards.verify(f.root, f.manifest, f.snapshot), /Unexpected archive integrity/);
+    });
+    test('guard still rejects an unlisted installed package addition', t => {
+        const f = additionFixture(t);
+        guards.prepare(f.root, f.manifest, f.snapshot);
+        f.install();
+        write(path.join(f.root, 'node_modules/unlisted/package.json'), {version: '1.0.0'});
+        f.lock.packages['node_modules/unlisted'] = {version: '1.0.0', integrity: 'unlisted'};
+        write(path.join(f.root, 'package-lock.json'), f.lock);
+        assert.throws(() => guards.verify(f.root, f.manifest, f.snapshot), /Unrelated package changed/);
+    });
+
     function request(port, payload, headers = {}) {
         return new Promise((resolve, reject) => {
             const req = http.request({host: '127.0.0.1', port, method: 'POST', path: '/', headers: {'Content-Type': 'application/json', 'Content-Length': payload.length, ...headers}}, res => {
