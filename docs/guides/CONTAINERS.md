@@ -365,3 +365,54 @@ A later standard supervisor Ensure check preserved the qualified monitor,
 application container identities and URL. All five services were healthy and
 all six monitors were up; the isolated test project's containers, volume and
 network were verified removed. These checks do not establish Windows reboot behavior.
+
+### Liquid notification-template compatibility migration
+
+The next recipe pins `liquidjs` 10.27.2, explicitly migrating Kuma's direct
+`~10.26.0` range within the same stable major. This is the smallest release that
+contains all three targeted HIGH fixes: the `strip_html` infinite loop and the
+`pop`/`join` memory-accounting bypasses. Later releases exist; this candidate does
+not introduce their additional template features. The existing build guards check
+the registry SHA512, all consumer ranges and unchanged unrelated packages. The
+previous protobuf migration and its pinned gRPC source adaptation remain intact.
+
+Twenty-six checks include seven new Liquid regressions. They exercise the real
+Kuma notification provider's context, Unicode, legacy aliases, success/down/test
+messages, filters, malformed syntax and blocked file includes. An isolated child
+with a 32 MiB heap cap and two-second test deadline reproduces the old process
+failure from the two-character message `a<`; the candidate completes normally,
+also for unfinished script/style/comment openers. Small, bounded `pop` and `join`
+cases demonstrate rejection when a configured memory budget would be exceeded,
+while ordinary templates retain their expected output. Tests send no external
+notifications. The previous image fails five checks; the candidate passes all 26.
+
+These are bounded regression cases, not a general template isolation guarantee.
+Kuma's provider does not configure Liquid memory/render limits; the update fixes
+the library accounting when limits are supplied, without claiming a new runtime
+budget for notifications. Direct/negative/first/last access now hides inherited
+array values, but the published Node build still exposes them through join,
+reverse, slice, compact and loop iteration. The same diagnostic reproduces on
+the SHA512-verified latest 10.30.1 archive. This inherited-array limitation remains
+explicit in the tests; no comprehensive `ownPropertyOnly` protection is claimed.
+No additional notification-provider source patch is applied.
+
+Primary references: [Liquid 10.27.1 fixes](https://github.com/harttle/liquidjs/releases/tag/v10.27.1),
+[Liquid 10.27.2 fixes](https://github.com/harttle/liquidjs/releases/tag/v10.27.2),
+[HTML loop advisory](https://github.com/harttle/liquidjs/security/advisories/GHSA-m7fp-h3p4-hr49),
+[pop accounting advisory](https://github.com/harttle/liquidjs/security/advisories/GHSA-g357-x5c3-c72p),
+[join accounting advisory](https://github.com/harttle/liquidjs/security/advisories/GHSA-4r6h-5v86-94p3),
+[inherited-array advisory](https://github.com/harttle/liquidjs/security/advisories/GHSA-fwxr-j5w2-587m).
+Raw evidence is under ignored `build/security-liquid-20261103/`, including the
+initial failed isolation expectation and latest-version diagnostic.
+
+Matched Trivy 0.76.1 scans, using the database updated 2 November 2026 at
+13:15:56 UTC, report **26 → 23 fixable HIGH/CRITICAL records**. The three removed
+HIGH records are CVE-2026-55575, CVE-2026-61556 and CVE-2026-69222; none are added.
+All HIGH/CRITICAL records including unfixed findings move from 98/6 to 95/6.
+Scanner removal of the inherited-array MEDIUM record does not override the
+observed limitation above. Both scan DiffID lists match the frozen local images.
+The previous → candidate → previous → candidate fixture preserves its stored
+user/configuration/history digest, authenticated login, keyword/push up/down
+behavior and runtime protections; both candidate stages pass all 26 checks.
+The owned test containers, volume and network are removed by the fixture.
+Gateway/DB images were not rescanned for this change.

@@ -5,6 +5,11 @@
       "name": "protobufjs",
       "fromRange": "~7.2.6",
       "version": "7.6.6"
+    },
+    {
+      "name": "liquidjs",
+      "fromRange": "~10.26.0",
+      "version": "10.27.2"
     }
   ],
   "prunedDependencies": [
@@ -31,6 +36,14 @@
     }
   },
   "packages": [
+    {
+      "name": "liquidjs",
+      "from": "10.26.0",
+      "version": "10.27.2",
+      "before": "node_modules/liquidjs",
+      "after": "node_modules/liquidjs",
+      "integrity": "sha512-kvknfAEtOHjHkAAv7GxLEJh8ghpMQm3Fc4uWVyF7hERSTsSRsdC7saWs0p5aDG7GDcWsu5o+T4232O+8KZO55w=="
+    },
     {
       "name": "protobufjs",
       "from": "7.2.6",
