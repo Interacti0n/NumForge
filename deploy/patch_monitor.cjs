@@ -45,11 +45,17 @@ function configuredPackage(original, manifest, semver) {
         if (migration.compatibility === undefined) {
             assert(semver.valid(patch.version) && semver.major(patch.from) > 0 && semver.major(patch.from) === semver.major(patch.version),
                 `Direct migration must stay within a stable major: ${migration.name}`);
-        } else {
-            assert.equal(migration.compatibility, 'legacy-0.x', 'Unknown direct compatibility policy');
+        } else if (migration.compatibility === 'legacy-0.x') {
             assert(semver.valid(patch.from) && semver.valid(patch.version) &&
                 semver.major(patch.from) === 0 && semver.major(patch.version) === 0 && semver.gt(patch.version, patch.from),
                 `Explicit legacy migration must move forward within 0.x: ${migration.name}`);
+        } else if (migration.compatibility === 'stable-major-upgrade') {
+            assert(semver.valid(patch.from) && semver.valid(patch.version) &&
+                !semver.prerelease(patch.from) && !semver.prerelease(patch.version) &&
+                semver.major(patch.from) > 0 && semver.major(patch.version) > semver.major(patch.from),
+                `Explicit major migration must move forward between stable majors: ${migration.name}`);
+        } else {
+            assert.fail('Unknown direct compatibility policy');
         }
         configured.dependencies[migration.name] = patch.version;
     }
@@ -282,6 +288,8 @@ function verify(root, manifest, snapshot) {
     }
     for (const patch of [...manifest.packages, ...(manifest.addedDependencies || []).map(p => ({...p, after: p.path}))]) {
         const actual = read(path.join(root, patch.after, 'package.json'));
+        assert(!actual.engines?.node || semver.satisfies(process.versions.node, actual.engines.node),
+            `Unsupported Node runtime: ${patch.name}`);
         for (const [name, range] of Object.entries(actual.dependencies || {})) {
             const resolved = resolvePackage(root, patch.after, name);
             assert(semver.satisfies(after[resolved]?.version, range), `Unsatisfied patch dependency: ${patch.name} -> ${name}`);

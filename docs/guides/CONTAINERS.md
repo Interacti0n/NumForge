@@ -890,3 +890,72 @@ Primary references: [glob CLI advisory](https://github.com/isaacs/node-glob/secu
 Raw build, red/green, lifecycle and scan evidence is under ignored
 `build/security-glob-20261103/`. This candidate has not been promoted to the
 running pilot; the deployed monitor remains the preceding Axios image.
+
+### Nodemailer major compatibility migration — qualified candidate
+
+The next candidate pins direct Nodemailer **10.3.1**, migrating Kuma's original
+`~7.0.13` range. This crosses stable majors and is explicitly recorded as
+`stable-major-upgrade`. The default policy still rejects major changes; the new
+policy requires a forward move between stable positive majors and rejects
+prereleases, 0.x sources, downgrades and unrecognized policies. The original
+direct range, exact installed version, registry SHA512 and all other consumer
+ranges remain guarded. Verification also checks each changed/added package's
+declared Node engine against the image runtime. Nodemailer requires Node >=20;
+the image uses 22.23.4. No new installed npm dependency or Kuma source adaptation
+is introduced; previous migrations and the gRPC source pin remain intact.
+
+Nine new build-guard checks cover acceptance, disallowed version transitions,
+a separate incompatible consumer and an unsupported Node runtime. Sixteen new
+mail checks cover file/URL restrictions for raw messages and JSON normalization,
+positive raw-message controls, rejection of an untrusted HTTPS peer before dummy
+credentials are sent, and explicit trusted-CA success. Two bounded parser children
+exercise a flat address list and the free-text fallback under a 96 MiB heap cap
+and a 2.5-second deadline. The deadline contains the old process; it does not
+establish a general runtime CPU bound or certify every parser input.
+
+Envelope cases cover quoted local parts, nested comments and semicolons, canonical
+IDN domains and Bcc privacy on the actual SMTP wire. MIME checks cover Unicode,
+plain/HTML alternatives and attachments. Kuma's real SMTP provider is tested
+against disposable loopback servers for authentication, To/Cc/Bcc, custom headers,
+Liquid HTML, heartbeat timestamps, recipient errors and malformed headers. DKIM
+checks verify the configured signing domain/selector and an independently computed
+body hash, without claiming a general DKIM verifier. Implicit TLS and STARTTLS
+reject an untrusted certificate and retain the existing explicit TLS-error opt-out.
+Only dummy messages and credentials are used; no external notification is sent.
+
+The candidate passes **136 checks**. The previous glob candidate passes 128 and
+fails eight: the version pin, both raw-access restrictions, JSON restrictions,
+HTTPS certificate validation, both parser deadlines and adversarial address
+parsing. Standalone comparisons use network-disabled containers without host
+mounts. The fixtures generate temporary self-signed certificates with the image's
+OpenSSL, rather than storing private keys in Git. Kuma's existing plaintext and
+TLS-error-ignore settings remain deliberate operator controls; the internal HTTPS
+fetch fix does not override them. OAuth2/SES/pooling and every notification
+provider are not qualified by these SMTP checks. Nodemailer 10's additional
+resource limits and stricter address parsing can reject inputs accepted by 7.x.
+
+Matched Trivy 0.76.1 scans on 3 November use the database updated 2 November at
+13:15:56 UTC. Fixable HIGH/CRITICAL records fall **14 → 10**, removing four HIGH
+Nodemailer records with none added. All HIGH/CRITICAL including unfixed findings
+move from 86/6 to 82/6; fifteen MEDIUM and one LOW record also disappear. Counts
+are scanner records, not unique vulnerabilities; the upstream TLS advisory is
+moderate and its [duplicate HIGH advisory](https://github.com/advisories/GHSA-frj6-5rhh-vwfw)
+was withdrawn. Both report DiffID lists
+match the frozen images. Gateway/DB images were not rescanned. Candidate:
+`numforge-uptime:candidate-nodemailer-20261103`, exact ID
+`sha256:bca7cb0e60e2a885533fc4beaff34b9ca91ccc79a1141e2172837509c7b3ca13`.
+
+The previous → candidate → previous → candidate fixture preserves stored
+users/configuration/history digests, authenticated login, keyword/push up/down
+and runtime protections. Both candidate stages pass all 136 checks. Its owned
+containers, volume and network were verified absent after cleanup. This does
+not establish Windows reboot/login behavior or certify a production deployment.
+
+Primary references: [Nodemailer 10.3.1](https://github.com/nodemailer/nodemailer/releases/tag/v10.3.1),
+[major-version changes](https://github.com/nodemailer/nodemailer/blob/v10.3.1/CHANGELOG.md),
+[raw-access advisory](https://github.com/nodemailer/nodemailer/security/advisories/GHSA-p6gq-j5cr-w38f),
+[HTTPS validation advisory](https://github.com/nodemailer/nodemailer/security/advisories/GHSA-r7g4-qg5f-qqm2),
+[flat-list advisory](https://github.com/nodemailer/nodemailer/security/advisories/GHSA-2x7j-588g-ccc2),
+[free-text advisory](https://github.com/nodemailer/nodemailer/security/advisories/GHSA-v53p-9fqp-m79j).
+Evidence is under ignored `build/security-nodemailer-20261103/`. This candidate
+and the preceding glob candidate have not been promoted to the running pilot.

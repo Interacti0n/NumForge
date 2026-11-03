@@ -91,6 +91,50 @@ if (fs.existsSync('/opt/numforge/monitor-patches.json') || process.env.NUMFORGE_
         f.manifest.directMigrations = [{name: 'body-parser', fromRange: '~0.32.0', version, compatibility}];
         return f;
     }
+    function majorFixture(t, version = '10.3.1', from = '7.0.13') {
+        const f = fixture(t);
+        write(path.join(f.root, 'package.json'), {version: '2.5.9', dependencies: {'body-parser': '~' + from}});
+        write(path.join(f.root, 'node_modules/body-parser/package.json'), {name: 'body-parser', version: from});
+        f.lock.packages['node_modules/body-parser'].version = from;
+        write(path.join(f.root, 'package-lock.json'), f.lock);
+        f.manifest.overrides = {};
+        Object.assign(f.manifest.packages[0], {from, version});
+        f.manifest.directMigrations = [{name: 'body-parser', fromRange: '~' + from, version, compatibility: 'stable-major-upgrade'}];
+        return f;
+    }
+    test('explicit stable major upgrade installs and verifies its exact pinned version', t => {
+        const f = majorFixture(t);
+        guards.prepare(f.root, f.manifest, f.snapshot);
+        write(path.join(f.root, 'node_modules/body-parser/package.json'), {name: 'body-parser', version: '10.3.1', engines: {node: '>=20'}});
+        f.lock.packages['node_modules/body-parser'] = {version: '10.3.1', integrity: 'expected', resolved: 'https://registry.npmjs.org/body-parser/-/body-parser-10.3.1.tgz'};
+        write(path.join(f.root, 'package-lock.json'), f.lock);
+        guards.verify(f.root, f.manifest, f.snapshot);
+        assert.equal(JSON.parse(fs.readFileSync(path.join(f.root, 'package.json'))).dependencies['body-parser'], '10.3.1');
+    });
+    for (const [label, version, from] of [
+        ['a downgrade', '6.9.0', '7.0.13'], ['the same major', '7.1.0', '7.0.13'],
+        ['an unstable source', '10.3.1', '0.9.0'], ['a prerelease target', '10.4.0-beta.1', '7.0.13'],
+        ['a prerelease source', '10.3.1', '7.0.13-beta.1'], ['an invalid target', 'latest', '7.0.13'],
+    ]) {
+        test('stable major upgrade rejects ' + label + ' before writing', t => {
+            const f = majorFixture(t, version, from);
+            const before = fs.readFileSync(path.join(f.root, 'package.json'));
+            assert.throws(() => guards.prepare(f.root, f.manifest, f.snapshot), /forward between stable majors/);
+            assert.deepEqual(fs.readFileSync(path.join(f.root, 'package.json')), before);
+        });
+    }
+    test('explicit major policy cannot bypass a second consumer range', t => {
+        const f = majorFixture(t);
+        write(path.join(f.root, 'node_modules/other/package.json'), {name: 'other', version: '1.0.0', dependencies: {'body-parser': '~7.0.13'}});
+        assert.throws(() => guards.prepare(f.root, f.manifest, f.snapshot), /Unsupported range/);
+    });
+    test('guard rejects a pinned package requiring an unsupported Node runtime', t => {
+        const f = fixture(t);
+        guards.prepare(f.root, f.manifest, f.snapshot);
+        f.install();
+        write(path.join(f.root, 'node_modules/body-parser/package.json'), {name: 'body-parser', version: '1.20.9', engines: {node: '>=999'}});
+        assert.throws(() => guards.verify(f.root, f.manifest, f.snapshot), /Unsupported Node runtime/);
+    });
     test('qualified legacy migration installs and verifies an exact forward 0.x pin', t => {
         const f = legacyFixture(t);
         guards.prepare(f.root, f.manifest, f.snapshot);

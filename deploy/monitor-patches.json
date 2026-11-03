@@ -2,6 +2,12 @@
   "upstreamVersion": "2.5.9",
   "directMigrations": [
     {
+      "name": "nodemailer",
+      "fromRange": "~7.0.13",
+      "version": "10.3.1",
+      "compatibility": "stable-major-upgrade"
+    },
+    {
       "name": "axios",
       "fromRange": "~0.32.0",
       "version": "0.34.0",
@@ -102,6 +108,14 @@
     }
   },
   "packages": [
+    {
+      "name": "nodemailer",
+      "from": "7.0.13",
+      "version": "10.3.1",
+      "before": "node_modules/nodemailer",
+      "after": "node_modules/nodemailer",
+      "integrity": "sha512-uF0AFsJC07Y1vdW7p580DKAnh7rAO+4UPSSB3mDCPNDufoiaOebV6JmrzpxB14OjEEEiBsNdYoM2Y+fN8M7BBA=="
+    },
     {
       "name": "glob",
       "from": "10.3.16",
