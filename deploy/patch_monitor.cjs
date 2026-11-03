@@ -8,6 +8,24 @@ const read = file => JSON.parse(fs.readFileSync(file, 'utf8'));
 const hash = file => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 const archiveUrl = entry => `https://registry.npmjs.org/${entry.name}/-/${entry.name.split('/').at(-1)}-${entry.version}.tgz`;
 
+function dependencyOwner(manifest, name) {
+    const pinned = manifest.packages.find(p => p.name === name);
+    if (pinned) return pinned;
+    const owners = (manifest.addedDependencies || []).filter(p => p.name === name);
+    assert.equal(owners.length, 1, `Added dependency owner is missing or ambiguous: ${name}`);
+    return {...owners[0], after: owners[0].path};
+}
+
+function migrationRoot(manifest, name) {
+    const seen = new Set();
+    while (!manifest.packages.some(p => p.name === name)) {
+        assert(!seen.has(name), 'Added dependency ownership cycle');
+        seen.add(name);
+        name = dependencyOwner(manifest, name).addedBy;
+    }
+    return name;
+}
+
 function inventory(root) {
     const lock = read(path.join(root, 'package-lock.json'));
     const installed = {};
@@ -89,14 +107,25 @@ function prepare(root, manifest, snapshot) {
         assert.equal(before[migration.consumer].version, migration.consumerVersion, 'Upstream consumer version changed');
         assert.equal(before[migration.consumer].integrity, migration.consumerIntegrity, 'Upstream consumer integrity changed');
         const patch = manifest.packages.find(p => p.name === migration.name && p.version === migration.version);
-        assert(patch && semver.major(patch.from) > 0 && semver.major(patch.from) === semver.major(patch.version),
-            'Consumer migration must identify a pin within the same stable major');
+        assert(patch, 'Consumer migration must identify an exact pin');
+        if (migration.compatibility === undefined) {
+            assert(semver.major(patch.from) > 0 && semver.major(patch.from) === semver.major(patch.version),
+                'Consumer migration must identify a pin within the same stable major');
+        } else {
+            assert.equal(migration.compatibility, 'stable-major-upgrade', 'Unknown consumer compatibility policy');
+            assert(manifest.directMigrations?.some(m => m.name === patch.name && m.version === patch.version &&
+                m.compatibility === 'stable-major-upgrade'), 'Consumer major upgrade requires the same qualified direct migration');
+            assert(!migration.dependencyRefresh, 'Direct major migration must let npm reify dependencies');
+        }
         assert.equal(patch.before, patch.after, 'Consumer lock refresh requires an unchanged install path');
         const target = path.resolve(root, patch.before);
         assert(target.startsWith(path.join(root, 'node_modules') + path.sep));
         assert(fs.lstatSync(target).isDirectory() && !fs.lstatSync(target).isSymbolicLink());
         const leaf = read(path.join(target, 'package.json'));
-        if (migration.dependencyRefresh) {
+        if (migration.compatibility === 'stable-major-upgrade') {
+            // npm reifies this explicitly qualified root migration itself. Do
+            // not remove its nested packages through the consumer lock refresh.
+        } else if (migration.dependencyRefresh) {
             assert.deepEqual(leaf.dependencies, migration.dependencyRefresh.from, 'Upstream refreshed dependencies changed');
             assert(!Object.keys(leaf.optionalDependencies || {}).length, 'Dependency refresh cannot change optional dependencies');
             assert(!fs.existsSync(path.join(target, 'node_modules')), 'Dependency refresh cannot remove nested packages');
@@ -135,17 +164,40 @@ function prepare(root, manifest, snapshot) {
     }
     const additions = new Set();
     for (const added of manifest.addedDependencies || []) {
-        const owner = manifest.packages.find(p => p.name === added.addedBy);
+        const owner = dependencyOwner(manifest, added.addedBy);
         const rootPath = `node_modules/${added.name}`;
         const ownerPath = owner && `${owner.after}/node_modules/${added.name}`;
         assert(added.path === rootPath || added.path === ownerPath, 'Added dependency must use its exact root or owner path');
         assert(!additions.has(added.path), `Duplicate added dependency: ${added.name}`);
         additions.add(added.path);
-        assert(!before[added.path] && !fs.existsSync(path.join(root, added.path)), `Added dependency already exists: ${added.name}`);
-        assert(manifest.directMigrations?.some(m => m.name === added.addedBy) ||
-            manifest.consumerMigrations?.some(m => m.name === added.addedBy && m.dependencyRefresh),
+        if (added.replaces) {
+            assert(added.path === ownerPath && manifest.directMigrations?.some(m =>
+                m.name === added.addedBy && m.compatibility === 'stable-major-upgrade'),
+                'Replacement requires an owner-local dependency of an explicit major migration');
+            assert.equal(before[added.path]?.version, added.replaces.version, 'Replaced dependency version changed');
+            assert.equal(before[added.path]?.integrity, added.replaces.integrity, 'Replaced dependency integrity changed');
+            assert.notEqual(added.version, added.replaces.version, 'Replacement must change the installed version');
+            assert(!fs.existsSync(path.join(root, added.path, 'node_modules')), 'Replacement cannot remove nested packages');
+            const parent = read(path.join(root, owner.before, 'package.json'));
+            assert(parent.dependencies?.[added.name], 'Replacement was not an original owner dependency');
+            assert.equal(resolvePackage(root, owner.before, added.name), added.path, 'Unexpected replacement resolution');
+            for (const location of ['', ...Object.keys(before)]) {
+                const parent = read(path.join(root, location, 'package.json'));
+                const range = {...parent.dependencies, ...parent.optionalDependencies}[added.name];
+                if (range && resolvePackage(root, location, added.name) === added.path) {
+                    assert.equal(location, owner.before, 'Replacement has another installed consumer');
+                }
+            }
+        } else {
+            assert(!before[added.path] && !fs.existsSync(path.join(root, added.path)), `Added dependency already exists: ${added.name}`);
+        }
+        const rootOwner = migrationRoot(manifest, added.addedBy);
+        assert(manifest.directMigrations?.some(m => m.name === rootOwner) ||
+            manifest.consumerMigrations?.some(m => m.name === rootOwner && m.dependencyRefresh),
             `Added dependency must belong to an explicit migration: ${added.name}`);
-        const pin = added.path === rootPath ? manifest.overrides[added.name] : manifest.overrides[added.addedBy]?.[added.name];
+        const ownerOverrides = manifest.overrides[added.addedBy] ?? manifest.overrides[`${added.addedBy}@${owner.version}`];
+        const override = added.path === rootPath ? manifest.overrides[added.name] : ownerOverrides?.[added.name];
+        const pin = typeof override === 'object' ? override['.'] : override;
         assert.equal(pin, added.version, 'Added dependency must be pinned exactly');
     }
     for (const pruned of manifest.prunedDependencies || []) {
@@ -187,6 +239,7 @@ function prepare(root, manifest, snapshot) {
     // its registry archive; never unlock the rest of the dependency tree.
     const refreshed = new Set();
     for (const migration of manifest.consumerMigrations || []) {
+        if (migration.compatibility === 'stable-major-upgrade') continue;
         const patch = manifest.packages.find(p => p.name === migration.name);
         if (refreshed.has(patch.before)) continue;
         refreshed.add(patch.before);
@@ -260,11 +313,15 @@ function verify(root, manifest, snapshot) {
     }
     for (const added of manifest.addedDependencies || []) {
         allowed.add(added.path);
-        assert(!before[added.path], `Added dependency already existed: ${added.name}`);
-        assert.equal(after[added.path]?.version, added.version, `Added dependency not installed: ${added.name}`);
+        if (added.replaces) {
+            assert.equal(before[added.path]?.version, added.replaces.version, 'Replaced dependency version changed');
+            assert.equal(before[added.path]?.integrity, added.replaces.integrity, 'Replaced dependency integrity changed');
+        } else assert(!before[added.path], `Added dependency already existed: ${added.name}`);
+        assert.equal(after[added.path]?.version, added.version,
+            `Added dependency not installed at ${added.path}; found: ${Object.keys(after).filter(p => p.endsWith('/' + added.name)).join(', ')}`);
         assert.equal(after[added.path].integrity, added.integrity, `Unexpected archive integrity: ${added.name}`);
         assert.equal(lock.packages[added.path].resolved, archiveUrl(added));
-        const owner = manifest.packages.find(p => p.name === added.addedBy);
+        const owner = dependencyOwner(manifest, added.addedBy);
         const range = read(path.join(root, owner.after, 'package.json')).dependencies?.[added.name];
         assert(range && semver.satisfies(added.version, range), `Added dependency not required by migrated owner: ${added.name}`);
         assert.equal(resolvePackage(root, owner.after, added.name), added.path);
@@ -274,7 +331,11 @@ function verify(root, manifest, snapshot) {
         assert(!after[pruned.path], `Unused upstream dependency remains: ${pruned.name}`);
         for (const location of ['', ...Object.keys(after)]) {
             const parent = read(path.join(root, location, 'package.json'));
-            assert(!parent.dependencies?.[pruned.name], `Removed package still required: ${location} -> ${pruned.name}`);
+            const range = {...parent.dependencies, ...parent.optionalDependencies}[pruned.name];
+            if (!range) continue;
+            const resolved = resolvePackage(root, location, pruned.name);
+            assert(resolved !== pruned.path && semver.satisfies(after[resolved]?.version,
+                consumerRange(manifest, location, pruned.name, range)), `Removed package still required: ${location} -> ${pruned.name}`);
         }
     }
     for (const location of new Set([...Object.keys(before), ...Object.keys(after)])) {

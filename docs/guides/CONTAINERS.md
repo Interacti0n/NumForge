@@ -959,3 +959,87 @@ Primary references: [Nodemailer 10.3.1](https://github.com/nodemailer/nodemailer
 [free-text advisory](https://github.com/nodemailer/nodemailer/security/advisories/GHSA-v53p-9fqp-m79j).
 Evidence is under ignored `build/security-nodemailer-20261103/`. This candidate
 and the preceding glob candidate have not been promoted to the running pilot.
+
+### Node-tar major compatibility migration — qualified candidate
+
+The next candidate migrates direct `tar` 6.2.1 (`~6.2.1`) to exact **7.5.22**.
+It also explicitly qualifies the original 6.x ranges of SQLite 15.1.6,
+node-pre-gyp 1.0.11, cacache 15.3.0 and node-gyp 8.4.1. Each consumer's original
+range, version and archive integrity is checked; its package metadata stays
+unchanged. A consumer major migration requires the matching explicit direct
+`stable-major-upgrade` policy. npm handles that root package's dependency tree;
+the leaf-only consumer lock refresh is not used for these major migrations.
+
+New helper identities and paths are pinned with registry SHA512:
+
+| Package | Version | Installed under |
+| --- | --- | --- |
+| chownr | 3.0.0 | tar |
+| yallist | 5.0.0 | tar |
+| minizlib | 3.1.0 | tar |
+| minipass | 7.1.3 | tar, and the new fs-minipass |
+| @isaacs/fs-minipass | 4.0.1 | root |
+
+The old tar-local minipass 5.0.0 is replaced only after checking its exact old
+version/integrity, original owner resolution, absence of nested packages and
+absence of other installed consumers. Other additions must be absent initially.
+Transitive additions must trace to an explicit migration, with unambiguous
+owners and no cycles. Final verification checks exact target paths/archives,
+required ranges and dependency closure. Root chownr 2.0.0, minipass 3.3.6,
+minizlib 2.1.2, yallist 4.0.0 and mkdirp 1.0.4 retain their original consumers.
+Version-qualified `tar@7.5.22` helper overrides prevent the old tar graph from
+redirecting legacy helper dependencies during npm reification. Unrelated
+installed package versions, integrity and metadata must remain unchanged.
+No new Kuma source patch is introduced; lifecycle scripts remain disabled.
+
+Fourteen new guard checks cover major consumer policies, scoped replacements,
+preserved nested/shared packages, exact pins, transitive ownership/cycles and
+safe pruning when a dependency name remains at a compatible location. Thirteen
+archive checks use independently encoded USTAR bytes and temporary sentinel
+files. They cover gzip/file/stream listing and extraction, strip, Unicode, safe
+links, hardlink traversal in sync/async modes, parent traversal and a symlink
+pivot. Bounded children check deep GNU long-name member selection and negative
+base-256 sizes during replacement; the latter may be sanitized or rejected,
+but must terminate and preserve successful append behavior.
+
+A bounded 16 MiB zero-filled fixture exercises the default decompression-ratio
+guard without extracting to disk. A smaller fixture tests an explicit ratio
+limit through both `tar` and `tar/raw`. This is not a total disk, entry-count or
+CPU budget: low-ratio or uncompressed archives still need caller-side resource
+limits, size filters and trusted extraction directories. The fixed library is
+not a general archive sandbox. The real SQLite synchronous extraction script,
+node-pre-gyp's local dummy binary installation and node-gyp's local header
+installation pass, including strip/filter behavior and completion metadata.
+No binary is downloaded, compiled or installed into the real SQLite module.
+
+The candidate passes **163 checks**. The preceding Nodemailer image passes 156
+and fails seven: the version/resolution assertion, both escaping-hardlink cases,
+deep-path stack overflow, negative-size replacement deadline and both ratio
+guards. Standalone comparisons use network-disabled, read-only containers with
+temporary files only. These tests do not certify Windows archive semantics,
+every platform installer or every archive race; the GNU tar OS package is a
+separate scanner component and is not changed by this npm migration.
+
+Matched Trivy 0.76.1 scans on 3 November use the database updated 2 November at
+13:15:56 UTC. Fixable HIGH/CRITICAL records fall **10 → 1**, removing eight HIGH
+and one CRITICAL tar record, with none added. Three MEDIUM records also disappear.
+All HIGH/CRITICAL including unfixed findings move from 82/6 to 74/5; the sole
+remaining fixable record is in `@azure/msal-node`. Counts are package findings,
+not unique vulnerabilities or proof of a reachable Kuma exploit. Both report
+DiffID lists match the frozen images; gateway/DB images were not rescanned.
+Candidate: `numforge-uptime:candidate-tar-20261103`, exact ID
+`sha256:f9b7a0e72186bce9619cb8dcec1ae8b832f8778576278572c3ce3c85587a0e46`.
+
+The previous → candidate → previous → candidate fixture preserves stored
+users/configuration/history digests, authenticated login, keyword/push up/down
+and runtime protections. Both candidate stages pass all 163 checks. Its owned
+containers, volume and network were verified absent after cleanup. This does
+not establish Windows reboot/login behavior or certify a production deployment.
+
+Primary references: [tar 7.5.22](https://github.com/isaacs/node-tar/releases/tag/v7.5.22),
+[hardlink advisory](https://github.com/isaacs/node-tar/security/advisories/GHSA-34x7-hfp2-rc4v),
+[long-path advisory](https://github.com/isaacs/node-tar/security/advisories/GHSA-r292-9mhp-454m),
+[decompression advisory](https://github.com/isaacs/node-tar/security/advisories/GHSA-23hp-3jrh-7fpw),
+[upstream extraction guidance](https://github.com/isaacs/node-tar#readme).
+Evidence is under ignored `build/security-tar-20261103/`. This candidate and the
+preceding glob/Nodemailer candidates have not been promoted to the running pilot.
