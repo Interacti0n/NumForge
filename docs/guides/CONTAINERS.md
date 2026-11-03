@@ -603,7 +603,7 @@ Windows reboot/login remains unverified.
 
 ### MySQL authentication and packet compatibility migration
 
-The next recipe changes Kuma's direct `mysql2 ~3.11.5` range to exact 3.23.1.
+The current recipe changes Kuma's direct `mysql2 ~3.11.5` range to exact 3.23.1.
 This includes the clear-password authentication gate and the compressed-packet
 output bound. The new SQL escaper is pinned to 1.5.1; iconv-lite 0.7.2 is installed
 only under mysql2, while Kuma and other consumers retain root iconv-lite 0.6.3.
@@ -661,3 +661,26 @@ user/configuration/history digest, authenticated login, keyword/push up/down
 behavior and runtime protections. Both candidate stages pass all 62 checks.
 The monitor fixture and the separate real MySQL container/network are removed.
 The pilot gateway/PostgreSQL images were not rescanned.
+
+The qualified image was deployed on 3 November 2026 as
+`numforge-uptime:mysql-20261103`, exact ID
+`sha256:a6d1dc00b403c1943ed71bc62258266138b818730998dc8b16c71ec7d250ce8b`,
+from source commit `e01676d`. Only monitoring was recreated under the supervisor
+lock. Web/accounts/PostgreSQL/gateway container identities and the owned public
+tunnel/URL stayed unchanged. Live MySQL, SQL escaper, isolated/root charset and
+all previous patched versions/sharing, receipt and gRPC source hash matched the
+candidate. Full stored users/monitor settings and retained heartbeat history
+matched the pre-change copy. Six monitors were up with fresh non-push checks;
+local/public HTTPS and runtime protections passed.
+
+Before and after promotion, standard account/configuration/Git backups and
+separately tagged consistent monitor snapshots in the existing external encrypted
+repository passed byte-for-byte restore, SQLite integrity/stored-state checks,
+repository checks and comparison of all eleven account tables/rows. All four
+restore points were retained at completion with the existing retention supplement.
+Daily standard retention may later rotate standard snapshots; the daily job still
+does not refresh monitor SQLite. Records are in `build/security-mysql-20261103/`.
+A later normal supervisor Ensure check preserved the new monitor image, all
+other service identities and public URL. Five services were healthy, six monitors
+were up and both owned fixtures' containers/networks (plus the monitor test
+volume) were verified absent. Windows reboot/login remains unverified.
