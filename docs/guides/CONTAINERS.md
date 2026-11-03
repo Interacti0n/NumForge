@@ -368,7 +368,7 @@ network were verified removed. These checks do not establish Windows reboot beha
 
 ### Liquid notification-template compatibility migration
 
-The next recipe pins `liquidjs` 10.27.2, explicitly migrating Kuma's direct
+The current recipe pins `liquidjs` 10.27.2, explicitly migrating Kuma's direct
 `~10.26.0` range within the same stable major. This is the smallest release that
 contains all three targeted HIGH fixes: the `strip_html` infinite loop and the
 `pop`/`join` memory-accounting bypasses. Later releases exist; this candidate does
@@ -416,3 +416,27 @@ user/configuration/history digest, authenticated login, keyword/push up/down
 behavior and runtime protections; both candidate stages pass all 26 checks.
 The owned test containers, volume and network are removed by the fixture.
 Gateway/DB images were not rescanned for this change.
+
+The qualified image was deployed on 3 November 2026 as
+`numforge-uptime:liquid-20261103`, exact ID
+`sha256:de10ae1e722d9fc7e10746a851fa81fd99645423fa90459d30fee92d4831791f`,
+from source commit `d7b736d`. Only monitoring was recreated under the supervisor
+lock. Web/accounts/PostgreSQL/gateway container identities and the owned public
+tunnel/URL stayed unchanged. The live Liquid/protobuf versions, complete patch
+receipt and adapted gRPC source hash matched the candidate. Full stored
+users/monitor settings and retained heartbeat history matched the pre-change
+copy. All six monitors were up with fresh non-push heartbeats; local/public HTTPS
+and non-root/read-only/loopback/capability protections passed.
+
+Before and after promotion, standard account/configuration/Git backups and
+separately tagged consistent monitor snapshots in the existing external encrypted
+repository passed byte-for-byte restore, SQLite integrity/stored-state checks,
+repository checks and comparison of all eleven account tables/rows. All four
+restore points were retained at completion with the same retention supplement
+as the preceding updates. Daily standard retention may subsequently rotate those
+standard snapshots; the daily job still does not refresh monitor SQLite.
+Deployment and backup records are in `build/security-liquid-20261103/`.
+A subsequent normal supervisor Ensure check preserved the new monitor image,
+the other service identities and the public URL. All five services were healthy,
+all six monitors were up and no containers/volumes/networks from the owned test
+project remained. This does not establish Windows reboot/login behavior.
