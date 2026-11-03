@@ -79,6 +79,63 @@ if (fs.existsSync('/opt/numforge/monitor-patches.json') || process.env.NUMFORGE_
         f.manifest.directMigrations = [{name: 'body-parser', fromRange: '~1.20.5', version: '1.20.9'}];
         assert.throws(() => guards.prepare(f.root, f.manifest, f.snapshot), /Unsupported range/);
     });
+
+    function consumerFixture(t) {
+        const f = fixture(t);
+        write(path.join(f.root, 'node_modules/other/package.json'), {name: 'other', version: '1.0.0', dependencies: {'body-parser': '1.20.8'}});
+        const migration = {consumer: 'node_modules/other', consumerVersion: '1.0.0', consumerIntegrity: 'other',
+            name: 'body-parser', fromRange: '1.20.8', version: '1.20.9'};
+        f.manifest.consumerMigrations = [migration];
+        f.manifest.overrides.other = {'body-parser': '1.20.9'};
+        return {...f, migration};
+    }
+    test('explicit consumer migration preserves owner metadata and uses its exact scoped pin', t => {
+        const f = consumerFixture(t);
+        guards.prepare(f.root, f.manifest, f.snapshot);
+        f.install();
+        guards.verify(f.root, f.manifest, f.snapshot);
+    });
+    test('consumer migration rejects changed upstream version, integrity or range before writing', t => {
+        const f = consumerFixture(t);
+        const file = path.join(f.root, 'package.json');
+        const before = fs.readFileSync(file);
+        for (const [key, invalid] of [['consumerVersion', '2.0.0'], ['consumerIntegrity', 'changed'], ['fromRange', '~1.20.0']]) {
+            const original = f.migration[key]; f.migration[key] = invalid;
+            assert.throws(() => guards.prepare(f.root, f.manifest, f.snapshot), /consumer (version|integrity|range) changed/);
+            assert.deepEqual(fs.readFileSync(file), before);
+            f.migration[key] = original;
+        }
+    });
+    test('consumer migration cannot authorize a major jump', t => {
+        const f = consumerFixture(t);
+        f.manifest.packages[0].version = f.migration.version = '2.0.0';
+        f.manifest.overrides.other['body-parser'] = '2.0.0';
+        assert.throws(() => guards.prepare(f.root, f.manifest, f.snapshot), /same stable major/);
+    });
+    test('consumer migration rejects an incorrect scoped pin', t => {
+        const f = consumerFixture(t);
+        f.manifest.overrides.other['body-parser'] = '1.20.8';
+        assert.throws(() => guards.prepare(f.root, f.manifest, f.snapshot), /requires an exact override/);
+    });
+    test('consumer lock refresh rejects packages with runtime dependencies', t => {
+        const f = consumerFixture(t);
+        write(path.join(f.root, 'node_modules/body-parser/package.json'), {name: 'body-parser', version: '1.20.8', dependencies: {other: '^1.0.0'}});
+        assert.throws(() => guards.prepare(f.root, f.manifest, f.snapshot), /limited to leaf packages/);
+    });
+    test('consumer migration cannot bypass a different consumer range', t => {
+        const f = consumerFixture(t);
+        write(path.join(f.root, 'node_modules/third/package.json'), {name: 'third', version: '1.0.0', dependencies: {'body-parser': '1.20.8'}});
+        f.lock.packages['node_modules/third'] = {version: '1.0.0', integrity: 'third'};
+        write(path.join(f.root, 'package-lock.json'), f.lock);
+        assert.throws(() => guards.prepare(f.root, f.manifest, f.snapshot), /Unsupported range/);
+    });
+    test('consumer migration rejects a changed owner after installation', t => {
+        const f = consumerFixture(t);
+        guards.prepare(f.root, f.manifest, f.snapshot);
+        f.install();
+        write(path.join(f.root, 'node_modules/other/package.json'), {name: 'other', version: '1.0.0', dependencies: {'body-parser': '1.20.8'}, changed: true});
+        assert.throws(() => guards.verify(f.root, f.manifest, f.snapshot), /Migrated consumer metadata changed/);
+    });
     test('guard rejects a different archive integrity', t => {
         const f = fixture(t);
         guards.prepare(f.root, f.manifest, f.snapshot);

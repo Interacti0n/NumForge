@@ -78,7 +78,8 @@
     "redbean-node": {
       "glob": {
         "minimatch": "9.0.9"
-      }
+      },
+      "lodash": "4.18.1"
     },
     "sql-escaper": "1.5.1",
     "mysql2": {
@@ -86,6 +87,14 @@
     }
   },
   "packages": [
+    {
+      "name": "lodash",
+      "from": "4.17.23",
+      "version": "4.18.1",
+      "before": "node_modules/redbean-node/node_modules/lodash",
+      "after": "node_modules/redbean-node/node_modules/lodash",
+      "integrity": "sha512-dMInicTPVE8d1e5otfwmmjlxkZoUpiVLwyeTdUsi/Caj/gfzzblBcCE5sRHV/AsjuCmxWrte2TNGSYuCeCq+0Q=="
+    },
     {
       "name": "mysql2",
       "from": "3.11.5",
@@ -181,6 +190,16 @@
       "to": "node_modules/ws",
       "version": "8.21.3",
       "integrity": "sha512-201TZ/kPWxoPr/OKWjquZR1SWKXcvxdH+e1xrx89b3YbmzLMFCLfnaG1HFIgWzJOEWZ7MvpK++odZufgYR50Rw=="
+    }
+  ],
+  "consumerMigrations": [
+    {
+      "consumer": "node_modules/redbean-node",
+      "consumerVersion": "0.3.3",
+      "consumerIntegrity": "sha512-0J59/QlShdWs1h0lsFHRfb8NwjvgIYTQKwYrvq6FykRmeX1cG2u8AgHEIRVBrm56mtKLRASVy/8ykk6fSntLdw==",
+      "name": "lodash",
+      "fromRange": "~4.17.21",
+      "version": "4.18.1"
     }
   ]
 }

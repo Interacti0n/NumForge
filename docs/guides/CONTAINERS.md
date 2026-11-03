@@ -684,3 +684,54 @@ A later normal supervisor Ensure check preserved the new monitor image, all
 other service identities and public URL. Five services were healthy, six monitors
 were up and both owned fixtures' containers/networks (plus the monitor test
 volume) were verified absent. Windows reboot/login remains unverified.
+
+### Nested Lodash consumer compatibility migration
+
+The next recipe updates only redbean-node's nested Lodash 4.17.23 to exact 4.18.1.
+The root Lodash was already 4.18.1 and remains unchanged. RedBean 0.3.3 declares
+`~4.17.21`; its exact scoped override is therefore an explicit, tested consumer
+minor migration. Root Knex 3.1.0 and nested Knex 2.4.2 retain their versions.
+No additional Kuma source adaptation is applied.
+
+The manifest records the consumer path, original version, registry integrity and
+declared range, plus the pinned target archive SHA512. The build guard permits
+this exception only within the same stable major and for that exact consumer.
+Other consumers still need compatible declared ranges. The owner package's full
+installed metadata must remain unchanged after installation and resolve the
+qualified target. Seven new guard regressions cover the accepted migration,
+changed upstream metadata/range, wrong pin, major jump, non-leaf package, another
+incompatible consumer and owner metadata changes after installation.
+
+An added scoped override alone left the old nested archive installed. Rejected
+build logs are retained. After all preflight checks, the final recipe refreshes
+only that explicitly qualified leaf's lock entry and removes its verified old
+directory so npm reifies the pinned registry archive. It leaves other lock entries
+locked, uses no lifecycle scripts, and validates the resulting actual package,
+archive integrity and unrelated installed packages. The owner and root Lodash
+metadata stay unchanged. Unrestricted dependency updates are not used.
+
+Seventy-six checks include seven new Lodash tests and the seven guard regressions.
+The old nested library executes a benign global marker from a template import
+key; the candidate rejects it before execution. Inherited imports are excluded,
+array-wrapped paths cannot delete constructor prototype properties, and modular
+template/fromPairs helpers preserve safe output/prototype behavior. Both actual
+RedBean/SQLite paths, using root and nested Knex, preserve schema/bindings,
+Unicode/JSON CRUD, commit/rollback, unique-constraint error recovery and deletion.
+The original image fails five checks; the candidate passes all 76. These bounded
+checks do not establish a general template sandbox. Prior limitations remain.
+
+Primary references: [template imports advisory](https://github.com/lodash/lodash/security/advisories/GHSA-r5fr-rjxr-66jc),
+[4.18.1 published modular-build fix](https://github.com/lodash/lodash/releases/tag/4.18.1),
+[npm scoped overrides](https://docs.npmjs.com/cli/v11/configuring-npm/package-json/#overrides).
+Raw evidence is under ignored `build/security-lodash-20261103/`, including rejected
+builds, exact installed-version checks, red/green tests, scans and lifecycle logs.
+
+Matched Trivy 0.76.1 scans using the database updated 2 November 2026 at
+13:15:56 UTC report **18 → 17 fixable HIGH/CRITICAL records**. HIGH
+CVE-2026-4800 and the array-path MEDIUM record are removed; no new fixable
+HIGH/CRITICAL record is added. All HIGH/CRITICAL records including unfixed findings
+move from 90/6 to 89/6. Both scan DiffID lists match the frozen images. The previous
+→ candidate → previous → candidate fixture preserves stored user/configuration/
+history hashes, authenticated login, keyword/push up/down and runtime protections.
+Both candidate stages pass all 76 checks. Its containers, volume and network are
+removed afterward. The gateway/PostgreSQL images were not rescanned.

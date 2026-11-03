@@ -50,6 +50,13 @@ function configuredPackage(original, manifest, semver) {
     return configured;
 }
 
+function consumerRange(manifest, location, name, original) {
+    const migration = (manifest.consumerMigrations || []).find(m => m.consumer === location && m.name === name);
+    if (!migration) return original;
+    assert.equal(original, migration.fromRange, `Upstream consumer range changed: ${location} -> ${name}`);
+    return migration.version;
+}
+
 function prepare(root, manifest, snapshot) {
     const packageFile = path.join(root, 'package.json');
     const original = read(packageFile);
@@ -60,6 +67,30 @@ function prepare(root, manifest, snapshot) {
         assert.equal(hash(path.join(root, patch.path)), patch.beforeHash, `Upstream source changed: ${patch.path}`);
     }
     const before = inventory(root);
+    const consumerKeys = new Set();
+    for (const migration of manifest.consumerMigrations || []) {
+        const key = migration.consumer + ':' + migration.name;
+        assert(!consumerKeys.has(key), `Duplicate consumer migration: ${key}`);
+        consumerKeys.add(key);
+        assert(migration.consumer && before[migration.consumer], `Missing migrated consumer: ${migration.consumer}`);
+        assert.equal(before[migration.consumer].version, migration.consumerVersion, 'Upstream consumer version changed');
+        assert.equal(before[migration.consumer].integrity, migration.consumerIntegrity, 'Upstream consumer integrity changed');
+        const patch = manifest.packages.find(p => p.name === migration.name && p.version === migration.version);
+        assert(patch && semver.major(patch.from) > 0 && semver.major(patch.from) === semver.major(patch.version),
+            'Consumer migration must identify a pin within the same stable major');
+        assert.equal(patch.before, patch.after, 'Consumer lock refresh requires an unchanged install path');
+        const target = path.resolve(root, patch.before);
+        assert(target.startsWith(path.join(root, 'node_modules') + path.sep));
+        assert(fs.lstatSync(target).isDirectory() && !fs.lstatSync(target).isSymbolicLink());
+        const leaf = read(path.join(target, 'package.json'));
+        assert(!Object.keys({...leaf.dependencies, ...leaf.optionalDependencies}).length,
+            'Consumer lock refresh is limited to leaf packages');
+        const parent = read(path.join(root, migration.consumer, 'package.json'));
+        assert.equal(parent.dependencies?.[migration.name], migration.fromRange, 'Upstream consumer range changed');
+        assert.equal(resolvePackage(root, migration.consumer, migration.name), patch.before, 'Unexpected consumer resolution');
+        const pin = manifest.overrides[parent.name]?.[migration.name] ?? manifest.overrides[migration.name];
+        assert.equal(pin, migration.version, 'Consumer migration requires an exact override');
+    }
     const deduplicated = {};
     for (const shared of manifest.deduplicatedDependencies || []) {
         assert(!Object.hasOwn(deduplicated, shared.from), `Duplicate shared package: ${shared.from}`);
@@ -114,8 +145,9 @@ function prepare(root, manifest, snapshot) {
         for (const location of ['', ...Object.keys(before)]) {
             const parent = read(path.join(root, location, 'package.json'));
             const consumer = location === '' ? configured : parent;
-            const range = { ...consumer.dependencies, ...consumer.optionalDependencies }[patch.name];
-            if (!range || resolvePackage(root, location, patch.name) !== patch.before) continue;
+            const originalRange = { ...consumer.dependencies, ...consumer.optionalDependencies }[patch.name];
+            if (!originalRange || resolvePackage(root, location, patch.name) !== patch.before) continue;
+            const range = consumerRange(manifest, location, patch.name, originalRange);
             assert(semver.satisfies(patch.version, range), `Unsupported range ${range}: ${location} -> ${patch.name}`);
             consumers++;
         }
@@ -126,6 +158,29 @@ function prepare(root, manifest, snapshot) {
     }
     fs.writeFileSync(snapshot, JSON.stringify({ before, original, omissions, deduplicated }));
     fs.writeFileSync(packageFile, JSON.stringify(configured, null, 2) + '\n');
+    // npm can retain a previously locked nested version after adding a scoped
+    // override. Seed only the explicitly qualified leaf pin and reify it from
+    // its registry archive; never unlock the rest of the dependency tree.
+    const refreshed = new Set();
+    for (const migration of manifest.consumerMigrations || []) {
+        const patch = manifest.packages.find(p => p.name === migration.name);
+        if (refreshed.has(patch.before)) continue;
+        refreshed.add(patch.before);
+        const target = path.resolve(root, patch.before);
+        assert.equal(hash(path.join(target, 'package.json')), before[patch.before].packageHash);
+        lock.packages[patch.before] = {...lock.packages[patch.before], version: patch.version,
+            resolved: archiveUrl(patch), integrity: patch.integrity};
+        fs.rmSync(target, {recursive: true});
+    }
+    if (refreshed.size) {
+        fs.writeFileSync(path.join(root, 'package-lock.json'), JSON.stringify(lock, null, 2) + '\n');
+        const hiddenFile = path.join(root, 'node_modules/.package-lock.json');
+        if (fs.existsSync(hiddenFile)) {
+            const hidden = read(hiddenFile);
+            for (const location of refreshed) delete hidden.packages[location];
+            fs.writeFileSync(hiddenFile, JSON.stringify(hidden, null, 2) + '\n');
+        }
+    }
 }
 
 function verify(root, manifest, snapshot) {
@@ -153,6 +208,13 @@ function verify(root, manifest, snapshot) {
     const current = read(path.join(root, 'package.json'));
     const semver = require(path.join(root, 'node_modules/semver'));
     assert.deepEqual(current, configuredPackage(original, manifest, semver));
+    for (const migration of manifest.consumerMigrations || []) {
+        assert.deepEqual(after[migration.consumer], before[migration.consumer], 'Migrated consumer metadata changed');
+        const patch = manifest.packages.find(p => p.name === migration.name);
+        assert.equal(resolvePackage(root, migration.consumer, migration.name), patch.after, 'Migrated consumer resolution changed');
+        const range = read(path.join(root, migration.consumer, 'package.json')).dependencies?.[migration.name];
+        assert.equal(consumerRange(manifest, migration.consumer, migration.name, range), patch.version);
+    }
     const allowed = new Set(manifest.packages.flatMap(p => [p.before, p.after]));
     for (const shared of manifest.deduplicatedDependencies || []) {
         allowed.add(shared.from);
