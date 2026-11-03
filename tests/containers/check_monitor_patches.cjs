@@ -150,6 +150,50 @@ if (fs.existsSync('/opt/numforge/monitor-patches.json') || process.env.NUMFORGE_
         assert.throws(() => guards.verify(f.root, f.manifest, f.snapshot), /Unrelated package changed/);
     });
 
+    function sharedFixture(t) {
+        const f = fixture(t);
+        const shared = {name: 'body-parser', from: 'node_modules/other/node_modules/body-parser', to: 'node_modules/body-parser', version: '1.20.9', integrity: 'expected'};
+        f.manifest.deduplicatedDependencies = [shared];
+        write(path.join(f.root, 'node_modules/other/package.json'), {name: 'other', version: '1.0.0', dependencies: {'body-parser': '~1.20.0'}});
+        write(path.join(f.root, shared.from, 'package.json'), {name: 'body-parser', version: '1.20.9'});
+        f.lock.packages[shared.from] = {version: '1.20.9', integrity: 'expected', resolved: 'https://registry.npmjs.org/body-parser/-/body-parser-1.20.9.tgz'};
+        write(path.join(f.root, 'package-lock.json'), f.lock);
+        function install() {
+            f.install();
+            fs.rmSync(path.join(f.root, shared.from), {recursive: true});
+            delete f.lock.packages[shared.from];
+            write(path.join(f.root, 'package-lock.json'), f.lock);
+        }
+        return {...f, shared, install};
+    }
+    test('guard permits an identical shared package with verified consumer resolution', t => {
+        const f = sharedFixture(t);
+        guards.prepare(f.root, f.manifest, f.snapshot);
+        f.install();
+        guards.verify(f.root, f.manifest, f.snapshot);
+    });
+    test('guard rejects a shared consumer whose range excludes the target', t => {
+        const f = sharedFixture(t);
+        write(path.join(f.root, 'node_modules/other/package.json'), {version: '1.0.0', dependencies: {'body-parser': '1.20.8'}});
+        assert.throws(() => guards.prepare(f.root, f.manifest, f.snapshot), /Unsupported shared range/);
+    });
+    test('guard rejects a changed shared package identity', t => {
+        const f = sharedFixture(t);
+        guards.prepare(f.root, f.manifest, f.snapshot);
+        f.install();
+        write(path.join(f.root, f.shared.to, 'package.json'), {name: 'body-parser', version: '1.20.9', changed: true});
+        assert.throws(() => guards.verify(f.root, f.manifest, f.snapshot), /Shared package identity changed/);
+    });
+    test('guard rejects shared consumers that still resolve a nested copy', t => {
+        const f = sharedFixture(t);
+        guards.prepare(f.root, f.manifest, f.snapshot);
+        f.install();
+        write(path.join(f.root, f.shared.from, 'package.json'), {name: 'body-parser', version: '1.20.9'});
+        f.lock.packages[f.shared.from] = {version: '1.20.9', integrity: 'expected'};
+        write(path.join(f.root, 'package-lock.json'), f.lock);
+        assert.throws(() => guards.verify(f.root, f.manifest, f.snapshot), /Duplicate package remains/);
+    });
+
     function request(port, payload, headers = {}) {
         return new Promise((resolve, reject) => {
             const req = http.request({host: '127.0.0.1', port, method: 'POST', path: '/', headers: {'Content-Type': 'application/json', 'Content-Length': payload.length, ...headers}}, res => {

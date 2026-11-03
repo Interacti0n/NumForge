@@ -521,3 +521,59 @@ A subsequent normal supervisor Ensure check preserved the new monitor image,
 all other service identities and the public URL. All five services were healthy,
 all six monitors were up and the owned fixture's containers, volume and network
 were verified absent. Windows reboot/login remains unverified.
+
+### WebSocket fragment-limit compatibility migration
+
+The next recipe migrates Kuma's original direct `ws ~8.19.0` range to exact
+`8.21.3`. It includes fragment/chunk limits, empty-fragment accounting, typed-array
+close-frame protection and the compression-window negotiation correction. Later
+8.22 releases exist; the selected version also satisfies the existing Socket.IO
+consumers' `~8.21.0` ranges. MQTT retains its separate 7.5.13 runtime.
+
+npm shares three existing 8.21.3 copies from engine.io, engine.io-client and
+socket.io-adapter with the migrated root package. The first build correctly
+rejected those previously unlisted removals. The final manifest explicitly lists
+only these three copies. Before installation, the guard checks each original
+version, archive integrity, compatible consumer ranges and pinned destination.
+Afterward, each original consumer must resolve the root destination and its
+version/integrity/package-metadata hash must match the old copy exactly. Other
+installed additions/removals or package changes remain rejected. Four new guard
+regressions cover the accepted case, incompatible range, changed shared identity
+and a retained duplicate. No additional application source adaptation is made.
+
+Fifty-three checks include ten WebSocket regressions and the four new guards.
+Small receiver fixtures reject excess one-byte fragments, empty fragments and
+buffered chunks; payload-byte limits remain independent. Real client and server
+connections, without custom fragment settings, close an unfinished stream after
+16,385 empty fragments. This sends only about 32 KiB unmasked or 96 KiB masked
+headers, without deliberately exhausting memory. The receiver reports
+`WS_ERR_TOO_MANY_BUFFERED_PARTS`; the peer receives close code 1008. The rejecting
+side can report local abnormal closure after stopping its parser.
+
+Other tests preserve compressed fragmented Unicode text, binary data, ping/pong,
+normal close status and exact Uint8Array close-frame wire bytes. Non-empty
+Uint16Array close reasons are rejected before transmission. Compression offers
+below the configured client window are rejected. The actual Kuma WebSocket
+monitor passes authenticated upgrade, custom-header and subprotocol checks and
+rejects incorrect credentials. The previous image fails seven checks; the final
+candidate passes all 53. Previous parser/gRPC/Liquid/glob tests remain included.
+
+These are per-connection structural limits, not a global memory quota or proof
+against every resource-exhaustion pattern. No web speed improvement is claimed.
+The pilot's six configured monitors and loopback exposure are unchanged.
+Primary references: [fragment/chunk advisory](https://github.com/websockets/ws/security/advisories/GHSA-96hv-2xvq-fx4p),
+[8.21.1 empty-fragment fix](https://github.com/websockets/ws/releases/tag/8.21.1),
+[8.21.3 negotiation fix](https://github.com/websockets/ws/releases/tag/8.21.3),
+[typed-array close fix](https://github.com/websockets/ws/releases/tag/8.20.1).
+Raw evidence is in ignored `build/security-ws-20261103/`, including the initially
+rejected build, metadata, exact image scans and regression logs.
+
+Matched Trivy 0.76.1 scans, using the database updated 2 November 2026 at
+13:15:56 UTC, report **20 → 19 fixable HIGH/CRITICAL records**: HIGH
+CVE-2026-48779 is removed, with none added. The close-frame MEDIUM record is
+also removed. All HIGH/CRITICAL records including unfixed findings move from
+92/6 to 91/6. Both scan DiffID lists match the frozen images. The previous →
+candidate → previous → candidate fixture preserves its stored user/configuration/
+history digest, authenticated login, keyword/push up/down behavior and runtime
+protections. Both candidate stages pass all 53 checks. The fixture removes its
+own containers, volume and network. Gateway/DB images were not rescanned.

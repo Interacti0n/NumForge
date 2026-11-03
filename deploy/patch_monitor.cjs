@@ -60,6 +60,26 @@ function prepare(root, manifest, snapshot) {
         assert.equal(hash(path.join(root, patch.path)), patch.beforeHash, `Upstream source changed: ${patch.path}`);
     }
     const before = inventory(root);
+    const deduplicated = {};
+    for (const shared of manifest.deduplicatedDependencies || []) {
+        assert(!Object.hasOwn(deduplicated, shared.from), `Duplicate shared package: ${shared.from}`);
+        const destination = manifest.packages.find(p => p.name === shared.name && p.after === shared.to);
+        assert(destination && shared.from !== shared.to, `Shared package has no migrated destination: ${shared.name}`);
+        assert.equal(shared.version, destination.version, 'Shared version must match the pinned destination');
+        assert.equal(shared.integrity, destination.integrity, 'Shared integrity must match the pinned destination');
+        assert.equal(before[shared.from]?.version, shared.version, `Unexpected shared version: ${shared.from}`);
+        assert.equal(before[shared.from]?.integrity, shared.integrity, `Unexpected shared integrity: ${shared.from}`);
+        const consumers = [];
+        for (const location of ['', ...Object.keys(before)]) {
+            const parent = read(path.join(root, location, 'package.json'));
+            const range = {...parent.dependencies, ...parent.optionalDependencies}[shared.name];
+            if (!range || resolvePackage(root, location, shared.name) !== shared.from) continue;
+            assert(semver.satisfies(shared.version, range), `Unsupported shared range ${range}: ${location}`);
+            consumers.push(location);
+        }
+        assert(consumers.length, `Shared package has no original consumer: ${shared.from}`);
+        deduplicated[shared.from] = consumers;
+    }
     const additions = new Set();
     for (const added of manifest.addedDependencies || []) {
         assert.equal(added.path, `node_modules/${added.name}`, 'Added dependency must use its exact root path');
@@ -100,12 +120,12 @@ function prepare(root, manifest, snapshot) {
     for (const key of Object.keys(manifest.overrides)) {
         assert(!Object.hasOwn(original.overrides || {}, key), `Upstream override changed: ${key}`);
     }
-    fs.writeFileSync(snapshot, JSON.stringify({ before, original, omissions }));
+    fs.writeFileSync(snapshot, JSON.stringify({ before, original, omissions, deduplicated }));
     fs.writeFileSync(packageFile, JSON.stringify(configured, null, 2) + '\n');
 }
 
 function verify(root, manifest, snapshot) {
-    const { before, original, omissions } = read(snapshot);
+    const { before, original, omissions, deduplicated = {} } = read(snapshot);
     const lock = read(path.join(root, 'package-lock.json'));
     // npm reifies these already-locked native build helpers even with scripts
     // disabled. Preserve the upstream image's exact optional omissions.
@@ -130,6 +150,18 @@ function verify(root, manifest, snapshot) {
     const semver = require(path.join(root, 'node_modules/semver'));
     assert.deepEqual(current, configuredPackage(original, manifest, semver));
     const allowed = new Set(manifest.packages.flatMap(p => [p.before, p.after]));
+    for (const shared of manifest.deduplicatedDependencies || []) {
+        allowed.add(shared.from);
+        assert(!after[shared.from], `Duplicate package remains: ${shared.from}`);
+        assert.deepEqual(after[shared.to], before[shared.from], `Shared package identity changed: ${shared.from}`);
+        assert(deduplicated[shared.from]?.length, `Shared package has no verified consumers: ${shared.from}`);
+        for (const location of deduplicated[shared.from]) {
+            assert.equal(resolvePackage(root, location, shared.name), shared.to, `Shared consumer resolves elsewhere: ${location}`);
+            const parent = read(path.join(root, location, 'package.json'));
+            const range = {...parent.dependencies, ...parent.optionalDependencies}[shared.name];
+            assert(range && semver.satisfies(shared.version, range), `Unsupported shared consumer: ${location}`);
+        }
+    }
     for (const added of manifest.addedDependencies || []) {
         allowed.add(added.path);
         assert(!before[added.path], `Added dependency already existed: ${added.name}`);

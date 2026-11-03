@@ -2,6 +2,11 @@
   "upstreamVersion": "2.5.9",
   "directMigrations": [
     {
+      "name": "ws",
+      "fromRange": "~8.19.0",
+      "version": "8.21.3"
+    },
+    {
       "name": "@grpc/grpc-js",
       "fromRange": "~1.8.22",
       "version": "1.13.7"
@@ -51,6 +56,14 @@
     }
   },
   "packages": [
+    {
+      "name": "ws",
+      "from": "8.19.0",
+      "version": "8.21.3",
+      "before": "node_modules/ws",
+      "after": "node_modules/ws",
+      "integrity": "sha512-201TZ/kPWxoPr/OKWjquZR1SWKXcvxdH+e1xrx89b3YbmzLMFCLfnaG1HFIgWzJOEWZ7MvpK++odZufgYR50Rw=="
+    },
     {
       "name": "@grpc/grpc-js",
       "from": "1.8.22",
@@ -107,6 +120,29 @@
       "afterHash": "847eab374045a775d5d3b72c9f639bb66cf357034e66195867e010e8bb5bf13b",
       "before": "        const protocObject = protojs.parse(protobufData);",
       "after": "        const protocObject = protojs.parse(protobufData);\n        protocObject.root.resolveAll();"
+    }
+  ],
+  "deduplicatedDependencies": [
+    {
+      "name": "ws",
+      "from": "node_modules/engine.io-client/node_modules/ws",
+      "to": "node_modules/ws",
+      "version": "8.21.3",
+      "integrity": "sha512-201TZ/kPWxoPr/OKWjquZR1SWKXcvxdH+e1xrx89b3YbmzLMFCLfnaG1HFIgWzJOEWZ7MvpK++odZufgYR50Rw=="
+    },
+    {
+      "name": "ws",
+      "from": "node_modules/engine.io/node_modules/ws",
+      "to": "node_modules/ws",
+      "version": "8.21.3",
+      "integrity": "sha512-201TZ/kPWxoPr/OKWjquZR1SWKXcvxdH+e1xrx89b3YbmzLMFCLfnaG1HFIgWzJOEWZ7MvpK++odZufgYR50Rw=="
+    },
+    {
+      "name": "ws",
+      "from": "node_modules/socket.io-adapter/node_modules/ws",
+      "to": "node_modules/ws",
+      "version": "8.21.3",
+      "integrity": "sha512-201TZ/kPWxoPr/OKWjquZR1SWKXcvxdH+e1xrx89b3YbmzLMFCLfnaG1HFIgWzJOEWZ7MvpK++odZufgYR50Rw=="
     }
   ]
 }
