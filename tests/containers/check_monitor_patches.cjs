@@ -117,6 +117,25 @@ if (fs.existsSync('/opt/numforge/monitor-patches.json') || process.env.NUMFORGE_
         f.install();
         guards.verify(f.root, f.manifest, f.snapshot);
     });
+    test('guard permits an exact owner-local addition without changing the shared root', t => {
+        const f = additionFixture(t);
+        f.added.path = 'node_modules/body-parser/node_modules/@scope/helper';
+        delete f.manifest.overrides[f.added.name];
+        f.manifest.overrides['body-parser'] = {'.': '1.20.9', '@scope/helper': '4.4.2'};
+        guards.prepare(f.root, f.manifest, f.snapshot);
+        f.install();
+        guards.verify(f.root, f.manifest, f.snapshot);
+    });
+    test('guard rejects additions under an unrelated owner', t => {
+        const f = additionFixture(t);
+        f.added.path = 'node_modules/other/node_modules/@scope/helper';
+        assert.throws(() => guards.prepare(f.root, f.manifest, f.snapshot), /exact root or owner path/);
+    });
+    test('guard rejects an unpinned owner-local addition', t => {
+        const f = additionFixture(t);
+        f.added.path = 'node_modules/body-parser/node_modules/@scope/helper';
+        assert.throws(() => guards.prepare(f.root, f.manifest, f.snapshot), /pinned exactly/);
+    });
     test('guard rejects an already present added dependency before writing', t => {
         const f = additionFixture(t);
         write(path.join(f.root, f.added.path, 'package.json'), {version: '4.4.2'});

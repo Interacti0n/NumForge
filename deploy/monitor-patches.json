@@ -2,6 +2,11 @@
   "upstreamVersion": "2.5.9",
   "directMigrations": [
     {
+      "name": "mysql2",
+      "fromRange": "~3.11.5",
+      "version": "3.23.1"
+    },
+    {
       "name": "ws",
       "fromRange": "~8.19.0",
       "version": "8.21.3"
@@ -29,6 +34,13 @@
       "version": "1.1.2",
       "integrity": "sha512-pa0vFRuws4wkvaXKK1uXZMAwAX4/t8ANaJo45iw/oQHNQ9q5xUzwgFmVJGXiga2BeN+zpX7Vf9vmsiIa2J+MUw==",
       "removedBy": "protobufjs"
+    },
+    {
+      "name": "seq-queue",
+      "path": "node_modules/seq-queue",
+      "version": "0.0.5",
+      "integrity": "sha512-hr3Wtp/GZIc/6DAGPDcV4/9WoZhjrkXsi5B/07QgX8tsdc6ilr7BFM6PM6rbdAX1kFSDYeZGLipIZZKyQP0O5Q==",
+      "removedBy": "mysql2"
     }
   ],
   "addedDependencies": [
@@ -38,6 +50,20 @@
       "version": "4.4.2",
       "integrity": "sha512-iUKgm52T8HOE/makSxjqoWhe95ZJA1/G1sYsGev2JDKUSS14KAgg1LHb+Ba+IPow0xflbnSkOsZcO08C7w1gYw==",
       "addedBy": "@grpc/grpc-js"
+    },
+    {
+      "name": "sql-escaper",
+      "path": "node_modules/sql-escaper",
+      "version": "1.5.1",
+      "integrity": "sha512-4toX5E1fQbBrpfXidaHnF0669nkAdETeIPTs2SUjxxD7RRIs9ICG4gtpmfc68JCEKehsdwLFqBu9VlQqZ1P1gg==",
+      "addedBy": "mysql2"
+    },
+    {
+      "name": "iconv-lite",
+      "path": "node_modules/mysql2/node_modules/iconv-lite",
+      "version": "0.7.2",
+      "integrity": "sha512-im9DjEDQ55s9fL4EYzOAv0yMqmMBSZp6G0VvFyTMPKWxiSBHUj9NW/qqLmXUwXrrM7AvqSlTCfvqRb0cM8yYqw==",
+      "addedBy": "mysql2"
     }
   ],
   "keepAbsent": [
@@ -53,9 +79,21 @@
       "glob": {
         "minimatch": "9.0.9"
       }
+    },
+    "sql-escaper": "1.5.1",
+    "mysql2": {
+      "iconv-lite": "0.7.2"
     }
   },
   "packages": [
+    {
+      "name": "mysql2",
+      "from": "3.11.5",
+      "version": "3.23.1",
+      "before": "node_modules/mysql2",
+      "after": "node_modules/mysql2",
+      "integrity": "sha512-tTuRnC7qCet2IOfSNMYZ5SwXuBnfvBPAcIA28P0gtruXyZlU1LMxA6uha32kYypoFgyYklMqhLWwt4laYwXR/Q=="
+    },
     {
       "name": "ws",
       "from": "8.19.0",

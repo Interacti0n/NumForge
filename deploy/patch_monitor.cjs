@@ -82,12 +82,16 @@ function prepare(root, manifest, snapshot) {
     }
     const additions = new Set();
     for (const added of manifest.addedDependencies || []) {
-        assert.equal(added.path, `node_modules/${added.name}`, 'Added dependency must use its exact root path');
+        const owner = manifest.packages.find(p => p.name === added.addedBy);
+        const rootPath = `node_modules/${added.name}`;
+        const ownerPath = owner && `${owner.after}/node_modules/${added.name}`;
+        assert(added.path === rootPath || added.path === ownerPath, 'Added dependency must use its exact root or owner path');
         assert(!additions.has(added.path), `Duplicate added dependency: ${added.name}`);
         additions.add(added.path);
         assert(!before[added.path] && !fs.existsSync(path.join(root, added.path)), `Added dependency already exists: ${added.name}`);
         assert(manifest.directMigrations?.some(m => m.name === added.addedBy), `Added dependency must belong to a direct migration: ${added.name}`);
-        assert.equal(manifest.overrides[added.name], added.version, 'Added dependency must be pinned exactly');
+        const pin = added.path === rootPath ? manifest.overrides[added.name] : manifest.overrides[added.addedBy]?.[added.name];
+        assert.equal(pin, added.version, 'Added dependency must be pinned exactly');
     }
     for (const pruned of manifest.prunedDependencies || []) {
         assert.equal(before[pruned.path]?.version, pruned.version);

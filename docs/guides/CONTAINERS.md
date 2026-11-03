@@ -600,3 +600,64 @@ A later normal supervisor Ensure check preserved the new image, other service
 identities and public URL. All five services were healthy and all six monitors
 were up; the owned test containers, volume and network were verified absent.
 Windows reboot/login remains unverified.
+
+### MySQL authentication and packet compatibility migration
+
+The next recipe changes Kuma's direct `mysql2 ~3.11.5` range to exact 3.23.1.
+This includes the clear-password authentication gate and the compressed-packet
+output bound. The new SQL escaper is pinned to 1.5.1; iconv-lite 0.7.2 is installed
+only under mysql2, while Kuma and other consumers retain root iconv-lite 0.6.3.
+Only the verified unused seq-queue 0.0.5 is removed; root sqlstring stays installed
+for its existing consumers. All other installed packages and earlier patches
+remain unchanged. Registry archives are pinned by SHA512.
+
+The addition guard now accepts an exact root path or an exact path under its
+explicitly migrated owner. An owner-local dependency requires an exact pin under
+that owner's override; unrelated parent paths and missing local pins are rejected.
+Three new guard regressions cover those cases. Existing archive, consumer-range,
+dependency-closure, sharing and unrelated-change checks still apply. No additional
+Kuma application source adaptation or clear-password opt-in is added.
+
+Sixty-two regressions include six MySQL checks and the three new guards. An
+independent protocol-v10 TCP fixture requests a switch to mysql_clear_password.
+Both the original client and the original actual Kuma MySQL monitor transmit
+the disposable fixture password; the candidate rejects the switch before that
+transmission. No real credentials or external database are used in this test.
+A small zlib fixture expands 1 KiB while advertising eight bytes: the old runtime
+accepts it, while the candidate rejects it with ERR_BUFFER_TOO_LARGE. Valid
+compressed/plain and corrupt data retain their expected behavior. Formatting
+checks preserve quoted literals, identifiers and binary values. The previous
+image fails four checks; the candidate passes all 62.
+
+Five additional tests pass on both frozen monitor images against real MySQL
+8.4.13, official image digest
+`sha256:a81d043930e51745522bd5c430961cf8286f0a23f0a9a2a6e0108f7ea71b0902`.
+They cover prepared binary-protocol results with exact BIGINT/DECIMAL strings,
+Unicode/binary data, larger compressed queries, named placeholders, pooled
+transactions/rollback, actual Kuma row counts/single-value checks and SQL/auth
+failures. The server runs on an internal disposable network with generated
+fixture credentials, tmpfs data, no published port, a non-root user and no
+capabilities. Its container and network are removed afterward; the pilot's
+PostgreSQL is not used or changed. Raw setup and exact identities are recorded.
+
+The decompression bound applies to a single advertised packet, not total process
+memory. The recipe does not enable clear-password authentication. These tests
+cover the recorded MySQL server, not every MariaDB/MySQL version or TLS/auth-plugin
+configuration. Previous Liquid/protobuf/glob/WebSocket limits remain documented.
+Primary references: [authentication advisory](https://github.com/sidorares/node-mysql2/security/advisories/GHSA-3f6p-5ww8-9rcr),
+[default gate implementation](https://github.com/sidorares/node-mysql2/commit/884bec56288d827939d0dd3f1f4ae476fbc8dbeb),
+[compression advisory](https://github.com/sidorares/node-mysql2/security/advisories/GHSA-rgwj-5xj2-c3m3),
+[compression fix](https://github.com/sidorares/node-mysql2/commit/7c48343).
+Raw evidence is in ignored `build/security-mysql-20261103/`, including standalone
+regressions, real database checks, scanner reports and the lifecycle fixture.
+
+Matched Trivy 0.76.1 scans using the database updated 2 November 2026 at
+13:15:56 UTC report **19 → 18 fixable HIGH/CRITICAL records**. HIGH
+GHSA-3f6p-5ww8-9rcr and the compressed-packet MEDIUM record are removed; no new
+fixable HIGH/CRITICAL record is added. All HIGH/CRITICAL records including unfixed
+findings move from 91/6 to 90/6. Both scan DiffID lists match the frozen images.
+The previous → candidate → previous → candidate fixture preserves its stored
+user/configuration/history digest, authenticated login, keyword/push up/down
+behavior and runtime protections. Both candidate stages pass all 62 checks.
+The monitor fixture and the separate real MySQL container/network are removed.
+The pilot gateway/PostgreSQL images were not rescanned.
