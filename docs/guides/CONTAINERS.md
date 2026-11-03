@@ -524,7 +524,7 @@ were verified absent. Windows reboot/login remains unverified.
 
 ### WebSocket fragment-limit compatibility migration
 
-The next recipe migrates Kuma's original direct `ws ~8.19.0` range to exact
+The current recipe migrates Kuma's original direct `ws ~8.19.0` range to exact
 `8.21.3`. It includes fragment/chunk limits, empty-fragment accounting, typed-array
 close-frame protection and the compression-window negotiation correction. Later
 8.22 releases exist; the selected version also satisfies the existing Socket.IO
@@ -577,3 +577,26 @@ candidate → previous → candidate fixture preserves its stored user/configura
 history digest, authenticated login, keyword/push up/down behavior and runtime
 protections. Both candidate stages pass all 53 checks. The fixture removes its
 own containers, volume and network. Gateway/DB images were not rescanned.
+
+The qualified image was deployed on 3 November 2026 as
+`numforge-uptime:ws-20261103`, exact ID
+`sha256:dd6f0a9286726178ad4b47acf2ff8e7217b06612d622ac25969c7a02b39533b4`,
+from source commit `0e5dc6e`. Only monitoring was recreated under the supervisor
+lock. Web/accounts/PostgreSQL/gateway container identities and the owned public
+tunnel/URL stayed unchanged. Live ws sharing, the separate MQTT version, all prior
+patched versions, receipt and gRPC source hash matched the candidate. Full stored
+users/monitor settings and retained heartbeat history matched the pre-change
+copy. All six monitors were up with fresh non-push heartbeats; local/public HTTPS
+and non-root/read-only/loopback/capability protections passed.
+
+Before and after promotion, standard account/configuration/Git backups and
+separately tagged consistent monitor snapshots in the existing external encrypted
+repository passed byte-for-byte restore, SQLite integrity/stored-state checks,
+repository checks and comparison of all eleven account tables/rows. All four
+restore points were retained at completion with the existing retention supplement.
+Daily standard retention can later rotate standard snapshots; the daily job still
+does not refresh monitor SQLite. Records are in `build/security-ws-20261103/`.
+A later normal supervisor Ensure check preserved the new image, other service
+identities and public URL. All five services were healthy and all six monitors
+were up; the owned test containers, volume and network were verified absent.
+Windows reboot/login remains unverified.
