@@ -1363,3 +1363,39 @@ Primary references: [glob 14.0.2 release](https://github.com/isaacs/node-glob/re
 [minimatch 11.0.1 release](https://github.com/isaacs/minimatch/releases/tag/v11.0.1),
 [publisher optimizer advisory](https://github.com/isaacs/minimatch/security/advisories/GHSA-g3hv-75wg-m249),
 [broader database range](https://github.com/advisories/GHSA-g3hv-75wg-m249).
+
+### Glob/minimatch promotion
+
+On **3 November 2026 at 15:00:08 UTC**, the exact qualified candidate above
+was promoted without rebuilding as `numforge-uptime:glob14-20261103`, from
+source commit `32b123e`. Under the supervisor operation lock, only uptime was
+recreated and the effective Compose configuration changed only its image.
+The previous native SQLite image and runtime profile remain available for
+rollback. Web/accounts/PostgreSQL/gateway identities and the owned public
+tunnel identity/URL stayed unchanged, including the new gateway init/PID bounds.
+
+Live package versions, archive integrity values, all source adaptation hashes
+and the SQLite 3.54.1 receipt/source/native hashes matched qualification.
+Users, complete monitor settings and retained heartbeat history matched the
+consistent pre-change copy. Non-root/read-only/capability protections and the
+loopback-only admin binding passed. Local pinned-TLS and public HTTPS
+calculation/session checks passed; all six monitors were up with fresh non-push
+checks.
+
+Before and after replacement, the existing external encrypted repository
+received standard account/configuration/committed-Git backups and separately
+tagged consistent monitor SQLite snapshots. Both pairs passed byte-for-byte
+restore, SQLite integrity/stored-state checks, repository checks and comparison
+of all eleven account tables and their rows. All four restore points were
+retained at completion. Daily standard retention can later rotate standard
+points; the daily job does not refresh the separate monitor SQLite snapshots.
+
+A subsequent normal supervisor Ensure preserved the image, SQLite engine,
+other service identities, gateway settings and URL. All five services were
+healthy, all six monitors up and the gateway had no retained zombie processes.
+Both isolated glob fixture projects were verified absent. Evidence is under
+ignored `build/security-glob14-deploy-20261103/`: preflight and direct-upgrade
+records, deployment result, live package/native receipts, pre/post backup
+records and final check. No push or reboot was performed. The disputed legacy
+minimatch record, archived binding support and other-image/OS findings remain
+open as described above.

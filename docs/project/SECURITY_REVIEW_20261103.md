@@ -23,6 +23,14 @@ and counts. The [gateway process fix](../guides/CONTAINERS.md#gateway-https-prob
 also addresses accumulated orphaned HTTPS probe processes found during resumed
 qualification.
 
+The qualified glob/minimatch image was then
+[deployed with verified backups and recovery checks](../guides/CONTAINERS.md#globminimatch-promotion)
+at **15:00:08 UTC**, from commit `32b123e`, without rebuilding. Only the monitor
+image changed; the other services and public URL were preserved. Five services
+were healthy and six monitors up after the normal supervisor check. Both
+pre/post backup pairs passed restore verification and all four restore points
+were retained.
+
 At the start of this audit, the pilot used the earlier Axios monitor image, with
 **15 fixable HIGH/CRITICAL records**. The qualified review image was subsequently
 deployed after explicit approval, with **zero fixable HIGH/CRITICAL records** in
