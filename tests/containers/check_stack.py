@@ -29,6 +29,10 @@ def account_code(code):
 
 try:
     compose.docker("up", "--build", "--wait", "--wait-timeout", "180")
+    compose.docker("exec", "-T", "accounts", "python", "-c",
+                   "import importlib.util; "
+                   "assert importlib.util.find_spec('pip') is None; "
+                   "assert importlib.util.find_spec('ensurepip') is None")
     compose.docker("run", "--rm", "--no-deps", "-e", "NF_ACCOUNTS_CONFIG=/run/secrets/migrate",
                    "setup", "python", "manage.py", "makemigrations", "--check", "--dry-run")
     calculate()

@@ -40,8 +40,8 @@ jobs:
           node tests/containers/test_mixed_stack.cjs
           python tests/containers/check_stack.py
           python tests/containers/check_monitor.py
-      - name: Check fixable gateway and database vulnerabilities
-        run: python scripts/scan_images.py numforge-test-ci-gateway numforge-test-ci-db --fail-on-fixable
+      - name: Check fixable application, gateway and database vulnerabilities
+        run: python scripts/scan_images.py numforge-test-ci-web numforge-test-ci-accounts numforge-test-ci-gateway numforge-test-ci-db --fail-on-fixable
       - name: Check fixable monitor vulnerabilities
         run: python scripts/scan_images.py numforge-test-ci-uptime --fail-on-fixable
       - uses: actions/upload-artifact@v7

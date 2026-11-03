@@ -1,7 +1,13 @@
 FROM python:3.12-slim-bookworm
 WORKDIR /service
 COPY apps/accounts/requirements.txt deploy/accounts-requirements.txt ./
-RUN pip install --no-cache-dir -r accounts-requirements.txt
+RUN apt-get update && apt-get upgrade -y --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/* \
+    && python -m pip install --no-cache-dir --upgrade pip==26.3 \
+    && python -m pip install --no-cache-dir -r accounts-requirements.txt \
+    && python -m pip check \
+    && python -m pip uninstall --yes pip \
+    && python -c "import ensurepip, pathlib, shutil; shutil.rmtree(pathlib.Path(ensurepip.__file__).parent)"
 COPY apps/accounts/ ./
 COPY scripts/accounts_db.py deploy/accounts_setup.py /support/
 USER 10001:10001

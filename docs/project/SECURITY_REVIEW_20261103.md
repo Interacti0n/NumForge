@@ -1,5 +1,11 @@
 # Container security review — 3 November 2026
 
+Subsequent [four-image maintenance](SECURITY_MAINTENANCE_20261103.md) removes
+all 19 other-image records with listed fixes in matched scans using the newer
+3 November database. The original 18-record inventory below remains a dated
+audit snapshot. The separate monitor fixes and its remaining disputed legacy
+minimatch record are recorded below and in the container guide.
+
 The extended review found additional MEDIUM/LOW findings and a native SQLite
 inventory gap. The qualified monitor candidate removes four MEDIUM records in
 `qs` and one LOW record in `@tootallnate/once`. It passes 198 checks and the
@@ -120,12 +126,12 @@ preserves stored user/configuration/history hashes, authenticated login,
 keyword and push up/down behavior, and runtime protections. Its containers,
 volume and network were verified absent after cleanup.
 
-## Remaining monitor findings
+## Original monitor findings and later disposition
 
 | Package | Advisory | Verification and disposition |
 | --- | --- | --- |
-| RedBean-owned glob 10.5.0 | CVE-2026-118773, fix 14.0.2 | Confirmed library cancellation flaw: an 85-directory fixture performed 80 additional directory reads after the aborted promise rejected. RedBean's inspected call sites use synchronous model-file discovery without a signal. This limits the identified use case but does not repair the library. Open. |
-| RedBean-owned minimatch 9.0.9 | CVE-2026-118764, fix 11.0.1 | Confirmed optimizer amplification. With `optimizationLevel: 2`, 2/4/6/8/10 distinct `**/../xN/` segments produced 4/16/64/256/1024 globparts. The largest bounded probe took about 110 ms. This demonstrates growth, not a remote Kuma denial of service. Open. |
+| RedBean-owned glob 10.5.0 | CVE-2026-118773, fix 14.0.2 | Confirmed library cancellation flaw: an 85-directory fixture performed 80 additional directory reads after the aborted promise rejected. RedBean's inspected call sites use synchronous model-file discovery without a signal. Subsequently resolved by the qualified glob 14.0.2 deployment. |
+| RedBean-owned minimatch 9.0.9 | CVE-2026-118764, fix 11.0.1 | Confirmed optimizer amplification. With `optimizationLevel: 2`, 2/4/6/8/10 distinct `**/../xN/` segments produced 4/16/64/256/1024 globparts. The largest bounded probe took about 110 ms. Subsequently resolved by minimatch 11.0.1 and the default-entry adaptations in the qualified deployment. |
 | Legacy glob-owned minimatch 3.1.5 | Same advisory and scanner fix | The installed source and prototype lack `firstPhasePreProcess`, which the publisher's description requires. The same bounded probes produced one globparts entry each. The publisher identifies 10.2.6 while the advisory database applies `<11.0.1`. Treat as a disputed range, retain the record, and seek an upstream clarification. |
 
 Probes used a network-disabled read-only container with 192 MiB memory; individual
