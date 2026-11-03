@@ -164,6 +164,46 @@ directory.
 
 ## Follow-up decisions
 
+### Base migration assessment after maintenance
+
+A subsequent isolated, network-disabled inspection of the exact maintenance
+images confirms that PostgreSQL directly links Bookworm's `libxml2.so.2` and
+was configured with XML/XSLT support. Removing that library would break the
+server; an XML-capable replacement and XML regression checks are required.
+The accounts Python standard-library SQLite module loads system SQLite 3.40.1.
+This is separate from the monitor's rebuilt Node engine. The inspected web and
+calculator binaries link libc/libm, without a direct SQLite/XML/zlib dependency;
+that observation does not cover every helper process or dynamically loaded code.
+
+The monitor retains a separate system Python SQLite module and sqlite3 CLI.
+Its installed reverse-dependency metadata connects python3-jwt to python3-oauthlib
+and system SQLite to Python/its CLI. The Node executable's linkage does not
+establish whether optional monitor helpers invoke these packages. Removing
+Python or JWT requires an optional-feature/consumer review, rather than treating
+the fixed Node database engine as coverage of the system packages.
+
+The current Debian tracker marks SQLite fixed in Trixie, while PyJWT
+CVE-2026-102267 and libxml2 CVE-2026-6653 remain vulnerable there. A blanket
+Bookworm-to-Trixie switch therefore does not meet the complete remediation goal.
+The next qualification should first target the accounts system SQLite through
+a same-Python-major base candidate, then separately address PostgreSQL's XML
+library and monitor helper dependencies. Keep the existing native binding until
+a replacement passes both Knex consumers, callbacks, WAL, feature/limit checks,
+persisted upgrade/rollback and restore; changing only the package name is not
+a qualified replacement.
+
+At this inspection Docker's engine was stopped and the supervisor reported a
+failed check. Starting it through `docker desktop start --detach` and running
+the existing Ensure recovered local/public HTTPS. Subsequent inspection confirmed
+five healthy services, six up monitors and the same maintenance image identities.
+The cause of the stopped engine was not established. No base image or database
+binding was replaced during this assessment. Evidence: ignored
+`build/security-base-review-20261103/runtime-linkage.json` and `recovery.json`.
+
+Sources: [SQLite release status](https://security-tracker.debian.org/tracker/CVE-2025-7458),
+[PyJWT release status](https://security-tracker.debian.org/tracker/CVE-2026-102267),
+[libxml2 release status](https://security-tracker.debian.org/tracker/CVE-2026-6653).
+
 1. Plan a supported base-image migration for the remaining unfixed OS findings,
    especially SQLite/PyJWT/libxml2. Preserve vendor applicability notes, verify
    real linked libraries and qualify data restore/rollback before replacement.
