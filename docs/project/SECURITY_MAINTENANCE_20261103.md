@@ -166,6 +166,9 @@ directory.
 
 ### Accounts Trixie qualification — 4 November
 
+The subsequent [targeted Bookworm SQLite backport](SECURITY_SQLITE_BACKPORT_20261104.md)
+records the narrower remediation and its independent native/application checks.
+
 An isolated candidate replaces the accounts OS base with official
 `python:3.12-slim-trixie`, retaining Python 3.12 and every application dependency
 version. `/service` and `/support` are copied from the deployed maintenance
