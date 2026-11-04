@@ -3,7 +3,7 @@
 The Bookworm accounts image receives the upstream fix for CVE-2025-7458 while
 retaining SQLite 3.40.1, the original OS packages, Python application files and
 SQLite compile options. This avoids the util-linux regression found in the
-[Trixie experiment](SECURITY_MAINTENANCE_20261103.md#accounts-trixie-qualification--4-november).
+[Trixie experiment](SECURITY_MAINTENANCE_20261103.md#accounts-trixie-qualification-on-4-november).
 The accounts database remains PostgreSQL; this repair concerns Python's separate
 standard-library SQLite dependency.
 
@@ -92,6 +92,42 @@ package/version/path/advisory inventories: 2 CRITICAL, 36 HIGH, 117 MEDIUM,
 match each image's actual layers. No record is added or removed.
 The other SQLite advisories and remaining OS records are not claimed fixed by
 this single upstream change.
+
+## Promotion and recovery verification
+
+On **4 November 2026 at 19:40:01 CET (18:40:01 UTC)**, the exact qualified
+artifact above was deployed without rebuilding as
+`numforge-accounts:sqlite-backport-20261104`, from source commit `c188dcd`.
+Under the supervisor operation lock, only the accounts service was recreated;
+effective service definitions changed only accounts/setup image selections.
+The prior runtime profile and maintenance image remain available for rollback.
+
+Live verification confirms the rebuilt library hash and successful execution
+of the previously crashing DISTINCT/ORDER BY query in an in-memory SQLite
+database. Eleven account tables and complete row aggregates match their
+pre-change read-only hashes. No account migration was run. Non-root/read-only/
+capability bounds and all mounts remain intact. Web, PostgreSQL, gateway and
+monitor container identities stayed unchanged, as did the tunnel identity/URL.
+Pinned local TLS and public calculation/session checks passed.
+
+Standard account/configuration/committed-Git backups and separate consistent
+monitor SQLite snapshots were taken before and after replacement in the
+existing external encrypted repository. Both pairs passed byte-for-byte
+restore, all eleven account table/row comparisons, SQLite integrity/stored-state
+verification and repository checks. All four restore points were retained at
+completion; standard daily retention can later rotate standard points, while
+monitor SQLite remains a separate snapshot operation.
+
+A normal supervisor Ensure preserved the selected image, fixed library bytes,
+original account data/schema and the other service identities. All five
+services were healthy and six monitors up. The disposable backport test project
+was verified absent. No push or reboot was performed. Deployment records are
+under ignored `build/security-accounts-sqlite-backport-20261104/deployment/`,
+including before/pre/post records, deployment result and final check. Sensitive
+database copies remain in the protected operations directory.
+
+Strict documentation generation also caught a GitHub/MkDocs anchor difference
+around the Trixie heading's dash; its heading and reference now use plain words.
 
 Evidence is under ignored `build/security-accounts-sqlite-backport-20261104/`:
 upstream pages/mirror metadata, exploratory and final build logs, source guard,

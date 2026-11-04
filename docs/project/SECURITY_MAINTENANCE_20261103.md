@@ -164,7 +164,7 @@ directory.
 
 ## Follow-up decisions
 
-### Accounts Trixie qualification — 4 November
+### Accounts Trixie qualification on 4 November
 
 The subsequent [targeted Bookworm SQLite backport](SECURITY_SQLITE_BACKPORT_20261104.md)
 records the narrower remediation and its independent native/application checks.
