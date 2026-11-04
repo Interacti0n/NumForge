@@ -164,6 +164,65 @@ directory.
 
 ## Follow-up decisions
 
+### Accounts Trixie qualification — 4 November
+
+An isolated candidate replaces the accounts OS base with official
+`python:3.12-slim-trixie`, retaining Python 3.12 and every application dependency
+version. `/service` and `/support` are copied from the deployed maintenance
+image. All `/service` hashes and installed distribution versions match that
+image exactly; pip/ensurepip remain absent. The standard-library module now
+reports SQLite **3.46.1**. No account schema or production image was changed.
+
+Candidate `numforge-accounts:candidate-trixie-20261104`, exact ID
+`sha256:0c409cd030fa3743198c3c18bc5b5670129072665e092b99c6a2d037313c4dbd`,
+passes the deployed release's 15 API/preference tests, both account/preferences
+browser suites, eleven-table/row backup restoration, persisted login/preferences,
+DB restart/session recovery, TLS/CSRF/cookie checks and 40 gateway probes without
+retained zombies. The owned test project, network and volumes were removed.
+
+Matched Trivy 0.76.1 scans use the database updated 3 November at 13:13:42 UTC
+(still current at scan time). Both report layer identities match their images.
+
+| Account image | CRITICAL | HIGH | MEDIUM | LOW | UNKNOWN | Records with listed fixes |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Deployed Bookworm | 2 | 36 | 117 | 105 | 7 | 0 |
+| Trixie candidate | 0 | 45 | 72 | 61 | 7 | 0 |
+
+The SQLite CRITICAL record disappears, but Trixie introduces **29 HIGH
+package/advisory records** under util-linux; 20 previous HIGH records disappear,
+giving a net increase of nine. Comparison keys include package and advisory,
+without treating a changed installed version alone as a new finding. Newly
+attributed records include CVE-2026-76642, CVE-2026-78408, CVE-2026-78409 and
+CVE-2026-78410. Debian identifies the first three as absent from Bookworm's
+older code; the fourth also affects Bookworm and additionally appears against
+new binary packages. Repeated records are not independent CVEs. Mount/nsenter
+prerequisites and the service's non-root/read-only/capability bounds require
+reachability review; this inventory does not demonstrate a remote account API
+exploit. Vendor version notes, particularly the stated introduction version
+for CVE-2026-78409, also warrant checking before asserting applicability.
+
+**Promotion is held** pending that review or a candidate avoiding the affected
+utility code. Passing the fixable-HIGH/CRITICAL CI gate and reducing CRITICAL
+counts alone are insufficient evidence of an overall safe migration. No ignore
+or suppression was added. The deployed Bookworm image remains selected. The
+next experiment should address the system SQLite library with a qualified
+backport or a smaller runtime candidate, rather than blanket replacement of all
+service bases.
+
+Evidence: ignored `build/security-accounts-trixie-20261104/`, including exact
+requirements, a standalone Docker build context, build/inventory/fixture logs,
+fixture result, matched reports, scanner metadata, `new-high.json` and
+`summary.json`. Rebuilding the standalone context requires the frozen local
+`numforge-accounts:maintenance-20261103` image; inspect its ID against the recorded
+baseline before use.
+
+Sources: [official Python image](https://hub.docker.com/_/python),
+[SQLite status](https://security-tracker.debian.org/tracker/CVE-2025-7458),
+[mount helper status](https://security-tracker.debian.org/tracker/CVE-2026-76642),
+[nsenter status](https://security-tracker.debian.org/tracker/CVE-2026-78408),
+[subdirectory mount status](https://security-tracker.debian.org/tracker/CVE-2026-78409),
+[bind mount status](https://security-tracker.debian.org/tracker/CVE-2026-78410).
+
 ### Base migration assessment after maintenance
 
 A subsequent isolated, network-disabled inspection of the exact maintenance
