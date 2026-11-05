@@ -82,7 +82,8 @@ only local disposable HTTP endpoints and verifies:
 All seven tests and the four existing system SQLite regressions pass in a
 network-disabled, read-only, capability-dropped container with bounded memory,
 process count and temporary storage. Negative controls against the original
-monitor fail on the actual optimizer assertion and all five redirect statuses.
+monitor reproduce the optimizer crash (signal-derived exit code 139) and fail
+the assertions for all five redirect statuses (exit code 1).
 The source helper's host test also confirms rejection of an unknown preimage
 without changing it or writing a success receipt.
 
