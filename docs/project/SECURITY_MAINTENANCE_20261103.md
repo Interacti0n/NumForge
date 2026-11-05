@@ -3,8 +3,13 @@
 The four deployed non-monitor maintenance images remove **19 records with listed
 fixes: 11 MEDIUM, one LOW and seven UNKNOWN**. Each has zero remaining records
 with a listed fix, at any severity, and no added fixable record. The monitor's
-separately recorded disputed legacy minimatch finding remains. Unfixed findings
+separately recorded disputed legacy minimatch finding remained at that date. Unfixed findings
 are retained; this is not a claim that the stack has no vulnerabilities.
+
+The [5 November follow-up](SECURITY_APT_20261105.md) deploys APT 2.6.2 across
+four services, removes eight newly listed HIGH records and verifies recovery.
+The upstream advisory range correction also resolves the legacy minimatch
+attribution without suppression. This report retains its historical scan counts.
 
 ## Scope and preserved application behavior
 
@@ -272,10 +277,9 @@ Sources: [SQLite release status](https://security-tracker.debian.org/tracker/CVE
 2. Plan replacement of the archived Node SQLite binding. The deployed 3.54.1
    source rebuild covers the engine; it does not restore upstream maintenance
    of the wrapper.
-3. Keep the disputed legacy minimatch record visible. Prepare the bounded
-   reproduction and consumer inventory for an upstream range clarification or
-   an explicitly qualified replacement; do not replace its callable API solely
-   to silence the scanner.
+3. The legacy minimatch range question is now resolved by the upstream advisory's
+   4 November correction, confirmed in the linked 5 November matched scans.
+   Retain the bounded reproduction and consumer inventory as historical evidence.
 4. Decide separately whether to deploy the newer workspace functionality and
    schema, with its own feature acceptance and migration/rollback plan.
 

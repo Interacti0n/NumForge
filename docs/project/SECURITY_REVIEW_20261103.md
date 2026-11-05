@@ -8,6 +8,10 @@ The original 18-record inventory below remains a dated
 audit snapshot. The separate monitor fixes and its remaining disputed legacy
 minimatch record are recorded below and in the container guide.
 
+The [5 November follow-up](SECURITY_APT_20261105.md) records the subsequently
+deployed APT fixes, verified restoration and upstream correction of the disputed
+minimatch range. The dated counts below remain historical snapshots.
+
 The extended review found additional MEDIUM/LOW findings and a native SQLite
 inventory gap. The qualified monitor candidate removes four MEDIUM records in
 `qs` and one LOW record in `@tootallnate/once`. It passes 198 checks and the
@@ -134,7 +138,7 @@ volume and network were verified absent after cleanup.
 | --- | --- | --- |
 | RedBean-owned glob 10.5.0 | CVE-2026-118773, fix 14.0.2 | Confirmed library cancellation flaw: an 85-directory fixture performed 80 additional directory reads after the aborted promise rejected. RedBean's inspected call sites use synchronous model-file discovery without a signal. Subsequently resolved by the qualified glob 14.0.2 deployment. |
 | RedBean-owned minimatch 9.0.9 | CVE-2026-118764, fix 11.0.1 | Confirmed optimizer amplification. With `optimizationLevel: 2`, 2/4/6/8/10 distinct `**/../xN/` segments produced 4/16/64/256/1024 globparts. The largest bounded probe took about 110 ms. Subsequently resolved by minimatch 11.0.1 and the default-entry adaptations in the qualified deployment. |
-| Legacy glob-owned minimatch 3.1.5 | Same advisory and scanner fix | The installed source and prototype lack `firstPhasePreProcess`, which the publisher's description requires. The same bounded probes produced one globparts entry each. The publisher identifies 10.2.6 while the advisory database applies `<11.0.1`. Treat as a disputed range, retain the record, and seek an upstream clarification. |
+| Legacy glob-owned minimatch 3.1.5 | Same advisory and scanner fix | The installed source and prototype lack `firstPhasePreProcess`, which the publisher's description requires. The same bounded probes produced one globparts entry each. Initially disputed because the database applied `<11.0.1`; the 4 November upstream correction limits affected versions to `>=7.0.0, <11.0.1`. The 5 November matched scans confirm resolution without suppression or a replacement of 3.1.5. |
 
 Probes used a network-disabled read-only container with 192 MiB memory; individual
 minimatch children had a 64 MiB heap and 1.5-second deadline. Temporary directories

@@ -92,7 +92,46 @@ including the system SQLite/libxml2/PyJWT work recorded in earlier reviews.
 Version-based scans also retain the private accounts SQLite backport record;
 its source/binary and functional verification remain necessary.
 
+## Promotion and recovery verification
+
+The four qualified images were deployed on **5 November at 18:16:06 CET
+(17:16:06 UTC)** from source commit `3d55e07`, using the service tags
+`numforge-web:apt-20261105`, `numforge-accounts:apt-20261105`,
+`numforge-postgres:apt-20261105` and `numforge-uptime:apt-20261105`.
+The frozen parent images remain available for rollback.
+
+Only the four intended services were recreated under the supervisor lock.
+Effective Compose changes are limited to their images and the accounts setup
+image. Users, mounts and service protections are preserved. The gateway container,
+CA and public tunnel URL are unchanged. Live checks confirm APT 2.6.2, the
+preserved application files, PostgreSQL/gosu binaries, both SQLite repairs,
+original account data and monitor history. The live schema still has eleven
+tables; the newer workspace application was not deployed.
+
+Standard application and monitor backups were taken before and after deployment
+to the authorized encrypted repository. All four restore points were restored
+and verified, including all eleven account tables and their rows, monitor
+database integrity and repository checks. All four restore points were retained.
+
+The normal Ensure run and final check passed: **five healthy services and six
+UP monitors**, working HTTPS, preserved data and repairs, and matching deployed
+image identities. The fixture's forty HTTPS probes retained no gateway zombies.
+All three disposable qualification stacks, networks and volumes are absent.
+No push or reboot was performed.
+
+One audit limitation occurred during console-log redirection: the APT launcher
+used the older `build/security-stack-20261103/deployment/deployment.log` path,
+overwriting that historical console stream. The complete new stream was copied
+to the correct APT deployment directory and the launcher path corrected. The
+original console stream cannot be recovered. The older structured deployment,
+final-check and backup records were preserved; deployment and data were unaffected.
+An explanatory placeholder and `log-location-note.txt` record the mistake.
+
 Evidence is under ignored `build/security-apt-20261105/`: frozen identities,
 build/configuration checks, exact inventories, native and fixture logs, both
 monitor/application cleanup records, bootstrap receipt, matched reports and
 scanner metadata. The unchanged gateway was refreshed against the same database.
+Its `deployment/` directory contains before-state and mount checks, pre/post
+backup verification, deployment and final-check records, the complete current
+console log and the log-location note. Private restored data remains under the
+existing local operations storage and is not committed.

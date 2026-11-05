@@ -160,8 +160,10 @@ CRITICAL, 37 HIGH, 117 MEDIUM, 105 LOW and six UNKNOWN. The fresh production
 baseline has 39 HIGH, including two newly listed fixable APT records, with the
 other totals identical. The ordinary build upgrades APT/libapt-pkg to 2.6.2,
 removing CVE-2026-109518. The retained CVE-2011-3374 records change installed
-version but are not new advisories. Production APT remediation is separate work;
-this CI qualification does not deploy the newer workspace application.
+version but are not new advisories. The separately qualified
+[production APT maintenance](SECURITY_APT_20261105.md#promotion-and-recovery-verification)
+has since been deployed while preserving the application and native SQLite
+repair. This CI qualification does not deploy the newer workspace application.
 
 At the start of local validation the Docker engine was stopped. Its standard
 start and Ensure restored the selected five healthy service images and six up
