@@ -80,6 +80,7 @@ def run():
             checks += "\n(()=>{\n" + (ROOT / "tests/containers/check_monitor_msal.cjs").read_text(encoding="utf-8") + "\n})();"
             checks += "\n(()=>{\n" + (ROOT / "tests/containers/check_monitor_lower.cjs").read_text(encoding="utf-8") + "\n})();"
             checks += "\n(()=>{\n" + (ROOT / "tests/containers/check_monitor_sqlite.cjs").read_text(encoding="utf-8") + "\n})();"
+            checks += "\n(()=>{\n" + (ROOT / "tests/containers/check_monitor_binding.cjs").read_text(encoding="utf-8") + "\n})();"
             checks += "\n(()=>{\n" + (ROOT / "tests/containers/check_monitor_glob14.cjs").read_text(encoding="utf-8") + "\n})();"
             bootstrap = "const Module=require('node:module');const guard=new Module('/tmp/nf-guards.cjs');guard.filename='/tmp/nf-guards.cjs';guard._compile(" + json.dumps(guards) + ",guard.filename);globalThis.monitorPatchGuards=guard.exports;\n"
             bootstrap += "const nativeGuard=new Module('/tmp/nf-sqlite.cjs');nativeGuard.filename='/tmp/nf-sqlite.cjs';nativeGuard._compile(" + json.dumps(sqlite_guards) + ",nativeGuard.filename);globalThis.monitorSqliteGuards=nativeGuard.exports;\n"
@@ -89,6 +90,13 @@ def run():
             # A rollback parent deliberately lacks these new system backports.
             if previous_image and selected == previous_image:
                 return
+            binding = json.loads((ROOT / "deploy/monitor-binding.json").read_text(encoding="utf-8"))
+            compose.docker("exec", "-T", "uptime", "node", "-e",
+                           "const assert=require('node:assert/strict'); "
+                           "const r=require('/opt/numforge/monitor-sqlite.json'); "
+                           "assert.deepEqual(r.replacement,JSON.parse(process.argv[1])); "
+                           "assert.equal(require('@louislam/sqlite3/package.json').name,'@vscode/sqlite3');",
+                           json.dumps(binding))
             for check, guard in (("check_accounts_sqlite.py", "NUMFORGE_SQLITE_BACKPORT_CHECK"),
                                  ("check_monitor_system.py", "NUMFORGE_MONITOR_SYSTEM_CHECK")):
                 compose.docker("exec", "-T", "-e", guard + "=1", "uptime", "python3", "-",

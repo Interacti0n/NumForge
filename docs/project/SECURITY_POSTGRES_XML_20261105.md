@@ -162,6 +162,10 @@ consumers; bypassing the ABI boundary with a symlink is unsuitable. PostgreSQL's
 separate system SQLite record and the monitor's archived Node binding remain
 separate follow-up work.
 
+The later [monitor binding replacement](SECURITY_MONITOR_BINDING_20261105.md)
+qualifies a maintained fork while retaining SQLite 3.54.1, rather than treating
+this earlier XML repair as coverage of the archived wrapper.
+
 Evidence is under ignored `build/security-postgres-xml-20261105/`: frozen live
 identities/locale, rejected Alpine and accepted same-system fixtures, native
 negative/positive build logs and receipts, file/feature inventories, ordinary

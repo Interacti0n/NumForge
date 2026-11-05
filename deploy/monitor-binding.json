@@ -1,0 +1,15 @@
+{
+  "name": "@vscode/sqlite3",
+  "version": "5.1.14-vscode",
+  "url": "https://registry.npmjs.org/@vscode/sqlite3/-/sqlite3-5.1.14-vscode.tgz",
+  "integrity": "sha512-EklAH0EoIIBCRBQSnOST7vc93fQa8Gt6nZ3YcclRvUpiwpx958TT8XHqqAYet5/nwaBsUy3eXYUGBc7e6wyKsw==",
+  "addon": {
+    "name": "node-addon-api",
+    "version": "8.9.2",
+    "url": "https://registry.npmjs.org/node-addon-api/-/node-addon-api-8.9.2.tgz",
+    "integrity": "sha512-VijLXbi3UACN69I0JVXJsX4tjACjNoQDgv2gTF6sx2wWEi8tkSg2eX8p5gSIFi8z2+DL3oHmY6OyKce38SDolg=="
+  },
+  "alias": "npm:@vscode/sqlite3@5.1.14-vscode",
+  "binary": "build/Release/vscode-sqlite3.node",
+  "oldWrapperSha256": "f1fa89ce0981a9542b722f789b138e00b04af1cc1bd88168157984978ce5d8d1"
+}

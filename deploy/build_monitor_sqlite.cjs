@@ -107,4 +107,4 @@ if (require.main === module) {
     assert(['prepare', 'verify'].includes(operation));
     ({prepare, verify})[operation](moduleRoot, read(manifestFile), output).catch(error => {console.error(error); process.exitCode = 1;});
 }
-module.exports = {wrapperHash, validateBase, prepare};
+module.exports = {wrapperHash, validateBase, prepare, verify};

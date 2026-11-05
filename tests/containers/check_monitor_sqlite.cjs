@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs'), os = require('node:os'), path = require('node:path'), crypto = require('node:crypto');
 const {createRequire} = require('node:module');
 const app = createRequire('/app/package.json'), sqlite = app('@louislam/sqlite3');
+const detailedErrors = app('@louislam/sqlite3/package.json').name === '@vscode/sqlite3';
 const receiptPath = '/opt/numforge/monitor-sqlite.json';
 const guards = globalThis.monitorSqliteGuards;
 const hash = data => crypto.createHash('sha256').update(data).digest('hex');
@@ -57,7 +58,13 @@ if (fs.existsSync(receiptPath) || process.env.NUMFORGE_FORCE_SQLITE_CHECKS) {
         const receipt = JSON.parse(fs.readFileSync(receiptPath, 'utf8'));
         assert.deepEqual(receipt.runtime, identity);
         const root = path.dirname(app.resolve('@louislam/sqlite3/package.json'));
-        assert.equal(app('@louislam/sqlite3/package.json').version, '15.1.6');
+        assert.equal(app('@louislam/sqlite3/package.json').version, receipt.bindingVersion);
+        if (receipt.replacement) {
+            assert.equal(app('@louislam/sqlite3/package.json').name, '@vscode/sqlite3');
+            assert.equal(receipt.bindingVersion, '5.1.14-vscode');
+            assert.equal(app('./package.json').dependencies['@louislam/sqlite3'], 'npm:@vscode/sqlite3@5.1.14-vscode');
+            assert(!fs.existsSync(path.join(root, 'deps/sqlite-autoconf-3390400.tar.gz')));
+        }
         assert.equal(hash(fs.readFileSync(path.join(root, receipt.binary))), receipt.nativeSha256);
         assert.equal(guards.wrapperHash(root), receipt.wrapperSha256);
         assert(!fs.existsSync(path.join(root, 'deps/sqlite-autoconf-3410100.tar.gz')));
@@ -73,12 +80,16 @@ if (fs.existsSync(receiptPath) || process.env.NUMFORGE_FORCE_SQLITE_CHECKS) {
         const row = await run(db, 'INSERT INTO fixture(label,bytes,nullable) VALUES(?,?,?)', ['Výpočet 😀', Buffer.from([0, 255, 1]), null]);
         assert.equal(row.changes, 1); assert.equal(row.id, 1);
         assert.deepEqual(await get(db, 'SELECT * FROM fixture WHERE label=?', ['Výpočet 😀']), {id: 1, label: 'Výpočet 😀', bytes: Buffer.from([0, 255, 1]), nullable: null});
-        await assert.rejects(run(db, 'INSERT INTO fixture(label) VALUES(?)', ['Výpočet 😀']), error => error.code === 'SQLITE_CONSTRAINT');
+        await assert.rejects(run(db, 'INSERT INTO fixture(label) VALUES(?)', ['Výpočet 😀']), error =>
+            error.code === (detailedErrors ? 'SQLITE_CONSTRAINT_UNIQUE' : 'SQLITE_CONSTRAINT') &&
+            error.errno === (detailedErrors ? 2067 : 19));
         assert.equal((await run(db, 'UPDATE fixture SET nullable=$value WHERE id=$id', {$value: 'stored', $id: 1})).changes, 1);
     });
     test('SQLite transactions and foreign-key failures preserve committed rows', async t => {
         const db = open(t); await exec(db, 'PRAGMA foreign_keys=ON; CREATE TABLE p(id INTEGER PRIMARY KEY); CREATE TABLE c(id INTEGER REFERENCES p(id)); INSERT INTO p VALUES(1); BEGIN; INSERT INTO p VALUES(2); ROLLBACK;');
-        await assert.rejects(run(db, 'INSERT INTO c VALUES(9)'), error => error.code === 'SQLITE_CONSTRAINT');
+        await assert.rejects(run(db, 'INSERT INTO c VALUES(9)'), error =>
+            error.code === (detailedErrors ? 'SQLITE_CONSTRAINT_FOREIGNKEY' : 'SQLITE_CONSTRAINT') &&
+            error.errno === (detailedErrors ? 787 : 19));
         assert.deepEqual(await all(db, 'SELECT id FROM p'), [{id: 1}]);
         assert.equal((await get(db, 'PRAGMA integrity_check')).integrity_check, 'ok');
     });
@@ -118,6 +129,9 @@ if (fs.existsSync(receiptPath) || process.env.NUMFORGE_FORCE_SQLITE_CHECKS) {
             await knex.schema.alterTable('fixture', table => table.dropColumn('obsolete'));
             await knex.schema.alterTable('fixture', table => table.renameColumn('label', 'name'));
             assert.deepEqual(await knex('fixture').select('*'), [{id: 1, name: 'retained'}]);
+            await assert.rejects(knex.transaction(trx => trx('fixture').insert({id: 1, name: 'duplicate'})), error =>
+                error.code === (detailedErrors ? 'SQLITE_CONSTRAINT_PRIMARYKEY' : 'SQLITE_CONSTRAINT') &&
+                error.errno === (detailedErrors ? 1555 : 19));
             await assert.rejects(knex.transaction(async trx => {await trx('fixture').insert({name: 'rollback'}); throw new Error('fixture rollback');}), /fixture rollback/);
             assert.equal((await knex('fixture').count({n: '*'}))[0].n, 1);
         });
