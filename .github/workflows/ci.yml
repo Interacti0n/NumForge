@@ -36,6 +36,7 @@ jobs:
         run: |
           python tests/containers/test_compose_helpers.py
           python tests/containers/test_ops_backup.py
+          python tests/containers/test_ops_recovery.py
           python tests/containers/test_pilot.py
           python tests/test_monitor_jwt_backport.py
           python tests/test_monitor_binding_source.py

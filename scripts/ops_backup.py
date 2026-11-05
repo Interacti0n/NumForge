@@ -8,6 +8,8 @@ import os
 from pathlib import Path
 import secrets
 import shutil
+import sqlite3
+from contextlib import closing
 import subprocess
 import tempfile
 import urllib.request
@@ -21,7 +23,9 @@ STATE = ROOT / ".local/ops"
 
 def execute(args, **kwargs):
     options = {"creationflags": subprocess.CREATE_NO_WINDOW} if os.name == "nt" else {}
-    return subprocess.run([str(a) for a in args], check=True, capture_output=True, **options, **kwargs)
+    kwargs.setdefault("stdout", subprocess.PIPE)
+    kwargs.setdefault("stderr", subprocess.PIPE)
+    return subprocess.run([str(a) for a in args], check=True, **options, **kwargs)
 
 
 def config():
@@ -98,6 +102,34 @@ def notify(success):
         print("Local backup monitor could not be updated.")
 
 
+def verify_monitor(path):
+    """Open a standalone snapshot read-only; never the running monitor's file."""
+    with closing(sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)) as database:
+        if database.execute("PRAGMA integrity_check").fetchall() != [("ok",)]:
+            raise ValueError("Monitor snapshot failed integrity check.")
+        # These tables distinguish a Kuma backup from an unrelated valid SQLite file.
+        counts = {table: database.execute('SELECT count(*) FROM "' + table + '"').fetchone()[0]
+                  for table in ("user", "monitor", "heartbeat")}
+    return counts
+
+
+def snapshot_monitor(target):
+    """VACUUM INTO includes committed WAL writes without stopping monitoring."""
+    remote = "/tmp/numforge-backup-" + secrets.token_hex(16) + ".sqlite"
+    command = ["docker", "compose", "exec", "-T", "uptime", "node", "-e"]
+    program = "const S=require('@louislam/sqlite3');const d=new S.Database('data/kuma.db');" \
+        "d.configure('busyTimeout',30000);d.exec(\"VACUUM INTO '" + remote + "'\",e=>{" \
+        "if(e){console.error(e.message);process.exitCode=1;}d.close();});"
+    try:
+        execute([*command, program], cwd=ROOT)
+        with target.open("xb") as output:
+            execute([*command, "process.stdout.write(require('fs').readFileSync(" + json.dumps(remote) + "))"],
+                    cwd=ROOT, stdout=output)
+        verify_monitor(target)
+    finally:
+        execute([*command, "require('fs').rmSync(" + json.dumps(remote) + ",{force:true})"], cwd=ROOT)
+
+
 def backup():
     settings = config()
     # An unplugged external disk is a failure, never a reason to create a new repo.
@@ -110,22 +142,33 @@ def backup():
     pending.unlink(missing_ok=True)
     compose.backup(pending)
     pending.replace(source / "accounts.dump")
+    monitor_pending = source / "monitor.pending.sqlite"
+    monitor_pending.unlink(missing_ok=True)
+    snapshot_monitor(monitor_pending)
+    monitor_pending.replace(source / "monitor.sqlite")
     bundle = source / "source.pending.bundle"
     bundle.unlink(missing_ok=True)
     execute(["git", "-C", ROOT, "bundle", "create", bundle, "--all"])
     bundle.replace(source / "source.bundle")
-    credentials = ["admin.json", "migrate.json", "app.json", "admin-password", "gateway-token", "pilot.env", "pilot-build.yaml", "pilot-runtime.json"]
+    credentials = ["admin.json", "migrate.json", "app.json", "admin-password", "gateway-token", "pilot.env", "pilot-build.yaml", "pilot-runtime.json", "gateway-root.crt"]
     for name in credentials:
         path = ROOT / ".local/compose" / name
         if path.is_file():
             shutil.copyfile(path, source / name)
+        else:
+            (source / name).unlink(missing_ok=True)
     for name in ("monitor-admin.json", "db-inspect.json", "pgpass.conf"):
         path = STATE / name
         if path.is_file():
             shutil.copyfile(path, source / name)
+        else:
+            (source / name).unlink(missing_ok=True)
     commit = execute(["git", "-C", ROOT, "rev-parse", "HEAD"]).stdout.decode().strip()
     (source / "manifest.json").write_text(json.dumps({"source_commit": commit,
-        "scope": "logical database dump, committed Git history, private pilot/ops configuration"}, indent=2))
+        "format_version": 2,
+        "scope": "logical database dump, consistent monitor SQLite, committed Git history, private pilot/ops configuration",
+        "monitor": verify_monitor(source / "monitor.sqlite"),
+        "not_included": ["Docker images", "gateway private CA volume", "uncommitted source", "restic recovery password"]}, indent=2))
     expected = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in source.iterdir() if p.is_file()}
     events = restic(settings, "backup", source, "--tag", "numforge-pilot", "--json").decode().splitlines()
     summary = next(json.loads(line) for line in reversed(events) if json.loads(line).get("message_type") == "summary")
@@ -140,11 +183,13 @@ def backup():
             if hashlib.sha256((restored / name).read_bytes()).hexdigest() != digest:
                 raise ValueError("Restored bytes differ: " + name)
         verify_database(roots[0])
+        verify_monitor(restored / "monitor.sqlite")
     restic(settings, "check")
     # Retention affects only this job's snapshots and follows successful restore.
     restic(settings, "forget", "--tag", "numforge-pilot", "--keep-daily", "7", "--keep-weekly", "4", "--keep-monthly", "6", "--prune")
     (STATE / "backup-status.json").write_text(json.dumps({"ok": True, "snapshot": snapshot,
-        "last_success": datetime.now(timezone.utc).isoformat(), "restore_verified": True}, indent=2))
+        "last_success": datetime.now(timezone.utc).isoformat(), "restore_verified": True,
+        "format_version": 2, "monitor_restore_verified": True}, indent=2))
     notify(True)
     print("Encrypted backup and byte-for-byte/database restore verified:", snapshot)
 
