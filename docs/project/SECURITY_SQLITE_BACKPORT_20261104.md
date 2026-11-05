@@ -45,10 +45,9 @@ packages stay outside the runtime. This qualification covers Linux amd64.
 The frozen base is the deployed accounts maintenance image
 `sha256:a9fdf6b585f8731a4951ec144b275561073b899429bb4a8278bc1785b123fe55`.
 Its local `numforge-accounts:maintenance-20261103` tag must still resolve to that
-identity when reproducing the overlay. This is a maintenance build for the
-existing application, rather than a replacement for the ordinary current-source
-accounts Dockerfile; future application images need the backport reapplied and
-qualified until the distribution supplies a suitable fix.
+identity when reproducing the overlay. This overlay preserves the existing
+application. The ordinary current-source accounts Dockerfile also builds the
+backport, as recorded below, so subsequent application builds retain the repair.
 
 ## Verification
 
@@ -128,6 +127,51 @@ database copies remain in the protected operations directory.
 
 Strict documentation generation also caught a GitHub/MkDocs anchor difference
 around the Trixie heading's dash; its heading and reference now use plain words.
+
+## Permanent build and CI integration — 5 November
+
+The ordinary [accounts Dockerfile](../../deploy/accounts.Dockerfile) now builds
+the same backport from the official Python Bookworm base in a separate stage.
+It does not require the frozen local maintenance image. Source and installed
+library preimage guards are retained, so an unexpected distribution update
+requires review before the backport is applied. The rebuilt runtime library
+hash and all compile options match the deployed qualified library exactly.
+
+The [stack integration check](../../tests/containers/check_stack.py) executes
+all four bounded native regressions immediately after startup. An unpatched
+image fails the DISTINCT/ORDER BY case rather than passing merely because a
+version-based vulnerability gate has no listed fix. The original image's
+negative control fails that assertion while its other three native checks pass.
+The container CI time budget increases from 25 to 40 minutes to accommodate the
+added distribution source build; test assertions and vulnerability thresholds
+remain intact.
+
+The fresh ordinary build, image
+`sha256:624b14979f7a831c4c35b856d20d8aec0c84f10fd3d1e3ade044f1c0a2cc2aa9`,
+passes the four native checks, all 22 current account/preference/workspace tests,
+all three browser suites, TLS/session and restart checks, and restoration of all
+twelve fixture tables/rows. This exercises current source and its workspace
+schema only in the disposable fixture. Production retains its selected image
+and eleven-table schema. All owned fixture resources were removed.
+
+Matched Trivy 0.76.1 scans use the database updated 5 November at 13:09:41 UTC.
+The ordinary build has no listed fixes at any severity; its totals are two
+CRITICAL, 37 HIGH, 117 MEDIUM, 105 LOW and six UNKNOWN. The fresh production
+baseline has 39 HIGH, including two newly listed fixable APT records, with the
+other totals identical. The ordinary build upgrades APT/libapt-pkg to 2.6.2,
+removing CVE-2026-109518. The retained CVE-2011-3374 records change installed
+version but are not new advisories. Production APT remediation is separate work;
+this CI qualification does not deploy the newer workspace application.
+
+At the start of local validation the Docker engine was stopped. Its standard
+start and Ensure restored the selected five healthy service images and six up
+monitors; the cause of the stop is unconfirmed. Evidence is under ignored
+`build/security-accounts-ci-20261105/`: native inventory, negative control,
+build/fixture logs, matched reports, scanner metadata and live-image check.
+The GitHub-hosted workflow was not run; the same stack checks were executed
+locally against frozen artifacts, without a push.
+
+APT source: [Debian CVE-2026-109518 status](https://security-tracker.debian.org/tracker/CVE-2026-109518).
 
 Evidence is under ignored `build/security-accounts-sqlite-backport-20261104/`:
 upstream pages/mirror metadata, exploratory and final build logs, source guard,

@@ -17,7 +17,7 @@ jobs:
   containers:
     name: Docker Compose integration
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 40
     env:
       COMPOSE_PROJECT_NAME: numforge-test-ci
       NUMFORGE_CHECK_ACCOUNT_BROWSER: '1'

@@ -29,6 +29,9 @@ def account_code(code):
 
 try:
     compose.docker("up", "--build", "--wait", "--wait-timeout", "180")
+    compose.docker("exec", "-T", "-e", "NUMFORGE_SQLITE_BACKPORT_CHECK=1", "accounts", "python", "-",
+                   input=(ROOT / "tests/containers/check_accounts_sqlite.py").read_text(encoding="utf-8"),
+                   encoding="utf-8")
     compose.docker("exec", "-T", "accounts", "python", "-c",
                    "import importlib.util; "
                    "assert importlib.util.find_spec('pip') is None; "
