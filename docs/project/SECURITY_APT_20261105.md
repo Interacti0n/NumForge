@@ -6,6 +6,10 @@ files, account schema, PostgreSQL/gosu binaries, both qualified SQLite repairs,
 monitor package receipts and image configuration remain unchanged. Gateway is
 unchanged and has a fresh scan with no records carrying listed fixes.
 
+The later [monitor system helper repair](SECURITY_SYSTEM_HELPERS_20261105.md)
+adds separately qualified SQLite/PyJWT backports. The exact APT artifacts and
+matched counts below remain the record of this earlier maintenance step.
+
 ## Bootstrap protection and scope
 
 Debian identifies 2.6.2 as the Bookworm fix. The advisory concerns package

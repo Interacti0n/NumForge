@@ -11,6 +11,11 @@ four services, removes eight newly listed HIGH records and verifies recovery.
 The upstream advisory range correction also resolves the legacy minimatch
 attribution without suppression. This report retains its historical scan counts.
 
+The subsequent [monitor helper qualification](SECURITY_SYSTEM_HELPERS_20261105.md)
+separately addresses system Python/CLI SQLite and PyJWT, preserving the Node
+engine. The applicability and migration assessments below describe the earlier
+images and are not claims that these later targeted repairs are missing.
+
 ## Scope and preserved application behavior
 
 The original [review](SECURITY_REVIEW_20261103.md) used the 2 November database

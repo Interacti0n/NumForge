@@ -1,3 +1,14 @@
+FROM python:3.12-slim-bookworm AS system-sqlite-build
+USER root
+RUN sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/debian.sources \
+    && apt-get -o Acquire::Retries=0 update && apt-get -o Acquire::Retries=0 build-dep -y --no-install-recommends sqlite3
+WORKDIR /build
+RUN apt-get -o Acquire::Retries=0 source sqlite3=3.40.1-2+deb12u2
+COPY deploy/backport_accounts_sqlite.py /build/backport.py
+RUN python /build/backport.py
+RUN --network=none cd /build/sqlite3-3.40.1 && DEB_BUILD_OPTIONS=nocheck dpkg-buildpackage -b -uc -us -j2
+RUN mkdir /out && dpkg-deb -x /build/libsqlite3-0_3.40.1-2+deb12u2_amd64.deb /out
+
 FROM louislam/uptime-kuma:2.5.9-slim@sha256:c41c46667c116066ad252b4887e1c4c66cca8891ca17f3161c1d16540645d1cc AS patched
 COPY deploy/monitor-patches.json /opt/numforge/monitor-patches.json
 COPY deploy/patch_monitor.cjs /tmp/patch_monitor.cjs
@@ -24,6 +35,11 @@ RUN --network=none cd /app/node_modules/@louislam/sqlite3 \
 RUN --network=none node /tmp/build_monitor_sqlite.cjs verify /tmp/monitor-sqlite.json /tmp/monitor-sqlite-receipt.json
 
 FROM patched
+RUN python3 -c "from pathlib import Path; import hashlib; assert hashlib.sha256(Path('/usr/lib/x86_64-linux-gnu/libsqlite3.so.0.8.6').read_bytes()).hexdigest()=='2e6eef9a727f081f0d453b4e5e6cbd8b9ef8b6f86cbf7681cbad444d3b0b55c8'"
+COPY --from=system-sqlite-build /out/usr/lib/x86_64-linux-gnu/libsqlite3.so.0.8.6 /usr/lib/x86_64-linux-gnu/libsqlite3.so.0.8.6
+COPY --from=system-sqlite-build /build/backport-receipt.json /opt/numforge/system-sqlite-backport.json
+COPY deploy/backport_monitor_jwt.py /tmp/backport_monitor_jwt.py
+RUN python3 /tmp/backport_monitor_jwt.py && rm /tmp/backport_monitor_jwt.py
 COPY --from=sqlite-build /app/node_modules/@louislam/sqlite3/lib/binding/napi-v6-linux-x64/node_sqlite3.node /app/node_modules/@louislam/sqlite3/lib/binding/napi-v6-linux-x64/node_sqlite3.node
 COPY --from=sqlite-build /app/node_modules/@louislam/sqlite3/deps/common-sqlite.gypi /app/node_modules/@louislam/sqlite3/deps/common-sqlite.gypi
 COPY --from=sqlite-build /app/node_modules/@louislam/sqlite3/deps/sqlite-autoconf-3540100.tar.gz /app/node_modules/@louislam/sqlite3/deps/sqlite-autoconf-3540100.tar.gz

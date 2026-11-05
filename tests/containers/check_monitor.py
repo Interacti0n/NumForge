@@ -85,6 +85,16 @@ def run():
             bootstrap += "const nativeGuard=new Module('/tmp/nf-sqlite.cjs');nativeGuard.filename='/tmp/nf-sqlite.cjs';nativeGuard._compile(" + json.dumps(sqlite_guards) + ",nativeGuard.filename);globalThis.monitorSqliteGuards=nativeGuard.exports;\n"
             compose.docker("exec", "-T", "uptime", "node", "-", input=bootstrap + checks, encoding="utf-8")
 
+        def system_checks(selected):
+            # A rollback parent deliberately lacks these new system backports.
+            if previous_image and selected == previous_image:
+                return
+            for check, guard in (("check_accounts_sqlite.py", "NUMFORGE_SQLITE_BACKPORT_CHECK"),
+                                 ("check_monitor_system.py", "NUMFORGE_MONITOR_SYSTEM_CHECK")):
+                compose.docker("exec", "-T", "-e", guard + "=1", "uptime", "python3", "-",
+                               input=(ROOT / "tests/containers" / check).read_text(encoding="utf-8"),
+                               encoding="utf-8")
+
         def snapshot(history_limit=None):
             # Hash private fixture rows instead of logging password hashes/tokens.
             program = '''const S=require('@louislam/sqlite3'),crypto=require('node:crypto');
@@ -104,6 +114,7 @@ console.log(JSON.stringify({digest,history_limit:history.at(-1)?.id??0}));db.clo
             check_image(previous_image or image)
             provision()
             patch_checks()
+            system_checks(previous_image or image)
             # Read-only SQLite queries expose no credentials or real user data.
             verify = '''const sqlite=require('@louislam/sqlite3');const db=new sqlite.Database('data/kuma.db',sqlite.OPEN_READONLY);
 let tries=0;function check(){db.all("select m.name,h.status from monitor m left join heartbeat h on h.id=(select max(id) from heartbeat where monitor_id=m.id)",(err,rows)=>{
@@ -126,6 +137,7 @@ else if(++tries<20)setTimeout(check,1000);else{db.close();process.exitCode=1;}})
                     compose.docker("up", "--no-build", "--no-deps", "--wait", "--wait-timeout", "120", "uptime")
                     check_image(selected)
                     patch_checks()
+                    system_checks(selected)
                     # Check stored monitor identities/history before provisioning.
                     compose.docker("exec", "-T", "uptime", "node", "-e", verify)
                     assert snapshot(stored["history_limit"]) == stored, "Stored identities/config/history changed during upgrade or rollback"

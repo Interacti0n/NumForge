@@ -1410,3 +1410,10 @@ eleven-table account schema; newer workspace functionality remains a separate
 deployment decision. After normal supervisor Ensure, all five services were
 healthy and all six monitors up. Unfixed OS findings, the archived SQLite binding
 and the disputed legacy minimatch record remain visible.
+
+The [5 November APT follow-up](../project/SECURITY_APT_20261105.md) removes eight
+newly listed HIGH records and records the upstream correction of the legacy
+minimatch range. The separate
+[monitor system helper repair](../project/SECURITY_SYSTEM_HELPERS_20261105.md)
+qualifies the Python/CLI SQLite and PyJWT backports, with actual notification
+delivery, source/binary receipts and persisted upgrade/rollback checks.
