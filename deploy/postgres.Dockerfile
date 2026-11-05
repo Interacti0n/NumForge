@@ -10,7 +10,7 @@ RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache
     && go version -m /out/gosu > /out/gosu.buildinfo
 
 FROM postgres:18.6-bookworm
-RUN apt-get update && apt-get upgrade -y --no-install-recommends \
+RUN apt-get -o Acquire::Retries=0 update && apt-get -o Acquire::Retries=0 upgrade -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=gosu /out/gosu /usr/local/bin/gosu
 COPY --from=gosu /out/gosu.buildinfo /opt/numforge/gosu.buildinfo

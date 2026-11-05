@@ -128,7 +128,7 @@ database copies remain in the protected operations directory.
 Strict documentation generation also caught a GitHub/MkDocs anchor difference
 around the Trixie heading's dash; its heading and reference now use plain words.
 
-## Permanent build and CI integration — 5 November
+## Permanent build and CI integration on 5 November
 
 The ordinary [accounts Dockerfile](../../deploy/accounts.Dockerfile) now builds
 the same backport from the official Python Bookworm base in a separate stage.

@@ -6,12 +6,12 @@ RUN node /tmp/patch_monitor.cjs prepare /opt/numforge/monitor-patches.json /tmp/
     && node /tmp/patch_monitor.cjs verify /opt/numforge/monitor-patches.json /tmp/monitor-before.json \
     && rm -f /tmp/patch_monitor.cjs /tmp/monitor-before.json \
     && rm -rf /root/.npm
-RUN apt-get update && apt-get upgrade -y --no-install-recommends \
+RUN apt-get -o Acquire::Retries=0 update && apt-get -o Acquire::Retries=0 upgrade -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
     && rm -f /app/extra/healthcheck /usr/bin/cloudflared /usr/local/bin/npm /usr/local/bin/npx \
     && rm -rf /usr/local/lib/node_modules/npm
 FROM patched AS sqlite-build
-RUN apt-get update && apt-get install -y --no-install-recommends g++ make python3 \
+RUN apt-get -o Acquire::Retries=0 update && apt-get -o Acquire::Retries=0 install -y --no-install-recommends g++ make python3 \
     && rm -rf /var/lib/apt/lists/*
 COPY deploy/build_monitor_sqlite.cjs /tmp/build_monitor_sqlite.cjs
 COPY deploy/monitor-sqlite.json /tmp/monitor-sqlite.json

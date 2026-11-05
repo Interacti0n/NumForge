@@ -1,9 +1,9 @@
 FROM python:3.12-slim-bookworm AS sqlite-build
 USER root
 RUN sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/debian.sources \
-    && apt-get update && apt-get build-dep -y --no-install-recommends sqlite3
+    && apt-get -o Acquire::Retries=0 update && apt-get -o Acquire::Retries=0 build-dep -y --no-install-recommends sqlite3
 WORKDIR /build
-RUN apt-get source sqlite3=3.40.1-2+deb12u2
+RUN apt-get -o Acquire::Retries=0 source sqlite3=3.40.1-2+deb12u2
 COPY deploy/backport_accounts_sqlite.py /build/backport.py
 RUN python /build/backport.py
 RUN --network=none cd /build/sqlite3-3.40.1 && DEB_BUILD_OPTIONS=nocheck dpkg-buildpackage -b -uc -us -j2
@@ -12,7 +12,7 @@ RUN mkdir /out && dpkg-deb -x /build/libsqlite3-0_3.40.1-2+deb12u2_amd64.deb /ou
 FROM python:3.12-slim-bookworm
 WORKDIR /service
 COPY apps/accounts/requirements.txt deploy/accounts-requirements.txt ./
-RUN apt-get update && apt-get upgrade -y --no-install-recommends \
+RUN apt-get -o Acquire::Retries=0 update && apt-get -o Acquire::Retries=0 upgrade -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
     && python -m pip install --no-cache-dir --upgrade pip==26.3 \
     && python -m pip install --no-cache-dir -r accounts-requirements.txt \

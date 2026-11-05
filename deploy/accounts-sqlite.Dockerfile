@@ -1,9 +1,9 @@
 FROM numforge-accounts:maintenance-20261103 AS builder
 USER root
 RUN sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/debian.sources \
-    && apt-get update && apt-get build-dep -y --no-install-recommends sqlite3
+    && apt-get -o Acquire::Retries=0 update && apt-get -o Acquire::Retries=0 build-dep -y --no-install-recommends sqlite3
 WORKDIR /build
-RUN apt-get source sqlite3=3.40.1-2+deb12u2
+RUN apt-get -o Acquire::Retries=0 source sqlite3=3.40.1-2+deb12u2
 COPY deploy/backport_accounts_sqlite.py /build/backport.py
 RUN python /build/backport.py
 RUN --network=none cd /build/sqlite3-3.40.1 && DEB_BUILD_OPTIONS=nocheck dpkg-buildpackage -b -uc -us -j2

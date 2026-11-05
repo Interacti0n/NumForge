@@ -72,6 +72,7 @@ nav:
       - Container security review (2026-11-03): docs/project/SECURITY_REVIEW_20261103.md
       - Container dependency maintenance (2026-11-03): docs/project/SECURITY_MAINTENANCE_20261103.md
       - Accounts SQLite backport (2026-11-04): docs/project/SECURITY_SQLITE_BACKPORT_20261104.md
+      - Bookworm APT maintenance (2026-11-05): docs/project/SECURITY_APT_20261105.md
       - Feature checklist: docs/project/FEATURE_CHECKLIST.md
       - Testing:
           - Start here: docs/TESTING.md

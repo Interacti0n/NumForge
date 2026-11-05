@@ -1,5 +1,5 @@
 FROM debian:bookworm-slim AS build
-RUN apt-get update && apt-get install -y --no-install-recommends cmake gcc make libc6-dev \
+RUN apt-get -o Acquire::Retries=0 update && apt-get -o Acquire::Retries=0 install -y --no-install-recommends cmake gcc make libc6-dev \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /source
 COPY . .
@@ -8,8 +8,8 @@ RUN cmake -S . -B /build -DBUILD_TESTING=OFF -DCMAKE_BUILD_TYPE=Release \
     && cmake --build /build --target numforge_web calculator --parallel 2
 
 FROM debian:bookworm-slim
-RUN apt-get update && apt-get upgrade -y --no-install-recommends \
-    && apt-get install -y --no-install-recommends curl ca-certificates \
+RUN apt-get -o Acquire::Retries=0 update && apt-get -o Acquire::Retries=0 upgrade -y --no-install-recommends \
+    && apt-get -o Acquire::Retries=0 install -y --no-install-recommends curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=build /build/numforge_web /build/calculator /usr/local/bin/
 USER 10001:10001
