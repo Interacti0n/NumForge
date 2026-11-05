@@ -29,6 +29,17 @@ def account_code(code):
 
 try:
     compose.docker("up", "--build", "--wait", "--wait-timeout", "180")
+    xml_runtime = json.loads(compose.docker("exec", "-T", "db", "/opt/numforge/check_libxml").stdout)
+    xml_receipt = json.loads(compose.docker("exec", "-T", "db", "cat", "/opt/numforge/system-libxml2.json").stdout)
+    assert xml_runtime["runtimeVersion"] == "21309"
+    assert xml_receipt["manifest"] == json.loads((ROOT / "deploy/postgres-libxml.json").read_text(encoding="utf-8"))
+    assert xml_receipt["negativeExit"] in (-11, 139) and xml_receipt["positiveTestparser"] and xml_receipt["upstreamRuntests"]
+    xml_binary = compose.docker("exec", "-T", "db", "sha256sum", "/usr/lib/x86_64-linux-gnu/libxml2.so.2.13.9").stdout.decode().split()[0]
+    assert xml_binary == xml_receipt["binarySha256"]
+    compose.docker("exec", "-T", "db", "psql", "-X", "-U", "nf_local_admin", "-d", "postgres",
+                   "-Atq", "-v", "ON_ERROR_STOP=1",
+                   input=(ROOT / "tests/containers/check_postgres_xml.sql").read_text(encoding="utf-8"),
+                   encoding="utf-8")
     compose.docker("exec", "-T", "-e", "NUMFORGE_SQLITE_BACKPORT_CHECK=1", "accounts", "python", "-",
                    input=(ROOT / "tests/containers/check_accounts_sqlite.py").read_text(encoding="utf-8"),
                    encoding="utf-8")

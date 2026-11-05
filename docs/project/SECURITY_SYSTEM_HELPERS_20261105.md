@@ -160,6 +160,11 @@ repair. Removing the library or copying an unqualified replacement is unsuitable
 A future candidate must preserve PostgreSQL XML functionality and pass parser,
 data restore and rollback checks before promotion. No libxml2 fix is claimed here.
 
+The subsequent [PostgreSQL XML qualification](SECURITY_POSTGRES_XML_20261105.md)
+tests those requirements, rejects a whole-base locale change and qualifies a
+same-system source replacement. The observations here describe the preceding
+images, rather than the later qualified XML artifact.
+
 The PostgreSQL image also inventories the original system SQLite library, but
 the inspected server executable does not directly link it and that image has
 neither Python nor a sqlite3 CLI. This limits the identified consumer surface;

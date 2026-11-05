@@ -1,0 +1,15 @@
+{
+  "version": "2.13.9",
+  "archive": "https://download.gnome.org/sources/libxml2/2.13/libxml2-2.13.9.tar.xz",
+  "archiveSha256": "a2c9ae7b770da34860050c309f903221c67830c86e4a7e760692b803df95143a",
+  "vendorCommit": "35f5eb2864e50dd4448758d31f3e2a32f733ab84",
+  "vendorPackage": "Alpine libxml2 2.13.9-r2",
+  "patchSha512": "a54eca0b69fb49c9894684069b0e68dd80f002977c59249bee6d1a168391179e9815dfbe49a9cce3de28ca4a1bdfcac8a691daa240dd70a0206d24d32f6e84cb",
+  "testPatchSha512": "9117a6a060d9c760ae4aa88c33131b02b4677a6703fe02ea36a474035c901d5da778a4d98402a87187410e9bcfe9819d382f9df4e6fe42ff3cf33acc88ba28a9",
+  "vendorPatchHeaderBeforeGitBlob": "6e7621a86b5b9256b7a068f09a7e1650e7264aa5",
+  "vendorPatchHeaderAfterGitBlob": "85bc39b1c2739574ab90fde34a24459e5ef9928f",
+  "parserBeforeGitBlob": "d206ee22f7f08aff702b0b4900a6897b73f61da3",
+  "parserAfterGitBlob": "be3d9b27b18d42fd7a30bebf0b7ced30b75668f1",
+  "runtimePreimageSha256": "c05750a6f1c9a90c254df313a9dda9b4c958c0a768b0faf4c15e04b3515c7d93",
+  "configure": ["--prefix=/usr", "--libdir=/usr/lib/x86_64-linux-gnu", "--without-python", "--with-legacy", "--with-icu", "--with-lzma", "--with-zlib", "--with-ftp", "--disable-static"]
+}
