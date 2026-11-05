@@ -4,18 +4,26 @@ Open work in recommended order, not a delivery calendar. Current capabilities
 belong to the [API index](../API.md), boundaries to [architecture](../design/ARCHITECTURE.md).
 Completed foundations are not repeated as tasks here.
 
+The [local review plan dated 5 November 2026](LOCAL_PLAN_20261105.md) expands this
+order into eight stages with acceptance gates, current deployment distinctions
+and decisions for the next review. Daily backups now include monitor SQLite;
+fresh-host recovery remains open. Workspace source is fixture-qualified but has
+not been promoted to the live pilot.
+
 ## Execution order and completion gates
 
 1. **Close stage 5: reliable pilot operation.** Verify a real Windows reboot/login,
    preserve the backup recovery key separately and address remaining upstream
    security findings. The [local stack measurements](../performance/baselines/SERVER.md#mixed-docker-pilot-30-october-2026)
    do not certify long-term/internet capacity or another server's resource limits.
-2. **Account-scoped preferences.** Persist language/precision/notation/rounding/
-   angle defaults, validate ownership and revisions, explicitly import guest data
-   and clear account state on logout. Gate: restart/second-browser persistence,
-   two-user isolation and concurrent-tab checks.
-3. **Named workspaces.** Save inputs/settings first: create/load/rename/duplicate/
-   delete with schema versions and quotas, restoring without calculation. Then
+2. **Account-scoped preferences.** These defaults are already deployed to the
+   pilot. Preserve ownership/revisions, explicit guest import and logout clearing
+   during subsequent changes. Gate: restart/second-browser persistence, two-user
+   isolation and concurrent-tab checks for the selected release.
+3. **Named workspaces.** Manual create/load/rename/duplicate/delete of
+   inputs/settings is implemented and fixture-qualified, with schema versions,
+   quotas and opening without calculation. Rehearse migration/rollback and review
+   the [rollout proposal](WORKSPACE_ROLLOUT_20261105.md) before promotion. Then
    optional autosave with offline recovery and conflict handling. Gate: different
    devices, forbidden IDs, limits and failed/concurrent writes.
 4. **Account lifecycle.** Profile/password controls, device revocation, export/

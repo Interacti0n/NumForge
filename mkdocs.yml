@@ -118,5 +118,9 @@ nav:
   - Project:
       - Overview and downloads: README.md
       - Roadmap: docs/project/ROADMAP.md
+      - Local follow-up plan (2026-11-05): docs/project/LOCAL_PLAN_20261105.md
+      - Recovery qualification (2026-11-05): docs/project/RECOVERY_20261105.md
+      - Remaining security triage (2026-11-05): docs/project/SECURITY_TRIAGE_20261105.md
+      - Workspace rollout proposal (2026-11-05): docs/project/WORKSPACE_ROLLOUT_20261105.md
       - Changelog: CHANGELOG.md
       - Release verification: docs/project/RELEASES.md

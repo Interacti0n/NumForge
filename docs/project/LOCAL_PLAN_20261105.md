@@ -1,0 +1,148 @@
+# Lokálny plán ďalšieho vývoja — 5. november 2026
+
+Tento dokument je podklad na spoločné rozhodnutie o ďalšom smerovaní.
+Poradie vyjadruje závislosti a riziko; nejde o sľúbené termíny. Zmeny sú lokálne,
+bez odoslania na GitHub. Stav nasadeného pilotu a stav novšieho zdrojového kódu
+rozlišujeme: pilot má preferencie a 11 databázových tabuliek; pracovné priestory
+sú pripravené v kóde a skúšobných prostrediach s 12 tabuľkami.
+
+## Čo je vybavené a čo zostáva otvorené
+
+| Oblasť | Stav | Dôkaz alebo ďalšia podmienka |
+| --- | --- | --- |
+| Denná záloha účtov a monitoringu | Hotové a reálne obnovené | Formát 2, rovnaká denná úloha; [obnova](RECOVERY_20261105.md) |
+| Kontrola starších záloh pred čistením | Hotové | Obe databázy a súbory musia prejsť obnovou |
+| Obnova do nových izolovaných zväzkov | Hotové | Všetkých 5 služieb zdravých, 11 tabuliek účtov, integrita monitoringu; skúšobné prostredie odstránené |
+| Prenositeľný balík vrátane obrazov a CA | Nástroj pripravený, spustenie čaká na súhlas | Automatická kontrola odmietla nový rozsah so súkromným kľúčom CA |
+| Obnova na úplne novom počítači | Otvorené | Nové zväzky na existujúcom Docker prostredí nenahrádzajú druhý počítač |
+| Bezpečnostný súpis všetkých závažností | Hotový súpis, pokračuje vecné preverovanie | [Triedenie nálezov](SECURITY_TRIAGE_20261105.md) |
+| Pracovné priestory | Kód overený, pilot bez nasadenia | [Postup nasadenia a návratu](WORKSPACE_ROLLOUT_20261105.md) |
+| Reštart Windows a automatické zotavenie | Otvorené | Treba dohodnúť skutočný reštart a sledovať prihlásenie |
+
+## Etapa 1 — uzavrieť spoľahlivosť záloh
+
+1. Sledovať najbližšie automatické denné spustenie: výsledok úlohy 0, čerstvý
+   záznam úspechu, overenie monitoringu a stav zálohovacieho monitora UP.
+2. Zopakovať skúšku odpojeného disku bez vytvorenia nového repozitára. Overiť,
+   že upozornenie ukáže zlyhanie a posledný úspešný bod zostane dostupný.
+3. Potvrdiť uloženie obnovovacieho hesla mimo počítača aj zálohovacieho disku.
+   Heslo neposielať do chatu ani neukladať do Git histórie.
+4. Rozhodnúť o zálohe súkromného kľúča CA. Pri zachovaní existujúcej dôvery ho
+   šifrovane uložiť a overiť; pri odmietnutí opísať obnovu s novou CA a opätovným
+   nastavením dôvery na zariadeniach.
+5. Dohodnúť prijateľnú stratu dát a čas obnovy. Denná úloha pri prihlásenom
+   používateľovi nezaručuje 24-hodinový bod obnovy pri vypnutom PC či odpojenom disku.
+6. Rozhodnúť, či začať používať aj prílohy monitoringu. Denná záloha pokrýva jeho
+   SQLite databázu; prípadné obrázky a iné súbory potrebujú vlastný rozsah a test.
+
+**Podmienka uzavretia:** používateľ vie nájsť heslo, obnoviť obe databázy a pomenovať
+reálnu stratu dát pri výpadku. Čistenie zostáva až za úspešným overením obnovy.
+
+## Etapa 2 — preukázať obnovu mimo pôvodného prostredia
+
+7. Vytvoriť overený obnovovací balík: presné obrazy, Git bundle, súkromná
+   konfigurácia, obe databázy, potrebné pripojené súbory a dohodnutý variant CA.
+8. Overiť dostupnosť inštalačných nástrojov a ich verzií: Docker, Python, Git,
+   Restic. Nezávisieť od existencie pôvodného adresára `build` alebo meniteľných tagov.
+9. Použiť nový počítač alebo čistý virtuálny stroj. Obnoviť súbory do iného
+   adresára, načítať obrazy z archívu a prepísať hostiteľské cesty.
+10. Vytvoriť nové zväzky a roly, obnoviť dáta, spustiť služby a overiť prihlásenie,
+    preferencie, výpočet, monitoring, históriu a dohodnutú dôveru HTTPS.
+11. Zaznamenať čas, ručné zásahy a nedostupné závislosti. Návod opraviť podľa
+    skutočného priebehu a zopakovať nejasné kroky.
+
+**Podmienka uzavretia:** fungujúci systém bez čítania dát z pôvodných zväzkov,
+adresárov či Docker cache. Súčasný izolovaný test je užitočný medzikrok.
+
+## Etapa 3 — stabilita každodennej prevádzky
+
+12. Dohodnúť jeden reálny reštart Windows. Sledovať štart Dockeru, pilotu,
+    tunela, zdravie služieb a reakciu monitorov po prihlásení.
+13. Pri ďalšom samovoľnom zastavení Dockeru zachytiť čas a systémové záznamy.
+    Príčina predchádzajúcich zastavení nie je preukázaná; ďalšie opravné zásahy
+    vybrať až podľa dôkazov.
+14. Zmerať rast histórie monitoringu, databáz a záloh počas bežnej prevádzky.
+    Nastaviť limit voľného miesta a reakciu na jeho prekročenie.
+15. Rozhodnúť o nezávislej kontrole dostupnosti mimo tohto PC. Lokálny monitor
+    nevie ohlásiť úplný výpadok vlastného počítača.
+
+**Podmienka uzavretia:** overený návrat po reštarte, merateľná čerstvosť záloh,
+zachytenie ďalšieho výpadku a známy postup pri plnom disku.
+
+## Etapa 4 — zvyšná bezpečnosť podľa skutočného použitia
+
+16. Prioritne preveriť zostávajúce PyJWT problémy a spotrebiteľov knižnice v
+    monitoringu; existujúca oprava presmerovania neopravuje všetky chyby PyJWT.
+17. Pre bránu zistiť dostupnosť problematických Go JOSE funkcií cez používané
+    moduly. Pripraviť izolovaného kandidáta alebo úzky backport podľa výsledku.
+18. Pre PostgreSQL samostatne posúdiť systémové SQLite. Neprítomnosť priameho
+    prepojenia hlavného servera nie je dôkaz, že knižnicu nemôže použiť žiadny modul.
+19. Prejsť MEDIUM/LOW/UNKNOWN po skupinách: libc, curl, util-linux, TLS/Kerberos,
+    Python a ďalšie balíky. Každý záver viazať na konkrétnu chybu a spotrebiteľa.
+20. Pri každom kandidátovi overiť novú databázu skenera, funkčné kontroly,
+    kompatibilitu dát a návrat. Zmenu základného systému schváliť až po porovnaní
+    textového správania; zamietnutý Alpine kandidát menil Unicode poradie a prevody.
+21. Zaviesť pravidlo, kedy meniť súkromné opravy za opravu dodávateľa. Udržiavať
+    pôvod zdrojov, kontrolné súčty, regresné testy a vlastníka každej odchýlky.
+
+**Podmienka uzavretia jednej položky:** oprava s testom, konkrétny dôkaz
+nepoužiteľnosti chyby pre daný balík alebo vedome prijaté a zaznamenané riziko.
+Samotné „dodávateľ zatiaľ nemá opravu“ položku neuzatvára.
+
+## Etapa 5 — nasadiť ručné pracovné priestory
+
+22. Spoločne potvrdiť rozsah: pomenované uloženie vstupov a nastavení pre
+    kalkulačku, grafy, rovnice a matice. Bez automatického spúšťania výpočtov pri otvorení.
+23. Vybrať presnú revíziu, znovu zostaviť web aj účty s už overenými bezpečnostnými
+    opravami a vykonať [nasadzovacie kontroly](WORKSPACE_ROLLOUT_20261105.md).
+24. Nacvičiť migráciu `0004_workspace` na kópii aktuálnej databázy a návrat po
+    vytvorení skúšobných pracovných priestorov. Nové používateľské dáta sa pri návrate
+    nesmú potichu stratiť.
+25. Až po kontrole podkladov nasadiť kandidáta, overiť dva účty, dve zariadenia,
+    súbežné záložky, reštart a obmedzenia veľkosti. Potom vytvoriť novú zálohu a obnoviť ju.
+26. Po období používania vyhodnotiť chyby, nejasné názvy a potrebu exportu.
+
+**Podmienka uzavretia:** používateľ bezpečne uloží a otvorí rozpracované vstupy,
+cudzie dáta sa nedajú čítať, konflikt ponechá lokálnu prácu a záloha obsahuje novú tabuľku.
+
+## Etapa 6 — pohodlie práce až podľa spätnej väzby
+
+27. Rozhodnúť o exporte/importovaní pracovných priestorov a verziovaní formátu.
+    Import má mať rovnaké limity a validáciu ako uloženie cez rozhranie.
+28. Ak sa ukáže potreba automatického ukladania, najprv dohodnúť interval,
+    obnovu po strate spojenia a riešenie konfliktov medzi zariadeniami.
+29. Zaviesť viditeľný stav posledného uloženia, zachovanie neodoslanej práce
+    a ochranu pred oneskorenými odpoveďami po prepnutí účtu.
+30. Overiť klávesnicu, kopírovanie a gestá grafov na fyzickom telefóne aj tablete.
+    Simulovaný rozmer obrazovky túto skúšku nenahrádza.
+
+## Etapa 7 — správa účtu a hranice súkromia
+
+31. Dohodnúť profil, zmenu hesla a odhlásenie ďalších zariadení vrátane opätovného
+    overenia pri citlivých úkonoch.
+32. Navrhnúť export a vymazanie účtu aj pracovných priestorov. Jasne vysvetliť,
+    dokedy môžu dáta existovať v starších zálohách a ako sa správa obnova.
+33. Verejnú registráciu otvárať až po overení emailov, obnovy hesla, limitov
+    zneužitia a doručovania správ. Najprv samostatne odsúhlasiť prevádzkový rozsah.
+
+## Etapa 8 — uloženie výpočtového stavu a ďalšie matematické možnosti
+
+34. Priradiť privátne výpočtové relácie prihláseným vlastníkom a testovať izoláciu.
+35. Navrhnúť ohraničený prenos typovaných hodnôt a kontextu. Obnova sa nesmie
+    skladať z opätovného vykonania výrazov alebo náhodných volaní.
+36. Testovať presné hodnoty, neplatný vstup, nedostatok pamäte a nemennosť
+    pôvodného stavu pri chybe; až potom prepájať uloženie relácie s pracovnými priestormi.
+37. Ďalšie matematické funkcie a zrýchlenia vybrať podľa konkrétneho použitia,
+    nezávislých správnostných referencií a opakovaných porovnateľných meraní.
+
+## Rozhodnutia na najbližšie spoločné prejdenie
+
+- Zachovanie pôvodnej CA v šifrovanej zálohe alebo nová dôvera po obnove.
+- Cieľová strata dát a čas obnovy; umiestnenie ďalšej nezávislej kópie.
+- Druhý počítač/virtuálny stroj a termín skúšky reštartu.
+- Poradie bezpečnostnej údržby a nasadenia pracovných priestorov.
+- Potreba exportu, automatického ukladania a správy zariadení.
+- Kedy odoslať lokálne commity a overiť CI na presnej odoslanej revízii.
+
+Po týchto rozhodnutiach upravíme poradie etáp. Neskoršie produktové etapy sú
+návrhy na diskusiu, nie už schválený rozsah implementácie.

@@ -159,7 +159,8 @@ python scripts/scan_images.py numforge-web numforge-accounts --fail-on-fixable
 Backup initialization is one-time: install Restic in `.local/tools/bin/`, then
 `python scripts/ops_backup.py init --repository PATH`. The pilot environment is
 read from `.local/compose/pilot.env`. Every run restores the exact snapshot,
-compares file hashes and restores the dump into a disposable database before
+compares file hashes, restores the dump into a disposable database and checks a
+consistent monitor SQLite snapshot before
 retaining 7 daily, 4 weekly and 6 monthly snapshots. An absent disk fails closed.
 The Windows daily task runs at 19:00 when the user is logged in; it requires Docker
 and the external disk. `backup.log` and `backup-status.json` record local results.
@@ -171,6 +172,13 @@ history, including unpushed commits; uncommitted edits and runtime build snapsho
 are outside this backup. On a new machine, restore configuration/source, provision
 database roles (including `nf_inspect` if present), then restore the logical dump.
 Never restore over live data as a verification step.
+
+From the 5 November backup format-2 change onward, the daily job includes monitor
+SQLite. Older deployment sections below describe their historical backup scope.
+The [recovery qualification](../project/RECOVERY_20261105.md) records the successful
+isolated restored-stack rehearsal and the remaining fresh-host/CA-key gates.
+The [local plan](../project/LOCAL_PLAN_20261105.md) and
+[remaining security triage](../project/SECURITY_TRIAGE_20261105.md) define the next work.
 
 For compilation caching, set `CMAKE_C_COMPILER_LAUNCHER` to `sccache` during a
 Ninja/Make configure; keep `SCCACHE_DIR` outside disposable build trees. This PC's

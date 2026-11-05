@@ -3,7 +3,9 @@
 Local development foundation only: Django 5.2 LTS, Psycopg 3 and PostgreSQL 14+.
 Identity, session and login-throttle tables have migrations. Private login/logout
 API and SK/EN form tests pass through an optional HTTPS gateway. Workspace storage
-and the authenticated C-session bridge remain pending.
+is implemented in current source and isolated fixtures, but is not deployed to
+the pilot; the authenticated C-session bridge remains pending. See the
+[workspace rollout proposal](../project/WORKSPACE_ROLLOUT_20261105.md).
 CMake, the mathematical libraries and the existing guest web need none of these.
 For the separate container deployment, see [Docker Compose](CONTAINERS.md).
 
