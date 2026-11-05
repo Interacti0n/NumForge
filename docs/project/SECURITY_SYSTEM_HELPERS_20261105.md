@@ -2,7 +2,7 @@
 
 The monitor's Node SQLite engine and its Debian Python helpers are separate
 consumers. The previously deployed Node engine is 3.54.1, but system Python and
-the sqlite3 CLI still load Debian's 3.40.1 library. The dependency-only candidate
+the sqlite3 CLI still loaded Debian's 3.40.1 library. The deployed maintenance image
 repairs CVE-2025-7458 in that system library and CVE-2026-102267 in PyJWT, while
 preserving the complete `/app` tree, package versions and image configuration.
 
@@ -113,6 +113,43 @@ necessary evidence of these two specific repairs.
 The separately rebuilt regular image has the same advisory/version/severity
 inventory and verified layer identities, also with no listed fixes.
 
+## Promotion and recovery verification
+
+The maintenance image was deployed as `numforge-uptime:system-20261105` on
+**5 November at 19:23:37 CET (18:23:37 UTC)** from source commit `2c91d1c`.
+Only the monitor container was recreated under the supervisor operation lock.
+The effective Compose change is limited to its image. Its user, command,
+healthcheck, mounted volume, read-only filesystem, dropped capabilities,
+security options and port bindings are preserved. Web, accounts, PostgreSQL and
+gateway retain their exact container identities. The original APT-maintained
+monitor image remains available for rollback.
+
+Live source/binary checks confirm both system helper repairs and the unchanged
+Node SQLite 3.54.1 engine. All eleven account tables and their row digests are
+unchanged. A consistent monitor snapshot confirms preserved users, monitor
+configuration and the pre-existing heartbeat history. Local/public HTTPS and
+the existing tunnel remain working; all six monitors report UP after restart.
+
+The existing authorized encrypted backup workflow ran before and after the
+replacement. Standard application/configuration/committed-history backups and
+separate consistent monitor SQLite snapshots were restored and verified.
+All eleven account tables/rows, monitor byte digests and database integrity,
+and repository checks passed. All four restore points were retained. Existing
+routine retention and separate monitor-snapshot limitations still apply.
+
+Normal supervisor Ensure and the final check passed: **five healthy services,
+six UP monitors**, repaired helper hashes, unchanged application/account schema,
+matching runtime/scanner image layers and absence of both disposable fixture
+projects and their resources. No push or reboot was performed.
+
+The first promotion preflight stopped before making a live change because its
+negative-control log check expected an assertion failure for both controls.
+The recorded SQLite negative control instead crashes with exit 139. Both
+controls were rerun with explicit exit-code records, the check corrected and
+the stopped attempt's console log retained as `deployment-preflight.log`.
+The successful attempt has its own complete `deployment.log`; no prior audit
+log was overwritten by this operation.
+
 ## Remaining migration work
 
 PostgreSQL directly links its installed libxml2 and has XML/XSLT support.
@@ -140,5 +177,8 @@ The newer workspace application and schema are also outside this helper repair.
 Evidence is under ignored `build/security-system-libraries-20261105/`: frozen
 image identities, consumer inspection, tree and package inventories, positive
 and negative regression logs, monitor fixture results, regular build logs and
-matched vulnerability reports. Version-based records for privately backported
+matched vulnerability reports. The `deployment/` directory contains before-state,
+pre/post backup and restore records, the live JWT receipt, deployment/final-check
+results and both attempt logs. Private restored data stays in local operations
+storage and is not committed. Version-based records for privately backported
 libraries must remain visible; no scanner suppression is introduced.
