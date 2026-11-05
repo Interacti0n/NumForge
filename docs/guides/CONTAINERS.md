@@ -1417,3 +1417,9 @@ minimatch range. The separate
 [monitor system helper repair](../project/SECURITY_SYSTEM_HELPERS_20261105.md)
 qualifies the Python/CLI SQLite and PyJWT backports, with actual notification
 delivery, source/binary receipts and persisted upgrade/rollback checks.
+
+The [PostgreSQL XML maintenance](../project/SECURITY_POSTGRES_XML_20261105.md)
+subsequently deploys a qualified libxml2 source repair while preserving the
+existing glibc locale, PostgreSQL binaries and eleven-table data. It also adds
+XML/XSLT CI checks and a migration gate that detects the text-behavior changes
+found in a rejected Alpine alternative.

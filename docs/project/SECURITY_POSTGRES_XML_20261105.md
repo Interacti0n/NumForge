@@ -113,6 +113,38 @@ the preserved live-release fixture: 15 account/preference tests, both browser
 suites, TLS/restarts, eleven-table/row restore and forty HTTPS probes without
 retained gateway zombies. These fixtures do not deploy workspace functionality.
 
+## Promotion and recovery verification
+
+The qualified maintenance image was deployed as
+`numforge-postgres:libxml-20261105` on **5 November at 21:05:29 CET
+(20:05:29 UTC)** from source commit `9d5d4b0`. Only PostgreSQL was recreated
+under the supervisor operation lock. The effective Compose change is limited
+to its image; mounts, data volume, user/entrypoint, healthcheck and runtime
+protections are preserved. Web, accounts, gateway and monitor retain their
+exact container identities. The original image and private runtime profile
+remain available for rollback.
+
+Live native probes confirm version 21309, the qualified feature vector and
+binary hash. A real PostgreSQL XPath query passes. Account schema and row
+digests remain identical across all eleven tables. The monitor's existing
+users, configuration and bounded heartbeat history are preserved, along with
+its qualified SQLite engine. Local/public HTTPS and the existing tunnel work.
+This replacement uses the existing PostgreSQL volume without initdb, schema,
+locale or physical data migration. The newer workspace application remains
+separate from this deployment.
+
+The authorized encrypted backup workflow ran before and after replacement:
+application/configuration/committed-history backups and separate consistent
+monitor SQLite snapshots. All four restore points passed restore verification,
+including eleven-table/row comparison, monitor byte digests and database
+integrity, and repository checks. All four points were retained. The existing
+routine retention and separate monitor-snapshot limitations still apply.
+
+Normal supervisor Ensure and the final verification passed: **five healthy
+services and six UP monitors**, repaired XML native hashes, unchanged account
+data and other containers, runtime/scanner image identity, and absence of all
+owned Compose and standalone XML fixtures. No push or reboot was performed.
+
 ## Scan interpretation and remaining work
 
 Matched Trivy 0.76.1 reports retain three CRITICAL, 47 HIGH, 173 MEDIUM, 168 LOW
@@ -135,3 +167,7 @@ identities/locale, rejected Alpine and accepted same-system fixtures, native
 negative/positive build logs and receipts, file/feature inventories, ordinary
 and preserved application checks, scan reports and metadata. Earlier failed
 preimage/test assumptions are retained in their separate attempt logs.
+The `deployment/` directory contains before-state, pre/post restore results,
+live native verification, deployment/final-check records and the complete
+console log. Restored private data remains in local operations storage and
+is not committed.
