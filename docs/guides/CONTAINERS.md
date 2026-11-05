@@ -1423,3 +1423,9 @@ subsequently deploys a qualified libxml2 source repair while preserving the
 existing glibc locale, PostgreSQL binaries and eleven-table data. It also adds
 XML/XSLT CI checks and a migration gate that detects the text-behavior changes
 found in a rejected Alpine alternative.
+
+The [monitor binding replacement](../project/SECURITY_MONITOR_BINDING_20261105.md)
+subsequently deploys Microsoft's maintained SQLite binding through a genuine
+npm alias. It retains the qualified SQLite 3.54.1 engine, verifies both Knex
+consumers and their error handling, and passes persisted upgrade/rollback,
+clean-volume, backup/restore and final supervisor checks.

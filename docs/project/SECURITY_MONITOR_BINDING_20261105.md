@@ -100,6 +100,38 @@ the frozen system-helper image. The [regular monitor build](../../deploy/monitor
 retains the replacement and independent system repairs for future CI/builds.
 The runtime retains its non-root user and existing healthcheck/protections.
 
+## Promotion and recovery verification
+
+The replacement was deployed as `numforge-uptime:binding-20261105` on
+**5 November at 22:11:19 CET (21:11:19 UTC)** from source commit `d6440c6`.
+Only the monitor was recreated under the supervisor operation lock. Its user,
+command, healthcheck, mounts, port bindings and runtime protections are
+preserved. Web, accounts, PostgreSQL and gateway retain their exact container
+identities. The original monitor image and private runtime profile remain
+available for rollback.
+
+Live verification confirms the Microsoft package identity, qualified native
+binary hash and unchanged SQLite 3.54.1 source ID. Original monitor users,
+configuration and bounded heartbeat history are preserved. Account schema and
+row digests remain identical across all eleven tables. System SQLite/JWT
+repairs and PostgreSQL's XML repair remain present. Local/public HTTPS and
+the existing tunnel work; the workspace application was not deployed.
+
+The authorized encrypted backup workflow ran before and after replacement,
+covering application/configuration/committed-history backups and separate
+consistent monitor SQLite snapshots. All four restore points passed restore
+verification, including eleven-table/row comparison, monitor byte digests and
+database integrity, and repository checks. All four points were retained.
+Existing routine retention and separate monitor-snapshot limitations apply.
+
+Normal supervisor Ensure and the final check passed: **five healthy services
+and six UP monitors**, the maintained binding and original engine identity,
+preserved system repairs and other containers, matching runtime/scanner image
+layers, and absence of both disposable fixture projects and their resources.
+The initial final-check launch was deferred by an automatic approval-review
+usage limit; the resumed launch passed through the same review and completed.
+No push or reboot was performed.
+
 ## Scan scope and remaining work
 
 Matched Trivy reports retain five CRITICAL, 77 HIGH, 210 MEDIUM, 193 LOW and
@@ -123,3 +155,6 @@ maintenance metadata, registry/source identities, build and callback logs,
 failed and successful upgrade attempts, fresh fixture, source guards, native/
 file/package inventories and matched scans. Fixtures use owned disposable
 volumes; real credentials and database rows are not logged or committed.
+The `deployment/` directory contains before-state, pre/post backup and restore
+records, live native verification, deployment/final-check results and the
+complete console log. Restored private data remains in local operations storage.
