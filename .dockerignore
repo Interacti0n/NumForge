@@ -15,3 +15,9 @@
 !deploy/**
 **/__pycache__
 **/*.pyc
+**/node_modules
+**/.venv
+**/venv
+**/.env
+**/.env.*
+**/.aws
