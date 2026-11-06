@@ -89,5 +89,31 @@ the monitor, preserving its volume, UID/GID, runtime protections, existing nativ
 engine and six monitors. On a failed live acceptance check, select the recorded
 old image/profile and keep the data volume. Refresh the portable kit afterwards.
 
-**Status:** qualification complete; live promotion is recorded separately below
-only after the exact-image checks and encrypted backup gates have passed.
+## Verified promotion
+
+Promoted at `2026-11-06T15:03:24Z` (16:03 CET), source `db1c7ad`, using ordinary
+image `sha256:abaf8b61bf22e4dda754077282ee47d5b382adaf6b37e49b6b49ca8aa93b0da7`
+and runtime tag `numforge-uptime:jwt-20261106`.
+
+Only the monitor container changed. Its data volume, runtime UID/GID, native
+SQLite 3.54.1/binding, users, configured monitors and prior heartbeat history were
+preserved. Other container IDs, the eleven-table account database, PostgreSQL
+XML probe, gateway CA and tunnel remained unchanged. Five services are healthy
+and all six monitors reported UP with new non-push heartbeats after startup.
+Normal pilot Ensure subsequently preserved this image and healthy operation.
+
+Verified encrypted standard/monitor backups were made and restored before and
+after promotion. All four points were retained at completion; later daily
+retention can rotate standard points. The earlier complete recovery kit retains
+the pre-change images and CA. Deployment records are under
+`build/followup-20261106/jwt/deployment/`, with rollback logic and the prior image
+`sha256:b7c69356941c83d47fa18562be5e4eb38bd42cb5a0b835af66cbbf727bec720a`.
+A first preflight attempt stopped before mutation because it compared image USER
+with Compose's deliberate runtime override; its log is retained separately and
+the comparison now checks image defaults and runtime settings independently.
+
+Fresh Trivy database `2026-11-06T12:55:02Z` scans of candidate and ordinary images
+have the same 502 OS advisory/version/severity records as the unchanged baseline,
+zero records with a listed fix, no Node findings and a correctly identified
+Python-package PyJWT 2.15.1 with no reported vulnerabilities. No scanner records
+were hidden. The retained legacy Debian package still contributes OS records.

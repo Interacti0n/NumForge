@@ -57,10 +57,17 @@ They address only the named issues, not all records for those packages.
 
 ## Open items requiring the next focused qualification
 
-The [6 November PyJWT qualification](SECURITY_MONITOR_JWT_20261106.md) follows up
-the monitor item below with an unmodified supported release. The tables here
+The [6 November PyJWT promotion](SECURITY_MONITOR_JWT_20261106.md) follows up
+the monitor item below with an unmodified supported release, now deployed. The tables here
 remain the dated 5 November scanner baseline; package-version records must not
 be interpreted as a fresh scan or a blanket exemption.
+
+Fresh scans on 6 November used database `2026-11-06T12:55:02Z`, verified all five
+exact image layer lists and retained 1,493 records: 11 CRITICAL, 219 HIGH,
+648 MEDIUM and 615 LOW, with zero UNKNOWN or listed fixes. Severity metadata changed
+without new package/advisory pairs or package updates. Full current inventory is
+in `build/followup-20261106/security/`; the promoted monitor has the same OS rows
+and an additional correctly detected supported PyJWT distribution with no findings.
 
 ### PyJWT consumers and asymmetric/HMAC confusion
 

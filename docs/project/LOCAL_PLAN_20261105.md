@@ -16,6 +16,8 @@ sú pripravené v kóde a skúšobných prostrediach s 12 tabuľkami.
 | Prenositeľný balík vrátane obrazov a CA | Hotové 6. novembra po súhlase používateľa | Šifrovaný balík obnovený, obrazy načítané, pôvodná CA a HTTPS dôvera overené v izolácii |
 | Obnova na úplne novom počítači | Otvorené | Nové zväzky na existujúcom Docker prostredí nenahrádzajú druhý počítač |
 | Bezpečnostný súpis všetkých závažností | Hotový súpis, pokračuje vecné preverovanie | [Triedenie nálezov](SECURITY_TRIAGE_20261105.md) |
+| Podporovaný PyJWT v monitoringu | Nasadené 6. novembra | [Kvalifikácia a návrat](SECURITY_MONITOR_JWT_20261106.md), zachovaná história aj ostatné služby |
+| Úplnosť a obsah Gitu | Overené 6. novembra | 720 sledovaných súborov, čistá lokálna kópia, zostavenie webu/kalkulačky a funkčné skúšky; ochrana aj v CI |
 | Pracovné priestory | Kód overený, pilot bez nasadenia | [Postup nasadenia a návratu](WORKSPACE_ROLLOUT_20261105.md) |
 | Reštart Windows a automatické zotavenie | Otvorené | Treba dohodnúť skutočný reštart a sledovať prihlásenie |
 
@@ -72,8 +74,10 @@ zachytenie ďalšieho výpadku a známy postup pri plnom disku.
 
 ## Etapa 4 — zvyšná bezpečnosť podľa skutočného použitia
 
-16. Prioritne preveriť zostávajúce PyJWT problémy a spotrebiteľov knižnice v
-    monitoringu; existujúca oprava presmerovania neopravuje všetky chyby PyJWT.
+16. **Pokrok 6. novembra:** monitoring používa oficiálny PyJWT 2.15.1 cez štandardný
+    import, overený proti chybám verejných kľúčov aj skutočným OAuth/Apprise
+    spotrebiteľom. Starší distribučný balík ostáva na disku a jeho záznamy skenera
+    nezakrývame; prípadné priame použitie starého modulu treba hodnotiť samostatne.
 17. Pre bránu zistiť dostupnosť problematických Go JOSE funkcií cez používané
     moduly. Pripraviť izolovaného kandidáta alebo úzky backport podľa výsledku.
 18. Pre PostgreSQL samostatne posúdiť systémové SQLite. Neprítomnosť priameho

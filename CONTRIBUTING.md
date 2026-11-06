@@ -28,5 +28,22 @@ copying contracts or test inventories. Keep routine builds, traces and recording
 under ignored `build/`; reusable benchmark tools belong in `benchmarks/`.
 An optimization needs matching, independently validated Release measurements.
 
+## Keep source and local state separate
+
+Track source, build/deployment recipes, migrations, tests and their public data,
+dependency manifests/lockfiles, documentation and required web assets. Keep
+credentials, runtime profiles, backup archives, installed dependencies, virtual
+environments, caches and compiler output in ignored local directories. Public
+`.env.example`, `.env.sample` and `.env.template` files remain available for Git;
+never place real credentials in them. Personal `AGENTS.md` and
+`CMakeUserPresets.json` are intentionally local in this repository.
+
+Run `python scripts/check_git_hygiene.py` before committing. CI rejects tracked
+private/generated paths, missing literal Docker/web inputs, recognized private
+key/credential patterns and unexpected files above 5 MiB. This focused check is
+not a complete secret scanner; review staged changes too. Generated test evidence
+belongs under `build/`, while reusable test scripts belong under `tests/`.
+Docker context rules also exclude local environments and dependency installations.
+
 Report bugs through [GitHub issues](https://github.com/Interacti0n/NumForge/issues)
 with version, OS/compiler, minimal input, expected reference and actual output.
