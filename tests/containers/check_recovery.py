@@ -80,6 +80,11 @@ def rehearse(kit, output, with_ca=True):
     result = {"project": project, "ok": False, "resources_absent": False,
               "scope": "same-engine isolated recovery, not a clean Windows host", "images": manifest["images"]}
     try:
+        if with_ca:
+            # Exercise the restored archive, even when this engine already has
+            # the images. Saving by immutable IDs does not overwrite live tags.
+            with (kit / "images.tar").open("rb") as archive:
+                recovery.backup.execute(["docker", "image", "load"], stdin=archive)
         # Never create resources if a required immutable image is unavailable.
         for image in set(manifest["images"].values()):
             recovery.backup.execute(["docker", "image", "inspect", image])
@@ -113,8 +118,16 @@ def rehearse(kit, output, with_ca=True):
             with tarfile.open(kit / "gateway-pki.tar") as archive:
                 if ca != archive.extractfile("caddy/pki/authorities/local/root.crt").read():
                     raise ValueError("Recovery changed the gateway CA.")
+            # Verify both the certificate chain and localhost name using the
+            # restored root, entirely within the isolated fixture network.
+            run("exec", "-T", "accounts", "python", "-c",
+                "import socket,ssl,sys;ctx=ssl.create_default_context(cadata=sys.stdin.read());"
+                "s=ctx.wrap_socket(socket.create_connection(('gateway',8443)),server_hostname='localhost');"
+                "s.sendall(b'GET / HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n');"
+                "assert b'200' in s.recv(4096).split(b'\\r\\n')[0];s.close()", input=ca)
         run("exec", "-T", "gateway", "wget", "-q", "--no-check-certificate", "-O", "/dev/null", "https://localhost:8443/")
         result.update(ok=True, five_healthy=True, monitor_integrity=True, gateway_ca_preserved=with_ca,
+                      restored_image_archive_loaded=with_ca, gateway_tls_trust_verified=with_ca,
                       requires_existing_images=not with_ca)
     finally:
         # Down reads only the generated disposable profile; it has no external

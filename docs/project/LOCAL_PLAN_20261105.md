@@ -13,7 +13,7 @@ sú pripravené v kóde a skúšobných prostrediach s 12 tabuľkami.
 | Denná záloha účtov a monitoringu | Hotové a reálne obnovené | Formát 2, rovnaká denná úloha; [obnova](RECOVERY_20261105.md) |
 | Kontrola starších záloh pred čistením | Hotové | Obe databázy a súbory musia prejsť obnovou |
 | Obnova do nových izolovaných zväzkov | Hotové | Všetkých 5 služieb zdravých, 11 tabuliek účtov, integrita monitoringu; skúšobné prostredie odstránené |
-| Prenositeľný balík vrátane obrazov a CA | Nástroj pripravený, spustenie čaká na súhlas | Automatická kontrola odmietla nový rozsah so súkromným kľúčom CA |
+| Prenositeľný balík vrátane obrazov a CA | Hotové 6. novembra po súhlase používateľa | Šifrovaný balík obnovený, obrazy načítané, pôvodná CA a HTTPS dôvera overené v izolácii |
 | Obnova na úplne novom počítači | Otvorené | Nové zväzky na existujúcom Docker prostredí nenahrádzajú druhý počítač |
 | Bezpečnostný súpis všetkých závažností | Hotový súpis, pokračuje vecné preverovanie | [Triedenie nálezov](SECURITY_TRIAGE_20261105.md) |
 | Pracovné priestory | Kód overený, pilot bez nasadenia | [Postup nasadenia a návratu](WORKSPACE_ROLLOUT_20261105.md) |
@@ -27,9 +27,9 @@ sú pripravené v kóde a skúšobných prostrediach s 12 tabuľkami.
    že upozornenie ukáže zlyhanie a posledný úspešný bod zostane dostupný.
 3. Potvrdiť uloženie obnovovacieho hesla mimo počítača aj zálohovacieho disku.
    Heslo neposielať do chatu ani neukladať do Git histórie.
-4. Rozhodnúť o zálohe súkromného kľúča CA. Pri zachovaní existujúcej dôvery ho
-   šifrovane uložiť a overiť; pri odmietnutí opísať obnovu s novou CA a opätovným
-   nastavením dôvery na zariadeniach.
+4. **Hotové 6. novembra:** používateľ schválil zálohu súkromného kľúča CA.
+   Šifrovaný balík a obnovené HTTPS pod pôvodnou autoritou sú overené. Prípadnú
+   budúcu rotáciu CA zahrnúť do novej kvalifikácie balíka.
 5. Dohodnúť prijateľnú stratu dát a čas obnovy. Denná úloha pri prihlásenom
    používateľovi nezaručuje 24-hodinový bod obnovy pri vypnutom PC či odpojenom disku.
 6. Rozhodnúť, či začať používať aj prílohy monitoringu. Denná záloha pokrýva jeho
@@ -40,8 +40,9 @@ reálnu stratu dát pri výpadku. Čistenie zostáva až za úspešným overení
 
 ## Etapa 2 — preukázať obnovu mimo pôvodného prostredia
 
-7. Vytvoriť overený obnovovací balík: presné obrazy, Git bundle, súkromná
-   konfigurácia, obe databázy, potrebné pripojené súbory a dohodnutý variant CA.
+7. **Hotové 6. novembra:** overený obnovovací balík obsahuje presné obrazy,
+   Git bundle, súkromnú konfiguráciu, obe databázy, potrebné pripojené súbory
+   a pôvodnú CA. Na existujúcom Docker prostredí sa obnovil do nových zväzkov.
 8. Overiť dostupnosť inštalačných nástrojov a ich verzií: Docker, Python, Git,
    Restic. Nezávisieť od existencie pôvodného adresára `build` alebo meniteľných tagov.
 9. Použiť nový počítač alebo čistý virtuálny stroj. Obnoviť súbory do iného
@@ -137,7 +138,7 @@ cudzie dáta sa nedajú čítať, konflikt ponechá lokálnu prácu a záloha ob
 
 ## Rozhodnutia na najbližšie spoločné prejdenie
 
-- Zachovanie pôvodnej CA v šifrovanej zálohe alebo nová dôvera po obnove.
+- Pôvodná CA už je po súhlase v overenej šifrovanej zálohe; dohodnúť jej ďalšiu rotáciu a ochranu obnovovacieho hesla.
 - Cieľová strata dát a čas obnovy; umiestnenie ďalšej nezávislej kópie.
 - Druhý počítač/virtuálny stroj a termín skúšky reštartu.
 - Poradie bezpečnostnej údržby a nasadenia pracovných priestorov.

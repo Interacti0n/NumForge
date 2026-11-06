@@ -176,7 +176,7 @@ Never restore over live data as a verification step.
 From the 5 November backup format-2 change onward, the daily job includes monitor
 SQLite. Older deployment sections below describe their historical backup scope.
 The [recovery qualification](../project/RECOVERY_20261105.md) records the successful
-isolated restored-stack rehearsal and the remaining fresh-host/CA-key gates.
+isolated restored-stack and original-CA rehearsals and the remaining fresh-host gates.
 The [local plan](../project/LOCAL_PLAN_20261105.md) and
 [remaining security triage](../project/SECURITY_TRIAGE_20261105.md) define the next work.
 
