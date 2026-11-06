@@ -11,6 +11,7 @@ import urllib.request
 
 import jwt
 from jwt.exceptions import PyJWKClientError
+UPGRADED = Path('/opt/numforge/system-jwt-upgrade.json').is_file()
 
 if os.environ.get('NUMFORGE_MONITOR_SYSTEM_CHECK') != '1' or not Path('/.dockerenv').is_file():
     raise RuntimeError('Run only in the disposable monitor qualification container.')
@@ -71,14 +72,18 @@ class Checks(unittest.TestCase):
         for status in (301, 302, 303, 307, 308):
             with self.subTest(status=status):
                 self.requests.clear()
-                request = urllib.request.Request(self.base + f'/redirect/{status}',
-                                                 headers={'Authorization': 'fixture-secret'})
-                client = jwt.PyJWKClient(request)
+                url = self.base + f'/redirect/{status}'
+                headers = {'Authorization': 'fixture-secret'}
+                client = jwt.PyJWKClient(url, headers=headers) if UPGRADED else jwt.PyJWKClient(urllib.request.Request(url, headers=headers))
                 client.jwk_set_cache.put(self.jwks)
+                cached = client.jwk_set_cache.get()
                 with self.assertRaises(PyJWKClientError):
                     client.fetch_data()
                 self.assertEqual(self.requests, [(f'/redirect/{status}', 'fixture-secret')])
-                self.assertIsNone(client.jwk_set_cache.get())
+                if UPGRADED:
+                    self.assertIs(client.jwk_set_cache.get(), cached)
+                else:
+                    self.assertIsNone(client.jwk_set_cache.get())
 
     def test_fetch_signing_key_token_verification_and_cache(self):
         client = jwt.PyJWKClient(self.base + '/keys', cache_keys=True)
@@ -89,16 +94,27 @@ class Checks(unittest.TestCase):
         self.assertEqual(len(self.requests), 1)
         with self.assertRaises(PyJWKClientError):
             client.get_signing_key('missing')
-        self.assertEqual(len(self.requests), 2)
+        self.assertEqual(len(self.requests), 1 if UPGRADED else 2)
+        if UPGRADED:
+            for _ in range(10):
+                with self.assertRaises(PyJWKClientError):
+                    client.get_signing_key('another-missing')
+            self.assertEqual(len(self.requests), 1, 'Unknown kids must not trigger a fetch storm')
+            client.get_jwk_set(refresh=True)
+            self.assertEqual(len(self.requests), 2)
 
-    def test_fetch_errors_clear_cached_material(self):
+    def test_fetch_errors_do_not_introduce_untrusted_cached_material(self):
         for path, error in (('/error', PyJWKClientError), ('/malformed', json.JSONDecodeError)):
             with self.subTest(path=path):
                 client = jwt.PyJWKClient(self.base + path)
                 client.jwk_set_cache.put(self.jwks)
+                cached = client.jwk_set_cache.get()
                 with self.assertRaises(error):
                     client.fetch_data()
-                self.assertIsNone(client.jwk_set_cache.get())
+                if UPGRADED:
+                    self.assertIs(client.jwk_set_cache.get(), cached)
+                else:
+                    self.assertIsNone(client.jwk_set_cache.get())
 
     def test_redirect_policy_does_not_change_other_urlopen_users(self):
         with urllib.request.urlopen(self.base + '/redirect/302', timeout=5) as response:
@@ -117,8 +133,8 @@ class Checks(unittest.TestCase):
                                                                claims={'sub': 'fixture'}))
         self.assertEqual(verify_signed_token(public, token)['sub'], 'fixture')
         with self.assertRaises(jwt.InvalidSignatureError):
-            jwt.decode(jwt.encode({'sub': 'other'}, 'wrong-key', algorithm='HS256'),
-                       'fixture-key', algorithms=['HS256'])
+            jwt.decode(jwt.encode({'sub': 'other'}, 'wrong-key' * 8, algorithm='HS256'),
+                       'fixture-key' * 8, algorithms=['HS256'])
 
     def test_apprise_notification_through_actual_node_provider(self):
         program = '''const Provider=require('/app/server/notification-providers/apprise');
@@ -138,10 +154,19 @@ new Provider().send({appriseURL:process.argv[1],title:'Fixture title'},'Fixture 
     def test_pinned_receipts_and_loaded_module(self):
         import jwt.jwks_client
         source = Path(jwt.jwks_client.__file__)
-        receipt = json.loads(Path('/opt/numforge/system-jwt-backport.json').read_text())
-        self.assertEqual(hashlib.sha256(source.read_bytes()).hexdigest(), receipt['afterSha256'])
-        self.assertEqual(receipt['upstream'], '0a795b8e1f6ef08f634aa7086fc41cc6d5ce3e56')
-        self.assertEqual(jwt.__version__, '2.6.0')
+        if UPGRADED:
+            import importlib.metadata
+            receipt = json.loads(Path('/opt/numforge/system-jwt-upgrade.json').read_text())
+            self.assertEqual(jwt.__version__, '2.15.1')
+            self.assertEqual(importlib.metadata.version('PyJWT'), '2.15.1')
+            self.assertEqual(source.parent.parent, Path(receipt['installation']))
+            for relative, digest in receipt['files'].items():
+                self.assertEqual(hashlib.sha256((source.parent.parent / relative).read_bytes()).hexdigest(), digest)
+        else:
+            receipt = json.loads(Path('/opt/numforge/system-jwt-backport.json').read_text())
+            self.assertEqual(hashlib.sha256(source.read_bytes()).hexdigest(), receipt['afterSha256'])
+            self.assertEqual(receipt['upstream'], '0a795b8e1f6ef08f634aa7086fc41cc6d5ce3e56')
+            self.assertEqual(jwt.__version__, '2.6.0')
         library = Path('/usr/lib/x86_64-linux-gnu/libsqlite3.so.0.8.6')
         self.assertEqual(hashlib.sha256(library.read_bytes()).hexdigest(),
                          'f4b32d83fadc4787cabff8a115e4aca3ac808efe9d9521b9630f1d8815f129b5')

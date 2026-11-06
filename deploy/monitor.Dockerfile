@@ -1,3 +1,8 @@
+FROM python:3.12-slim-bookworm AS jwt-source
+WORKDIR /build
+COPY deploy/monitor-jwt.json deploy/prepare_monitor_jwt.py /build/
+RUN python prepare_monitor_jwt.py
+
 FROM python:3.12-slim-bookworm AS source
 WORKDIR /build
 COPY deploy/monitor-binding.json deploy/monitor-sqlite.json deploy/prepare_monitor_binding.py /build/
@@ -54,6 +59,9 @@ COPY --from=sqlite-build /app/node_modules/@louislam/sqlite3 /app/node_modules/@
 COPY --from=sqlite-build /app/package.json /app/package-lock.json /app/
 COPY --from=sqlite-build /app/node_modules/.package-lock.json /app/node_modules/.package-lock.json
 COPY --from=sqlite-build /tmp/monitor-sqlite-receipt.json /opt/numforge/monitor-sqlite.json
+COPY --from=jwt-source /out/ /usr/local/lib/python3.11/dist-packages/
+COPY --from=jwt-source /receipt.json /opt/numforge/system-jwt-upgrade.json
+RUN python3 -c "import jwt,importlib.metadata as m; assert jwt.__version__=='2.15.1'; assert m.version('PyJWT')=='2.15.1'; assert jwt.__file__.startswith('/usr/local/lib/python3.11/dist-packages/jwt/')"
 USER node
 # These NumForge HTTP/TCP/push monitors use local HTTP; reuse the Node runtime.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \

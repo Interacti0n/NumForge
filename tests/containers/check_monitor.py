@@ -97,8 +97,14 @@ def run():
                            "assert.deepEqual(r.replacement,JSON.parse(process.argv[1])); "
                            "assert.equal(require('@louislam/sqlite3/package.json').name,'@vscode/sqlite3');",
                            json.dumps(binding))
+            jwt_manifest = json.loads((ROOT / "deploy/monitor-jwt.json").read_text(encoding="utf-8"))
+            compose.docker("exec", "-T", "uptime", "python3", "-c",
+                           "import json,sys,pathlib,jwt; r=json.loads(pathlib.Path('/opt/numforge/system-jwt-upgrade.json').read_text());"
+                           "assert r['upstream']==json.loads(sys.argv[1]); assert jwt.__version__==r['upstream']['version']",
+                           json.dumps(jwt_manifest))
             for check, guard in (("check_accounts_sqlite.py", "NUMFORGE_SQLITE_BACKPORT_CHECK"),
-                                 ("check_monitor_system.py", "NUMFORGE_MONITOR_SYSTEM_CHECK")):
+                                 ("check_monitor_system.py", "NUMFORGE_MONITOR_SYSTEM_CHECK"),
+                                 ("check_monitor_jwt.py", "NUMFORGE_MONITOR_JWT_CHECK")):
                 compose.docker("exec", "-T", "-e", guard + "=1", "uptime", "python3", "-",
                                input=(ROOT / "tests/containers" / check).read_text(encoding="utf-8"),
                                encoding="utf-8")

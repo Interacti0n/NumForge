@@ -76,6 +76,7 @@ nav:
       - Monitor system helper repairs (2026-11-05): docs/project/SECURITY_SYSTEM_HELPERS_20261105.md
       - PostgreSQL XML qualification (2026-11-05): docs/project/SECURITY_POSTGRES_XML_20261105.md
       - Monitor SQLite binding replacement (2026-11-05): docs/project/SECURITY_MONITOR_BINDING_20261105.md
+      - Supported monitor PyJWT (2026-11-06): docs/project/SECURITY_MONITOR_JWT_20261106.md
       - Feature checklist: docs/project/FEATURE_CHECKLIST.md
       - Testing:
           - Start here: docs/TESTING.md

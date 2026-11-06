@@ -57,6 +57,11 @@ They address only the named issues, not all records for those packages.
 
 ## Open items requiring the next focused qualification
 
+The [6 November PyJWT qualification](SECURITY_MONITOR_JWT_20261106.md) follows up
+the monitor item below with an unmodified supported release. The tables here
+remain the dated 5 November scanner baseline; package-version records must not
+be interpreted as a fresh scan or a blanket exemption.
+
 ### PyJWT consumers and asymmetric/HMAC confusion
 
 The [upstream CVE-2026-102268 advisory](https://github.com/jpadilla/pyjwt/security/advisories/GHSA-ffc3-869f-jxw9)

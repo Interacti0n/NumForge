@@ -40,6 +40,7 @@ jobs:
           python tests/containers/test_security_inventory.py
           python tests/containers/test_pilot.py
           python tests/test_monitor_jwt_backport.py
+          python tests/test_monitor_jwt_source.py
           python tests/test_monitor_binding_source.py
           node tests/containers/test_mixed_stack.cjs
           python tests/containers/check_stack.py
