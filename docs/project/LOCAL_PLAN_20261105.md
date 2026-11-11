@@ -17,9 +17,36 @@ sú pripravené v kóde a skúšobných prostrediach s 12 tabuľkami.
 | Obnova na úplne novom počítači | Otvorené | Nové zväzky na existujúcom Docker prostredí nenahrádzajú druhý počítač |
 | Bezpečnostný súpis všetkých závažností | Hotový súpis, pokračuje vecné preverovanie | [Triedenie nálezov](SECURITY_TRIAGE_20261105.md) |
 | Podporovaný PyJWT v monitoringu | Nasadené 6. novembra | [Kvalifikácia a návrat](SECURITY_MONITOR_JWT_20261106.md), zachovaná história aj ostatné služby |
-| Úplnosť a obsah Gitu | Opätovne kontrolované 11. novembra | 722 sledovaných súborov po pridaní skúšky migrácie; privátne dáta/výstupy mimo Gitu, pôvodné čisté zostavenie a funkčné skúšky zachované, ochrana v CI |
+| Opraviteľné nálezy nižších závažností | Nasadené 11. novembra | [Go, zlib a XML parser](SECURITY_LOWER_20261111.md); presne štyri záznamy odstránené, žiadne ďalšie s dostupnou opravou; ostatné nálezy zostávajú na posúdenie |
+| Úplnosť a obsah Gitu | Opätovne kontrolované 11. novembra | 729 sledovaných súborov; privátne dáta/výstupy mimo Gitu, kontrola aj v čistej kópii projektu, ochrana v CI |
 | Pracovné priestory | Migrácia a návrat overené 11. novembra, pilot bez nasadenia | Pôvodné dáta/roly/oprávnenia zachované, nové zápisy prežili návrat a obnovu 12 tabuliek; [doklad](WORKSPACE_ROLLOUT_20261105.md) |
 | Reštart Windows a automatické zotavenie | Zatiaľ nesplnené | Po reštarte 11. novembra bol Docker zastavený; ručné spustenie obnovilo služby, príčina zlyhania automatického štartu ostáva otvorená |
+
+## Uzavretie aktuálneho kola opráv — 11. november
+
+Lokálne opravy a ich skúšky sú uložené v commitoch; na GitHub sa neodosielali.
+Aktualizované tri služby prešli živou kontrolou, zachovali dáta aj pôvodnú CA
+a zálohy pred/po zmene sa reálne obnovili. Web a účty ostali na pôvodnej verzii,
+bez nasadenia pracovných priestorov. Zlyhanie dennej zálohy už zachová posledný
+dobrý bod a dohľad uchová diagnostiku posledného zlyhania aj po zotavení.
+
+Ďalšie kroky pre spoločné rozhodnutie, v tomto poradí:
+
+1. Overiť najbližšiu časovanú zálohu o 19:00. Dnešné vyvolanie cez plánovač
+   skončilo úspešne, ale nedokazuje budúce automatické spustenie.
+2. Potvrdiť, že obnovovacie heslo existuje na nezávislom mieste. Do chatu ho
+   neposielať. Potom vybrať čistý počítač alebo virtuálny stroj na skúšku obnovy.
+3. Dohodnúť krátke okno na reštart Windows a sledovať automatický návrat služieb.
+   Tento bod ostáva otvorený; samotné ručné spustenie Dockeru ho neuzatvára.
+4. Rozhodnúť o nasadení ručných pracovných priestorov. Migrácia a návrat aplikácie
+   sú kvalifikované; ešte treba vybrať spoločné vydanie webu/účtov a overiť ho
+   ako celok podľa etapy 5.
+5. Následne pokračovať vecným posúdením zostávajúcich bezpečnostných nálezov
+   a ďalším vývojom podľa etáp nižšie. Súpis 1 811 záznamov neznamená rovnaký
+   počet zneužiteľných chýb ani automatické prijatie rizika.
+
+Tieto body vyžadujú čas, zariadenie alebo rozhodnutie používateľa. Nejde o skryté
+podmienky úspechu už overených lokálnych opráv.
 
 ## Etapa 1 — uzavrieť spoľahlivosť záloh
 

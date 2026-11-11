@@ -2,7 +2,7 @@
 
 ## Four available fixes outside the old HIGH/CRITICAL gate
 
-The current deployed-image baseline contains four records with listed fixes:
+The pre-update deployed-image baseline contained four records with listed fixes:
 
 | Component | Advisory | Scanner severity | Qualified update |
 | --- | --- | --- | --- |
@@ -99,3 +99,46 @@ severity. Remaining unfixable/version-based system records stay visible. Promoti
 requires exact image/layer/source hashes, verified encrypted pre/post backups,
 unchanged existing volumes/CA and an automatic return to the old profile if live
 acceptance fails. No account/workspace schema migration is part of this update.
+
+## Promoted release
+
+The three ordinary images qualified above were promoted from committed source
+`907912a` on 11 November. Web and accounts containers stayed unchanged; the live
+database still has eleven tables. Release image IDs are:
+
+| Service / local release tag | Immutable Docker image ID |
+| --- | --- |
+| PostgreSQL / `numforge-postgres:go-20261111` | `sha256:6cc405fd36e6256df38fc33c37cdce9875df02152ca3ed0d28e34a0c574dedc0` |
+| Gateway / `numforge-gateway:lower-20261111` | `sha256:e736a2431078bbd783618a52bdf0109fbbdffa335a7e9b671d2bb27b9e35c06c` |
+| Monitor / `numforge-uptime:xml-20261111` | `sha256:aae3f1732eeb900dabc58e73fb6497052b319eedbdd7fc0ed3ae37b01c996d16` |
+
+Live acceptance confirms five healthy services, six UP monitors with fresh
+non-push heartbeats, unchanged account rows, monitor users/configuration/history,
+native SQLite identity, supported PyJWT, PostgreSQL XML probe and gateway CA.
+All four XML tests also pass inside the deployed monitor. HTTPS/public calculation
+and forty gateway probes pass. Runtime users, restrictions, ports, restart policy
+and original named volumes remain unchanged.
+
+Two earlier acceptance attempts returned all three services to their original
+images automatically: a missing optional Docker `Init` field and two equivalent
+Windows/Linux representations of the same bind source triggered conservative
+checks. The harness now compares missing optional fields consistently and
+canonicalizes only Docker Desktop's known host-drive representation. The actual
+before/after mounts and equal canonical paths are retained as evidence. No live
+data restore was needed; neither failure was waived as an application failure.
+
+`lower-deployment/deployment.json` records successful acceptance and verified
+encrypted pre/post standard and supplemental monitor backups. All four restore
+points were retained when deployment completed. `post-deployment-security/`
+contains layer-verified reports for the exact five deployed images. Compared
+with the same-day baseline, exactly the four listed records above disappeared,
+with no added advisory keys. Remaining records: **1,811**, comprising 11 CRITICAL,
+444 HIGH, 684 MEDIUM, 627 LOW and 45 UNKNOWN; none has a listed fix at any severity.
+These remaining records require the applicability review in the triage document;
+zero listed fixes is not a claim of zero vulnerabilities.
+
+For the latest recovery capture use the private `recovery-kit-status.json` and
+the kit's own manifest, never historical image tags. The final release rehearsal
+and closure checks are recorded under `kit-recovery-final/` and `final-check.json`
+in the same ignored evidence directory. A separate clean host and Windows reboot
+remain distinct acceptance gates.
