@@ -22,6 +22,44 @@ def monitor_fixture(path):
 
 
 class BackupSafety(unittest.TestCase):
+    def test_failed_job_marks_latest_attempt_failed_and_preserves_last_verified_snapshot(self):
+        with tempfile.TemporaryDirectory(dir=backup.ROOT / "build") as temporary:
+            root = Path(temporary)
+            previous = {"ok": True, "snapshot": "verified-point", "last_success": "2026-11-06T15:00:00Z",
+                        "restore_verified": True, "monitor_restore_verified": True}
+            (root / "backup-status.json").write_text(json.dumps(previous))
+            with patch.object(backup, "STATE", root), \
+                 patch.object(backup, "config", return_value={"repository": str(root / "missing-disk")}), \
+                 patch.object(backup.compose, "backup") as dump, patch.object(backup, "restic") as restic, \
+                 patch.object(backup, "notify") as notify:
+                with self.assertRaises(ValueError):
+                    backup.run_backup()
+                dump.assert_not_called()
+                restic.assert_not_called()
+                notify.assert_called_once_with(False)
+            status = json.loads((root / "backup-status.json").read_text())
+            self.assertFalse(status["ok"])
+            self.assertEqual(status["snapshot"], previous["snapshot"])
+            self.assertEqual(status["last_success"], previous["last_success"])
+            self.assertEqual(status["failure_class"], "ValueError")
+            self.assertIn("last_attempt", status)
+            self.assertFalse((root / "backup-status.pending.json").exists())
+            self.assertFalse((root / "missing-disk").exists())
+
+    def test_busy_lock_does_not_replace_another_jobs_status_or_send_failure(self):
+        with tempfile.TemporaryDirectory(dir=backup.ROOT / "build") as temporary:
+            root = Path(temporary)
+            path = root / "backup-status.json"
+            path.write_bytes(b'{"ok":true,"snapshot":"keep"}')
+            original = path.read_bytes()
+            with patch.object(backup, "STATE", root), patch.object(backup, "lock", side_effect=OSError("busy")), \
+                 patch.object(backup, "backup") as run, patch.object(backup, "notify") as notify:
+                with self.assertRaises(OSError):
+                    backup.run_backup()
+                run.assert_not_called()
+                notify.assert_not_called()
+            self.assertEqual(path.read_bytes(), original)
+
     def test_restore_failure_prevents_retention(self):
         for failure in ("corrupt-bytes", "database-error"):
             with self.subTest(failure=failure), tempfile.TemporaryDirectory(dir=backup.ROOT / "build") as temporary:

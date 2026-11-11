@@ -16,6 +16,30 @@ import pilot
 
 
 class PilotChecks(unittest.TestCase):
+    def test_failure_diagnostics_survive_later_success_status(self):
+        with tempfile.TemporaryDirectory(dir=ROOT / "build") as temporary, patch.object(pilot, "STATE", Path(temporary)):
+            pilot.save_json(pilot.STATE / "pilot-status.json", {"ok": True, "url": "https://old.trycloudflare.com"})
+            error = subprocess.CalledProcessError(1, ["docker", "desktop", "start", "--detach"], stderr=b"backend failed")
+            pilot.record_failure(error)
+            status = pilot.read_json(pilot.STATE / "pilot-status.json")
+            self.assertFalse(status["ok"])
+            self.assertEqual(status["url"], "https://old.trycloudflare.com")
+            failure = pilot.read_json(pilot.STATE / "pilot-last-failure.json")
+            self.assertEqual(failure["command"], ["docker", "desktop", "start"])
+            self.assertEqual(failure["stderr"], "backend failed")
+            pilot.save_json(pilot.STATE / "pilot-status.json", {"ok": True})
+            self.assertEqual(pilot.read_json(pilot.STATE / "pilot-last-failure.json"), failure)
+
+    def test_docker_unavailable_requests_background_start_and_leaves_stack_untouched(self):
+        with patch.object(pilot.compose, "load_pilot_environment"), \
+             patch.object(pilot, "execute", side_effect=[subprocess.CalledProcessError(1, ["docker", "info"]), None]) as execute, \
+             patch.object(pilot.compose, "docker") as compose_command, patch.object(pilot, "tunnel") as tunnel:
+            with self.assertRaisesRegex(RuntimeError, "Docker is starting"):
+                pilot.ensure()
+            self.assertEqual(execute.call_args_list[1].args[0], ["docker", "desktop", "start", "--detach"])
+            compose_command.assert_not_called()
+            tunnel.assert_not_called()
+
     def test_reused_pid_is_not_owned(self):
         entry = {"Id": 42, "Path": "cloudflared.exe", "StartTime": "old"}
         with patch.object(pilot, "identity", return_value=entry | {"StartTime": "new"}):

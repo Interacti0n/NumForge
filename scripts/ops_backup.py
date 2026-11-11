@@ -130,6 +130,33 @@ def snapshot_monitor(target):
         execute([*command, "require('fs').rmSync(" + json.dumps(remote) + ",{force:true})"], cwd=ROOT)
 
 
+def save_status(status):
+    temporary = STATE / "backup-status.pending.json"
+    temporary.write_text(json.dumps(status, indent=2), encoding="utf-8")
+    temporary.replace(STATE / "backup-status.json")
+
+
+def run_backup():
+    # A busy lock belongs to another job; do not overwrite its status or signal
+    # a failed backup when this invocation has not started one.
+    with lock():
+        try:
+            backup()
+        except Exception as error:
+            path = STATE / "backup-status.json"
+            try:
+                previous = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+            except (OSError, ValueError):
+                previous = {}
+            if not isinstance(previous, dict):
+                previous = {}
+            previous.update(ok=False, last_attempt=datetime.now(timezone.utc).isoformat(),
+                            failure_class=type(error).__name__)
+            save_status(previous)
+            notify(False)
+            raise
+
+
 def backup():
     settings = config()
     # An unplugged external disk is a failure, never a reason to create a new repo.
@@ -187,9 +214,9 @@ def backup():
     restic(settings, "check")
     # Retention affects only this job's snapshots and follows successful restore.
     restic(settings, "forget", "--tag", "numforge-pilot", "--keep-daily", "7", "--keep-weekly", "4", "--keep-monthly", "6", "--prune")
-    (STATE / "backup-status.json").write_text(json.dumps({"ok": True, "snapshot": snapshot,
-        "last_success": datetime.now(timezone.utc).isoformat(), "restore_verified": True,
-        "format_version": 2, "monitor_restore_verified": True}, indent=2))
+    now = datetime.now(timezone.utc).isoformat()
+    save_status({"ok": True, "snapshot": snapshot, "last_success": now, "last_attempt": now,
+        "restore_verified": True, "format_version": 2, "monitor_restore_verified": True})
     notify(True)
     print("Encrypted backup and byte-for-byte/database restore verified:", snapshot)
 
@@ -206,9 +233,4 @@ if __name__ == "__main__":
     elif args.action == "check":
         print(restic(config(), "check").decode())
     else:
-        try:
-            with lock():
-                backup()
-        except Exception:
-            notify(False)
-            raise
+        run_backup()

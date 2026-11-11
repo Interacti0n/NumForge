@@ -1437,3 +1437,30 @@ subsequently deploys Microsoft's maintained SQLite binding through a genuine
 npm alias. It retains the qualified SQLite 3.54.1 engine, verifies both Knex
 consumers and their error handling, and passes persisted upgrade/rollback,
 clean-volume, backup/restore and final supervisor checks.
+
+## Recovery observation on 11 November 2026
+
+Windows reports a boot at 09:21 CET. At the initial check around 15:24 CET the
+Docker engine was unavailable, the repeating supervisor and preceding daily
+backup had failed, and the latest verified backup was still from 6 November.
+This does not close the automatic post-reboot recovery gate. The original Docker
+startup error was not retained separately, so its cause remains unproven.
+
+After a background Docker Desktop start, all five pinned services returned
+healthy. The existing supervisor adopted a fresh Quick Tunnel origin, preserved
+the deployed images and brought the pilot back online. A backup invoked through
+the real Windows scheduled task then completed with result 0, including encrypted
+snapshot restore, PostgreSQL restore and monitor SQLite verification. A requested
+scheduler invocation proves the launch chain; the next timed 19:00 run still needs
+observation.
+
+Scheduled backup failures now atomically record `ok:false`, `last_attempt` and a
+failure class while preserving the last verified snapshot/time. Success replaces
+that failure state. A second invocation that cannot acquire the backup lock leaves
+the active owner's status/notification untouched. No missing backup interval can
+be reconstructed retroactively.
+
+The pilot additionally preserves private `pilot-last-failure.json` with bounded
+subprocess stderr, exit status and the first three command components. Later
+successful one-minute checks may replace the short log and current status, but
+not this diagnostic evidence. Private operational files remain outside Git.

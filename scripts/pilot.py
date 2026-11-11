@@ -28,6 +28,22 @@ def save_json(path, data):
     temporary.replace(path)
 
 
+def record_failure(error):
+    """Retain diagnostics after the repeating task replaces its short run log."""
+    now = datetime.now(timezone.utc).isoformat()
+    failure = {"last_checked": now, "error": type(error).__name__}
+    if isinstance(error, subprocess.CalledProcessError):
+        command = error.cmd if isinstance(error.cmd, (list, tuple)) else [error.cmd]
+        failure.update(returncode=error.returncode,
+                       command=[str(value) for value in command[:3]])
+        stderr = error.stderr or b""
+        failure["stderr"] = (stderr.decode("utf-8", errors="replace") if isinstance(stderr, bytes) else stderr)[-8192:]
+    save_json(STATE / "pilot-last-failure.json", failure)
+    status = read_json(STATE / "pilot-status.json")
+    status.update(ok=False, last_checked=now, error=type(error).__name__)
+    save_json(STATE / "pilot-status.json", status)
+
+
 def execute(args, **options):
     return subprocess.run([str(a) for a in args], check=True, capture_output=True,
         creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0, timeout=20, **options)
@@ -201,8 +217,5 @@ if __name__ == "__main__":
         try:
             ensure()
         except Exception as error:
-            path = STATE / "pilot-status.json"
-            status = read_json(path)
-            status.update(ok=False, last_checked=datetime.now(timezone.utc).isoformat(), error=type(error).__name__)
-            save_json(path, status)
+            record_failure(error)
             raise

@@ -19,12 +19,14 @@ sú pripravené v kóde a skúšobných prostrediach s 12 tabuľkami.
 | Podporovaný PyJWT v monitoringu | Nasadené 6. novembra | [Kvalifikácia a návrat](SECURITY_MONITOR_JWT_20261106.md), zachovaná história aj ostatné služby |
 | Úplnosť a obsah Gitu | Overené 6. novembra | 720 sledovaných súborov, čistá lokálna kópia, zostavenie webu/kalkulačky a funkčné skúšky; ochrana aj v CI |
 | Pracovné priestory | Kód overený, pilot bez nasadenia | [Postup nasadenia a návratu](WORKSPACE_ROLLOUT_20261105.md) |
-| Reštart Windows a automatické zotavenie | Otvorené | Treba dohodnúť skutočný reštart a sledovať prihlásenie |
+| Reštart Windows a automatické zotavenie | Zatiaľ nesplnené | Po reštarte 11. novembra bol Docker zastavený; ručné spustenie obnovilo služby, príčina zlyhania automatického štartu ostáva otvorená |
 
 ## Etapa 1 — uzavrieť spoľahlivosť záloh
 
 1. Sledovať najbližšie automatické denné spustenie: výsledok úlohy 0, čerstvý
    záznam úspechu, overenie monitoringu a stav zálohovacieho monitora UP.
+   **11. november:** spustenie cez skutočný plánovač po obnove služieb prešlo;
+   predchádzajúce denné spustenie zlyhalo. Najbližší časovaný beh ešte overiť.
 2. Zopakovať skúšku odpojeného disku bez vytvorenia nového repozitára. Overiť,
    že upozornenie ukáže zlyhanie a posledný úspešný bod zostane dostupný.
 3. Potvrdiť uloženie obnovovacieho hesla mimo počítača aj zálohovacieho disku.
@@ -64,6 +66,8 @@ adresárov či Docker cache. Súčasný izolovaný test je užitočný medzikrok
 13. Pri ďalšom samovoľnom zastavení Dockeru zachytiť čas a systémové záznamy.
     Príčina predchádzajúcich zastavení nie je preukázaná; ďalšie opravné zásahy
     vybrať až podľa dôkazov.
+    **11. november:** doplnený trvalý záznam posledného zlyhania dohľadu a
+    jednoznačný neúspešný stav zálohy so zachovaním posledného dobrého bodu.
 14. Zmerať rast histórie monitoringu, databáz a záloh počas bežnej prevádzky.
     Nastaviť limit voľného miesta a reakciu na jeho prekročenie.
 15. Rozhodnúť o nezávislej kontrole dostupnosti mimo tohto PC. Lokálny monitor
