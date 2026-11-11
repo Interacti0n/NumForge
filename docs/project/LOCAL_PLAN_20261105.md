@@ -17,8 +17,8 @@ sú pripravené v kóde a skúšobných prostrediach s 12 tabuľkami.
 | Obnova na úplne novom počítači | Otvorené | Nové zväzky na existujúcom Docker prostredí nenahrádzajú druhý počítač |
 | Bezpečnostný súpis všetkých závažností | Hotový súpis, pokračuje vecné preverovanie | [Triedenie nálezov](SECURITY_TRIAGE_20261105.md) |
 | Podporovaný PyJWT v monitoringu | Nasadené 6. novembra | [Kvalifikácia a návrat](SECURITY_MONITOR_JWT_20261106.md), zachovaná história aj ostatné služby |
-| Úplnosť a obsah Gitu | Overené 6. novembra | 720 sledovaných súborov, čistá lokálna kópia, zostavenie webu/kalkulačky a funkčné skúšky; ochrana aj v CI |
-| Pracovné priestory | Kód overený, pilot bez nasadenia | [Postup nasadenia a návratu](WORKSPACE_ROLLOUT_20261105.md) |
+| Úplnosť a obsah Gitu | Opätovne kontrolované 11. novembra | 722 sledovaných súborov po pridaní skúšky migrácie; privátne dáta/výstupy mimo Gitu, pôvodné čisté zostavenie a funkčné skúšky zachované, ochrana v CI |
+| Pracovné priestory | Migrácia a návrat overené 11. novembra, pilot bez nasadenia | Pôvodné dáta/roly/oprávnenia zachované, nové zápisy prežili návrat a obnovu 12 tabuliek; [doklad](WORKSPACE_ROLLOUT_20261105.md) |
 | Reštart Windows a automatické zotavenie | Zatiaľ nesplnené | Po reštarte 11. novembra bol Docker zastavený; ručné spustenie obnovilo služby, príčina zlyhania automatického štartu ostáva otvorená |
 
 ## Etapa 1 — uzavrieť spoľahlivosť záloh
@@ -107,6 +107,9 @@ Samotné „dodávateľ zatiaľ nemá opravu“ položku neuzatvára.
 24. Nacvičiť migráciu `0004_workspace` na kópii aktuálnej databázy a návrat po
     vytvorení skúšobných pracovných priestorov. Nové používateľské dáta sa pri návrate
     nesmú potichu stratiť.
+    **Hotové pre skúšobný pár 11. novembra:** migrácia, stará aplikácia na novej
+    schéme, jej ďalší zápis, opätovné zapnutie kandidáta a obnova všetkých 12
+    tabuliek prešli. Pred nasadením zostávajú úplné kontroly vybraného webu a účtov.
 25. Až po kontrole podkladov nasadiť kandidáta, overiť dva účty, dve zariadenia,
     súbežné záložky, reštart a obmedzenia veľkosti. Potom vytvoriť novú zálohu a obnoviť ju.
 26. Po období používania vyhodnotiť chyby, nejasné názvy a potrebu exportu.

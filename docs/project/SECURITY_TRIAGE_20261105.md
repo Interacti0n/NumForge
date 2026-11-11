@@ -62,6 +62,16 @@ the monitor item below with an unmodified supported release, now deployed. The t
 remain the dated 5 November scanner baseline; package-version records must not
 be interpreted as a fresh scan or a blanket exemption.
 
+On 11 November all five deployed images were scanned again, serially, against
+database `2026-11-11T13:00:47Z`, and their exact layers verified. The inventory is
+now 1,815 records: 11 CRITICAL, 444 HIGH, 685 MEDIUM, 628 LOW and 47 UNKNOWN.
+No record has a listed fix at any severity. These newer counts supersede the
+6 November inventory for current triage; additional/changed vendor records do
+not close or invalidate earlier targeted regression evidence. Current full data
+is under `build/closeout-20261111/security/`. Each new record still needs the
+applicability/consumer review described below; absence of a vendor update is not
+a project acceptance decision.
+
 Fresh scans on 6 November used database `2026-11-06T12:55:02Z`, verified all five
 exact image layer lists and retained 1,493 records: 11 CRITICAL, 219 HIGH,
 648 MEDIUM and 615 LOW, with zero UNKNOWN or listed fixes. Severity metadata changed
