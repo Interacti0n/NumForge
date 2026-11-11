@@ -65,7 +65,11 @@ be interpreted as a fresh scan or a blanket exemption.
 On 11 November all five deployed images were scanned again, serially, against
 database `2026-11-11T13:00:47Z`, and their exact layers verified. The inventory is
 now 1,815 records: 11 CRITICAL, 444 HIGH, 685 MEDIUM, 628 LOW and 47 UNKNOWN.
-No record has a listed fix at any severity. These newer counts supersede the
+No HIGH/CRITICAL record has a listed fix. Four lower/unknown-severity records do:
+Go CVE-2026-97054 in PostgreSQL's gosu and the gateway (1.27.4), gateway zlib
+CVE-2026-4738 (1.4-r0), and monitor fast-xml-parser CVE-2026-126066 (5.12.0).
+These update gates are qualified in the [11 November maintenance record](SECURITY_LOWER_20261111.md),
+not accepted exceptions. These newer baseline counts supersede the
 6 November inventory for current triage; additional/changed vendor records do
 not close or invalidate earlier targeted regression evidence. Current full data
 is under `build/closeout-20261111/security/`. Each new record still needs the

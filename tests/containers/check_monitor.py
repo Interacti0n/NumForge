@@ -82,6 +82,7 @@ def run():
             checks += "\n(()=>{\n" + (ROOT / "tests/containers/check_monitor_sqlite.cjs").read_text(encoding="utf-8") + "\n})();"
             checks += "\n(()=>{\n" + (ROOT / "tests/containers/check_monitor_binding.cjs").read_text(encoding="utf-8") + "\n})();"
             checks += "\n(()=>{\n" + (ROOT / "tests/containers/check_monitor_glob14.cjs").read_text(encoding="utf-8") + "\n})();"
+            checks += "\n(()=>{\n" + (ROOT / "tests/containers/check_monitor_xml.cjs").read_text(encoding="utf-8") + "\n})();"
             bootstrap = "const Module=require('node:module');const guard=new Module('/tmp/nf-guards.cjs');guard.filename='/tmp/nf-guards.cjs';guard._compile(" + json.dumps(guards) + ",guard.filename);globalThis.monitorPatchGuards=guard.exports;\n"
             bootstrap += "const nativeGuard=new Module('/tmp/nf-sqlite.cjs');nativeGuard.filename='/tmp/nf-sqlite.cjs';nativeGuard._compile(" + json.dumps(sqlite_guards) + ",nativeGuard.filename);globalThis.monitorSqliteGuards=nativeGuard.exports;\n"
             compose.docker("exec", "-T", "uptime", "node", "-", input=bootstrap + checks, encoding="utf-8")
@@ -90,6 +91,10 @@ def run():
             # A rollback parent deliberately lacks these new system backports.
             if previous_image and selected == previous_image:
                 return
+            xml_manifest = json.loads((ROOT / "deploy/monitor-xml.json").read_text(encoding="utf-8"))
+            compose.docker("exec", "-T", "uptime", "node", "-e",
+                           "require('node:assert/strict').deepEqual(require('/opt/numforge/monitor-xml.json').manifest,JSON.parse(process.argv[1]));",
+                           json.dumps(xml_manifest))
             binding = json.loads((ROOT / "deploy/monitor-binding.json").read_text(encoding="utf-8"))
             compose.docker("exec", "-T", "uptime", "node", "-e",
                            "const assert=require('node:assert/strict'); "

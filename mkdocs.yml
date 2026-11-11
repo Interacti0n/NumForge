@@ -77,6 +77,7 @@ nav:
       - PostgreSQL XML qualification (2026-11-05): docs/project/SECURITY_POSTGRES_XML_20261105.md
       - Monitor SQLite binding replacement (2026-11-05): docs/project/SECURITY_MONITOR_BINDING_20261105.md
       - Supported monitor PyJWT (2026-11-06): docs/project/SECURITY_MONITOR_JWT_20261106.md
+      - Lower-severity container updates (2026-11-11): docs/project/SECURITY_LOWER_20261111.md
       - Feature checklist: docs/project/FEATURE_CHECKLIST.md
       - Testing:
           - Start here: docs/TESTING.md

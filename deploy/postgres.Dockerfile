@@ -18,7 +18,7 @@ RUN --network=none python /build/build_postgres_libxml.py apply \
        -L/build/libxml2-2.13.9/.libs -Wl,-z,relro,-z,now -lxml2 -o /build/check_libxml \
     && python /build/build_postgres_libxml.py receipt
 
-FROM golang:1.27.3-alpine AS gosu
+FROM golang:1.27.4-alpine AS gosu
 ENV CGO_ENABLED=0 GOMAXPROCS=2 GOTOOLCHAIN=local
 WORKDIR /build
 # Upstream gosu 1.19, immutable tag commit; no launcher source changes.

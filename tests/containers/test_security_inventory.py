@@ -8,9 +8,16 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 from security_inventory import inventory
+from scan_images import fixable_findings
 
 
 class InventoryTests(unittest.TestCase):
+    def test_strict_fix_gate_includes_low_medium_and_unknown(self):
+        findings = [{"Severity": severity, "FixedVersion": "fixed"} for severity in ("LOW", "MEDIUM", "UNKNOWN")]
+        report = {"Results": [{"Vulnerabilities": findings + [{"Severity": "CRITICAL"}]}]}
+        self.assertEqual(fixable_findings(report), [])
+        self.assertEqual(fixable_findings(report, all_severities=True), findings)
+
     def test_all_severities_and_manifest_identity_are_preserved(self):
         with tempfile.TemporaryDirectory(dir=ROOT / "build") as temporary:
             path = Path(temporary) / ("sha256_" + "a" * 64 + ".json")

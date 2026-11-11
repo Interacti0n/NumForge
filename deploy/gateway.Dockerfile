@@ -1,4 +1,4 @@
-FROM golang:1.27.3-alpine AS build
+FROM golang:1.27.4-alpine AS build
 ENV CGO_ENABLED=0 GOMAXPROCS=2 GOTOOLCHAIN=local
 WORKDIR /build
 # Keep Caddy's release; update the vulnerable library/toolchain versions explicitly.
@@ -12,6 +12,6 @@ RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache
     && go version -m /out/caddy > /out/caddy.buildinfo
 
 FROM caddy:2.11.7-alpine
-RUN apk upgrade --no-cache
+RUN apk upgrade --no-cache && apk info -v zlib
 COPY --from=build /out/caddy /usr/bin/caddy
 COPY --from=build /out/caddy.buildinfo /opt/numforge/caddy.buildinfo

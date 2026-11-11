@@ -44,14 +44,15 @@ jobs:
           python tests/containers/test_pilot.py
           python tests/test_monitor_jwt_backport.py
           python tests/test_monitor_jwt_source.py
+          python tests/test_monitor_xml_source.py
           python tests/test_monitor_binding_source.py
           node tests/containers/test_mixed_stack.cjs
           python tests/containers/check_stack.py
           python tests/containers/check_monitor.py
       - name: Check fixable application, gateway and database vulnerabilities
-        run: python scripts/scan_images.py numforge-test-ci-web numforge-test-ci-accounts numforge-test-ci-gateway numforge-test-ci-db --fail-on-fixable
+        run: python scripts/scan_images.py numforge-test-ci-web numforge-test-ci-accounts numforge-test-ci-gateway numforge-test-ci-db --fail-on-any-fix
       - name: Check fixable monitor vulnerabilities
-        run: python scripts/scan_images.py numforge-test-ci-uptime --fail-on-fixable
+        run: python scripts/scan_images.py numforge-test-ci-uptime --fail-on-any-fix
       - uses: actions/upload-artifact@v7
         if: always()
         with:
