@@ -76,8 +76,8 @@ The complete deployed-release inventory is in
 `build/closeout-20261111/post-deployment-security/`.
 These newer baseline and post-update counts supersede the
 6 November inventory for current triage; additional/changed vendor records do
-not close or invalidate earlier targeted regression evidence. Current full data
-before-update data is under `build/closeout-20261111/security/`. Each new record still needs the
+not close or invalidate earlier targeted regression evidence. Full before-update
+data is under `build/closeout-20261111/security/`. Each new record still needs the
 applicability/consumer review described below; absence of a vendor update is not
 a project acceptance decision.
 
